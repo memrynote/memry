@@ -8,6 +8,20 @@ import SwiftUI
 // transcription. Where on-device recognition is unavailable for the locale
 // the memo keeps `transcriptionStatus = failed` with Retry.
 
+/// Transcription as the inbox store calls it. The store holds one rather than
+/// calling `InboxTranscriber` directly so tests can pass their own: the real
+/// one may ask for speech permission, and in a test host nobody answers that
+/// prompt, so the test waits forever (#2834).
+struct InboxTranscription: Sendable {
+    var isAvailable: @Sendable () -> Bool
+    var transcribe: @Sendable (URL) async -> String?
+
+    static let onDevice = InboxTranscription(
+        isAvailable: { InboxTranscriber.isAvailable },
+        transcribe: { await InboxTranscriber.transcribe($0) }
+    )
+}
+
 enum InboxTranscriber {
     static var isAvailable: Bool {
         guard let recognizer = SFSpeechRecognizer() else { return false }

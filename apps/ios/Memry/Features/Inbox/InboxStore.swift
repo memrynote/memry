@@ -82,6 +82,7 @@ final class InboxStore {
     /// Projects and task reminders for Convert → Task.
     let tasks: (any TasksProtocol)?
     private let executor: CoreExecutor
+    let transcription: InboxTranscription
     var clock: @Sendable () -> Date = { Date() }
     /// Desktop's default `inbox.staleThresholdDays` (§6 IB013).
     let staleDays: Int64 = 7
@@ -94,7 +95,8 @@ final class InboxStore {
         notes: (any NotesProtocol)? = nil,
         writer: (any NotesWriterProtocol)? = nil,
         tasks: (any TasksProtocol)? = nil,
-        executor: CoreExecutor = .shared
+        executor: CoreExecutor = .shared,
+        transcription: InboxTranscription = .onDevice
     ) {
         self.core = core
         self.vaultId = vaultId
@@ -104,6 +106,7 @@ final class InboxStore {
         self.writer = writer
         self.tasks = tasks
         self.executor = executor
+        self.transcription = transcription
     }
 
     /// Runs other core work (notes) on the core queue.

@@ -20,8 +20,17 @@ struct InboxTestVault {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         vault = try Vault.open(vaultId: "vault-inbox-test", directory: directory.path)
         inbox = try vault.inbox(store: TaskTestKeychain())
-        store = InboxStore(core: inbox, vaultId: "vault-inbox-test", vaultDirectory: directory, filler: nil)
+        store = InboxStore(
+            core: inbox, vaultId: "vault-inbox-test", vaultDirectory: directory, filler: nil,
+            transcription: .scripted
+        )
     }
+}
+
+extension InboxTranscription {
+    /// Never reaches `SFSpeechRecognizer`: its permission prompt goes
+    /// unanswered in a test host and the awaiting test hangs (#2834).
+    static let scripted = InboxTranscription(isAvailable: { true }, transcribe: { _ in "[agent] transcript" })
 }
 
 private func record(
@@ -280,7 +289,8 @@ struct InboxStoreTests {
         )
         await vault.store.refresh()
         await vault.store.resumeTranscriptions()
-        #expect(vault.store.item(here.id)?.transcriptionStatus != "pending")
+        #expect(vault.store.item(here.id)?.transcriptionStatus == "complete")
+        #expect(vault.store.item(here.id)?.transcription == "[agent] transcript")
         #expect(vault.store.item(elsewhere.id)?.transcriptionStatus == "pending")
     }
 
@@ -307,7 +317,8 @@ struct InboxStoreTests {
         let store = InboxStore(
             core: scratch.inbox, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory,
             filler: UploadRefused(), notes: notes,
-            writer: try scratch.vault.notesWriter(store: TaskTestKeychain())
+            writer: try scratch.vault.notesWriter(store: TaskTestKeychain()),
+            transcription: .scripted
         )
         let bytes = Data([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10])
         let result = await store.captureFile(data: bytes, filename: "[agent] photo.jpg", mimeType: "image/jpeg")
