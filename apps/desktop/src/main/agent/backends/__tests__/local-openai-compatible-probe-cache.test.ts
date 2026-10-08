@@ -17,6 +17,7 @@ vi.mock('../../../lib/logger', () => ({
 }))
 
 import { LocalOpenAICompatibleBackend } from '../local-openai-compatible-backend'
+import type { BackendEvent } from '../../cli/types'
 import type { TurnWriteGrant } from '../../turn-grants'
 
 const MODEL = 'probe-model'
@@ -92,7 +93,7 @@ async function turn(backend: LocalOpenAICompatibleBackend) {
     prompt: 'User: hello',
     options: { backend: 'local_openai_compatible', model: MODEL, toolsEnabled: true }
   })
-  const events = []
+  const events: BackendEvent[] = []
   for await (const event of run.events) events.push(event)
   const call = mocks.streamText.mock.calls.at(-1)![0] as { tools?: unknown; system?: unknown }
   return { events, tools: call.tools, system: call.system }
