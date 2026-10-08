@@ -173,7 +173,7 @@
     "@memry/sync-client": "workspace:*",
     "@memry/sync-core": "workspace:*",
     "@memry/sync-harness": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@noble/hashes": "^2.0.1",
     "@playwright/test": "^1.57.0",
     "@radix-ui/react-accordion": "^1.2.12",
