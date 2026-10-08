@@ -160,7 +160,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
         'absolute end-4',
         // 36px chrome + the 200px band + the canvas's 24px top padding.
         belowCover ? 'top-[260px]' : 'top-32',
-        'hidden md:block z-40 motion-reduce:animate-none',
+        'hidden md:block z-40',
         className
       )}
       onMouseEnter={handleMouseEnter}
