@@ -34,7 +34,7 @@
 
 use crate::protocol::attachment_manifest::{AttachmentChunkRef, AttachmentManifest};
 use crate::protocol::attachments::{AttachmentError, hex_sha256};
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 
 /// This port's chunk size, and **not** a contract constant (§14.9).
 ///
@@ -195,6 +195,7 @@ pub struct UploadStatus {
 /// with one PUT url per chunk and the bytes go direct to R2.
 pub async fn initiate(
     client: &HttpClient,
+    vault_id: &str,
     attachment_id: &str,
     filename: &str,
     plaintext_len: u64,
@@ -225,6 +226,7 @@ pub async fn initiate(
         .send_json(
             ApiRequest::post("/sync/attachments/upload/initiate")
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .json(&Body {
                     attachment_id,
                     filename,
@@ -250,6 +252,7 @@ pub async fn initiate(
 /// Puts one chunk through the Worker.
 pub async fn put_chunk(
     client: &HttpClient,
+    vault_id: &str,
     session_id: &str,
     chunk: &FramedChunk,
 ) -> Result<(), AttachmentError> {
@@ -264,6 +267,7 @@ pub async fn put_chunk(
             )
             .body(chunk.framed.clone())
             .auth(Auth::Session)
+            .header(VAULT_ID_HEADER, vault_id)
             .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -316,6 +320,7 @@ impl DirectChunk {
 /// is left out when there are none, which is the body an older server knows.
 pub async fn complete(
     client: &HttpClient,
+    vault_id: &str,
     session_id: &str,
     direct: &[DirectChunk],
 ) -> Result<(), AttachmentError> {
@@ -328,6 +333,7 @@ pub async fn complete(
         .send(
             ApiRequest::post(&format!("/sync/attachments/upload/{session_id}/complete"))
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .json(&body)
                 .retry(RetryPolicy::polled()),
         )
@@ -339,6 +345,7 @@ pub async fn complete(
 /// restarting (§14.5).
 pub async fn status(
     client: &HttpClient,
+    vault_id: &str,
     session_id: &str,
 ) -> Result<UploadStatus, AttachmentError> {
     #[derive(serde::Deserialize)]
@@ -354,6 +361,7 @@ pub async fn status(
         .send_json(
             ApiRequest::get(&format!("/sync/attachments/upload/{session_id}"))
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -367,11 +375,16 @@ pub async fn status(
 }
 
 /// Abandons a session.
-pub async fn cancel(client: &HttpClient, session_id: &str) -> Result<(), AttachmentError> {
+pub async fn cancel(
+    client: &HttpClient,
+    vault_id: &str,
+    session_id: &str,
+) -> Result<(), AttachmentError> {
     client
         .send(
             ApiRequest::new("DELETE", &format!("/sync/attachments/upload/{session_id}"))
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .retry(RetryPolicy::never()),
         )
         .await?;
@@ -381,6 +394,7 @@ pub async fn cancel(client: &HttpClient, session_id: &str) -> Result<(), Attachm
 /// Stores the signed manifest.
 pub async fn put_manifest(
     client: &HttpClient,
+    vault_id: &str,
     attachment_id: &str,
     envelope: &crate::protocol::attachment_manifest::EncryptedAttachmentManifest,
 ) -> Result<(), AttachmentError> {
@@ -400,6 +414,7 @@ pub async fn put_manifest(
             )
             .json(&body)
             .auth(Auth::Session)
+            .header(VAULT_ID_HEADER, vault_id)
             .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -418,6 +433,7 @@ pub async fn put_manifest(
 /// caller's job because only it knows whether the work is interactive.
 pub async fn dereference(
     client: &HttpClient,
+    vault_id: &str,
     chunk_hashes: &[String],
 ) -> Result<(), AttachmentError> {
     for window in chunk_hashes.chunks(DEREFERENCE_CAP) {
@@ -425,6 +441,7 @@ pub async fn dereference(
             .send(
                 ApiRequest::post("/sync/attachments/dereference")
                     .auth(Auth::Session)
+                    .header(VAULT_ID_HEADER, vault_id)
                     .json(&serde_json::json!({ "chunkHashes": window }))
                     .retry(RetryPolicy::polled()),
             )

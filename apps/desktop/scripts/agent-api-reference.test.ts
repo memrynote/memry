@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
@@ -18,6 +19,21 @@ import {
 } from './agent-api-reference'
 
 const FIX = 'Run: pnpm --filter @memry/desktop agent-api:generate'
+
+// Ajv is a declared dependency of @memry/contracts, not of desktop; resolving it
+// from there avoids whichever Ajv major the hoisted node_modules happens to hold.
+const fromContracts = createRequire(
+  new URL('../../../packages/contracts/package.json', import.meta.url)
+)
+type Validator = { addVocabulary(keywords: string[]): unknown; compile(schema: object): unknown }
+const { default: Ajv2020 } = fromContracts('ajv/dist/2020') as {
+  default: new (options: { strict: boolean; allErrors: boolean }) => Validator
+}
+const { default: addFormats } = fromContracts('ajv-formats') as {
+  default: (ajv: Validator) => unknown
+}
+
+type SchemaFile = { $defs: Record<string, Record<string, unknown>> }
 
 describe('agent API reference', () => {
   const examples = readExamples()
@@ -55,6 +71,28 @@ describe('agent API reference', () => {
       if (!example.is_error && !args.safeParse(example.args).success) rejected.push(operation)
     }
     expect(rejected).toEqual([])
+  })
+
+  it('publishes every tool and operation schema so a strict draft 2020-12 validator compiles it', () => {
+    const file = JSON.parse(readFileSync(REFERENCE_PATHS.schema, 'utf8')) as SchemaFile
+    const ajv = new Ajv2020({ strict: true, allErrors: true })
+    addFormats(ajv)
+    const memryKeywords = new Set(
+      Object.values(file.$defs).flatMap((entry) =>
+        Object.keys(entry).filter((key) => key.startsWith('x-memry-'))
+      )
+    )
+    ajv.addVocabulary([...memryKeywords])
+    const invalid: string[] = []
+    for (const [name, entry] of Object.entries(file.$defs)) {
+      try {
+        ajv.compile(entry)
+      } catch (error) {
+        invalid.push(`${name}: ${(error as Error).message}`)
+      }
+    }
+    expect(Object.keys(file.$defs).length).toBeGreaterThan(300)
+    expect(invalid).toEqual([])
   })
 
   it('marks a regeneration between releases as +main', () => {
