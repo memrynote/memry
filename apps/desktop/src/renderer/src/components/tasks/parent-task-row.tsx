@@ -23,6 +23,7 @@ import { useT } from '@memry/i18n/renderer'
 import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
 import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
 
 export interface ParentTaskRowProps {
   task: Task
@@ -122,6 +123,8 @@ export const ParentTaskRow = ({
   const { t: tPhaseF } = useT('tasks')
   const isOverlay = renderMode === 'overlay'
   const tree = useSubtaskTree()
+  const taskPath = useTaskPath(task)
+  const path = isOverlay ? null : taskPath
   const isContext = tree?.contextIds.has(task.id) ?? false
   const rowRef = useRef<HTMLDivElement>(null)
   const {
@@ -320,22 +323,24 @@ export const ParentTaskRow = ({
             />
           )}
 
-          <span
-            className={cn(
-              'text-[13px] font-medium grow shrink min-w-0 truncate',
-              isCompleted
-                ? isOverlay
-                  ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-                  : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-                : isOverlay
-                  ? 'text-foreground/90'
-                  : isContext
-                    ? 'text-text-tertiary'
-                    : 'text-foreground/90'
-            )}
-          >
-            {task.title}
-          </span>
+          <TaskPathTitle task={task} path={path}>
+            <span
+              className={cn(
+                'text-[13px] font-medium grow shrink min-w-0 truncate',
+                isCompleted
+                  ? isOverlay
+                    ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                    : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                  : isOverlay
+                    ? 'text-foreground/90'
+                    : isContext
+                      ? 'text-text-tertiary'
+                      : 'text-foreground/90'
+              )}
+            >
+              {task.title}
+            </span>
+          </TaskPathTitle>
 
           {taskHasSubtasks && (
             <SubtaskProgressIndicator
@@ -349,7 +354,7 @@ export const ParentTaskRow = ({
             <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
           )}
 
-          {showProjectBadge && (
+          {showProjectBadge && !path && (
             <div className="flex items-center shrink-0 gap-[5px]">
               <div
                 className="rounded-xs shrink-0 size-2"

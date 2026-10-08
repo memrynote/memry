@@ -280,6 +280,19 @@ describe('virtual-list-utils', () => {
       expect(parentItem.subtasks).toHaveLength(2)
     })
 
+    it('makes every listed task a row in a date view, a parent and its subtask alike', () => {
+      const parentTask = createMockTask({ id: 'parent-1', subtaskIds: ['sub-1'] })
+      const subtask = createMockTask({ id: 'sub-1', parentId: 'parent-1' })
+      const listed = [parentTask, subtask]
+
+      const result = flattenTasksFlat(listed, [mockProject], listed, undefined, true)
+
+      expect(result.map((item) => [item.type, (item as TaskItem).task.id])).toEqual([
+        ['parent-task', 'parent-1'],
+        ['task', 'sub-1']
+      ])
+    })
+
     it('should skip tasks without a matching project', () => {
       const task = createMockTask({ id: 'task-orphan', projectId: 'nonexistent' })
       const result = flattenTasksFlat([task], [mockProject], [task])

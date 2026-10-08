@@ -12,7 +12,10 @@
  * - overdue work leads Today and Next 7, never Tomorrow;
  * - a started task (start date not after today) is in Today whatever its due
  *   date says, unless it is overdue (then it leads as overdue);
- * - subtasks ride with a matching parent and are never matched on their own.
+ * - date views show the task, not the tree: a dated task at any depth is its
+ *   own row, provided it is placed in the tree (a root, or below one). The tree
+ *   is built over non-archived tasks, so a task under an archived or missing
+ *   parent is shown nowhere. Undated subtasks of a dated parent are not rows.
  */
 
 import {
@@ -39,13 +42,28 @@ export const isTaskCompleted = (task: ViewTask, projects: readonly ViewProject[]
   return status?.type === 'done'
 }
 
+/**
+ * Non-archived tasks the tree places: roots and everything below them. A task
+ * under a missing or archived parent is neither, so no view shows it.
+ */
+const placedTasks = <T extends ViewTask>(tasks: readonly T[]): T[] => {
+  const live = tasks.filter((t) => !t.archivedAt)
+  const tree = buildTaskTree(live)
+  const placed = new Set<string>()
+  for (const root of tree.roots) {
+    placed.add(root.id)
+    for (const id of tree.descendantIds(root.id)) placed.add(id)
+  }
+  return live.filter((t) => placed.has(t.id))
+}
+
 const includeSubtasksForMatchingParents = <T extends ViewTask>(
-  matchingTopLevel: readonly T[],
+  matching: readonly T[],
   allTasks: readonly T[]
 ): T[] => {
   const tree = buildTaskTree(allTasks)
   const included = new Set<string>()
-  for (const task of matchingTopLevel) {
+  for (const task of matching) {
     included.add(task.id)
     for (const id of tree.descendantIds(task.id)) included.add(id)
   }
@@ -77,6 +95,7 @@ export const getFilteredTasks = <T extends ViewTask>(
   const isSubtask = (task: T): boolean => tree.parentOf(task.id) !== null
 
   const incompleteTopLevel = nonArchivedTasks.filter((t) => isIncomplete(t) && !isSubtask(t))
+  const incompletePlaced = placedTasks(tasks).filter(isIncomplete)
   const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
 
   if (selectedType === 'view') {
@@ -88,41 +107,41 @@ export const getFilteredTasks = <T extends ViewTask>(
         return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
 
       case 'today': {
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+        const matching = incompletePlaced.filter((task) => {
           if (hasStarted(task, today)) return true
           if (!task.dueDate) return false
           const taskDate = startOfDay(task.dueDate)
           return isSameDay(taskDate, today) || isBefore(taskDate, today)
         })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+        return includeSubtasksForMatchingParents(matching, nonArchivedTasks)
       }
 
       case 'upcoming': {
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+        const matching = incompletePlaced.filter((task) => {
           if (!task.dueDate) return false
           const taskDate = startOfDay(task.dueDate)
           return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
         })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+        return includeSubtasksForMatchingParents(matching, nonArchivedTasks)
       }
 
       case 'tomorrow': {
         const tomorrow = addDays(today, 1)
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+        const matching = incompletePlaced.filter((task) => {
           if (!task.dueDate) return false
           return isSameDay(startOfDay(task.dueDate), tomorrow)
         })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+        return includeSubtasksForMatchingParents(matching, nonArchivedTasks)
       }
 
       case 'week': {
         const weekEnd = endOfWeek(today)
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+        const matching = incompletePlaced.filter((task) => {
           if (!task.dueDate) return false
           const taskDate = startOfDay(task.dueDate)
           return !isBefore(taskDate, today) && !isAfter(taskDate, weekEnd)
         })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+        return includeSubtasksForMatchingParents(matching, nonArchivedTasks)
       }
 
       case 'completed':
@@ -154,7 +173,9 @@ const DUE_WINDOW_DAYS: Record<TaskDueWindow, [number, number]> = {
 }
 
 /**
- * Flat, ordered task list for one due-date window, overdue work first.
+ * Flat, ordered task rows for one due-date window, overdue work first. Each
+ * row is a placed task at any depth matched on its own dates; no descendants
+ * ride along.
  *
  * `today` and `next7` lead with overdue tasks — that work is still owed inside
  * the window, and `today` has always shown it. `tomorrow` is a preview of a
@@ -174,12 +195,9 @@ export const getTasksInDueWindow = <T extends ViewTask>(
 
   const overdue: T[] = []
   const inWindow: T[] = []
-  const tree = buildTaskTree(tasks)
 
-  tasks.forEach((task) => {
+  placedTasks(tasks).forEach((task) => {
     if (isTaskCompleted(task, projects)) return
-    if (tree.parentOf(task.id) !== null) return
-    if (task.archivedAt) return
     if (
       window === 'today' &&
       hasStarted(task, todayStart) &&
@@ -199,10 +217,7 @@ export const getTasksInDueWindow = <T extends ViewTask>(
     }
   })
 
-  return [
-    ...includeSubtasksForMatchingParents(overdue, tasks),
-    ...includeSubtasksForMatchingParents(inWindow, tasks)
-  ]
+  return [...overdue, ...inWindow]
 }
 
 /**
@@ -222,11 +237,9 @@ export const getCompletedTasksInDueWindow = <T extends ViewTask>(
   const windowStart = addDays(todayStart, firstDay)
   const windowEnd = endOfDay(addDays(todayStart, lastDay))
 
-  return tasks.filter(
+  return placedTasks(tasks).filter(
     (task) =>
       task.completedAt !== null &&
-      task.archivedAt === null &&
-      task.parentId === null &&
       task.dueDate !== null &&
       isWithinInterval(task.dueDate, { start: windowStart, end: windowEnd })
   )
@@ -238,15 +251,9 @@ export const getCompletedTasks = <T extends ViewTask>(tasks: readonly T[]): T[] 
     (task) => task.completedAt !== null && task.archivedAt === null && task.parentId === null
   )
 
-/** Top-level tasks completed on `now`'s calendar day (Today's Done section). */
+/** Placed tasks at any depth completed on `now`'s calendar day (Today's Done section). */
 export const getCompletedTodayTasks = <T extends ViewTask>(tasks: readonly T[], now: Date): T[] =>
-  tasks.filter(
-    (task) =>
-      task.completedAt !== null &&
-      task.archivedAt === null &&
-      task.parentId === null &&
-      isSameDay(task.completedAt, now)
-  )
+  placedTasks(tasks).filter((task) => task.completedAt !== null && isSameDay(task.completedAt, now))
 
 /** Narrows to one project; `null` keeps every project. */
 export const scopeTasksByProject = <T extends ViewTask>(
@@ -266,8 +273,8 @@ export interface TaskTabCounts {
 }
 
 /**
- * The Tasks page tab badges, scoped by the project picker. Parents only —
- * subtasks ride along in the lists but are not counted.
+ * The Tasks page tab badges, scoped by the project picker. A date tab counts
+ * the rows it draws: its window over the `all` list, as the page builds it.
  */
 export const getTaskTabCounts = (
   tasks: readonly ViewTask[],
@@ -276,12 +283,12 @@ export const getTaskTabCounts = (
   now: Date
 ): TaskTabCounts => {
   const scopedTasks = scopeTasksByProject(tasks, scopeProjectId)
+  const open = getFilteredTasks(scopedTasks, 'all', 'view', projects, now)
   const countWindow = (window: TaskDueWindow): number =>
-    getTasksInDueWindow(scopedTasks, projects, window, now).filter((t) => t.parentId === null)
-      .length
+    getTasksInDueWindow(open, projects, window, now).length
 
   return {
-    all: getFilteredTasks(scopedTasks, 'all', 'view', projects, now).length,
+    all: open.length,
     archived: scopedTasks.filter((t) => t.archivedAt && t.parentId === null).length,
     today: countWindow('today'),
     tomorrow: countWindow('tomorrow'),

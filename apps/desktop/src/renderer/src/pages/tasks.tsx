@@ -87,6 +87,7 @@ import { describeBranch, getSubtasks } from '@/lib/subtask-utils'
 import { SubtaskTreeContext } from '@/components/tasks/subtask-tree/subtask-tree-context'
 import { MoveUnderDialog } from '@/components/tasks/subtask-tree/move-under-dialog'
 import { ZoomedBranchView } from '@/components/tasks/subtask-tree/zoomed-branch-view'
+import { DateViewContext, useDateViewValue } from '@/components/tasks/date-view-context'
 import { useSubtaskTreeController } from '@/hooks/use-subtask-tree-controller'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
@@ -567,8 +568,19 @@ export const TasksPage = ({
     ? (projects.find((p) => p.id === zoomedTask.projectId) ?? null)
     : null
 
+  // A subtask's path in a date view opens its parent's branch, with it selected.
+  const openPath = useCallback(
+    (task: Task) => {
+      if (!task.parentId) return
+      setZoomedTaskId(task.parentId)
+      setDetailTaskId(task.id)
+    },
+    [setZoomedTaskId, setDetailTaskId]
+  )
+  const dateView = useDateViewValue(tasks, projects, openPath)
+
   // Derived: tab counts for TasksTabBar (scoped by dropdown project).
-  // Parents only — subtasks ride along in the lists but are not counted.
+  // Date tabs count the rows their list draws.
   // `getTaskTabCounts` is pinned for the iOS core by vectors (spec 004 D4).
   const tabCounts = useMemo(
     (): TasksTabCounts => getTaskTabCounts(tasks, projects, selectedProjectId, currentDay),
@@ -1436,33 +1448,35 @@ export const TasksPage = ({
                     onClearFilters={clearFiltersAndClearSaved}
                   />
                 ) : (
-                  <TaskList
-                    tasks={windowFilteredTasks}
-                    projects={projects}
-                    // Doubles as the scroll-position key, so each window scrolls
-                    // independently.
-                    selectedId={activeInternalTab}
-                    selectedType="view"
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onToggleSubtaskComplete={handleToggleSubtaskComplete}
-                    onQuickAdd={handleQuickAdd}
-                    onFocusQuickAdd={focusQuickAdd}
-                    onTaskClick={handleTaskClick}
-                    onNoteClick={(...args) => void handleNoteClick(...args)}
-                    selectedTaskId={detailTaskId}
-                    isSelectionMode={selection.isSelectionMode}
-                    selectedIds={selection.selectedIds}
-                    onToggleSelect={toggleTask}
-                    onShiftSelect={selectRange}
-                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                    onAddSubtask={subtaskManagement.handleAddSubtask}
-                    sortField={sort.field}
-                    sortDirection={sort.direction}
-                    showProjectBadge={!selectedProjectId}
-                    doneTasks={doneTasks}
-                    getOrderedTasks={getOrderedTasks}
-                  />
+                  <DateViewContext.Provider value={dateView}>
+                    <TaskList
+                      tasks={windowFilteredTasks}
+                      projects={projects}
+                      // Doubles as the scroll-position key, so each window scrolls
+                      // independently.
+                      selectedId={activeInternalTab}
+                      selectedType="view"
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onToggleSubtaskComplete={handleToggleSubtaskComplete}
+                      onQuickAdd={handleQuickAdd}
+                      onFocusQuickAdd={focusQuickAdd}
+                      onTaskClick={handleTaskClick}
+                      onNoteClick={(...args) => void handleNoteClick(...args)}
+                      selectedTaskId={detailTaskId}
+                      isSelectionMode={selection.isSelectionMode}
+                      selectedIds={selection.selectedIds}
+                      onToggleSelect={toggleTask}
+                      onShiftSelect={selectRange}
+                      onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                      onAddSubtask={subtaskManagement.handleAddSubtask}
+                      sortField={sort.field}
+                      sortDirection={sort.direction}
+                      showProjectBadge={!selectedProjectId}
+                      doneTasks={doneTasks}
+                      getOrderedTasks={getOrderedTasks}
+                    />
+                  </DateViewContext.Provider>
                 )}
               </div>
             )}

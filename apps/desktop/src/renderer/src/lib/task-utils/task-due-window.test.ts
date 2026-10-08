@@ -83,13 +83,14 @@ describe('getTasksInDueWindow', () => {
     }
   })
 
-  it('carries subtasks along with a matching parent', () => {
-    const parent = makeTask('parent', at(1), { subtaskIds: ['child'] })
+  it('lists a dated subtask as its own row and leaves an undated one under its parent', () => {
+    const parent = makeTask('parent', at(1), { subtaskIds: ['child', 'dated'] })
     const child = makeTask('child', null, { parentId: 'parent' })
+    const dated = makeTask('dated', at(1), { parentId: 'parent' })
 
-    expect(titles(getTasksInDueWindow([parent, child], [project], 'tomorrow'))).toEqual([
+    expect(titles(getTasksInDueWindow([parent, child, dated], [project], 'tomorrow'))).toEqual([
       'parent',
-      'child'
+      'dated'
     ])
   })
 })

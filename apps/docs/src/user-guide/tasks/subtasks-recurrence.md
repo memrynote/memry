@@ -65,6 +65,12 @@ Completing a parent completes every open task under it, at every level, and a to
 
 Deleting a task that has subtasks asks once. **Keep subtasks** moves its direct subtasks up into its place, under its own parent if it has one. **Delete all** removes the whole branch. Both can be undone from the toast.
 
+### Subtasks in Date Views
+
+Today, Tomorrow, Next 7 days, the Home tasks widget and the calendar list each dated task on its own row, at any depth. A parent and its subtask that are due the same day both appear, and the tab count includes both. A subtask with no date of its own still shows only under its parent.
+
+Under a subtask's title is its path: the project, then the tasks above it, for example `Website relaunch › … › Case studies`. A long path keeps the project and the direct parent and folds the middle into `…`. Click the path to open the project zoomed into that parent, with the subtask open. In the calendar, a subtask's card names its parent; click the name to do the same.
+
 ### Filters and Kanban
 
 When a filter matches a subtask, the tasks above it stay in the list in a lighter colour so the match keeps its place. Kanban shows top-level tasks only; a card with subtasks shows its progress and its next open subtask.

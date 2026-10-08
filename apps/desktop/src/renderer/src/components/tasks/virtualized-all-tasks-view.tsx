@@ -23,6 +23,7 @@ import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { TaskExpansionContext } from '@/components/tasks/subtask-tree/task-expansion-context'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { useDateView } from '@/components/tasks/date-view-context'
 import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { useDragContext } from '@/contexts/drag-context'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
@@ -304,7 +305,12 @@ export const VirtualizedAllTasksView = ({
 
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  const combinedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
+  // A date view's rows leave their undated subtasks out, so a row's subtasks
+  // come from the whole task list there.
+  const dateView = useDateView()
+  const everyTaskIsARow = dateView !== null
+  const listedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
+  const combinedTasks = dateView?.tasks ?? listedTasks
 
   const noteIndex = useTaskNoteIndex(sortField === 'folder' || sortField === 'note')
 
@@ -319,13 +325,14 @@ export const VirtualizedAllTasksView = ({
           sortDirection,
           collapsedGroups,
           getOrderedTasks,
-          noteIndex
+          noteIndex,
+          everyTaskIsARow
         ),
         { sortField, projects }
       )
     }
     return annotateFlatVirtualItems(
-      flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
+      flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks, everyTaskIsARow)
     )
   }, [
     tasks,
@@ -335,21 +342,22 @@ export const VirtualizedAllTasksView = ({
     sortDirection,
     collapsedGroups,
     getOrderedTasks,
-    noteIndex
+    noteIndex,
+    everyTaskIsARow
   ])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
     if (!doneTasks || doneTasks.length === 0) return []
 
     const isCollapsed = collapsedGroups.has('done')
-    const topLevel = getTopLevelTasks(doneTasks)
+    const rows = everyTaskIsARow ? doneTasks : getTopLevelTasks(doneTasks)
 
     const header: GroupHeaderItem = {
       id: 'group-header-done',
       type: 'group-header',
       groupKey: 'done',
       label: 'Done',
-      count: topLevel.length,
+      count: rows.length,
       sortField: 'status',
       isCollapsed
     }
@@ -357,11 +365,11 @@ export const VirtualizedAllTasksView = ({
     if (isCollapsed) return [header]
 
     const doneItems = annotateFlatVirtualItems(
-      flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks),
+      flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks, everyTaskIsARow),
       { sectionId: 'done' }
     )
     return [header, ...doneItems]
-  }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks])
+  }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks, everyTaskIsARow])
 
   const allVirtualItems = useMemo(
     () => [...virtualItems, ...doneVirtualItems],

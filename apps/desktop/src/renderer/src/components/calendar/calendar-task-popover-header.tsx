@@ -17,6 +17,8 @@ export interface CalendarTaskPopoverHeaderProps {
   projectName: string
   onToggleComplete: () => void
   onOpenTask: () => void
+  /** Opens Tasks zoomed into the parent's branch, with this subtask open. */
+  onOpenParent: () => void
   /** Overflow menu trigger for the less common actions. */
   menu?: ReactNode
 }
@@ -27,6 +29,7 @@ export function CalendarTaskPopoverHeader({
   projectName,
   onToggleComplete,
   onOpenTask,
+  onOpenParent,
   menu
 }: CalendarTaskPopoverHeaderProps): React.JSX.Element {
   const { t } = useT('calendar')
@@ -55,12 +58,14 @@ export function CalendarTaskPopoverHeader({
       />
       <div className="flex flex-col gap-1 px-3.5 pb-3">
         {task.parentId && parentTitle && (
-          <div
+          <button
+            type="button"
             data-testid="parent-breadcrumb"
-            className="truncate ps-7 text-xs text-muted-foreground"
+            onClick={onOpenParent}
+            className="w-fit max-w-full truncate ps-7 text-start text-xs text-muted-foreground hover:text-foreground hover:underline focus-visible:underline focus-visible:outline-none"
           >
             ↳ {parentTitle}
-          </div>
+          </button>
         )}
         <div className="flex items-start gap-2.5">
           <button

@@ -267,8 +267,27 @@ export const WINDOW_TASKS: readonly WindowTask[] = [
     archivedAt: '2026-01-13T10:00:00'
   }),
   t('sub-due-today-of-undated', { parentId: 'undated', dueDate: '2026-01-14' }),
-  // Any depth: a grandchild rides with its top-level task.
+  // Any depth: an undated grandchild rides with its top-level task in the sidebar views.
   t('subsub-of-parent-today', { parentId: 'sub-of-parent-today' }),
+  // Date views show the task, not the tree: a dated task at any depth is its own row.
+  t('grandparent-undated'),
+  t('parent-undated', { parentId: 'grandparent-undated' }),
+  t('grandchild-due-today', { parentId: 'parent-undated', dueDate: '2026-01-14' }),
+  t('sub-due-today-of-parent-today', { parentId: 'parent-today', dueDate: '2026-01-14' }),
+  t('sub-done-due-today', {
+    parentId: 'parent-today',
+    statusId: 'p1-done',
+    dueDate: '2026-01-14',
+    completedAt: '2026-01-14T11:00:00'
+  }),
+  // An open dated subtask under a done parent: the tab lists and counts start
+  // from the open list, which leaves the done branch out.
+  t('parent-done', { statusId: 'p1-done', completedAt: '2026-01-13T10:00:00' }),
+  t('sub-due-today-of-done', { parentId: 'parent-done', dueDate: '2026-01-14' }),
+  // Unplaced: a missing or archived parent hides a dated subtask everywhere.
+  t('orphan-due-today', { parentId: 'gone', dueDate: '2026-01-14' }),
+  t('archived-parent', { archivedAt: '2026-01-13T10:00:00' }),
+  t('sub-due-today-of-archived', { parentId: 'archived-parent', dueDate: '2026-01-14' }),
   // A parent loop from two devices re-parenting at once: the smaller id leads.
   t('loop-a', { parentId: 'loop-b', dueDate: '2026-01-14' }),
   t('loop-b', { parentId: 'loop-a' }),

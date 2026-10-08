@@ -1,16 +1,6 @@
 import type { Task } from '@/data/task-model'
 import type { Project, StatusType } from '@/data/tasks-data'
-import {
-  startOfDay,
-  addDays,
-  endOfDay,
-  endOfWeek,
-  isSameDay,
-  isBefore,
-  isAfter,
-  isWithinInterval,
-  formatDateKey
-} from './task-date-utils'
+import { startOfDay, addDays, endOfWeek, isSameDay, isBefore, isAfter } from './task-date-utils'
 import { isTaskCompleted } from './task-status-helpers'
 import {
   getCompletedTasks as getCompletedTasksAt,
@@ -20,21 +10,13 @@ import {
   getTasksInDueWindow as getTasksInDueWindowAt,
   type TaskDueWindow
 } from '@memry/domain-tasks/parsing'
+import { buildTaskTree } from '@memry/domain-tasks/tree'
+
+/** The sidebar views `getFilteredTasks` matches at any depth. */
+const DATE_VIEW_IDS: ReadonlySet<string> = new Set(['today', 'upcoming', 'tomorrow', 'week'])
 
 const hasStarted = (task: Task, today: Date): boolean =>
   !!task.startDate && !isAfter(startOfDay(task.startDate), today)
-
-// ============================================================================
-// SUBTASK INCLUSION HELPER
-// ============================================================================
-
-const includeSubtasksForMatchingParents = (matchingTopLevel: Task[], allTasks: Task[]): Task[] => {
-  const matchingIds = new Set(matchingTopLevel.map((t) => t.id))
-
-  return allTasks.filter(
-    (t) => matchingIds.has(t.id) || (t.parentId !== null && matchingIds.has(t.parentId))
-  )
-}
 
 // ============================================================================
 // TASK FILTERING
@@ -131,15 +113,22 @@ export const getTaskWorkspaceCounts = (
     }
   }
 
-  const viewCounts: Record<string, number> = {}
-  const matchedParentsByView = new Map<string, Set<string>>()
-  for (const viewId of viewIds) {
-    viewCounts[viewId] = 0
-    matchedParentsByView.set(viewId, new Set<string>())
+  // `getFilteredTasks` matches a date view at any depth among the tasks the
+  // tree places, the other views among top-level tasks, then adds every
+  // non-archived task below a match.
+  const liveTasks = tasks.filter((task) => !task.archivedAt)
+  const tree = buildTaskTree(tasks)
+  const liveTree = buildTaskTree(liveTasks)
+  const placedIds = new Set<string>()
+  for (const root of liveTree.roots) {
+    placedIds.add(root.id)
+    for (const id of liveTree.descendantIds(root.id)) placedIds.add(id)
   }
 
+  const matchedByView = new Map<string, Set<string>>()
+  for (const viewId of viewIds) matchedByView.set(viewId, new Set<string>())
+
   const projectTaskCounts: Record<string, number> = {}
-  const nonArchivedSubtaskParentIds: string[] = []
 
   for (const task of tasks) {
     const projectId = task.projectId
@@ -149,36 +138,31 @@ export const getTaskWorkspaceCounts = (
     // no view — the project view included — can render them. Counting them in a
     // badge makes it read higher than the list it opens.
     if (task.archivedAt) continue
-
-    if (task.parentId !== null) {
-      nonArchivedSubtaskParentIds.push(task.parentId)
-      continue
-    }
+    const isTopLevel = tree.parentOf(task.id) === null
 
     // A subtask is a row under its parent, never a row of its own, so it must
     // not lift the project badge past the number of rows the project lists.
     // Counting them made a project of finished parents read as dozens of open
     // tasks over an empty To Do section.
-    if (isIncomplete) {
+    if (task.parentId === null && isIncomplete) {
       projectTaskCounts[projectId] = (projectTaskCounts[projectId] ?? 0) + 1
     }
 
     for (const viewId of viewIds) {
-      if (!matchesView(viewId, task, isIncomplete)) continue
-      viewCounts[viewId] += 1
-      matchedParentsByView.get(viewId)?.add(task.id)
+      const eligible = DATE_VIEW_IDS.has(viewId) ? placedIds.has(task.id) : isTopLevel
+      if (eligible && matchesView(viewId, task, isIncomplete)) {
+        matchedByView.get(viewId)?.add(task.id)
+      }
     }
   }
 
-  // `getFilteredTasks` pulls in every non-archived subtask of a matching
-  // top-level task regardless of the subtask's own status, so the badges must
-  // too. Parents can appear after their subtasks, hence the second walk.
-  for (const parentId of nonArchivedSubtaskParentIds) {
-    for (const viewId of viewIds) {
-      if (matchedParentsByView.get(viewId)?.has(parentId)) {
-        viewCounts[viewId] += 1
-      }
+  const viewCounts: Record<string, number> = {}
+  for (const viewId of viewIds) {
+    const listed = new Set(matchedByView.get(viewId))
+    for (const id of matchedByView.get(viewId) ?? []) {
+      for (const below of liveTree.descendantIds(id)) listed.add(below)
     }
+    viewCounts[viewId] = listed.size
   }
 
   return { viewCounts, projectTaskCounts }
@@ -271,50 +255,6 @@ export const formatTaskSubtitle = (
 // TODAY & UPCOMING VIEW HELPERS
 // ============================================================================
 
-export interface TodayViewTasks {
-  overdue: Task[]
-  today: Task[]
-}
-
-export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTasks => {
-  const now = new Date()
-  const todayStart = startOfDay(now)
-  const todayEnd = endOfDay(now)
-
-  const overdue: Task[] = []
-  const today: Task[] = []
-
-  tasks.forEach((task) => {
-    if (isTaskCompleted(task, projects)) return
-    if (task.parentId !== null) return
-    if (task.archivedAt) return
-    if (
-      hasStarted(task, todayStart) &&
-      (!task.dueDate || !isBefore(startOfDay(task.dueDate), todayStart))
-    ) {
-      today.push(task)
-      return
-    }
-    if (!task.dueDate) return
-
-    const dueDate = startOfDay(task.dueDate)
-
-    if (isBefore(dueDate, todayStart)) {
-      overdue.push(task)
-    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: todayEnd })) {
-      today.push(task)
-    }
-  })
-
-  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
-  const todayWithSubtasks = includeSubtasksForMatchingParents(today, tasks)
-
-  return {
-    overdue: overdueWithSubtasks,
-    today: todayWithSubtasks
-  }
-}
-
 export type { TaskDueWindow } from '@memry/domain-tasks/parsing'
 
 /** Flat, ordered task list for one due-date window, overdue work first. */
@@ -331,117 +271,6 @@ export const getCompletedTasksInDueWindow = (
   window: TaskDueWindow,
   now = new Date()
 ): Task[] => getCompletedTasksInDueWindowAt(tasks, window, now)
-
-export interface TodayWithWeekTasks {
-  overdue: Task[]
-  today: Task[]
-  weekByDay: Map<string, Task[]>
-}
-
-export const getTodayWithWeekTasks = (
-  tasks: Task[],
-  projects: Project[],
-  weekDays: number = 6
-): TodayWithWeekTasks => {
-  const now = new Date()
-  const todayStart = startOfDay(now)
-  const todayEnd = endOfDay(now)
-  const tomorrowStart = addDays(todayStart, 1)
-  const weekEnd = endOfDay(addDays(todayStart, weekDays))
-
-  const overdue: Task[] = []
-  const today: Task[] = []
-  const weekByDay = new Map<string, Task[]>()
-
-  for (let i = 1; i <= weekDays; i++) {
-    const date = addDays(todayStart, i)
-    const key = formatDateKey(date)
-    weekByDay.set(key, [])
-  }
-
-  tasks.forEach((task) => {
-    if (isTaskCompleted(task, projects)) return
-    if (task.parentId !== null) return
-    if (!task.dueDate) return
-
-    const dueDate = startOfDay(task.dueDate)
-
-    if (isBefore(dueDate, todayStart)) {
-      overdue.push(task)
-    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: todayEnd })) {
-      today.push(task)
-    } else if (isWithinInterval(task.dueDate, { start: tomorrowStart, end: weekEnd })) {
-      const key = formatDateKey(dueDate)
-      if (weekByDay.has(key)) {
-        weekByDay.get(key)!.push(task)
-      }
-    }
-  })
-
-  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
-  const todayWithSubtasks = includeSubtasksForMatchingParents(today, tasks)
-
-  const weekByDayWithSubtasks = new Map<string, Task[]>()
-  weekByDay.forEach((dayTasks, key) => {
-    weekByDayWithSubtasks.set(key, includeSubtasksForMatchingParents(dayTasks, tasks))
-  })
-
-  return {
-    overdue: overdueWithSubtasks,
-    today: todayWithSubtasks,
-    weekByDay: weekByDayWithSubtasks
-  }
-}
-
-export interface UpcomingViewTasks {
-  overdue: Task[]
-  byDay: Map<string, Task[]>
-}
-
-export const getUpcomingTasks = (
-  tasks: Task[],
-  projects: Project[],
-  daysAhead: number = 7
-): UpcomingViewTasks => {
-  const now = new Date()
-  const todayStart = startOfDay(now)
-  const rangeEnd = endOfDay(addDays(now, daysAhead - 1))
-
-  const overdue: Task[] = []
-  const byDay = new Map<string, Task[]>()
-
-  for (let i = 0; i < daysAhead; i++) {
-    const date = addDays(todayStart, i)
-    const key = formatDateKey(date)
-    byDay.set(key, [])
-  }
-
-  tasks.forEach((task) => {
-    if (isTaskCompleted(task, projects)) return
-    if (task.parentId !== null) return
-    if (!task.dueDate) return
-
-    const dueDate = startOfDay(task.dueDate)
-
-    if (isBefore(dueDate, todayStart)) {
-      overdue.push(task)
-    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: rangeEnd })) {
-      const key = formatDateKey(dueDate)
-      if (byDay.has(key)) {
-        byDay.get(key)!.push(task)
-      }
-    }
-  })
-
-  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
-
-  const byDayWithSubtasks = new Map<string, Task[]>()
-  byDay.forEach((dayTasks, key) => {
-    byDayWithSubtasks.set(key, includeSubtasksForMatchingParents(dayTasks, tasks))
-  })
-
-  return { overdue: overdueWithSubtasks, byDay: byDayWithSubtasks }
-}
 
 export interface DayHeaderText {
   primary: string
