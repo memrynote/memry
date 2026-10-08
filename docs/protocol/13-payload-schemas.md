@@ -138,7 +138,7 @@ A client MUST NOT add a required field to an existing payload type.
 ## 13.4 Absent versus null
 
 **Normative, and load-bearing.** It is stated in three separate schema comments
-(`packages/contracts/src/sync-payloads.ts:125-126`, `:293-295`, `:300-301`):
+(`packages/contracts/src/sync-payloads.ts:142-143`, `:349-351`, `:356-357`):
 
 - **`undefined` (key absent)** means the sender does not know the field; **the
   local value MUST be kept**.
@@ -276,13 +276,60 @@ create or update without it is rejected by **an explicit guard in the handler,
 not by the schema**. Deletes never reach any parser at all: the applier
 short-circuits `operation === 'delete'` before decoding the body.
 
-### 13.7.3 `task` — `:25-48`
+### 13.7.3 `task` — `:39-65`
 
 15 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
-`linkedCanvasIds`, `clock`, **`fieldClocks`**, `createdAt`, `modifiedAt`.
+`linkedCanvasIds`, **`fields`**, `clock`, **`fieldClocks`**, `createdAt`,
+`modifiedAt`.
 
-`repeatConfig` is `z.unknown().nullable().optional()` (`:36`) — **opaque**, and
+`repeatConfig` is `z.unknown().nullable().optional()` (`:50`) — **opaque**, and
 the only object-valued field in any field-merged list (chapter 06 §6.4.1).
+
+**`fields` is not one of the fifteen, and chapter 06 §6.3 never merges it.** It is a
+versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
+
+#### 13.7.3.1 `fields`
+
+The task's field values by field name (`:60`), declared as an opaque, nullable,
+optional record that reads a non-object as absent (`:33-37`). **Normative**:
+
+- An entry is `{ "v": <any JSON value>, "t": <integer >= 0> }`, keyed by the
+  field name: the vault property key, case-sensitive, 1 to 200 characters on a
+  local write (`packages/contracts/src/tasks-api.ts:69`). `v: null` is a removal.
+  An entry MAY carry further keys, and a receiver MUST keep an entry whole: the
+  join stores the winning entry as it arrived
+  (`packages/shared/src/versioned.ts:153-174`).
+- A relation value is an array of `memry://note/<id>` strings, even for a
+  single-valued field (`packages/contracts/src/relation-uri.ts:48-52`).
+- **Absent** means the sender does not model the key, as on every desktop
+  build that predates this section. The receiver keeps its local map (§13.4) and heals it (chapter
+  06 §6.11.4).
+- **`null`** carries no version and MUST NOT be sent. A receiver treats it as
+  no information: no write and no heal (`packages/shared/src/versioned.ts:155`).
+- A value that is not an object MUST read as absent rather than fail the item
+  (`.catch(undefined)`, the `cover` precedent of §13.7.1.1), and an entry that is
+  not an object is dropped, never stored (`packages/shared/src/versioned.ts:118-125`).
+- A sender that holds no map MUST omit the key. Desktop's NULL column is
+  omitted by its one row-to-payload step (`packages/sync-client/src/task-wire.ts:14-20`),
+  which builds the push rebuild, the seed and the sync service's payload
+  (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:421`, `:444`,
+  `packages/sync-client/src/task-sync.ts:42`). `{}` is a valid empty map.
+
+```json
+"fields": {
+  "Waiting on": { "v": ["memry://note/n_7Qx2"], "t": 2 },
+  "Follow up": { "v": "2026-05-14", "t": 1 },
+  "Thread": { "v": null, "t": 3 }
+}
+```
+
+The Rust core projects it as `Field::opt_null("fields", Kind::Any)` with no
+column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:84`). It
+carries the bytes on a wholesale apply, keeps its local copy on a concurrent
+merge (chapter 06 §6.9.2), and copies the map to a duplicate and to a next
+occurrence (`crates/memry-core/src/domain/tasks/create.rs:128`,
+`crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
+`crates/memry-core/tests/versioned_keys_carry.rs`.
 
 ### 13.7.4 `project` — `:239-253`
 
@@ -291,7 +338,7 @@ the only object-valued field in any field-merged list (chapter 06 §6.4.1).
 nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 `:216-223`) and `links` (`ProjectLinkSyncSchema`).
 
-### 13.7.5 `task_activity` — `:85-95`
+### 13.7.5 `task_activity` — `:102-112`
 
 `taskId`, `action`, `field`, `oldValue`, `newValue`, `actor`, `deviceId`,
 `clock`, `createdAt`.
@@ -300,12 +347,17 @@ nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 `oldValue` and `newValue` are JSON-encoded scalars and are always `null` for
 `description`, because the body can be note-sized.
 
-### 13.7.6 `template` — `:97-111`
+A task field value (§13.7.3.1) is logged as `field: "fields.<name>"`, one row
+per changed field, and a string value over 500 characters is logged like
+`description`: `oldValue` is `null` and `newValue` is `{"delta": n}`
+(`apps/desktop/src/main/tasks/activity-log.ts:202-231`).
+
+### 13.7.6 `template` — `:114-128`
 
 `name`, `description`, `icon`, `tags`, `properties`, `content`, `clock`,
 `createdAt`, `modifiedAt`.
 
-**`properties` must stay an array** (`TemplatePropertySchema[]`, `:106`) or note
+**`properties` must stay an array** (`TemplatePropertySchema[]`, `:123`) or note
 creation from the template throws.
 
 **The element shape**, from `packages/contracts/src/templates-api.ts:102-117`:
@@ -328,15 +380,68 @@ two were written for different purposes and have drifted. This is recorded as
 an observation, not a rule to enforce — `type` is advisory on both sides and
 neither list is a wire constraint on the other.
 
-### 13.7.7 `tag_definition` — `:290-305`
+### 13.7.7 `tag_definition` — `:346-364`
 
 `name` and `color` are **required**; `icon`, `categoryId`, `sortOrder`,
-`colorAuthored`, `views`, `clock`, `createdAt`.
+`colorAuthored`, `views`, **`schema`**, `clock`, `createdAt`.
 
 - **`colorAuthored` absent means "cannot tell" and the receiver honours the
-  colour**; only a sender that knows the field can say `false` (`:293-295`).
+  colour**; only a sender that knows the field can say `false` (`:349-351`).
 - **`views`: `undefined` keeps the local value, `null` is an explicit clear**
-  (`:300-301`).
+  (`:356-357`). **A sender that holds no views omits the key** (desktop: a NULL
+  column), and an explicit "no views" travels as `[]`
+  (`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:210`,
+  `apps/desktop/src/main/database/queries/tag-definitions.ts:233-238`); deleting
+  a tag's last view writes `[]` (`apps/desktop/src/main/ipc/folder-view-handlers.ts:170`).
+  Desktop builds before this rule send `views: null` for a tag without saved
+  views, which clears a peer's; the receive rule is unchanged.
+- **`schema`: absent keeps the local value, `null` carries no information, and
+  an object is joined by chapter 06 §6.11 on every apply path rather than by the
+  document gate** (§13.7.7.1).
+
+#### 13.7.7.1 `schema`
+
+One versioned object holding the tag's fields, template, parent and preset
+(`:361`), declared like `task.fields` (`:33-37`). **Normative**:
+
+```json
+"schema": {
+  "t": 3,
+  "fields": [
+    { "name": "Company", "relation": { "target": "company", "many": false, "inverse": "People" } },
+    { "name": "Role" },
+    { "name": "Email" }
+  ],
+  "template": { "id": "tpl_8f2c", "autofill": true },
+  "extends": null,
+  "preset": "person"
+}
+```
+
+- `t` is the value's own version (chapter 06 §6.11.2): an integer `>= 0`,
+  missing or invalid reading as 0.
+- `fields` is ordered. `name` is a vault property key, and **its type is owned
+  by the vault-wide property definition** (§13.7.9): this payload carries no
+  type, so no new `property_definition.type` value is introduced. `relation`
+  present marks a relation field: `target` (a lowercase tag name, or `null` for
+  any note), `many`, and `inverse` (the label of the list derived on the
+  target, which is never stored on the target).
+- `template` names a `template` item (§13.7.6) and whether to apply it to a note
+  that gets the tag while its body is empty, or is `null`. `extends` is the
+  lowercase name of one parent tag, or `null`. `preset` is the ready-made tag
+  the definition came from, or `null`; an unknown string round-trips.
+- Every object inside `schema` is open: a receiver MUST keep every key at every
+  depth, and the join stores the winning object as it arrived
+  (`packages/shared/src/versioned.ts:137-147`), so a schema a newer build wrote is
+  stored and pushed verbatim.
+- A sender that holds no schema MUST omit the key (desktop: a NULL column,
+  `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:211`).
+  Removing everything is a versioned empty value, never `null`.
+
+The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
+column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:65`):
+a wholesale apply stores it verbatim, and a concurrent tag definition takes the
+remote payload (chapter 06 §6.8), which a desktop then heals.
 
 ### 13.7.8 `tag_category` — `:332-339`
 
@@ -451,13 +556,13 @@ The bytes ride in the record payload rather than the attachment pipeline because
 a normalised icon is a few KB, and this keeps every device's icon directory
 self-healing from the row (`:348-354`).
 
-### 13.7.12 `reminder` — `:154-170`
+### 13.7.12 `reminder` — `:171-187`
 
 `targetType`, `targetId`, `remindAt`, `anchorId`, `highlightText`,
 `highlightStart`, `highlightEnd`, `title`, `note`, `status`, `dismissedAt`,
 `snoozedUntil`, `clock`, `createdAt`, `modifiedAt`.
 
-**`triggeredAt` is deliberately absent from the payload** (`:149-153`): each
+**`triggeredAt` is deliberately absent from the payload** (`:166-170`): each
 device shows its own notification, so a synced value would suppress it on a
 device that never displayed it. **Dismiss and snooze state does sync.**
 
@@ -483,7 +588,7 @@ removal** (a removal ticks the clock): the receiver keeps its value. A device
 seeds a key from its own device-local value only while no device has clocked
 that path.
 
-### 13.7.14 `filter` — `:69-75`
+### 13.7.14 `filter` — `:86-92`
 
 `name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
 `fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
@@ -497,7 +602,7 @@ push is its whole `saved_filters` row serialised
 edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
 Starring writes `config.starred` as a boolean, `false` included.
 
-### 13.7.15 `inbox` — `:50-66`
+### 13.7.15 `inbox` — `:67-83`
 
 `title`, `content`, `type`, `metadata`, `filedAt`, `filedTo`, `filedAction`,
 `snoozedUntil`, `snoozeReason`, `archivedAt`, `sourceUrl`, `sourceTitle`,
@@ -584,7 +689,7 @@ an item (by `createdAt`, then id) decides which provider writes it**
 (`provider/write-routing.ts`); a promote writes one `provider_managed` /
 `time_and_text` binding beside the new event.
 
-### 13.7.20 `bookmark` — `:138-144`
+### 13.7.20 `bookmark` — `:155-161`
 
 `itemType`, `itemId`, `position`, `clock`, `createdAt`. No `modifiedAt` and
 no `fieldClocks`: `bookmark` takes the document-level resolver (§13.9).
@@ -599,7 +704,7 @@ to a live row, `folder` by path and `tag` by name, and hides anything else,
 as desktop's sidebar does (`resolveBookmarkItem`). This client reads
 bookmarks and does not write them.
 
-### 13.7.21 `canvas` — `:182-202`
+### 13.7.21 `canvas` — `:199-219`
 
 `id`, `vaultId`, `title`, `scene`, `folder`, `icon`, `ownerNoteId`, `clock`,
 `deletedAt`, every one optional on the wire. Desktop's push states all nine,
@@ -658,12 +763,16 @@ is a new item, not a re-push of the merged one.
 
 | Type                        | Algorithm                                                | Carries `fieldClocks`                              |
 | --------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:45`) |
+| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:62`) |
 | `project`                   | field-level                                              | yes (`:247`)                                       |
 | `calendar_event`            | field-level                                              | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
 | `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
 | every other subscribed type | document-level resolver                                  | no                                                 |
+
+**`task.fields` and `tag_definition.schema` are versioned values** joined by
+chapter 06 §6.11 on every apply path, in addition to the type's algorithm in the
+table.
 
 `settings` is also the one record type **exempt from the clock requirement**
 (chapter 00 §0.7, `packages/contracts/src/sync-api.ts:64-89`).
@@ -713,7 +822,7 @@ is no settings-specific mechanism).**
 `home_page` is in `RECORD_SYNC_ITEM_TYPES`
 (`packages/contracts/src/sync-api.ts:61`) and this feature does not subscribe to
 it (§13.1). Its payload is `{ name, icon, position, widgets, clock, createdAt,
-updatedAt }` (`packages/contracts/src/sync-payloads.ts:128-136`), where
+updatedAt }` (`packages/contracts/src/sync-payloads.ts:145-153`), where
 `widgets` is an opaque string.
 
 **Normative — not subscribing to it orphans nothing.** Nothing in any subscribed
