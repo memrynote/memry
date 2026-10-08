@@ -216,8 +216,11 @@ change its text or the cross to remove it before it goes out. While the next mes
 open, the queue waits for you to save or cancel. If memrynote cannot send a queued
 message, it stays in the list marked **Not sent** and holds the messages behind it, including new
 ones you send; edit it to send it again, or remove it to let the rest go out. Pressing Stop while a
-queued message is on its way stops that message's turn too. The queue lives in the window it was typed in and is
-not saved, so reloading the window clears it.
+queued message is on its way stops that message's turn too. A queued message that goes out only
+after you press Stop, because the turn ended on its own first, is not stopped. After Stop the cursor
+returns to the prompt box. The queue lives in the window it was typed in and is not saved, so
+reloading the window clears it. Switching to another vault marks every queued message **Not sent**,
+so nothing goes out to the vault you switched to. Switch back to edit and send it, or remove it.
 
 ### Connected tools
 
@@ -306,6 +309,12 @@ background. The unfinished reply is lost, but your message and the rest of the c
 so you can send the prompt again. A turn that is simply taking a long time is never stopped this way.
 The same applies when a turn fails before the reply even starts streaming, such as a disk or database
 error while saving the empty reply.
+
+When the provider or the chat backend reports an error, for example a local provider that rejects
+the request or a CLI that exits with an error, the reply shows as a red box. It says the reply
+stopped with an error and quotes the provider's own message. Your message is kept, so you can send
+it again. Errors from memrynote itself, such as a message or a Stop that could not reach the agent,
+show above the prompt box until the next message goes out.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
