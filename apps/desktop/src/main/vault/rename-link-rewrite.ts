@@ -198,7 +198,8 @@ async function rewriteSource(
         id: sourceId,
         date: journalDate,
         content: parsed.content,
-        tags: syncResult.tags,
+        // The journal's tags row edits this list, so it holds the header alone.
+        tags: syncResult.headerTags,
         wordCount: syncResult.wordCount,
         characterCount: syncResult.characterCount,
         modified: new Date(now),

@@ -22,6 +22,7 @@ import * as projections from '../projections'
 import { readVaultConfig } from './init'
 import { parseNote } from './frontmatter'
 import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 
@@ -1108,6 +1109,30 @@ describe('notes operations', () => {
       await notes.renameNote(selfLinker.id, 'Self Renamed')
       const selfNote = await notes.getNoteById(selfLinker.id)
       expect(selfNote!.content.trimEnd()).toBe('I mention [[Self Renamed]] and [[Renamed Target]].')
+    })
+
+    it('tells an open journal its header tags alone when a rename rewrites its links', async () => {
+      const target = await notes.createNote({ title: 'Journal Link Target', content: 'Body.' })
+      const journalPath = path.join(tempVault.journalDir, '2026-01-15.md')
+      fs.writeFileSync(
+        journalPath,
+        '---\ndate: 2026-01-15\ntags:\n  - daily\n---\n\nSaw [[Journal Link Target]] #mood\n'
+      )
+      await notes.getNoteByPath('journal/2026-01-15.md')
+      await projections.flushProjectionEvents()
+      const { BrowserWindow } = await import('electron')
+      const mockSend = vi.fn()
+      vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+        { isDestroyed: () => false, webContents: { send: mockSend } } as never
+      ])
+
+      await notes.renameNote(target.id, 'Journal Link Renamed')
+
+      expect(fs.readFileSync(journalPath, 'utf-8')).toContain('[[Journal Link Renamed]]')
+      expect(mockSend).toHaveBeenCalledWith(
+        JournalChannels.events.ENTRY_UPDATED,
+        expect.objectContaining({ entry: expect.objectContaining({ tags: ['daily'] }) })
+      )
     })
 
     it('leaves a link inside an HTML block file as written when its target is renamed', async () => {

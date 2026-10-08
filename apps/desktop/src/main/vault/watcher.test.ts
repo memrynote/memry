@@ -672,7 +672,7 @@ describe('vault watcher', () => {
         '  - daily',
         '---',
         '',
-        'First entry'
+        'First entry #mood'
       ].join('\n'),
       'utf8'
     )
@@ -685,8 +685,10 @@ describe('vault watcher', () => {
       expect.objectContaining({
         date: '2026-05-10',
         source: 'external',
+        // `tags` is the header alone: the journal's tags row edits it, so a
+        // body `#mood` here would be written into the header by the next edit.
         entry: expect.objectContaining({
-          content: '\nFirst entry',
+          content: '\nFirst entry #mood',
           tags: ['daily']
         })
       })
@@ -705,7 +707,7 @@ describe('vault watcher', () => {
         '  - daily',
         '---',
         '',
-        'Updated entry'
+        'Updated entry #mood'
       ].join('\n'),
       'utf8'
     )
@@ -718,7 +720,7 @@ describe('vault watcher', () => {
         date: '2026-05-10',
         source: 'external',
         entry: expect.objectContaining({
-          content: '\nUpdated entry',
+          content: '\nUpdated entry #mood',
           tags: ['daily']
         })
       })
