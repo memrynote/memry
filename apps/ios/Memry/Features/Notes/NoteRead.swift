@@ -290,9 +290,15 @@ final class NoteReadViewModel {
         await load()
     }
 
-    /// What the retry button calls.
+    /// What the retry button and every post-edit refresh call. A note already
+    /// on screen re-reads in place: dropping to `.loading` would tear down the
+    /// page, and with it any sheet open on it (a date picker, the link sheet).
     func reload() async {
-        await load()
+        if case .ready = phase {
+            await load(quietly: true)
+        } else {
+            await load()
+        }
     }
 
     /// `quietly` keeps the page on screen, so a post-sync refresh does not flash.

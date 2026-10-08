@@ -66,6 +66,21 @@ private func detail(
     NoteDetail(summary: summary(id, title: title), body: NoteBody(text: text, present: present))
 }
 
+/// Reports, from inside each read, what the page was showing while it ran.
+private final class PhaseProbeReader: NotesReading, @unchecked Sendable {
+    var probe: (@MainActor () -> String)?
+    private(set) var seen: [String] = []
+
+    func folders() async throws -> [FolderSummary] { throw NotScripted() }
+
+    func list() async throws -> [NoteSummary] { throw NotScripted() }
+
+    func read(id: String) async throws -> NoteDetail? {
+        if let probe { seen.append(await probe()) }
+        return detail(id)
+    }
+}
+
 /// `@MainActor` because ``NoteReadViewModel`` is: a view model that a view
 /// mutates during `body` has no business being reachable from anywhere else.
 @MainActor
@@ -95,6 +110,19 @@ private func outcomeKey(_ model: NoteReadViewModel) -> String {
 @MainActor
 @Suite("T157 note read")
 struct NoteReadTests {
+    // MARK: Post-edit reload (#2673)
+
+    @Test("a reload of a note on screen keeps the page up, so its open sheets survive")
+    func aReloadKeepsThePageReady() async {
+        let reader = PhaseProbeReader()
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        await model.loadIfNeeded()
+        reader.probe = { outcomeKey(model) }
+        await model.reload()
+        #expect(reader.seen.allSatisfy { $0.hasPrefix("ready/") }, "seen: \(reader.seen)")
+        #expect(reader.seen.count == 1)
+    }
+
     // MARK: The four outcomes, each against the other three
 
     @Test("a read that throws is unreadable — never missing, and never an empty note")
