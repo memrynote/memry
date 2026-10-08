@@ -11,7 +11,7 @@
 //! `syncTagDefinitionRename` / `syncMergedTagDefinitions` move it: the old id
 //! is tombstoned and the new one created carrying the old colour and icon.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
-use crate::domain::{tags, tasks};
+use crate::domain::{body_tags, tags, tasks};
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -78,7 +78,15 @@ pub struct TagSummary {
 /// Every tag in use or defined, by name.
 pub fn list(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
     let mut by_fold: BTreeMap<String, TagSummary> = BTreeMap::new();
-    for (item_type, _, tag) in carriers(conn, None)? {
+    // A body `#tag` counts like a payload tag, once per item (desktop's index).
+    let mut counted = BTreeSet::new();
+    let all = carriers(conn, None)?
+        .into_iter()
+        .chain(body_tags::carriers(conn)?);
+    for (item_type, item_id, tag) in all {
+        if !counted.insert((item_id, tags::fold(&tag))) {
+            continue;
+        }
         let entry = by_fold
             .entry(tags::fold(&tag))
             .or_insert_with(|| TagSummary {
