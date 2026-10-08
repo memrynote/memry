@@ -23,6 +23,22 @@ describe('html comment tokens (AF-015)', () => {
     ])
     expect(splitHtmlCommentTokens('plain')).toEqual([{ kind: 'text', text: 'plain' }])
   })
+
+  it('leaves note text that looks like a token alone (BBF-30)', () => {
+    const literal = [
+      'Literal MEMRYCMTX and MEMRYCMT3c212d2d2d3eX here.',
+      'Code `MEMRYCMT41X` span.',
+      '```',
+      'MEMRYCMT42X',
+      '```'
+    ].join('\n')
+    const masked = maskHtmlComments(`${literal}\n<!-- c -->`)
+    expect(decodeHtmlCommentTokens(masked)).toBe(`${literal}\n<!-- c -->`)
+    expect(splitHtmlCommentTokens(literal)).toEqual([{ kind: 'text', text: literal }])
+    expect(decodeHtmlCommentTokens(`${literal} ${encodeHtmlCommentToken('<!-- c -->')}`)).toBe(
+      `${literal} <!-- c -->`
+    )
+  })
 })
 
 describe('maskHtmlComments (AF-015)', () => {
