@@ -2220,7 +2220,8 @@
         "label": "Acesso padrão",
         "description": "Define o modo de acesso inicial para novas interações com o agente.",
         "vaultOnly": "Apenas o cofre",
-        "computerAccess": "Acesso ao computador"
+        "computerAccess": "Acesso ao computador",
+        "builtInNote": "A conexão de modelo integrada sempre usa apenas ferramentas do cofre."
       },
       "confirm": {
         "label": "Confirmar ações",

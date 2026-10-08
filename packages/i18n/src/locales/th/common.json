@@ -346,7 +346,10 @@
         "access": "การเข้าถึง",
         "tools": "เครื่องมือ"
       },
-      "modelSettingsLabel": "การตั้งค่าโมเดลของเอเจนต์: {model} {settings}"
+      "modelSettingsLabel": "การตั้งค่าโมเดลของเอเจนต์: {model} {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "ใช้ได้เฉพาะเครื่องมือคลังข้อมูลกับโมเดลนี้"
+      }
     },
     "refPicker": {
       "noMatches": "ไม่พบรายการที่ตรงกัน"
@@ -1267,7 +1270,7 @@
       "indexing": "กำลังสร้างดัชนี {done} / {total}",
       "indexingUnknown": "กำลังสร้างดัชนี…",
       "filters": "ตัวกรองใช้ร่วมกันได้ · เลือกได้ตามต้องการ",
-      "tags": "แท็กที่คุณใช้ในห้องนิรภัย"
+      "tags": "แท็กที่คุณใช้ในคลังข้อมูล"
     },
     "empty": {
       "unscoped": "ไม่มีสิ่งที่ตรงกับ “{query}”",

@@ -2220,7 +2220,8 @@
         "label": "Standardadgang",
         "description": "Angiver den adgangstilstand, som nye agentsvar starter i.",
         "vaultOnly": "Kun boksen",
-        "computerAccess": "Computeradgang"
+        "computerAccess": "Computeradgang",
+        "builtInNote": "Den indbyggede modelforbindelse kører altid kun med boksværktøjer."
       },
       "confirm": {
         "label": "Bekræft handlinger",

@@ -346,7 +346,10 @@
         "access": "アクセス",
         "tools": "ツール"
       },
-      "modelSettingsLabel": "エージェントのモデル設定：{model}、{settings}"
+      "modelSettingsLabel": "エージェントのモデル設定：{model}、{settings}",
+      "unavailable": {
+        "vaultToolsOnly": "このモデルでは保管庫ツールのみ"
+      }
     },
     "refPicker": {
       "noMatches": "一致する項目はありません"

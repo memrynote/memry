@@ -103,6 +103,33 @@ export const AgentTurnPermissionsSchema = z
   .strict()
 export type AgentTurnPermissions = z.infer<typeof AgentTurnPermissionsSchema>
 
+export interface AgentBackendCapabilities {
+  computerAccess: boolean
+  webSearch: boolean
+}
+
+// The built-in backend runs the model behind memrynote's own vault tool set,
+// so it has no shell, file or web tool to grant. The CLIs map both permissions
+// onto their own tools.
+export const AGENT_BACKEND_CAPABILITIES: Record<AgentBackendId, AgentBackendCapabilities> = {
+  claude_cli: { computerAccess: true, webSearch: true },
+  codex_cli: { computerAccess: true, webSearch: true },
+  antigravity_cli: { computerAccess: true, webSearch: true },
+  local_openai_compatible: { computerAccess: false, webSearch: false }
+}
+
+/** The permissions a turn actually gets: the saved ones, capped by what the backend delivers. */
+export function effectiveTurnPermissions(
+  backend: AgentBackendId,
+  permissions: AgentTurnPermissions
+): AgentTurnPermissions {
+  const capabilities = AGENT_BACKEND_CAPABILITIES[backend]
+  return {
+    accessMode: capabilities.computerAccess ? permissions.accessMode : 'vault_only',
+    webSearchEnabled: capabilities.webSearch && permissions.webSearchEnabled
+  }
+}
+
 export const AgentLocalProviderPresetSchema = z.enum(['ollama', 'lm_studio', 'llama_cpp', 'custom'])
 export type AgentLocalProviderPreset = z.infer<typeof AgentLocalProviderPresetSchema>
 

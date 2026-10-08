@@ -2248,7 +2248,8 @@
         "label": "Default access",
         "description": "Sets the starting access mode for new Agent turns.",
         "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "computerAccess": "Computer access",
+        "builtInNote": "The built-in model connection always runs with vault tools only."
       },
       "confirm": {
         "label": "Confirm actions",

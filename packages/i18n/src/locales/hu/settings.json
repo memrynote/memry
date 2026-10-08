@@ -2220,7 +2220,8 @@
         "label": "Alapértelmezett hozzáférés",
         "description": "Beállítja az ügynöknek küldött új kérések kezdeti hozzáférési módját.",
         "vaultOnly": "Csak a széf",
-        "computerAccess": "Számítógép-hozzáférés"
+        "computerAccess": "Számítógép-hozzáférés",
+        "builtInNote": "A beépített modellkapcsolat mindig csak a széf eszközeit használja."
       },
       "confirm": {
         "label": "Műveletek megerősítése",

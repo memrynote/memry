@@ -346,7 +346,10 @@
         "access": "الوصول",
         "tools": "الأدوات"
       },
-      "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}"
+      "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "أدوات الخزنة فقط مع هذا النموذج"
+      }
     },
     "refPicker": {
       "noMatches": "لا توجد تطابقات"

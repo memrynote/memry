@@ -346,7 +346,10 @@
         "access": "Pag-access",
         "tools": "Mga tool"
       },
-      "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}"
+      "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Mga tool ng vault lang sa model na ito"
+      }
     },
     "refPicker": {
       "noMatches": "Walang tugma"

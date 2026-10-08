@@ -346,7 +346,10 @@
         "access": "Quyền truy cập",
         "tools": "Công cụ"
       },
-      "modelSettingsLabel": "Cài đặt mô hình tác nhân: {model}, {settings}"
+      "modelSettingsLabel": "Cài đặt mô hình tác nhân: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Chỉ công cụ kho với mô hình này"
+      }
     },
     "refPicker": {
       "noMatches": "Không có kết quả phù hợp"

@@ -2220,7 +2220,8 @@
         "label": "Acces implicit",
         "description": "Stabilește modul de acces inițial pentru fiecare nouă interacțiune cu agentul.",
         "vaultOnly": "Doar seiful",
-        "computerAccess": "Acces la computer"
+        "computerAccess": "Acces la computer",
+        "builtInNote": "Conexiunea de model integrată folosește mereu doar instrumentele seifului."
       },
       "confirm": {
         "label": "Confirmă acțiunile",

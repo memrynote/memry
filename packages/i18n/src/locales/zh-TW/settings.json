@@ -2220,7 +2220,8 @@
         "label": "預設存取權",
         "description": "設定代理程式新回合的起始存取模式。",
         "vaultOnly": "僅限儲存庫",
-        "computerAccess": "電腦存取"
+        "computerAccess": "電腦存取",
+        "builtInNote": "內建模型連線一律僅使用儲存庫工具。"
       },
       "confirm": {
         "label": "確認動作",
