@@ -405,7 +405,8 @@ describe('notes-handlers extra coverage', () => {
       name: 'Rating',
       type: PropertyTypes.NUMBER,
       options: undefined,
-      defaultValue: '5'
+      defaultValue: '5',
+      color: 'blue'
     })
 
     await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {

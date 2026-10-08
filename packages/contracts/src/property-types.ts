@@ -45,6 +45,7 @@ export interface PropertyDefinition {
   options?: SelectOption[]
   categories?: StatusCategories
   defaultValue?: string
+  color?: string
   showOnCalendar?: boolean
 }
 
@@ -78,6 +79,13 @@ const SelectOptionSchema = z.object({
   default: z.boolean().optional()
 })
 
+// Added after the file format shipped. Older builds parse `properties.md` with
+// non-strict objects, which drop these keys instead of rejecting the file.
+const SharedDefinitionFields = {
+  defaultValue: z.string().optional(),
+  color: z.string().optional()
+}
+
 const StatusCategorySchema = z.object({
   label: z.string().min(1),
   options: z.array(SelectOptionSchema)
@@ -85,6 +93,7 @@ const StatusCategorySchema = z.object({
 
 const StatusPropertySchema = z.object({
   type: z.literal('status'),
+  ...SharedDefinitionFields,
   categories: z.object({
     todo: StatusCategorySchema,
     in_progress: StatusCategorySchema,
@@ -94,41 +103,49 @@ const StatusPropertySchema = z.object({
 
 const SelectPropertySchema = z.object({
   type: z.literal('select'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema)
 })
 
 const MultiselectPropertySchema = z.object({
   type: z.literal('multiselect'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema)
 })
 
 const TextPropertySchema = z.object({
   type: z.literal('text'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema).optional()
 })
 
 const NumberPropertySchema = z.object({
   type: z.literal('number'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema).optional()
 })
 
 const CheckboxPropertySchema = z.object({
   type: z.literal('checkbox'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema).optional()
 })
 
 const UrlPropertySchema = z.object({
   type: z.literal('url'),
+  ...SharedDefinitionFields,
   options: z.array(SelectOptionSchema).optional()
 })
 
 const DatePropertySchema = z.object({
   type: z.literal('date'),
+  ...SharedDefinitionFields,
   showOnCalendar: z.boolean().optional()
 })
 
 const ProjectPropertySchema = z.object({
-  type: z.literal('project')
+  type: z.literal('project'),
+  ...SharedDefinitionFields
 })
 
 /**

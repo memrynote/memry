@@ -29,7 +29,8 @@ import {
 import {
   getNoteMetadataByPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
-  updateNoteMetadata
+  updateNoteMetadata,
+  type NoteMetadataDb
 } from '@memry/storage-data'
 import { publishProjectionEvent } from '../projections'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
@@ -51,26 +52,39 @@ function syncCanonicalMetadata(
   saveCanonicalNote(dataDb, input)
   if (properties) {
     for (const [name, value] of Object.entries(properties)) {
-      const existing = getCanonicalPropertyDefinition(dataDb, name)
-      const type = resolvePropertyType(
-        name,
-        value,
-        existing?.type as PropertyType | undefined,
-        inferPropertyType
-      )
-      // A note save only learns a type. Re-saving a known definition with bare
-      // fields would null the options, default and color the user set.
-      if (isPersistableDefinitionType(type) && existing?.type !== type) {
-        saveCanonicalPropertyDefinition(dataDb, {
-          name,
-          type,
-          options: existing?.options,
-          defaultValue: existing?.defaultValue,
-          color: existing?.color
-        })
-      }
+      learnCanonicalPropertyType(dataDb, name, value)
     }
   }
+}
+
+/**
+ * A note only learns a type. Re-saving a known definition with bare fields
+ * would null the options, default and color the user set.
+ */
+export function learnCanonicalPropertyType(
+  dataDb: NoteMetadataDb,
+  name: string,
+  value: unknown
+): PropertyType {
+  const existing = getCanonicalPropertyDefinition(dataDb, name)
+  const type = resolvePropertyType(
+    name,
+    value,
+    existing?.type as PropertyType | undefined,
+    inferPropertyType
+  )
+  // `relation` has no PropertyDefinitionSchema member, so it is never
+  // persisted — it is re-derived from the value on every pass instead.
+  if (isPersistableDefinitionType(type) && existing?.type !== type) {
+    saveCanonicalPropertyDefinition(dataDb, {
+      name,
+      type,
+      options: existing?.options,
+      defaultValue: existing?.defaultValue,
+      color: existing?.color
+    })
+  }
+  return type
 }
 
 /**

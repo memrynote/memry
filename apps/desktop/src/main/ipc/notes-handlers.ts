@@ -587,12 +587,21 @@ export function registerNotesHandlers(): void {
     CreatePropertyDefinitionSchema,
     async (input) => {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-      await PropertyDefinitionsService.get().upsert({
+      const service = PropertyDefinitionsService.get()
+      // A create on an existing name keeps the fields it omits; only color
+      // survives a type change.
+      const existing = service.find(input.name)
+      const sameType = existing?.type === input.type ? existing : undefined
+      await service.upsert({
+        ...sameType,
         name: input.name,
         type: input.type,
-        options: input.type !== 'status' ? input.options : undefined,
+        options: input.type !== 'status' ? (input.options ?? sameType?.options) : undefined,
         defaultValue:
-          input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
+          input.defaultValue != null
+            ? stringifyDefaultValue(input.defaultValue)
+            : sameType?.defaultValue,
+        color: input.color ?? existing?.color
       })
       return {
         success: true as const,
@@ -624,7 +633,8 @@ export function registerNotesHandlers(): void {
         defaultValue:
           input.defaultValue != null
             ? stringifyDefaultValue(input.defaultValue)
-            : existing.defaultValue
+            : existing.defaultValue,
+        color: input.color ?? existing.color
       })
       return {
         success: true as const,
