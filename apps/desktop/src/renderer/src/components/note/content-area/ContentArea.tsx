@@ -518,6 +518,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     tRef.current = t
   }, [t])
+  // Read when a conversion settles, not when it starts: a note's first scan
+  // runs before the setting is read.
+  const convertChecklistsRef = useRef(convertChecklists)
+  useEffect(() => {
+    convertChecklistsRef.current = convertChecklists
+  }, [convertChecklists])
 
   // Upload function — defined before editor creation so BlockNote can use it.
   //
@@ -1324,6 +1330,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // so, and says how to keep it a checkbox. After that, undo is the way.
   const showConversionHint = useCallback(
     (blockId: string) => {
+      // The hint says a new checkbox becomes a task. With conversion off only a
+      // checkbox under a task converts, so it would be false.
+      if (!convertChecklistsRef.current) return
       try {
         if (localStorage.getItem(CONVERSION_HINT_KEY)) return
         localStorage.setItem(CONVERSION_HINT_KEY, '1')
@@ -1551,7 +1560,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [editor, runSideEffects, convertCheckboxToTask])
 
   const convertCheckboxToSubtask = useCallback(
-    (blockId: string, parentTaskId: string, auto: boolean) => {
+    (blockId: string, parentTaskId: string) => {
       const block = editor.getBlock(blockId)
       if (!block) return
 
@@ -1629,7 +1638,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
-              rememberConversion(blockId, result.task.id, originalContent, auto)
+              rememberConversion(blockId, result.task.id, originalContent, true)
             }
           } else {
             restoreCheckbox(blockId, originalContent, wasChecked)
@@ -2478,12 +2487,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // `- [ ]` line never renders as a plain checkbox first. Tab-to-subtask is
     // handled by the taskBlock title input (see task-block-renderer).
     if (intents.subtaskCandidate) {
-      // The hint says a new checkbox becomes a task, which is only true with
-      // conversion on. Off, only a checkbox under a task converts.
       convertCheckboxToSubtask(
         intents.subtaskCandidate.blockId,
-        intents.subtaskCandidate.parentTaskId,
-        convertChecklists
+        intents.subtaskCandidate.parentTaskId
       )
     } else if (intents.standaloneCandidate) {
       convertCheckboxToTask(intents.standaloneCandidate.blockId, true)
