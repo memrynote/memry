@@ -108,6 +108,10 @@ final class EditorSession {
     @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
     @ObservationIgnored private var tail: Task<Void, Never>?
+    /// The Reduce Motion panel swap in flight (`show`). The generation lets a
+    /// later swap retire an earlier swap's fallback timer.
+    @ObservationIgnored private var panelSwap: (generation: Int, observer: NSObjectProtocol)?
+    @ObservationIgnored private var panelSwapGeneration = 0
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
@@ -181,7 +185,40 @@ final class EditorSession {
             panelView.frame.size.height = keyboardHeight
             textView.inputView = panelView
         }
+        guard UIAccessibility.isReduceMotionEnabled else { return textView.reloadInputViews() }
+        // Reduce Motion: the panel swaps in place and fades in, instead of
+        // sliding up like a keyboard. UIKit builds that slide a few run-loop
+        // turns after `reloadInputViews`, in the turn it posts
+        // `keyboardWillChangeFrame`, so `performWithoutAnimation` cannot reach
+        // it. UIView animations stay off app-wide until the turn after that
+        // notification (about 70 ms), or half a second if it never comes.
+        if panel != .none { panelView.alpha = 0 }
+        if let panelSwap { NotificationCenter.default.removeObserver(panelSwap.observer) }
+        panelSwapGeneration += 1
+        let generation = panelSwapGeneration
+        let observer = NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillChangeFrameNotification,
+            object: textView.window?.windowScene?.screen, queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.async { self?.finishPanelSwap(generation) }
+        }
+        panelSwap = (generation, observer)
+        UIView.setAnimationsEnabled(false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else { return UIView.setAnimationsEnabled(true) }
+            finishPanelSwap(generation)
+        }
         textView.reloadInputViews()
+    }
+
+    /// The end of Reduce Motion panel swap `generation` (`show`): animations
+    /// back on, and the panel faded in. A stale generation does nothing.
+    private func finishPanelSwap(_ generation: Int) {
+        guard let panelSwap, panelSwap.generation == generation else { return }
+        NotificationCenter.default.removeObserver(panelSwap.observer)
+        self.panelSwap = nil
+        UIView.setAnimationsEnabled(true)
+        UIView.animate(withDuration: Tokens.Motion.normal.duration) { self.panelView.alpha = 1 }
     }
 
     // MARK: Focus and selection
