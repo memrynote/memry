@@ -453,9 +453,11 @@ More text here to ensure the snippet is long enough.
       'block [[Other]] secret',
       '%%',
       '',
-      'Sale 50%% off, `%% code %%` stays.'
+      'Sale 50%% off.',
+      '',
+      '`%% code %%` stays.'
     ].join(eol)
-    expect(createSnippet(content)).toBe('Tail text end of line. Sale 50%% off, `%% code %%` stays.')
+    expect(createSnippet(content)).toBe('Tail text end of line. Sale 50%% off. `%% code %%` stays.')
   })
 })
 
