@@ -53,7 +53,11 @@ import {
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
-import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
+import {
+  enqueueJournalDelete,
+  enqueueJournalUpdate,
+  feedJournalBodyToCrdt
+} from '../journal/runtime-effects'
 import { unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
@@ -207,6 +211,9 @@ export function registerJournalHandlers(): void {
         { isNew: !cached }
       )
       enqueueJournalUpdate(cacheId, entry.date)
+
+      // An open editor is bound to the entry's doc (see feedJournalBodyToCrdt).
+      if (input.content !== undefined) await feedJournalBodyToCrdt(cacheId, input.content)
 
       // Same identity rule as the create path: the renderer caches whatever this
       // returns (and whatever the event carries) as the open entry, so both have

@@ -1142,6 +1142,10 @@ describe('ContentArea', () => {
     })
 
     it('says once, on the first conversion, how to keep a checkbox', async () => {
+      contentAreaMocks.editorSettings = {
+        isLoading: false,
+        settings: { convertChecklistsToTasks: true }
+      }
       render(<ContentArea noteId="note-1" />)
       await convertSubCheck()
 

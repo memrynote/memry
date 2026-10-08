@@ -1551,7 +1551,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [editor, runSideEffects, convertCheckboxToTask])
 
   const convertCheckboxToSubtask = useCallback(
-    (blockId: string, parentTaskId: string) => {
+    (blockId: string, parentTaskId: string, auto: boolean) => {
       const block = editor.getBlock(blockId)
       if (!block) return
 
@@ -1629,7 +1629,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
-              rememberConversion(blockId, result.task.id, originalContent, true)
+              rememberConversion(blockId, result.task.id, originalContent, auto)
             }
           } else {
             restoreCheckbox(blockId, originalContent, wasChecked)
@@ -2478,9 +2478,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // `- [ ]` line never renders as a plain checkbox first. Tab-to-subtask is
     // handled by the taskBlock title input (see task-block-renderer).
     if (intents.subtaskCandidate) {
+      // The hint says a new checkbox becomes a task, which is only true with
+      // conversion on. Off, only a checkbox under a task converts.
       convertCheckboxToSubtask(
         intents.subtaskCandidate.blockId,
-        intents.subtaskCandidate.parentTaskId
+        intents.subtaskCandidate.parentTaskId,
+        convertChecklists
       )
     } else if (intents.standaloneCandidate) {
       convertCheckboxToTask(intents.standaloneCandidate.blockId, true)

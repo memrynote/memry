@@ -66,14 +66,11 @@ vi.mock('../sync/crdt-provider', () => ({
   }))
 }))
 
-vi.mock('../sync/crdt-external-feed', () => ({
-  feedExternalEditToCrdt: vi.fn().mockResolvedValue(true)
-}))
-
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
   enqueueJournalUpdate: vi.fn(),
   enqueueJournalDelete: vi.fn(),
+  feedJournalBodyToCrdt: vi.fn().mockResolvedValue(undefined),
   initializeJournalCrdt: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -119,7 +116,6 @@ import * as domainNotes from '@memry/domain-notes'
 import * as projections from '../projections'
 import * as runtimeEffects from '../journal/runtime-effects'
 import { BrowserWindow } from 'electron'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -429,7 +425,7 @@ describe('journal-handlers', () => {
       content: 'Updated content'
     })
 
-    expect(feedExternalEditToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
+    expect(runtimeEffects.feedJournalBodyToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
   })
 
   it('flushes projections when update creates a missing journal entry', async () => {
