@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 import { asc, and, eq, sql } from 'drizzle-orm'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById } from '@memry/storage-data'
@@ -121,6 +122,7 @@ export function listPendingUploads(
 
 export interface OutboxDrainDeps {
   db: DrizzleDb
+  vaultPath: string
   /** Null: another path owns this upload and records its outcome; the row is left alone. */
   upload: (noteId: string, diskPath: string) => Promise<{ attachmentId: string } | null>
   onUploaded?: (noteId: string, attachmentId: string) => void
@@ -162,10 +164,48 @@ export function isLocalOnlyNote(db: DrizzleDb, noteId: string): boolean {
   return getNoteMetadataById(db, noteId)?.localOnly === true
 }
 
+function isDirectory(dir: string): boolean {
+  try {
+    return fs.statSync(dir).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 /**
- * Try every pending upload whose retry window is open, once. Rows whose file no
- * longer exists on disk, before or after the attempt, are dropped (the
- * attachment was deleted locally); rows that fail again stay queued with an
+ * The vault is mounted: the database file it holds is there. The `.memry`
+ * folder alone proves nothing, since the activity log recreates it at the path
+ * of a vault that is away.
+ */
+export function isVaultReachable(vaultPath: string): boolean {
+  try {
+    return fs.statSync(path.join(vaultPath, '.memry', 'data.db')).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A missing file was deleted only while its vault and its note's folder are
+ * there. A removable or network vault that is away for a moment hides every
+ * file at once, and reading that as deletion would drop every queued upload.
+ */
+export function uploadFileState(
+  db: DrizzleDb,
+  vaultPath: string,
+  row: { noteId: string; diskPath: string }
+): 'present' | 'deleted' | 'unreachable' {
+  if (fs.existsSync(row.diskPath)) return 'present'
+  if (!isVaultReachable(vaultPath)) return 'unreachable'
+  const note = getNoteMetadataById(db, row.noteId)
+  if (note && !isDirectory(path.dirname(path.join(vaultPath, note.path)))) return 'unreachable'
+  return 'deleted'
+}
+
+/**
+ * Try every pending upload whose retry window is open, once. Rows whose file
+ * was deleted, before or after the attempt, are dropped; rows whose vault is
+ * unreachable wait untouched; rows that fail again stay queued with an
  * incremented attempt count and a longer window.
  */
 export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
@@ -183,7 +223,9 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     // may have finished this row in the meantime, and uploading it again would
     // give the file a second attachment id.
     if (!hasPendingUpload(deps.db, row.noteId, row.diskPath)) continue
-    if (!fs.existsSync(row.diskPath)) {
+    const state = uploadFileState(deps.db, deps.vaultPath, row)
+    if (state === 'unreachable') continue
+    if (state === 'deleted') {
       clearUpload(deps.db, row.noteId, row.diskPath)
       dropped++
       continue
@@ -195,7 +237,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
       deps.onUploaded?.(row.noteId, result.attachmentId)
       uploaded++
     } catch (err) {
-      if (!fs.existsSync(row.diskPath)) {
+      if (uploadFileState(deps.db, deps.vaultPath, row) === 'deleted') {
         clearUpload(deps.db, row.noteId, row.diskPath)
         dropped++
         continue
@@ -274,10 +316,10 @@ export function resetAttachmentQueue(): void {
 }
 
 /**
- * Drop rows whose file is gone: they can never upload. Needs no network or
+ * Drop rows whose file was deleted: they can never upload. Needs no network or
  * token, so the re-drive runs it before its online gate.
  */
-export function dropUploadsWithoutFile(): void {
+export function dropUploadsWithoutFile(vaultPath: string): void {
   if (!getDbForDrain) return
   try {
     const db = getDbForDrain()
@@ -286,14 +328,15 @@ export function dropUploadsWithoutFile(): void {
       .from(attachmentUploadQueue)
       .all()
     for (const row of rows) {
-      if (!fs.existsSync(row.diskPath)) clearUpload(db, row.noteId, row.diskPath)
+      if (uploadFileState(db, vaultPath, row) === 'deleted')
+        clearUpload(db, row.noteId, row.diskPath)
     }
   } catch (err) {
     log.warn('Dropping attachment uploads without a file failed', { error: err })
   }
 }
 
-export async function drainAttachmentOutbox(): Promise<void> {
+export async function drainAttachmentOutbox(vaultPath: string): Promise<void> {
   if (draining) return
   if (!registeredUploader || !getDbForDrain) {
     log.debug('Attachment outbox drain skipped — no uploader registered')
@@ -304,6 +347,7 @@ export async function drainAttachmentOutbox(): Promise<void> {
     const db = getDbForDrain()
     await drainOutboxWith({
       db,
+      vaultPath,
       upload: registeredUploader,
       ...(onUploadedForDrain ? { onUploaded: onUploadedForDrain } : {})
     })

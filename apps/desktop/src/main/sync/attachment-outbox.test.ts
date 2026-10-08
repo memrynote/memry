@@ -12,27 +12,34 @@ import {
   markUploadFailed,
   listPendingUploads,
   drainOutboxWith,
+  dropUploadsWithoutFile,
   queueUploadIfAbsent,
-  isLocalOnlyNote
+  isLocalOnlyNote,
+  registerOutboxUploader
 } from './attachment-outbox'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment outbox', () => {
+  let rootDir: string
   let tempDir: string
   let sqlite: Database.Database
   let db: DrizzleDb
 
+  // The vault holds its data database in `.memry`, like a real one.
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-outbox-'))
-    const dbPath = path.join(tempDir, 'data.db')
+    rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-outbox-'))
+    tempDir = path.join(rootDir, 'vault')
+    fs.mkdirSync(path.join(tempDir, '.memry'), { recursive: true })
+    const dbPath = path.join(tempDir, '.memry', 'data.db')
     runMigrations(dbPath)
     sqlite = new Database(dbPath)
     db = drizzle(sqlite) as unknown as DrizzleDb
   })
 
   afterEach(() => {
+    registerOutboxUploader(null, null, null)
     sqlite.close()
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    fs.rmSync(rootDir, { recursive: true, force: true })
   })
 
   it('migration 0039 creates the attachment_upload_queue table', () => {
@@ -79,7 +86,7 @@ describe('attachment outbox', () => {
     enqueueUpload(db, 'note-local', file)
     const upload = vi.fn(async () => ({ attachmentId: 'id' }))
 
-    await drainOutboxWith({ db, upload })
+    await drainOutboxWith({ db, vaultPath: tempDir, upload })
 
     expect(upload).not.toHaveBeenCalled()
     expect(listPendingUploads(db)).toHaveLength(1)
@@ -107,7 +114,7 @@ describe('attachment outbox', () => {
     enqueueUpload(db, 'note-synced', synced)
     const upload = vi.fn(async () => ({ attachmentId: 'id-synced' }))
 
-    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
       uploaded: 1,
       failed: 0,
       dropped: 0
@@ -131,7 +138,7 @@ describe('attachment outbox', () => {
       return { attachmentId: `id-${path.basename(diskPath)}` }
     })
 
-    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
       uploaded: 1,
       failed: 0,
       dropped: 0
@@ -148,7 +155,7 @@ describe('attachment outbox', () => {
       throw Object.assign(new Error(`ENOENT: no such file, stat '${deleted}'`), { code: 'ENOENT' })
     })
 
-    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
       uploaded: 0,
       failed: 0,
       dropped: 1
@@ -162,7 +169,9 @@ describe('attachment outbox', () => {
     enqueueUpload(db, 'note-1', owned)
     const onUploaded = vi.fn()
 
-    await expect(drainOutboxWith({ db, upload: async () => null, onUploaded })).resolves.toEqual({
+    await expect(
+      drainOutboxWith({ db, vaultPath: tempDir, upload: async () => null, onUploaded })
+    ).resolves.toEqual({
       uploaded: 0,
       failed: 0,
       dropped: 0
@@ -182,10 +191,10 @@ describe('attachment outbox', () => {
     sqlite.prepare('UPDATE attachment_upload_queue SET updated_at = ?').run(failedAt)
     const upload = vi.fn(async () => ({ attachmentId: 'att-1' }))
 
-    await drainOutboxWith({ db, upload, now: failedAt + 119_000 })
+    await drainOutboxWith({ db, vaultPath: tempDir, upload, now: failedAt + 119_000 })
     expect(upload).not.toHaveBeenCalled()
 
-    await drainOutboxWith({ db, upload, now: failedAt + 120_000 })
+    await drainOutboxWith({ db, vaultPath: tempDir, upload, now: failedAt + 120_000 })
     expect(upload.mock.calls).toEqual([['note-1', failing]])
   })
 
@@ -196,9 +205,9 @@ describe('attachment outbox', () => {
     sqlite.prepare('UPDATE attachment_upload_queue SET updated_at = 0').run()
     const upload = vi.fn(async () => ({ attachmentId: 'att-1' }))
 
-    await drainOutboxWith({ db, upload, now: 6 * 60 * 60 * 1000 - 1 })
+    await drainOutboxWith({ db, vaultPath: tempDir, upload, now: 6 * 60 * 60 * 1000 - 1 })
     expect(upload).not.toHaveBeenCalled()
-    await drainOutboxWith({ db, upload, now: 6 * 60 * 60 * 1000 })
+    await drainOutboxWith({ db, vaultPath: tempDir, upload, now: 6 * 60 * 60 * 1000 })
     expect(upload).toHaveBeenCalledTimes(1)
   })
 
@@ -238,7 +247,7 @@ describe('attachment outbox', () => {
       return { attachmentId: 'att-' + path.basename(diskPath) }
     })
 
-    return drainOutboxWith({ db, upload, onUploaded }).then((result) => {
+    return drainOutboxWith({ db, vaultPath: tempDir, upload, onUploaded }).then((result) => {
       expect(result).toEqual({ uploaded: 1, failed: 1, dropped: 1 })
       expect(onUploaded).toHaveBeenCalledWith('note-ok', 'att-ok.pdf')
 
@@ -250,5 +259,85 @@ describe('attachment outbox', () => {
       // gone.pdf row dropped without calling upload for it
       expect(upload).toHaveBeenCalledTimes(2)
     })
+  })
+
+  // A removable or network vault that is away for a moment hides every file
+  // at once; its rows must still upload once it is back.
+  it('keeps every row, attempts unchanged, while the vault is unreachable', async () => {
+    const file = path.join(tempDir, 'attachments', 'note-1', 'photo.png')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, 'a')
+    enqueueUpload(db, 'note-1', file)
+    registerOutboxUploader(
+      async () => ({ attachmentId: 'id' }),
+      () => db,
+      null
+    )
+    const away = path.join(rootDir, 'vault-away')
+    fs.renameSync(tempDir, away)
+    // The activity log recreates `.memry` at the vault path while it is away.
+    fs.mkdirSync(path.join(tempDir, '.memry'), { recursive: true })
+    fs.writeFileSync(path.join(tempDir, '.memry', 'activity.jsonl'), '{}\n')
+    const upload = vi.fn(async () => ({ attachmentId: 'id' }))
+
+    dropUploadsWithoutFile(tempDir)
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
+      uploaded: 0,
+      failed: 0,
+      dropped: 0
+    })
+    expect(upload).not.toHaveBeenCalled()
+    expect(listPendingUploads(db)).toEqual([{ noteId: 'note-1', diskPath: file, attempts: 0 }])
+
+    fs.rmSync(tempDir, { recursive: true })
+    fs.renameSync(away, tempDir)
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
+      uploaded: 1,
+      failed: 0,
+      dropped: 0
+    })
+    expect(upload.mock.calls).toEqual([['note-1', file]])
+    expect(listPendingUploads(db)).toEqual([])
+  })
+
+  it("keeps the row while the folder of the file's note is unreachable", async () => {
+    upsertNoteMetadata(db, {
+      id: 'note-usb',
+      path: 'usb/note-usb.md',
+      title: 'note-usb',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      modifiedAt: '2026-08-21T00:00:00.000Z',
+      attachmentReferences: null
+    })
+    const file = path.join(tempDir, 'usb', 'scan.pdf')
+    enqueueUpload(db, 'note-usb', file)
+    registerOutboxUploader(
+      async () => ({ attachmentId: 'id' }),
+      () => db,
+      null
+    )
+    const upload = vi.fn(async () => ({ attachmentId: 'id' }))
+
+    dropUploadsWithoutFile(tempDir)
+    await drainOutboxWith({ db, vaultPath: tempDir, upload })
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(listPendingUploads(db)).toEqual([{ noteId: 'note-usb', diskPath: file, attempts: 0 }])
+  })
+
+  it('drops the row of a file deleted from a reachable vault', () => {
+    const kept = path.join(tempDir, 'kept.png')
+    fs.writeFileSync(kept, 'a')
+    enqueueUpload(db, 'note-1', kept)
+    enqueueUpload(db, 'note-1', path.join(tempDir, 'deleted.png'))
+    registerOutboxUploader(
+      async () => ({ attachmentId: 'id' }),
+      () => db,
+      null
+    )
+
+    dropUploadsWithoutFile(tempDir)
+
+    expect(listPendingUploads(db)).toEqual([{ noteId: 'note-1', diskPath: kept, attempts: 0 }])
   })
 })

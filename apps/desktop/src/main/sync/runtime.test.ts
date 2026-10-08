@@ -282,12 +282,15 @@ vi.mock('../crypto', () => ({
   secureCleanup: runtimeMocks.secureCleanup
 }))
 
+const vaultPathMock = vi.hoisted(() => ({ current: null as string | null }))
+
 vi.mock('../store', () => ({
   store: {
     get: runtimeMocks.storeGet
   },
-  // The folder-config backfill kicked off at runtime start bails on this.
-  getCurrentVaultPath: () => null
+  // Null outside the re-drive tests: the folder-config backfill kicked off at
+  // runtime start bails on it.
+  getCurrentVaultPath: () => vaultPathMock.current
 }))
 
 vi.mock('../agent/storage/vault-id', () => ({
@@ -1671,14 +1674,17 @@ describe('sync runtime', () => {
 
     beforeEach(() => {
       tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-upload-redrive-'))
-      const dbPath = path.join(tempDir, 'data.db')
+      fs.mkdirSync(path.join(tempDir, '.memry'))
+      const dbPath = path.join(tempDir, '.memry', 'data.db')
       runMigrations(dbPath)
       sqlite = new Database(dbPath)
       outboxDb = drizzle(sqlite) as unknown as DrizzleDb
+      vaultPathMock.current = tempDir
     })
 
     afterEach(() => {
       vi.useRealTimers()
+      vaultPathMock.current = null
       sqlite.close()
       fs.rmSync(tempDir, { recursive: true, force: true })
     })

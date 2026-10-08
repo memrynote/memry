@@ -993,7 +993,8 @@ across devices:
   reports offline: an upload reads and encrypts the file before its first
   request and holds those bytes through the offline wait, so a file deleted
   before reconnect would still go out. A save-time upload or a drained row that
-  fails because its file is gone drops its outbox row and reports no failure.
+  fails because its file was deleted drops its outbox row and reports no
+  failure.
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
@@ -1008,7 +1009,7 @@ across devices:
   while offline or without an access token. Each pass runs the attachment
   backfill first, which queues files on disk that no save event ever offered
   (a file copied into `attachments/<noteId>/`, or a vault file a body embeds),
-  then drains the outbox: rows upload once, rows whose file is gone are
+  then drains the outbox: rows upload once, rows whose file was deleted are
   dropped, failures keep their row. A failed row waits one minute before its
   next try, doubling with each failure up to six hours, as failed downloads
   do, and a re-queue by the backfill leaves that window alone. The backfill
@@ -1022,8 +1023,16 @@ across devices:
   same embed rule also runs when a body is written through the notes domain,
   when the watcher indexes an external edit and when ingest reads a new file:
   each embedded vault file without an outbox row, the note's own folder
-  included, gets one and uploads at once. Rows whose file is gone are dropped
-  before the online and token gate, so that happens offline too.
+  included, gets one and uploads at once. Rows whose file was deleted are
+  dropped before the online and token gate, so that happens offline too.
+- **Unreachable vault** — a missing file counts as deleted only while its
+  vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
+  row's note exists. A vault on a removable or network drive that is away for a
+  moment hides every file at once, so while it is unreachable the re-drive
+  skips its whole pass (no drop, no backfill, no drain), the drain leaves such
+  a row untouched, and a save-time upload that fails keeps its row as a
+  failure. The `.memry` folder alone is not the test: the activity log
+  recreates it at the path of a vault that is away.
 - **Attachment file record** — attachment ids are random per upload, so a note
   that holds references cannot say by itself whether a file on disk is one of
   them. Uploads and downloads record each file by vault-relative path
@@ -1036,7 +1045,9 @@ across devices:
   attachments folder is that note's attachment and is never queued for the
   note that embeds it. A download of an attachment whose recorded file is
   still on disk is skipped, so an embed uploaded from outside the note's folder
-  does not come back as a second copy in it. Older builds ignore the table; a file such a build
+  does not come back as a second copy in it. The on-demand download IPC
+  (`sync:download-attachment`) records a file it puts in
+  `attachments/<noteId>/` the same way. Older builds ignore the table; a file such a build
   transferred has no row, so after a re-upgrade it uploads once more.
 - **Held vaults** — a save event uploads only while the sync runtime runs for
   the open vault. A vault the account binding holds (kept local, or another

@@ -46,7 +46,8 @@ import {
   isLocalOnlyNote,
   markUploadFailed,
   registerAttachmentQueueReset,
-  registerOutboxUploader
+  registerOutboxUploader,
+  uploadFileState
 } from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
@@ -105,6 +106,13 @@ function recordFile(noteId: string, diskPath: string, attachmentId: string): voi
   } catch (err) {
     logger.warn('Failed to record an attachment file', { noteId, err })
   }
+}
+
+/** A file missing while its vault is unreachable was not deleted: its job stays queued. */
+function wasDeleted(noteId: string, diskPath: string): boolean {
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath || !isDatabaseInitialized()) return !fs.existsSync(diskPath)
+  return uploadFileState(getDatabase(), vaultPath, { noteId, diskPath }) === 'deleted'
 }
 
 function heldAtRecordedPath(noteId: string, attachmentId: string): boolean {
@@ -385,6 +393,7 @@ export function registerAttachmentHandlers(): void {
         if (!targetPath) return { success: false, error: 'Target path is required' }
 
         const vaultStatus = getVaultStatus()
+        let noteId: string | null = null
         if (vaultStatus.path) {
           const resolved = path.resolve(targetPath)
           const vaultAttachments = path.resolve(vaultStatus.path, 'attachments')
@@ -394,6 +403,8 @@ export function registerAttachmentHandlers(): void {
               error: 'Target path must be within the vault attachments directory'
             }
           }
+          const [folder, ...rest] = path.relative(vaultAttachments, resolved).split(path.sep)
+          if (rest.length > 0) noteId = folder
         }
 
         // 'interactive': the renderer is waiting on this file, so it goes ahead
@@ -407,6 +418,9 @@ export function registerAttachmentHandlers(): void {
           source: 'interactive',
           onProgress: createDownloadProgressBroadcaster()
         })
+        // A file in attachments/<noteId>/ is that note's: without the record
+        // the backfill reads it as new and uploads a second copy.
+        if (noteId) recordFile(noteId, result.filePath, input.attachmentId)
         return { success: true, filePath: result.filePath }
       } catch (err) {
         logger.error('Attachment download failed', err)
@@ -503,7 +517,7 @@ export function registerAttachmentHandlers(): void {
       } catch (err) {
         // Deleted while the upload waited: drop the job, there is nothing to
         // retry and no failure to show.
-        if (!fs.existsSync(diskPath)) {
+        if (wasDeleted(noteId, diskPath)) {
           logger.info('Dropped the upload of a deleted attachment', { noteId })
           if (isDatabaseInitialized()) {
             try {

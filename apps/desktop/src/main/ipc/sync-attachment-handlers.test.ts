@@ -119,6 +119,12 @@ vi.mock('@memry/sync-client/attachment-events', () => ({
   }
 }))
 
+vi.mock('@memry/sync-client/attachment-download-state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@memry/sync-client/attachment-download-state')>()
+  return { ...actual, markDownloadSucceeded: vi.fn(actual.markDownloadSucceeded) }
+})
+
 vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn()
 }))
@@ -220,6 +226,7 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { markDownloadSucceeded } from '@memry/sync-client/attachment-download-state'
 import { AttachmentTooLargeError, type TransferProgress } from '../sync/attachments'
 import { SyncServerError } from '../sync/http-client'
 import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
@@ -638,18 +645,23 @@ describe('sync-attachment-handlers', () => {
   it('does not upload a file saved into a local-only note', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     vi.mocked(isDatabaseInitialized).mockReturnValue(true)
-    vi.mocked(isLocalOnlyNote).mockReturnValue(true)
+    vi.mocked(isLocalOnlyNote).mockClear().mockReturnValue(true)
     registerAttachmentHandlers()
     const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
       noteId: string
       diskPath: string
     }) => void
 
-    onSaved({ noteId: 'note-local', diskPath: '/vault/attachments/note-local/a.html' })
-    await new Promise((r) => setTimeout(r, 10))
+    try {
+      onSaved({ noteId: 'note-local', diskPath: '/vault/attachments/note-local/a.html' })
+      await vi.waitFor(() =>
+        expect(vi.mocked(isLocalOnlyNote).mock.calls.map((call) => call[1])).toEqual(['note-local'])
+      )
 
-    expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
-    vi.mocked(isLocalOnlyNote).mockReturnValue(false)
+      expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+    } finally {
+      vi.mocked(isLocalOnlyNote).mockReturnValue(false)
+    }
   })
 
   it('joins a save-time upload of the same file instead of uploading it a second time', async () => {
@@ -788,6 +800,32 @@ describe('sync-attachment-handlers', () => {
     expect(
       attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
     ).toEqual([])
+  })
+
+  // A vault on a drive that is away for a moment hides the file without it
+  // being deleted; the job must stay queued for the re-drive.
+  it('keeps the job of a saved file whose vault went away before its upload ran', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/unplugged-drive/vault' } as any)
+    attachmentMocks.queue.enqueue.mockImplementationOnce(async () => {
+      attachmentMocks.existsSync.mockReturnValue(false)
+      throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+    })
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/unplugged-drive/vault/sources/photo.png' })
+
+    await vi.waitFor(() =>
+      expect(vi.mocked(markUploadFailed).mock.calls.map((call) => call.slice(1))).toEqual([
+        ['note-1', '/unplugged-drive/vault/sources/photo.png', 'ENOENT: no such file']
+      ])
+    )
+    expect(clearUpload).not.toHaveBeenCalled()
   })
 
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
@@ -934,11 +972,39 @@ describe('sync-attachment-handlers', () => {
     ])
   })
 
+  it("records a file the download IPC puts in a note's folder", async () => {
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    attachmentMocks.service.downloadAttachment.mockImplementation(async (_id, targetPath) => ({
+      filePath: targetPath
+    }))
+    mockRecordAttachmentFile.mockClear()
+    registerAttachmentHandlers()
+
+    await expect(
+      invokeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, {
+        attachmentId: 'attachment-7',
+        targetPath: '/vault/attachments/note-1/report.pdf'
+      })
+    ).resolves.toEqual({ success: true, filePath: '/vault/attachments/note-1/report.pdf' })
+    await invokeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, {
+      attachmentId: 'attachment-8',
+      targetPath: '/vault/attachments/loose.pdf'
+    })
+
+    expect(mockRecordAttachmentFile.mock.calls.map((call) => call.slice(1))).toEqual([
+      ['/vault', 'note-1', '/vault/attachments/note-1/report.pdf', 'attachment-7']
+    ])
+  })
+
   it('does not download an embedded attachment this device already holds at its recorded path', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     vi.mocked(isDatabaseInitialized).mockReturnValue(true)
     vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
     mockRecordedFileOf.mockReturnValue('/vault/sources/x.txt')
+    vi.mocked(markDownloadSucceeded).mockClear()
     try {
       registerAttachmentHandlers()
       const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
@@ -954,8 +1020,11 @@ describe('sync-attachment-handlers', () => {
         diskPath: '/vault/attachments/note-1',
         intoDir: true
       })
-      await vi.waitFor(() => expect(mockRecordedFileOf).toHaveBeenCalled())
-      await new Promise((r) => setTimeout(r, 10))
+      await vi.waitFor(() =>
+        expect(vi.mocked(markDownloadSucceeded).mock.calls.map((call) => call.slice(1))).toEqual([
+          ['note-1', 'attachment-src']
+        ])
+      )
 
       expect(attachmentMocks.service.downloadAttachment).not.toHaveBeenCalled()
     } finally {
