@@ -85,6 +85,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "bookmarks",
         sql: include_str!("migrations/data/0009_bookmarks.sql"),
     },
+    Migration {
+        version: 10,
+        name: "note_body_tags",
+        sql: include_str!("migrations/data/0010_note_body_tags.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -206,7 +211,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 9);
+        assert_eq!(version, 10);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -215,6 +220,7 @@ mod tests {
             "local_notifications",
             "meta",
             "note_bodies",
+            "note_body_tags",
             "outbox",
             "sync_cursors",
             "sync_items",
@@ -314,7 +320,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 9);
+        assert_eq!(version, 10);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {

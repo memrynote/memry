@@ -18,6 +18,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::notes::{self, NewNote};
+use memry_core::domain::tag_admin;
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
 use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
@@ -116,6 +117,49 @@ fn a_body_word_is_found_not_only_a_title() {
     assert!(ids.contains(&"n1"), "the body match is missing: {ids:?}");
     assert!(ids.contains(&"n2"));
     assert!(hits.iter().all(|hit| hit.kind == "note"));
+}
+
+/// A `#tag` typed in a body that desktop pushed reaches the tag index, as
+/// desktop indexes it: desktop pushes frontmatter tags only (#1471), so the
+/// payload never carries it (#2674).
+#[test]
+fn a_body_hashtag_reaches_the_tag_index() {
+    let (db, vault) = vault("body-tags");
+    write_note(&db, "n1", "Reading", "next up #Books and `#code`");
+    vault
+        .search()
+        .expect("the index")
+        .reindex()
+        .expect("the reindex");
+
+    let tags = vault.notes().tags().expect("tags");
+    assert_eq!(
+        tags.iter()
+            .map(|tag| (tag.name.as_str(), tag.note_count))
+            .collect::<Vec<_>>(),
+        [("Books", 1)]
+    );
+    let tagged = vault
+        .notes()
+        .notes_tagged("books".to_string())
+        .expect("tagged");
+    assert_eq!(
+        tagged
+            .iter()
+            .map(|note| note.id.as_str())
+            .collect::<Vec<_>>(),
+        ["n1"]
+    );
+    let listed = db
+        .call_blocking(|conn: &mut Connection| tag_admin::list(conn))
+        .expect("tag list");
+    assert_eq!(
+        listed
+            .iter()
+            .map(|tag| (tag.name.as_str(), tag.notes))
+            .collect::<Vec<_>>(),
+        [("Books", 1)]
+    );
 }
 
 #[test]

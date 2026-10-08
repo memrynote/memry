@@ -11,6 +11,7 @@
 //! document-to-text operation (chapter 12 §12.1).
 
 pub mod attachments;
+pub mod body_tags;
 pub mod body_write;
 pub mod bookmarks;
 pub mod calendar;

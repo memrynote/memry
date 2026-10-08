@@ -37,6 +37,7 @@ use crate::crdt::registry::Document;
 use crate::crdt::registry::{DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
+use crate::domain::body_tags;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
@@ -216,6 +217,7 @@ fn index_note(
     index
         .execute("DELETE FROM note_links WHERE source_id = ?1", params![id])
         .map_err(failed)?;
+    body_tags::clear(data, id)?;
 
     // The primary key is (item_type, item_id), so one id could in principle
     // name both a note and a journal. `journal` sorts first and one row is
@@ -303,6 +305,7 @@ fn index_links(
         return Ok(());
     };
     let blocks = extract_blocks(&document).map_err(|error| crdt_failed(id, error))?;
+    body_tags::write(data, id, &body_tags::extract(&blocks))?;
 
     // One row per distinct title: the primary key is (source_id, target_title)
     // and a note linking to the same place twice is still one link between two

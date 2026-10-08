@@ -42,6 +42,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
+use crate::domain::body_tags::ALL_NOTE_TAGS;
 
 /// The device id the read-only document registry runs under.
 ///
@@ -185,9 +186,13 @@ pub struct TagSummary {
 /// invention.
 pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
     let mut statement = conn
-        .prepare(
-            "SELECT t.tag, COUNT(*), d.color FROM note_tags t              JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL              LEFT JOIN tag_definitions d ON d.name = t.tag AND d.deleted_at IS NULL              WHERE t.deleted_at IS NULL              GROUP BY t.tag              ORDER BY COUNT(*) DESC, t.tag",
-        )
+        .prepare(&format!(
+            "SELECT t.tag, COUNT(*), d.color FROM {ALL_NOTE_TAGS} t \
+             JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL \
+             LEFT JOIN tag_definitions d ON d.name = t.tag AND d.deleted_at IS NULL \
+             GROUP BY t.tag COLLATE NOCASE \
+             ORDER BY COUNT(*) DESC, t.tag COLLATE NOCASE"
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
@@ -208,9 +213,12 @@ pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
 /// desktop does and what the user means.
 pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
-        .prepare(
-            "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at              FROM notes n JOIN note_tags t ON t.note_id = n.id              WHERE n.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1              ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id",
-        )
+        .prepare(&format!(
+            "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at \
+             FROM notes n JOIN {ALL_NOTE_TAGS} t ON t.note_id = n.id \
+             WHERE n.deleted_at IS NULL AND t.tag = ?1 COLLATE NOCASE \
+             ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id"
+        ))
         .map_err(failed)?;
     let rows = statement.query_map([tag], read_summary).map_err(failed)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
@@ -224,12 +232,12 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
 /// which is what this gives a view block. Matched with the same collation.
 pub fn journals_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at \
-             FROM journal_entries j JOIN note_tags t ON t.note_id = j.id \
-             WHERE j.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1 \
-             ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id",
-        )
+             FROM journal_entries j JOIN {ALL_NOTE_TAGS} t ON t.note_id = j.id \
+             WHERE j.deleted_at IS NULL AND t.tag = ?1 COLLATE NOCASE \
+             ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id"
+        ))
         .map_err(failed)?;
     let rows = statement.query_map([tag], read_summary).map_err(failed)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
