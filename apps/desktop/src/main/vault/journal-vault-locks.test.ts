@@ -42,7 +42,7 @@ vi.mock('./index', () => ({
 
 import { deleteJournalEntryFile, getJournalPath, writeJournalEntryWithContent } from './journal'
 import { installVaultLockFileGuard } from '../vault-locks/files'
-import { invalidateVaultLocks } from '../vault-locks/registry'
+import { invalidateVaultLocks, runWithLockedWritesAllowed } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 import { setVaultFileWriteGuard } from './file-ops'
 
@@ -111,4 +111,46 @@ describe('journal writes under a locked folder are refused (#2606)', () => {
     await expect(deleteJournalEntryFile(DATE)).resolves.toBe(true)
     expect(fs.existsSync(file)).toBe(false)
   })
+
+  const isWritable = (absolutePath: string): boolean =>
+    (fs.statSync(absolutePath).mode & 0o200) !== 0
+
+  const withReadOnlyJournalFolder = async (run: () => Promise<unknown>): Promise<void> => {
+    const folder = path.dirname(file)
+    fs.chmodSync(file, 0o444)
+    fs.chmodSync(folder, 0o555)
+    try {
+      await run()
+    } finally {
+      fs.chmodSync(folder, 0o755)
+    }
+  }
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'an allowed write that fails leaves the locked day read-only',
+    async () => {
+      await withReadOnlyJournalFolder(async () => {
+        await expect(
+          runWithLockedWritesAllowed(() => writeJournalEntryWithContent(DATE, 'Remote text'))
+        ).rejects.toThrow()
+      })
+
+      expect(fs.readFileSync(file, 'utf8')).toBe(ORIGINAL)
+      expect(isWritable(file)).toBe(false)
+    }
+  )
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'an allowed delete that fails leaves the locked day read-only',
+    async () => {
+      await withReadOnlyJournalFolder(async () => {
+        await expect(runWithLockedWritesAllowed(() => deleteJournalEntryFile(DATE))).resolves.toBe(
+          false
+        )
+      })
+
+      expect(fs.readFileSync(file, 'utf8')).toBe(ORIGINAL)
+      expect(isWritable(file)).toBe(false)
+    }
+  )
 })

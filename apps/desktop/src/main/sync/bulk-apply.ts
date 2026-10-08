@@ -4,12 +4,7 @@ import { createHash } from 'node:crypto'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
 import { markWritebackIgnored } from './crdt-writeback'
-import {
-  afterLockedFileWrite,
-  afterLockedFileWriteSync,
-  unprotectForRemoteWrite,
-  unprotectForRemoteWriteSync
-} from '../vault-locks/files'
+import { writeThroughLock, writeThroughLockSync } from '../vault-locks/files'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import type Database from 'better-sqlite3'
@@ -124,20 +119,22 @@ function writeNoteFileNow(absolutePath: string, content: string): void {
   markWritebackIgnored(absolutePath)
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
-  const locked = unprotectForRemoteWriteSync(absolutePath)
-  fs.writeFileSync(tmpPath, content, 'utf-8')
-  fs.renameSync(tmpPath, absolutePath)
-  if (locked !== null) afterLockedFileWriteSync(absolutePath, locked, content)
+  writeThroughLockSync(absolutePath, () => {
+    fs.writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
+    fs.renameSync(tmpPath, absolutePath)
+    return content
+  })
 }
 
 async function writeNoteFileNowAsync(absolutePath: string, content: string): Promise<void> {
   markWritebackIgnored(absolutePath)
   await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
-  const locked = await unprotectForRemoteWrite(absolutePath)
-  await fs.promises.writeFile(tmpPath, content, 'utf-8')
-  await fs.promises.rename(tmpPath, absolutePath)
-  if (locked !== null) await afterLockedFileWrite(absolutePath, locked, content)
+  await writeThroughLock(absolutePath, async () => {
+    await fs.promises.writeFile(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
+    await fs.promises.rename(tmpPath, absolutePath)
+    return content
+  })
 }
 
 function isMissingFileError(err: unknown): boolean {
@@ -146,22 +143,26 @@ function isMissingFileError(err: unknown): boolean {
 
 function deleteVaultFileNow(absolutePath: string): void {
   markWritebackIgnored(absolutePath)
-  unprotectForRemoteWriteSync(absolutePath)
-  try {
-    fs.unlinkSync(absolutePath)
-  } catch (err) {
-    if (!isMissingFileError(err)) throw err
-  }
+  writeThroughLockSync(absolutePath, () => {
+    try {
+      fs.unlinkSync(absolutePath)
+    } catch (err) {
+      if (!isMissingFileError(err)) throw err
+    }
+    return null
+  })
 }
 
 async function deleteVaultFileNowAsync(absolutePath: string): Promise<void> {
   markWritebackIgnored(absolutePath)
-  await unprotectForRemoteWrite(absolutePath)
-  try {
-    await fs.promises.unlink(absolutePath)
-  } catch (err) {
-    if (!isMissingFileError(err)) throw err
-  }
+  await writeThroughLock(absolutePath, async () => {
+    try {
+      await fs.promises.unlink(absolutePath)
+    } catch (err) {
+      if (!isMissingFileError(err)) throw err
+    }
+    return null
+  })
 }
 
 let activeSession: PageApplySession | null = null

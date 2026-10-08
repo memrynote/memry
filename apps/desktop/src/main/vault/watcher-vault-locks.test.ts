@@ -20,7 +20,8 @@ import { insertNoteCache } from '@main/database/queries/notes'
 
 const mocks = vi.hoisted(() => ({
   isWritebackIgnored: vi.fn(() => true),
-  restoreLockedNoteFile: vi.fn(async () => true)
+  restoreLockedNoteFile: vi.fn(async () => true),
+  vaultPath: ''
 }))
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
@@ -28,6 +29,7 @@ vi.mock('chokidar', () => ({ default: { watch: vi.fn() }, watch: vi.fn() }))
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
   getDatabase: vi.fn(),
+  isDatabaseInitialized: () => true,
   updateFtsContent: vi.fn()
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
@@ -44,6 +46,16 @@ vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('./index', () => ({
+  getStatus: () => ({ path: mocks.vaultPath }),
+  getConfig: () => ({
+    excludePatterns: [],
+    defaultNoteFolder: 'notes',
+    journalFolder: 'journal',
+    journalDateFormat: 'YYYY-MM-DD',
+    attachmentsFolder: 'attachments'
+  })
+}))
 
 import { getDatabase, getIndexDatabase } from '../database'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
@@ -56,12 +68,17 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
   let index: TestDatabaseResult
   const paths: Record<string, string> = {
     'note-locked': 'notes/locked.md',
-    'note-free': 'notes/free.md'
+    'note-free': 'notes/free.md',
+    'note-scan': 'sealed/scan.pdf'
   }
 
-  const watcherFor = (): { handleFileChange(p: string): Promise<void> } => {
+  const watcherFor = (): {
+    handleFileAdd(p: string): Promise<void>
+    handleFileChange(p: string): Promise<void>
+  } => {
     const watcher = new VaultWatcher() as unknown as {
       vaultPath: string
+      handleFileAdd(p: string): Promise<void>
       handleFileChange(p: string): Promise<void>
     }
     watcher.vaultPath = vault.path
@@ -70,7 +87,9 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.isWritebackIgnored.mockReturnValue(true)
     vault = createTestVault('watcher-locks')
+    mocks.vaultPath = vault.path
     data = createTestDataDb()
     index = createTestIndexDb()
     vi.mocked(getDatabase).mockReturnValue(data.db as never)
@@ -96,6 +115,7 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
         Object.keys(paths).find((id) => paths[id] === relativePath) ?? null
     })
     writeLockRow(asClientDb(data.db), 'note', 'note-locked', true)
+    writeLockRow(asClientDb(data.db), 'folder', 'sealed', true)
     invalidateVaultLocks()
   })
 
@@ -124,4 +144,55 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
 
     expect(mocks.restoreLockedNoteFile).not.toHaveBeenCalled()
   })
+
+  const isWritable = (file: string): boolean => (fs.statSync(file).mode & 0o200) !== 0
+
+  it.skipIf(process.platform === 'win32')(
+    'a file moved into a locked folder from outside becomes read-only',
+    async () => {
+      mocks.isWritebackIgnored.mockReturnValue(false)
+      const moved = path.join(vault.path, 'sealed/moved-in.pdf')
+      fs.writeFileSync(moved, 'pdf bytes')
+
+      await watcherFor().handleFileAdd(moved)
+
+      expect(isWritable(moved)).toBe(false)
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'a locked file deleted and recreated outside the app is read-only again',
+    async () => {
+      mocks.isWritebackIgnored.mockReturnValue(false)
+      const scan = path.join(vault.path, paths['note-scan'])
+      fs.rmSync(scan)
+      fs.writeFileSync(scan, 'recreated')
+
+      await watcherFor().handleFileAdd(scan)
+      expect(isWritable(scan)).toBe(false)
+
+      fs.chmodSync(scan, 0o644)
+      await watcherFor().handleFileChange(scan)
+      expect(isWritable(scan)).toBe(false)
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'a locked note renamed outside the app is read-only at its new name',
+    async () => {
+      mocks.isWritebackIgnored.mockReturnValue(false)
+      const renamed = path.join(vault.path, 'notes/renamed.md')
+      fs.renameSync(path.join(vault.path, paths['note-locked']), renamed)
+      fs.chmodSync(renamed, 0o644)
+      paths['note-locked'] = 'notes/renamed.md'
+
+      try {
+        await watcherFor().handleFileAdd(renamed)
+      } finally {
+        paths['note-locked'] = 'notes/locked.md'
+      }
+
+      expect(isWritable(renamed)).toBe(false)
+    }
+  )
 })

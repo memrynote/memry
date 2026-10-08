@@ -484,6 +484,13 @@
       "when": 1788436359433,
       "tag": "0068_note_body_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "6",
+      "when": 1788522759433,
+      "tag": "0069_vault_lock_file_modes",
+      "breakpoints": true
     }
   ]
 }

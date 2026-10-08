@@ -394,7 +394,7 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
  * @throws NoteError if delete fails
  */
 export async function deleteFile(filePath: string): Promise<void> {
-  await writeGuard?.beforeWrite(filePath)
+  const lockedPath = (await writeGuard?.beforeWrite(filePath)) ?? null
   try {
     await unlink(filePath)
   } catch (error) {
@@ -402,6 +402,7 @@ export async function deleteFile(filePath: string): Promise<void> {
       return // File already doesn't exist
     }
 
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
     throw new NoteError(
       `Failed to delete file: ${filePath}`,
       NoteErrorCode.DELETE_FAILED,

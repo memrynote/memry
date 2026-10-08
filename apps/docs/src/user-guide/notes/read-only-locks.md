@@ -61,8 +61,11 @@ path and no longer covers the renamed folder. Lock the folder again under its ne
 
 ## Edits From Outside Memry
 
-Memry also marks the file of every locked note read-only on disk, so most editors and
-command-line tools refuse to save over it.
+Memry also marks the file of every locked note read-only on disk, together with the files in its
+attachments folder, so most editors and command-line tools refuse to save over them. A file moved
+into a locked folder, a locked note renamed, and a locked file replaced from outside Memry are
+read-only again as soon as Memry sees the change. Unlocking gives each file back the permissions
+it had before the lock.
 
 If a locked markdown note is changed or deleted anyway, Memry keeps the changed text as a version
 in the note's [version history](./version-history), writes the locked text back, and tells you which
@@ -72,11 +75,11 @@ closed.
 A lock does not cover everything outside the app:
 
 - Renaming or moving a locked note's file outside Memry, for example in Finder or with `mv`, is
-  not reverted. The rename or move syncs to your other devices.
+  not reverted. The file stays read-only, and the rename or move syncs to your other devices.
 - Only markdown notes are written back. A locked PDF, image, or other file that is deleted
   outside Memry is not restored, and the delete syncs.
-- A locked note's attachments are protected only inside Memry. Their files are not read-only on
-  disk, so other programs can change or delete them.
+- Read-only on disk does not stop every program. Some can still delete or replace a locked
+  attachment, and Memry does not restore it.
 
 ## Going Back to an Older Version of Memry
 

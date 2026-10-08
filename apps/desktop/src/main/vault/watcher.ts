@@ -64,6 +64,7 @@ import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
+import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
@@ -377,6 +378,10 @@ export class VaultWatcher {
         message: error.message
       })
       this.onError?.(error)
+    } finally {
+      // A file moved into a locked folder, a locked note renamed or a locked
+      // file recreated from outside comes in writable.
+      await protectLockedFile(absolutePath)
     }
   }
 
@@ -670,6 +675,9 @@ export class VaultWatcher {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       this.onError?.(error)
+    } finally {
+      // `atomic` reports a quick delete and recreate as a change.
+      await protectLockedFile(absolutePath)
     }
   }
 

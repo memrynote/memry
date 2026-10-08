@@ -76,7 +76,7 @@ import { belongsToOtherType } from './note-row-type'
 import {
   forgetBaselineOfRemotelyDeletedNote,
   settleRemoteNoteFileSync,
-  unprotectForRemoteWriteSync
+  writeThroughLockSync
 } from '../../vault-locks/files'
 import {
   applyNoteCoverToFrontmatter,
@@ -427,10 +427,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               frontmatterEdited: true
             })
             const tmpPath = newAbsPath + '.tmp'
-            unprotectForRemoteWriteSync(oldAbsPath)
-            fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
-            fs.renameSync(tmpPath, newAbsPath)
-            fs.unlinkSync(oldAbsPath)
+            writeThroughLockSync(oldAbsPath, () => {
+              fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+              fs.renameSync(tmpPath, newAbsPath)
+              fs.unlinkSync(oldAbsPath)
+              return null
+            })
             settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
@@ -486,9 +488,11 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           if (updatedContent !== raw) {
             markWritebackIgnored(absPath)
             const tmpPath = absPath + '.tmp'
-            unprotectForRemoteWriteSync(absPath)
-            fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
-            fs.renameSync(tmpPath, absPath)
+            writeThroughLockSync(absPath, () => {
+              fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+              fs.renameSync(tmpPath, absPath)
+              return null
+            })
             settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
           }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)

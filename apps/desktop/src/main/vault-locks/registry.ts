@@ -119,12 +119,23 @@ export function isNoteLocked(noteId: string, notePath?: string | null): boolean 
   return path !== null && lockedFolderCovering(path) !== null
 }
 
-/** The locked note id at this vault-relative file path, or the file sits in a locked folder. */
+/** The note that owns a file in its attachments folder (`attachments/<noteId>/<file>`), or null. */
+function attachmentOwnerOf(relativePath: string): string | null {
+  const segments = relativePath.split('/')
+  return segments.length === 3 && segments[0] === 'attachments' ? segments[1] : null
+}
+
+/**
+ * The file sits in a locked folder, is a locked note's file, or is in a locked
+ * note's attachments folder.
+ */
 export function isVaultPathLocked(relativePath: string): boolean {
   const locks = current()
   if (!locks) return false
   const normalized = normalizeLockFolderPath(relativePath)
   if (lockedFolderCovering(normalized) !== null) return true
+  const owner = attachmentOwnerOf(normalized)
+  if (owner !== null && isNoteLocked(owner)) return true
   if (locks.noteIds.size === 0) return false
   const noteId = source?.noteIdAtPath(normalized) ?? null
   return noteId !== null && locks.noteIds.has(noteId)

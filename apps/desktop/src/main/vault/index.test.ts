@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   watcherRunning: true,
   flushPendingWritebacks: vi.fn(),
   renameJournalsForFormatChange: vi.fn(),
+  revertJournalRenames: vi.fn(),
   runMigrations: vi.fn(),
   runIndexMigrations: vi.fn(),
   initDatabase: vi.fn(),
@@ -175,7 +176,8 @@ vi.mock('./watcher', () => ({
 
 vi.mock('./journal-format-migration', () => ({
   renameJournalsForFormatChange: (...args: unknown[]) =>
-    mocks.renameJournalsForFormatChange(...args)
+    mocks.renameJournalsForFormatChange(...args),
+  revertJournalRenames: (...args: unknown[]) => mocks.revertJournalRenames(...args)
 }))
 
 vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
@@ -1095,6 +1097,28 @@ describe('vault lifecycle', () => {
         'journal_format_rename',
         expect.any(Error)
       )
+    })
+
+    it('moves the journal files back and reports the error when the config write fails', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+      const moved = [{ from: '2026-09-25.md', to: '2026-09-25 Friday.md', date: '2026-09-25' }]
+      const order: string[] = []
+      mocks.renameJournalsForFormatChange.mockResolvedValueOnce({ moved, skipped: 0, failed: 0 })
+      mocks.writeVaultConfig.mockImplementationOnce(() => {
+        throw new Error('EACCES: permission denied')
+      })
+      mocks.revertJournalRenames.mockImplementation(async () => order.push('revert'))
+      mocks.startWatcher.mockImplementation(async () => order.push('start'))
+
+      await expect(updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })).rejects.toThrow(
+        'EACCES: permission denied'
+      )
+
+      expect(mocks.revertJournalRenames).toHaveBeenCalledWith('/vault/config', 'journal', moved)
+      expect(order).toEqual(['revert', 'start'])
+      expect(mocks.rebuildIndex).not.toHaveBeenCalled()
     })
 
     it('refuses the new format and keeps the old one when a journal entry is locked (#2606)', async () => {
