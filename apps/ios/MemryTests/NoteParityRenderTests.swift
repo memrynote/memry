@@ -19,12 +19,13 @@ private func run(
 
 private func block(
     _ kind: String,
+    id: String? = nil,
     depth: UInt32 = 0,
     props: [String: String] = [:],
     text: String = ""
 ) -> Block {
     Block(
-        id: nil,
+        id: id,
         kind: kind,
         depth: depth,
         props: props.sorted { $0.key < $1.key }.map { BlockProp(name: $0.key, value: $0.value) },
@@ -121,9 +122,9 @@ struct NoteInlineLabelTests {
 @Suite("Block list folding")
 struct NoteBlockListFoldTests {
     private let blocks = [
-        block("toggleListItem", props: ["open": "false"], text: "Closed"),
+        block("toggleListItem", id: "closed", props: ["open": "false"], text: "Closed"),
         block("paragraph", depth: 1, text: "Hidden"),
-        block("toggleListItem", props: ["open": "true"], text: "Open"),
+        block("toggleListItem", id: "open", props: ["open": "true"], text: "Open"),
         block("paragraph", depth: 1, text: "Shown"),
         block("paragraph", text: "After"),
     ]
@@ -139,8 +140,37 @@ struct NoteBlockListFoldTests {
 
     @Test("flipping a toggle on screen overrides the document's state")
     func flippingOverrides() {
-        let rows = NoteBlockList.rows(of: blocks, flipped: [0, 2])
+        let rows = NoteBlockList.rows(of: blocks, flipped: ["closed", "open"])
         #expect(texts(rows) == ["Closed", "Hidden", "Open", "After"])
+    }
+
+    @Test("a block indented under a closed toggle opens it, as desktop does (#2670)")
+    func indentingUnderAClosedToggleOpensIt() {
+        let before = [
+            block("toggleListItem", id: "t", text: "Toggle"),
+            block("paragraph", id: "p", text: "Child"),
+        ]
+        let after = [
+            block("toggleListItem", id: "t", text: "Toggle"),
+            block("paragraph", id: "p", depth: 1, text: "Child"),
+        ]
+        let flipped = NoteBlockList.flipped([], from: before, to: after)
+        #expect(texts(NoteBlockList.rows(of: after, flipped: flipped)) == ["Toggle", "Child"])
+    }
+
+    @Test("an open toggle stays open when it gains a child, and a toggle that only loses one is left alone")
+    func onlyAClosedToggleThatGainsOpens() {
+        var grown = blocks
+        grown.insert(block("paragraph", depth: 1, text: "New"), at: 4)
+        #expect(NoteBlockList.flipped(["closed"], from: blocks, to: grown) == ["closed"])
+        let shrunk = blocks.filter { $0.inline.first?.text != "Shown" }
+        #expect(NoteBlockList.flipped([], from: blocks, to: shrunk).isEmpty)
+    }
+
+    @Test("an opened toggle keeps its state when a block above it comes or goes")
+    func stateFollowsTheToggle() {
+        let shifted = [block("paragraph", text: "Above")] + blocks
+        #expect(texts(NoteBlockList.rows(of: shifted, flipped: ["closed"])).contains("Hidden"))
     }
 }
 
