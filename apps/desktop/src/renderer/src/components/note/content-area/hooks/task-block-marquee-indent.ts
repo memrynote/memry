@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Task-block indent/outdent primitives for marquee selection.
+ * Task-block indent/outdent primitives: the one owner of Tab and Shift+Tab on a
+ * task block, whether from its title input, a marquee, or a multi-block
+ * selection.
  *
  * Task blocks (`content: 'none'` custom blocks) cannot use BlockNote's
  * `nestBlock` / `unnestBlock` — those assume a valid TextSelection inside a
@@ -11,12 +13,11 @@
  * column. The tree position inside `parent.children[]` is also maintained so
  * serialization to markdown produces correctly-nested output.
  *
- * These helpers mirror the single-task Tab handler in
- * `task-block-renderer.tsx:210-284`. `indentTaskBlock` moves a block into its
- * previous top-level sibling's `children[]` and fires an async
- * `tasksService.update`. `outdentTaskBlock` lifts a block out of its parent's
- * `children[]` and inserts it as a top-level sibling immediately after the
- * parent.
+ * `indentTaskBlock` moves a block into its previous sibling's `children[]` and
+ * fires an async `tasksService.update`. `outdentTaskBlock` lifts a block out of
+ * its parent's `children[]` and inserts it immediately after the parent. Below
+ * one level is allowed only with `tasks.nestedSubtasks` on, as main's
+ * `checkParent` allows it.
  *
  * Both helpers are pure in the sense that they have no refs or hook state.
  * They read `editor.document` fresh on each call, so callers may invoke them
@@ -48,7 +49,6 @@ export type TaskIndentOutcome =
         | 'no-prev-task-sibling'
         | 'not-nested'
         | 'parent-not-found'
-        | 'no-task-id'
         | 'block-not-found'
     }
 
@@ -99,61 +99,80 @@ export function classifyBlocks(editor: any, ids: readonly string[]): ClassifiedB
   return out
 }
 
-function findAtTopLevel(doc: DocBlock[], id: string): number {
-  for (let i = 0; i < doc.length; i += 1) {
-    if (doc[i]?.id === id) return i
-  }
-  return -1
+/** Where a block sits: the list holding it and the block that list belongs to. */
+interface BlockLocation {
+  siblings: DocBlock[]
+  index: number
+  /** Null at the top level of the document. */
+  parent: DocBlock | null
 }
 
-function findParentOf(doc: DocBlock[], id: string): DocBlock | null {
-  for (const top of doc) {
-    const children = top?.children
-    if (Array.isArray(children) && children.some((c) => c?.id === id)) {
-      return top
-    }
+function locateBlock(
+  list: DocBlock[],
+  id: string,
+  parent: DocBlock | null = null
+): BlockLocation | null {
+  for (let index = 0; index < list.length; index += 1) {
+    const block = list[index]
+    if (block?.id === id) return { siblings: list, index, parent }
+    const found = block?.children?.length ? locateBlock(block.children, id, block) : null
+    if (found) return found
   }
   return null
 }
 
+function hasTaskChildren(block: DocBlock): boolean {
+  return (block.children ?? []).some((child) => child?.type === 'taskBlock')
+}
+
+export interface TaskIndentOptions {
+  /**
+   * The `tasks.nestedSubtasks` setting. Off keeps the one-level rule: only a
+   * top-level task without subtasks moves under a top-level task.
+   */
+  nested: boolean
+  /** A title the block's props do not hold yet (the title input's live value). */
+  title?: string
+}
+
 /**
- * Demote a single taskBlock one level: move it into its previous top-level
- * sibling's `children[]` and persist via `tasksService.update`. Returns a
- * structured outcome so callers can log skipped reasons.
+ * Demote a single taskBlock one level: move it into its previous sibling's
+ * `children[]` and persist via `tasksService.update`. Returns a structured
+ * outcome so callers can log skipped reasons.
  */
-export function indentTaskBlock(editor: any, blockId: string): TaskIndentOutcome {
+export function indentTaskBlock(
+  editor: any,
+  blockId: string,
+  options: TaskIndentOptions
+): TaskIndentOutcome {
   const doc = (editor?.document ?? []) as DocBlock[]
+  const location = locateBlock(doc, blockId)
+  if (!location) return { kind: 'skipped', id: blockId, reason: 'block-not-found' }
 
-  const topIdx = findAtTopLevel(doc, blockId)
-  if (topIdx === -1) {
-    // Not at top level — either nested inside a parent's children (which
-    // means already-nested, since the current model is 2-level) or the
-    // block no longer exists.
-    const parent = findParentOf(doc, blockId)
-    if (parent) return { kind: 'skipped', id: blockId, reason: 'already-nested' }
-    return { kind: 'skipped', id: blockId, reason: 'block-not-found' }
-  }
-
-  const block = doc[topIdx]
-  if (block?.props?.parentTaskId) {
+  const block = location.siblings[location.index]
+  if (
+    !options.nested &&
+    (location.parent !== null || block.props?.parentTaskId || hasTaskChildren(block))
+  ) {
     return { kind: 'skipped', id: blockId, reason: 'already-nested' }
   }
-  if (topIdx === 0) {
-    return { kind: 'skipped', id: blockId, reason: 'no-prev-task-sibling' }
-  }
 
-  const prev = doc[topIdx - 1]
+  const prev = location.index > 0 ? location.siblings[location.index - 1] : null
   if (prev?.type !== 'taskBlock' || !prev.props?.taskId) {
     return { kind: 'skipped', id: blockId, reason: 'no-prev-task-sibling' }
   }
-  if (!block.props?.taskId) {
-    return { kind: 'skipped', id: blockId, reason: 'no-task-id' }
+  if (!options.nested && prev.props.parentTaskId) {
+    return { kind: 'skipped', id: blockId, reason: 'already-nested' }
   }
 
   const newParentTaskId = prev.props.taskId as string
   const movedChild: DocBlock = {
     ...block,
-    props: { ...block.props, parentTaskId: newParentTaskId }
+    props: {
+      ...block.props,
+      ...(options.title !== undefined ? { title: options.title } : {}),
+      parentTaskId: newParentTaskId
+    }
   }
   const newParent: DocBlock = {
     ...prev,
@@ -167,46 +186,54 @@ export function indentTaskBlock(editor: any, blockId: string): TaskIndentOutcome
     return { kind: 'skipped', id: blockId, reason: 'block-not-found' }
   }
 
-  void tasksService
-    .update({ id: block.props.taskId as string, parentId: newParentTaskId })
-    .catch((err) => log.warn('tasks.update failed during indent', err))
+  // A draft has no row yet; its create reads `parentTaskId` off the block.
+  if (block.props?.taskId) {
+    void tasksService
+      .update({ id: block.props.taskId as string, parentId: newParentTaskId })
+      .catch((err) => log.warn('tasks.update failed during indent', err))
+  }
 
   return { kind: 'indented', id: blockId, newParentTaskId }
 }
 
 /**
  * Promote a single nested taskBlock one level: remove it from its parent's
- * `children[]` and insert as a top-level sibling immediately after the parent.
- * Persists via `tasksService.update({ parentId: null })`.
+ * `children[]` and insert it as the parent's next sibling, under the parent's
+ * own parent task when there is one. Persists via `tasksService.update`.
  */
-export function outdentTaskBlock(editor: any, blockId: string): TaskIndentOutcome {
+export function outdentTaskBlock(
+  editor: any,
+  blockId: string,
+  options: Pick<TaskIndentOptions, 'title'> = {}
+): TaskIndentOutcome {
   const doc = (editor?.document ?? []) as DocBlock[]
+  const location = locateBlock(doc, blockId)
+  if (!location) return { kind: 'skipped', id: blockId, reason: 'parent-not-found' }
 
-  const parent = findParentOf(doc, blockId)
-  if (!parent) {
-    // Either already at top level (not nested) or doesn't exist. The top
-    // level case is the common one — caller selected a top-level task and
-    // pressed Shift+Tab. Silent no-op.
-    const topIdx = findAtTopLevel(doc, blockId)
-    if (topIdx !== -1) return { kind: 'skipped', id: blockId, reason: 'not-nested' }
+  const parent = location.parent
+  // Already at the top level: the common case of Shift+Tab on a top-level
+  // task. Silent no-op.
+  if (!parent) return { kind: 'skipped', id: blockId, reason: 'not-nested' }
+  if (parent.type !== 'taskBlock' || !parent.props?.taskId) {
     return { kind: 'skipped', id: blockId, reason: 'parent-not-found' }
   }
 
-  const child = (parent.children ?? []).find((c) => c?.id === blockId)
-  if (!child) {
-    return { kind: 'skipped', id: blockId, reason: 'parent-not-found' }
-  }
-  if (!parent.props?.taskId) {
-    // Defensive — the parent is a taskBlock (otherwise findParentOf wouldn't
-    // have returned it). If it's missing a taskId, treat as malformed.
-    return { kind: 'skipped', id: blockId, reason: 'parent-not-found' }
-  }
+  const child = location.siblings[location.index]
+  const grandparent = locateBlock(doc, parent.id)?.parent ?? null
+  const newParentTaskId =
+    grandparent?.type === 'taskBlock' && grandparent.props?.taskId
+      ? (grandparent.props.taskId as string)
+      : ''
 
   const remainingChildren = (parent.children ?? []).filter((c) => c?.id !== blockId)
   const newParent: DocBlock = { ...parent, children: remainingChildren }
   const promotedSelf: DocBlock = {
     ...child,
-    props: { ...child.props, parentTaskId: '' }
+    props: {
+      ...child.props,
+      ...(options.title !== undefined ? { title: options.title } : {}),
+      parentTaskId: newParentTaskId
+    }
   }
 
   try {
@@ -218,7 +245,7 @@ export function outdentTaskBlock(editor: any, blockId: string): TaskIndentOutcom
 
   if (child.props?.taskId) {
     void tasksService
-      .update({ id: child.props.taskId as string, parentId: null })
+      .update({ id: child.props.taskId as string, parentId: newParentTaskId || null })
       .catch((err) => log.warn('tasks.update failed during outdent', err))
   }
 

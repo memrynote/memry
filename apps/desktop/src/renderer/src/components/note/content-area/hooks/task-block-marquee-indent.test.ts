@@ -89,7 +89,7 @@ describe('task-block marquee indent helpers', () => {
     const replaceBlocks = vi.fn()
     const editor = makeEditor([previous, block], replaceBlocks)
 
-    const outcome = indentTaskBlock(editor, 'block-2')
+    const outcome = indentTaskBlock(editor, 'block-2', { nested: false })
 
     expect(outcome).toEqual({
       kind: 'indented',
@@ -115,20 +115,23 @@ describe('task-block marquee indent helpers', () => {
   })
 
   it('skips indent when the block cannot become a child', () => {
-    expectSkipped(indentTaskBlock(makeEditor([], vi.fn()), 'missing'), 'block-not-found')
+    const flat = { nested: false }
+    expectSkipped(indentTaskBlock(makeEditor([], vi.fn()), 'missing', flat), 'block-not-found')
     expectSkipped(
       indentTaskBlock(
         makeEditor([
           { id: 'parent', type: 'taskBlock', children: [{ id: 'child', type: 'taskBlock' }] }
         ]),
-        'child'
+        'child',
+        flat
       ),
       'already-nested'
     )
     expectSkipped(
       indentTaskBlock(
         makeEditor([{ id: 'first', type: 'taskBlock', props: { taskId: 't1' } }]),
-        'first'
+        'first',
+        flat
       ),
       'no-prev-task-sibling'
     )
@@ -138,20 +141,108 @@ describe('task-block marquee indent helpers', () => {
           { id: 'prev', type: 'paragraph' },
           { id: 'task', type: 'taskBlock', props: { taskId: 't2' } }
         ]),
-        'task'
+        'task',
+        flat
       ),
       'no-prev-task-sibling'
     )
+    // A task with subtasks of its own would land two levels deep.
     expectSkipped(
       indentTaskBlock(
         makeEditor([
           { id: 'prev', type: 'taskBlock', props: { taskId: 't1' } },
-          { id: 'task', type: 'taskBlock', props: {} }
+          {
+            id: 'task',
+            type: 'taskBlock',
+            props: { taskId: 't2' },
+            children: [{ id: 'sub', type: 'taskBlock', props: { taskId: 't3' } }]
+          }
         ]),
-        'task'
+        'task',
+        flat
       ),
-      'no-task-id'
+      'already-nested'
     )
+  })
+
+  it('with nested subtasks off, leaves a subtask where it is', () => {
+    const editor = makeEditor([
+      {
+        id: 'a',
+        type: 'taskBlock',
+        props: { taskId: 'ta' },
+        children: [
+          { id: 'b', type: 'taskBlock', props: { taskId: 'tb', parentTaskId: 'ta' } },
+          { id: 'c', type: 'taskBlock', props: { taskId: 'tc', parentTaskId: 'ta' } }
+        ]
+      }
+    ])
+
+    expectSkipped(indentTaskBlock(editor, 'c', { nested: false }), 'already-nested')
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(tasksService.update).not.toHaveBeenCalled()
+  })
+
+  it('with nested subtasks on, indents a subtask under its previous subtask sibling', () => {
+    const b = { id: 'b', type: 'taskBlock', props: { taskId: 'tb', parentTaskId: 'ta' } }
+    const c = {
+      id: 'c',
+      type: 'taskBlock',
+      props: { taskId: 'tc', parentTaskId: 'ta', title: 'old' }
+    }
+    const replaceBlocks = vi.fn()
+    const editor = makeEditor(
+      [{ id: 'a', type: 'taskBlock', props: { taskId: 'ta' }, children: [b, c] }],
+      replaceBlocks
+    )
+
+    const outcome = indentTaskBlock(editor, 'c', { nested: true, title: 'typed' })
+
+    expect(outcome).toEqual({ kind: 'indented', id: 'c', newParentTaskId: 'tb' })
+    expect(replaceBlocks).toHaveBeenCalledWith(
+      [b, c],
+      [{ ...b, children: [{ ...c, props: { taskId: 'tc', parentTaskId: 'tb', title: 'typed' } }] }]
+    )
+    expect(tasksService.update).toHaveBeenCalledWith({ id: 'tc', parentId: 'tb' })
+  })
+
+  it('moves a draft block without writing a row it does not have yet', () => {
+    const prev = { id: 'prev', type: 'taskBlock', props: { taskId: 't1' } }
+    const draft = { id: 'draft', type: 'taskBlock', props: { taskId: '' } }
+    const replaceBlocks = vi.fn()
+
+    const outcome = indentTaskBlock(makeEditor([prev, draft], replaceBlocks), 'draft', {
+      nested: false
+    })
+
+    expect(outcome).toMatchObject({ kind: 'indented', newParentTaskId: 't1' })
+    expect(replaceBlocks).toHaveBeenCalled()
+    expect(tasksService.update).not.toHaveBeenCalled()
+  })
+
+  it('outdents a grandchild to sit under its grandparent task', () => {
+    const c = { id: 'c', type: 'taskBlock', props: { taskId: 'tc', parentTaskId: 'tb' } }
+    const b = {
+      id: 'b',
+      type: 'taskBlock',
+      props: { taskId: 'tb', parentTaskId: 'ta' },
+      children: [c]
+    }
+    const replaceBlocks = vi.fn()
+    const editor = makeEditor(
+      [{ id: 'a', type: 'taskBlock', props: { taskId: 'ta' }, children: [b] }],
+      replaceBlocks
+    )
+
+    expect(outdentTaskBlock(editor, 'c')).toEqual({ kind: 'outdented', id: 'c' })
+    expect(replaceBlocks).toHaveBeenCalledWith(
+      [b],
+      [
+        { ...b, children: [] },
+        { ...c, props: { taskId: 'tc', parentTaskId: 'ta' } }
+      ]
+    )
+    expect(tasksService.update).toHaveBeenCalledWith({ id: 'tc', parentId: 'ta' })
   })
 
   it('outdents a nested task to the top level after its parent', () => {

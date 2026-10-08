@@ -77,7 +77,7 @@ import {
 } from './slash-menu-model'
 import { SlashMenu, SlashMenuFallbackContext, type SlashMenuFallbacks } from './slash-menu'
 import { getTaskSlashMenuItem } from './task-block'
-import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
+import { TaskPrefetchProvider, useTaskPrefetch } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { memrySyntaxHighlighter } from '@memry/editor-schema/code-block'
@@ -421,6 +421,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Off until the setting is read. The note's first scan runs before the read
   // returns, and the default there would convert checkboxes the owner turned off.
   const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
+  const { nestedSubtasks } = useTaskPrefetch()
+  // Read by the Tab plugin at key time; it is registered once per editor.
+  const nestedSubtasksRef = useRef(nestedSubtasks)
+  useEffect(() => {
+    nestedSubtasksRef.current = nestedSubtasks
+  }, [nestedSubtasks])
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openSidebarItem } = useSidebarNavigation()
@@ -1067,7 +1073,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // before the date ghost below on purpose: each prepend goes to the front, so
   // the ghost ends up ahead of it and keeps Tab while a date is being typed.
   useEffect(() => {
-    const plugin = createMultiBlockIndentPlugin(editor)
+    const plugin = createMultiBlockIndentPlugin(editor, () => nestedSubtasksRef.current)
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
 
@@ -1236,7 +1242,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editor,
     blockContainerRef: editorContainerRef,
     triggerContainerEl: triggerEl,
-    enabled: editable
+    enabled: editable,
+    nestedSubtasks
   })
 
   // Retyping from the toolbar or the block menu reads this at click time, not
@@ -2471,7 +2478,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
     const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
       openedBlockIds: openedBlockIdsRef.current,
-      convertChecklists
+      convertChecklists,
+      nestedSubtasks
     })
 
     // Both paths convert in the same change that produced the checkbox, so a

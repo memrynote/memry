@@ -16,6 +16,7 @@ import {
 } from '@/lib/note-task-project'
 import { createLogger } from '@/lib/logger'
 import { useReminders } from '@/hooks/use-reminders'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import type { ListRemindersInput } from '@/services/reminder-service'
 
 const log = createLogger('TaskPrefetch')
@@ -60,6 +61,12 @@ interface TaskPrefetchValue {
   noteId: string | null
   /** Whether the task has a reminder still to fire. */
   hasActiveReminder: (taskId: string) => boolean
+  /**
+   * The `tasks.nestedSubtasks` setting, false until it loads: main refuses a
+   * parent below one level with it off, so an edit made before then stays
+   * within what main accepts either way.
+   */
+  nestedSubtasks: boolean
 }
 
 // Default used when a taskBlock renders outside a provider (e.g. unit tests):
@@ -70,7 +77,8 @@ const DEFAULT_VALUE: TaskPrefetchValue = {
   getCached: () => undefined,
   draftProjectId: null,
   noteId: null,
-  hasActiveReminder: () => false
+  hasActiveReminder: () => false,
+  nestedSubtasks: false
 }
 
 const TaskPrefetchContext = createContext<TaskPrefetchValue>(DEFAULT_VALUE)
@@ -175,15 +183,19 @@ export function TaskPrefetchProvider({
     [reminders]
   )
 
+  const { settings: taskSettings, isLoading: taskSettingsLoading } = useTaskPreferences()
+  const nestedSubtasks = !taskSettingsLoading && taskSettings.nestedSubtasks
+
   const value = useMemo<TaskPrefetchValue>(
     () => ({
       status,
       getCached: (taskId: string) => tasksById.get(taskId),
       draftProjectId,
       noteId: noteId ?? null,
-      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId)
+      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId),
+      nestedSubtasks
     }),
-    [status, tasksById, draftProjectId, noteId, reminderTaskIds]
+    [status, tasksById, draftProjectId, noteId, reminderTaskIds, nestedSubtasks]
   )
 
   return <TaskPrefetchContext.Provider value={value}>{children}</TaskPrefetchContext.Provider>

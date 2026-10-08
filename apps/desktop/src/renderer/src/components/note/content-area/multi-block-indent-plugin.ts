@@ -46,13 +46,21 @@ function containerPos(doc: any, id: string): number | null {
   return found
 }
 
-function moveOne(editor: any, tr: Transaction, id: string, direction: IndentDirection): boolean {
+function moveOne(
+  editor: any,
+  tr: Transaction,
+  id: string,
+  direction: IndentDirection,
+  nested: boolean
+): boolean {
   const pos = containerPos(tr.doc, id)
   if (pos === null) return false
 
   if (editor.getBlock(id)?.type === 'taskBlock') {
     const outcome =
-      direction === 'indent' ? indentTaskBlock(editor, id) : outdentTaskBlock(editor, id)
+      direction === 'indent'
+        ? indentTaskBlock(editor, id, { nested })
+        : outdentTaskBlock(editor, id)
     if (outcome.kind === 'skipped') {
       log.debug('task block not moved', id, direction, outcome.reason)
       return false
@@ -76,7 +84,12 @@ function moveOne(editor: any, tr: Transaction, id: string, direction: IndentDire
   return liftListItem(schema.nodes.blockContainer)({ selection: tr.selection, tr } as any, () => {})
 }
 
-function moveBlocks(editor: any, ids: readonly string[], direction: IndentDirection): boolean {
+function moveBlocks(
+  editor: any,
+  ids: readonly string[],
+  direction: IndentDirection,
+  nested: boolean
+): boolean {
   if (ids.length === 0) return false
 
   let moved = 0
@@ -84,22 +97,23 @@ function moveBlocks(editor: any, ids: readonly string[], direction: IndentDirect
     const original = tr.selection
     const ordered = direction === 'indent' ? ids : [...ids].reverse()
     for (const id of ordered) {
-      if (moveOne(editor, tr, id, direction)) moved += 1
+      if (moveOne(editor, tr, id, direction, nested)) moved += 1
     }
     tr.setSelection(original.map(tr.doc, tr.mapping))
   })
   return moved > 0
 }
 
-export function indentBlocks(editor: any, ids: readonly string[]): boolean {
-  return moveBlocks(editor, ids, 'indent')
+/** `nested` is the `tasks.nestedSubtasks` setting, which gates task blocks below one level. */
+export function indentBlocks(editor: any, ids: readonly string[], nested: boolean): boolean {
+  return moveBlocks(editor, ids, 'indent', nested)
 }
 
 export function outdentBlocks(editor: any, ids: readonly string[]): boolean {
-  return moveBlocks(editor, ids, 'outdent')
+  return moveBlocks(editor, ids, 'outdent', false)
 }
 
-export function createMultiBlockIndentPlugin(editor: any): Plugin {
+export function createMultiBlockIndentPlugin(editor: any, nestedSubtasks: () => boolean): Plugin {
   return new Plugin({
     key: multiBlockIndentPluginKey,
     props: {
@@ -111,7 +125,7 @@ export function createMultiBlockIndentPlugin(editor: any): Plugin {
         if (ids.length < 2) return false
 
         if (event.shiftKey) outdentBlocks(editor, ids)
-        else indentBlocks(editor, ids)
+        else indentBlocks(editor, ids, nestedSubtasks())
         // Consumed even when nothing moved, or the browser moves focus out.
         return true
       }

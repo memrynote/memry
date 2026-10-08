@@ -85,6 +85,8 @@ export interface NotePlanTaskDeps {
   completeTask(a: { id: string; completedAt?: string }): Promise<unknown>
   archiveTask(id: string): Promise<unknown>
   getInboxProjectId(): string | undefined
+  /** The `tasks.nestedSubtasks` setting: whether a subtask may parent a task. */
+  nestedSubtasks(): boolean
 }
 
 /** Build the real (db-backed) task deps lazily so importing this module stays light. */
@@ -94,6 +96,7 @@ async function defaultTaskDeps(): Promise<NotePlanTaskDeps> {
   const { createTasksPublisher } = await import('../../tasks/publisher')
   const { generateId } = await import('../../lib/id')
   const { getInboxProject } = await import('@main/database/queries/projects')
+  const { getTaskSettings } = await import('../../settings/task-settings')
 
   const db = requireDatabase()
   const domain = createDesktopTasksDomain(db, createTasksPublisher(), generateId)
@@ -108,7 +111,8 @@ async function defaultTaskDeps(): Promise<NotePlanTaskDeps> {
       }),
     completeTask: (a) => domain.completeTask(a),
     archiveTask: (id) => domain.archiveTask(id),
-    getInboxProjectId: () => getInboxProject(db)?.id
+    getInboxProjectId: () => getInboxProject(db)?.id,
+    nestedSubtasks: () => getTaskSettings().nestedSubtasks
   }
 }
 
@@ -290,7 +294,8 @@ function frontmatterTags(value: unknown): string[] {
 async function prepare(
   absPath: string,
   fallbackTitle: string,
-  stripHeading: boolean
+  stripHeading: boolean,
+  nestedSubtasks: boolean
 ): Promise<PreparedBody> {
   const raw = await fs.readFile(absPath, 'utf8')
   const { data, content } = matter(raw)
@@ -304,7 +309,7 @@ async function prepare(
   const heading = firstHeading(content)
   const body = heading && stripHeading ? stripFirstHeading(content) : content
 
-  const converted = convertBody(body)
+  const converted = convertBody(body, { nestedSubtasks })
 
   return {
     title: heading ?? fallbackTitle,
@@ -377,6 +382,7 @@ export async function runNotePlanImport(
   // ---- Phase 2: write ----
   ctx.setPhase('importing')
   const projectId = deps.getInboxProjectId()
+  const nestedSubtasks = deps.nestedSubtasks()
   if (!projectId) {
     // Every task needs a project. Without an Inbox the notes still import, but
     // their tasks stay as plain checkboxes — say so rather than dropping them
@@ -391,7 +397,7 @@ export async function runNotePlanImport(
     if (ctx.isCancelled()) return ctx.toSummary()
     try {
       // A note carries the H1 in its title field, so strip it from the body.
-      const prepared = await prepare(planned.absPath, planned.title, true)
+      const prepared = await prepare(planned.absPath, planned.title, true, nestedSubtasks)
       ctx.status(importingItemStatus(prepared.title))
 
       const noteId = generateNoteId()
@@ -434,7 +440,7 @@ export async function runNotePlanImport(
     try {
       // The entry is keyed by date and has no title field, so keep the H1 in
       // the body — stripping it here would delete the text outright.
-      const prepared = await prepare(planned.absPath, planned.date, false)
+      const prepared = await prepare(planned.absPath, planned.date, false, nestedSubtasks)
       ctx.status(importingItemStatus(planned.date))
 
       // A journal entry is user-authored: never overwrite one that already has

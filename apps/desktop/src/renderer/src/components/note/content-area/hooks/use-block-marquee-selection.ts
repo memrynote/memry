@@ -41,6 +41,8 @@ interface UseBlockMarqueeSelectionOptions {
   /** The outer wrapper element that owns the listener and the overlay coordinate space. */
   triggerContainerEl: HTMLDivElement | null
   enabled?: boolean
+  /** The `tasks.nestedSubtasks` setting, which lets a task block indent below one level. */
+  nestedSubtasks?: boolean
   onDeleteSelectedBlocks?: (ids: string[]) => boolean
 }
 
@@ -239,6 +241,7 @@ export function useBlockMarqueeSelection({
   blockContainerRef,
   triggerContainerEl,
   enabled = true,
+  nestedSubtasks = false,
   onDeleteSelectedBlocks
 }: UseBlockMarqueeSelectionOptions): UseBlockMarqueeSelectionReturn {
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null)
@@ -297,8 +300,8 @@ export function useBlockMarqueeSelection({
   //   - textblocks (paragraph, bulletListItem, heading, etc.) use
   //     BlockNote's built-in `nestBlock`, gated on `canNestBlock`
   //   - taskBlocks use the `parentTaskId` prop + tasksService.update
-  //     path via `indentTaskBlock` — mirroring the single-task Tab
-  //     handler in `task-block-renderer.tsx`. BlockNote's `nestBlock`
+  //     path via `indentTaskBlock`, the same call the single-task Tab
+  //     handler in `task-block-renderer.tsx` makes. BlockNote's `nestBlock`
   //     crashes on non-textblock custom blocks because it assumes a
   //     TextSelection inside a textblock; the ReactNodeView corrupts
   //     and the next iteration blows up in syncNodeSelection.descAt.
@@ -337,7 +340,7 @@ export function useBlockMarqueeSelection({
       }
       for (const id of taskBlocks) {
         try {
-          const outcome = indentTaskBlock(editor, id)
+          const outcome = indentTaskBlock(editor, id, { nested: nestedSubtasks })
           if (outcome.kind === 'skipped') {
             log.debug('indentTaskBlock skipped', id, outcome.reason)
           }
@@ -348,7 +351,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
-  }, [editor, blockContainerRef, recomputeHighlightRects])
+  }, [editor, blockContainerRef, recomputeHighlightRects, nestedSubtasks])
 
   // Outdent every marquee-selected block by one level. Both the textblock
   // and taskBlock loops run in REVERSE order:

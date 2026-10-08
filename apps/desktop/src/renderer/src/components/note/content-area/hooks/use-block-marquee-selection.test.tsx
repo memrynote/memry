@@ -119,7 +119,8 @@ describe('useBlockMarqueeSelection', () => {
       useBlockMarqueeSelection({
         editor,
         blockContainerRef,
-        triggerContainerEl: trigger
+        triggerContainerEl: trigger,
+        nestedSubtasks: true
       })
     )
 
@@ -138,7 +139,7 @@ describe('useBlockMarqueeSelection', () => {
     })
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('a', 'start')
     expect(editor.nestBlock).toHaveBeenCalledTimes(1)
-    expect(marqueeIndentMocks.indentTaskBlock).toHaveBeenCalledWith(editor, 'b')
+    expect(marqueeIndentMocks.indentTaskBlock).toHaveBeenCalledWith(editor, 'b', { nested: true })
 
     act(() => {
       document.dispatchEvent(

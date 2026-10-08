@@ -10,8 +10,9 @@
  * checkbox that continues a plain list is made plain rather than converted.
  *
  * Hierarchy rules:
- *   - 1-level subtask depth: a checkListItem nested directly under a
- *     top-level taskBlock is a subtask candidate. Anything deeper is ignored.
+ *   - A checkListItem nested directly under a taskBlock is a subtask
+ *     candidate of that task. With `nestedSubtasks` off, only a top-level
+ *     taskBlock parents one; a checkbox under a subtask converts standalone.
  *   - "parentTaskBlock" tracked during recursion is the *tree* parent (the
  *     ancestor in the document), not the value of the parentTaskId prop.
  */
@@ -131,6 +132,11 @@ export interface TaskIntentOptions {
    * no checkbox outside a task block; one under a task still becomes its subtask.
    */
   convertChecklists?: boolean
+  /**
+   * The task setting `nestedSubtasks`, default false. Off keeps the one-level
+   * rule main enforces with it off: a subtask parents nothing.
+   */
+  nestedSubtasks?: boolean
 }
 
 export function analyzeTaskIntents(
@@ -183,10 +189,9 @@ export function analyzeTaskIntents(
           }
         }
 
-        // 1-level limit: only walk children with parent context if WE are top
-        // level. Otherwise pass null so deeper checkboxes don't get marked as
-        // subtask candidates of a subtask.
-        const passAsParent = parentTaskBlock === null ? b : null
+        // With nested subtasks off, only a top-level task parents: deeper
+        // checkboxes are not marked as subtask candidates of a subtask.
+        const passAsParent = options.nestedSubtasks || parentTaskBlock === null ? b : null
         if (b.children?.length) walk(b.children, passAsParent)
         continue
       }

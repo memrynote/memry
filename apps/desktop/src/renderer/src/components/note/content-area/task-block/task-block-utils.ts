@@ -11,6 +11,7 @@ import { parseDueDate } from '@/lib/task-utils'
 // renderer's existing import sites stay unchanged.
 export {
   serializeTaskBlock,
+  serializeTaskBlockTree,
   parseTaskBlockSuffix,
   extractInlineText,
   normalizeTaskBlocks
