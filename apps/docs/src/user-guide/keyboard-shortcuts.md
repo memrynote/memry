@@ -21,7 +21,7 @@ Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K
 
 > **Next / previous vault** moves the sidebar to the neighbouring vault with the same slide as a trackpad swipe (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on Windows and Linux). The arrows follow the page layout, so in right-to-left languages the next vault is to the left. See [Switching vaults](/guide/tour#switching-vaults).
 
-> Hold <kbd>⌘</kbd> (<kbd>Ctrl</kbd> on Windows / Linux) to reveal the section numbers on the sidebar icons, then press the number to jump — <kbd>⌘</kbd>+<kbd>1</kbd> opens Home, <kbd>⌘</kbd>+<kbd>2</kbd> Inbox, and so on. Numbers follow the sidebar's visible top-to-bottom order (Home is always 1), so they shift if you hide a section. This shortcut works everywhere, including inside the editor, and is fixed rather than rebindable.
+> Hold <kbd>⌘</kbd> (<kbd>Ctrl</kbd> on Windows / Linux) to reveal the section numbers on the sidebar icons, then press the number to jump — <kbd>⌘</kbd>+<kbd>1</kbd> opens Home, <kbd>⌘</kbd>+<kbd>2</kbd> Inbox, and so on. Numbers follow the sidebar's visible top-to-bottom order (Home is always 1), so they shift if you hide a section. This shortcut works everywhere, including inside the editor, and is fixed rather than rebindable. Inside a dialog it leaves the number to the dialog: in search, <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>4</kbd> pick a type instead (see [Search](/user-guide/search#filters)).
 
 ## Tabs
 

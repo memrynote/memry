@@ -685,35 +685,6 @@
       "notifications": "การแจ้งเตือน",
       "logOut": "ออกจากระบบ"
     },
-    "componentsSearchCommandPalette": {
-      "search": "ค้นหา",
-      "searchNotesTasksJournalInbox": "ค้นหาโน้ต งาน บันทึกประจำวัน กล่องขาเข้า…",
-      "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
-      "result": "ผลลัพธ์",
-      "noResultsForQuery": "ไม่พบผลลัพธ์สำหรับ “{query}”",
-      "resultCount": "{count, plural, other {ผลลัพธ์ # รายการ}}",
-      "indexBuilding": "กำลังสร้างดัชนีการค้นหา {done}/{total} — ผลลัพธ์อาจไม่ครบถ้วน",
-      "indexBuildingUnknown": "กำลังสร้างดัชนีการค้นหา — ผลลัพธ์อาจไม่ครบถ้วน"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "ค้นหาและคลิกรายการเพื่อสร้างเส้นทาง",
-      "reasons": "เหตุผล",
-      "clear": "ล้าง"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "ล้าง",
-      "tags": "แท็ก",
-      "filterByTag": "กรองตามแท็ก…",
-      "dateRange": "ช่วงวันที่"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "ดูทั้งหมด ",
-      "results": "ผลลัพธ์"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "ใกล้เคียง"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "ไม่มีแท็บที่เปิดอยู่",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "เปิดหน้าจากแถบด้านข้างหรือสร้างแท็บใหม่เพื่อเริ่มต้น",
@@ -1255,5 +1226,85 @@
     "railLabel": "ส่วนต่าง ๆ",
     "search": "ค้นหาหรือไปที่…",
     "vaultMenu": "{name} เปิดรายการคลังข้อมูล"
+  },
+  "searchPalette": {
+    "title": "ค้นหา",
+    "placeholder": "ค้นหาโน้ต งาน บันทึกประจำวัน กล่องขาเข้า…",
+    "filterHint": "กรองตามประเภท วันที่ หรือแท็ก",
+    "tagHint": "พิมพ์ชื่อแท็ก",
+    "removeFilter": "นำ {name} ออก",
+    "recent": "ล่าสุด",
+    "clear": "ล้าง",
+    "fromQuery": "จาก “{query}”",
+    "searchIn": "ค้นหาใน",
+    "tag": "แท็ก",
+    "tags": "แท็ก",
+    "items": "รายการ",
+    "chooseTag": "เลือกแท็ก…",
+    "noTags": "ไม่มีแท็กที่ตรงกัน",
+    "filterType": "ประเภท",
+    "filterModified": "แก้ไขเมื่อ",
+    "matches": "ส่วนที่ตรงกัน",
+    "showMore": "แสดงเพิ่มอีก {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "โน้ต",
+      "journal": "บันทึกประจำวัน",
+      "task": "งาน",
+      "inbox": "กล่องขาเข้า"
+    },
+    "dates": {
+      "today": "วันนี้",
+      "thisWeek": "สัปดาห์นี้",
+      "thisMonth": "เดือนนี้",
+      "custom": "ช่วงที่กำหนดเอง"
+    },
+    "status": {
+      "items": "{count, plural, other {# รายการ}} · บนอุปกรณ์นี้",
+      "results": "{count, plural, other {# ผลลัพธ์}} · {ms} มิลลิวินาที",
+      "indexing": "กำลังสร้างดัชนี {done} / {total}",
+      "indexingUnknown": "กำลังสร้างดัชนี…",
+      "filters": "ตัวกรองใช้ร่วมกันได้ · เลือกได้ตามต้องการ",
+      "tags": "แท็กที่คุณใช้ในห้องนิรภัย"
+    },
+    "empty": {
+      "unscoped": "ไม่มีสิ่งที่ตรงกับ “{query}”",
+      "scoped": "ไม่มีสิ่งใดใน {scope} ที่ตรงกับ “{query}”",
+      "indexing": "ยังสร้างดัชนีอยู่ — รายการเก่าอาจยังค้นหาไม่พบ",
+      "tryFilters": "ลองใช้คำน้อยลงหรือนำตัวกรองออก",
+      "tryWords": "ลองใช้คำน้อยลงหรือคำอื่น"
+    },
+    "actions": {
+      "filter": "กรอง",
+      "back": "กลับ",
+      "nextSection": "ส่วนถัดไป",
+      "open": "เปิด",
+      "openNote": "เปิดโน้ต",
+      "openFile": "เปิดไฟล์",
+      "openJournal": "เปิดบันทึกประจำวัน",
+      "openTask": "เปิดงาน",
+      "openInInbox": "เปิดในกล่องขาเข้า",
+      "addFilter": "เพิ่มตัวกรอง",
+      "removeFilter": "นำตัวกรองออก",
+      "chooseTag": "เลือกแท็ก",
+      "addTag": "เพิ่มแท็ก",
+      "showAll": "แสดงทั้งหมด",
+      "searchEverywhere": "ค้นหาทุกที่",
+      "clearFilters": "ล้างตัวกรอง"
+    },
+    "preview": {
+      "edited": "แก้ไข{when}",
+      "captured": "บันทึก{when}",
+      "words": "{count, plural, other {# คำ}}",
+      "filed": "จัดเก็บแล้ว",
+      "notFiled": "ยังไม่จัดเก็บ",
+      "status": "สถานะ",
+      "noStatus": "ไม่มีสถานะ",
+      "due": "กำหนด",
+      "priority": "ความสำคัญ",
+      "repeats": "ทำซ้ำ"
+    }
   }
 }

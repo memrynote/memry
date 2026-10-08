@@ -685,35 +685,6 @@
       "notifications": "通知",
       "logOut": "登出"
     },
-    "componentsSearchCommandPalette": {
-      "search": "搜尋",
-      "searchNotesTasksJournalInbox": "搜尋筆記、任務、日誌、收件匣…",
-      "noResultsFor": "找不到「",
-      "result": "結果",
-      "noResultsForQuery": "找不到「{query}」的結果",
-      "resultCount": "{count, plural, other {# 個結果}}",
-      "indexBuilding": "正在建立搜尋索引 {done}/{total}——結果可能不完整",
-      "indexBuildingUnknown": "正在建立搜尋索引——結果可能不完整"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "搜尋並點選項目，以建立你的瀏覽足跡",
-      "reasons": "原因",
-      "clear": "清除"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "清除",
-      "tags": "標籤",
-      "filterByTag": "依標籤篩選…",
-      "dateRange": "日期範圍"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "查看全部 ",
-      "results": "個結果"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "模糊比對"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "沒有開啟的分頁",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "從側邊欄開啟頁面，或建立新分頁以開始使用",
@@ -1255,5 +1226,85 @@
     "railLabel": "區段",
     "search": "搜尋或跳至…",
     "vaultMenu": "{name}。開啟儲存庫清單"
+  },
+  "searchPalette": {
+    "title": "搜尋",
+    "placeholder": "搜尋筆記、任務、日誌、收件匣…",
+    "filterHint": "依類型、日期或標籤篩選",
+    "tagHint": "輸入標籤名稱",
+    "removeFilter": "移除{name}",
+    "recent": "最近",
+    "clear": "清除",
+    "fromQuery": "來自「{query}」",
+    "searchIn": "搜尋範圍",
+    "tag": "標籤",
+    "tags": "標籤",
+    "items": "項目",
+    "chooseTag": "選擇標籤…",
+    "noTags": "沒有相符的標籤",
+    "filterType": "類型",
+    "filterModified": "修改時間",
+    "matches": "相符內容",
+    "showMore": "再顯示 {count} 項",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "筆記",
+      "journal": "日誌",
+      "task": "任務",
+      "inbox": "收件匣"
+    },
+    "dates": {
+      "today": "今天",
+      "thisWeek": "本週",
+      "thisMonth": "本月",
+      "custom": "自訂範圍"
+    },
+    "status": {
+      "items": "{count, plural, other {# 項}} · 在此裝置上",
+      "results": "{count, plural, other {# 個結果}} · {ms} 毫秒",
+      "indexing": "正在建立索引 {done} / {total}",
+      "indexingUnknown": "正在建立索引…",
+      "filters": "篩選條件可疊加 · 依需要選擇",
+      "tags": "你在保險庫中使用的標籤"
+    },
+    "empty": {
+      "unscoped": "沒有與「{query}」相符的內容",
+      "scoped": "{scope}中沒有與「{query}」相符的內容",
+      "indexing": "仍在建立索引，較早的項目可能暫時搜尋不到。",
+      "tryFilters": "試試減少關鍵字或移除一個篩選條件。",
+      "tryWords": "試試減少關鍵字或換個說法。"
+    },
+    "actions": {
+      "filter": "篩選",
+      "back": "返回",
+      "nextSection": "下一個區段",
+      "open": "開啟",
+      "openNote": "開啟筆記",
+      "openFile": "開啟檔案",
+      "openJournal": "開啟日誌",
+      "openTask": "開啟任務",
+      "openInInbox": "在收件匣中開啟",
+      "addFilter": "新增篩選",
+      "removeFilter": "移除篩選",
+      "chooseTag": "選擇標籤",
+      "addTag": "新增標籤",
+      "showAll": "全部顯示",
+      "searchEverywhere": "全域搜尋",
+      "clearFilters": "清除篩選"
+    },
+    "preview": {
+      "edited": "{when}編輯",
+      "captured": "{when}收集",
+      "words": "{count, plural, other {# 字}}",
+      "filed": "已歸檔",
+      "notFiled": "未歸檔",
+      "status": "狀態",
+      "noStatus": "無狀態",
+      "due": "截止",
+      "priority": "優先順序",
+      "repeats": "重複"
+    }
   }
 }

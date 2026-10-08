@@ -685,35 +685,6 @@
       "notifications": "Powiadomienia",
       "logOut": "Wyloguj się"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Szukaj",
-      "searchNotesTasksJournalInbox": "Szukaj notatek, zadań, dziennika, skrzynki odbiorczej…",
-      "noResultsFor": "Brak wyników dla „",
-      "result": "wynik",
-      "noResultsForQuery": "Brak wyników dla „{query}”",
-      "resultCount": "{count, plural, one {# wynik} few {# wyniki} many {# wyników} other {# wyniku}}",
-      "indexBuilding": "Tworzenie indeksu wyszukiwania {done}/{total} – wyniki mogą być niepełne",
-      "indexBuildingUnknown": "Tworzenie indeksu wyszukiwania – wyniki mogą być niepełne"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Wyszukaj i kliknij elementy, aby zbudować swój szlak",
-      "reasons": "Powody",
-      "clear": "Wyczyść"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Wyczyść",
-      "tags": "Tagi",
-      "filterByTag": "Filtruj według tagu…",
-      "dateRange": "Zakres dat"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Wyniki: ",
-      "results": "– pokaż wszystkie"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "przybliżone"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Brak otwartych kart",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Aby rozpocząć, otwórz stronę z paska bocznego lub utwórz nową kartę",
@@ -1255,5 +1226,85 @@
     "railLabel": "Sekcje",
     "search": "Szukaj lub przejdź do…",
     "vaultMenu": "{name}. Otwórz listę sejfów"
+  },
+  "searchPalette": {
+    "title": "Szukaj",
+    "placeholder": "Szukaj notatek, zadań, dziennika, skrzynki odbiorczej…",
+    "filterHint": "Filtruj według typu, daty lub tagu",
+    "tagHint": "Wpisz nazwę tagu",
+    "removeFilter": "Usuń {name}",
+    "recent": "Ostatnie",
+    "clear": "Wyczyść",
+    "fromQuery": "z zapytania „{query}”",
+    "searchIn": "Szukaj w",
+    "tag": "Tag",
+    "tags": "Tagi",
+    "items": "Elementy",
+    "chooseTag": "Wybierz tag…",
+    "noTags": "Brak pasujących tagów",
+    "filterType": "Typ",
+    "filterModified": "Zmodyfikowano",
+    "matches": "Dopasowania",
+    "showMore": "Pokaż jeszcze {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notatki",
+      "journal": "Dziennik",
+      "task": "Zadania",
+      "inbox": "Skrzynka odbiorcza"
+    },
+    "dates": {
+      "today": "Dzisiaj",
+      "thisWeek": "Ten tydzień",
+      "thisMonth": "Ten miesiąc",
+      "custom": "Własny zakres"
+    },
+    "status": {
+      "items": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}} · na tym urządzeniu",
+      "results": "{count, plural, one {# wynik} few {# wyniki} many {# wyników} other {# wyniku}} · {ms} ms",
+      "indexing": "Indeksowanie {done} / {total}",
+      "indexingUnknown": "Indeksowanie…",
+      "filters": "Filtry się łączą · wybierz tyle, ile potrzebujesz",
+      "tags": "Tagi używane w Twoim sejfie"
+    },
+    "empty": {
+      "unscoped": "Nic nie pasuje do „{query}”",
+      "scoped": "Nic w {scope} nie pasuje do „{query}”",
+      "indexing": "Indeksowanie trwa — starsze elementy mogą jeszcze nie być wyszukiwalne.",
+      "tryFilters": "Spróbuj mniej słów lub usuń filtr.",
+      "tryWords": "Spróbuj mniej słów lub innych słów."
+    },
+    "actions": {
+      "filter": "Filtruj",
+      "back": "Wstecz",
+      "nextSection": "Następna sekcja",
+      "open": "Otwórz",
+      "openNote": "Otwórz notatkę",
+      "openFile": "Otwórz plik",
+      "openJournal": "Otwórz dziennik",
+      "openTask": "Otwórz zadanie",
+      "openInInbox": "Otwórz w skrzynce odbiorczej",
+      "addFilter": "Dodaj filtr",
+      "removeFilter": "Usuń filtr",
+      "chooseTag": "Wybierz tag",
+      "addTag": "Dodaj tag",
+      "showAll": "Pokaż wszystko",
+      "searchEverywhere": "Szukaj wszędzie",
+      "clearFilters": "Wyczyść filtry"
+    },
+    "preview": {
+      "edited": "Edytowano {when}",
+      "captured": "Zapisano {when}",
+      "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",
+      "filed": "Zarchiwizowano",
+      "notFiled": "Niezarchiwizowane",
+      "status": "Status",
+      "noStatus": "Brak statusu",
+      "due": "Termin",
+      "priority": "Priorytet",
+      "repeats": "Powtarza się"
+    }
   }
 }

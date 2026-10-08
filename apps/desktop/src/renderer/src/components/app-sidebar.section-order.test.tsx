@@ -263,3 +263,44 @@ describe('AppSidebar section order', () => {
     expect(screen.getAllByLabelText('reorderSection')).toHaveLength(5)
   })
 })
+
+// ⌘/Ctrl+number opens a section, but not from inside a dialog: the search
+// palette binds ⌘1–4 to its own type scopes, and the sidebar's capture-phase
+// listener used to navigate behind it and swallow the key.
+describe('AppSidebar section shortcuts', () => {
+  const pressCommand = (key: string): void => {
+    fireEvent.keyDown(document.activeElement ?? window, {
+      key,
+      metaKey: navigator.platform.includes('Mac'),
+      ctrlKey: !navigator.platform.includes('Mac'),
+      bubbles: true
+    })
+  }
+
+  beforeEach(() => mocks.openSidebarItem.mockClear())
+
+  it('opens the numbered section from the page', () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
+
+    pressCommand('1')
+
+    expect(mocks.openSidebarItem).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the key to a dialog that has focus', () => {
+    render(
+      <>
+        <AppSidebar currentPage="inbox" viewCounts={{}} />
+        <div role="dialog">
+          <input aria-label="palette" />
+        </div>
+      </>,
+      { wrapper: DndWrapper }
+    )
+    screen.getByLabelText('palette').focus()
+
+    pressCommand('1')
+
+    expect(mocks.openSidebarItem).not.toHaveBeenCalled()
+  })
+})

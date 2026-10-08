@@ -1,84 +1,101 @@
 import { Command } from 'cmdk'
-import { FileText, Trash2 } from '@/lib/icons'
+import { Hash } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
-import type { SearchReason } from '@memry/contracts/search-api'
+import type { ContentType, SearchReason } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
+import { SearchGroupHeading, SearchKbd, SearchRow } from './search-row'
+import { CONTENT_TYPES, MOD_KEY, TYPE_ICONS, TYPE_LABEL_KEYS, TYPE_SHORTCUTS } from './search-types'
 
 interface RecentReasonsProps {
   reasons: SearchReason[]
   onSelect: (reason: SearchReason) => void
   onClear: () => void
+  onScope: (type: ContentType) => void
+  onPickTag: () => void
 }
 
-const TYPE_ICONS = {
-  note: FileText,
-  journal: PageJournalIcon,
-  task: PageTasksIcon,
-  inbox: PageInboxIcon
-} as const
+export const reasonValue = (reason: SearchReason): string => `reason:${reason.id}`
+export const scopeValue = (type: ContentType): string => `scope:${type}`
+export const PICK_TAG_VALUE = 'scope:tag'
 
+/** The palette before the first keystroke: the recent trail, then where to search. */
 export function RecentReasons({
   reasons,
   onSelect,
-  onClear
+  onClear,
+  onScope,
+  onPickTag
 }: RecentReasonsProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('common')
-  if (reasons.length === 0) {
-    return (
-      <div className="py-8 text-center text-sm text-text-tertiary">
-        {tPhaseF('phaseF.componentsSearchRecentReasons.searchAndClickItemsToBuildYourTrail')}
-      </div>
-    )
-  }
-
+  const { t } = useT('common')
   return (
-    <div className="py-1">
-      <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-          {tPhaseF('phaseF.componentsSearchRecentReasons.reasons')}
-        </span>
-        <button
-          type="button"
-          onClick={onClear}
-          className="flex items-center gap-1 text-xs text-text-tertiary hover:text-foreground transition-colors"
+    <>
+      {reasons.length > 0 && (
+        <Command.Group
+          heading={
+            <SearchGroupHeading
+              label={t('searchPalette.recent')}
+              trailing={
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={onClear}
+                  className="rounded-sm text-[11px] text-text-tertiary hover:text-foreground"
+                >
+                  {t('searchPalette.clear')}
+                </button>
+              }
+            />
+          }
         >
-          <Trash2 className="size-3" />
-
-          {tPhaseF('phaseF.componentsSearchRecentReasons.clear')}
-        </button>
-      </div>
-      {/* cmdk items, not buttons: the trail has to answer to the arrow keys and
-          Enter the same way search results do. */}
-      <Command.Group>
-        {reasons.map((reason) => {
-          const Icon = TYPE_ICONS[reason.itemType] ?? FileText
+          {reasons.map((reason) => {
+            const Icon = TYPE_ICONS[reason.itemType] ?? TYPE_ICONS.note
+            return (
+              <SearchRow
+                key={reason.id}
+                value={reasonValue(reason)}
+                onSelect={() => onSelect(reason)}
+                icon={
+                  reason.itemIcon ? (
+                    <NoteIconDisplay
+                      value={reason.itemIcon}
+                      className="flex size-3.5 items-center justify-center text-sm leading-none"
+                    />
+                  ) : (
+                    <Icon />
+                  )
+                }
+                trailing={t('searchPalette.fromQuery', { query: reason.searchQuery })}
+              >
+                {reason.itemTitle}
+              </SearchRow>
+            )
+          })}
+        </Command.Group>
+      )}
+      <Command.Group heading={<SearchGroupHeading label={t('searchPalette.searchIn')} />}>
+        {CONTENT_TYPES.map((type) => {
+          const Icon = TYPE_ICONS[type]
           return (
-            <Command.Item
-              key={reason.id}
-              value={`reason-${reason.id}`}
-              onSelect={() => onSelect(reason)}
-              className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-start
-                cursor-pointer data-[selected=true]:bg-muted transition-colors duration-75"
+            <SearchRow
+              key={type}
+              value={scopeValue(type)}
+              onSelect={() => onScope(type)}
+              icon={<Icon />}
+              trailing={<SearchKbd>{`${MOD_KEY}${TYPE_SHORTCUTS[type]}`}</SearchKbd>}
             >
-              {reason.itemIcon ? (
-                <NoteIconDisplay
-                  value={reason.itemIcon}
-                  className="size-3.5 shrink-0 text-sm leading-none flex items-center justify-center"
-                />
-              ) : (
-                <Icon className="size-3.5 text-text-tertiary shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <span className="text-sm text-foreground truncate block">{reason.itemTitle}</span>
-                <span className="text-xs text-text-tertiary truncate block">
-                  {reason.searchQuery}
-                </span>
-              </div>
-            </Command.Item>
+              {t(TYPE_LABEL_KEYS[type])}
+            </SearchRow>
           )
         })}
+        <SearchRow
+          value={PICK_TAG_VALUE}
+          onSelect={onPickTag}
+          icon={<Hash />}
+          trailing={<SearchKbd>{'#'}</SearchKbd>}
+        >
+          {t('searchPalette.tag')}
+        </SearchRow>
       </Command.Group>
-    </div>
+    </>
   )
 }

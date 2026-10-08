@@ -196,11 +196,10 @@ Tasks live alongside notes. Two views — **list** and **kanban**. Group tasks u
 
 ## Search
 
-<kbd>⌘</kbd>+<kbd>F</kbd> opens the command palette. Type to search across notes, journal entries, tasks, and inbox items at once.
+<kbd>⌘</kbd>+<kbd>K</kbd> opens search. Type to search across notes, journal entries, tasks, and inbox items at once. The selected result shows a preview beside the list.
 
-- <kbd>1</kbd> through <kbd>4</kbd> scope to a single source
-- `#tagname` filters by tag
-- If AI embeddings are enabled, results rank by meaning too
+- <kbd>⌘</kbd>+<kbd>1</kbd> through <kbd>⌘</kbd>+<kbd>4</kbd> limit results to one type
+- <kbd>/</kbd> opens the filters, `#` picks a tag
 
 ## Settings
 
@@ -218,7 +217,7 @@ memrynote is keyboard-friendly. The full shortcut list is at [Keyboard Shortcuts
 | Shortcut                   | Action                                             |
 | -------------------------- | -------------------------------------------------- |
 | <kbd>⌘</kbd>+<kbd>N</kbd>  | New note                                           |
-| <kbd>⌘</kbd>+<kbd>F</kbd>  | Search / command palette                           |
+| <kbd>⌘</kbd>+<kbd>K</kbd>  | Search                                             |
 | <kbd>⌘</kbd>+<kbd>,</kbd>  | Settings                                           |
 | <kbd>⌘</kbd>+<kbd>B</kbd>  | Toggle sidebar                                     |
 | <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right                                        |

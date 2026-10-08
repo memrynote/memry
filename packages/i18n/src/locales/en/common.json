@@ -707,35 +707,6 @@
       "notifications": "Notifications",
       "logOut": "Log out"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Search",
-      "searchNotesTasksJournalInbox": "Search notes, tasks, journal, inbox...",
-      "noResultsFor": "No results for “",
-      "result": "result",
-      "noResultsForQuery": "No results for “{query}”",
-      "resultCount": "{count, plural, one {# result} other {# results}}",
-      "indexBuilding": "Building search index {done}/{total} — results may be incomplete",
-      "indexBuildingUnknown": "Building search index — results may be incomplete"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Search and click items to build your trail",
-      "reasons": "Reasons",
-      "clear": "Clear"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Clear",
-      "tags": "Tags",
-      "filterByTag": "Filter by tag...",
-      "dateRange": "Date Range"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "View all ",
-      "results": "results"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "fuzzy"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "No tabs open",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open a page from the sidebar or create a new tab to get started",
@@ -1277,5 +1248,85 @@
     "railLabel": "Sections",
     "search": "Search or jump to…",
     "vaultMenu": "{name}. Open the vault list"
+  },
+  "searchPalette": {
+    "title": "Search",
+    "placeholder": "Search notes, tasks, journal, inbox…",
+    "filterHint": "Filter by type, date or tag",
+    "tagHint": "Type a tag name",
+    "removeFilter": "Remove {name}",
+    "recent": "Recent",
+    "clear": "Clear",
+    "fromQuery": "from “{query}”",
+    "searchIn": "Search in",
+    "tag": "Tag",
+    "tags": "Tags",
+    "items": "Items",
+    "chooseTag": "Choose a tag…",
+    "noTags": "No tags match",
+    "filterType": "Type",
+    "filterModified": "Modified",
+    "matches": "Matches",
+    "showMore": "Show {count} more",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notes",
+      "journal": "Journal",
+      "task": "Tasks",
+      "inbox": "Inbox"
+    },
+    "dates": {
+      "today": "Today",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "custom": "Custom range"
+    },
+    "status": {
+      "items": "{count, plural, one {# item} other {# items}} · on this device",
+      "results": "{count, plural, one {# result} other {# results}} · {ms} ms",
+      "indexing": "Indexing {done} / {total}",
+      "indexingUnknown": "Indexing…",
+      "filters": "Filters stack · pick as many as you need",
+      "tags": "Tags you’ve used across your vault"
+    },
+    "empty": {
+      "unscoped": "Nothing matches “{query}”",
+      "scoped": "Nothing in {scope} matches “{query}”",
+      "indexing": "Still indexing — older items may not be searchable yet.",
+      "tryFilters": "Try fewer words or remove a filter.",
+      "tryWords": "Try fewer or different words."
+    },
+    "actions": {
+      "filter": "Filter",
+      "back": "Back",
+      "nextSection": "Next section",
+      "open": "Open",
+      "openNote": "Open note",
+      "openFile": "Open file",
+      "openJournal": "Open journal",
+      "openTask": "Open task",
+      "openInInbox": "Open in Inbox",
+      "addFilter": "Add filter",
+      "removeFilter": "Remove filter",
+      "chooseTag": "Choose tag",
+      "addTag": "Add tag",
+      "showAll": "Show all",
+      "searchEverywhere": "Search everywhere",
+      "clearFilters": "Clear filters"
+    },
+    "preview": {
+      "edited": "Edited {when}",
+      "captured": "Captured {when}",
+      "words": "{count, plural, one {# word} other {# words}}",
+      "filed": "Filed",
+      "notFiled": "Not filed",
+      "status": "Status",
+      "noStatus": "No status",
+      "due": "Due",
+      "priority": "Priority",
+      "repeats": "Repeats"
+    }
   }
 }

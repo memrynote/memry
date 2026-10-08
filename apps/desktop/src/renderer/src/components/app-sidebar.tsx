@@ -336,6 +336,8 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // allowInInput + capture so it also fires while the note editor, inbox
   // composer, or tasks quick-add input is focused (those pages auto-focus an
   // input on open and some stop keydown propagation).
+  // Not while focus is inside a dialog: the page behind it is not what the
+  // user is working in, and the search palette binds ⌘1–4 to its own scopes.
   const sectionShortcuts = useMemo<KeyboardShortcut[]>(
     () =>
       visibleNav.slice(0, 9).map((item, i) => ({
@@ -343,7 +345,8 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         modifiers: { meta: true },
         action: () => navigateToPage(item.page),
         description: `Go to ${item.title}`,
-        allowInInput: true
+        allowInInput: true,
+        when: () => !document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')
       })),
     [visibleNav, navigateToPage]
   )

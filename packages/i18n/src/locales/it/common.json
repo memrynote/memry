@@ -685,35 +685,6 @@
       "notifications": "Notifiche",
       "logOut": "Esci"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Cerca",
-      "searchNotesTasksJournalInbox": "Cerca note, attività, diario, posta in arrivo…",
-      "noResultsFor": "Nessun risultato per “",
-      "result": "risultato",
-      "noResultsForQuery": "Nessun risultato per “{query}”",
-      "resultCount": "{count, plural, one {# risultato} many {# risultati} other {# risultati}}",
-      "indexBuilding": "Creazione dell'indice di ricerca {done}/{total}: i risultati potrebbero essere incompleti",
-      "indexBuildingUnknown": "Creazione dell'indice di ricerca: i risultati potrebbero essere incompleti"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Cerca e fai clic sugli elementi per creare il tuo percorso",
-      "reasons": "Ragioni",
-      "clear": "Cancella"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Azzera",
-      "tags": "Tag",
-      "filterByTag": "Filtra per tag…",
-      "dateRange": "Intervallo di date"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Mostra tutti i ",
-      "results": "risultati"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "approssimativo"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nessuna scheda aperta",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Apri una pagina dalla barra laterale o crea una nuova scheda per iniziare",
@@ -1255,5 +1226,85 @@
     "railLabel": "Sezioni",
     "search": "Cerca o vai a…",
     "vaultMenu": "{name}. Apri l'elenco dei vault"
+  },
+  "searchPalette": {
+    "title": "Cerca",
+    "placeholder": "Cerca note, attività, diario, posta in arrivo…",
+    "filterHint": "Filtra per tipo, data o tag",
+    "tagHint": "Digita il nome di un tag",
+    "removeFilter": "Rimuovi {name}",
+    "recent": "Recenti",
+    "clear": "Cancella",
+    "fromQuery": "da “{query}”",
+    "searchIn": "Cerca in",
+    "tag": "Tag",
+    "tags": "Tag",
+    "items": "Elementi",
+    "chooseTag": "Scegli un tag…",
+    "noTags": "Nessun tag corrisponde",
+    "filterType": "Tipo",
+    "filterModified": "Modificato",
+    "matches": "Corrispondenze",
+    "showMore": "Mostra altri {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Note",
+      "journal": "Diario",
+      "task": "Attività",
+      "inbox": "Posta in arrivo"
+    },
+    "dates": {
+      "today": "Oggi",
+      "thisWeek": "Questa settimana",
+      "thisMonth": "Questo mese",
+      "custom": "Intervallo personalizzato"
+    },
+    "status": {
+      "items": "{count, plural, one {# elemento} many {# elementi} other {# elementi}} · su questo dispositivo",
+      "results": "{count, plural, one {# risultato} many {# risultati} other {# risultati}} · {ms} ms",
+      "indexing": "Indicizzazione {done} / {total}",
+      "indexingUnknown": "Indicizzazione…",
+      "filters": "I filtri si combinano · scegline quanti ne servono",
+      "tags": "Tag usati nel tuo vault"
+    },
+    "empty": {
+      "unscoped": "Nessun risultato per “{query}”",
+      "scoped": "Nessun risultato in {scope} per “{query}”",
+      "indexing": "Indicizzazione in corso: gli elementi più vecchi potrebbero non essere ancora cercabili.",
+      "tryFilters": "Prova con meno parole o rimuovi un filtro.",
+      "tryWords": "Prova con meno parole o con parole diverse."
+    },
+    "actions": {
+      "filter": "Filtra",
+      "back": "Indietro",
+      "nextSection": "Sezione successiva",
+      "open": "Apri",
+      "openNote": "Apri nota",
+      "openFile": "Apri file",
+      "openJournal": "Apri diario",
+      "openTask": "Apri attività",
+      "openInInbox": "Apri in Posta in arrivo",
+      "addFilter": "Aggiungi filtro",
+      "removeFilter": "Rimuovi filtro",
+      "chooseTag": "Scegli tag",
+      "addTag": "Aggiungi tag",
+      "showAll": "Mostra tutto",
+      "searchEverywhere": "Cerca ovunque",
+      "clearFilters": "Cancella filtri"
+    },
+    "preview": {
+      "edited": "Modificato {when}",
+      "captured": "Acquisito {when}",
+      "words": "{count, plural, one {# parola} many {# parole} other {# parole}}",
+      "filed": "Archiviato",
+      "notFiled": "Non archiviato",
+      "status": "Stato",
+      "noStatus": "Nessuno stato",
+      "due": "Scadenza",
+      "priority": "Priorità",
+      "repeats": "Ripetizione"
+    }
   }
 }

@@ -685,35 +685,6 @@
       "notifications": "Ilmoitukset",
       "logOut": "Kirjaudu ulos"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Hae",
-      "searchNotesTasksJournalInbox": "Hae muistiinpanoista, tehtävistä, päiväkirjasta, Saapuneista…",
-      "noResultsFor": "Ei tuloksia haulle ”",
-      "result": "tulos",
-      "noResultsForQuery": "Ei tuloksia haulle ”{query}”",
-      "resultCount": "{count, plural, one {# tulos} other {# tulosta}}",
-      "indexBuilding": "Rakennetaan hakuindeksiä {done}/{total} – tulokset voivat olla puutteellisia",
-      "indexBuildingUnknown": "Rakennetaan hakuindeksiä – tulokset voivat olla puutteellisia"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Hae ja napsauta kohteita rakentaaksesi polkusi",
-      "reasons": "Syyt",
-      "clear": "Tyhjennä"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Tyhjennä",
-      "tags": "Tunnisteet",
-      "filterByTag": "Suodata tunnisteen mukaan…",
-      "dateRange": "Ajanjakso"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Näytä kaikki ",
-      "results": "tulosta"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "likimääräinen"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Ei välilehtiä auki",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Aloita avaamalla sivu sivupalkista tai luomalla uusi välilehti",
@@ -1255,5 +1226,85 @@
     "railLabel": "Osiot",
     "search": "Hae tai siirry…",
     "vaultMenu": "{name}. Avaa holviluettelo"
+  },
+  "searchPalette": {
+    "title": "Haku",
+    "placeholder": "Hae muistiinpanoja, tehtäviä, päiväkirjaa, saapuneita…",
+    "filterHint": "Suodata tyypin, päivämäärän tai tunnisteen mukaan",
+    "tagHint": "Kirjoita tunnisteen nimi",
+    "removeFilter": "Poista {name}",
+    "recent": "Viimeisimmät",
+    "clear": "Tyhjennä",
+    "fromQuery": "haulla ”{query}”",
+    "searchIn": "Hae kohteesta",
+    "tag": "Tunniste",
+    "tags": "Tunnisteet",
+    "items": "Kohteet",
+    "chooseTag": "Valitse tunniste…",
+    "noTags": "Ei vastaavia tunnisteita",
+    "filterType": "Tyyppi",
+    "filterModified": "Muokattu",
+    "matches": "Osumat",
+    "showMore": "Näytä {count} lisää",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Muistiinpanot",
+      "journal": "Päiväkirja",
+      "task": "Tehtävät",
+      "inbox": "Saapuneet"
+    },
+    "dates": {
+      "today": "Tänään",
+      "thisWeek": "Tällä viikolla",
+      "thisMonth": "Tässä kuussa",
+      "custom": "Mukautettu aikaväli"
+    },
+    "status": {
+      "items": "{count, plural, one {# kohde} other {# kohdetta}} · tällä laitteella",
+      "results": "{count, plural, one {# tulos} other {# tulosta}} · {ms} ms",
+      "indexing": "Indeksoidaan {done} / {total}",
+      "indexingUnknown": "Indeksoidaan…",
+      "filters": "Suodattimia voi yhdistää · valitse niin monta kuin tarvitset",
+      "tags": "Holvissasi käytetyt tunnisteet"
+    },
+    "empty": {
+      "unscoped": "Mikään ei vastaa hakua ”{query}”",
+      "scoped": "Mikään kohteessa {scope} ei vastaa hakua ”{query}”",
+      "indexing": "Indeksointi on kesken – vanhempia kohteita ei ehkä vielä löydy.",
+      "tryFilters": "Kokeile vähemmän sanoja tai poista suodatin.",
+      "tryWords": "Kokeile vähemmän tai eri sanoja."
+    },
+    "actions": {
+      "filter": "Suodata",
+      "back": "Takaisin",
+      "nextSection": "Seuraava osio",
+      "open": "Avaa",
+      "openNote": "Avaa muistiinpano",
+      "openFile": "Avaa tiedosto",
+      "openJournal": "Avaa päiväkirja",
+      "openTask": "Avaa tehtävä",
+      "openInInbox": "Avaa saapuneissa",
+      "addFilter": "Lisää suodatin",
+      "removeFilter": "Poista suodatin",
+      "chooseTag": "Valitse tunniste",
+      "addTag": "Lisää tunniste",
+      "showAll": "Näytä kaikki",
+      "searchEverywhere": "Hae kaikkialta",
+      "clearFilters": "Tyhjennä suodattimet"
+    },
+    "preview": {
+      "edited": "Muokattu {when}",
+      "captured": "Tallennettu {when}",
+      "words": "{count, plural, one {# sana} other {# sanaa}}",
+      "filed": "Arkistoitu",
+      "notFiled": "Ei arkistoitu",
+      "status": "Tila",
+      "noStatus": "Ei tilaa",
+      "due": "Erääntyy",
+      "priority": "Prioriteetti",
+      "repeats": "Toistuu"
+    }
   }
 }

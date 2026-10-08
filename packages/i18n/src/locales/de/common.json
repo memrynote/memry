@@ -685,35 +685,6 @@
       "notifications": "Benachrichtigungen",
       "logOut": "Abmelden"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Suchen",
-      "searchNotesTasksJournalInbox": "Notizen, Aufgaben, Journal, Eingang durchsuchen…",
-      "noResultsFor": "Keine Ergebnisse für „",
-      "result": "Ergebnis",
-      "noResultsForQuery": "Keine Ergebnisse für „{query}“",
-      "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}",
-      "indexBuilding": "Suchindex wird erstellt {done}/{total} – Ergebnisse sind möglicherweise unvollständig",
-      "indexBuildingUnknown": "Suchindex wird erstellt – Ergebnisse sind möglicherweise unvollständig"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Suche nach Elementen und klicke sie an, um deine Spur aufzubauen",
-      "reasons": "Gründe",
-      "clear": "Leeren"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Zurücksetzen",
-      "tags": "Tags",
-      "filterByTag": "Nach Tag filtern…",
-      "dateRange": "Zeitraum"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Alle ",
-      "results": "Ergebnisse anzeigen"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "unscharf"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Keine Tabs geöffnet",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öffne eine Seite über die Seitenleiste oder erstelle einen neuen Tab, um loszulegen",
@@ -1255,5 +1226,85 @@
     "railLabel": "Bereiche",
     "search": "Suchen oder springen zu…",
     "vaultMenu": "{name}. Tresorliste öffnen"
+  },
+  "searchPalette": {
+    "title": "Suche",
+    "placeholder": "Notizen, Aufgaben, Journal, Eingang durchsuchen…",
+    "filterHint": "Nach Typ, Datum oder Tag filtern",
+    "tagHint": "Tag-Namen eingeben",
+    "removeFilter": "{name} entfernen",
+    "recent": "Zuletzt",
+    "clear": "Leeren",
+    "fromQuery": "über „{query}“",
+    "searchIn": "Suchen in",
+    "tag": "Tag",
+    "tags": "Tags",
+    "items": "Einträge",
+    "chooseTag": "Tag auswählen…",
+    "noTags": "Keine passenden Tags",
+    "filterType": "Typ",
+    "filterModified": "Geändert",
+    "matches": "Treffer",
+    "showMore": "{count} weitere anzeigen",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notizen",
+      "journal": "Journal",
+      "task": "Aufgaben",
+      "inbox": "Eingang"
+    },
+    "dates": {
+      "today": "Heute",
+      "thisWeek": "Diese Woche",
+      "thisMonth": "Dieser Monat",
+      "custom": "Eigener Zeitraum"
+    },
+    "status": {
+      "items": "{count, plural, one {# Eintrag} other {# Einträge}} · auf diesem Gerät",
+      "results": "{count, plural, one {# Ergebnis} other {# Ergebnisse}} · {ms} ms",
+      "indexing": "Indexierung {done} / {total}",
+      "indexingUnknown": "Indexierung…",
+      "filters": "Filter lassen sich kombinieren · wähle so viele du brauchst",
+      "tags": "Tags, die du in deinem Vault verwendest"
+    },
+    "empty": {
+      "unscoped": "Nichts passt zu „{query}“",
+      "scoped": "Nichts in {scope} passt zu „{query}“",
+      "indexing": "Indexierung läuft noch – ältere Einträge sind eventuell noch nicht durchsuchbar.",
+      "tryFilters": "Versuche weniger Wörter oder entferne einen Filter.",
+      "tryWords": "Versuche weniger oder andere Wörter."
+    },
+    "actions": {
+      "filter": "Filtern",
+      "back": "Zurück",
+      "nextSection": "Nächster Abschnitt",
+      "open": "Öffnen",
+      "openNote": "Notiz öffnen",
+      "openFile": "Datei öffnen",
+      "openJournal": "Journal öffnen",
+      "openTask": "Aufgabe öffnen",
+      "openInInbox": "Im Eingang öffnen",
+      "addFilter": "Filter hinzufügen",
+      "removeFilter": "Filter entfernen",
+      "chooseTag": "Tag auswählen",
+      "addTag": "Tag hinzufügen",
+      "showAll": "Alle anzeigen",
+      "searchEverywhere": "Überall suchen",
+      "clearFilters": "Filter zurücksetzen"
+    },
+    "preview": {
+      "edited": "Bearbeitet {when}",
+      "captured": "Erfasst {when}",
+      "words": "{count, plural, one {# Wort} other {# Wörter}}",
+      "filed": "Abgelegt",
+      "notFiled": "Nicht abgelegt",
+      "status": "Status",
+      "noStatus": "Kein Status",
+      "due": "Fällig",
+      "priority": "Priorität",
+      "repeats": "Wiederholung"
+    }
   }
 }

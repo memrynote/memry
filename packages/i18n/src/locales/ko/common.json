@@ -685,35 +685,6 @@
       "notifications": "알림",
       "logOut": "로그아웃"
     },
-    "componentsSearchCommandPalette": {
-      "search": "검색",
-      "searchNotesTasksJournalInbox": "노트, 작업, 저널, 수신함 검색…",
-      "noResultsFor": "검색 결과 없음: “",
-      "result": "결과",
-      "noResultsForQuery": "“{query}”에 대한 검색 결과가 없습니다",
-      "resultCount": "{count, plural, other {결과 #개}}",
-      "indexBuilding": "검색 인덱스 구축 중 {done}/{total} — 결과가 불완전할 수 있습니다",
-      "indexBuildingUnknown": "검색 인덱스 구축 중 — 결과가 불완전할 수 있습니다"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "항목을 검색하고 클릭하면 탐색 경로가 만들어집니다",
-      "reasons": "이유",
-      "clear": "지우기"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "지우기",
-      "tags": "태그",
-      "filterByTag": "태그로 필터링…",
-      "dateRange": "기간"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "결과 ",
-      "results": "개 모두 보기"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "유사 일치"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "열린 탭이 없습니다.",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "사이드바에서 페이지를 열거나 새 탭을 만들어 시작하세요.",
@@ -1255,5 +1226,85 @@
     "railLabel": "섹션",
     "search": "검색 또는 이동…",
     "vaultMenu": "{name}. 볼트 목록 열기"
+  },
+  "searchPalette": {
+    "title": "검색",
+    "placeholder": "노트, 작업, 저널, 수신함 검색…",
+    "filterHint": "유형, 날짜 또는 태그로 필터",
+    "tagHint": "태그 이름 입력",
+    "removeFilter": "{name} 제거",
+    "recent": "최근",
+    "clear": "지우기",
+    "fromQuery": "“{query}” 검색에서",
+    "searchIn": "검색 범위",
+    "tag": "태그",
+    "tags": "태그",
+    "items": "항목",
+    "chooseTag": "태그 선택…",
+    "noTags": "일치하는 태그 없음",
+    "filterType": "유형",
+    "filterModified": "수정됨",
+    "matches": "일치 항목",
+    "showMore": "{count}개 더 보기",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "노트",
+      "journal": "저널",
+      "task": "작업",
+      "inbox": "수신함"
+    },
+    "dates": {
+      "today": "오늘",
+      "thisWeek": "이번 주",
+      "thisMonth": "이번 달",
+      "custom": "사용자 지정 기간"
+    },
+    "status": {
+      "items": "{count, plural, other {#개 항목}} · 이 기기",
+      "results": "{count, plural, other {#개 결과}} · {ms} ms",
+      "indexing": "인덱싱 중 {done} / {total}",
+      "indexingUnknown": "인덱싱 중…",
+      "filters": "필터는 함께 적용됩니다 · 필요한 만큼 선택하세요",
+      "tags": "보관함에서 사용하는 태그"
+    },
+    "empty": {
+      "unscoped": "“{query}”와 일치하는 항목 없음",
+      "scoped": "{scope}에서 “{query}”와 일치하는 항목 없음",
+      "indexing": "아직 인덱싱 중입니다. 오래된 항목은 아직 검색되지 않을 수 있습니다.",
+      "tryFilters": "단어 수를 줄이거나 필터를 제거해 보세요.",
+      "tryWords": "단어 수를 줄이거나 다른 단어로 검색해 보세요."
+    },
+    "actions": {
+      "filter": "필터",
+      "back": "뒤로",
+      "nextSection": "다음 섹션",
+      "open": "열기",
+      "openNote": "노트 열기",
+      "openFile": "파일 열기",
+      "openJournal": "저널 열기",
+      "openTask": "작업 열기",
+      "openInInbox": "수신함에서 열기",
+      "addFilter": "필터 추가",
+      "removeFilter": "필터 제거",
+      "chooseTag": "태그 선택",
+      "addTag": "태그 추가",
+      "showAll": "모두 보기",
+      "searchEverywhere": "전체에서 검색",
+      "clearFilters": "필터 지우기"
+    },
+    "preview": {
+      "edited": "{when} 편집됨",
+      "captured": "{when} 캡처됨",
+      "words": "{count, plural, other {#단어}}",
+      "filed": "정리됨",
+      "notFiled": "정리 안 됨",
+      "status": "상태",
+      "noStatus": "상태 없음",
+      "due": "마감",
+      "priority": "우선순위",
+      "repeats": "반복"
+    }
   }
 }

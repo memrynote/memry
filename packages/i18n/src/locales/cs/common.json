@@ -685,35 +685,6 @@
       "notifications": "Oznámení",
       "logOut": "Odhlásit se"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Hledat",
-      "searchNotesTasksJournalInbox": "Hledat poznámky, úkoly, deník, Doručené…",
-      "noResultsFor": "Žádné výsledky pro „",
-      "result": "výsledek",
-      "noResultsForQuery": "Žádné výsledky pro „{query}“",
-      "resultCount": "{count, plural, one {# výsledek} few {# výsledky} many {# výsledku} other {# výsledků}}",
-      "indexBuilding": "Vytváření indexu vyhledávání {done}/{total} – výsledky nemusí být úplné",
-      "indexBuildingUnknown": "Vytváření indexu vyhledávání – výsledky nemusí být úplné"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Hledejte a otevírejte položky, postupně tu vznikne vaše historie",
-      "reasons": "Důvody",
-      "clear": "Vymazat"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Vymazat",
-      "tags": "Štítky",
-      "filterByTag": "Filtrovat podle štítku…",
-      "dateRange": "Časové období"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Zobrazit všech ",
-      "results": "výsledků"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "přibližně"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nejsou otevřené žádné karty",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Chcete-li začít, otevřete stránku z bočního panelu nebo vytvořte novou kartu",
@@ -1255,5 +1226,85 @@
     "railLabel": "Sekce",
     "search": "Hledat nebo přejít na…",
     "vaultMenu": "{name}. Otevřít seznam trezorů"
+  },
+  "searchPalette": {
+    "title": "Hledat",
+    "placeholder": "Hledat poznámky, úkoly, deník, Doručené…",
+    "filterHint": "Filtrovat podle typu, data nebo štítku",
+    "tagHint": "Zadejte název štítku",
+    "removeFilter": "Odebrat {name}",
+    "recent": "Nedávné",
+    "clear": "Vymazat",
+    "fromQuery": "z dotazu „{query}“",
+    "searchIn": "Hledat v",
+    "tag": "Štítek",
+    "tags": "Štítky",
+    "items": "Položky",
+    "chooseTag": "Vyberte štítek…",
+    "noTags": "Žádné odpovídající štítky",
+    "filterType": "Typ",
+    "filterModified": "Změněno",
+    "matches": "Shody",
+    "showMore": "Zobrazit dalších {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Poznámky",
+      "journal": "Deník",
+      "task": "Úkoly",
+      "inbox": "Doručené"
+    },
+    "dates": {
+      "today": "Dnes",
+      "thisWeek": "Tento týden",
+      "thisMonth": "Tento měsíc",
+      "custom": "Vlastní rozsah"
+    },
+    "status": {
+      "items": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položek}} · v tomto zařízení",
+      "results": "{count, plural, one {# výsledek} few {# výsledky} many {# výsledku} other {# výsledků}} · {ms} ms",
+      "indexing": "Indexování {done} / {total}",
+      "indexingUnknown": "Indexování…",
+      "filters": "Filtry lze kombinovat · vyberte, kolik potřebujete",
+      "tags": "Štítky použité ve vašem trezoru"
+    },
+    "empty": {
+      "unscoped": "Nic neodpovídá „{query}“",
+      "scoped": "V sekci {scope} nic neodpovídá „{query}“",
+      "indexing": "Indexování stále probíhá — starší položky ještě nemusí být k nalezení.",
+      "tryFilters": "Zkuste méně slov nebo odeberte filtr.",
+      "tryWords": "Zkuste méně slov nebo jiná slova."
+    },
+    "actions": {
+      "filter": "Filtrovat",
+      "back": "Zpět",
+      "nextSection": "Další sekce",
+      "open": "Otevřít",
+      "openNote": "Otevřít poznámku",
+      "openFile": "Otevřít soubor",
+      "openJournal": "Otevřít deník",
+      "openTask": "Otevřít úkol",
+      "openInInbox": "Otevřít v Doručených",
+      "addFilter": "Přidat filtr",
+      "removeFilter": "Odebrat filtr",
+      "chooseTag": "Vybrat štítek",
+      "addTag": "Přidat štítek",
+      "showAll": "Zobrazit vše",
+      "searchEverywhere": "Hledat všude",
+      "clearFilters": "Vymazat filtry"
+    },
+    "preview": {
+      "edited": "Upraveno {when}",
+      "captured": "Zachyceno {when}",
+      "words": "{count, plural, one {# slovo} few {# slova} many {# slova} other {# slov}}",
+      "filed": "Zařazeno",
+      "notFiled": "Nezařazeno",
+      "status": "Stav",
+      "noStatus": "Bez stavu",
+      "due": "Termín",
+      "priority": "Priorita",
+      "repeats": "Opakuje se"
+    }
   }
 }

@@ -685,35 +685,6 @@
       "notifications": "Értesítések",
       "logOut": "Kijelentkezés"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Keresés",
-      "searchNotesTasksJournalInbox": "Keresés a jegyzetek, feladatok, a napló és a Beérkezők között…",
-      "noResultsFor": "Nincs találat a következőre: „",
-      "result": "találat",
-      "noResultsForQuery": "Nincs találat a következőre: „{query}”",
-      "resultCount": "{count, plural, one {# találat} other {# találat}}",
-      "indexBuilding": "Keresési index építése: {done}/{total} – az eredmények hiányosak lehetnek",
-      "indexBuildingUnknown": "Keresési index építése – az eredmények hiányosak lehetnek"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Keressen és nyisson meg elemeket, hogy összeálljon az előzménylistája",
-      "reasons": "Okok",
-      "clear": "Törlés"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Törlés",
-      "tags": "Címkék",
-      "filterByTag": "Szűrés címke szerint…",
-      "dateRange": "Dátumtartomány"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Összes megjelenítése: ",
-      "results": "találat"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "közelítő"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nincsenek nyitott lapok",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "A kezdéshez nyisson meg egy oldalt az oldalsávról, vagy hozzon létre egy új lapot",
@@ -1255,5 +1226,85 @@
     "railLabel": "Szakaszok",
     "search": "Keresés vagy ugrás…",
     "vaultMenu": "{name}. Széflista megnyitása"
+  },
+  "searchPalette": {
+    "title": "Keresés",
+    "placeholder": "Keresés a jegyzetek, feladatok, a napló és a Beérkezők között…",
+    "filterHint": "Szűrés típus, dátum vagy címke szerint",
+    "tagHint": "Írj be egy címkenevet",
+    "removeFilter": "{name} eltávolítása",
+    "recent": "Legutóbbiak",
+    "clear": "Törlés",
+    "fromQuery": "erre: „{query}”",
+    "searchIn": "Keresés itt",
+    "tag": "Címke",
+    "tags": "Címkék",
+    "items": "Elemek",
+    "chooseTag": "Válassz címkét…",
+    "noTags": "Nincs egyező címke",
+    "filterType": "Típus",
+    "filterModified": "Módosítva",
+    "matches": "Találatok",
+    "showMore": "Még {count} megjelenítése",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Jegyzetek",
+      "journal": "Napló",
+      "task": "Feladatok",
+      "inbox": "Beérkezők"
+    },
+    "dates": {
+      "today": "Ma",
+      "thisWeek": "Ezen a héten",
+      "thisMonth": "Ebben a hónapban",
+      "custom": "Egyéni időszak"
+    },
+    "status": {
+      "items": "{count, plural, one {# elem} other {# elem}} · ezen az eszközön",
+      "results": "{count, plural, one {# találat} other {# találat}} · {ms} ms",
+      "indexing": "Indexelés {done} / {total}",
+      "indexingUnknown": "Indexelés…",
+      "filters": "A szűrők összeadódnak · válassz, amennyit csak kell",
+      "tags": "A széfedben használt címkék"
+    },
+    "empty": {
+      "unscoped": "Semmi sem egyezik ezzel: „{query}”",
+      "scoped": "A(z) {scope} között semmi sem egyezik ezzel: „{query}”",
+      "indexing": "Az indexelés még tart – a régebbi elemek talán még nem kereshetők.",
+      "tryFilters": "Próbálj kevesebb szót, vagy távolíts el egy szűrőt.",
+      "tryWords": "Próbálj kevesebb vagy más szavakat."
+    },
+    "actions": {
+      "filter": "Szűrés",
+      "back": "Vissza",
+      "nextSection": "Következő szakasz",
+      "open": "Megnyitás",
+      "openNote": "Jegyzet megnyitása",
+      "openFile": "Fájl megnyitása",
+      "openJournal": "Napló megnyitása",
+      "openTask": "Feladat megnyitása",
+      "openInInbox": "Megnyitás a Beérkezőkben",
+      "addFilter": "Szűrő hozzáadása",
+      "removeFilter": "Szűrő eltávolítása",
+      "chooseTag": "Címke kiválasztása",
+      "addTag": "Címke hozzáadása",
+      "showAll": "Összes megjelenítése",
+      "searchEverywhere": "Keresés mindenhol",
+      "clearFilters": "Szűrők törlése"
+    },
+    "preview": {
+      "edited": "Szerkesztve {when}",
+      "captured": "Rögzítve {when}",
+      "words": "{count, plural, one {# szó} other {# szó}}",
+      "filed": "Iktatva",
+      "notFiled": "Nincs iktatva",
+      "status": "Állapot",
+      "noStatus": "Nincs állapot",
+      "due": "Határidő",
+      "priority": "Prioritás",
+      "repeats": "Ismétlődik"
+    }
   }
 }

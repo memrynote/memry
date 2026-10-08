@@ -1,64 +1,76 @@
-# Search & Command Palette
+# Search
 
-Press <kbd>⌘</kbd>+<kbd>F</kbd> for global search and command execution from anywhere.
+Press <kbd>⌘</kbd>+<kbd>K</kbd> to search everything in the vault from anywhere in the app.
 
-<!-- screenshot: command palette open with mixed results -->
+<!-- screenshot: search open with mixed results and the preview -->
 
 ## Opening
 
-| Where                  | Shortcut                                                                               |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| Anywhere in the app    | <kbd>⌘</kbd>+<kbd>F</kbd>                                                              |
-| Global hotkey (if set) | Configured in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts) |
-| Sidebar Search button  | Click                                                                                  |
+| Where                 | Shortcut                                                                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Anywhere in the app   | <kbd>⌘</kbd>+<kbd>K</kbd> (rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts)) or <kbd>⌘</kbd>+<kbd>P</kbd> |
+| Sidebar search button | Click                                                                                                                                           |
 
-<kbd>Esc</kbd> closes the palette.
+<kbd>Esc</kbd> closes search. When a filter menu is open, the first <kbd>Esc</kbd> closes the menu and the second closes search.
 
 ## Scope
 
 Type to search across:
 
-- **Notes** — title and body, and the text inside their HTML blocks (see [Text in HTML blocks](#text-in-html-blocks))
+- **Notes**: title and body, and the text inside their HTML blocks (see [Text in HTML blocks](#text-in-html-blocks))
 - **PDFs and images** filed in the vault, by the text inside them (see [Text in PDFs and images](#text-in-pdfs-and-images))
-- **Journal entries** — title and body
-- **Tasks** — title, description, project name
-- **Inbox items** — title, source URL, captured text
-- **Tags** — direct match by tag name
-- **Settings** — jumps to a settings panel by name
+- **Journal entries**: title and body
+- **Tasks**: title, description, project name
+- **Inbox items**: title, source URL, captured text
 
-Results are grouped by type, with snippet previews and relative dates.
+Results are grouped by type. Each group shows its first five results; the last row of a longer group shows the rest. Every row has one hint on the right: the note's folder, the journal day, the task's due date, or the inbox item's site. A task row also shows its priority.
 
-## Scoped Search
+## Preview
 
-Number prefixes scope to a single source:
+The result you have selected is previewed beside the list. The preview never takes focus, so the arrow keys keep moving through results.
 
-| Prefix       | Scope        |
-| ------------ | ------------ |
-| <kbd>1</kbd> | Notes only   |
-| <kbd>2</kbd> | Journal only |
-| <kbd>3</kbd> | Tasks only   |
-| <kbd>4</kbd> | Inbox only   |
+- **Notes and journal entries** show the folder, when the note was last edited, its word count and tags, the opening lines, and up to three lines where your words appear.
+- **Tasks** show the project, status, due date, priority, repeat rule, and description.
+- **Inbox items** show the source link, when it was captured, whether it has been filed, and the captured text.
 
-Type the number, then your query.
+In a window narrower than 720 px the preview is hidden and the list takes the full width.
 
-## Tag Filter
+## Filters
 
-Type `#tagname` anywhere in your query to filter results to items tagged with that tag. Multiple tags compose with AND.
+Filters narrow what the query matches. Each filter shows as a chip in the search field, and filters stack: Tasks plus This week plus `#work` finds this week's tasks tagged `work`.
 
-Examples:
+- Type <kbd>/</kbd> into an empty search field to open the filter menu. Keep typing to narrow it, for example `/tas` for Tasks, then press <kbd>Enter</kbd>.
+- <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>4</kbd> turn on or off Notes, Journal, Tasks, and Inbox.
+- Type `#` at the start of the field or after a space to pick a tag. The list shows each tag with how many items carry it.
+- The **Modified** filters (Today, This week, This month) narrow results to items changed in that stretch. They read your local calendar, so "Today" is your own midnight-to-midnight day rather than UTC's, and a note edited late in the evening still counts as today's.
+- Click the × on a chip to remove it, or press <kbd>⌫</kbd> in an empty field to remove the last one.
 
-- `#research neural networks` — items tagged `research` containing "neural networks"
-- `#daily 1 review` — notes only, tagged `daily`, containing "review"
-
-## Date Filters
-
-The filter bar's **Today**, **This Week**, and **This Month** presets narrow results to items modified in that stretch. They read your local calendar, so "Today" is your own midnight-to-midnight day rather than UTC's — a note edited late in the evening still counts as today's.
+When a filtered search finds nothing, search offers **Search everywhere** (drops the type filters) and **Clear filters**.
 
 ## Recents
 
-When the palette is empty it shows your recent trail: the items you last opened from search, each with the query that led you to them. It is a way back to a note you found yesterday without remembering how you phrased it.
+When the search field is empty it shows your recent trail: the items you last opened from search, each with the query that led you to them. It is a way back to a note you found yesterday without remembering how you phrased it. Below the trail, **Search in** starts a search limited to one type or to a tag.
 
-The trail is keyboard-navigable like any result list — <kbd>↑</kbd> / <kbd>↓</kbd> move between entries and <kbd>Enter</kbd> opens the highlighted one. **Clear** wipes the trail.
+The trail is keyboard-navigable like any result list. <kbd>↑</kbd> / <kbd>↓</kbd> move between entries and <kbd>Enter</kbd> opens the highlighted one. **Clear** wipes the trail.
+
+## Keys
+
+The bar at the bottom names what <kbd>Enter</kbd> does for the selected row (Open note, Open task, Add filter, and so on). The same actions can be clicked there.
+
+| Key                                          | Action                                      |
+| -------------------------------------------- | ------------------------------------------- |
+| <kbd>↑</kbd> / <kbd>↓</kbd>                  | Move the selection                          |
+| <kbd>Enter</kbd>                             | Open the selected result in the current tab |
+| <kbd>Tab</kbd> / <kbd>⇧</kbd>+<kbd>Tab</kbd> | Jump to the next or previous group          |
+| <kbd>/</kbd>                                 | Filter menu                                 |
+| `#`                                          | Tag picker                                  |
+| <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>4</kbd>     | Notes, Journal, Tasks, Inbox filter         |
+| <kbd>⌫</kbd> in an empty field               | Remove the last filter                      |
+| <kbd>Esc</kbd>                               | Close the menu, then search                 |
+
+A note opens in the editor, and a PDF or image filed as a note opens in the file viewer. A journal entry opens on its day, a task opens in its project's detail drawer, and an inbox item opens in the Inbox with the item highlighted.
+
+While the search index is being built, the bottom bar shows its progress, and results may be incomplete until it finishes.
 
 ## Semantic Search
 
@@ -68,18 +80,7 @@ If embeddings are enabled in [Settings → AI](/user-guide/settings#ai), search 
 - "Setting up authentication" matches notes about "OAuth flow" even without keyword overlap
 - Older notes resurface when their meaning matches your current query
 
-Toggle semantic search per query with the search bar's options menu, or always-on in settings.
-
 See [Embeddings & Semantic Search](/user-guide/ai/embeddings-search) for setup.
-
-## Result Actions
-
-For each result row:
-
-- <kbd>Enter</kbd> — open in current tab
-- <kbd>⌘</kbd>+<kbd>Enter</kbd> — open in new tab
-- <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>Enter</kbd> — open in split pane
-- <kbd>→</kbd> — preview without opening
 
 ## Text in PDFs and images
 

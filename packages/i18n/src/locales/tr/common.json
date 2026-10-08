@@ -685,35 +685,6 @@
       "notifications": "Bildirimler",
       "logOut": "Oturumu kapat"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Ara",
-      "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda ara…",
-      "noResultsFor": "Sonuç bulunamadı: “",
-      "result": "sonuç",
-      "noResultsForQuery": "“{query}” için sonuç bulunamadı",
-      "resultCount": "{count, plural, one {# sonuç} other {# sonuç}}",
-      "indexBuilding": "Arama dizini oluşturuluyor {done}/{total} — sonuçlar eksik olabilir",
-      "indexBuildingUnknown": "Arama dizini oluşturuluyor — sonuçlar eksik olabilir"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "İzinizi oluşturmak için öğeleri arayın ve tıklayın",
-      "reasons": "Arama izi",
-      "clear": "Temizle"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Temizle",
-      "tags": "Etiketler",
-      "filterByTag": "Etikete göre filtrele…",
-      "dateRange": "Tarih aralığı"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Tümünü görüntüle: ",
-      "results": "sonuç"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "yaklaşık"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Açık sekme yok",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Başlamak için kenar çubuğundan bir sayfa açın veya yeni bir sekme oluşturun",
@@ -1255,5 +1226,85 @@
     "railLabel": "Bölümler",
     "search": "Ara veya git…",
     "vaultMenu": "{name}. Kasa listesini aç"
+  },
+  "searchPalette": {
+    "title": "Ara",
+    "placeholder": "Notlarda, görevlerde, günlükte, gelen kutusunda ara…",
+    "filterHint": "Türe, tarihe veya etikete göre filtrele",
+    "tagHint": "Bir etiket adı yazın",
+    "removeFilter": "{name} kaldır",
+    "recent": "Son açılanlar",
+    "clear": "Temizle",
+    "fromQuery": "“{query}” aramasından",
+    "searchIn": "Şurada ara",
+    "tag": "Etiket",
+    "tags": "Etiketler",
+    "items": "Öğe",
+    "chooseTag": "Etiket seçin…",
+    "noTags": "Eşleşen etiket yok",
+    "filterType": "Tür",
+    "filterModified": "Değiştirilme",
+    "matches": "Eşleşmeler",
+    "showMore": "{count} tane daha göster",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notlar",
+      "journal": "Günlük",
+      "task": "Görevler",
+      "inbox": "Gelen kutusu"
+    },
+    "dates": {
+      "today": "Bugün",
+      "thisWeek": "Bu hafta",
+      "thisMonth": "Bu ay",
+      "custom": "Özel aralık"
+    },
+    "status": {
+      "items": "{count, plural, one {# öğe} other {# öğe}} · bu cihazda",
+      "results": "{count, plural, one {# sonuç} other {# sonuç}} · {ms} ms",
+      "indexing": "İndeksleniyor {done} / {total}",
+      "indexingUnknown": "İndeksleniyor…",
+      "filters": "Filtreler birleşir · istediğiniz kadar seçin",
+      "tags": "Kasanızda kullandığınız etiketler"
+    },
+    "empty": {
+      "unscoped": "“{query}” ile eşleşen bir şey yok",
+      "scoped": "{scope} içinde “{query}” ile eşleşen bir şey yok",
+      "indexing": "İndeksleme sürüyor — eski öğeler henüz aranamıyor olabilir.",
+      "tryFilters": "Daha az kelime deneyin ya da bir filtreyi kaldırın.",
+      "tryWords": "Daha az ya da farklı kelimeler deneyin."
+    },
+    "actions": {
+      "filter": "Filtrele",
+      "back": "Geri",
+      "nextSection": "Sonraki bölüm",
+      "open": "Aç",
+      "openNote": "Notu aç",
+      "openFile": "Dosyayı aç",
+      "openJournal": "Günlüğü aç",
+      "openTask": "Görevi aç",
+      "openInInbox": "Gelen kutusunda aç",
+      "addFilter": "Filtre ekle",
+      "removeFilter": "Filtreyi kaldır",
+      "chooseTag": "Etiket seç",
+      "addTag": "Etiket ekle",
+      "showAll": "Tümünü göster",
+      "searchEverywhere": "Her yerde ara",
+      "clearFilters": "Filtreleri temizle"
+    },
+    "preview": {
+      "edited": "{when} düzenlendi",
+      "captured": "{when} yakalandı",
+      "words": "{count, plural, one {# kelime} other {# kelime}}",
+      "filed": "Dosyalandı",
+      "notFiled": "Dosyalanmadı",
+      "status": "Durum",
+      "noStatus": "Durum yok",
+      "due": "Bitiş",
+      "priority": "Öncelik",
+      "repeats": "Tekrar"
+    }
   }
 }

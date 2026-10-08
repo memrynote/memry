@@ -685,35 +685,6 @@
       "notifications": "通知",
       "logOut": "ログアウト"
     },
-    "componentsSearchCommandPalette": {
-      "search": "検索",
-      "searchNotesTasksJournalInbox": "ノート、タスク、ジャーナル、インボックスを検索…",
-      "noResultsFor": "検索結果はありません：「",
-      "result": "結果",
-      "noResultsForQuery": "「{query}」の結果はありません",
-      "resultCount": "{count, plural, other {# 件の結果}}",
-      "indexBuilding": "検索インデックスを構築中 {done}/{total} — 結果が不完全な場合があります",
-      "indexBuildingUnknown": "検索インデックスを構築中 — 結果が不完全な場合があります"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "検索して項目をクリックすると、ここに履歴が残ります",
-      "reasons": "履歴",
-      "clear": "クリア"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "クリア",
-      "tags": "タグ",
-      "filterByTag": "タグで絞り込み…",
-      "dateRange": "日付範囲"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "すべて表示 ",
-      "results": "件"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "あいまい一致"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "タブが開いていません",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "サイドバーからページを開くか、新しいタブを作成して開始してください",
@@ -1255,5 +1226,85 @@
     "railLabel": "セクション",
     "search": "検索または移動…",
     "vaultMenu": "{name}。保管庫の一覧を開く"
+  },
+  "searchPalette": {
+    "title": "検索",
+    "placeholder": "ノート、タスク、ジャーナル、インボックスを検索…",
+    "filterHint": "種類、日付、タグで絞り込む",
+    "tagHint": "タグ名を入力",
+    "removeFilter": "{name}を削除",
+    "recent": "最近",
+    "clear": "クリア",
+    "fromQuery": "「{query}」から",
+    "searchIn": "検索対象",
+    "tag": "タグ",
+    "tags": "タグ",
+    "items": "件数",
+    "chooseTag": "タグを選択…",
+    "noTags": "一致するタグはありません",
+    "filterType": "種類",
+    "filterModified": "更新日",
+    "matches": "一致箇所",
+    "showMore": "さらに{count}件表示",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "ノート",
+      "journal": "ジャーナル",
+      "task": "タスク",
+      "inbox": "インボックス"
+    },
+    "dates": {
+      "today": "今日",
+      "thisWeek": "今週",
+      "thisMonth": "今月",
+      "custom": "カスタム期間"
+    },
+    "status": {
+      "items": "{count, plural, other {#件}} · このデバイス",
+      "results": "{count, plural, other {#件の結果}} · {ms} ms",
+      "indexing": "インデックス作成中 {done} / {total}",
+      "indexingUnknown": "インデックス作成中…",
+      "filters": "フィルターは組み合わせられます · 必要なだけ選択",
+      "tags": "ボールトで使っているタグ"
+    },
+    "empty": {
+      "unscoped": "「{query}」に一致するものはありません",
+      "scoped": "{scope}に「{query}」に一致するものはありません",
+      "indexing": "インデックス作成中です。古い項目はまだ検索できない場合があります。",
+      "tryFilters": "語を減らすか、フィルターを外してみてください。",
+      "tryWords": "語を減らすか、別の語で試してください。"
+    },
+    "actions": {
+      "filter": "絞り込み",
+      "back": "戻る",
+      "nextSection": "次のセクション",
+      "open": "開く",
+      "openNote": "ノートを開く",
+      "openFile": "ファイルを開く",
+      "openJournal": "ジャーナルを開く",
+      "openTask": "タスクを開く",
+      "openInInbox": "インボックスで開く",
+      "addFilter": "フィルターを追加",
+      "removeFilter": "フィルターを外す",
+      "chooseTag": "タグを選択",
+      "addTag": "タグを追加",
+      "showAll": "すべて表示",
+      "searchEverywhere": "すべてから検索",
+      "clearFilters": "フィルターをクリア"
+    },
+    "preview": {
+      "edited": "{when}に編集",
+      "captured": "{when}に取り込み",
+      "words": "{count, plural, other {#語}}",
+      "filed": "整理済み",
+      "notFiled": "未整理",
+      "status": "ステータス",
+      "noStatus": "ステータスなし",
+      "due": "期限",
+      "priority": "優先度",
+      "repeats": "繰り返し"
+    }
   }
 }

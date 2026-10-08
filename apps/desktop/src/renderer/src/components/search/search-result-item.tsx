@@ -1,17 +1,67 @@
-import { Command } from 'cmdk'
-import { FileText, Calendar, Tag, ExternalLink } from '@/lib/icons'
-import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
+import { CheckCircle2, Circle, FilePdf, FileText, Image, Mic, Video } from '@/lib/icons'
 import type {
-  SearchResultItem as SearchResultItemType,
-  ContentType,
-  NoteResultMetadata,
-  JournalResultMetadata,
-  TaskResultMetadata,
-  InboxResultMetadata
+  NoteFileType,
+  SearchResultItem as SearchResultItemType
 } from '@memry/contracts/search-api'
-import { highlightTerms, stripMarkTags } from '@/services/search-service'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
+import { PriorityIcon } from '@/components/tasks/priority-icon'
+import { HighlightedText, SearchRow } from './search-row'
+import { dayLabel, folderSegments, hostOf, priorityFor } from './search-format'
+import { TYPE_ICONS } from './search-types'
+
+export const resultValue = (item: SearchResultItemType): string => `result:${item.type}:${item.id}`
+
+const FILE_ICONS: Record<Exclude<NoteFileType, 'markdown'>, typeof FileText> = {
+  pdf: FilePdf,
+  image: Image,
+  audio: Mic,
+  video: Video
+}
+
+function ResultIcon({ item }: { item: SearchResultItemType }): React.JSX.Element {
+  const meta = item.metadata
+  switch (meta.type) {
+    case 'note': {
+      if (meta.fileType && meta.fileType !== 'markdown') {
+        const FileIcon = FILE_ICONS[meta.fileType]
+        return <FileIcon />
+      }
+      if (meta.emoji) {
+        return (
+          <NoteIconDisplay
+            value={meta.emoji}
+            className="flex size-4 items-center justify-center text-sm leading-none"
+          />
+        )
+      }
+      return <FileText />
+    }
+    case 'task':
+      return meta.completedAt ? <CheckCircle2 /> : <Circle />
+    case 'inbox':
+      return <InboxTypeIcon type={meta.itemType} className="size-[15px]" />
+    default: {
+      const Icon = TYPE_ICONS[item.type]
+      return <Icon />
+    }
+  }
+}
+
+function trailingHint(item: SearchResultItemType, locale: string): string | null {
+  const meta = item.metadata
+  switch (meta.type) {
+    case 'note':
+      return folderSegments(meta.path).at(-1) ?? null
+    case 'journal':
+      return dayLabel(meta.date, locale)
+    case 'task':
+      return meta.dueDate ? dayLabel(meta.dueDate, locale) : null
+    case 'inbox':
+      return meta.sourceUrl ? hostOf(meta.sourceUrl) : null
+  }
+}
 
 interface SearchResultItemProps {
   item: SearchResultItemType
@@ -19,177 +69,30 @@ interface SearchResultItemProps {
   onSelect: (item: SearchResultItemType) => void
 }
 
-const TYPE_ICONS: Record<ContentType, typeof FileText> = {
-  note: FileText,
-  journal: PageJournalIcon,
-  task: PageTasksIcon,
-  inbox: PageInboxIcon
-}
-
-const priorityColors: Record<number, string> = {
-  4: 'text-red-500',
-  3: 'text-orange-500',
-  2: 'text-yellow-500',
-  1: 'text-blue-400'
-}
-
-function HighlightedText({ text, query }: { text: string; query: string }): React.JSX.Element {
-  const segments = highlightTerms(stripMarkTags(text), query)
-  return (
-    <>
-      {segments.map((seg, i) =>
-        seg.highlight ? (
-          <mark
-            key={i}
-            className="bg-amber-200/60 dark:bg-amber-500/30 text-inherit rounded-sm px-0.5"
-          >
-            {seg.text}
-          </mark>
-        ) : (
-          <span key={i}>{seg.text}</span>
-        )
-      )}
-    </>
-  )
-}
-
-function NoteMetadata({
-  meta,
-  query: _query
-}: {
-  meta: NoteResultMetadata
-  query: string
-}): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
-      <span className="truncate max-w-48">{meta.path}</span>
-      {meta.tags.length > 0 && (
-        <span className="flex items-center gap-1">
-          <Tag className="size-3" />
-          {meta.tags.slice(0, 3).join(', ')}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function JournalMetadata({ meta }: { meta: JournalResultMetadata }): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
-      <Calendar className="size-3" />
-      <span>{meta.date}</span>
-      {meta.tags.length > 0 && (
-        <span className="flex items-center gap-1">
-          <Tag className="size-3" />
-          {meta.tags.slice(0, 3).join(', ')}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element {
-  const { t: tPhaseF } = useT('common')
-  return (
-    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
-      <span
-        className="inline-block size-2 rounded-full shrink-0"
-        style={{ backgroundColor: meta.projectColor }}
-      />
-      <span className="truncate max-w-32">{meta.projectName}</span>
-      {meta.dueDate && (
-        <span className="flex items-center gap-1">
-          <Calendar className="size-3" />
-          {meta.dueDate}
-        </span>
-      )}
-      {meta.priority > 0 && (
-        <span className={priorityColors[meta.priority] ?? ''}>
-          {tPhaseF('phaseF.componentsSearchSearchResultItem.p')}
-          {meta.priority}
-        </span>
-      )}
-      {meta.statusName && <span className="text-muted-foreground">{meta.statusName}</span>}
-    </div>
-  )
-}
-
-function InboxMetadata({ meta }: { meta: InboxResultMetadata }): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
-      <span className="capitalize">{meta.itemType}</span>
-      {meta.sourceUrl && (
-        <span className="flex items-center gap-1 truncate max-w-48">
-          <ExternalLink className="size-3" />
-          {meta.sourceTitle ?? meta.sourceUrl}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function MetadataRenderer({
-  item,
-  query
-}: {
-  item: SearchResultItemType
-  query: string
-}): React.JSX.Element | null {
-  switch (item.metadata.type) {
-    case 'note':
-      return <NoteMetadata meta={item.metadata} query={query} />
-    case 'journal':
-      return <JournalMetadata meta={item.metadata} />
-    case 'task':
-      return <TaskMetadata meta={item.metadata} />
-    case 'inbox':
-      return <InboxMetadata meta={item.metadata} />
-    default:
-      return null
-  }
-}
-
 export function SearchResultItem({
   item,
   query,
   onSelect
 }: SearchResultItemProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('common')
-  const Icon = TYPE_ICONS[item.type]
-  const noteEmoji = item.metadata.type === 'note' ? item.metadata.emoji : null
-
+  const { i18n } = useT('common')
+  const meta = item.metadata
+  const isTask = meta.type === 'task'
   return (
-    <Command.Item
-      value={`${item.type}-${item.id}`}
+    <SearchRow
+      value={resultValue(item)}
       onSelect={() => onSelect(item)}
-      className="flex items-start gap-3 px-3 py-2.5 rounded-md cursor-pointer
-        data-[selected=true]:bg-muted
-        transition-colors duration-75"
+      icon={<ResultIcon item={item} />}
+      trailing={trailingHint(item, i18n.resolvedLanguage ?? i18n.language) ?? ''}
+      endLane={
+        isTask ? (
+          meta.priority > 0 ? (
+            <PriorityIcon priority={priorityFor(meta.priority)} />
+          ) : null
+        ) : undefined
+      }
+      muted={isTask && meta.completedAt !== null}
     >
-      {noteEmoji ? (
-        <NoteIconDisplay
-          value={noteEmoji}
-          className="size-4 shrink-0 mt-0.5 text-sm leading-none flex items-center justify-center"
-        />
-      ) : (
-        <Icon className="size-4 shrink-0 mt-0.5 text-text-tertiary" />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-foreground truncate">
-          <HighlightedText text={item.title} query={query} />
-        </div>
-        {item.snippet && (
-          <div className="text-xs text-muted-foreground truncate mt-0.5">
-            <HighlightedText text={item.snippet} query={query} />
-          </div>
-        )}
-        <MetadataRenderer item={item} query={query} />
-      </div>
-      {item.matchType === 'fuzzy' && (
-        <span className="text-[10px] text-text-tertiary shrink-0 mt-1">
-          {tPhaseF('phaseF.componentsSearchSearchResultItem.fuzzy')}
-        </span>
-      )}
-    </Command.Item>
+      <HighlightedText text={item.title} query={query} />
+    </SearchRow>
   )
 }

@@ -685,35 +685,6 @@
       "notifications": "Obavijesti",
       "logOut": "Odjavi se"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Pretraži",
-      "searchNotesTasksJournalInbox": "Pretraži bilješke, zadatke, dnevnik, ulazni pretinac…",
-      "noResultsFor": "Nema rezultata za „",
-      "result": "rezultat",
-      "noResultsForQuery": "Nema rezultata za „{query}”",
-      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}",
-      "indexBuilding": "Izgradnja indeksa pretraživanja {done}/{total} – rezultati možda nisu potpuni",
-      "indexBuildingUnknown": "Izgradnja indeksa pretraživanja – rezultati možda nisu potpuni"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",
-      "reasons": "Razlozi",
-      "clear": "Očisti"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Očisti",
-      "tags": "Oznake",
-      "filterByTag": "Filtriraj po oznaci…",
-      "dateRange": "Raspon datuma"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Prikaži sve: ",
-      "results": "rezultata"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "približno"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nema otvorenih kartica",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorite stranicu s bočne trake ili stvorite novu karticu za početak",
@@ -1255,5 +1226,85 @@
     "railLabel": "Odjeljci",
     "search": "Pretraži ili prijeđi na…",
     "vaultMenu": "{name}. Otvori popis trezora"
+  },
+  "searchPalette": {
+    "title": "Pretraživanje",
+    "placeholder": "Pretraži bilješke, zadatke, dnevnik, ulazni pretinac…",
+    "filterHint": "Filtriraj po vrsti, datumu ili oznaci",
+    "tagHint": "Upiši naziv oznake",
+    "removeFilter": "Ukloni {name}",
+    "recent": "Nedavno",
+    "clear": "Očisti",
+    "fromQuery": "iz upita „{query}”",
+    "searchIn": "Traži u",
+    "tag": "Oznaka",
+    "tags": "Oznake",
+    "items": "Stavke",
+    "chooseTag": "Odaberi oznaku…",
+    "noTags": "Nema odgovarajućih oznaka",
+    "filterType": "Vrsta",
+    "filterModified": "Izmijenjeno",
+    "matches": "Podudaranja",
+    "showMore": "Prikaži još {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Bilješke",
+      "journal": "Dnevnik",
+      "task": "Zadaci",
+      "inbox": "Ulazni pretinac"
+    },
+    "dates": {
+      "today": "Danas",
+      "thisWeek": "Ovaj tjedan",
+      "thisMonth": "Ovaj mjesec",
+      "custom": "Prilagođeni raspon"
+    },
+    "status": {
+      "items": "{count, plural, one {# stavka} few {# stavke} other {# stavki}} · na ovom uređaju",
+      "results": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}} · {ms} ms",
+      "indexing": "Indeksiranje {done} / {total}",
+      "indexingUnknown": "Indeksiranje…",
+      "filters": "Filtri se zbrajaju · odaberi koliko ti treba",
+      "tags": "Oznake koje koristiš u trezoru"
+    },
+    "empty": {
+      "unscoped": "Ništa ne odgovara upitu „{query}”",
+      "scoped": "Ništa u {scope} ne odgovara upitu „{query}”",
+      "indexing": "Indeksiranje je još u tijeku — starije stavke možda se još ne mogu pronaći.",
+      "tryFilters": "Pokušaj s manje riječi ili ukloni filtar.",
+      "tryWords": "Pokušaj s manje ili drugim riječima."
+    },
+    "actions": {
+      "filter": "Filtriraj",
+      "back": "Natrag",
+      "nextSection": "Sljedeći odjeljak",
+      "open": "Otvori",
+      "openNote": "Otvori bilješku",
+      "openFile": "Otvori datoteku",
+      "openJournal": "Otvori dnevnik",
+      "openTask": "Otvori zadatak",
+      "openInInbox": "Otvori u ulaznom pretincu",
+      "addFilter": "Dodaj filtar",
+      "removeFilter": "Ukloni filtar",
+      "chooseTag": "Odaberi oznaku",
+      "addTag": "Dodaj oznaku",
+      "showAll": "Prikaži sve",
+      "searchEverywhere": "Traži svugdje",
+      "clearFilters": "Očisti filtre"
+    },
+    "preview": {
+      "edited": "Uređeno {when}",
+      "captured": "Spremljeno {when}",
+      "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+      "filed": "Razvrstano",
+      "notFiled": "Nije razvrstano",
+      "status": "Status",
+      "noStatus": "Bez statusa",
+      "due": "Rok",
+      "priority": "Prioritet",
+      "repeats": "Ponavlja se"
+    }
   }
 }
