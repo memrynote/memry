@@ -65,4 +65,33 @@ struct TasksSyncAgainTests {
         }
         #expect(filler.count == 2)
     }
+
+    /// The production path: the core calls `RealtimeRelay` on its own thread,
+    /// the relay hops to the main actor, and `scheduleSync` debounces. A burst
+    /// of hints during a pass gets one more pass, not one per hint.
+    @Test func socket_hints_during_a_pass_coalesce_into_one_more_pass() async throws {
+        let filler = HeldPasses()
+        let vault = try TasksTestVault(filler: filler)
+        let store = vault.store
+        let relay = RealtimeRelay(receive: { store.scheduleSync() })
+
+        relay.changesAvailable()
+        let deadline = Date().addingTimeInterval(3)
+        while !filler.held, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(filler.held, "the first hint starts a pass")
+
+        for _ in 0..<5 {
+            await Task.detached { relay.changesAvailable() }.value
+        }
+        // Past the 400 ms debounce, so the burst reached `sync()` mid-pass.
+        try await Task.sleep(for: .milliseconds(600))
+        #expect(filler.count == 1)
+        filler.release()
+
+        let after = Date().addingTimeInterval(3)
+        while filler.count < 2, Date() < after { try await Task.sleep(for: .milliseconds(50)) }
+        // Long enough for a third pass to start if the loop did not stop.
+        try await Task.sleep(for: .milliseconds(1_000))
+        #expect(filler.count == 2)
+    }
 }

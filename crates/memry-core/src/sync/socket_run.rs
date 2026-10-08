@@ -7,6 +7,7 @@
 //! broadcasts sent while no socket was open are gone and the caller MUST pull
 //! (§9.1).
 
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -16,7 +17,7 @@ use crate::protocol::auth::{TokenClaims, now_unix_s};
 use crate::protocol::http::TokenProvider;
 
 use super::socket::{
-    MAX_RECONNECT_DELAY_MS, PING_INTERVAL_MS, RealtimeClient, Reconnect, STALE_AFTER_MS,
+    MAX_RECONNECT_DELAY_MS, PING_INTERVAL_MS, RealtimeClient, Reconnect, STALE_AFTER_MS, Terminal,
 };
 
 /// Why [`run`] returned.
@@ -25,6 +26,30 @@ pub enum RunEnd {
     Stopped,
     /// §9.9's 4004 or 4009: reconnecting cannot help.
     Terminal,
+}
+
+/// §9.9's latch, held above any one run: a shell mints a new socket on each
+/// foreground, and a 4004 or 4009 must not get a fresh handshake every time.
+/// The owner ([`crate::api::sync::VaultSync`]) lives until sign-out, which is
+/// when a 4004 can stop being true; a 4009 holds until the app is updated,
+/// which relaunches it.
+#[derive(Default)]
+pub struct TerminalLatch(Mutex<Option<Terminal>>);
+
+impl TerminalLatch {
+    pub fn get(&self) -> Option<Terminal> {
+        *self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn set(&self, terminal: Terminal) {
+        *self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(terminal);
+    }
 }
 
 /// The shell's off switch. Latched: a stop before [`run`] starts still stops it.
@@ -61,8 +86,12 @@ pub async fn run(
     client: &RealtimeClient,
     tokens: &dyn TokenProvider,
     stop: &StopSignal,
+    latch: &TerminalLatch,
     on_connected: &(dyn Fn() + Sync),
 ) -> RunEnd {
+    if latch.get().is_some() {
+        return RunEnd::Terminal;
+    }
     loop {
         if stop.is_stopped() {
             client.disconnect();
@@ -85,7 +114,10 @@ pub async fn run(
                     _ => MAX_RECONNECT_DELAY_MS,
                 }
             }
-            Reconnect::Terminal(_) => return RunEnd::Terminal,
+            Reconnect::Terminal(terminal) => {
+                latch.set(terminal);
+                return RunEnd::Terminal;
+            }
             Reconnect::Stopped => return RunEnd::Stopped,
         };
         if stop.sleep(pause).await {

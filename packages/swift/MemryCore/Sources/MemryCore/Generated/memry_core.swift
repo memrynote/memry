@@ -12586,6 +12586,8 @@ public protocol VaultRealtimeProtocol: AnyObject, Sendable {
     /**
      * Holds the socket open until [`Self::stop`], or until a close says
      * reconnecting cannot help (§9.9). Answers `true` only for the second.
+     * That close latches this vault's sync: every later socket it mints
+     * answers `true` at once without a handshake.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -12658,6 +12660,8 @@ open class VaultRealtime: VaultRealtimeProtocol, @unchecked Sendable {
     /**
      * Holds the socket open until [`Self::stop`], or until a close says
      * reconnecting cannot help (§9.9). Answers `true` only for the second.
+     * That close latches this vault's sync: every later socket it mints
+     * answers `true` at once without a handshake.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -32872,7 +32876,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_realtimelistener_changes_available() != 17505) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 25590) {
+    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 56322) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultrealtime_stop() != 53929) {

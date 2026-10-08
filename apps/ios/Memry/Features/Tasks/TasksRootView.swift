@@ -167,21 +167,24 @@ struct VaultTasksScope<Content: View>: View {
             .task(id: vault.id()) { make() }
             // The realtime socket, foreground only (chapter 09 §9.1): without
             // it a remote change waits for this device's next pass (#2798).
-            .task(id: RealtimeKey(vault: vault.id(), active: scenePhase == .active, store: store?.vaultId)) {
+            // Keyed on `.background`, not `.active`: Control Center or a
+            // notification banner makes the scene `.inactive` for a moment,
+            // and reconnecting after each is a handshake for nothing.
+            .task(id: RealtimeKey(vault: vault.id(), foreground: scenePhase != .background, store: store?.vaultId)) {
                 await holdRealtime()
             }
     }
 
     private struct RealtimeKey: Equatable {
         let vault: String
-        let active: Bool
+        let foreground: Bool
         let store: String?
     }
 
-    /// Runs until the scene leaves `.active` or the store changes; SwiftUI
-    /// cancels the task, and the cancel stops the socket.
+    /// Runs until the scene goes to the background or the store changes;
+    /// SwiftUI cancels the task, and the cancel stops the socket.
     private func holdRealtime() async {
-        guard scenePhase == .active, let store,
+        guard scenePhase != .background, let store,
               let realtime = filler?.realtime(onChanges: { store.scheduleSync() })
         else { return }
         let terminal = await withTaskCancellationHandler {
@@ -189,7 +192,13 @@ struct VaultTasksScope<Content: View>: View {
         } onCancel: {
             realtime.stop()
         }
-        if terminal { Log.sync.notice("realtime socket stopped for good") }
+        // §9.9's 4004 or 4009, latched in the core for this vault's sync. The
+        // pass meets the same refusal over HTTP, and its error is the one the
+        // app already shows for a revoked device or an outdated build.
+        if terminal {
+            Log.sync.notice("realtime socket stopped for good")
+            store.scheduleSync()
+        }
     }
 
     private var syncRequest: (@MainActor () -> Void)? {

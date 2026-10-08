@@ -16,7 +16,7 @@ use std::sync::Arc;
 use super::VaultSync;
 use crate::protocol::http::TokenProvider;
 use crate::sync::socket::{Hint, HintSink, RealtimeClient};
-use crate::sync::socket_run::{self, RunEnd, StopSignal};
+use crate::sync::socket_run::{self, RunEnd, StopSignal, TerminalLatch};
 
 /// Where the socket's wake-ups go.
 ///
@@ -51,6 +51,7 @@ pub struct VaultRealtime {
     tokens: Arc<dyn TokenProvider>,
     listener: Arc<dyn RealtimeListener>,
     stop: StopSignal,
+    latch: Arc<TerminalLatch>,
 }
 
 #[uniffi::export]
@@ -72,6 +73,7 @@ impl VaultSync {
             tokens,
             listener,
             stop: StopSignal::default(),
+            latch: Arc::clone(&self.realtime_latch),
         })
     }
 }
@@ -80,6 +82,8 @@ impl VaultSync {
 impl VaultRealtime {
     /// Holds the socket open until [`Self::stop`], or until a close says
     /// reconnecting cannot help (§9.9). Answers `true` only for the second.
+    /// That close latches this vault's sync: every later socket it mints
+    /// answers `true` at once without a handshake.
     ///
     /// One run per object: a stopped object stays stopped, so mint a new one
     /// on the next foreground.
@@ -90,6 +94,7 @@ impl VaultRealtime {
             &self.client,
             self.tokens.as_ref(),
             &self.stop,
+            &self.latch,
             &on_connected,
         )
         .await
