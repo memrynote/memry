@@ -43,12 +43,13 @@ struct NoteBlocksView: View {
     /// else the body is drawn in the ordinary ink.
     var inheritsInk = false
 
-    /// Toggles the reader has opened or closed on this screen, by row.
+    /// Toggles the reader has opened or closed on this screen, by
+    /// `NoteBlockList.toggleKey`.
     ///
     /// A view state rather than a write: folding a toggle to read past it is
     /// not an edit, and writing `open` for it would change the note on every
     /// other device.
-    @State private var flipped: Set<Int> = []
+    @State private var flipped: Set<String> = []
 
     var body: some View {
         // A column list inserted here waits for this redraw to learn the id
@@ -61,6 +62,9 @@ struct NoteBlocksView: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: blocks) { old, new in
+            flipped = NoteBlockList.flipped(flipped, from: old, to: new)
+        }
         .modifier(BlockInk(color: inheritsInk ? nil : Tokens.Text.primary.color))
         // Wiki links are `AttributedString` links, so the platform already
         // draws and hits them — including for VoiceOver's link rotor, which a
@@ -93,11 +97,7 @@ struct NoteBlocksView: View {
             marker: row.marker,
             isOpen: row.isOpen,
             toggle: {
-                if flipped.contains(row.id) {
-                    flipped.remove(row.id)
-                } else {
-                    flipped.insert(row.id)
-                }
+                flipped.formSymmetricDifference([NoteBlockList.toggleKey(row.block, at: row.id)])
             },
             openTarget: openTarget,
             tableContent: tableContent,

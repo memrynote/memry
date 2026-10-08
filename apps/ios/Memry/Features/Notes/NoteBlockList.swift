@@ -41,8 +41,9 @@ enum NoteBlockList {
     /// A closed toggle hides everything nested under it, as desktop does:
     /// its body arrives as the following blocks one depth deeper, and drawing
     /// them anyway made "closed" mean nothing. `flipped` holds the toggles
-    /// the reader has opened or closed since, against the document's `open`.
-    static func rows(of blocks: [Block], flipped: Set<Int> = []) -> [Row] {
+    /// the reader has opened or closed since, against the document's `open`,
+    /// by `toggleKey`.
+    static func rows(of blocks: [Block], flipped: Set<String> = []) -> [Row] {
         var rows: [Row] = []
         // Per depth, so a nested list numbers itself and an outer list is not
         // disturbed by it.
@@ -69,8 +70,7 @@ enum NoteBlockList {
 
             var isOpen = false
             if block.kind == "toggleListItem" {
-                let stored = block.props.first { $0.name == "open" }?.value == "true"
-                isOpen = flipped.contains(offset) ? !stored : stored
+                isOpen = storedOpen(block) != flipped.contains(toggleKey(block, at: offset))
                 if !isOpen { foldedDepth = block.depth }
             }
 
@@ -89,5 +89,46 @@ enum NoteBlockList {
             rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen, indent: block.depth))
         }
         return rows
+    }
+
+    /// A toggle's key in `flipped`: its block id, which stays put while
+    /// blocks above it come and go. The position stands in only for a block
+    /// with no id.
+    static func toggleKey(_ block: Block, at offset: Int) -> String {
+        block.id ?? "#\(offset)"
+    }
+
+    /// `flipped` after the body changed from `old` to `new`, with every closed
+    /// toggle that gained a child opened. Desktop's rule (BlockNote's
+    /// `createToggleWrapper`): a block indented or inserted under a closed
+    /// toggle shows it, instead of vanishing into it.
+    static func flipped(_ flipped: Set<String>, from old: [Block], to new: [Block]) -> Set<String> {
+        var before: [String: Int] = [:]
+        for (offset, block) in old.enumerated() where block.kind == "toggleListItem" {
+            before[toggleKey(block, at: offset)] = childCount(at: offset, in: old)
+        }
+        var result = flipped
+        for (offset, block) in new.enumerated() where block.kind == "toggleListItem" {
+            let key = toggleKey(block, at: offset)
+            let isOpen = storedOpen(block) != result.contains(key)
+            guard !isOpen, let previous = before[key], childCount(at: offset, in: new) > previous
+            else { continue }
+            result.formSymmetricDifference([key])
+        }
+        return result
+    }
+
+    private static func storedOpen(_ block: Block) -> Bool {
+        block.props.first { $0.name == "open" }?.value == "true"
+    }
+
+    /// The blocks directly under the one at `offset`: one level deeper,
+    /// before the next block at its own depth or shallower.
+    private static func childCount(at offset: Int, in blocks: [Block]) -> Int {
+        let depth = blocks[offset].depth
+        return blocks[(offset + 1)...]
+            .prefix { $0.depth > depth }
+            .filter { $0.depth == depth + 1 }
+            .count
     }
 }
