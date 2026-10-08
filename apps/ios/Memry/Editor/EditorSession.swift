@@ -106,6 +106,8 @@ final class EditorSession {
     @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
     @ObservationIgnored private var tail: Task<Void, Never>?
+    /// Watches for the keyboard frame a Reduce Motion panel swap waits on.
+    @ObservationIgnored private var panelSwap: NSObjectProtocol?
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
@@ -179,7 +181,35 @@ final class EditorSession {
             panelView.frame.size.height = keyboardHeight
             textView.inputView = panelView
         }
+        guard UIAccessibility.isReduceMotionEnabled else { return textView.reloadInputViews() }
+        // Reduce Motion: the panel swaps in place and fades in, instead of
+        // sliding up like a keyboard. UIKit starts that slide a run-loop turn
+        // after `reloadInputViews`, outside any `performWithoutAnimation`, so
+        // animations stay off until the keyboard reports its new frame, or
+        // half a second at most: a panel as tall as the keyboard may report
+        // nothing, and animations must not stay off app-wide.
+        if panel != .none { panelView.alpha = 0 }
+        UIView.setAnimationsEnabled(false)
+        if panelSwap == nil {
+            panelSwap = NotificationCenter.default.addObserver(
+                forName: UIResponder.keyboardDidChangeFrameNotification, object: nil, queue: .main
+            ) { [weak self] _ in MainActor.assumeIsolated { self?.finishPanelSwap() } }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.finishPanelSwap()
+            UIView.setAnimationsEnabled(true)
+        }
         textView.reloadInputViews()
+    }
+
+    /// The end of a Reduce Motion panel swap (`show`): animations back on,
+    /// and the panel faded in.
+    private func finishPanelSwap() {
+        guard let panelSwap else { return }
+        NotificationCenter.default.removeObserver(panelSwap)
+        self.panelSwap = nil
+        UIView.setAnimationsEnabled(true)
+        UIView.animate(withDuration: Tokens.Motion.normal.duration) { self.panelView.alpha = 1 }
     }
 
     // MARK: Focus and selection
