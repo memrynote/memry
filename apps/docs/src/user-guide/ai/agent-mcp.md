@@ -289,7 +289,8 @@ worked and every chat turn repeats it:
 - Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind LM Studio or
   llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
 - Some servers return a model's tool call as plain reply text, as `<tool_call>{...}</tool_call>`.
-  memrynote reads these calls out of the text and runs them like any other tool call. Only the names
+  memrynote reads these calls out of the text and runs them like any other tool call, also when the
+  probe saw the model call tools the native way. Only the names
   of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
