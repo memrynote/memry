@@ -2,7 +2,10 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import {
   asClientDb,
@@ -157,16 +160,16 @@ describe('vault read-only locks (#2606)', () => {
     expect(getVaultLockState()).toEqual({ notes: [], folders: ['projects/plan'] })
     expect(isNoteLocked('note-in')).toBe(true)
     expect(isNoteLocked('note-out')).toBe(false)
-    expect(() => assertFolderWritable('projects/plan/deeper')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    expect(() => assertFolderWritable('projects/plan/deeper')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
     expect(() => assertFolderWritable('projects')).not.toThrow()
-    expect(() => assertFolderTreeWritable('projects')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    expect(() => assertFolderTreeWritable('projects')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
   })
 
   it('a folder holding a locked note cannot be renamed, moved or deleted', async () => {
     addNote('note-a', 'archive/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
 
-    expect(() => assertFolderTreeWritable('archive')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    expect(() => assertFolderTreeWritable('archive')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
     expect(() => assertFolderTreeWritable('other')).not.toThrow()
   })
 
@@ -298,6 +301,8 @@ describe('vault read-only locks (#2606)', () => {
     await setVaultLock({ kind: 'folder', target: 'projects/sealed', locked: true })
     await setVaultLock({ kind: 'folder', target: 'projects', locked: true })
     if (!isWindows) expect([note, pdf].map(isWritable)).toEqual([false, false])
+    await expect(beforeVaultFileWrite(pdf)).rejects.toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    await expect(beforeVaultFileWrite(note)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
 
     await setVaultLock({ kind: 'folder', target: 'projects', locked: false })
 

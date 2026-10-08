@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Kunne ikke forhåndsvise denne endringen",
       "description": "Agenten vil oppdatere {title}. Se gjennom endringen før du bruker den.",
+      "descriptionCreate": "Agenten vil opprette {title}. Se gjennom endringen før du bruker den.",
+      "descriptionDelete": "Agenten vil slette {title}. Se gjennom endringen før du bruker den.",
       "fallbackTitle": "dette elementet",
       "current": "Gjeldende",
       "candidate": "Kandidat",

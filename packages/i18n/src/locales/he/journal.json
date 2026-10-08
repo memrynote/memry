@@ -30,7 +30,9 @@
     "copyUnsavedContent": "העתקת התוכן שלא נשמר ללוח העריכה",
     "addBookmark": "הוספה לסימניות",
     "removeBookmark": "הסרת הסימנייה",
-    "deleteEntry": "מחיקת הרשומה"
+    "deleteEntry": "מחיקת הרשומה",
+    "lockEntry": "נעילת הרשומה",
+    "unlockEntry": "ביטול נעילת הרשומה"
   },
   "editor": {
     "placeholder": {

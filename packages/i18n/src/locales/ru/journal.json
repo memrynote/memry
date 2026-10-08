@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Скопировать несохранённое содержимое в буфер обмена",
     "addBookmark": "Добавить в закладки",
     "removeBookmark": "Убрать из закладок",
-    "deleteEntry": "Удалить запись"
+    "deleteEntry": "Удалить запись",
+    "lockEntry": "Заблокировать запись",
+    "unlockEntry": "Разблокировать запись"
   },
   "editor": {
     "placeholder": {

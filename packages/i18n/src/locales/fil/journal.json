@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopyahin ang hindi na-save na nilalaman sa clipboard",
     "addBookmark": "Magdagdag ng bookmark",
     "removeBookmark": "Alisin ang bookmark",
-    "deleteEntry": "Tanggalin ang entry"
+    "deleteEntry": "Tanggalin ang entry",
+    "lockEntry": "I-lock ang entry",
+    "unlockEntry": "I-unlock ang entry"
   },
   "editor": {
     "placeholder": {

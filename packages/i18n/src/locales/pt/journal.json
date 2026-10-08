@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copiar conteúdo não salvo para a área de transferência",
     "addBookmark": "Adicionar aos favoritos",
     "removeBookmark": "Remover dos favoritos",
-    "deleteEntry": "Excluir entrada"
+    "deleteEntry": "Excluir entrada",
+    "lockEntry": "Bloquear entrada",
+    "unlockEntry": "Desbloquear entrada"
   },
   "editor": {
     "placeholder": {

@@ -316,5 +316,9 @@
     "invalidUrl": "Đó không phải là liên kết web. Dán địa chỉ ảnh http hoặc https.",
     "downloadFailed": "Không thể tải xuống ảnh đó. Kiểm tra liên kết rồi thử lại.",
     "unsupportedUrl": "Liên kết đó không phải là ảnh PNG, JPG, GIF, WEBP hoặc SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Chủ sở hữu đã đặt ghi chú này ở chế độ chỉ đọc.",
+    "folderReadOnly": "Chủ sở hữu đã đặt thư mục này ở chế độ chỉ đọc."
   }
 }

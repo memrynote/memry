@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type {
   AlwaysAllowScope,
   ApproveToolDecision,
+  ChangePreviewIntent,
   Message,
   PreviewDiffRequest,
   PreviewDiffResponse
@@ -34,6 +35,11 @@ import { InPageReviewPointer } from './in-page-review-pointer'
  */
 function canBeAlwaysAllowed(previewKind: PendingToolApproval['previewKind']): boolean {
   return previewKind !== 'loss'
+}
+
+const descriptionKeys: Partial<Record<ChangePreviewIntent, string>> = {
+  create: 'agentChat.diff.descriptionCreate',
+  delete: 'agentChat.diff.descriptionDelete'
 }
 
 const updateToolNames = new Set(['vault_move_to_folder', 'vault_add_tag', 'vault_remove_tag'])
@@ -237,7 +243,7 @@ function InlineDiffApproval({
   return (
     <Confirmation state="pending">
       <ConfirmationTitle>
-        {t('agentChat.diff.description', {
+        {t((preview && descriptionKeys[preview.preview.intent]) ?? 'agentChat.diff.description', {
           title: preview?.title ?? t('agentChat.diff.fallbackTitle')
         })}
       </ConfirmationTitle>

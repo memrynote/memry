@@ -36,6 +36,7 @@ import {
   isNoteLocked,
   isVaultLockTrackingActive,
   isVaultPathLocked,
+  lockedFolderCovering,
   noteLockedError,
   vaultLockSource
 } from './registry'
@@ -146,9 +147,12 @@ function isLockedFile(absolutePath: string): string | null {
   return relative !== null && isVaultPathLocked(relative) ? relative : null
 }
 
+/** A locked note's file or attachment says "note"; any other file in a locked folder says "folder". */
 function refusal(relative: string): Error {
-  const noteId = vaultLockSource()?.noteIdAtPath(relative)
-  return noteId ? noteLockedError(noteId) : folderLockedError()
+  const noteId = vaultLockSource()?.noteIdAtPath(relative) ?? undefined
+  return noteId || lockedFolderCovering(relative) === null
+    ? noteLockedError(noteId)
+    : folderLockedError()
 }
 
 /**

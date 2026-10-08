@@ -316,5 +316,9 @@
     "invalidUrl": "Toto není webový odkaz. Vložte adresu obrázku začínající na http nebo https.",
     "downloadFailed": "Tento obrázek se nepodařilo stáhnout. Zkontrolujte odkaz a zkuste to znovu.",
     "unsupportedUrl": "Tento odkaz nevede na obrázek PNG, JPG, GIF, WEBP ani SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Vlastník nastavil tuto poznámku jen pro čtení.",
+    "folderReadOnly": "Vlastník nastavil tuto složku jen pro čtení."
   }
 }

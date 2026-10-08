@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "No se pudo mostrar la vista previa de este cambio",
       "description": "El agente quiere actualizar {title}. Revisa el cambio antes de aplicarlo.",
+      "descriptionCreate": "El agente quiere crear {title}. Revisa el cambio antes de aplicarlo.",
+      "descriptionDelete": "El agente quiere eliminar {title}. Revisa el cambio antes de aplicarlo.",
       "fallbackTitle": "este elemento",
       "current": "Actual",
       "candidate": "Propuesta",

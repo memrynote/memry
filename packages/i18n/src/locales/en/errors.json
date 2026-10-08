@@ -319,6 +319,7 @@
     "unsupportedUrl": "That link is not a PNG, JPG, GIF, WEBP or SVG image."
   },
   "vaultLock": {
-    "noteReadOnly": "The owner made this note read-only."
+    "noteReadOnly": "The owner made this note read-only.",
+    "folderReadOnly": "The owner made this folder read-only."
   }
 }

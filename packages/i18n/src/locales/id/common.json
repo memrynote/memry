@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Tidak dapat menampilkan pratinjau perubahan ini",
       "description": "Agen ingin memperbarui {title}. Tinjau perubahannya sebelum menerapkannya.",
+      "descriptionCreate": "Agen ingin membuat {title}. Tinjau perubahannya sebelum menerapkannya.",
+      "descriptionDelete": "Agen ingin menghapus {title}. Tinjau perubahannya sebelum menerapkannya.",
       "fallbackTitle": "item ini",
       "current": "Saat ini",
       "candidate": "Kandidat",

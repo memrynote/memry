@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopiuj niezapisaną zawartość do schowka",
     "addBookmark": "Dodaj zakładkę",
     "removeBookmark": "Usuń zakładkę",
-    "deleteEntry": "Usuń wpis"
+    "deleteEntry": "Usuń wpis",
+    "lockEntry": "Zablokuj wpis",
+    "unlockEntry": "Odblokuj wpis"
   },
   "editor": {
     "placeholder": {

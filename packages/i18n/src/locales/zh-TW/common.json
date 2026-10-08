@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "無法預覽這項變更",
       "description": "代理程式想要更新 {title}。套用前請先檢查變更。",
+      "descriptionCreate": "代理程式想要建立 {title}。套用前請先檢查變更。",
+      "descriptionDelete": "代理程式想要刪除 {title}。套用前請先檢查變更。",
       "fallbackTitle": "這個項目",
       "current": "目前",
       "candidate": "建議內容",

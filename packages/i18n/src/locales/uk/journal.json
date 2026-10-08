@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Скопіювати незбережений вміст у буфер обміну",
     "addBookmark": "Додати в закладки",
     "removeBookmark": "Прибрати із закладок",
-    "deleteEntry": "Видалити запис"
+    "deleteEntry": "Видалити запис",
+    "lockEntry": "Заблокувати запис",
+    "unlockEntry": "Розблокувати запис"
   },
   "editor": {
     "placeholder": {

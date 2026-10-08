@@ -30,7 +30,9 @@
     "copyUnsavedContent": "保存されていない内容をクリップボードにコピー",
     "addBookmark": "ブックマークに追加",
     "removeBookmark": "ブックマークを解除",
-    "deleteEntry": "記録を削除"
+    "deleteEntry": "記録を削除",
+    "lockEntry": "記録をロック",
+    "unlockEntry": "記録のロックを解除"
   },
   "editor": {
     "placeholder": {

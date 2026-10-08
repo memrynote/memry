@@ -30,7 +30,9 @@
     "copyUnsavedContent": "将未保存内容复制到剪贴板",
     "addBookmark": "添加书签",
     "removeBookmark": "移除书签",
-    "deleteEntry": "删除日记"
+    "deleteEntry": "删除日记",
+    "lockEntry": "锁定日记",
+    "unlockEntry": "解锁日记"
   },
   "editor": {
     "placeholder": {

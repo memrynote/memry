@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Hindi ma-preview ang pagbabagong ito",
       "description": "Gustong i-update ng agent ang {title}. Suriin ang pagbabago bago ito ilapat.",
+      "descriptionCreate": "Gustong gumawa ng agent ng {title}. Suriin ang pagbabago bago ito ilapat.",
+      "descriptionDelete": "Gustong tanggalin ng agent ang {title}. Suriin ang pagbabago bago ito ilapat.",
       "fallbackTitle": "item na ito",
       "current": "Kasalukuyan",
       "candidate": "Iminungkahing bersyon",

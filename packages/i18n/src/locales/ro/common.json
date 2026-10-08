@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nu s-a putut previzualiza această modificare",
       "description": "Agentul dorește să actualizeze {title}. Examinați modificarea înainte de a o aplica.",
+      "descriptionCreate": "Agentul dorește să creeze {title}. Examinați modificarea înainte de a o aplica.",
+      "descriptionDelete": "Agentul dorește să șteargă {title}. Examinați modificarea înainte de a o aplica.",
       "fallbackTitle": "acest element",
       "current": "Actual",
       "candidate": "Propus",

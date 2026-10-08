@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nie udało się wyświetlić podglądu tej zmiany",
       "description": "Agent chce zaktualizować {title}. Przejrzyj zmianę przed jej zastosowaniem.",
+      "descriptionCreate": "Agent chce utworzyć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
+      "descriptionDelete": "Agent chce usunąć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
       "fallbackTitle": "ten element",
       "current": "Obecna treść",
       "candidate": "Proponowana treść",

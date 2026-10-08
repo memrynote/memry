@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nije moguće prikazati pretpregled ove promjene",
       "description": "Agent želi ažurirati {title}. Pregledajte promjenu prije nego što je primijenite.",
+      "descriptionCreate": "Agent želi stvoriti {title}. Pregledajte promjenu prije nego što je primijenite.",
+      "descriptionDelete": "Agent želi izbrisati {title}. Pregledajte promjenu prije nego što je primijenite.",
       "fallbackTitle": "ovu stavku",
       "current": "Trenutno",
       "candidate": "Predloženo",

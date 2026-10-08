@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Tidak dapat memaparkan pratonton perubahan ini",
       "description": "Ejen ingin mengemas kini {title}. Semak perubahan sebelum menggunakannya.",
+      "descriptionCreate": "Ejen ingin mencipta {title}. Semak perubahan sebelum menggunakannya.",
+      "descriptionDelete": "Ejen ingin memadam {title}. Semak perubahan sebelum menggunakannya.",
       "fallbackTitle": "item ini",
       "current": "Semasa",
       "candidate": "Cadangan",

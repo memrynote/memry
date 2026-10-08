@@ -30,7 +30,9 @@
     "copyUnsavedContent": "نسخ المحتوى غير المحفوظ إلى الحافظة",
     "addBookmark": "إضافة إشارة مرجعية",
     "removeBookmark": "إزالة الإشارة المرجعية",
-    "deleteEntry": "حذف الإدخال"
+    "deleteEntry": "حذف الإدخال",
+    "lockEntry": "قفل الإدخال",
+    "unlockEntry": "إلغاء قفل الإدخال"
   },
   "editor": {
     "placeholder": {

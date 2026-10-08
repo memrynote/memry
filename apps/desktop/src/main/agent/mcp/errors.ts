@@ -1,4 +1,7 @@
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
 
 export type AgentToolErrorCode = 'NOT_FOUND' | 'PERMISSION_DENIED' | 'VALIDATION' | 'INTERNAL'
 
@@ -22,7 +25,7 @@ export interface McpErrorContent {
 
 /** A refusal because the owner locked the target: the fixed lock text, as a permission error. */
 export function isVaultLockRefusalMessage(message: string): boolean {
-  return message === VAULT_LOCKED_NOTE_MESSAGE
+  return message === VAULT_LOCKED_NOTE_MESSAGE || message === VAULT_LOCKED_FOLDER_MESSAGE
 }
 
 export function toMcpToolErrorContent(err: unknown): McpErrorContent {

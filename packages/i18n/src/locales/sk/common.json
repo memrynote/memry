@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nepodarilo sa zobraziť náhľad tejto zmeny",
       "description": "Agent chce aktualizovať {title}. Pred použitím zmenu skontrolujte.",
+      "descriptionCreate": "Agent chce vytvoriť {title}. Pred použitím zmenu skontrolujte.",
+      "descriptionDelete": "Agent chce odstrániť {title}. Pred použitím zmenu skontrolujte.",
       "fallbackTitle": "túto položku",
       "current": "Aktuálne",
       "candidate": "Navrhovaný obsah",

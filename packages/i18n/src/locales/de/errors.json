@@ -316,5 +316,9 @@
     "invalidUrl": "Das ist kein Weblink. Füge eine http- oder https-Bildadresse ein.",
     "downloadFailed": "Dieses Bild konnte nicht heruntergeladen werden. Prüfe den Link und versuch es erneut.",
     "unsupportedUrl": "Dieser Link verweist nicht auf ein PNG-, JPG-, GIF-, WEBP- oder SVG-Bild."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Der Eigentümer hat diese Notiz schreibgeschützt.",
+    "folderReadOnly": "Der Eigentümer hat diesen Ordner schreibgeschützt."
   }
 }

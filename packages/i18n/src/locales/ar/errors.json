@@ -316,5 +316,9 @@
     "invalidUrl": "هذا ليس رابط ويب. الصق عنوان صورة يبدأ بـhttp أو https.",
     "downloadFailed": "تعذّر تنزيل هذه الصورة. تحقق من الرابط وحاول مرة أخرى.",
     "unsupportedUrl": "هذا الرابط ليس صورة PNG أو JPG أو GIF أو WEBP أو SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "جعل المالك هذه الملاحظة للقراءة فقط.",
+    "folderReadOnly": "جعل المالك هذا المجلد للقراءة فقط."
   }
 }

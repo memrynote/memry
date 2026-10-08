@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copy unsaved content to clipboard",
     "addBookmark": "Add bookmark",
     "removeBookmark": "Remove bookmark",
-    "deleteEntry": "Delete entry"
+    "deleteEntry": "Delete entry",
+    "lockEntry": "Lock entry",
+    "unlockEntry": "Unlock entry"
   },
   "editor": {
     "placeholder": {

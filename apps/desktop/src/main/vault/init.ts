@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
+import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { trackMainLog } from '../telemetry/diagnostics'
 
 const logger = createLogger('VaultInit')
@@ -222,7 +224,17 @@ export function writeVaultConfig(
   const newConfig = { ...currentConfig, ...config }
 
   const configPath = getConfigPath(vaultPath)
-  fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'EACCES' && code !== 'EPERM') throw error
+    logger.warn('Vault config is not writable', error)
+    throw new VaultError(
+      getMainI18n().t('errors:vault.permissionDenied'),
+      VaultErrorCode.PERMISSION_DENIED
+    )
+  }
   // In-place write: same inode, and same size whenever only a value's contents
   // change. Drop the entry rather than lean on mtime granularity.
   configCache.delete(configPath)

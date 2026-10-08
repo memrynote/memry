@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Impossibile mostrare l'anteprima di questa modifica",
       "description": "L'agente vuole aggiornare {title}. Rivedi la modifica prima di applicarla.",
+      "descriptionCreate": "L'agente vuole creare {title}. Rivedi la modifica prima di applicarla.",
+      "descriptionDelete": "L'agente vuole eliminare {title}. Rivedi la modifica prima di applicarla.",
       "fallbackTitle": "questo elemento",
       "current": "Attuale",
       "candidate": "Proposta",

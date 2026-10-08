@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Αντιγραφή μη αποθηκευμένου περιεχομένου στο πρόχειρο",
     "addBookmark": "Προσθήκη σελιδοδείκτη",
     "removeBookmark": "Αφαίρεση σελιδοδείκτη",
-    "deleteEntry": "Διαγραφή καταχώρισης"
+    "deleteEntry": "Διαγραφή καταχώρισης",
+    "lockEntry": "Κλείδωμα καταχώρισης",
+    "unlockEntry": "Ξεκλείδωμα καταχώρισης"
   },
   "editor": {
     "placeholder": {

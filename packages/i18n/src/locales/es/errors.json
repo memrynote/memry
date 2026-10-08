@@ -316,5 +316,9 @@
     "invalidUrl": "Eso no es un enlace web. Pega una dirección de imagen http o https.",
     "downloadFailed": "No se pudo descargar esa imagen. Comprueba el enlace e inténtalo de nuevo.",
     "unsupportedUrl": "Ese enlace no es una imagen PNG, JPG, GIF, WEBP o SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "El propietario hizo que esta nota sea de solo lectura.",
+    "folderReadOnly": "El propietario hizo que esta carpeta sea de solo lectura."
   }
 }

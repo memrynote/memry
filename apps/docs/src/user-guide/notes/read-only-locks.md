@@ -7,7 +7,8 @@ contract, a finished report, reference material you hand to an AI agent but neve
 
 Right-click a note or a folder in the sidebar and choose **Lock note** or **Lock folder**. Choose
 **Unlock note** or **Unlock folder** to undo it. Inside an open note, the same toggle sits in the
-**⋯** menu at the top of the page.
+**⋯** menu at the top of the page. A journal day's **⋯** menu has **Lock entry** and
+**Unlock entry** once the day has an entry.
 
 A folder lock covers every note and subfolder in it, including notes added to it later from
 another device. A note inside a locked folder is unlocked by unlocking the folder.
@@ -22,7 +23,8 @@ Journal entries follow the folder they are saved in. When you lock the journal f
 the sidebar when the journal setting **Show in sidebar** is on) or a folder above it, every journal day
 opens read-only with the same lock line, including days that have no entry yet.
 
-A single journal entry cannot be locked from the menu. To lock an entry, lock its folder.
+A locked journal entry opens read-only the same way. Under a locked folder, the entry's menu
+has no lock item; unlock the folder instead.
 
 Everything that would change a locked note is refused:
 
@@ -33,8 +35,9 @@ Everything that would change a locked note is refused:
 - creating, renaming, or deleting anything inside a locked folder, including importing files
   into it or filing an inbox item into it or onto a locked note,
 - every AI agent write: the note and folder tools, `vault_desktop_write`, and HTML artifacts.
-  The agent is told **"The owner made this note read-only."**, for a locked folder too. "Always
-  allow" approvals do not change this.
+  The agent is told **"The owner made this note read-only."**, or **"The owner made this folder
+  read-only."** when it tries to add something to a locked folder or to rename, move, or delete
+  the folder. "Always allow" approvals do not change this.
 
 Vault-wide changes such as renaming, merging, or deleting a tag, or updating links after a
 rename, skip locked notes and carry on with the rest.
@@ -42,7 +45,8 @@ rename, skip locked notes and carry on with the rest.
 Changing the journal **Date format** renames every journal file, so it is refused as a whole
 when any journal entry it would rename is locked, or a rename would move one into a locked
 folder. Settings shows **"The owner made this note read-only."**, the old format stays, and no
-file is renamed. Unlock the folder, then change the format again.
+file is renamed. Unlock the entry or the folder, then change the format again. When Memry cannot
+write the vault's settings file, Settings says permission was denied and the old format stays.
 
 Canvases cannot be locked. They live in a folder that does not appear in the sidebar.
 

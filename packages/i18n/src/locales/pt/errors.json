@@ -316,5 +316,9 @@
     "invalidUrl": "Isso não é um link da web. Cole um endereço de imagem http ou https.",
     "downloadFailed": "Não foi possível baixar essa imagem. Verifique o link e tente novamente.",
     "unsupportedUrl": "Esse link não é uma imagem PNG, JPG, GIF, WEBP ou SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "O proprietário tornou esta nota somente leitura.",
+    "folderReadOnly": "O proprietário tornou esta pasta somente leitura."
   }
 }

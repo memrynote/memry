@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Niet-opgeslagen inhoud naar klembord kopiëren",
     "addBookmark": "Bladwijzer toevoegen",
     "removeBookmark": "Bladwijzer verwijderen",
-    "deleteEntry": "Dagboeknotitie verwijderen"
+    "deleteEntry": "Dagboeknotitie verwijderen",
+    "lockEntry": "Dagboeknotitie vergrendelen",
+    "unlockEntry": "Dagboeknotitie ontgrendelen"
   },
   "editor": {
     "placeholder": {

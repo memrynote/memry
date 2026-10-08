@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copiază conținutul nesalvat în clipboard",
     "addBookmark": "Adaugă la marcaje",
     "removeBookmark": "Elimină din marcaje",
-    "deleteEntry": "Șterge înregistrarea"
+    "deleteEntry": "Șterge înregistrarea",
+    "lockEntry": "Blochează înregistrarea",
+    "unlockEntry": "Deblochează înregistrarea"
   },
   "editor": {
     "placeholder": {

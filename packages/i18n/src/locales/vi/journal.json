@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Sao chép nội dung chưa lưu vào bảng tạm",
     "addBookmark": "Thêm dấu trang",
     "removeBookmark": "Xóa dấu trang",
-    "deleteEntry": "Xóa mục nhật ký"
+    "deleteEntry": "Xóa mục nhật ký",
+    "lockEntry": "Khóa mục nhật ký",
+    "unlockEntry": "Mở khóa mục nhật ký"
   },
   "editor": {
     "placeholder": {

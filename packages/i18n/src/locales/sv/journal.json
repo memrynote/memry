@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopiera osparat innehåll till urklipp",
     "addBookmark": "Lägg till bokmärke",
     "removeBookmark": "Ta bort bokmärke",
-    "deleteEntry": "Radera inlägg"
+    "deleteEntry": "Radera inlägg",
+    "lockEntry": "Lås inlägg",
+    "unlockEntry": "Lås upp inlägg"
   },
   "editor": {
     "placeholder": {

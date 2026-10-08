@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copier le contenu non enregistré dans le presse-papiers",
     "addBookmark": "Ajouter aux favoris",
     "removeBookmark": "Retirer des favoris",
-    "deleteEntry": "Supprimer l'entrée"
+    "deleteEntry": "Supprimer l'entrée",
+    "lockEntry": "Verrouiller l'entrée",
+    "unlockEntry": "Déverrouiller l'entrée"
   },
   "editor": {
     "placeholder": {

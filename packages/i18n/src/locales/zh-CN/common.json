@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "无法预览此更改",
       "description": "智能体想更新 {title}。请在应用前检查更改。",
+      "descriptionCreate": "智能体想创建 {title}。请在应用前检查更改。",
+      "descriptionDelete": "智能体想删除 {title}。请在应用前检查更改。",
       "fallbackTitle": "此条目",
       "current": "当前",
       "candidate": "候选内容",

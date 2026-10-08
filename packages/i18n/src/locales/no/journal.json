@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopier ulagret innhold til utklippstavlen",
     "addBookmark": "Legg til bokmerke",
     "removeBookmark": "Fjern bokmerket",
-    "deleteEntry": "Slett innlegget"
+    "deleteEntry": "Slett innlegget",
+    "lockEntry": "Lås innlegget",
+    "unlockEntry": "Lås opp innlegget"
   },
   "editor": {
     "placeholder": {

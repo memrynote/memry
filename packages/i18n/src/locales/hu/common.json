@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nem sikerült megjeleníteni a módosítás előnézetét",
       "description": "Az ügynök frissíteni szeretné a következőt: {title}. Alkalmazás előtt nézze át a módosítást.",
+      "descriptionCreate": "Az ügynök létre szeretné hozni a következőt: {title}. Alkalmazás előtt nézze át a módosítást.",
+      "descriptionDelete": "Az ügynök törölni szeretné a következőt: {title}. Alkalmazás előtt nézze át a módosítást.",
       "fallbackTitle": "ez az elem",
       "current": "Aktuális",
       "candidate": "Javasolt",

@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Muutoksen esikatseleminen epäonnistui",
       "description": "Agentti haluaa päivittää: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
+      "descriptionCreate": "Agentti haluaa luoda: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
+      "descriptionDelete": "Agentti haluaa poistaa: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
       "fallbackTitle": "tämä kohde",
       "current": "Nykyinen",
       "candidate": "Ehdotettu versio",
