@@ -16,6 +16,9 @@ struct NoteReadDialogs: ViewModifier {
     @Binding var confirmingDelete: Bool
     @Binding var brokenLink: String?
 
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestVaultSync) private var requestVaultSync
+
     func body(content: Content) -> some View {
         content
             // N808's three write actions. Each is a sheet or an alert rather
@@ -34,7 +37,14 @@ struct NoteReadDialogs: ViewModifier {
             .alert("Delete this note?", isPresented: $confirmingDelete) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
-                    Task { await actions.delete() }
+                    Task {
+                        await actions.delete()
+                        // The note is gone: leave its page rather than keep
+                        // showing it, and send the tombstone to other devices.
+                        guard actions.deleted else { return }
+                        requestVaultSync?()
+                        dismiss()
+                    }
                 }
             } message: {
                 // What actually happens, rather than a vague warning: a delete

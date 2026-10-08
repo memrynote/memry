@@ -40,6 +40,66 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #2861: confirming the note page's More actions > Delete removed the
+    /// note but left its page on screen, so the delete looked like it did
+    /// nothing.
+    func testDeletingFromTheNotePageMenuLeavesThePage() throws {
+        try openNotes()
+        let title = "[agent] \(run) page delete"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+
+        app.buttons["More actions for this note"].tap()
+        // Delete is the menu's last item, below the fold on a phone: scroll
+        // the menu as a finger would, then tap it where it is on screen.
+        let delete = app.buttons["trash"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        for _ in 0 ..< 3 where !delete.isHittable {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.55)).press(
+                forDuration: 0.1,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.09))
+            )
+        }
+        XCTAssertTrue(delete.isHittable, "Delete never scrolled into the menu")
+        delete.tap()
+
+        let alert = app.alerts["Delete this note?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        alert.buttons["Delete"].tap()
+
+        XCTAssertTrue(field.waitForNonExistence(timeout: 10), "the deleted note's page stayed open")
+        XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 5))
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertFalse(row.waitForExistence(timeout: 3))
+    }
+
+    /// #2861: a row's swipe > Delete was a destructive swipe action, so the
+    /// list treated the row as removed and its confirmation never appeared.
+    func testSwipeDeleteAsksThenRemovesTheRow() throws {
+        try openNotes()
+        let title = "[agent] \(run) swipe delete"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        app.buttons["BackButton"].tap()
+
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.swipeLeft()
+        let delete = app.buttons["trash"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
+
+        let question = app.staticTexts["Delete this note?"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5), "swipe > Delete asked nothing")
+        app.buttons.matching(NSPredicate(format: "label == 'Delete' AND identifier != 'trash'"))
+            .firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
     private func openNotes() throws {
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
