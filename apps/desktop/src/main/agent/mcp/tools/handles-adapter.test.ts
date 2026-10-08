@@ -1077,7 +1077,8 @@ describe('createVaultServiceHandles', () => {
         content: file,
         tags: [],
         path: 'work/alpha.md',
-        frontmatter: {}
+        frontmatter: {},
+        properties: {}
       }))
       mocks.updateNoteCommand.mockImplementation(async (input: { id: string; content: string }) => {
         file = input.content

@@ -24,6 +24,7 @@ import { getIndexDatabase } from '../database'
 import { setEntityProperties } from '../notes/entity-properties'
 import { getMainI18n } from '../lib/main-i18n'
 import { flushProjectionEvents } from '../projections'
+import { fileSpelling } from '../vault/yaml-dates'
 
 // ============================================================================
 // Handler Registration
@@ -64,7 +65,7 @@ export function registerPropertiesHandlers(): void {
         if (!result.success) return result
         await flushProjectionEvents()
         const stored = Object.fromEntries(
-          getNoteProperties(db, input.entityId).map((p) => [p.name, p.value])
+          getNoteProperties(db, input.entityId).map((p) => [p.name, fileSpelling(p.value)])
         )
         return {
           success: true,

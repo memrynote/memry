@@ -12,13 +12,11 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
+import { splitFrontmatterBlock } from '@memry/app-core/markdown'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './index'
-import {
-  keepRawFrontmatterLines,
-  normalizePropertiesToRoot,
-  writePropertiesToRoot
-} from './frontmatter'
+import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './frontmatter'
+import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
@@ -351,7 +349,6 @@ function composeJournalEntry(
   previousFile: string | null
 ): JournalWriteResult {
   let frontmatter: JournalFrontmatter
-  let keptLegacyKeys: string[] = []
 
   if (existing) {
     // Update existing entry — user keys, plus the legacy Memry keys an older
@@ -359,7 +356,9 @@ function composeJournalEntry(
     const previousFrontmatter = previousFile
       ? (matter(previousFile, {}).data as Record<string, unknown>)
       : {}
-    keptLegacyKeys = LEGACY_JOURNAL_KEYS.filter((key) => Object.hasOwn(previousFrontmatter, key))
+    const keptLegacyKeys = LEGACY_JOURNAL_KEYS.filter((key) =>
+      Object.hasOwn(previousFrontmatter, key)
+    )
     frontmatter = { date }
     for (const key of keptLegacyKeys) frontmatter[key] = previousFrontmatter[key]
     const mergedTags = tags ?? existing.tags
@@ -390,7 +389,7 @@ function composeJournalEntry(
 
   const serialized = serializeJournalEntry(frontmatter, content)
   const fileContent = previousFile
-    ? keepRawFrontmatterLines(serialized, previousFile, keptLegacyKeys)
+    ? (editJournalFile(previousFile, frontmatter, serialized) ?? serialized)
     : serialized
   const parsed = parseJournalEntry(fileContent, date)
   const written = toJournalEntry(parsed)
@@ -399,6 +398,26 @@ function composeJournalEntry(
     fileContent,
     frontmatter: parsed.frontmatter
   }
+}
+
+/**
+ * The rewrite of an existing entry with its frontmatter edited in place and,
+ * when the trimmed body did not change, its body bytes kept, so an entry keeps
+ * its line endings. Null when the old file has no block the edit can read.
+ */
+function editJournalFile(
+  previousFile: string,
+  frontmatter: JournalFrontmatter,
+  serialized: string
+): string | null {
+  const previous = parseNote(previousFile)
+  if (previous.rawFrontmatterBlock === null || previous.frontmatterError) return null
+  const next = normalizePropertiesToRoot(frontmatter).frontmatter
+  const block = editFrontmatterBlock(previous.rawFrontmatterBlock, previous.frontmatter, next)
+  if (!block) return null
+  const body = splitFrontmatterBlock(serialized).body
+  if (body.trim() === previous.content.trim()) return block + previous.content
+  return block + body.replace(/\r?\n/g, previous.eol)
 }
 
 /**

@@ -15,6 +15,7 @@ import {
   type Eol
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
+import { editFrontmatterBlock } from './frontmatter-edit'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { blankMarkdownCode } from '@memry/shared/markdown-code'
@@ -220,15 +221,9 @@ export function serializeParsedNote(
 }
 
 /**
- * Memry wrote these keys into notes before the frontmatter diet (#697). Older
- * files still carry them, and a rewrite must not change them.
- */
-const LEGACY_MEMRY_KEYS = ['id', 'title', 'created', 'modified'] as const
-
-/**
- * serializeParsedNote for an update that may have edited the frontmatter. A
- * re-stringified block re-spells scalars, so each legacy Memry key the update
- * left unchanged keeps the line the file had.
+ * serializeParsedNote for an update that may have edited the frontmatter. An
+ * edited block is changed in place, so the keys the update left alone keep
+ * their lines; a block the in-place edit cannot read is re-stringified.
  */
 export function serializeUpdatedNote(
   parsed: ParsedNote,
@@ -236,14 +231,14 @@ export function serializeUpdatedNote(
   content: string,
   options: SerializeParsedNoteOptions
 ): string {
-  const fileContent = serializeParsedNote({ ...parsed, frontmatter }, content, options)
-  if (!options.frontmatterEdited || parsed.rawFrontmatterBlock === null) return fileContent
-  const unchanged = LEGACY_MEMRY_KEYS.filter(
-    (key) =>
-      Object.hasOwn(parsed.frontmatter, key) &&
-      isDeepStrictEqual(frontmatter[key], parsed.frontmatter[key])
-  )
-  return keepRawFrontmatterLines(fileContent, parsed.rawFrontmatterBlock, unchanged)
+  const block =
+    options.frontmatterEdited && parsed.rawFrontmatterBlock !== null && !parsed.frontmatterError
+      ? editFrontmatterBlock(parsed.rawFrontmatterBlock, parsed.frontmatter, frontmatter)
+      : null
+  if (block === null) return serializeParsedNote({ ...parsed, frontmatter }, content, options)
+  return serializeParsedNote({ ...parsed, rawFrontmatterBlock: block }, content, {
+    frontmatterEdited: false
+  })
 }
 
 /**
@@ -267,47 +262,6 @@ export function propertiesToWrite(
         : value
     ])
   )
-}
-
-/** The line range of a top-level `key:` entry: its line and the indented lines that continue it. */
-function entryLines(lines: string[], key: string): { start: number; end: number } | null {
-  const prefix = `${key}:`
-  const start = lines.findIndex(
-    (line) => line.startsWith(prefix) && /^(\s|$)/.test(line.slice(prefix.length))
-  )
-  if (start === -1) return null
-  let end = start + 1
-  while (end < lines.length && /^[ \t]/.test(lines[end])) end += 1
-  return { start, end }
-}
-
-/**
- * Re-emit the named keys of a re-stringified file exactly as the previous file
- * spelled them. Stringifying re-spells scalars (`created: 2024-03-05` becomes
- * an ISO timestamp), so a key whose value did not change keeps its old line.
- * Only a one-line `key: value` entry in the previous file is copied; callers
- * pass only keys whose value is unchanged.
- */
-export function keepRawFrontmatterLines(
-  fileContent: string,
-  previousFile: string,
-  keys: readonly string[]
-): string {
-  const next = splitFrontmatterBlock(fileContent)
-  const previous = splitFrontmatterBlock(previousFile).block
-  if (next.block === null || previous === null || keys.length === 0) return fileContent
-  const lines = next.block.split('\n')
-  const previousLines = previous.split('\n').map((line) => line.replace(/\r$/, ''))
-  for (const key of keys) {
-    const old = entryLines(previousLines, key)
-    const current = entryLines(lines, key)
-    if (!old || !current || old.end - old.start !== 1) continue
-    const oldLine = previousLines[old.start]
-    if (oldLine.slice(key.length + 1).trim() === '') continue
-    const cr = lines[current.start].endsWith('\r') ? '\r' : ''
-    lines.splice(current.start, current.end - current.start, oldLine + cr)
-  }
-  return lines.join('\n') + next.body
 }
 
 // ============================================================================

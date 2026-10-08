@@ -5,6 +5,7 @@ import { getStatusById } from '../../../database/queries/projects'
 import type { DataDb, IndexDb } from '../../../database'
 import { readJournalEntry, readJournalFile } from '../../../vault/journal'
 import { getNoteById } from '../../../vault/notes'
+import { fileSpelledProperties } from '../../../vault/yaml-dates'
 import type { StoredJournalEntry, StoredNote, StoredStatus } from './handles'
 
 export function readStoredStatus(dataDb: DataDb, id: string): StoredStatus | null {
@@ -42,7 +43,7 @@ export async function readStoredNote(
     title: note.title,
     folder_path: folderPathOf(note.path),
     tags: note.tags,
-    properties: note.properties,
+    properties: fileSpelledProperties(note.properties),
     ...(note.contentOmitted ? { body_bytes: null, body_sha256: null } : bodyDigest(note.content)),
     ...(icon ? { icon } : {})
   }
@@ -55,7 +56,7 @@ export async function readStoredJournalEntry(date: string): Promise<StoredJourna
     id: entry.id,
     date: entry.date,
     tags: entry.tags,
-    properties: entry.properties ?? {},
+    properties: fileSpelledProperties(entry.properties ?? {}),
     ...bodyDigest(file.body)
   }
 }
