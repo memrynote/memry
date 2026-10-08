@@ -432,9 +432,9 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
 `vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
 markdown.
 
-`vault_update_note` reads the note file before it writes, so it never overwrites text that changed
-since the agent read the note. When another program holds the file and that read fails, it reads
-once more a moment later. If the second read fails too, nothing is written and the error names the
+`vault_update_note` builds the update from the note file as it is on disk, so it reads the file
+before it writes. When another program holds the file and that read fails, it reads once more a
+moment later. If the second read fails too, nothing is written and the error names the
 cause, for example `EBUSY`.
 
 ### Looking at images and PDF pages
