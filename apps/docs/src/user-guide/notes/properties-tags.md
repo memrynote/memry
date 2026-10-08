@@ -226,6 +226,8 @@ In the vault's markdown files, a note's frontmatter contains only your own prope
 
 Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all.
 
+When you or an agent do edit a property, tag, or alias, only the lines of that key change. Every other key keeps its line byte for byte, in its place, with its quoting, comments and line endings. A plain date such as `due: 2026-10-07` stays a plain date, also when you change it. A key you remove loses its lines, and a new key goes at the end of the block. The same holds for journal entries.
+
 ### A `#tag` in the body stays in the body
 
 A tag written inline in a note's text is indexed like any other — it shows in the sidebar, in

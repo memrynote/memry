@@ -628,6 +628,109 @@ describe('notes operations', () => {
       })
     })
 
+    describe('a properties write changes only the lines of the keys it changed', () => {
+      const lines = [
+        '---',
+        'owner: "Kaan"',
+        'status: draft',
+        '# review by Friday',
+        'due: 2026-10-07',
+        'tags:',
+        '  - work',
+        'rating: 3',
+        "reviewer: 'Ada'",
+        'started: 2026-09-01T08:30:00.000Z',
+        '---',
+        '',
+        'Body.',
+        ''
+      ]
+
+      async function writeNote(eol: '\n' | '\r\n'): Promise<{ id: string; filePath: string }> {
+        const filePath = path.join(tempVault.notesDir, 'Fidelity.md')
+        fs.writeFileSync(filePath, lines.join(eol))
+        const note = await notes.getNoteByPath('notes/Fidelity.md')
+        await projections.flushProjectionEvents()
+        return { id: note!.id, filePath }
+      }
+
+      function expected(eol: '\n' | '\r\n', changes: Record<string, string>): string {
+        return lines.map((line) => changes[line.slice(0, line.indexOf(':'))] ?? line).join(eol)
+      }
+
+      it('keeps key order, quoting, comments and dates when the record comes in another order', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const { owner, due, rating, reviewer, started } = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { started, reviewer, rating, due, status: 'done', owner })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { status: 'status: done' }))
+      })
+
+      it('keeps a date the agent sends back in the form the reply showed', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+
+        await setEntityProperties(id, {
+          owner: 'Kaan',
+          status: 'done',
+          due: '2026-10-07',
+          rating: 3,
+          reviewer: 'Ada',
+          started: '2026-09-01T08:30:00.000Z'
+        })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { status: 'status: done' }))
+      })
+
+      it('writes a changed plain date as a plain date', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({ id, properties: { ...before!.properties, due: '2026-10-09' } })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
+      })
+
+      it('indexes a date sent in timestamp form as the date the file holds', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, due: '2026-10-09T00:00:00.000Z' })
+        await projections.flushProjectionEvents()
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
+        expect(getNotePropertiesAsRecord(testDb.db, id).due).toBe('"2026-10-09T00:00:00.000Z"')
+      })
+
+      it('keeps CRLF and changes one line in a CRLF note', async () => {
+        const { id, filePath } = await writeNote('\r\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, rating: 4 })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\r\n', { rating: 'rating: 4' }))
+      })
+
+      it('removes the lines of a key the record leaves out and appends a new key', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const before = await notes.getNoteById(id)
+        const { reviewer: _reviewer, ...rest } = before!.properties
+
+        await notes.updateNote({ id, properties: { ...rest, priority: 'high' } })
+
+        const after = lines.filter((line) => !line.startsWith('reviewer:'))
+        after.splice(after.lastIndexOf('---'), 0, 'priority: high')
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(after.join('\n'))
+      })
+    })
+
     it('T363: updates wordCount and modifiedAt', async () => {
       const created = await notes.createNote({
         title: 'Word Count Test',

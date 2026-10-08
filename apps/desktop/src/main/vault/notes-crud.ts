@@ -738,6 +738,10 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     ? new Date().toISOString()
     : (cached?.modifiedAt ?? existing.modified.toISOString())
 
+  // The in-place edit can write a value differently from the record it was
+  // given (a timestamp string for a date key is written as the date), so the
+  // index reads what the file holds.
+  const writtenFrontmatter = parseNote(fileContent, existing.path).frontmatter
   const syncResult = changed
     ? syncNoteToCache(
         db,
@@ -745,7 +749,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
           id: input.id,
           path: existing.path,
           fileContent,
-          frontmatter: newFrontmatter,
+          frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,
           createdAt: cached?.createdAt ?? existing.created.toISOString(),
@@ -766,7 +770,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     path: existing.path,
     title: newTitle,
     content: newContent,
-    frontmatter: newFrontmatter,
+    frontmatter: writtenFrontmatter,
     created: existing.created,
     modified: new Date(newModified),
     tags: newTags,

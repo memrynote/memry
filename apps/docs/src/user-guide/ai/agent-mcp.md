@@ -499,7 +499,7 @@ A write reply can carry a `warnings` list of plain sentences:
   counts. That includes `notes.create` and `notes.update` through `vault_desktop_write`, whose
   reply `note.content` is the stored body. For `vault_update_note` in `append` or `prepend` mode, and for
   `vault_add_html_artifact`, the body sent is the whole body the call asked the note to hold:
-  the current body joined with the new text, not the new text alone. The note is read back
+  the current body joined with the new text by one blank line, not the new text alone. The note is read back
   once any save it was waiting on has run. Line endings count, so an LF body saved into a CRLF
   note is reported. Only the final newline at the end of the body does not count. The body
   sent is measured after the checkbox step below, so a checkbox line stored with `{check}` or
@@ -756,12 +756,17 @@ record instead. Named write tools do the same.
 `properties.set(entityId, properties)` replaces the entity's whole property record. It does not
 merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
 keys that older notes carry in their frontmatter are the exception for agents: they are kept when
-the call leaves them out, and a call deletes one only by passing it as `null`. A legacy key the call
-does not change keeps its line in the file byte for byte, so `created: 2024-03-05` stays exactly that.
-A value passed back as a read returned it is written as the file holds it, so a date stays a date.
-The reply lists the stored `properties` and the names it `removed`. The tag writers that edit a
-note's `tags` list (`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and
-`tags.removeTagFromNote`) keep those legacy lines byte for byte too.
+the call leaves them out, and a call deletes one only by passing it as `null`. Any key the call does
+not change keeps its line in the file byte for byte and in its place, whatever order the call lists
+the keys in, so `created: 2024-03-05` stays exactly that. A value passed back as a read returned it
+is written as the file holds it, so a date stays a date. A new value for a key that holds a date and
+spells a real calendar date, such as `2026-10-09`, is written as a plain date, not a quoted string
+(`2026-02-30` stays text). The reply lists the stored `properties` and the names it `removed`, and
+spells a date as the file does
+(`2026-10-07`, or the full timestamp when it has a time of day). Stored note and journal records in
+write replies spell dates the same way. The tag writers that edit a note's `tags` list
+(`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and `tags.removeTagFromNote`) keep the other
+lines byte for byte too.
 
 Named note, journal, task, project and inbox writes answer with the record as a read returns it after
 the write. The other named writes answer with what the write itself returned, as listed below. Every

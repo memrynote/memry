@@ -567,6 +567,40 @@ Today I worked on tests.`
     })
   })
 
+  describe('a properties write on a CRLF entry', () => {
+    const journalFile = () => path.join(tempVault.path, 'journal', '2025-02-02.md')
+    const lines = [
+      '---',
+      'mood: calm',
+      'date: 2025-02-02',
+      'due: 2025-03-01',
+      "where: 'Home'",
+      'tags:',
+      '  - daily',
+      '---',
+      '',
+      'Old body.',
+      ''
+    ]
+
+    it('keeps CRLF and every byte but the changed line', async () => {
+      fs.writeFileSync(journalFile(), lines.join('\r\n'))
+      const existing = await readJournalEntry('2025-02-02')
+
+      await writeJournalEntryWithContent(
+        '2025-02-02',
+        existing!.content,
+        existing!.tags,
+        existing,
+        { ...existing!.properties, mood: 'tired' }
+      )
+
+      expect(fs.readFileSync(journalFile(), 'utf8')).toBe(
+        lines.map((line) => (line === 'mood: calm' ? 'mood: tired' : line)).join('\r\n')
+      )
+    })
+  })
+
   describe('buildJournalEntryWrite keeps the body a record does not carry (spec 005-journal G0)', () => {
     const onDisk = `---
 id: j2099-06-01

@@ -90,7 +90,8 @@ function mergeContent(
   if (mode === 'replace') return next
   if (!current) return next
   if (!next) return current
-  return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+  const [first, second] = mode === 'append' ? [current, next] : [next, current]
+  return `${first.replace(/(\r?\n)+$/, '')}\n\n${second}`
 }
 
 function sameTagList(a: string[], b: string[]): boolean {

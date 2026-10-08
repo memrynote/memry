@@ -165,6 +165,26 @@ describe('properties IPC handlers', () => {
     expect(mocks.syncNoteUpdate).toHaveBeenCalledWith('note-1')
   })
 
+  it('replies with dates spelled as the file spells them, not as the index stores them', async () => {
+    registerPropertiesHandlers()
+    mocks.getNoteProperties.mockReturnValue([
+      { name: 'due', value: '"2026-10-07T00:00:00.000Z"', type: 'text' },
+      { name: 'started', value: '"2026-09-01T08:30:00.000Z"', type: 'date' },
+      { name: 'quote', value: '"as typed"', type: 'text' }
+    ])
+
+    await expect(
+      invoke(PropertiesChannels.invoke.SET, {
+        entityId: 'note-1',
+        properties: { due: '2026-10-07', started: '2026-09-01T08:30:00.000Z', quote: '"as typed"' }
+      })
+    ).resolves.toEqual({
+      success: true,
+      properties: { due: '2026-10-07', started: '2026-09-01T08:30:00.000Z', quote: '"as typed"' },
+      removed: []
+    })
+  })
+
   it('routes journal property updates through journal file write and cache sync', async () => {
     registerPropertiesHandlers()
     mocks.getNoteCacheById.mockReturnValue({
