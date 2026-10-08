@@ -306,7 +306,7 @@ export function CanvasRow({
               onPickerOpenChange={menus.setPickerOpen}
             >
               {canvas.icon ? (
-                <NoteIconDisplay value={canvas.icon} className="text-sm leading-none" />
+                <NoteIconDisplay value={canvas.icon} />
               ) : (
                 <PenTool className="h-4 w-4 text-sidebar-foreground" />
               )}

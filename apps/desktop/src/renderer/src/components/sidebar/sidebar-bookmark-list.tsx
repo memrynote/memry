@@ -168,12 +168,9 @@ export function SidebarBookmarkList({
                     {/* Leading block mirrors the notes tree: expander slot + icon slot */}
                     <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
                       <span className="size-4" />
-                      <span className="flex size-5 items-center justify-center">
+                      <span className="flex size-5 items-center justify-center text-base leading-none">
                         {emoji ? (
-                          <NoteIconDisplay
-                            value={emoji}
-                            className="size-4 flex items-center justify-center text-sm shrink-0"
-                          />
+                          <NoteIconDisplay value={emoji} className="shrink-0" />
                         ) : (
                           <Icon className="size-4 shrink-0 text-sidebar-foreground" />
                         )}
