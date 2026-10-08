@@ -41,7 +41,7 @@ test.describe('Save note as template', () => {
 
     await page.evaluate(
       async ({ id, tag, propertyName, propertyValue }) => {
-        const tagged = await window.api.notes.update({ id, tags: [tag] })
+        const tagged = await window.api.notes.update({ id, headerTags: { add: [tag] } })
         if (!tagged.success) {
           throw new Error(tagged.error ?? 'note tag update failed')
         }

@@ -24,9 +24,11 @@ async function seedNoteWithTag(page, tag: string): Promise<void> {
   const created = await page.evaluate(async (tagName) => {
     const api = (window as unknown as { api: Record<string, any> }).api
     if (!api?.notes?.create) return false
+    // The tag lives in the header only. A `#tag` in the body is an inline tag
+    // of its own, which a header rename or delete leaves in the text and the index.
     const res = await api.notes.create({
       title: `Tag Test ${tagName}`,
-      content: `Note body with #${tagName}`,
+      content: 'Note body',
       tags: [tagName]
     })
     return !!res?.success

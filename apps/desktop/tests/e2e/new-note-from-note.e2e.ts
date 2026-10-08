@@ -113,10 +113,16 @@ test.describe('New note from this note (#2329)', () => {
     await expect.poll(() => readNote(`${FOLDER}/Untitled.md`)).toEqual(expected)
 
     await nameField.press('Escape')
-    await page.evaluate(async (id) => {
-      const updated = await window.api.notes.update({ id, tags: ['changed-later'] })
-      if (!updated.success) throw new Error(updated.error ?? 'source update failed')
-    }, sourceId)
+    await page.evaluate(
+      async ({ id, tags }) => {
+        const updated = await window.api.notes.update({
+          id,
+          headerTags: { remove: tags, add: ['changed-later'] }
+        })
+        if (!updated.success) throw new Error(updated.error ?? 'source update failed')
+      },
+      { id: sourceId, tags: SOURCE_TAGS }
+    )
     expect(
       (await readNote(`${FOLDER}/Untitled.md`))?.tags,
       'a later edit to the source does not reach the copy'
