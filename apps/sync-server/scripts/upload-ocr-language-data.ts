@@ -97,7 +97,7 @@ async function buildLanguage(lang: OcrLanguage): Promise<ManifestEntry> {
 function readRemoteManifest(): Map<string, ManifestEntry> {
   const result = wrangler(['r2', 'object', 'get', `${bucket}/${OCR_MANIFEST_KEY}`, '--pipe'])
   if (!result.ok) {
-    if (/does not exist|not found/i.test(result.stderr + result.stdout)) return new Map()
+    if (/specified key does not exist/i.test(result.stderr + result.stdout)) return new Map()
     throw new Error(`Reading ${OCR_MANIFEST_KEY} failed:\n${result.stderr}`)
   }
   const entries = JSON.parse(result.stdout) as ManifestEntry[]
