@@ -59,6 +59,13 @@ describe('scanFootnotes', () => {
     expect(definition.text).toBe('Text.\nAfter')
   })
 
+  it('reads a label as ending at the next bracket, so a run of `[^` stays linear', () => {
+    expect(refs('x[^a[^b] y\n\n[^b]: B.')).toEqual([['[^b]', 1]])
+    const start = performance.now()
+    scanFootnotes('[^'.repeat(50_000) + '\n\n[^b]: B.')
+    expect(performance.now() - start).toBeLessThan(1000)
+  })
+
   it('does not read a definition marker as a reference', () => {
     expect(refs('[^1]: Only a definition.')).toEqual([])
   })
