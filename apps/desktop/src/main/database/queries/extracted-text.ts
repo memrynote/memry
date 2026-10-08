@@ -37,6 +37,7 @@ export interface PendingTextJob extends TextSourceRef {
   signature: string
   notePath: string
   noteFileType: string
+  ocrLanguages: string | null
 }
 
 interface ExtractedPage {
@@ -132,7 +133,8 @@ export function nextPendingTextJob(db: IndexDb): PendingTextJob | undefined {
       source: fileTextJobs.source,
       signature: fileTextJobs.signature,
       notePath: noteCache.path,
-      noteFileType: noteCache.fileType
+      noteFileType: noteCache.fileType,
+      ocrLanguages: fileTextJobs.ocrLanguages
     })
     .from(fileTextJobs)
     .innerJoin(noteCache, eq(noteCache.id, fileTextJobs.noteId))
@@ -187,6 +189,14 @@ export function retryFileTextJob(db: IndexDb, ref: TextSourceRef, appVersion: st
   })
 }
 
+/** Queue a finished job again with every part it stored; the reader decides which to replace. */
+export function requeueFileTextJob(db: IndexDb, ref: TextSourceRef): void {
+  db.update(fileTextJobs)
+    .set({ status: 'pending', error: null, updatedAt: new Date().toISOString() })
+    .where(isJob(ref))
+    .run()
+}
+
 /** Forget a file that is gone: its job and its text. */
 export function deleteTextSource(db: IndexDb, ref: TextSourceRef): void {
   db.transaction((tx) => {
@@ -202,11 +212,16 @@ export function setFileTextPageCount(db: IndexDb, ref: TextSourceRef, pageCount:
 export function finishFileTextJob(
   db: IndexDb,
   ref: TextSourceRef,
-  status: Exclude<FileTextJobStatus, 'pending'>,
-  error: string | null = null
+  outcome: {
+    status: Exclude<FileTextJobStatus, 'pending'>
+    error?: string
+    /** The Tesseract language string the job's OCR parts were read with. */
+    ocrLanguages: string | null
+  }
 ): void {
+  const { status, error = null, ocrLanguages } = outcome
   db.update(fileTextJobs)
-    .set({ status, error, updatedAt: new Date().toISOString() })
+    .set({ status, error, ocrLanguages, updatedAt: new Date().toISOString() })
     .where(isJob(ref))
     .run()
 }
@@ -227,24 +242,32 @@ export function saveExtractedPart(
     .run()
 }
 
-/** The parts a job already stored, so a resumed job reads only the rest. */
-export function storedExtractedParts(db: IndexDb, ref: TextSourceRef): Set<number> {
+/** The parts a job already stored, or the ones read as `method`, so a resumed job reads only the rest. */
+export function storedExtractedParts(
+  db: IndexDb,
+  ref: TextSourceRef,
+  method?: ExtractedTextMethod
+): Set<number> {
   return new Set(
     db
       .select({ part: extractedText.part })
       .from(extractedText)
-      .where(isSource(ref))
+      .where(and(isSource(ref), method ? eq(extractedText.method, method) : undefined))
       .all()
       .map((row) => row.part)
   )
 }
 
-export function hasUnreadableParts(db: IndexDb, ref: TextSourceRef): boolean {
+export function hasPartsReadAs(
+  db: IndexDb,
+  ref: TextSourceRef,
+  method: ExtractedTextMethod
+): boolean {
   return (
     db
       .select({ part: extractedText.part })
       .from(extractedText)
-      .where(and(isSource(ref), eq(extractedText.method, 'unreadable')))
+      .where(and(isSource(ref), eq(extractedText.method, method)))
       .limit(1)
       .get() !== undefined
   )

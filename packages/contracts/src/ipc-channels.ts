@@ -1185,3 +1185,25 @@ export const WritingToolsChannels = {
 
 export type WritingToolsInvokeChannel =
   (typeof WritingToolsChannels.invoke)[keyof typeof WritingToolsChannels.invoke]
+
+// ============================================================================
+// OCR Languages Channels
+// ============================================================================
+
+export const OcrLanguagesChannels = {
+  invoke: {
+    /** The chosen OCR languages and where each one's data stands */
+    GET: 'ocr-languages:get',
+    /** Choose the OCR languages: download the added ones, delete the removed ones */
+    SET: 'ocr-languages:set',
+    /** Download the chosen languages whose download failed */
+    RETRY: 'ocr-languages:retry'
+  },
+  events: {
+    /** The choice or a language's download state changed */
+    CHANGED: 'ocr-languages:changed'
+  }
+} as const
+
+export type OcrLanguagesInvokeChannel =
+  (typeof OcrLanguagesChannels.invoke)[keyof typeof OcrLanguagesChannels.invoke]

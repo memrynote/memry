@@ -1,3 +1,14 @@
+/**
+ * The languages OCR reads with, by Tesseract code (`eng`, `deu`). English is
+ * `bundledDir/eng.traineddata.gz`; every other language is
+ * `downloadDir/<code>.traineddata`, gzipped.
+ */
+export interface OcrLanguageSet {
+  codes: string[]
+  bundledDir: string
+  downloadDir: string
+}
+
 /** An image file on disk, or a PNG rendered from a PDF page. */
 export type OcrImageSource = { kind: 'file'; path: string } | { kind: 'png'; data: Uint8Array }
 

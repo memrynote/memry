@@ -6,11 +6,15 @@ import { describe, expect, it } from 'vitest'
 import { createOcrReader, toOcrPng } from './ocr-reader'
 
 const FIXTURE = path.join(__dirname, 'ocr-reader.fixture.png')
-const TESSDATA = path.join(__dirname, 'tessdata')
+const ENGLISH = {
+  codes: ['eng'],
+  bundledDir: path.join(__dirname, 'tessdata'),
+  downloadDir: path.join(os.tmpdir(), 'memry-ocr-no-downloads')
+}
 
 describe('OCR reader', () => {
   it('reads the text of an image file with the English data shipped in the app', async () => {
-    const reader = createOcrReader(TESSDATA)
+    const reader = createOcrReader(ENGLISH)
 
     const text = await reader.read({ kind: 'file', path: FIXTURE })
 
@@ -18,7 +22,7 @@ describe('OCR reader', () => {
   }, 30_000)
 
   it('reads a rendered page handed over as PNG bytes, and keeps working after a bad file', async () => {
-    const reader = createOcrReader(TESSDATA)
+    const reader = createOcrReader(ENGLISH)
     const notAnImage = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-ocr-')), 'x.png')
     fs.writeFileSync(notAnImage, 'not an image')
 

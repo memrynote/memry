@@ -20,6 +20,10 @@ vi.mock('./ocr-engine', () => ({
     helpers.ocrStopped++
   }
 }))
+vi.mock('./ocr-languages', () => ({
+  ocrLanguageSet: () => ({ codes: ['eng'], bundledDir: '/app/tessdata', downloadDir: '/data' }),
+  onActiveOcrLanguagesChanged: () => () => {}
+}))
 vi.mock('./pdf-host', () => ({
   openPdfDocument: async () => {
     throw new Error('no PDFs in this test')

@@ -52,6 +52,7 @@ import { importApi, importEvents } from './api/import'
 import { homePagesApi, homePagesEvents } from './api/home-pages'
 import { customIconsApi, customIconsEvents } from './api/custom-icons'
 import { vaultLocksApi, vaultLocksEvents } from './api/vault-locks'
+import { ocrLanguagesApi, ocrLanguagesEvents } from './api/ocr-languages'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -138,6 +139,7 @@ export const api = {
   ...homePagesEvents,
   ...customIconsEvents,
   ...vaultLocksEvents,
+  ...ocrLanguagesEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,
@@ -163,6 +165,7 @@ export const api = {
   homePages: homePagesApi,
   customIcons: customIconsApi,
   vaultLocks: vaultLocksApi,
+  ocrLanguages: ocrLanguagesApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,

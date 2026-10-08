@@ -1,7 +1,8 @@
 /**
  * The OCR utility process (ocr-worker.ts): one Tesseract worker at low OS
  * priority, started on the first request and stopped after a minute of quiet.
- * English data ships in out/main/tessdata; nothing is fetched.
+ * It reads with the languages ocr-languages.ts has data for, and a new worker
+ * starts when they change.
  */
 import { utilityProcess, type UtilityProcess } from 'electron'
 import { existsSync } from 'fs'
@@ -9,7 +10,13 @@ import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getLogShip } from '../telemetry/log-ship'
 import { lowerProcessPriority } from './low-priority'
-import type { OcrImageSource, OcrMainToWorkerMessage, OcrWorkerToMainMessage } from './ocr-protocol'
+import { ocrLanguageSet } from './ocr-languages'
+import type {
+  OcrImageSource,
+  OcrLanguageSet,
+  OcrMainToWorkerMessage,
+  OcrWorkerToMainMessage
+} from './ocr-protocol'
 
 const logger = createLogger('Ocr')
 
@@ -25,22 +32,19 @@ interface Pending {
 
 let worker: Promise<UtilityProcess> | null = null
 let child: UtilityProcess | null = null
+/** The Tesseract language string the current worker reads with. */
+let workerLanguages = ''
 const pending = new Map<number, Pending>()
 let nextRequestId = 1
 let idleTimer: ReturnType<typeof setTimeout> | null = null
 let reportedMissingData = false
 
-/** asar-unpacked in a packaged build: Tesseract's own thread reads it with plain fs. */
-function languageDataDir(): string {
-  return path.join(__dirname, 'tessdata').replace('app.asar', 'app.asar.unpacked')
-}
-
 /**
- * Without its language data Tesseract does not fail; the request waits out
- * RECOGNIZE_TIMEOUT_MS. Fail at once instead, and log it once per run.
+ * Without the English data that ships in the app Tesseract does not fail; the
+ * request waits out RECOGNIZE_TIMEOUT_MS. Fail at once instead, and log it once per run.
  */
-function assertLanguageData(): void {
-  if (existsSync(path.join(languageDataDir(), 'eng.traineddata.gz'))) return
+function assertLanguageData(languages: OcrLanguageSet): void {
+  if (existsSync(path.join(languages.bundledDir, 'eng.traineddata.gz'))) return
   if (!reportedMissingData) {
     reportedMissingData = true
     logger.error('OCR language data is missing; scanned pages and images stay unread')
@@ -83,11 +87,11 @@ function settle(requestId: number, outcome: (request: Pending) => void): void {
   }
 }
 
-function startWorker(): Promise<UtilityProcess> {
+function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
   return new Promise((resolve, reject) => {
     const spawned = utilityProcess.fork(path.join(__dirname, 'ocr-worker.js'), [], {
       serviceName: 'MemryOCR',
-      env: { ...process.env, MEMRY_OCR_LANG_PATH: languageDataDir() }
+      env: { ...process.env, MEMRY_OCR_LANGUAGES: JSON.stringify(languages) }
     })
     child = spawned
     const startTimer = setTimeout(() => {
@@ -126,9 +130,13 @@ function startWorker(): Promise<UtilityProcess> {
 
 /** The text Tesseract reads in `source`. One request at a time is the expected use. */
 export async function recognizeText(source: OcrImageSource): Promise<string> {
-  assertLanguageData()
+  const languages = ocrLanguageSet()
+  assertLanguageData(languages)
   clearIdleTimer()
-  worker ??= startWorker().catch((error: unknown) => {
+  const key = languages.codes.join('+')
+  if (worker && key !== workerLanguages) stopOcr('OCR languages changed')
+  workerLanguages = key
+  worker ??= startWorker(languages).catch((error: unknown) => {
     worker = null
     throw error
   })

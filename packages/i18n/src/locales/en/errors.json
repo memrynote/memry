@@ -321,5 +321,11 @@
   "vaultLock": {
     "noteReadOnly": "The owner made this note read-only.",
     "folderReadOnly": "The owner made this folder read-only."
+  },
+  "ocrLanguages": {
+    "unreachable": "Memry's server could not be reached. The languages already here keep working, and Memry tries again at the next start.",
+    "unavailable": "Memry's server does not offer this language yet. The languages already here keep working.",
+    "corrupt": "The downloaded data did not match what Memry expects, so it was not used. Retry to download it again.",
+    "saveFailed": "The language data could not be saved on this computer. Check the free disk space, then retry."
   }
 }

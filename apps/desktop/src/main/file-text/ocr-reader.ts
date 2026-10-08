@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 import { createWorker, OEM, type Worker } from 'tesseract.js'
-import type { OcrImageSource } from './ocr-protocol'
+import type { OcrImageSource, OcrLanguageSet } from './ocr-protocol'
 
 /** Tesseract reads small type badly; a screenshot at 1x scale is read at 2x. */
 const UPSCALE_BELOW_EDGE = 1600
@@ -22,20 +22,19 @@ export async function toOcrPng(source: OcrImageSource): Promise<Buffer> {
     .toBuffer()
 }
 
-/**
- * One English Tesseract worker, started on the first read. `langPath` is the
- * directory holding `eng.traineddata.gz`.
- */
-export function createOcrReader(langPath: string | undefined): {
+/** One Tesseract worker for `languages`, started on the first read. */
+export function createOcrReader(languages: OcrLanguageSet): {
   read(source: OcrImageSource): Promise<string>
 } {
   let engine: Promise<Worker> | null = null
 
   const getEngine = (): Promise<Worker> => {
-    engine ??= createWorker('eng', OEM.LSTM_ONLY, {
-      langPath,
-      // The default writes eng.traineddata into the working directory.
-      cacheMethod: 'none',
+    // tesseract.js looks for `<cachePath>/<code>.traineddata` first and falls
+    // back to `<langPath>/<code>.traineddata.gz`. `readOnly` never writes there.
+    engine ??= createWorker(languages.codes.join('+'), OEM.LSTM_ONLY, {
+      langPath: languages.bundledDir,
+      cachePath: languages.downloadDir,
+      cacheMethod: 'readOnly',
       gzip: true,
       // Without a handler tesseract.js rethrows a failed job as an uncaught
       // exception; the job's own promise still rejects.

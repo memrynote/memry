@@ -177,6 +177,16 @@
       "changed": "Language changed to {nativeName}",
       "failed": "Failed to change language. Please try again."
     },
+    "ocrLanguages": {
+      "label": "Text recognition",
+      "helper": "Languages read in scanned PDFs and images, so search finds their words. English is built in. Others download from Memry's server.",
+      "more": "{names} +{count}",
+      "downloading": "Downloading {language}: {percent}%",
+      "failed": "The download failed. The languages already here keep working.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Retry",
+      "saveFailed": "The text recognition languages could not be changed."
+    },
     "clockFormat": {
       "label": "Time format",
       "description": "12-hour or 24-hour clock",
