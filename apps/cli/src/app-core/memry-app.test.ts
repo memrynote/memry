@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { calendarExternalEvents, calendarSources, syncState } from '@memry/db-schema/data-schema'
+import { extractedText, noteCache } from '@memry/db-schema/index-schema'
 
 import { openDatabases } from './database.ts'
 import { createMemryApp } from './memry-app.ts'
@@ -940,6 +941,46 @@ test('exports tasks without their ids unless the caller keeps them', async () =>
   assert.match(await fs.readFile(htmlPath, 'utf-8'), /Pack bags \{task:t1\}<\/li>/)
   await app.exportPdf(note.id, pdfPath, { includeTaskMarkers: true })
   assert.match(await fs.readFile(pdfPath, 'utf-8'), /\(- \[ \] Pack bags \{task:t1\}\) Tj/)
+
+  app.close()
+})
+
+test('graph draws an edge for a link in a note HTML block that the desktop app read', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  const guide = await app.notes.create({ title: 'Harbor Log', content: 'Tides' })
+  const source = await app.notes.create({
+    title: 'Chart Note',
+    content: '![[attachments/chart/chart.html]]'
+  })
+  const databases = openDatabases(vaultPath)
+  try {
+    databases.indexDb
+      .insert(noteCache)
+      .values({
+        id: source.id,
+        path: source.path,
+        title: source.title,
+        createdAt: source.createdAt,
+        modifiedAt: source.modifiedAt
+      })
+      .run()
+    databases.indexDb
+      .insert(extractedText)
+      .values({
+        noteId: source.id,
+        source: 'chart.html',
+        part: 1,
+        method: 'html',
+        text: 'Tide chart, see [[Harbor Log]]'
+      })
+      .run()
+  } finally {
+    databases.close()
+  }
+
+  const graph = await app.graph.data()
+  assert.ok(graph.edges.some((edge) => edge.source === source.id && edge.target === guide.id))
 
   app.close()
 })

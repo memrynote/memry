@@ -23,7 +23,7 @@ function note(id: string, title: string, content: string): NoteRecord {
   }
 }
 
-function graphOf(notes: NoteRecord[]) {
+function graphOf(notes: NoteRecord[], htmlBlockText: Record<string, string[]> = {}) {
   const notesService = {
     list: async (options?: { journalOnly?: boolean }) => (options?.journalOnly ? [] : notes)
   } as unknown as NotesService
@@ -31,7 +31,11 @@ function graphOf(notes: NoteRecord[]) {
     list: async () => [],
     projects: { list: async () => [] }
   } as unknown as TasksService
-  return createGraphService({ notes: notesService, tasks: tasksService })
+  return createGraphService({
+    notes: notesService,
+    tasks: tasksService,
+    htmlBlockText: (noteId: string) => htmlBlockText[noteId] ?? []
+  })
 }
 
 test('graph: link syntax inside code draws no node, links in comments still do', async () => {
@@ -74,5 +78,16 @@ test('graph: links in %% comments draw edges like visible links', async () => {
   assert.deepEqual(
     data.nodes.filter((node) => node.isUnresolved).map((node) => node.label),
     ['Inline Hidden', 'Block Hidden']
+  )
+})
+
+test('graph: links in a note HTML blocks draw edges, link syntax in their code does not', async () => {
+  const data = await graphOf([note('n1', 'Docs', 'See [[Guide]].'), note('n2', 'Guide', '')], {
+    n1: ['Chart of [[Guide]] and [[Harbor Log]]', 'Write `[[Code Example]]` to link.']
+  }).data()
+
+  assert.deepEqual(
+    data.edges.map((edge) => edge.target),
+    ['n2', 'ghost:Harbor Log']
   )
 })

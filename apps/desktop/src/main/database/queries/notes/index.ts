@@ -51,6 +51,7 @@ export {
 
 export {
   setNoteLinks,
+  setMarkdownNoteLinks,
   backfillUnresolvedLinksByTitle,
   getOutgoingLinks,
   getIncomingLinks,
