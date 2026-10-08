@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestIndexDb } from '@tests/utils/test-db'
 
@@ -43,7 +46,9 @@ const mocks = vi.hoisted(() => ({
   getEditorSettings: vi.fn(),
   listProjects: vi.fn(),
   saveAttachment: vi.fn(),
-  emitNoteAttachmentSaved: vi.fn()
+  emitNoteAttachmentSaved: vi.fn(),
+  getStatus: vi.fn(),
+  getTemplate: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -118,7 +123,12 @@ vi.mock('../../../notes/folder-config-effects', () => ({
 }))
 
 vi.mock('../../../vault', () => ({
-  getConfig: mocks.getConfig
+  getConfig: mocks.getConfig,
+  getStatus: mocks.getStatus
+}))
+
+vi.mock('../../../vault/templates', () => ({
+  getTemplate: mocks.getTemplate
 }))
 
 vi.mock('../../../tags/store', () => ({
@@ -168,6 +178,7 @@ const deps = {
 }
 
 describe('createVaultServiceHandles', () => {
+  let vaultPath: string
   let taskDomain: {
     listTasks: ReturnType<typeof vi.fn>
     createTask: ReturnType<typeof vi.fn>
@@ -197,10 +208,17 @@ describe('createVaultServiceHandles', () => {
     reorderStatuses: ReturnType<typeof vi.fn>
   }
 
+  afterEach(() => {
+    fs.rmSync(vaultPath, { recursive: true, force: true })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-adapter-vault-'))
+    for (const folder of ['notes', 'work', 'archive']) fs.mkdirSync(path.join(vaultPath, folder))
+    mocks.getStatus.mockReturnValue({ isOpen: true, path: vaultPath })
     mocks.isPersistent.mockResolvedValue(true)
     mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: false })
     mocks.listProjects.mockReturnValue([{ id: 'inbox-project', isInbox: true }])
@@ -2132,6 +2150,142 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  describe('checkbox lines in content an agent call creates (#2759)', () => {
+    beforeEach(() => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+    })
+
+    it('keeps checkbox lines plain in the templates an agent creates and updates', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getTemplate.mockResolvedValue({ id: 'template-1', content: '- [ ] Owner item' })
+
+      await handles.desktop.write(
+        { operation: 'templates.create', args: [{ name: 'Shop', content: '- [ ] Buy milk' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        {
+          operation: 'templates.update',
+          args: [{ id: 'template-1', content: '- [ ] Owner item\n- [ ] Buy bread' }]
+        },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        {
+          operation: 'templates.create',
+          args: [{ name: 'Shop', content: '- [ ] Buy milk {check}' }]
+        },
+        {
+          operation: 'templates.update',
+          args: [{ id: 'template-1', content: '- [ ] Owner item\n- [ ] Buy bread {check}' }]
+        }
+      ])
+      expect(mocks.getTemplate).toHaveBeenCalledWith('template-1')
+    })
+
+    it('asks for plain checkbox lines when an agent applies a template, converts an inbox item or imports files', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await handles.desktop.write(
+        {
+          operation: 'notes.applyTemplate',
+          args: [{ noteId: 'note-1', templateId: 'template-1', mode: 'body' }]
+        },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'inbox.convertToNote', args: ['inbox-1'] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.importFiles', args: [['/tmp/list.md']] },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        {
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: true }
+          ]
+        },
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: true }] },
+        {
+          operation: 'notes.importFiles',
+          args: [['/tmp/list.md'], undefined, { plainChecklists: true }]
+        }
+      ])
+    })
+  })
+
+  describe('folders a note write creates (#2759)', () => {
+    beforeEach(() => {
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    })
+
+    it('lists the folders a new note created, shallowest first', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.create({
+          title: 'Plan',
+          content_markdown: 'Body',
+          folder_path: '/work/q3/plans'
+        })
+      ).resolves.toMatchObject({ created_folders: ['work/q3', 'work/q3/plans'] })
+    })
+
+    it('lists the default note folder when a folderless note created it', async () => {
+      const handles = createVaultServiceHandles(deps)
+      fs.rmSync(path.join(vaultPath, 'notes'), { recursive: true })
+
+      await expect(
+        handles.notes.create({ title: 'Plan', content_markdown: 'Body' })
+      ).resolves.toMatchObject({ created_folders: ['notes'] })
+    })
+
+    it('says nothing about folders that already existed', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      const reply = await handles.notes.create({
+        title: 'Plan',
+        content_markdown: 'Body',
+        folder_path: 'work'
+      })
+
+      expect(reply).not.toHaveProperty('created_folders')
+    })
+
+    it('lists the folders a move created in the move reply', async () => {
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Plan',
+        content: 'Body',
+        tags: [],
+        path: 'archive/2026/plan.md',
+        frontmatter: {}
+      })
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Plan',
+        path: 'archive/2026/plan.md',
+        fileType: 'markdown'
+      })
+      const tool = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+        approved: true
+      })).find((candidate) => candidate.name === 'vault_move_to_folder')!
+
+      const reply = await tool.handler(
+        { id: 'note-1', folder_path: 'archive/2026' },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
+
+      expect(reply).toMatchObject({ id: 'note-1', created_folders: ['archive/2026'] })
+      expect(mocks.moveNoteCommand).toHaveBeenCalledWith('note-1', 'archive/2026')
+    })
+  })
+
   describe('checkbox lines an agent writes, with agent conversion on', () => {
     beforeEach(() => {
       mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: true })
@@ -2215,6 +2369,24 @@ describe('createVaultServiceHandles', () => {
 
       expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('window-1', request)
       expect(taskDomain.createTask).not.toHaveBeenCalled()
+    })
+
+    it('sends template, inbox and import writes unchanged for the editor to convert', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+      const requests = [
+        { operation: 'templates.create' as const, args: [{ name: 'Shop', content: '- [ ] A' }] },
+        {
+          operation: 'notes.applyTemplate' as const,
+          args: [{ noteId: 'note-1', templateId: 'template-1', mode: 'body' }]
+        },
+        { operation: 'inbox.convertToNote' as const, args: ['inbox-1'] },
+        { operation: 'notes.importFiles' as const, args: [['/tmp/list.md']] }
+      ]
+
+      for (const request of requests) await handles.desktop.write(request, 'window-1')
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual(requests)
     })
   })
 

@@ -2070,6 +2070,41 @@ describe('notes operations', () => {
       expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
     })
 
+    it('keeps the checkbox lines of imported markdown plain when asked (#2759)', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      const proseBytes = Buffer.from('# Prose\r\n\r\nNo boxes here.\r\n', 'utf8')
+      const prosePath = path.join(tempVault.path, 'prose.md')
+      const latin1Bytes = Buffer.from('- [ ] Caf\xe9\n', 'latin1')
+      const latin1Path = path.join(tempVault.path, 'latin1.md')
+      fs.writeFileSync(listPath, '---\ntags: [shop]\n---\n- [ ] Buy milk\r\n- [x] Call Ana\r\n')
+      fs.writeFileSync(prosePath, proseBytes)
+      fs.writeFileSync(latin1Path, latin1Bytes)
+
+      const result = await notes.importFiles({
+        sourcePaths: [listPath, prosePath, latin1Path],
+        targetFolder: 'notes',
+        plainChecklists: true
+      })
+
+      const [list, prose, latin1] = result.importedFiles.map((file) =>
+        fs.readFileSync(file.destPath)
+      )
+      expect(list.toString('utf8')).toBe(
+        '---\ntags: [shop]\n---\n- [ ] Buy milk {check}\r\n- [x] Call Ana {check}\r\n'
+      )
+      expect(prose.equals(proseBytes)).toBe(true)
+      expect(latin1.equals(latin1Bytes)).toBe(true)
+    })
+
+    it('copies imported markdown byte for byte without the option', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      fs.writeFileSync(listPath, '- [ ] Buy milk\n')
+
+      const result = await notes.importFiles({ sourcePaths: [listPath], targetFolder: 'notes' })
+
+      expect(fs.readFileSync(result.importedFiles[0].destPath, 'utf8')).toBe('- [ ] Buy milk\n')
+    })
+
     it('resolves an imported file to its indexed id from the absolute destPath (#1998)', async () => {
       // #given — a PDF imported and then indexed the way the watcher keys it: vault-relative
       const sourcePath = path.join(tempVault.path, 'brief.pdf')

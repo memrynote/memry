@@ -1026,6 +1026,34 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
+    it('keeps checkbox lines plain when asked (#2759)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk\n- [x] Call Ana'
+      })
+
+      await convertToNote(itemId, { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(
+        /^- \[ \] Buy milk \{check\}\n- \[x\] Call Ana \{check\}/
+      )
+    })
+
+    it('leaves checkbox lines bare for the editor without the option', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+
+      await convertToNote(itemId)
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk$/m)
+    })
+
     it('should fail when item does not exist', async () => {
       const result = await convertToNote('nonexistent')
       expect(result.success).toBe(false)

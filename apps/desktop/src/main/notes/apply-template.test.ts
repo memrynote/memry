@@ -176,4 +176,25 @@ describe('applyTemplateToNote', () => {
     })
     expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
+
+  it('keeps the checkbox lines a template adds plain when asked, leaving the note\u2019s own lines alone (#2759)', async () => {
+    vi.mocked(getNoteById).mockResolvedValue({ ...note, content: '- [ ] Owner item' })
+    vi.mocked(getTemplate).mockResolvedValue({
+      ...template,
+      content: '# {{title}}\n\n- [ ] Buy milk\n- [x] Call Ana\n- [ ] Owner item\n'
+    })
+    vi.mocked(updateNoteCommand).mockResolvedValue(note)
+
+    await applyTemplateToNote({
+      noteId: 'n1',
+      templateId: 't1',
+      mode: 'body',
+      plainChecklists: true
+    })
+
+    expect(vi.mocked(updateNoteCommand).mock.calls[0][0]).toEqual({
+      id: 'n1',
+      content: '# Standup\n\n- [ ] Buy milk {check}\n- [x] Call Ana {check}\n- [ ] Owner item\n'
+    })
+  })
 })
