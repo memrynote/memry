@@ -1,10 +1,21 @@
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
+import { MARKDOWN_SOURCE_MAP, writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const restoreThrows = vi.hoisted(() => ({ left: 0 }))
+// A build before #2741 parsed every note this way: no comment was masked, so
+// BlockNote dropped each one, and the doc it seeded holds none.
+const parseBefore2741 = vi.hoisted(() => ({ on: false }))
+vi.mock('@memry/shared/html-comments', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@memry/shared/html-comments')>()
+  return {
+    ...actual,
+    maskHtmlComments: (markdown: string) =>
+      parseBefore2741.on ? markdown : actual.maskHtmlComments(markdown)
+  }
+})
 vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@memry/shared/markdown-source')>()
   return {
@@ -185,6 +196,7 @@ beforeEach(() => {
   h.rows.clear()
   h.failNextRead = false
   restoreThrows.left = 0
+  parseBefore2741.on = false
   broadcasts.length = 0
   vi.mocked(trackMainError).mockClear()
   resetTelemetryThrottle()
@@ -521,6 +533,24 @@ describe('a CRLF note edited in the editor (#2615)', () => {
   )
 })
 
+/** The doc an editor open seeds, with `from` retyped inside its own text run. */
+async function retyped(body: string, from: string, to: string): Promise<Y.Doc> {
+  const doc = await docWith(body)
+  const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+  const blocks = (await yFragmentToBlocks(fragment)) as Block[]
+  const runs = blocks.flatMap((block) =>
+    Array.isArray(block.content) ? (block.content as Array<{ type: string; text?: string }>) : []
+  )
+  const run = runs.find((item) => item.type === 'text' && item.text?.includes(from))
+  if (!run) throw new Error(`no text run holds ${from}`)
+  run.text = (run.text as string).replace(from, to)
+  doc.transact(() => {
+    fragment.delete(0, fragment.length)
+    blocksToYFragment(blocks, fragment)
+  })
+  return doc
+}
+
 describe('HTML comments through an editor edit (AF-015)', () => {
   const COMMENTED = [
     '<!-- above the heading [[Alpha]] -->',
@@ -545,24 +575,6 @@ describe('HTML comments through an editor edit (AF-015)', () => {
     '[^1]: Footnote [[Eta]].',
     ''
   ].join('\n')
-
-  /** The doc an editor open seeds, with `from` retyped inside its own text run. */
-  async function retyped(body: string, from: string, to: string): Promise<Y.Doc> {
-    const doc = await docWith(body)
-    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const blocks = (await yFragmentToBlocks(fragment)) as Block[]
-    const runs = blocks.flatMap((block) =>
-      Array.isArray(block.content) ? (block.content as Array<{ type: string; text?: string }>) : []
-    )
-    const run = runs.find((item) => item.type === 'text' && item.text?.includes(from))
-    if (!run) throw new Error(`no text run holds ${from}`)
-    run.text = (run.text as string).replace(from, to)
-    doc.transact(() => {
-      fragment.delete(0, fragment.length)
-      blocksToYFragment(blocks, fragment)
-    })
-    return doc
-  }
 
   it.each([
     ['LF', '\n', 'Line to edit.', 'Line, edited.'],
@@ -603,4 +615,83 @@ describe('HTML comments through an editor edit (AF-015)', () => {
       expect(written).toContain(comment.replace(/\n/g, eol))
     }
   })
+})
+
+describe('HTML comments in a doc a build before #2741 seeded (BBF-29)', () => {
+  const BODIES = {
+    'a far comment': [
+      '<!-- far away [[Alpha]] -->',
+      '',
+      '# T',
+      '',
+      'Para one.',
+      '',
+      'Line to edit.',
+      '',
+      'Tail.',
+      ''
+    ].join('\n'),
+    'every comment shape': [
+      '<!-- above the heading [[Alpha]] -->',
+      'Title',
+      '=====',
+      '',
+      'Para with <!-- inline [[Delta]] --> a comment.',
+      '',
+      'Line to edit.',
+      '',
+      'Tail.',
+      '',
+      '<!--',
+      'multi-line [[Epsilon]]',
+      '',
+      '* a list inside',
+      '-->',
+      ''
+    ].join('\n')
+  }
+  const STALE_RECORD = 'Draft\n=====\n\n* Alpha\n* Beta\n\n__old__ words.\n'
+
+  /**
+   * The doc an older build seeded from `body`, with its record of the bytes
+   * as that build wrote it: no comment nodes in the doc, the comments only in
+   * the record.
+   */
+  async function seededBefore2741(body: string, record: string, to?: string): Promise<Y.Doc> {
+    parseBefore2741.on = true
+    try {
+      const doc = to === undefined ? await docWith(body) : await retyped(body, 'Line to edit.', to)
+      doc.getMap(MARKDOWN_SOURCE_MAP).set('record', { source: record })
+      return doc
+    } finally {
+      parseBefore2741.on = false
+    }
+  }
+
+  const CASES = Object.keys(BODIES).flatMap((body) =>
+    ['LF', 'CRLF'].flatMap((eol) =>
+      ['record', 'file'].flatMap((restoredFrom) =>
+        [undefined, 'Line, edited.'].map((to) => [body, eol, restoredFrom, to] as const)
+      )
+    )
+  )
+
+  it.each(CASES)(
+    'keeps every comment of %s in a %s note restored from the %s, edit: %s',
+    async (bodyName, eolName, restoredFrom, to) => {
+      const eol = eolName === 'CRLF' ? '\r\n' : '\n'
+      const lf = BODIES[bodyName as keyof typeof BODIES]
+      const body = lf.replace(/\n/g, eol)
+      const raw = `---${eol}id: x${eol}---${eol}${body}`
+      writtenElsewhere(NOTE, raw)
+
+      await pass(
+        NOTE,
+        await seededBefore2741(body, restoredFrom === 'record' ? lf : STALE_RECORD, to),
+        'local'
+      )
+
+      expect(h.files.get(NOTE_FILE)).toBe(to === undefined ? raw : raw.replace('Line to edit.', to))
+    }
+  )
 })
