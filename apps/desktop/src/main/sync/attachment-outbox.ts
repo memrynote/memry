@@ -172,9 +172,17 @@ function isDirectory(dir: string): boolean {
   }
 }
 
-/** The vault is mounted: its `.memry` folder, which holds this database, is there. */
+/**
+ * The vault is mounted: the database file it holds is there. The `.memry`
+ * folder alone proves nothing, since the activity log recreates it at the path
+ * of a vault that is away.
+ */
 export function isVaultReachable(vaultPath: string): boolean {
-  return isDirectory(path.join(vaultPath, '.memry'))
+  try {
+    return fs.statSync(path.join(vaultPath, '.memry', 'data.db')).isFile()
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -182,7 +190,7 @@ export function isVaultReachable(vaultPath: string): boolean {
  * there. A removable or network vault that is away for a moment hides every
  * file at once, and reading that as deletion would drop every queued upload.
  */
-function fileStateOf(
+export function uploadFileState(
   db: DrizzleDb,
   vaultPath: string,
   row: { noteId: string; diskPath: string }
@@ -215,7 +223,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     // may have finished this row in the meantime, and uploading it again would
     // give the file a second attachment id.
     if (!hasPendingUpload(deps.db, row.noteId, row.diskPath)) continue
-    const state = fileStateOf(deps.db, deps.vaultPath, row)
+    const state = uploadFileState(deps.db, deps.vaultPath, row)
     if (state === 'unreachable') continue
     if (state === 'deleted') {
       clearUpload(deps.db, row.noteId, row.diskPath)
@@ -229,7 +237,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
       deps.onUploaded?.(row.noteId, result.attachmentId)
       uploaded++
     } catch (err) {
-      if (fileStateOf(deps.db, deps.vaultPath, row) === 'deleted') {
+      if (uploadFileState(deps.db, deps.vaultPath, row) === 'deleted') {
         clearUpload(deps.db, row.noteId, row.diskPath)
         dropped++
         continue
@@ -320,7 +328,8 @@ export function dropUploadsWithoutFile(vaultPath: string): void {
       .from(attachmentUploadQueue)
       .all()
     for (const row of rows) {
-      if (fileStateOf(db, vaultPath, row) === 'deleted') clearUpload(db, row.noteId, row.diskPath)
+      if (uploadFileState(db, vaultPath, row) === 'deleted')
+        clearUpload(db, row.noteId, row.diskPath)
     }
   } catch (err) {
     log.warn('Dropping attachment uploads without a file failed', { error: err })
