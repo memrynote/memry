@@ -442,8 +442,9 @@ page past the end fails with a `VALIDATION` error that names `page_count`.
 A file that is a symlink to something outside the vault, or a symlink whose target is gone, fails
 with a `PERMISSION_DENIED` error that names its vault path and says it points outside the vault.
 Nothing outside the vault is read. A symlink to another file in the vault works, and so does a vault
-folder that is itself a symlink. Text extraction skips the same files, so `vault_read_note` never
-returns text read from outside the vault either.
+folder that is itself a symlink. Text extraction skips the same files, and drops text an earlier
+version read through such a symlink, so `vault_read_note` never returns text read from outside the
+vault either.
 
 Claude Code, Codex, and Antigravity receive the image from the MCP server as it is. For a local or
 OpenAI-compatible provider, Memry checks once whether the model takes images, by sending it a
