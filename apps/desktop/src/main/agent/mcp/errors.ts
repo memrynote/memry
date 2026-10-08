@@ -1,4 +1,5 @@
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { OutsideVaultError } from '../../lib/errors'
 
 export type AgentToolErrorCode = 'NOT_FOUND' | 'PERMISSION_DENIED' | 'VALIDATION' | 'INTERNAL'
 
@@ -25,17 +26,21 @@ export function isVaultLockRefusalMessage(message: string): boolean {
   return message === VAULT_LOCKED_NOTE_MESSAGE
 }
 
+/** The failure as the model sees it: a refusal the owner or the vault imposes is a permission error. */
+export function toAgentToolError(err: unknown): AgentToolError {
+  if (err instanceof AgentToolError) return err
+  if (
+    err instanceof OutsideVaultError ||
+    (err instanceof Error && isVaultLockRefusalMessage(err.message))
+  ) {
+    return new AgentToolError('PERMISSION_DENIED', err.message)
+  }
+  return new AgentToolError('INTERNAL', err instanceof Error ? err.message : String(err))
+}
+
 export function toMcpToolErrorContent(err: unknown): McpErrorContent {
-  const tool =
-    err instanceof AgentToolError
-      ? { code: err.code, message: err.message, details: err.details }
-      : err instanceof Error && isVaultLockRefusalMessage(err.message)
-        ? { code: 'PERMISSION_DENIED' as const, message: err.message, details: undefined }
-        : {
-            code: 'INTERNAL' as const,
-            message: err instanceof Error ? err.message : String(err),
-            details: undefined
-          }
+  const { code, message, details } = toAgentToolError(err)
+  const tool = { code, message, details }
 
   return {
     isError: true,
