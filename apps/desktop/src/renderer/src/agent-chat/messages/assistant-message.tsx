@@ -88,21 +88,30 @@ function AssistantMessageContent({
             </MessageResponse>
           </ThinkingReasoning>
         )}
-        {(answerStarted || !streaming) && (
-          <AgentSourceRefsProvider sources={sources}>
-            <MessageResponse
-              components={markdownComponents}
-              isAnimating={streaming || typing}
-              className={cn(
-                (streaming || typing) && 'aicss-stream-caret',
-                typing && 'aicss-stream-caret-steady'
-              )}
-            >
-              {shown}
-            </MessageResponse>
-          </AgentSourceRefsProvider>
+        {message.status === 'error' ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            <p className="font-medium">{t('agentChat.errors.turnFailed')}</p>
+            {answerStarted && (
+              <p className="mt-1 whitespace-pre-wrap break-words">{message.content.data.text}</p>
+            )}
+          </div>
+        ) : (
+          (answerStarted || !streaming) && (
+            <AgentSourceRefsProvider sources={sources}>
+              <MessageResponse
+                components={markdownComponents}
+                isAnimating={streaming || typing}
+                className={cn(
+                  (streaming || typing) && 'aicss-stream-caret',
+                  typing && 'aicss-stream-caret-steady'
+                )}
+              >
+                {shown}
+              </MessageResponse>
+            </AgentSourceRefsProvider>
+          )
         )}
-        {!streaming && !typing && (
+        {!streaming && !typing && message.status !== 'error' && (
           <AssistantActions text={message.content.data.text} sources={sources} />
         )}
       </MessageContent>

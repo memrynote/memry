@@ -67,6 +67,34 @@ describe('AssistantMessage', () => {
     expect(content).not.toHaveClass('rounded-lg', 'border-sidebar-border')
   })
 
+  it('shows a failed turn as an error with the provider message', () => {
+    render(
+      <AssistantMessage
+        message={{ ...assistantMessage('tool_choice is not supported'), status: 'error' }}
+      />
+    )
+
+    expect(
+      screen.getByText(
+        'The reply stopped with an error. Your message is kept, so you can send it again.'
+      )
+    ).toHaveClass('font-medium')
+    expect(screen.getByText('tool_choice is not supported').parentElement).toHaveClass(
+      'text-destructive'
+    )
+    expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
+  })
+
+  it('still says a turn failed when the error carries no message', () => {
+    render(<AssistantMessage message={{ ...assistantMessage(''), status: 'error' }} />)
+
+    expect(
+      screen.getByText(
+        'The reply stopped with an error. Your message is kept, so you can send it again.'
+      )
+    ).toBeInTheDocument()
+  })
+
   it('keeps the empty streaming indicator unframed', () => {
     const { container } = render(<AssistantMessage message={streamingAssistantMessage()} />)
 

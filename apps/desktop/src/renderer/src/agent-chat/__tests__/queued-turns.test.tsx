@@ -11,16 +11,13 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
-import { AgentProvider, useAgent } from '../agent-context'
+import { runVaultLeaveFlushes } from '@/lib/vault-workspace-lifecycle'
+import { AgentProvider } from '../agent-context'
 import { Composer } from '../composer'
 
 const CONVERSATION_ID = 'conversation-1'
 
 let emit: (event: AgentEvent) => void = () => {}
-
-function ErrorBanner(): React.JSX.Element {
-  return <p data-testid="agent-error">{useAgent().state.error}</p>
-}
 
 function renderChat(): void {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -29,7 +26,6 @@ function renderChat(): void {
       <SettingsModalProvider>
         <AgentProvider>
           <Composer conversationId={CONVERSATION_ID} sourceWindowId="window-1" />
-          <ErrorBanner />
         </AgentProvider>
       </SettingsModalProvider>
     </QueryClientProvider>
@@ -47,6 +43,16 @@ async function send(text: string): Promise<void> {
 
 function endTurn(): void {
   act(() => emit({ kind: 'turn_completed', conversationId: CONVERSATION_ID, turnId: 'turn' }))
+}
+
+function deferredSend(): (value: { ok: true; turnId: string }) => void {
+  let answer: (value: { ok: true; turnId: string }) => void = () => {}
+  vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+    new Promise((resolve) => {
+      answer = resolve
+    })
+  )
+  return (value) => answer(value)
 }
 
 function sentTexts(): string[] {
@@ -383,13 +389,17 @@ describe('queued agent messages', () => {
   it('clears the previous turn error when a queued message goes out', async () => {
     await startTurn()
     await send('second')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit queued message' }))
 
     act(() =>
       emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn', message: 'boom' })
     )
+    expect(await screen.findByRole('alert')).toHaveTextContent('boom')
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
 
     await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
-    await waitFor(() => expect(screen.getByTestId('agent-error')).toBeEmptyDOMElement())
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
   it('sends the next queued message after Stop', async () => {
@@ -400,5 +410,71 @@ describe('queued agent messages', () => {
 
     await waitFor(() => expect(sentTexts()).toEqual(['first', 'after stop']))
     expect(window.api.agent.cancelTurn).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID })
+  })
+
+  it('keeps Stop and shows the error when cancelling a late queued turn fails', async () => {
+    await startTurn()
+    await send('second')
+    const answer = deferredSend()
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+    vi.mocked(window.api.agent.cancelTurn).mockRejectedValueOnce(new Error('IPC closed'))
+
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
+    expect(await screen.findByRole('alert')).toHaveTextContent('IPC closed')
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+    expect(queuedTexts()).toEqual([])
+  })
+
+  it('does not stop a queued message that went out after Stop was pressed', async () => {
+    await startTurn()
+    await send('second')
+    let cancelled: (value: { ok: boolean }) => void = () => {}
+    vi.mocked(window.api.agent.cancelTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        cancelled = resolve
+      })
+    )
+    const answer = deferredSend()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await act(async () => cancelled({ ok: true }))
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+  })
+
+  it('holds queued messages unsent when the vault is left', async () => {
+    await startTurn()
+    await send('second')
+
+    await act(async () => {
+      await runVaultLeaveFlushes()
+    })
+    endTurn()
+
+    await screen.findByText('Not sent. Edit to send again, or remove it.')
+    expect(sentTexts()).toEqual(['first'])
+    expect(queuedTexts()).toEqual(['second'])
+  })
+
+  it('returns focus to the prompt after Stop', async () => {
+    await startTurn()
+    const prompt = screen.getByRole('textbox', { name: /do anything/i })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Stop' }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
+    )
+    await waitFor(() => expect(document.activeElement).toBe(prompt))
   })
 })

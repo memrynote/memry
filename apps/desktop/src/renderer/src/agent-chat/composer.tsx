@@ -591,6 +591,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   function cancelTurn(): void {
     if (!agent || !conversationId || !turnInFlight) return
 
+    promptEditorRef.current?.focus()
     void agent.cancelTurn(conversationId)
   }
 
@@ -616,6 +617,14 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onSelectedIndexChange={setSelectedPickerIndex}
           onClose={closePicker}
         />
+      )}
+      {agent?.state.error && (
+        <p
+          role="alert"
+          className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+        >
+          {agent.state.error}
+        </p>
       )}
       {conversationId && (
         <QueuedTurns
