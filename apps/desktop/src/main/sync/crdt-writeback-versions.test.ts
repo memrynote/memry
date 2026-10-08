@@ -617,6 +617,34 @@ describe('HTML comments through an editor edit (AF-015)', () => {
   })
 })
 
+describe('footnotes through an editor edit (BBF-24)', () => {
+  const FOOTNOTED = [
+    'Claim[^src] and a second[^2].',
+    '',
+    'Paragraph to edit.',
+    '',
+    '[^src]: From [[Source]].',
+    '[^2]: A note that runs',
+    '    onto a second line.',
+    '',
+    '[^unused]: Kept though unreferenced.',
+    ''
+  ].join('\n')
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('keeps every footnote line of a %s note when another paragraph changes', async (_eol, eol) => {
+    const body = FOOTNOTED.replace(/\n/g, eol)
+    const raw = `---${eol}id: x${eol}---${eol}${body}`
+    writtenElsewhere(NOTE, raw)
+
+    await pass(NOTE, await retyped(body, 'Paragraph to edit.', 'Paragraph, edited.'), 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw.replace('Paragraph to edit.', 'Paragraph, edited.'))
+  })
+})
+
 describe('HTML comments in a doc a build before #2741 seeded (BBF-29)', () => {
   const BODIES = {
     'a far comment': [

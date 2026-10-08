@@ -34,6 +34,42 @@ describe('export-utils', () => {
     expect(html).toContain('<code>&lt;!-- kept --&gt;</code>')
   })
 
+  it('markdownToHtml prints numbered footnotes and a Notes list with back-links', () => {
+    const markdown = [
+      'Claim[^src] and another[^2], then the claim again[^src].',
+      '',
+      '[^2]: Second note.',
+      '[^src]: From [[Source Note]], *really*.',
+      '[^unused]: Never referenced.',
+      '',
+      'Code keeps `[^src]` as text.'
+    ].join('\n')
+    const html = markdownToHtml(markdown)
+
+    expect(html).toContain(
+      'Claim<sup class="footnote-ref"><a href="#fn-1" id="fnref-1">1</a></sup>'
+    )
+    expect(html).toContain(
+      'another<sup class="footnote-ref"><a href="#fn-2" id="fnref-2">2</a></sup>'
+    )
+    expect(html).toContain(
+      'again<sup class="footnote-ref"><a href="#fn-1" id="fnref-1-2">1</a></sup>'
+    )
+    expect(html).toContain('<code>[^src]</code>')
+    const notes = html.slice(html.indexOf('<section class="footnotes">'))
+    expect(notes).toMatch(/^<section class="footnotes">\s*<h2>Notes<\/h2>/)
+    expect(notes).toContain(
+      '<li id="fn-1">From <span class="wiki-link">Source Note</span>, <em>really</em>. <a href="#fnref-1" class="footnote-backref" aria-label="Back to reference 1">↩</a></li>'
+    )
+    expect(notes.indexOf('id="fn-1"')).toBeLessThan(notes.indexOf('id="fn-2"'))
+    expect(html).not.toContain('[^')
+    expect(html).not.toContain('Never referenced')
+  })
+
+  it('markdownToHtml adds no Notes list to a note without footnotes', () => {
+    expect(markdownToHtml('Plain [^x] text.')).not.toContain('footnotes')
+  })
+
   it('markdownToHtml drops the heading half of a heading link (issue #1556)', () => {
     const html = markdownToHtml('see [[Sprint Notes#Retro]] and [[Sprint Notes|retro]]')
     expect(html).toContain('<span class="wiki-link">Sprint Notes</span>')

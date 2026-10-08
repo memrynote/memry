@@ -233,6 +233,13 @@ describe('extractWikiLinks', () => {
     expect(links).toEqual(['Other'])
   })
 
+  it('extractWikiLinks reads links inside a footnote definition (BBF-24)', () => {
+    const links = extractWikiLinks(
+      'Claim[^1].\n\n[^1]: From [[Source]] and\n    [[Second Source]].'
+    )
+    expect(links).toEqual(['Source', 'Second Source'])
+  })
+
   it('extractWikiLinks skips link syntax inside inline code', () => {
     const links = extractWikiLinks(
       'Write `[[Example]]` or ``[[Other `x` one]]`` to link, see [[Real]]'
