@@ -685,35 +685,6 @@
       "notifications": "Varsler",
       "logOut": "Logg ut"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Søk",
-      "searchNotesTasksJournalInbox": "Søk i notater, oppgaver, dagboken, innboksen …",
-      "noResultsFor": "Ingen treff for «",
-      "result": "resultat",
-      "noResultsForQuery": "Ingen treff for «{query}»",
-      "resultCount": "{count, plural, one {# resultat} other {# resultater}}",
-      "indexBuilding": "Bygger søkeindeksen {done}/{total} – resultatene kan være ufullstendige",
-      "indexBuildingUnknown": "Bygger søkeindeksen – resultatene kan være ufullstendige"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Søk og klikk på elementer for å bygge stien din",
-      "reasons": "Årsaker",
-      "clear": "Tøm"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Tøm",
-      "tags": "Tagger",
-      "filterByTag": "Filtrer etter tagg …",
-      "dateRange": "Datoperiode"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Se alle ",
-      "results": "resultater"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "omtrentlig"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Ingen faner åpne",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Åpne en side fra sidefeltet eller opprett en ny fane for å komme i gang",
@@ -1255,5 +1226,85 @@
     "railLabel": "Seksjoner",
     "search": "Søk eller gå til …",
     "vaultMenu": "{name}. Åpne listen over hvelv"
+  },
+  "searchPalette": {
+    "title": "Søk",
+    "placeholder": "Søk i notater, oppgaver, dagbok, innboks…",
+    "filterHint": "Filtrer etter type, dato eller tagg",
+    "tagHint": "Skriv et taggnavn",
+    "removeFilter": "Fjern {name}",
+    "recent": "Nylige",
+    "clear": "Tøm",
+    "fromQuery": "fra «{query}»",
+    "searchIn": "Søk i",
+    "tag": "Tagg",
+    "tags": "Tagger",
+    "items": "Elementer",
+    "chooseTag": "Velg en tagg…",
+    "noTags": "Ingen tagger samsvarer",
+    "filterType": "Type",
+    "filterModified": "Endret",
+    "matches": "Treff",
+    "showMore": "Vis {count} til",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notater",
+      "journal": "Dagbok",
+      "task": "Oppgaver",
+      "inbox": "Innboks"
+    },
+    "dates": {
+      "today": "I dag",
+      "thisWeek": "Denne uken",
+      "thisMonth": "Denne måneden",
+      "custom": "Egendefinert periode"
+    },
+    "status": {
+      "items": "{count, plural, one {# element} other {# elementer}} · på denne enheten",
+      "results": "{count, plural, one {# resultat} other {# resultater}} · {ms} ms",
+      "indexing": "Indekserer {done} / {total}",
+      "indexingUnknown": "Indekserer…",
+      "filters": "Filtre kan kombineres · velg så mange du trenger",
+      "tags": "Tagger du bruker i hvelvet ditt"
+    },
+    "empty": {
+      "unscoped": "Ingenting samsvarer med «{query}»",
+      "scoped": "Ingenting i {scope} samsvarer med «{query}»",
+      "indexing": "Indekserer fortsatt – eldre elementer er kanskje ikke søkbare ennå.",
+      "tryFilters": "Prøv færre ord eller fjern et filter.",
+      "tryWords": "Prøv færre eller andre ord."
+    },
+    "actions": {
+      "filter": "Filtrer",
+      "back": "Tilbake",
+      "nextSection": "Neste seksjon",
+      "open": "Åpne",
+      "openNote": "Åpne notat",
+      "openFile": "Åpne fil",
+      "openJournal": "Åpne dagbok",
+      "openTask": "Åpne oppgave",
+      "openInInbox": "Åpne i innboksen",
+      "addFilter": "Legg til filter",
+      "removeFilter": "Fjern filter",
+      "chooseTag": "Velg tagg",
+      "addTag": "Legg til tagg",
+      "showAll": "Vis alle",
+      "searchEverywhere": "Søk overalt",
+      "clearFilters": "Tøm filtre"
+    },
+    "preview": {
+      "edited": "Redigert {when}",
+      "captured": "Lagret {when}",
+      "words": "{count, plural, one {# ord} other {# ord}}",
+      "filed": "Arkivert",
+      "notFiled": "Ikke arkivert",
+      "status": "Status",
+      "noStatus": "Ingen status",
+      "due": "Forfaller",
+      "priority": "Prioritet",
+      "repeats": "Gjentas"
+    }
   }
 }

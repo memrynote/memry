@@ -685,35 +685,6 @@
       "notifications": "Pemberitahuan",
       "logOut": "Log keluar"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Cari",
-      "searchNotesTasksJournalInbox": "Cari nota, tugas, jurnal, peti masuk…",
-      "noResultsFor": "Tiada hasil untuk “",
-      "result": "hasil",
-      "noResultsForQuery": "Tiada hasil untuk “{query}”",
-      "resultCount": "{count, plural, other {# hasil}}",
-      "indexBuilding": "Membina indeks carian {done}/{total} — hasil mungkin tidak lengkap",
-      "indexBuildingUnknown": "Membina indeks carian — hasil mungkin tidak lengkap"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",
-      "reasons": "Sebab",
-      "clear": "Kosongkan"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Kosongkan",
-      "tags": "Teg",
-      "filterByTag": "Tapis mengikut teg…",
-      "dateRange": "Julat tarikh"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Lihat semua ",
-      "results": "hasil"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "anggaran"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Tiada tab dibuka",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari bar sisi atau buat tab baharu untuk bermula",
@@ -1255,5 +1226,85 @@
     "railLabel": "Bahagian",
     "search": "Cari atau lompat ke…",
     "vaultMenu": "{name}. Buka senarai bilik kebal"
+  },
+  "searchPalette": {
+    "title": "Cari",
+    "placeholder": "Cari nota, tugas, jurnal, peti masuk…",
+    "filterHint": "Tapis mengikut jenis, tarikh atau teg",
+    "tagHint": "Taip nama teg",
+    "removeFilter": "Buang {name}",
+    "recent": "Terkini",
+    "clear": "Kosongkan",
+    "fromQuery": "daripada “{query}”",
+    "searchIn": "Cari dalam",
+    "tag": "Teg",
+    "tags": "Teg",
+    "items": "Item",
+    "chooseTag": "Pilih teg…",
+    "noTags": "Tiada teg yang sepadan",
+    "filterType": "Jenis",
+    "filterModified": "Diubah suai",
+    "matches": "Padanan",
+    "showMore": "Tunjuk {count} lagi",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Nota",
+      "journal": "Jurnal",
+      "task": "Tugas",
+      "inbox": "Peti masuk"
+    },
+    "dates": {
+      "today": "Hari ini",
+      "thisWeek": "Minggu ini",
+      "thisMonth": "Bulan ini",
+      "custom": "Julat tersuai"
+    },
+    "status": {
+      "items": "{count, plural, other {# item}} · pada peranti ini",
+      "results": "{count, plural, other {# hasil}} · {ms} ms",
+      "indexing": "Mengindeks {done} / {total}",
+      "indexingUnknown": "Mengindeks…",
+      "filters": "Penapis boleh digabungkan · pilih seberapa banyak yang perlu",
+      "tags": "Teg yang anda gunakan dalam peti besi"
+    },
+    "empty": {
+      "unscoped": "Tiada yang sepadan dengan “{query}”",
+      "scoped": "Tiada dalam {scope} yang sepadan dengan “{query}”",
+      "indexing": "Masih mengindeks — item lama mungkin belum boleh dicari.",
+      "tryFilters": "Cuba kurangkan perkataan atau buang penapis.",
+      "tryWords": "Cuba kurangkan perkataan atau guna perkataan lain."
+    },
+    "actions": {
+      "filter": "Tapis",
+      "back": "Kembali",
+      "nextSection": "Bahagian seterusnya",
+      "open": "Buka",
+      "openNote": "Buka nota",
+      "openFile": "Buka fail",
+      "openJournal": "Buka jurnal",
+      "openTask": "Buka tugas",
+      "openInInbox": "Buka dalam Peti masuk",
+      "addFilter": "Tambah penapis",
+      "removeFilter": "Buang penapis",
+      "chooseTag": "Pilih teg",
+      "addTag": "Tambah teg",
+      "showAll": "Tunjuk semua",
+      "searchEverywhere": "Cari di mana-mana",
+      "clearFilters": "Kosongkan penapis"
+    },
+    "preview": {
+      "edited": "Disunting {when}",
+      "captured": "Ditangkap {when}",
+      "words": "{count, plural, other {# perkataan}}",
+      "filed": "Difailkan",
+      "notFiled": "Belum difailkan",
+      "status": "Status",
+      "noStatus": "Tiada status",
+      "due": "Tarikh akhir",
+      "priority": "Keutamaan",
+      "repeats": "Berulang"
+    }
   }
 }

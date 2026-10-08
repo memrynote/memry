@@ -685,35 +685,6 @@
       "notifications": "通知",
       "logOut": "退出登录"
     },
-    "componentsSearchCommandPalette": {
-      "search": "搜索",
-      "searchNotesTasksJournalInbox": "搜索笔记、任务、日记、收件箱…",
-      "noResultsFor": "未找到结果：“",
-      "result": "结果",
-      "noResultsForQuery": "未找到“{query}”的结果",
-      "resultCount": "{count, plural, other {# 条结果}}",
-      "indexBuilding": "正在构建搜索索引 {done}/{total}——结果可能不完整",
-      "indexBuildingUnknown": "正在构建搜索索引——结果可能不完整"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "搜索并点击条目以建立浏览轨迹",
-      "reasons": "原因",
-      "clear": "清除"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "清除",
-      "tags": "标签",
-      "filterByTag": "按标签筛选…",
-      "dateRange": "日期范围"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "查看全部 ",
-      "results": "条结果"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "模糊"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "没有打开的标签页",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "从侧边栏打开页面或创建新标签页以开始",
@@ -1255,5 +1226,85 @@
     "railLabel": "分区",
     "search": "搜索或跳转到…",
     "vaultMenu": "{name}。打开仓库列表"
+  },
+  "searchPalette": {
+    "title": "搜索",
+    "placeholder": "搜索笔记、任务、日记、收件箱…",
+    "filterHint": "按类型、日期或标签筛选",
+    "tagHint": "输入标签名称",
+    "removeFilter": "移除{name}",
+    "recent": "最近",
+    "clear": "清除",
+    "fromQuery": "来自“{query}”",
+    "searchIn": "搜索范围",
+    "tag": "标签",
+    "tags": "标签",
+    "items": "条目",
+    "chooseTag": "选择标签…",
+    "noTags": "没有匹配的标签",
+    "filterType": "类型",
+    "filterModified": "修改时间",
+    "matches": "匹配内容",
+    "showMore": "再显示 {count} 项",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "笔记",
+      "journal": "日记",
+      "task": "任务",
+      "inbox": "收件箱"
+    },
+    "dates": {
+      "today": "今天",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "custom": "自定义范围"
+    },
+    "status": {
+      "items": "{count, plural, other {# 项}} · 在此设备上",
+      "results": "{count, plural, other {# 个结果}} · {ms} 毫秒",
+      "indexing": "正在建立索引 {done} / {total}",
+      "indexingUnknown": "正在建立索引…",
+      "filters": "筛选条件可叠加 · 按需选择",
+      "tags": "你在库中使用的标签"
+    },
+    "empty": {
+      "unscoped": "没有与“{query}”匹配的内容",
+      "scoped": "{scope}中没有与“{query}”匹配的内容",
+      "indexing": "仍在建立索引，较早的条目可能暂时搜不到。",
+      "tryFilters": "试试减少关键词或移除一个筛选条件。",
+      "tryWords": "试试减少关键词或换个说法。"
+    },
+    "actions": {
+      "filter": "筛选",
+      "back": "返回",
+      "nextSection": "下一部分",
+      "open": "打开",
+      "openNote": "打开笔记",
+      "openFile": "打开文件",
+      "openJournal": "打开日记",
+      "openTask": "打开任务",
+      "openInInbox": "在收件箱中打开",
+      "addFilter": "添加筛选",
+      "removeFilter": "移除筛选",
+      "chooseTag": "选择标签",
+      "addTag": "添加标签",
+      "showAll": "全部显示",
+      "searchEverywhere": "全局搜索",
+      "clearFilters": "清除筛选"
+    },
+    "preview": {
+      "edited": "{when}编辑",
+      "captured": "{when}收集",
+      "words": "{count, plural, other {# 字}}",
+      "filed": "已归档",
+      "notFiled": "未归档",
+      "status": "状态",
+      "noStatus": "无状态",
+      "due": "截止",
+      "priority": "优先级",
+      "repeats": "重复"
+    }
   }
 }

@@ -685,35 +685,6 @@
       "notifications": "الإشعارات",
       "logOut": "تسجيل الخروج"
     },
-    "componentsSearchCommandPalette": {
-      "search": "بحث",
-      "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام واليوميات وصندوق الوارد…",
-      "noResultsFor": "لا توجد نتائج تطابق «",
-      "result": "نتيجة",
-      "noResultsForQuery": "لا توجد نتائج تطابق «{query}»",
-      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
-      "indexBuilding": "جارٍ إنشاء فهرس البحث {done}/{total} — قد تكون النتائج غير مكتملة",
-      "indexBuildingUnknown": "جارٍ إنشاء فهرس البحث — قد تكون النتائج غير مكتملة"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",
-      "reasons": "الأسباب",
-      "clear": "مسح"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "مسح",
-      "tags": "الوسوم",
-      "filterByTag": "التصفية حسب الوسم…",
-      "dateRange": "النطاق الزمني"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "عرض كل النتائج: ",
-      "results": "إجمالًا"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "تقريبي"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "لا توجد علامات تبويب مفتوحة",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "افتح صفحة من الشريط الجانبي أو أنشئ علامة تبويب جديدة للبدء",
@@ -1255,5 +1226,85 @@
     "railLabel": "الأقسام",
     "search": "البحث أو الانتقال إلى…",
     "vaultMenu": "{name}. فتح قائمة الخزائن"
+  },
+  "searchPalette": {
+    "title": "بحث",
+    "placeholder": "البحث في الملاحظات والمهام واليوميات وصندوق الوارد…",
+    "filterHint": "التصفية حسب النوع أو التاريخ أو الوسم",
+    "tagHint": "اكتب اسم وسم",
+    "removeFilter": "إزالة {name}",
+    "recent": "الأحدث",
+    "clear": "مسح",
+    "fromQuery": "من «{query}»",
+    "searchIn": "البحث في",
+    "tag": "وسم",
+    "tags": "الوسوم",
+    "items": "العناصر",
+    "chooseTag": "اختر وسمًا…",
+    "noTags": "لا توجد وسوم مطابقة",
+    "filterType": "النوع",
+    "filterModified": "تاريخ التعديل",
+    "matches": "التطابقات",
+    "showMore": "عرض {count} إضافية",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "الملاحظات",
+      "journal": "اليوميات",
+      "task": "المهام",
+      "inbox": "صندوق الوارد"
+    },
+    "dates": {
+      "today": "اليوم",
+      "thisWeek": "هذا الأسبوع",
+      "thisMonth": "هذا الشهر",
+      "custom": "نطاق مخصص"
+    },
+    "status": {
+      "items": "{count, plural, zero {لا عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}} · على هذا الجهاز",
+      "results": "{count, plural, zero {لا نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}} · {ms} م.ث",
+      "indexing": "جارٍ الفهرسة {done} / {total}",
+      "indexingUnknown": "جارٍ الفهرسة…",
+      "filters": "يمكن الجمع بين عوامل التصفية · اختر ما تحتاجه",
+      "tags": "الوسوم التي تستخدمها في الخزنة"
+    },
+    "empty": {
+      "unscoped": "لا شيء يطابق «{query}»",
+      "scoped": "لا شيء في {scope} يطابق «{query}»",
+      "indexing": "لا تزال الفهرسة جارية — قد لا تظهر العناصر الأقدم في البحث بعد.",
+      "tryFilters": "جرّب كلمات أقل أو أزل عامل تصفية.",
+      "tryWords": "جرّب كلمات أقل أو مختلفة."
+    },
+    "actions": {
+      "filter": "تصفية",
+      "back": "رجوع",
+      "nextSection": "القسم التالي",
+      "open": "فتح",
+      "openNote": "فتح الملاحظة",
+      "openFile": "فتح الملف",
+      "openJournal": "فتح اليوميات",
+      "openTask": "فتح المهمة",
+      "openInInbox": "فتح في صندوق الوارد",
+      "addFilter": "إضافة عامل التصفية",
+      "removeFilter": "إزالة عامل التصفية",
+      "chooseTag": "اختيار وسم",
+      "addTag": "إضافة الوسم",
+      "showAll": "عرض الكل",
+      "searchEverywhere": "البحث في كل مكان",
+      "clearFilters": "مسح عوامل التصفية"
+    },
+    "preview": {
+      "edited": "عُدّلت {when}",
+      "captured": "التُقطت {when}",
+      "words": "{count, plural, zero {لا كلمات} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
+      "filed": "مؤرشفة",
+      "notFiled": "غير مؤرشفة",
+      "status": "الحالة",
+      "noStatus": "بلا حالة",
+      "due": "الاستحقاق",
+      "priority": "الأولوية",
+      "repeats": "التكرار"
+    }
   }
 }

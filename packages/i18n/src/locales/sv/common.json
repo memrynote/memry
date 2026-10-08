@@ -685,35 +685,6 @@
       "notifications": "Meddelanden",
       "logOut": "Logga ut"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Sök",
-      "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg…",
-      "noResultsFor": "Inga resultat för ”",
-      "result": "resultat",
-      "noResultsForQuery": "Inga resultat för ”{query}”",
-      "resultCount": "{count, plural, one {# resultat} other {# resultat}}",
-      "indexBuilding": "Bygger sökindex {done}/{total} – resultatet kan vara ofullständigt",
-      "indexBuildingUnknown": "Bygger sökindex – resultatet kan vara ofullständigt"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga upp ditt spår",
-      "reasons": "Anledningar",
-      "clear": "Rensa"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Rensa",
-      "tags": "Taggar",
-      "filterByTag": "Filtrera efter tagg…",
-      "dateRange": "Datointervall"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Visa alla ",
-      "results": "resultat"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "ungefärlig"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Inga flikar öppna",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öppna en sida från sidofältet eller skapa en ny flik för att komma igång",
@@ -1255,5 +1226,85 @@
     "railLabel": "Avsnitt",
     "search": "Sök eller gå till…",
     "vaultMenu": "{name}. Öppna listan med valv"
+  },
+  "searchPalette": {
+    "title": "Sök",
+    "placeholder": "Sök anteckningar, uppgifter, dagbok, inkorg…",
+    "filterHint": "Filtrera på typ, datum eller tagg",
+    "tagHint": "Skriv ett taggnamn",
+    "removeFilter": "Ta bort {name}",
+    "recent": "Senaste",
+    "clear": "Rensa",
+    "fromQuery": "från ”{query}”",
+    "searchIn": "Sök i",
+    "tag": "Tagg",
+    "tags": "Taggar",
+    "items": "Objekt",
+    "chooseTag": "Välj en tagg…",
+    "noTags": "Inga taggar matchar",
+    "filterType": "Typ",
+    "filterModified": "Ändrad",
+    "matches": "Träffar",
+    "showMore": "Visa {count} till",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Anteckningar",
+      "journal": "Dagbok",
+      "task": "Uppgifter",
+      "inbox": "Inkorg"
+    },
+    "dates": {
+      "today": "Idag",
+      "thisWeek": "Den här veckan",
+      "thisMonth": "Den här månaden",
+      "custom": "Eget intervall"
+    },
+    "status": {
+      "items": "{count, plural, one {# objekt} other {# objekt}} · på den här enheten",
+      "results": "{count, plural, one {# resultat} other {# resultat}} · {ms} ms",
+      "indexing": "Indexerar {done} / {total}",
+      "indexingUnknown": "Indexerar…",
+      "filters": "Filter kan kombineras · välj så många du behöver",
+      "tags": "Taggar du använder i ditt valv"
+    },
+    "empty": {
+      "unscoped": "Inget matchar ”{query}”",
+      "scoped": "Inget i {scope} matchar ”{query}”",
+      "indexing": "Indexerar fortfarande – äldre objekt kanske inte är sökbara ännu.",
+      "tryFilters": "Prova färre ord eller ta bort ett filter.",
+      "tryWords": "Prova färre eller andra ord."
+    },
+    "actions": {
+      "filter": "Filtrera",
+      "back": "Tillbaka",
+      "nextSection": "Nästa avsnitt",
+      "open": "Öppna",
+      "openNote": "Öppna anteckning",
+      "openFile": "Öppna fil",
+      "openJournal": "Öppna dagbok",
+      "openTask": "Öppna uppgift",
+      "openInInbox": "Öppna i inkorgen",
+      "addFilter": "Lägg till filter",
+      "removeFilter": "Ta bort filter",
+      "chooseTag": "Välj tagg",
+      "addTag": "Lägg till tagg",
+      "showAll": "Visa alla",
+      "searchEverywhere": "Sök överallt",
+      "clearFilters": "Rensa filter"
+    },
+    "preview": {
+      "edited": "Redigerad {when}",
+      "captured": "Fångad {when}",
+      "words": "{count, plural, one {# ord} other {# ord}}",
+      "filed": "Arkiverad",
+      "notFiled": "Inte arkiverad",
+      "status": "Status",
+      "noStatus": "Ingen status",
+      "due": "Förfaller",
+      "priority": "Prioritet",
+      "repeats": "Upprepas"
+    }
   }
 }

@@ -685,35 +685,6 @@
       "notifications": "Notificări",
       "logOut": "Deconectare"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Caută",
-      "searchNotesTasksJournalInbox": "Caută notițe, sarcini, jurnal, inbox…",
-      "noResultsFor": "Nu există rezultate pentru „",
-      "result": "rezultat",
-      "noResultsForQuery": "Niciun rezultat pentru „{query}”",
-      "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}",
-      "indexBuilding": "Se construiește indexul de căutare {done}/{total} – rezultatele pot fi incomplete",
-      "indexBuildingUnknown": "Se construiește indexul de căutare – rezultatele pot fi incomplete"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",
-      "reasons": "Motive",
-      "clear": "Șterge"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Șterge",
-      "tags": "Etichete",
-      "filterByTag": "Filtrează după etichetă…",
-      "dateRange": "Interval de date"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Vezi toate ",
-      "results": "rezultate"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "aproximativ"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nicio filă deschisă",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Deschideți o pagină din bara laterală sau creați o filă nouă pentru a începe",
@@ -1255,5 +1226,85 @@
     "railLabel": "Secțiuni",
     "search": "Caută sau accesează…",
     "vaultMenu": "{name}. Deschide lista de seifuri"
+  },
+  "searchPalette": {
+    "title": "Căutare",
+    "placeholder": "Caută notițe, sarcini, jurnal, inbox…",
+    "filterHint": "Filtrează după tip, dată sau etichetă",
+    "tagHint": "Scrie numele unei etichete",
+    "removeFilter": "Elimină {name}",
+    "recent": "Recente",
+    "clear": "Șterge",
+    "fromQuery": "din „{query}”",
+    "searchIn": "Caută în",
+    "tag": "Etichetă",
+    "tags": "Etichete",
+    "items": "Elemente",
+    "chooseTag": "Alege o etichetă…",
+    "noTags": "Nicio etichetă potrivită",
+    "filterType": "Tip",
+    "filterModified": "Modificat",
+    "matches": "Potriviri",
+    "showMore": "Arată încă {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notițe",
+      "journal": "Jurnal",
+      "task": "Sarcini",
+      "inbox": "Inbox"
+    },
+    "dates": {
+      "today": "Azi",
+      "thisWeek": "Săptămâna aceasta",
+      "thisMonth": "Luna aceasta",
+      "custom": "Interval personalizat"
+    },
+    "status": {
+      "items": "{count, plural, one {# element} few {# elemente} other {# de elemente}} · pe acest dispozitiv",
+      "results": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}} · {ms} ms",
+      "indexing": "Indexare {done} / {total}",
+      "indexingUnknown": "Indexare…",
+      "filters": "Filtrele se cumulează · alege câte ai nevoie",
+      "tags": "Etichete folosite în seiful tău"
+    },
+    "empty": {
+      "unscoped": "Nimic nu se potrivește cu „{query}”",
+      "scoped": "Nimic din {scope} nu se potrivește cu „{query}”",
+      "indexing": "Indexarea continuă — elementele mai vechi s-ar putea să nu apară încă.",
+      "tryFilters": "Încearcă mai puține cuvinte sau elimină un filtru.",
+      "tryWords": "Încearcă mai puține cuvinte sau altele."
+    },
+    "actions": {
+      "filter": "Filtrează",
+      "back": "Înapoi",
+      "nextSection": "Secțiunea următoare",
+      "open": "Deschide",
+      "openNote": "Deschide notița",
+      "openFile": "Deschide fișierul",
+      "openJournal": "Deschide jurnalul",
+      "openTask": "Deschide sarcina",
+      "openInInbox": "Deschide în Inbox",
+      "addFilter": "Adaugă filtru",
+      "removeFilter": "Elimină filtru",
+      "chooseTag": "Alege eticheta",
+      "addTag": "Adaugă eticheta",
+      "showAll": "Arată tot",
+      "searchEverywhere": "Caută peste tot",
+      "clearFilters": "Șterge filtrele"
+    },
+    "preview": {
+      "edited": "Editat {when}",
+      "captured": "Capturat {when}",
+      "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
+      "filed": "Arhivat",
+      "notFiled": "Nearhivat",
+      "status": "Stare",
+      "noStatus": "Fără stare",
+      "due": "Termen",
+      "priority": "Prioritate",
+      "repeats": "Se repetă"
+    }
   }
 }

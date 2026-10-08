@@ -685,35 +685,6 @@
       "notifications": "Сповіщення",
       "logOut": "Вийти"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Пошук",
-      "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, щоденник, вхідні…",
-      "noResultsFor": "Немає результатів для “",
-      "result": "результат",
-      "noResultsForQuery": "Немає результатів для «{query}»",
-      "resultCount": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}}",
-      "indexBuilding": "Створення пошукового індексу {done}/{total} — результати можуть бути неповними",
-      "indexBuildingUnknown": "Створення пошукового індексу — результати можуть бути неповними"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Шукайте та натискайте елементи, щоб будувати свій шлях",
-      "reasons": "Причини",
-      "clear": "Очистити"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Очистити",
-      "tags": "Теги",
-      "filterByTag": "Фільтрувати за тегом…",
-      "dateRange": "Діапазон дат"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Переглянути всі ",
-      "results": "результатів"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "нечіткий"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Вкладок немає",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Відкрийте сторінку з бічної панелі або створіть нову вкладку, щоб почати",
@@ -1255,5 +1226,85 @@
     "railLabel": "Розділи",
     "search": "Шукати або перейти до…",
     "vaultMenu": "{name}. Відкрити список сховищ"
+  },
+  "searchPalette": {
+    "title": "Пошук",
+    "placeholder": "Шукати нотатки, завдання, щоденник, вхідні…",
+    "filterHint": "Фільтр за типом, датою або тегом",
+    "tagHint": "Введіть назву тегу",
+    "removeFilter": "Прибрати {name}",
+    "recent": "Нещодавні",
+    "clear": "Очистити",
+    "fromQuery": "за запитом «{query}»",
+    "searchIn": "Шукати в",
+    "tag": "Тег",
+    "tags": "Теги",
+    "items": "Елементи",
+    "chooseTag": "Оберіть тег…",
+    "noTags": "Немає відповідних тегів",
+    "filterType": "Тип",
+    "filterModified": "Змінено",
+    "matches": "Збіги",
+    "showMore": "Ще {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Нотатки",
+      "journal": "Щоденник",
+      "task": "Завдання",
+      "inbox": "Вхідні"
+    },
+    "dates": {
+      "today": "Сьогодні",
+      "thisWeek": "Цього тижня",
+      "thisMonth": "Цього місяця",
+      "custom": "Власний період"
+    },
+    "status": {
+      "items": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}} · на цьому пристрої",
+      "results": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}} · {ms} мс",
+      "indexing": "Індексування {done} / {total}",
+      "indexingUnknown": "Індексування…",
+      "filters": "Фільтри поєднуються · оберіть скільки потрібно",
+      "tags": "Теги, які ви використовуєте у сховищі"
+    },
+    "empty": {
+      "unscoped": "Нічого не знайдено за запитом «{query}»",
+      "scoped": "У розділі {scope} нічого не знайдено за запитом «{query}»",
+      "indexing": "Індексування ще триває — старі елементи можуть поки не знаходитися.",
+      "tryFilters": "Спробуйте менше слів або приберіть фільтр.",
+      "tryWords": "Спробуйте менше слів або інші слова."
+    },
+    "actions": {
+      "filter": "Фільтр",
+      "back": "Назад",
+      "nextSection": "Наступний розділ",
+      "open": "Відкрити",
+      "openNote": "Відкрити нотатку",
+      "openFile": "Відкрити файл",
+      "openJournal": "Відкрити щоденник",
+      "openTask": "Відкрити завдання",
+      "openInInbox": "Відкрити у вхідних",
+      "addFilter": "Додати фільтр",
+      "removeFilter": "Прибрати фільтр",
+      "chooseTag": "Обрати тег",
+      "addTag": "Додати тег",
+      "showAll": "Показати все",
+      "searchEverywhere": "Шукати всюди",
+      "clearFilters": "Скинути фільтри"
+    },
+    "preview": {
+      "edited": "Змінено {when}",
+      "captured": "Збережено {when}",
+      "words": "{count, plural, one {# слово} few {# слова} many {# слів} other {# слова}}",
+      "filed": "Розібрано",
+      "notFiled": "Не розібрано",
+      "status": "Статус",
+      "noStatus": "Без статусу",
+      "due": "Термін",
+      "priority": "Пріоритет",
+      "repeats": "Повтор"
+    }
   }
 }

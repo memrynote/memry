@@ -685,35 +685,6 @@
       "notifications": "Mga notification",
       "logOut": "Mag-log out"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Maghanap",
-      "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, talaarawan, inbox…",
-      "noResultsFor": "Walang resulta para sa “",
-      "result": "resulta",
-      "noResultsForQuery": "Walang resulta para sa “{query}”",
-      "resultCount": "{count, plural, one {# resulta} other {# resulta}}",
-      "indexBuilding": "Binubuo ang index ng paghahanap {done}/{total} — maaaring hindi kumpleto ang mga resulta",
-      "indexBuildingUnknown": "Binubuo ang index ng paghahanap — maaaring hindi kumpleto ang mga resulta"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para mabuo ang kasaysayan mo",
-      "reasons": "Mga dahilan",
-      "clear": "I-clear"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "I-clear",
-      "tags": "Mga tag",
-      "filterByTag": "I-filter ayon sa tag…",
-      "dateRange": "Saklaw ng petsa"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Tingnan ang lahat ng ",
-      "results": "resulta"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "halos tugma"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Walang nakabukas na tab",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Magbukas ng pahina mula sa sidebar o gumawa ng bagong tab para makapagsimula",
@@ -1255,5 +1226,85 @@
     "railLabel": "Mga seksyon",
     "search": "Maghanap o pumunta sa…",
     "vaultMenu": "{name}. Buksan ang listahan ng vault"
+  },
+  "searchPalette": {
+    "title": "Maghanap",
+    "placeholder": "Maghanap ng mga tala, gawain, talaarawan, inbox…",
+    "filterHint": "I-filter ayon sa uri, petsa o tag",
+    "tagHint": "Mag-type ng pangalan ng tag",
+    "removeFilter": "Alisin ang {name}",
+    "recent": "Kamakailan",
+    "clear": "I-clear",
+    "fromQuery": "mula sa “{query}”",
+    "searchIn": "Maghanap sa",
+    "tag": "Tag",
+    "tags": "Mga tag",
+    "items": "Mga item",
+    "chooseTag": "Pumili ng tag…",
+    "noTags": "Walang tumugmang tag",
+    "filterType": "Uri",
+    "filterModified": "Binago",
+    "matches": "Mga tugma",
+    "showMore": "Ipakita ang {count} pa",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Mga tala",
+      "journal": "Talaarawan",
+      "task": "Mga gawain",
+      "inbox": "Inbox"
+    },
+    "dates": {
+      "today": "Ngayon",
+      "thisWeek": "Ngayong linggo",
+      "thisMonth": "Ngayong buwan",
+      "custom": "Custom na saklaw"
+    },
+    "status": {
+      "items": "{count, plural, one {# item} other {# na item}} · sa device na ito",
+      "results": "{count, plural, one {# resulta} other {# na resulta}} · {ms} ms",
+      "indexing": "Nag-i-index {done} / {total}",
+      "indexingUnknown": "Nag-i-index…",
+      "filters": "Napagsasama ang mga filter · pumili hangga’t kailangan",
+      "tags": "Mga tag na ginagamit mo sa vault"
+    },
+    "empty": {
+      "unscoped": "Walang tumutugma sa “{query}”",
+      "scoped": "Walang tumutugma sa “{query}” sa {scope}",
+      "indexing": "Nag-i-index pa — maaaring hindi pa mahanap ang mga lumang item.",
+      "tryFilters": "Subukan ang mas kaunting salita o mag-alis ng filter.",
+      "tryWords": "Subukan ang mas kaunti o ibang mga salita."
+    },
+    "actions": {
+      "filter": "I-filter",
+      "back": "Bumalik",
+      "nextSection": "Susunod na seksyon",
+      "open": "Buksan",
+      "openNote": "Buksan ang tala",
+      "openFile": "Buksan ang file",
+      "openJournal": "Buksan ang talaarawan",
+      "openTask": "Buksan ang gawain",
+      "openInInbox": "Buksan sa Inbox",
+      "addFilter": "Idagdag ang filter",
+      "removeFilter": "Alisin ang filter",
+      "chooseTag": "Pumili ng tag",
+      "addTag": "Idagdag ang tag",
+      "showAll": "Ipakita lahat",
+      "searchEverywhere": "Maghanap sa lahat",
+      "clearFilters": "I-clear ang mga filter"
+    },
+    "preview": {
+      "edited": "Na-edit {when}",
+      "captured": "Nakuha {when}",
+      "words": "{count, plural, one {# salita} other {# na salita}}",
+      "filed": "Naka-file",
+      "notFiled": "Hindi naka-file",
+      "status": "Status",
+      "noStatus": "Walang status",
+      "due": "Takdang petsa",
+      "priority": "Priyoridad",
+      "repeats": "Umuulit"
+    }
   }
 }

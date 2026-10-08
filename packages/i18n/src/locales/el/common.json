@@ -685,35 +685,6 @@
       "notifications": "Ειδοποιήσεις",
       "logOut": "Αποσύνδεση"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Αναζήτηση",
-      "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου γραφής, εισερχομένων…",
-      "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
-      "result": "αποτέλεσμα",
-      "noResultsForQuery": "Δεν υπάρχουν αποτελέσματα για «{query}»",
-      "resultCount": "{count, plural, one {# αποτέλεσμα} other {# αποτελέσματα}}",
-      "indexBuilding": "Δημιουργία ευρετηρίου αναζήτησης {done}/{total} — τα αποτελέσματα μπορεί να είναι ελλιπή",
-      "indexBuildingUnknown": "Δημιουργία ευρετηρίου αναζήτησης — τα αποτελέσματα μπορεί να είναι ελλιπή"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Αναζητήστε και κάντε κλικ σε στοιχεία για να δημιουργήσετε το μονοπάτι σας",
-      "reasons": "Λόγοι",
-      "clear": "Απαλοιφή"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Απαλοιφή",
-      "tags": "Ετικέτες",
-      "filterByTag": "Φιλτράρισμα κατά ετικέτα…",
-      "dateRange": "Εύρος ημερομηνιών"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Προβολή όλων των ",
-      "results": "αποτελεσμάτων"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "Π",
-      "fuzzy": "κατά προσέγγιση"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Δεν υπάρχουν ανοιχτές καρτέλες",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Ανοίξτε μια σελίδα από την πλαϊνή στήλη ή δημιουργήστε μια νέα καρτέλα για να ξεκινήσετε",
@@ -1255,5 +1226,85 @@
     "railLabel": "Ενότητες",
     "search": "Αναζήτηση ή μετάβαση σε…",
     "vaultMenu": "{name}. Άνοιγμα λίστας θησαυροφυλακίων"
+  },
+  "searchPalette": {
+    "title": "Αναζήτηση",
+    "placeholder": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου γραφής, εισερχομένων…",
+    "filterHint": "Φιλτράρισμα κατά τύπο, ημερομηνία ή ετικέτα",
+    "tagHint": "Πληκτρολογήστε όνομα ετικέτας",
+    "removeFilter": "Αφαίρεση {name}",
+    "recent": "Πρόσφατα",
+    "clear": "Απαλοιφή",
+    "fromQuery": "από «{query}»",
+    "searchIn": "Αναζήτηση σε",
+    "tag": "Ετικέτα",
+    "tags": "Ετικέτες",
+    "items": "Στοιχεία",
+    "chooseTag": "Επιλέξτε ετικέτα…",
+    "noTags": "Καμία ετικέτα δεν ταιριάζει",
+    "filterType": "Τύπος",
+    "filterModified": "Τροποποιήθηκε",
+    "matches": "Αντιστοιχίες",
+    "showMore": "Εμφάνιση {count} ακόμη",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Σημειώσεις",
+      "journal": "Ημερολόγιο γραφής",
+      "task": "Εργασίες",
+      "inbox": "Εισερχόμενα"
+    },
+    "dates": {
+      "today": "Σήμερα",
+      "thisWeek": "Αυτή την εβδομάδα",
+      "thisMonth": "Αυτόν τον μήνα",
+      "custom": "Προσαρμοσμένο διάστημα"
+    },
+    "status": {
+      "items": "{count, plural, one {# στοιχείο} other {# στοιχεία}} · σε αυτή τη συσκευή",
+      "results": "{count, plural, one {# αποτέλεσμα} other {# αποτελέσματα}} · {ms} ms",
+      "indexing": "Ευρετηρίαση {done} / {total}",
+      "indexingUnknown": "Ευρετηρίαση…",
+      "filters": "Τα φίλτρα συνδυάζονται · επιλέξτε όσα χρειάζεστε",
+      "tags": "Ετικέτες που χρησιμοποιείτε στο θησαυροφυλάκιο"
+    },
+    "empty": {
+      "unscoped": "Τίποτα δεν ταιριάζει με «{query}»",
+      "scoped": "Τίποτα στα {scope} δεν ταιριάζει με «{query}»",
+      "indexing": "Η ευρετηρίαση συνεχίζεται — παλαιότερα στοιχεία ίσως δεν βρίσκονται ακόμη.",
+      "tryFilters": "Δοκιμάστε λιγότερες λέξεις ή αφαιρέστε ένα φίλτρο.",
+      "tryWords": "Δοκιμάστε λιγότερες ή διαφορετικές λέξεις."
+    },
+    "actions": {
+      "filter": "Φίλτρο",
+      "back": "Πίσω",
+      "nextSection": "Επόμενη ενότητα",
+      "open": "Άνοιγμα",
+      "openNote": "Άνοιγμα σημείωσης",
+      "openFile": "Άνοιγμα αρχείου",
+      "openJournal": "Άνοιγμα ημερολογίου",
+      "openTask": "Άνοιγμα εργασίας",
+      "openInInbox": "Άνοιγμα στα Εισερχόμενα",
+      "addFilter": "Προσθήκη φίλτρου",
+      "removeFilter": "Αφαίρεση φίλτρου",
+      "chooseTag": "Επιλογή ετικέτας",
+      "addTag": "Προσθήκη ετικέτας",
+      "showAll": "Εμφάνιση όλων",
+      "searchEverywhere": "Αναζήτηση παντού",
+      "clearFilters": "Απαλοιφή φίλτρων"
+    },
+    "preview": {
+      "edited": "Επεξεργάστηκε {when}",
+      "captured": "Καταγράφηκε {when}",
+      "words": "{count, plural, one {# λέξη} other {# λέξεις}}",
+      "filed": "Αρχειοθετήθηκε",
+      "notFiled": "Δεν αρχειοθετήθηκε",
+      "status": "Κατάσταση",
+      "noStatus": "Χωρίς κατάσταση",
+      "due": "Προθεσμία",
+      "priority": "Προτεραιότητα",
+      "repeats": "Επαναλαμβάνεται"
+    }
   }
 }

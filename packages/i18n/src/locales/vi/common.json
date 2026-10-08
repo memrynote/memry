@@ -685,35 +685,6 @@
       "notifications": "Thông báo",
       "logOut": "Đăng xuất"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Tìm kiếm",
-      "searchNotesTasksJournalInbox": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến…",
-      "noResultsFor": "Không có kết quả cho “",
-      "result": "kết quả",
-      "noResultsForQuery": "Không có kết quả cho “{query}”",
-      "resultCount": "{count, plural, other {# kết quả}}",
-      "indexBuilding": "Đang xây dựng chỉ mục tìm kiếm {done}/{total} — kết quả có thể chưa đầy đủ",
-      "indexBuildingUnknown": "Đang xây dựng chỉ mục tìm kiếm — kết quả có thể chưa đầy đủ"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Tìm kiếm và nhấp vào các mục để tạo lịch sử xem gần đây",
-      "reasons": "Lý do",
-      "clear": "Xóa"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Xóa",
-      "tags": "Thẻ",
-      "filterByTag": "Lọc theo thẻ…",
-      "dateRange": "Khoảng thời gian"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Xem tất cả ",
-      "results": "kết quả"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "gần đúng"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Không có tab nào đang mở",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Mở một trang từ thanh bên hoặc tạo tab mới để bắt đầu",
@@ -1255,5 +1226,85 @@
     "railLabel": "Khu vực",
     "search": "Tìm kiếm hoặc chuyển đến…",
     "vaultMenu": "{name}. Mở danh sách kho"
+  },
+  "searchPalette": {
+    "title": "Tìm kiếm",
+    "placeholder": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến…",
+    "filterHint": "Lọc theo loại, ngày hoặc thẻ",
+    "tagHint": "Nhập tên thẻ",
+    "removeFilter": "Bỏ {name}",
+    "recent": "Gần đây",
+    "clear": "Xóa",
+    "fromQuery": "từ “{query}”",
+    "searchIn": "Tìm trong",
+    "tag": "Thẻ",
+    "tags": "Thẻ",
+    "items": "Mục",
+    "chooseTag": "Chọn thẻ…",
+    "noTags": "Không có thẻ phù hợp",
+    "filterType": "Loại",
+    "filterModified": "Đã sửa đổi",
+    "matches": "Khớp",
+    "showMore": "Hiện thêm {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Ghi chú",
+      "journal": "Nhật ký",
+      "task": "Công việc",
+      "inbox": "Hộp thư đến"
+    },
+    "dates": {
+      "today": "Hôm nay",
+      "thisWeek": "Tuần này",
+      "thisMonth": "Tháng này",
+      "custom": "Khoảng tùy chỉnh"
+    },
+    "status": {
+      "items": "{count, plural, other {# mục}} · trên thiết bị này",
+      "results": "{count, plural, other {# kết quả}} · {ms} ms",
+      "indexing": "Đang lập chỉ mục {done} / {total}",
+      "indexingUnknown": "Đang lập chỉ mục…",
+      "filters": "Có thể kết hợp bộ lọc · chọn bao nhiêu tùy ý",
+      "tags": "Thẻ bạn dùng trong kho"
+    },
+    "empty": {
+      "unscoped": "Không có gì khớp với “{query}”",
+      "scoped": "Không có gì trong {scope} khớp với “{query}”",
+      "indexing": "Vẫn đang lập chỉ mục — các mục cũ có thể chưa tìm được.",
+      "tryFilters": "Thử ít từ hơn hoặc bỏ một bộ lọc.",
+      "tryWords": "Thử ít từ hơn hoặc dùng từ khác."
+    },
+    "actions": {
+      "filter": "Lọc",
+      "back": "Quay lại",
+      "nextSection": "Mục tiếp theo",
+      "open": "Mở",
+      "openNote": "Mở ghi chú",
+      "openFile": "Mở tệp",
+      "openJournal": "Mở nhật ký",
+      "openTask": "Mở công việc",
+      "openInInbox": "Mở trong Hộp thư đến",
+      "addFilter": "Thêm bộ lọc",
+      "removeFilter": "Bỏ bộ lọc",
+      "chooseTag": "Chọn thẻ",
+      "addTag": "Thêm thẻ",
+      "showAll": "Hiện tất cả",
+      "searchEverywhere": "Tìm ở mọi nơi",
+      "clearFilters": "Xóa bộ lọc"
+    },
+    "preview": {
+      "edited": "Đã sửa {when}",
+      "captured": "Đã lưu {when}",
+      "words": "{count, plural, other {# từ}}",
+      "filed": "Đã sắp xếp",
+      "notFiled": "Chưa sắp xếp",
+      "status": "Trạng thái",
+      "noStatus": "Không có trạng thái",
+      "due": "Hạn",
+      "priority": "Ưu tiên",
+      "repeats": "Lặp lại"
+    }
   }
 }

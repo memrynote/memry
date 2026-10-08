@@ -154,7 +154,7 @@ function unifiedSidebar() {
                 { text: 'Synology', link: '/user-guide/caldav/synology' }
               ]
             },
-            { text: 'Search & Command Palette', link: '/user-guide/search' },
+            { text: 'Search', link: '/user-guide/search' },
             { text: 'Command Line', link: '/user-guide/cli' },
             { text: 'Templates', link: '/user-guide/templates' },
             { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },

@@ -685,35 +685,6 @@
       "notifications": "Meldingen",
       "logOut": "Uitloggen"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Zoeken",
-      "searchNotesTasksJournalInbox": "Notities, taken, dagboek, inbox zoeken…",
-      "noResultsFor": "Geen resultaten voor “",
-      "result": "resultaat",
-      "noResultsForQuery": "Geen resultaten voor “{query}”",
-      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
-      "indexBuilding": "Zoekindex wordt opgebouwd {done}/{total} – resultaten zijn mogelijk onvolledig",
-      "indexBuildingUnknown": "Zoekindex wordt opgebouwd – resultaten zijn mogelijk onvolledig"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je spoor op te bouwen",
-      "reasons": "Redenen",
-      "clear": "Wissen"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Wissen",
-      "tags": "Tags",
-      "filterByTag": "Filteren op tag…",
-      "dateRange": "Datumbereik"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Alle ",
-      "results": "resultaten"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "bij benadering"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Geen tabbladen geopend",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open een pagina vanuit de zijbalk of maak een nieuw tabblad om aan de slag te gaan",
@@ -1255,5 +1226,85 @@
     "railLabel": "Secties",
     "search": "Zoeken of openen…",
     "vaultMenu": "{name}. Lijst met kluizen openen"
+  },
+  "searchPalette": {
+    "title": "Zoeken",
+    "placeholder": "Zoek in notities, taken, dagboek, inbox…",
+    "filterHint": "Filter op type, datum of tag",
+    "tagHint": "Typ een tagnaam",
+    "removeFilter": "{name} verwijderen",
+    "recent": "Recent",
+    "clear": "Wissen",
+    "fromQuery": "via “{query}”",
+    "searchIn": "Zoeken in",
+    "tag": "Tag",
+    "tags": "Tags",
+    "items": "Items",
+    "chooseTag": "Kies een tag…",
+    "noTags": "Geen tags gevonden",
+    "filterType": "Type",
+    "filterModified": "Gewijzigd",
+    "matches": "Treffers",
+    "showMore": "Nog {count} tonen",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notities",
+      "journal": "Dagboek",
+      "task": "Taken",
+      "inbox": "Inbox"
+    },
+    "dates": {
+      "today": "Vandaag",
+      "thisWeek": "Deze week",
+      "thisMonth": "Deze maand",
+      "custom": "Aangepaste periode"
+    },
+    "status": {
+      "items": "{count, plural, one {# item} other {# items}} · op dit apparaat",
+      "results": "{count, plural, one {# resultaat} other {# resultaten}} · {ms} ms",
+      "indexing": "Indexeren {done} / {total}",
+      "indexingUnknown": "Indexeren…",
+      "filters": "Filters zijn te combineren · kies er zoveel als je wilt",
+      "tags": "Tags die je in je kluis gebruikt"
+    },
+    "empty": {
+      "unscoped": "Niets komt overeen met “{query}”",
+      "scoped": "Niets in {scope} komt overeen met “{query}”",
+      "indexing": "Nog bezig met indexeren — oudere items zijn mogelijk nog niet doorzoekbaar.",
+      "tryFilters": "Probeer minder woorden of verwijder een filter.",
+      "tryWords": "Probeer minder of andere woorden."
+    },
+    "actions": {
+      "filter": "Filteren",
+      "back": "Terug",
+      "nextSection": "Volgende sectie",
+      "open": "Openen",
+      "openNote": "Notitie openen",
+      "openFile": "Bestand openen",
+      "openJournal": "Dagboek openen",
+      "openTask": "Taak openen",
+      "openInInbox": "Openen in inbox",
+      "addFilter": "Filter toevoegen",
+      "removeFilter": "Filter verwijderen",
+      "chooseTag": "Tag kiezen",
+      "addTag": "Tag toevoegen",
+      "showAll": "Alles tonen",
+      "searchEverywhere": "Overal zoeken",
+      "clearFilters": "Filters wissen"
+    },
+    "preview": {
+      "edited": "Bewerkt {when}",
+      "captured": "Vastgelegd {when}",
+      "words": "{count, plural, one {# woord} other {# woorden}}",
+      "filed": "Opgeborgen",
+      "notFiled": "Niet opgeborgen",
+      "status": "Status",
+      "noStatus": "Geen status",
+      "due": "Deadline",
+      "priority": "Prioriteit",
+      "repeats": "Herhaalt"
+    }
   }
 }

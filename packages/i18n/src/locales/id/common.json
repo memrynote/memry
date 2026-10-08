@@ -685,35 +685,6 @@
       "notifications": "Pemberitahuan",
       "logOut": "Keluar"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Cari",
-      "searchNotesTasksJournalInbox": "Cari catatan, tugas, jurnal, kotak masuk…",
-      "noResultsFor": "Tidak ada hasil untuk “",
-      "result": "hasil",
-      "noResultsForQuery": "Tidak ada hasil untuk “{query}”",
-      "resultCount": "{count, plural, other {# hasil}}",
-      "indexBuilding": "Membangun indeks pencarian {done}/{total} — hasil mungkin tidak lengkap",
-      "indexBuildingUnknown": "Membangun indeks pencarian — hasil mungkin tidak lengkap"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membangun jejak Anda",
-      "reasons": "Alasan",
-      "clear": "Hapus"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Hapus",
-      "tags": "Tag",
-      "filterByTag": "Filter berdasarkan tag…",
-      "dateRange": "Rentang tanggal"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Lihat semuanya ",
-      "results": "hasil"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "mirip"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Tidak ada tab yang terbuka",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari bilah samping atau buat tab baru untuk memulai",
@@ -1255,5 +1226,85 @@
     "railLabel": "Bagian",
     "search": "Cari atau lompat ke…",
     "vaultMenu": "{name}. Buka daftar brankas"
+  },
+  "searchPalette": {
+    "title": "Cari",
+    "placeholder": "Cari catatan, tugas, jurnal, kotak masuk…",
+    "filterHint": "Filter menurut jenis, tanggal, atau tag",
+    "tagHint": "Ketik nama tag",
+    "removeFilter": "Hapus {name}",
+    "recent": "Terbaru",
+    "clear": "Hapus",
+    "fromQuery": "dari “{query}”",
+    "searchIn": "Cari di",
+    "tag": "Tag",
+    "tags": "Tag",
+    "items": "Item",
+    "chooseTag": "Pilih tag…",
+    "noTags": "Tidak ada tag yang cocok",
+    "filterType": "Jenis",
+    "filterModified": "Diubah",
+    "matches": "Kecocokan",
+    "showMore": "Tampilkan {count} lagi",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Catatan",
+      "journal": "Jurnal",
+      "task": "Tugas",
+      "inbox": "Kotak masuk"
+    },
+    "dates": {
+      "today": "Hari ini",
+      "thisWeek": "Minggu ini",
+      "thisMonth": "Bulan ini",
+      "custom": "Rentang khusus"
+    },
+    "status": {
+      "items": "{count, plural, other {# item}} · di perangkat ini",
+      "results": "{count, plural, other {# hasil}} · {ms} md",
+      "indexing": "Mengindeks {done} / {total}",
+      "indexingUnknown": "Mengindeks…",
+      "filters": "Filter dapat digabung · pilih sebanyak yang perlu",
+      "tags": "Tag yang Anda gunakan di brankas"
+    },
+    "empty": {
+      "unscoped": "Tidak ada yang cocok dengan “{query}”",
+      "scoped": "Tidak ada di {scope} yang cocok dengan “{query}”",
+      "indexing": "Masih mengindeks — item lama mungkin belum bisa dicari.",
+      "tryFilters": "Coba lebih sedikit kata atau hapus filter.",
+      "tryWords": "Coba lebih sedikit kata atau kata lain."
+    },
+    "actions": {
+      "filter": "Filter",
+      "back": "Kembali",
+      "nextSection": "Bagian berikutnya",
+      "open": "Buka",
+      "openNote": "Buka catatan",
+      "openFile": "Buka file",
+      "openJournal": "Buka jurnal",
+      "openTask": "Buka tugas",
+      "openInInbox": "Buka di Kotak masuk",
+      "addFilter": "Tambah filter",
+      "removeFilter": "Hapus filter",
+      "chooseTag": "Pilih tag",
+      "addTag": "Tambah tag",
+      "showAll": "Tampilkan semua",
+      "searchEverywhere": "Cari di semua tempat",
+      "clearFilters": "Hapus filter"
+    },
+    "preview": {
+      "edited": "Diedit {when}",
+      "captured": "Ditangkap {when}",
+      "words": "{count, plural, other {# kata}}",
+      "filed": "Diarsipkan",
+      "notFiled": "Belum diarsipkan",
+      "status": "Status",
+      "noStatus": "Tanpa status",
+      "due": "Jatuh tempo",
+      "priority": "Prioritas",
+      "repeats": "Berulang"
+    }
   }
 }

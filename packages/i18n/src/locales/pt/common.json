@@ -685,35 +685,6 @@
       "notifications": "Notificações",
       "logOut": "Sair"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Pesquisar",
-      "searchNotesTasksJournalInbox": "Pesquisar notas, tarefas, diário, caixa de entrada…",
-      "noResultsFor": "Nenhum resultado para “",
-      "result": "resultado",
-      "noResultsForQuery": "Nenhum resultado para “{query}”",
-      "resultCount": "{count, plural, one {# resultado} many {# resultados} other {# resultados}}",
-      "indexBuilding": "Criando índice de pesquisa {done}/{total} — os resultados podem estar incompletos",
-      "indexBuildingUnknown": "Criando índice de pesquisa — os resultados podem estar incompletos"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Pesquise e clique nos itens para construir sua trilha",
-      "reasons": "Razões",
-      "clear": "Limpar"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Limpar",
-      "tags": "Tags",
-      "filterByTag": "Filtrar por tag…",
-      "dateRange": "Período"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Ver todos os ",
-      "results": "resultados"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "aproximado"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nenhuma aba aberta",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Abra uma página na barra lateral ou crie uma nova aba para começar",
@@ -1255,5 +1226,85 @@
     "railLabel": "Seções",
     "search": "Pesquisar ou ir para…",
     "vaultMenu": "{name}. Abrir a lista de cofres"
+  },
+  "searchPalette": {
+    "title": "Pesquisar",
+    "placeholder": "Pesquisar notas, tarefas, diário, caixa de entrada…",
+    "filterHint": "Filtrar por tipo, data ou tag",
+    "tagHint": "Digite o nome de uma tag",
+    "removeFilter": "Remover {name}",
+    "recent": "Recentes",
+    "clear": "Limpar",
+    "fromQuery": "de “{query}”",
+    "searchIn": "Pesquisar em",
+    "tag": "Tag",
+    "tags": "Tags",
+    "items": "Itens",
+    "chooseTag": "Escolha uma tag…",
+    "noTags": "Nenhuma tag corresponde",
+    "filterType": "Tipo",
+    "filterModified": "Modificado",
+    "matches": "Correspondências",
+    "showMore": "Mostrar mais {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notas",
+      "journal": "Diário",
+      "task": "Tarefas",
+      "inbox": "Caixa de entrada"
+    },
+    "dates": {
+      "today": "Hoje",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mês",
+      "custom": "Período personalizado"
+    },
+    "status": {
+      "items": "{count, plural, one {# item} many {# itens} other {# itens}} · neste dispositivo",
+      "results": "{count, plural, one {# resultado} many {# resultados} other {# resultados}} · {ms} ms",
+      "indexing": "Indexando {done} / {total}",
+      "indexingUnknown": "Indexando…",
+      "filters": "Os filtros se combinam · escolha quantos precisar",
+      "tags": "Tags usadas no seu cofre"
+    },
+    "empty": {
+      "unscoped": "Nada corresponde a “{query}”",
+      "scoped": "Nada em {scope} corresponde a “{query}”",
+      "indexing": "Ainda indexando — itens mais antigos podem ainda não aparecer na pesquisa.",
+      "tryFilters": "Tente menos palavras ou remova um filtro.",
+      "tryWords": "Tente menos palavras ou palavras diferentes."
+    },
+    "actions": {
+      "filter": "Filtrar",
+      "back": "Voltar",
+      "nextSection": "Próxima seção",
+      "open": "Abrir",
+      "openNote": "Abrir nota",
+      "openFile": "Abrir arquivo",
+      "openJournal": "Abrir diário",
+      "openTask": "Abrir tarefa",
+      "openInInbox": "Abrir na caixa de entrada",
+      "addFilter": "Adicionar filtro",
+      "removeFilter": "Remover filtro",
+      "chooseTag": "Escolher tag",
+      "addTag": "Adicionar tag",
+      "showAll": "Mostrar tudo",
+      "searchEverywhere": "Pesquisar em tudo",
+      "clearFilters": "Limpar filtros"
+    },
+    "preview": {
+      "edited": "Editado {when}",
+      "captured": "Capturado {when}",
+      "words": "{count, plural, one {# palavra} many {# palavras} other {# palavras}}",
+      "filed": "Arquivado",
+      "notFiled": "Não arquivado",
+      "status": "Status",
+      "noStatus": "Sem status",
+      "due": "Vencimento",
+      "priority": "Prioridade",
+      "repeats": "Repete"
+    }
   }
 }

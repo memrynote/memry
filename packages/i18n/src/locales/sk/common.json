@@ -685,35 +685,6 @@
       "notifications": "Oznámenia",
       "logOut": "Odhlásiť sa"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Vyhľadávanie",
-      "searchNotesTasksJournalInbox": "Hľadať v poznámkach, úlohách, denníku, Prijatých…",
-      "noResultsFor": "Žiadne výsledky pre „",
-      "result": "výsledok",
-      "noResultsForQuery": "Žiadne výsledky pre „{query}“",
-      "resultCount": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}}",
-      "indexBuilding": "Vytvára sa index vyhľadávania {done}/{total} – výsledky nemusia byť úplné",
-      "indexBuildingUnknown": "Vytvára sa index vyhľadávania – výsledky nemusia byť úplné"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Hľadajte a klikajte na položky, aby ste vytvorili svoju stopu",
-      "reasons": "Dôvody",
-      "clear": "Vymazať"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Vymazať",
-      "tags": "Značky",
-      "filterByTag": "Filtrovať podľa značky…",
-      "dateRange": "Rozsah dátumov"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Zobraziť všetko: ",
-      "results": "výsl."
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "približná zhoda"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Žiadne otvorené karty",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Začnite otvorením stránky z bočného panela alebo vytvorením novej karty",
@@ -1255,5 +1226,85 @@
     "railLabel": "Sekcie",
     "search": "Hľadať alebo prejsť na…",
     "vaultMenu": "{name}. Otvoriť zoznam trezorov"
+  },
+  "searchPalette": {
+    "title": "Hľadať",
+    "placeholder": "Hľadať v poznámkach, úlohách, denníku, Prijatých…",
+    "filterHint": "Filtrovať podľa typu, dátumu alebo značky",
+    "tagHint": "Zadajte názov značky",
+    "removeFilter": "Odstrániť {name}",
+    "recent": "Nedávne",
+    "clear": "Vymazať",
+    "fromQuery": "z dopytu „{query}“",
+    "searchIn": "Hľadať v",
+    "tag": "Značka",
+    "tags": "Značky",
+    "items": "Položky",
+    "chooseTag": "Vyberte značku…",
+    "noTags": "Žiadne zodpovedajúce značky",
+    "filterType": "Typ",
+    "filterModified": "Zmenené",
+    "matches": "Zhody",
+    "showMore": "Zobraziť ďalších {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Poznámky",
+      "journal": "Denník",
+      "task": "Úlohy",
+      "inbox": "Prijaté"
+    },
+    "dates": {
+      "today": "Dnes",
+      "thisWeek": "Tento týždeň",
+      "thisMonth": "Tento mesiac",
+      "custom": "Vlastný rozsah"
+    },
+    "status": {
+      "items": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}} · v tomto zariadení",
+      "results": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}} · {ms} ms",
+      "indexing": "Indexovanie {done} / {total}",
+      "indexingUnknown": "Indexovanie…",
+      "filters": "Filtre sa dajú kombinovať · vyberte, koľko potrebujete",
+      "tags": "Značky použité vo vašom trezore"
+    },
+    "empty": {
+      "unscoped": "Nič nezodpovedá „{query}“",
+      "scoped": "V sekcii {scope} nič nezodpovedá „{query}“",
+      "indexing": "Indexovanie stále prebieha — staršie položky ešte nemusia byť vyhľadateľné.",
+      "tryFilters": "Skúste menej slov alebo odstráňte filter.",
+      "tryWords": "Skúste menej slov alebo iné slová."
+    },
+    "actions": {
+      "filter": "Filtrovať",
+      "back": "Späť",
+      "nextSection": "Ďalšia sekcia",
+      "open": "Otvoriť",
+      "openNote": "Otvoriť poznámku",
+      "openFile": "Otvoriť súbor",
+      "openJournal": "Otvoriť denník",
+      "openTask": "Otvoriť úlohu",
+      "openInInbox": "Otvoriť v Prijatých",
+      "addFilter": "Pridať filter",
+      "removeFilter": "Odstrániť filter",
+      "chooseTag": "Vybrať značku",
+      "addTag": "Pridať značku",
+      "showAll": "Zobraziť všetko",
+      "searchEverywhere": "Hľadať všade",
+      "clearFilters": "Vymazať filtre"
+    },
+    "preview": {
+      "edited": "Upravené {when}",
+      "captured": "Zachytené {when}",
+      "words": "{count, plural, one {# slovo} few {# slová} many {# slova} other {# slov}}",
+      "filed": "Zaradené",
+      "notFiled": "Nezaradené",
+      "status": "Stav",
+      "noStatus": "Bez stavu",
+      "due": "Termín",
+      "priority": "Priorita",
+      "repeats": "Opakuje sa"
+    }
   }
 }

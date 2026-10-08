@@ -685,35 +685,6 @@
       "notifications": "Уведомления",
       "logOut": "Выйти"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Поиск",
-      "searchNotesTasksJournalInbox": "Поиск заметок, задач, журнала, входящих…",
-      "noResultsFor": "Нет результатов по запросу «",
-      "result": "результат",
-      "noResultsForQuery": "Нет результатов по запросу «{query}»",
-      "resultCount": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}",
-      "indexBuilding": "Создаётся поисковый индекс {done}/{total} — результаты могут быть неполными",
-      "indexBuildingUnknown": "Создаётся поисковый индекс — результаты могут быть неполными"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Ищите и открывайте элементы, чтобы собрать историю переходов",
-      "reasons": "Причины",
-      "clear": "Очистить"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Очистить",
-      "tags": "Теги",
-      "filterByTag": "Фильтр по тегу…",
-      "dateRange": "Диапазон дат"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Результатов: ",
-      "results": "— показать все"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "П",
-      "fuzzy": "неточное"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Нет открытых вкладок",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Откройте страницу на боковой панели или создайте новую вкладку, чтобы начать",
@@ -1255,5 +1226,85 @@
     "railLabel": "Разделы",
     "search": "Поиск или переход…",
     "vaultMenu": "{name}. Открыть список хранилищ"
+  },
+  "searchPalette": {
+    "title": "Поиск",
+    "placeholder": "Поиск заметок, задач, журнала, входящих…",
+    "filterHint": "Фильтр по типу, дате или тегу",
+    "tagHint": "Введите название тега",
+    "removeFilter": "Убрать {name}",
+    "recent": "Недавние",
+    "clear": "Очистить",
+    "fromQuery": "по запросу «{query}»",
+    "searchIn": "Искать в",
+    "tag": "Тег",
+    "tags": "Теги",
+    "items": "Элементы",
+    "chooseTag": "Выберите тег…",
+    "noTags": "Нет подходящих тегов",
+    "filterType": "Тип",
+    "filterModified": "Изменено",
+    "matches": "Совпадения",
+    "showMore": "Ещё {count}",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Заметки",
+      "journal": "Журнал",
+      "task": "Задачи",
+      "inbox": "Входящие"
+    },
+    "dates": {
+      "today": "Сегодня",
+      "thisWeek": "На этой неделе",
+      "thisMonth": "В этом месяце",
+      "custom": "Свой период"
+    },
+    "status": {
+      "items": "{count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}} · на этом устройстве",
+      "results": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}} · {ms} мс",
+      "indexing": "Индексация {done} / {total}",
+      "indexingUnknown": "Индексация…",
+      "filters": "Фильтры складываются · выберите сколько нужно",
+      "tags": "Теги, которые вы используете в хранилище"
+    },
+    "empty": {
+      "unscoped": "Ничего не найдено по запросу «{query}»",
+      "scoped": "В разделе {scope} ничего не найдено по запросу «{query}»",
+      "indexing": "Индексация ещё идёт — старые элементы могут пока не находиться.",
+      "tryFilters": "Попробуйте меньше слов или уберите фильтр.",
+      "tryWords": "Попробуйте меньше слов или другие слова."
+    },
+    "actions": {
+      "filter": "Фильтр",
+      "back": "Назад",
+      "nextSection": "Следующий раздел",
+      "open": "Открыть",
+      "openNote": "Открыть заметку",
+      "openFile": "Открыть файл",
+      "openJournal": "Открыть журнал",
+      "openTask": "Открыть задачу",
+      "openInInbox": "Открыть во входящих",
+      "addFilter": "Добавить фильтр",
+      "removeFilter": "Убрать фильтр",
+      "chooseTag": "Выбрать тег",
+      "addTag": "Добавить тег",
+      "showAll": "Показать все",
+      "searchEverywhere": "Искать везде",
+      "clearFilters": "Сбросить фильтры"
+    },
+    "preview": {
+      "edited": "Изменено {when}",
+      "captured": "Сохранено {when}",
+      "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
+      "filed": "Разобрано",
+      "notFiled": "Не разобрано",
+      "status": "Статус",
+      "noStatus": "Без статуса",
+      "due": "Срок",
+      "priority": "Приоритет",
+      "repeats": "Повтор"
+    }
   }
 }

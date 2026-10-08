@@ -685,35 +685,6 @@
       "notifications": "Notifications",
       "logOut": "Se déconnecter"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Rechercher",
-      "searchNotesTasksJournalInbox": "Rechercher dans les notes, les tâches, le journal, la boîte de réception…",
-      "noResultsFor": "Aucun résultat pour “",
-      "result": "résultat",
-      "noResultsForQuery": "Aucun résultat pour « {query} »",
-      "resultCount": "{count, plural, one {# résultat} many {# résultats} other {# résultats}}",
-      "indexBuilding": "Création de l'index de recherche {done}/{total} – les résultats peuvent être incomplets",
-      "indexBuildingUnknown": "Création de l'index de recherche – les résultats peuvent être incomplets"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Recherchez et cliquez sur des éléments pour créer votre parcours",
-      "reasons": "Raisons",
-      "clear": "Effacer"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Effacer",
-      "tags": "Tags",
-      "filterByTag": "Filtrer par tag…",
-      "dateRange": "Plage de dates"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Voir les ",
-      "results": "résultats"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "approximatif"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Aucun onglet ouvert",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Ouvrez une page depuis la barre latérale ou créez un nouvel onglet pour commencer",
@@ -1255,5 +1226,85 @@
     "railLabel": "Sections",
     "search": "Rechercher ou aller à…",
     "vaultMenu": "{name}. Ouvrir la liste des coffres"
+  },
+  "searchPalette": {
+    "title": "Recherche",
+    "placeholder": "Rechercher notes, tâches, journal, boîte de réception…",
+    "filterHint": "Filtrer par type, date ou tag",
+    "tagHint": "Saisissez un nom de tag",
+    "removeFilter": "Retirer {name}",
+    "recent": "Récents",
+    "clear": "Effacer",
+    "fromQuery": "via « {query} »",
+    "searchIn": "Rechercher dans",
+    "tag": "Tag",
+    "tags": "Tags",
+    "items": "Éléments",
+    "chooseTag": "Choisir un tag…",
+    "noTags": "Aucun tag ne correspond",
+    "filterType": "Type",
+    "filterModified": "Modifié",
+    "matches": "Correspondances",
+    "showMore": "Afficher {count} de plus",
+    "keys": {
+      "esc": "échap"
+    },
+    "types": {
+      "note": "Notes",
+      "journal": "Journal",
+      "task": "Tâches",
+      "inbox": "Boîte de réception"
+    },
+    "dates": {
+      "today": "Aujourd’hui",
+      "thisWeek": "Cette semaine",
+      "thisMonth": "Ce mois-ci",
+      "custom": "Période personnalisée"
+    },
+    "status": {
+      "items": "{count, plural, one {# élément} many {# éléments} other {# éléments}} · sur cet appareil",
+      "results": "{count, plural, one {# résultat} many {# résultats} other {# résultats}} · {ms} ms",
+      "indexing": "Indexation {done} / {total}",
+      "indexingUnknown": "Indexation…",
+      "filters": "Les filtres se cumulent · choisissez-en autant que nécessaire",
+      "tags": "Tags utilisés dans votre coffre"
+    },
+    "empty": {
+      "unscoped": "Rien ne correspond à « {query} »",
+      "scoped": "Rien dans {scope} ne correspond à « {query} »",
+      "indexing": "Indexation en cours — les éléments anciens ne sont peut-être pas encore trouvables.",
+      "tryFilters": "Essayez moins de mots ou retirez un filtre.",
+      "tryWords": "Essayez moins de mots ou d’autres mots."
+    },
+    "actions": {
+      "filter": "Filtrer",
+      "back": "Retour",
+      "nextSection": "Section suivante",
+      "open": "Ouvrir",
+      "openNote": "Ouvrir la note",
+      "openFile": "Ouvrir le fichier",
+      "openJournal": "Ouvrir le journal",
+      "openTask": "Ouvrir la tâche",
+      "openInInbox": "Ouvrir dans la boîte de réception",
+      "addFilter": "Ajouter le filtre",
+      "removeFilter": "Retirer le filtre",
+      "chooseTag": "Choisir le tag",
+      "addTag": "Ajouter le tag",
+      "showAll": "Tout afficher",
+      "searchEverywhere": "Rechercher partout",
+      "clearFilters": "Effacer les filtres"
+    },
+    "preview": {
+      "edited": "Modifié {when}",
+      "captured": "Capturé {when}",
+      "words": "{count, plural, one {# mot} many {# mots} other {# mots}}",
+      "filed": "Classé",
+      "notFiled": "Non classé",
+      "status": "Statut",
+      "noStatus": "Aucun statut",
+      "due": "Échéance",
+      "priority": "Priorité",
+      "repeats": "Répétition"
+    }
   }
 }

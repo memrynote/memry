@@ -685,35 +685,6 @@
       "notifications": "Notificaciones",
       "logOut": "Cerrar sesión"
     },
-    "componentsSearchCommandPalette": {
-      "search": "Buscar",
-      "searchNotesTasksJournalInbox": "Buscar notas, tareas, diario, bandeja de entrada…",
-      "noResultsFor": "Sin resultados para “",
-      "result": "resultado",
-      "noResultsForQuery": "No hay resultados para «{query}»",
-      "resultCount": "{count, plural, one {# resultado} many {# resultados} other {# resultados}}",
-      "indexBuilding": "Creando el índice de búsqueda ({done}/{total}): los resultados pueden estar incompletos",
-      "indexBuildingUnknown": "Creando el índice de búsqueda: los resultados pueden estar incompletos"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Busca y haz clic en elementos para crear tu recorrido",
-      "reasons": "Razones",
-      "clear": "Borrar"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Quitar",
-      "tags": "Etiquetas",
-      "filterByTag": "Filtrar por etiqueta…",
-      "dateRange": "Rango de fechas"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Ver los ",
-      "results": "resultados"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "aproximado"
-    },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "No hay pestañas abiertas",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Abre una página desde la barra lateral o crea una pestaña nueva para empezar",
@@ -1255,5 +1226,85 @@
     "railLabel": "Secciones",
     "search": "Buscar o ir a…",
     "vaultMenu": "{name}. Abrir la lista de bóvedas"
+  },
+  "searchPalette": {
+    "title": "Buscar",
+    "placeholder": "Buscar notas, tareas, diario, bandeja de entrada…",
+    "filterHint": "Filtrar por tipo, fecha o etiqueta",
+    "tagHint": "Escribe el nombre de una etiqueta",
+    "removeFilter": "Quitar {name}",
+    "recent": "Recientes",
+    "clear": "Borrar",
+    "fromQuery": "desde «{query}»",
+    "searchIn": "Buscar en",
+    "tag": "Etiqueta",
+    "tags": "Etiquetas",
+    "items": "Elementos",
+    "chooseTag": "Elige una etiqueta…",
+    "noTags": "Ninguna etiqueta coincide",
+    "filterType": "Tipo",
+    "filterModified": "Modificado",
+    "matches": "Coincidencias",
+    "showMore": "Mostrar {count} más",
+    "keys": {
+      "esc": "esc"
+    },
+    "types": {
+      "note": "Notas",
+      "journal": "Diario",
+      "task": "Tareas",
+      "inbox": "Bandeja de entrada"
+    },
+    "dates": {
+      "today": "Hoy",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mes",
+      "custom": "Rango personalizado"
+    },
+    "status": {
+      "items": "{count, plural, one {# elemento} many {# elementos} other {# elementos}} · en este dispositivo",
+      "results": "{count, plural, one {# resultado} many {# resultados} other {# resultados}} · {ms} ms",
+      "indexing": "Indexando {done} / {total}",
+      "indexingUnknown": "Indexando…",
+      "filters": "Los filtros se combinan · elige todos los que necesites",
+      "tags": "Etiquetas que usas en tu bóveda"
+    },
+    "empty": {
+      "unscoped": "Nada coincide con «{query}»",
+      "scoped": "Nada en {scope} coincide con «{query}»",
+      "indexing": "Aún indexando: es posible que los elementos antiguos no se puedan buscar todavía.",
+      "tryFilters": "Prueba con menos palabras o quita un filtro.",
+      "tryWords": "Prueba con menos palabras o con otras."
+    },
+    "actions": {
+      "filter": "Filtrar",
+      "back": "Atrás",
+      "nextSection": "Siguiente sección",
+      "open": "Abrir",
+      "openNote": "Abrir nota",
+      "openFile": "Abrir archivo",
+      "openJournal": "Abrir diario",
+      "openTask": "Abrir tarea",
+      "openInInbox": "Abrir en la bandeja de entrada",
+      "addFilter": "Añadir filtro",
+      "removeFilter": "Quitar filtro",
+      "chooseTag": "Elegir etiqueta",
+      "addTag": "Añadir etiqueta",
+      "showAll": "Mostrar todo",
+      "searchEverywhere": "Buscar en todo",
+      "clearFilters": "Borrar filtros"
+    },
+    "preview": {
+      "edited": "Editado {when}",
+      "captured": "Capturado {when}",
+      "words": "{count, plural, one {# palabra} many {# palabras} other {# palabras}}",
+      "filed": "Archivado",
+      "notFiled": "Sin archivar",
+      "status": "Estado",
+      "noStatus": "Sin estado",
+      "due": "Vence",
+      "priority": "Prioridad",
+      "repeats": "Se repite"
+    }
   }
 }
