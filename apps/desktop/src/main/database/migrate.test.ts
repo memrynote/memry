@@ -1424,3 +1424,164 @@ describe('0068_note_body_sync migration', () => {
     sqlite.close()
   })
 })
+
+// Tags with fields: a 0057+ build kept a newer peer's `schema` and `fields` in
+// sync_unknown_fields, and the upgrade adopts them once.
+describe('0071_tag_schema_task_fields migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tag-schema-task-fields-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function migrationsBefore0071(): string {
+    const copy = path.join(tempDir, 'migrations-before-0071')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0071_tag_schema_task_fields')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  const personSchema = {
+    t: 3,
+    fields: [{ name: 'Company', relation: { target: 'company', many: false, inverse: 'People' } }],
+    preset: 'person'
+  }
+  const waitingOn = { 'Waiting on': { v: ['memry://note/abc'], t: 3 } }
+
+  /** A pre-0071 install: rows plus what #2265 captured from newer peers. */
+  function upgradeWithCaptures(): Database.Database {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsBefore0071() })
+    const tag = sqlite.prepare("INSERT INTO tag_definitions (name, color) VALUES (?, '#111')")
+    for (const name of [
+      'person',
+      'Company',
+      'plain',
+      'badjson',
+      'nullcap',
+      'wrongtype',
+      'other-type'
+    ]) {
+      tag.run(name)
+    }
+    sqlite.prepare("INSERT INTO projects (id, name) VALUES ('p1', 'Inbox')").run()
+    const task = sqlite.prepare(
+      "INSERT INTO tasks (id, project_id, title) VALUES (?, 'p1', 'A task')"
+    )
+    for (const id of ['t1', 't2', 't3', 't4', 't5', 't6']) task.run(id)
+    const capture = sqlite.prepare(
+      'INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES (?, ?, ?, 1)'
+    )
+    capture.run('tag_definition', 'person', JSON.stringify({ schema: personSchema, pinned: true }))
+    capture.run(
+      'tag_definition',
+      'company',
+      JSON.stringify({ schema: { t: 1, preset: 'company' } })
+    )
+    capture.run('tag_definition', 'plain', JSON.stringify({ pinned: true }))
+    capture.run('tag_definition', 'badjson', '{not json')
+    capture.run('tag_definition', 'nullcap', JSON.stringify({ schema: null }))
+    capture.run('tag_definition', 'wrongtype', JSON.stringify({ schema: 'person' }))
+    capture.run('task', 'other-type', JSON.stringify({ schema: personSchema }))
+    capture.run('task', 't1', JSON.stringify({ fields: waitingOn, estimateMinutes: 5 }))
+    capture.run('task', 't2', JSON.stringify({ fields: 'oops' }))
+    capture.run('task', 't3', 'not json')
+    capture.run('task', 't4', JSON.stringify({ fields: null }))
+    capture.run('task', 't5', JSON.stringify({ estimateMinutes: 5 }))
+    migrate(db, { migrationsFolder: migrationsDir })
+    return sqlite
+  }
+
+  function columns(sqlite: Database.Database): {
+    tags: Record<string, unknown>
+    tasks: Record<string, unknown>
+  } {
+    const parse = (raw: string | null): unknown => (raw === null ? null : JSON.parse(raw))
+    const tagRows = sqlite.prepare('SELECT name, schema FROM tag_definitions').all() as {
+      name: string
+      schema: string | null
+    }[]
+    const taskRows = sqlite.prepare('SELECT id, fields FROM tasks').all() as {
+      id: string
+      fields: string | null
+    }[]
+    return {
+      tags: Object.fromEntries(tagRows.map((r) => [r.name, parse(r.schema)])),
+      tasks: Object.fromEntries(taskRows.map((r) => [r.id, parse(r.fields)]))
+    }
+  }
+
+  it('adopts only a captured object, matching a mixed-case tag name, and keeps the captures', () => {
+    const sqlite = upgradeWithCaptures()
+
+    expect(columns(sqlite)).toEqual({
+      tags: {
+        person: personSchema,
+        Company: { t: 1, preset: 'company' },
+        plain: null,
+        badjson: null,
+        nullcap: null,
+        wrongtype: null,
+        'other-type': null
+      },
+      tasks: { t1: waitingOn, t2: null, t3: null, t4: null, t5: null, t6: null }
+    })
+    // The next pull of each item rewrites its capture without the known key.
+    expect(sqlite.prepare('SELECT count(*) AS n FROM sync_unknown_fields').get()).toEqual({ n: 12 })
+    sqlite.close()
+  })
+
+  it('never overwrites a column that holds a value when the fill runs again', () => {
+    const sqlite = upgradeWithCaptures()
+    sqlite.prepare(`UPDATE tag_definitions SET schema = '{"t":9}' WHERE name = 'person'`).run()
+    sqlite.prepare(`UPDATE tasks SET fields = '{}' WHERE id = 't1'`).run()
+
+    const fill = fs
+      .readFileSync(path.join(migrationsDir, '0071_tag_schema_task_fields.sql'), 'utf8')
+      .split('--> statement-breakpoint')
+      .filter((statement) => statement.includes('UPDATE `'))
+    expect(fill).toHaveLength(2)
+    for (const statement of fill) sqlite.exec(statement)
+
+    const { tags, tasks } = columns(sqlite)
+    expect(tags.person).toEqual({ t: 9 })
+    expect(tags.Company).toEqual({ t: 1, preset: 'company' })
+    expect(tasks.t1).toEqual({})
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        `INSERT INTO tag_definitions (name, color, schema) VALUES ('person', '#111', '{"t":1}')`
+      )
+      .run()
+
+    expect(() =>
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0071() })
+    ).not.toThrow()
+
+    expect(sqlite.prepare('SELECT schema FROM tag_definitions').get()).toEqual({
+      schema: '{"t":1}'
+    })
+    sqlite.close()
+  })
+})

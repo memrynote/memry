@@ -11,11 +11,17 @@ import type {
   TaskListOptions,
   TaskStats
 } from '@memry/domain-tasks'
+import { plainVersionedMap } from '@memry/shared/versioned'
 
-type TaskRecord = Omit<Task, 'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom'> & {
+type TaskRecord = Omit<
+  Task,
+  'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom' | 'fields'
+> & {
   priority: number
   repeatConfig: unknown
   repeatFrom: string | null
+  /** The stored versioned map; readers get only its values. */
+  fields?: unknown
 }
 type ProjectRecord = Project
 type StatusRecord = Status
@@ -146,6 +152,7 @@ function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskR
     repeatConfig: task.repeatConfig as Task['repeatConfig'],
     repeatFrom: task.repeatFrom as Task['repeatFrom'],
     isRepeating: !!task.repeatConfig,
+    fields: plainVersionedMap(task.fields),
     tags: taskQueries.getTaskTags(db, task.id),
     linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id),
     linkedCanvasIds: taskQueries.getTaskCanvasIds(db, task.id),

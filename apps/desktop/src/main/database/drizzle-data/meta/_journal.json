@@ -498,6 +498,13 @@
       "when": 1788609159433,
       "tag": "0070_vault_lock_file_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1788695559433,
+      "tag": "0071_tag_schema_task_fields",
+      "breakpoints": true
     }
   ]
 }
