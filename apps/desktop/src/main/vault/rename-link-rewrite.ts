@@ -1,9 +1,11 @@
 /**
- * Rename-time vault-wide wiki-link rewrite (#1711).
+ * Rename- and move-time vault-wide wiki-link rewrite (#1711).
  *
- * Wiki-links address notes by TITLE, so renaming a note silently disconnects
- * every inbound `[[Old Title]]` in the vault — the next click on one creates a
- * duplicate note. This module is the persistence half of the Obsidian-model
+ * Wiki-links address notes by title or by vault path, so renaming a note
+ * silently disconnects every inbound `[[Old Title]]`, and moving it (or a
+ * folder above it) every `[[Folder/Old]]` — the next click on one creates a
+ * duplicate note. `renameNote`, `moveNote` and `renameFolder` all repair links
+ * through this module. This module is the persistence half of the Obsidian-model
  * fix: `rewrite-wiki-links.ts` decides which occurrences to rewrite; this one
  * finds the source notes through the `note_links` index and lands the rewrite
  * everywhere a note body lives, in the same order the watcher lands an
@@ -40,7 +42,7 @@ import {
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import { rewriteWikiLinksForRename } from '@memry/shared/rewrite-wiki-links'
+import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
@@ -57,10 +59,13 @@ function toIso(value: string | Date): string {
 
 export interface InboundLinkRewriteInput {
   noteId: string
-  oldTitle: string
-  newTitle: string
+  /** The note's names before the change; `pathStem` from `noteLinkStem`. */
+  from: WikiLinkNames
+  to: WikiLinkNames
+  /** The note's pre-change vault-relative path, for unresolved path-form rows. */
+  oldPath: string
   /**
-   * The renamed note's post-rename vault-relative path. Projection is async,
+   * The note's post-change vault-relative path. Projection is async,
    * so its own cache row may still hold the pre-rename path when this runs —
    * and a note that links to itself is one of the sources being rewritten.
    */
@@ -68,7 +73,8 @@ export interface InboundLinkRewriteInput {
 }
 
 /**
- * Rewrite every inbound `[[oldTitle]]` in the vault to `[[newTitle]]`.
+ * Rewrite every inbound link to the note from its old title or path stem to
+ * its new one.
  *
  * Never throws — the filesystem rename this follows has already happened, and
  * a broken link repair must not unwind it. Deliberately never flushes
@@ -77,13 +83,11 @@ export interface InboundLinkRewriteInput {
  * need repairing, and the per-source `syncNoteToCache` re-projection is what
  * refreshes their `target_title` rows.
  */
-export async function rewriteInboundWikiLinksForRename(
-  input: InboundLinkRewriteInput
-): Promise<void> {
+export async function rewriteInboundWikiLinks(input: InboundLinkRewriteInput): Promise<void> {
   try {
     await doRewriteInboundLinks(input)
   } catch (err) {
-    log.warn('Inbound wiki-link rewrite failed after rename', {
+    log.warn('Inbound wiki-link rewrite failed after rename or move', {
       renamedNoteId: input.noteId,
       error: err
     })
@@ -91,19 +95,19 @@ export async function rewriteInboundWikiLinksForRename(
 }
 
 async function doRewriteInboundLinks(input: InboundLinkRewriteInput): Promise<void> {
-  const { noteId, oldTitle, newTitle } = input
-  if (!oldTitle.trim() || oldTitle === newTitle) return
+  const { noteId, from, to } = input
+  if (from.title === to.title && from.pathStem === to.pathStem) return
 
   const db = getIndexDatabase()
 
   // Links are indexed under their SPLIT note-half (`extractWikiLinks`), so a
   // `[[Sprint #4]]` inbound row is stored as `Sprint`.
-  const indexedTitle = splitWikiTarget(oldTitle).note || oldTitle
-  const sourceIds = getInboundLinkSourceIds(db, noteId, indexedTitle)
+  const indexedTitle = splitWikiTarget(from.title).note || from.title
+  const sourceIds = getInboundLinkSourceIds(db, noteId, indexedTitle, input.oldPath)
   if (sourceIds.length === 0) return
 
   // "Split resolution would have won": a note OTHER than the renamed one
-  // currently claiming this title. See `rewriteWikiLinksForRename`.
+  // currently claiming this title. See `rewriteWikiLinksToNote`.
   const otherNoteWithTitleExists = (title: string): boolean => {
     const match = resolveNoteByTitle(db, title)
     return match !== undefined && match.id !== noteId
@@ -128,7 +132,7 @@ async function rewriteSource(
   input: InboundLinkRewriteInput,
   otherNoteWithTitleExists: (title: string) => boolean
 ): Promise<void> {
-  const { noteId, oldTitle, newTitle } = input
+  const { noteId, from, to } = input
 
   const cached = getNoteCacheById(db, sourceId)
   if (!cached) return
@@ -143,12 +147,7 @@ async function rewriteSource(
   const original = await safeRead(absolutePath)
   if (!original) return
 
-  const rewritten = rewriteWikiLinksForRename(
-    original,
-    oldTitle,
-    newTitle,
-    otherNoteWithTitleExists
-  )
+  const rewritten = rewriteWikiLinksToNote(original, from, to, otherNoteWithTitleExists)
   if (rewritten === null) return
 
   // Same guard the sync note handler and `moveNote` use before touching a file
@@ -166,7 +165,7 @@ async function rewriteSource(
       fileContent: rewritten,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
-      title: sourceId === noteId ? newTitle : cached.title,
+      title: sourceId === noteId ? to.title : cached.title,
       createdAt: toIso(cached.createdAt),
       modifiedAt: now,
       localOnly: cached.localOnly ?? false,
