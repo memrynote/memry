@@ -212,17 +212,14 @@ const NON_FENCE_CODE_CASES: ForeignCase[] = [
  * `JSON.parse`s everything between the opening fence's third backtick and the
  * closing one, so an info string lands inside the slice: `javascript\n{...}`
  * throws, `StateManager.getParsedBoard` discards the parse, and the board is
- * replaced by a stack trace with every lane and card gone. The two blank lines
- * the house-style path injects are harmless — phase one of that scan tolerates
- * ` % \n \r — which is why they are pinned as canonical rather than chased.
+ * replaced by a stack trace with every lane and card gone. The block is a
+ * `%%` comment, so the house-style path carries it byte for byte (BBF-26).
  */
 const KANBAN_SETTINGS_CASES: ForeignCase[] = [
   {
     name: 'an Obsidian Kanban settings block keeps the bare fence the plugin needs',
     markdown:
-      '## Todo\n\n- [ ] card one\n\n%% kanban:settings\n```\n{"kanban-plugin":"basic"}\n```\n%%',
-    canonical:
-      '## Todo\n\n- [ ] card one\n\n%% kanban:settings\n\n```\n{"kanban-plugin":"basic"}\n```\n\n%%'
+      '## Todo\n\n- [ ] card one\n\n%% kanban:settings\n```\n{"kanban-plugin":"basic"}\n```\n%%'
   }
 ]
 
