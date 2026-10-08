@@ -14,7 +14,6 @@ export function useFootnotes(editor: unknown): FootnoteHover | null {
   return hover
 }
 
-/** The definition card of a hovered footnote marker. */
 export function FootnoteHoverCard({ hover }: { hover: FootnoteHover | null }) {
   if (!hover) return null
   return createPortal(

@@ -7,8 +7,6 @@ import {
   type FootnoteHover
 } from './footnote-decorations'
 
-// A real mounted editor: the feature is decorations, which exist only with a view.
-
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement }> = []
 
 afterEach(() => {
@@ -26,15 +24,13 @@ function mountEditor(
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(editor as any)._tiptapEditor.registerPlugin(createFootnotePlugin(onHover))
+  editor._tiptapEditor.registerPlugin(createFootnotePlugin(onHover))
   mounted.push({ editor, el })
   return editor
 }
 
 function view(editor: BlockNoteEditor) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (editor as any)._tiptapEditor.view
+  return editor._tiptapEditor.view
 }
 
 function markers(el: HTMLElement): Array<[string, string | undefined, boolean]> {
