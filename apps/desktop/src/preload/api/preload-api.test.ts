@@ -31,6 +31,7 @@ import { tagsApi, tagEvents } from './tags'
 import { updaterApi, updaterEvents } from './updater'
 import { vaultApi, vaultEvents } from './vault'
 import { vaultActivityApi, vaultActivityEvents } from './vault-activity'
+import { ocrLanguagesApi, ocrLanguagesEvents } from './ocr-languages'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from '../lib/startup-theme'
 
 const electronMock = vi.hoisted(() => ({
@@ -231,6 +232,20 @@ describe('preload api wrappers', () => {
       () => vaultActivityEvents.onVaultActivityChanged(callback),
       'vault-activity:changed',
       noPayload
+    )
+  })
+
+  it('routes the OCR languages setting through its IPC channels', async () => {
+    await expectInvoke(() => ocrLanguagesApi.get(), 'ocr-languages:get')
+    await expectInvoke(
+      () => ocrLanguagesApi.set({ languages: ['eng', 'deu'] }),
+      'ocr-languages:set',
+      { languages: ['eng', 'deu'] }
+    )
+    await expectInvoke(() => ocrLanguagesApi.retry(), 'ocr-languages:retry')
+    expectSubscribe(
+      () => ocrLanguagesEvents.onOcrLanguagesChanged(callback),
+      'ocr-languages:changed'
     )
   })
 

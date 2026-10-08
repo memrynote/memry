@@ -2,6 +2,7 @@ import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
+import { OcrLanguageSchema, type OcrLanguage } from '@memry/contracts/ocr-languages-api'
 import { createLogger } from './lib/logger'
 import { trackMainError } from './telemetry/diagnostics'
 
@@ -249,6 +250,8 @@ interface StoreSchema {
   windowBounds: StoredWindowBounds | null
   /** Cross-vault bookkeeping for the userData-level CRDT stores */
   crdtStore: CrdtStoreData
+  /** The OCR languages the user chose on this machine; null follows the app language */
+  ocrLanguages: OcrLanguage[] | null
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -262,7 +265,8 @@ const defaultData: StoreSchema = {
   captureAllowedOrigins: [],
   updater: {},
   windowBounds: null,
-  crdtStore: {}
+  crdtStore: {},
+  ocrLanguages: null
 }
 
 /** In-memory cache — populated on first read, updated on every write. */
@@ -374,6 +378,17 @@ export function getStoredLocale(): Locale | null {
  */
 export function setStoredLocale(locale: Locale): void {
   store.set('locale', LocaleSchema.parse(locale))
+}
+
+/** Null until the user chooses; codes a newer build added are dropped. */
+export function getStoredOcrLanguages(): OcrLanguage[] | null {
+  const stored = store.get('ocrLanguages')
+  if (!Array.isArray(stored)) return null
+  return stored.filter((lang) => OcrLanguageSchema.safeParse(lang).success)
+}
+
+export function setStoredOcrLanguages(languages: OcrLanguage[]): void {
+  store.set('ocrLanguages', languages)
 }
 
 /**

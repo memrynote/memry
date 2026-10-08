@@ -20,6 +20,7 @@ import { toUpdatePresentation } from '@/components/updater/update-presentation'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
 import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
+import { OcrLanguagesRow } from './ocr-languages-row'
 import { useVault } from '@/hooks/use-vault'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
@@ -308,6 +309,8 @@ export function GeneralSettings() {
             </SelectContent>
           </Select>
         </SettingRow>
+
+        <OcrLanguagesRow />
 
         <SettingRow label={t('general.clockFormat.label')}>
           <ToggleGroup

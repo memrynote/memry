@@ -53,6 +53,14 @@ vi.mock('fs', async (importOriginal) => {
   return { ...actual, existsSync: vi.fn(actual.existsSync) }
 })
 
+const english = vi.hoisted(() => ({
+  codes: ['eng'],
+  bundledDir: `${__dirname}/tessdata`,
+  downloadDir: '/data/ocr-languages'
+}))
+const languageSet = vi.hoisted(() => ({ current: english }))
+vi.mock('./ocr-languages', () => ({ ocrLanguageSet: () => languageSet.current }))
+
 import { recognizeText, stopOcr } from './ocr-engine'
 
 const source = { kind: 'file', path: '/vault/scan.png' } as const
@@ -72,7 +80,23 @@ describe('OCR engine', () => {
     )
 
     expect(workers).toHaveLength(1)
-    expect(forkOptions[0].env?.MEMRY_OCR_LANG_PATH).toMatch(/tessdata$/)
+  })
+
+  it('reads with English and every chosen language, and starts a new worker when they change', async () => {
+    const withGerman = { ...english, codes: ['eng', 'deu'] }
+    try {
+      await recognizeText(source)
+      languageSet.current = withGerman
+      await recognizeText(source)
+      await recognizeText(source)
+    } finally {
+      languageSet.current = english
+    }
+
+    expect(workers).toHaveLength(2)
+    expect(workers[0].killed).toBe(true)
+    expect(JSON.parse(forkOptions[0].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual(english)
+    expect(JSON.parse(forkOptions[1].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual(withGerman)
   })
 
   it('fails at once, and says so once, when the language data is missing', async () => {
