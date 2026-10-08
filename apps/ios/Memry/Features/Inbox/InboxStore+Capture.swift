@@ -174,7 +174,7 @@ extension InboxStore {
             return .failed
         }
         let size = UInt64((try? FileManager.default.attributesOfItem(atPath: target.path)[.size] as? NSNumber)??.uint64Value ?? 0)
-        let available = transcribe && InboxTranscriber.isAvailable
+        let available = transcribe && transcription.isAvailable()
         let status: String? = transcribe ? (available ? "pending" : "failed") : nil
         let item = await write {
             try $0.captureVoice(
@@ -197,12 +197,12 @@ extension InboxStore {
         var path = items.first { $0.id == id }?.attachmentPath
         if path == nil { path = await fetch(id)?.attachmentPath }
         let url = file ?? localFile(path)
-        guard let url, InboxTranscriber.isAvailable else {
+        guard let url, transcription.isAvailable() else {
             await write { try $0.setTranscription(id: id, transcription: nil, status: "failed") }
             return
         }
         await write { try $0.setTranscription(id: id, transcription: nil, status: "pending") }
-        let text = await InboxTranscriber.transcribe(url)
+        let text = await transcription.transcribe(url)
         await write { try $0.setTranscription(id: id, transcription: text, status: text == nil ? "failed" : "complete") }
     }
 }
