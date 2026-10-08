@@ -5,6 +5,11 @@ import { TOOL_IMAGE_NOT_SENT } from '../tool-images'
 import type { BackendEvent } from '../../cli/types'
 import type { TurnWriteGrant } from '../../turn-grants'
 
+const warn = vi.hoisted(() => vi.fn())
+vi.mock('../../../lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() })
+}))
+
 const MODEL = 'vision-model'
 const IMAGE =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -19,6 +24,7 @@ interface ChatMessage {
 
 interface ChatRequest {
   stream?: boolean
+  max_tokens?: number
   tools?: unknown[]
   messages: ChatMessage[]
 }
@@ -55,12 +61,20 @@ function carriesImage(body: ChatRequest): boolean {
 }
 
 /** An OpenAI-compatible server; a text-only one answers any image input with HTTP 400. */
-function createProvider(requests: ChatRequest[], options: { takesImages: boolean }): typeof fetch {
+function createProvider(
+  requests: ChatRequest[],
+  options: { takesImages: boolean; hangsOnImageProbe?: boolean }
+): typeof fetch {
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     if (String(url).endsWith('/models')) return json({ data: [{ id: MODEL }] })
 
     const body = JSON.parse(String(init?.body)) as ChatRequest
     requests.push(body)
+    if (options.hangsOnImageProbe && !body.stream && carriesImage(body)) {
+      return new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+      })
+    }
     if (!options.takesImages && carriesImage(body)) {
       return json({ error: { message: 'image input is not supported' } }, 400)
     }
@@ -107,9 +121,9 @@ function createProvider(requests: ChatRequest[], options: { takesImages: boolean
   }) as unknown as typeof fetch
 }
 
-async function runViewTurn(takesImages: boolean) {
+async function runViewTurn(takesImages: boolean, hangsOnImageProbe = false) {
   const requests: ChatRequest[] = []
-  const provider = createProvider(requests, { takesImages })
+  const provider = createProvider(requests, { takesImages, hangsOnImageProbe })
   vi.stubGlobal('fetch', provider)
   const execute = vi.fn(async () => ({
     ok: true as const,
@@ -152,6 +166,8 @@ function lastToolTurn(requests: ChatRequest[]): ChatRequest {
 describe('LocalOpenAICompatibleBackend with a viewed image', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    warn.mockClear()
   })
 
   it('sends the image to a model that takes images, after the tool result', async () => {
@@ -194,5 +210,41 @@ describe('LocalOpenAICompatibleBackend with a viewed image', () => {
       text: 'It says hello.'
     })
     expect(requests.filter((request) => carriesImage(request))).toHaveLength(1)
+  })
+
+  it('asks the image probe for one token', async () => {
+    const { requests } = await runViewTurn(true)
+
+    const probe = requests.filter((request) => !request.stream && carriesImage(request))
+    expect(probe).toHaveLength(1)
+    expect(probe[0]!.max_tokens).toBe(1)
+  })
+
+  it('goes on without the image when the image probe times out', async () => {
+    const timeout = AbortSignal.timeout.bind(AbortSignal)
+    const timeouts = vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => timeout(20))
+
+    const { requests, events, exitCode } = await runViewTurn(true, true)
+
+    expect(timeouts).toHaveBeenCalled()
+    expect(exitCode).toBe(0)
+    const tool = lastToolTurn(requests).messages.find((message) => message.role === 'tool')!
+    expect(tool.content).toContain(TOOL_IMAGE_NOT_SENT)
+    expect(events.find((event) => event.kind === 'assistant_delta')).toEqual({
+      kind: 'assistant_delta',
+      text: 'It says hello.'
+    })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]![0])).toContain(MODEL)
+  })
+
+  it('logs a failed image probe once with the model and the provider error', async () => {
+    await runViewTurn(false)
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    const line = warn.mock.calls[0]!.map(String).join(' ')
+    expect(line).toContain(MODEL)
+    expect(line).toContain('image input is not supported')
+    expect(line).not.toContain('base64')
   })
 })
