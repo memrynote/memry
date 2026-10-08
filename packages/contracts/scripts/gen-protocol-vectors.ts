@@ -57,6 +57,7 @@ import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
+import { buildVersionedValues } from './vectors/versioned-values'
 import { VECTORS_DIR, writeVectorFile } from './vectors/shared'
 
 /** One class: its file, and the builder that produces its contents. */
@@ -81,6 +82,10 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
   { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
   { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
+  {
+    name: 'versioned-values',
+    files: [{ path: 'versioned-values.json', build: buildVersionedValues }]
+  },
   { name: 'pack-container', files: [{ path: 'pack-container.json', build: buildPackContainer }] },
   {
     name: 'payload-schemas',

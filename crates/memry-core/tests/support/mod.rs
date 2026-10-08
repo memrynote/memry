@@ -52,6 +52,9 @@ pub fn vector_file(name: &str) -> Json {
         "recreate-clock" => {
             include_str!("../../../../packages/contracts/test-vectors/recreate-clock.json")
         }
+        "versioned-values" => {
+            include_str!("../../../../packages/contracts/test-vectors/versioned-values.json")
+        }
         "pack-container" => {
             include_str!("../../../../packages/contracts/test-vectors/pack-container.json")
         }

@@ -58,6 +58,7 @@ one-class change reviewable.
 | `field-merge.json`                      |                                 32 | `../scripts/vectors/field-merge.ts`         | `../src/__tests__/field-merge.test.ts`                                           |
 | `settings-merge.json`                   |                                 18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests   |
 | `recreate-clock.json`                   |                                 11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs` |
+| `versioned-values.json`                 |                                 43 | `../scripts/vectors/versioned-values.ts`    | `../src/__tests__/versioned-values.test.ts` + Rust `versioned_values_vectors.rs` |
 | `pack-container.json`                   |                                 10 | `../scripts/vectors/pack-container.ts`      | `../src/__tests__/pack-container.test.ts`                                        |
 | `payload-schemas.json`                  |                                 52 | `../scripts/vectors/payload-schemas.ts`     | `../src/__tests__/payload-schemas.test.ts`                                       |
 | `device-linking.json`                   |                                  8 | `../scripts/vectors/device-linking.ts`      | `../src/__tests__/device-linking.test.ts` + the desktop parity suite             |
@@ -68,7 +69,7 @@ one-class change reviewable.
 | `delete-attestation.json`               |                                 19 | `../scripts/vectors/delete-attestation.ts`  | `../src/__tests__/delete-attestation.test.ts` + the Rust harness                 |
 | `markdown-roundtrip/cases.json`         |                                119 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                                    |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                        | same                                                                             |
-| **Total**                               | **382 cases plus 5 fuzz families** |                                             |                                                                                  |
+| **Total**                               | **425 cases plus 5 fuzz families** |                                             |                                                                                  |
 
 `crypto-vectors.json` is **frozen**: it is byte-for-byte as committed and no
 change in this feature touches it. Three suites consume it and none of them

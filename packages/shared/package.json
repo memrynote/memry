@@ -32,6 +32,7 @@
     "./cover-image": "./src/cover-image.ts",
     "./template-placeholders": "./src/template-placeholders.ts",
     "./view-block": "./src/view-block.ts",
+    "./versioned": "./src/versioned.ts",
     "./writing-tools": "./src/writing-tools/yjs.ts",
     "./writing-tools/markdown": "./src/writing-tools/markdown.ts"
   },

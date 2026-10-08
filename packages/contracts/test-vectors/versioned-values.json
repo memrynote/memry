@@ -1,0 +1,1722 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "versioned-values",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
+    "source": "packages/shared/src/versioned.ts",
+    "caseCount": 43
+  },
+  "cases": [
+    {
+      "name": "canonical-sorts-keys-at-every-depth",
+      "kind": "canonical",
+      "pins": "object keys sort at every depth, arrays keep their order, null stays",
+      "input": {
+        "value": {
+          "b": 1,
+          "a": {
+            "d": [
+              3,
+              {
+                "z": 1,
+                "y": 2
+              }
+            ],
+            "c": null
+          }
+        }
+      },
+      "expected": {
+        "canonical": "{\"a\":{\"c\":null,\"d\":[3,{\"y\":2,\"z\":1}]},\"b\":1}"
+      }
+    },
+    {
+      "name": "canonical-numbers-never-use-an-exponent",
+      "kind": "canonical",
+      "pins": "§6.4.2 rule 2: shortest round-trip digits, no 1e+21 or 1e-7 form",
+      "input": {
+        "value": [
+          1,
+          1.5,
+          1e+21,
+          1e-7,
+          9007199254740991,
+          0.30000000000000004,
+          -2.5e-8
+        ]
+      },
+      "expected": {
+        "canonical": "[1,1.5,1000000000000000000000,0.0000001,9007199254740991,0.30000000000000004,-0.000000025]"
+      }
+    },
+    {
+      "name": "canonical-sorts-keys-by-utf16-code-units",
+      "kind": "canonical",
+      "pins": "a non-BMP key sorts below U+FFFF in UTF-16, the opposite of UTF-8 byte order",
+      "input": {
+        "value": {
+          "￿": 1,
+          "😀": 2,
+          "a": 3
+        }
+      },
+      "expected": {
+        "canonical": "{\"a\":3,\"😀\":2,\"￿\":1}"
+      }
+    },
+    {
+      "name": "canonical-escapes-strings-like-json",
+      "kind": "canonical",
+      "pins": "quotes, backslashes and control characters escape; other text stays as is",
+      "input": {
+        "value": "é \"q\" \\ \n\t\u0001 😀"
+      },
+      "expected": {
+        "canonical": "\"é \\\"q\\\" \\\\ \\n\\t\\u0001 😀\""
+      }
+    },
+    {
+      "name": "order-higher-version-wins",
+      "kind": "order",
+      "pins": "the larger t wins whatever the bodies",
+      "input": {
+        "a": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "b": {
+          "t": 2,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "sign": 1
+      }
+    },
+    {
+      "name": "order-equal-version-larger-canonical-wins",
+      "kind": "order",
+      "pins": "equal t is decided by the canonical string",
+      "input": {
+        "a": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Role"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        },
+        "b": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Email"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        }
+      },
+      "expected": {
+        "sign": 1
+      }
+    },
+    {
+      "name": "order-broken-version-reads-as-zero",
+      "kind": "order",
+      "pins": "a negative or non-integer t reads as 0 and loses to t: 1",
+      "input": {
+        "a": {
+          "v": "x",
+          "t": -4
+        },
+        "b": {
+          "v": "a",
+          "t": 1
+        }
+      },
+      "expected": {
+        "sign": -1
+      }
+    },
+    {
+      "name": "order-key-order-is-not-a-difference",
+      "kind": "order",
+      "pins": "the same value with keys in another order compares equal",
+      "input": {
+        "a": {
+          "t": 2,
+          "v": {
+            "a": 1,
+            "b": 2
+          }
+        },
+        "b": {
+          "v": {
+            "b": 2,
+            "a": 1
+          },
+          "t": 2
+        }
+      },
+      "expected": {
+        "sign": 0
+      }
+    },
+    {
+      "name": "join-value-remote-newer",
+      "kind": "join-value",
+      "pins": "a newer remote schema is taken and written",
+      "input": {
+        "local": {
+          "t": 2,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-value-stale-capture-loses",
+      "kind": "join-value",
+      "pins": "a post-#2265 stale echo under a newer clock loses on t, and the remote is healed",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": {
+          "t": 2,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-equal-version-different-bodies",
+      "kind": "join-value",
+      "pins": "equal t picks the larger canonical form from either seat",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Role"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        },
+        "remote": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Email"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Role"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-remote-absent",
+      "kind": "join-value",
+      "pins": "a peer that stripped the key leaves the local value, which it then needs",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-remote-null",
+      "kind": "join-value",
+      "pins": "null carries no information: no write and no heal",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": null
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": false,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-remote-not-an-object",
+      "kind": "join-value",
+      "pins": "a non-object remote reads as absent",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": "person"
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-local-absent",
+      "kind": "join-value",
+      "pins": "a device with no schema adopts the remote one",
+      "input": {
+        "remote": {
+          "t": 2,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 2,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-value-both-absent",
+      "kind": "join-value",
+      "pins": "nothing on either side stays nothing",
+      "input": {},
+      "expected": {
+        "remoteBehind": false,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-value-keeps-unknown-nested-keys",
+      "kind": "join-value",
+      "pins": "keys a newer build added, inside array elements included, survive the join",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": {
+          "t": 4,
+          "fields": [
+            {
+              "name": "Role",
+              "format": "title-case"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person",
+          "layout": {
+            "columns": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 4,
+          "fields": [
+            {
+              "name": "Role",
+              "format": "title-case"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person",
+          "layout": {
+            "columns": 2
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-value-own-echo",
+      "kind": "join-value",
+      "pins": "pulling back the value this device pushed changes and heals nothing",
+      "input": {
+        "local": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remote": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "remoteBehind": false,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-disjoint-keys",
+      "kind": "join-map",
+      "pins": "different keys from each side are both kept, and each side lacks one",
+      "input": {
+        "local": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        },
+        "remote": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remoteBehind": true,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-same-key-higher-version",
+      "kind": "join-map",
+      "pins": "the higher t of one key wins",
+      "input": {
+        "local": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remote": {
+          "Follow up": {
+            "v": "2026-06-01",
+            "t": 4
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Follow up": {
+            "v": "2026-06-01",
+            "t": 4
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-removal-beats-older-value",
+      "kind": "join-map",
+      "pins": "a removal at t 3 beats a value at t 2, so a stale echo cannot resurrect it",
+      "input": {
+        "local": {
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "remote": {
+          "Thread": {
+            "v": "ts-1",
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-newer-value-beats-removal",
+      "kind": "join-map",
+      "pins": "a value at t 4 beats a removal at t 3",
+      "input": {
+        "local": {
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "remote": {
+          "Thread": {
+            "v": "ts-2",
+            "t": 4
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Thread": {
+            "v": "ts-2",
+            "t": 4
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-equal-version-different-values",
+      "kind": "join-map",
+      "pins": "equal t picks the larger canonical entry from either seat",
+      "input": {
+        "local": {
+          "Owner": {
+            "v": "Ahmet",
+            "t": 5
+          }
+        },
+        "remote": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 5
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 5
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-remote-missing-a-key",
+      "kind": "join-map",
+      "pins": "a remote missing a local key leaves it, and the remote needs it",
+      "input": {
+        "local": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remote": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-entry-keeps-unknown-keys",
+      "kind": "join-map",
+      "pins": "an entry a newer build extended is carried whole",
+      "input": {
+        "local": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remote": {
+          "Follow up": {
+            "v": "2026-05-20",
+            "t": 2,
+            "d": {
+              "source": "agent"
+            }
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Follow up": {
+            "v": "2026-05-20",
+            "t": 2,
+            "d": {
+              "source": "agent"
+            }
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-remote-null",
+      "kind": "join-map",
+      "pins": "null carries no information: no write and no heal",
+      "input": {
+        "local": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        },
+        "remote": null
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-remote-absent",
+      "kind": "join-map",
+      "pins": "a peer that stripped the key leaves the local map, which it then needs",
+      "input": {
+        "local": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        },
+        "remoteBehind": true,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-local-absent",
+      "kind": "join-map",
+      "pins": "a task with no map adopts the remote one",
+      "input": {
+        "remote": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-drops-entries-that-are-not-objects",
+      "kind": "join-map",
+      "pins": "a non-object entry is never stored",
+      "input": {
+        "remote": {
+          "Broken": 5,
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": true
+      }
+    },
+    {
+      "name": "join-map-own-echo",
+      "kind": "join-map",
+      "pins": "pulling back the map this device pushed changes and heals nothing",
+      "input": {
+        "local": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "remote": {
+          "Thread": {
+            "v": null,
+            "t": 3
+          },
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "remoteBehind": false,
+        "localChanged": false
+      }
+    },
+    {
+      "name": "join-map-associativity",
+      "kind": "join-map-associativity",
+      "pins": "(a ⊔ b) ⊔ c and a ⊔ (b ⊔ c) store the same map",
+      "input": {
+        "a": {
+          "Owner": {
+            "v": "Ahmet",
+            "t": 5
+          },
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "b": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 5
+          },
+          "Thread": {
+            "v": "ts-1",
+            "t": 2
+          }
+        },
+        "c": {
+          "Thread": {
+            "v": null,
+            "t": 3
+          },
+          "Follow up": {
+            "v": "2026-05-20",
+            "t": 1
+          }
+        }
+      },
+      "expected": {
+        "value": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 5
+          },
+          "Follow up": {
+            "v": "2026-05-20",
+            "t": 1
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-first-value",
+      "kind": "stamp-map",
+      "pins": "a new task with a clean clock stamps t = 1",
+      "input": {
+        "patch": {
+          "Waiting on": [
+            "memry://note/n_7Qx2"
+          ]
+        },
+        "clockTotal": 0
+      },
+      "expected": {
+        "value": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-floor-from-the-clock",
+      "kind": "stamp-map",
+      "pins": "the stamp is clockTotal + 1 when the clock has seen more than the map",
+      "input": {
+        "stored": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          }
+        },
+        "patch": {
+          "Owner": "Ahmet"
+        },
+        "clockTotal": 5
+      },
+      "expected": {
+        "value": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 1
+          },
+          "Owner": {
+            "v": "Ahmet",
+            "t": 6
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-floor-from-the-map",
+      "kind": "stamp-map",
+      "pins": "the stamp is above the highest t in the map when that is larger",
+      "input": {
+        "stored": {
+          "Owner": {
+            "v": "Ahmet",
+            "t": 7
+          }
+        },
+        "patch": {
+          "Owner": "Deniz"
+        },
+        "clockTotal": 3
+      },
+      "expected": {
+        "value": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 8
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-change-keeps-unknown-entry-keys",
+      "kind": "stamp-map",
+      "pins": "editing a value keeps the keys a newer build put on its entry",
+      "input": {
+        "stored": {
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 2,
+            "d": {
+              "source": "agent"
+            }
+          }
+        },
+        "patch": {
+          "Follow up": "2026-05-21"
+        },
+        "clockTotal": 2
+      },
+      "expected": {
+        "value": {
+          "Follow up": {
+            "v": "2026-05-21",
+            "t": 3,
+            "d": {
+              "source": "agent"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-removal-writes-a-removal-entry",
+      "kind": "stamp-map",
+      "pins": "null removes by stamping v: null, never by deleting the entry",
+      "input": {
+        "stored": {
+          "Thread": {
+            "v": "ts-1",
+            "t": 2
+          }
+        },
+        "patch": {
+          "Thread": null
+        },
+        "clockTotal": 4
+      },
+      "expected": {
+        "value": {
+          "Thread": {
+            "v": null,
+            "t": 5
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-no-op-edits-stamp-nothing",
+      "kind": "stamp-map",
+      "pins": "an unchanged value, a removed removal and a missing key cleared stay as they were",
+      "input": {
+        "stored": {
+          "Owner": {
+            "v": {
+              "a": 1,
+              "b": 2
+            },
+            "t": 2
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        },
+        "patch": {
+          "Owner": {
+            "b": 2,
+            "a": 1
+          },
+          "Thread": null,
+          "Missing": null
+        },
+        "clockTotal": 9
+      },
+      "expected": {
+        "value": {
+          "Owner": {
+            "v": {
+              "a": 1,
+              "b": 2
+            },
+            "t": 2
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-map-one-stamp-per-edit",
+      "kind": "stamp-map",
+      "pins": "every key one edit changes shares its stamp",
+      "input": {
+        "stored": {
+          "Owner": {
+            "v": "Ahmet",
+            "t": 1
+          }
+        },
+        "patch": {
+          "Owner": "Deniz",
+          "Follow up": "2026-05-14",
+          "Thread": null
+        },
+        "clockTotal": 1
+      },
+      "expected": {
+        "value": {
+          "Owner": {
+            "v": "Deniz",
+            "t": 2
+          },
+          "Follow up": {
+            "v": "2026-05-14",
+            "t": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "stamp-value-bumps-from-previous",
+      "kind": "stamp-value",
+      "pins": "t is previous + 1 with no clock floor, and the edited keys are kept",
+      "input": {
+        "previous": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "edited": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            },
+            {
+              "name": "Phone",
+              "format": "e164"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            },
+            {
+              "name": "Phone",
+              "format": "e164"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person",
+          "t": 4
+        }
+      }
+    },
+    {
+      "name": "stamp-value-first-schema",
+      "kind": "stamp-value",
+      "pins": "the first schema of a tag is t = 1",
+      "input": {
+        "edited": {
+          "fields": [
+            {
+              "name": "Role"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null
+        }
+      },
+      "expected": {
+        "value": {
+          "fields": [
+            {
+              "name": "Role"
+            }
+          ],
+          "template": null,
+          "extends": null,
+          "preset": null,
+          "t": 1
+        }
+      }
+    },
+    {
+      "name": "stamp-value-no-op-edit",
+      "kind": "stamp-value",
+      "pins": "an edit that changes nothing keeps the previous value and its t",
+      "input": {
+        "previous": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        },
+        "edited": {
+          "t": 99,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      },
+      "expected": {
+        "value": {
+          "t": 3,
+          "fields": [
+            {
+              "name": "Company",
+              "relation": {
+                "target": "company",
+                "many": false,
+                "inverse": "People"
+              }
+            },
+            {
+              "name": "Role"
+            },
+            {
+              "name": "Email"
+            }
+          ],
+          "template": {
+            "id": "tpl_8f2c",
+            "autofill": true
+          },
+          "extends": null,
+          "preset": "person"
+        }
+      }
+    },
+    {
+      "name": "plain-drops-removals-and-broken-entries",
+      "kind": "plain",
+      "pins": "readers see values only; removals and non-object entries are left out",
+      "input": {
+        "stored": {
+          "Waiting on": {
+            "v": [
+              "memry://note/n_7Qx2"
+            ],
+            "t": 2
+          },
+          "Thread": {
+            "v": null,
+            "t": 3
+          },
+          "Broken": "not an entry",
+          "Unset": {
+            "t": 2
+          }
+        }
+      },
+      "expected": {
+        "plain": {
+          "Waiting on": [
+            "memry://note/n_7Qx2"
+          ]
+        }
+      }
+    },
+    {
+      "name": "plain-of-a-missing-map",
+      "kind": "plain",
+      "pins": "a task with no map reads as no fields",
+      "input": {
+        "stored": null
+      },
+      "expected": {
+        "plain": {}
+      }
+    }
+  ]
+}

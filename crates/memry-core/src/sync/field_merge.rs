@@ -239,16 +239,20 @@ pub fn init_all_field_clocks(
         .collect()
 }
 
+/// §6.4.2's canonical form of one value: the string chapter 06 compares for
+/// field equality here and for the versioned-value order of §6.11.
+pub fn canonical_json(value: &Json) -> String {
+    let mut out = String::new();
+    write_canonical(value, &mut out);
+    out
+}
+
 /// §6.4.2's canonical form, or `None` for an absent key.
 ///
 /// `None` is JavaScript `undefined` and is distinct from `Some(Json::Null)`,
 /// which is an explicit clear (chapter 13 §13.4).
 fn canonical(value: Option<&Json>) -> Option<String> {
-    value.map(|value| {
-        let mut out = String::new();
-        write_canonical(value, &mut out);
-        out
-    })
+    value.map(canonical_json)
 }
 
 fn write_canonical(value: &Json, out: &mut String) {
