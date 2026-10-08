@@ -262,7 +262,10 @@ Both forms are kept when you edit the note in memrynote and when memrynote rewri
 byte for byte. In the editor an HTML comment shows as a small muted marker, and a `%%`
 comment shows as its text.
 
-A `%%` with no closing `%%` later in the note is plain text, so `50%% off` hides nothing.
+Text between two `%%` in prose is a comment, even across paragraphs, so `A 50%% sale` and a
+later `B 20%% tax` hide everything between them. A `%%` in a code block, or in inline code on
+a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
+A `%%` with no partner is plain text.
 
 Footnotes are not supported yet.
 

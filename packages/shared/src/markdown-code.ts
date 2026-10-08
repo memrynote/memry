@@ -38,9 +38,15 @@ export function stripMarkdownComments(markdown: string): string {
   })
 }
 
+/**
+ * `<!--` is CommonMark raw HTML: it ends at the first `-->`, code or not, and
+ * runs to the end of the note when none follows. `%%` is Obsidian prose
+ * syntax: on a later line only a `%%` outside code closes it, and with no
+ * such partner it is text.
+ */
 const COMMENT_FORMS = [
-  { open: '<!--', close: '-->' },
-  { open: '%%', close: '%%' }
+  { open: '<!--', close: '-->', proseOnly: false },
+  { open: '%%', close: '%%', proseOnly: true }
 ] as const
 
 type CommentForm = (typeof COMMENT_FORMS)[number]
@@ -57,34 +63,32 @@ interface Visitor {
 
 /**
  * One pass over the lines: fenced code, code spans and comments are each
- * handed to the visitor, everything else is kept. An HTML comment left open
- * runs to the end of the note, as CommonMark reads it; a `%%` with no closing
- * `%%` is not a comment, so a stray `50%%` cannot hide the rest of a note.
+ * handed to the visitor, everything else is kept. A comment's extent is
+ * settled when it opens (`COMMENT_FORMS`), so a stray `50%%` cannot hide the
+ * rest of a note.
  */
 function walkMarkdown(markdown: string, visit: Visitor): string {
   const lines = markdown.split('\n')
   const fence = createFenceTracker()
   const out: string[] = []
-  let pending: { form: CommentForm; prefix: string; source: string } | null = null
+  let pending: { prefix: string; source: string; close: CommentClose | null } | null = null
 
   for (let index = 0; index < lines.length; index++) {
     let line = lines[index]
     let result = ''
 
     if (pending) {
-      const close = line.indexOf(pending.form.close)
-      if (close === -1) {
+      if (pending.close?.line !== index) {
         pending.source += '\n' + line
         if (index === lines.length - 1)
           out.push(pending.prefix + visit.comment(pending.source, false))
         continue
       }
-      const end = close + pending.form.close.length
+      const { end } = pending.close
       result = pending.prefix + visit.comment(pending.source + '\n' + line.slice(0, end), true)
       pending = null
       line = line.slice(end)
-    } else if (fence.consume(line.endsWith('\r') ? line.slice(0, -1) : line)) {
-      // The fence pattern cannot match past a CRLF note's trailing `\r`.
+    } else if (fence.consume(withoutCr(line))) {
       out.push(visit.fenceLine(line))
       continue
     }
@@ -104,12 +108,13 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           i = end
           continue
         }
-        if (form.open === '%%' && !closesLater(lines, index, form.close)) {
+        const later = findLaterClose(lines, index, form)
+        if (form.proseOnly && !later) {
           result += line.slice(i, at + form.open.length)
           i = at + form.open.length
           continue
         }
-        pending = { form, prefix: result + line.slice(i, at), source: line.slice(at) }
+        pending = { prefix: result + line.slice(i, at), source: line.slice(at), close: later }
         break
       }
 
@@ -145,11 +150,47 @@ function nextCommentOpen(line: string, from: number): { form: CommentForm; at: n
   return best
 }
 
-function closesLater(lines: readonly string[], index: number, close: string): boolean {
+interface CommentClose {
+  line: number
+  end: number
+}
+
+/**
+ * The close of a comment left open at the end of line `index`. A `%%` comment
+ * skips fenced blocks and code spans, so a fence inside it is read whole and
+ * the fence state after it is the state before it.
+ */
+function findLaterClose(
+  lines: readonly string[],
+  index: number,
+  form: CommentForm
+): CommentClose | null {
+  const fence = createFenceTracker()
   for (let next = index + 1; next < lines.length; next++) {
-    if (lines[next].includes(close)) return true
+    const line = lines[next]
+    if (form.proseOnly && fence.consume(withoutCr(line))) continue
+    const at = form.proseOnly ? indexOutsideCodeSpans(line, form.close) : line.indexOf(form.close)
+    if (at !== -1) return { line: next, end: at + form.close.length }
   }
-  return false
+  return null
+}
+
+function indexOutsideCodeSpans(line: string, marker: string): number {
+  let i = 0
+  for (;;) {
+    const at = line.indexOf(marker, i)
+    const tick = line.indexOf('`', i)
+    if (at === -1 || tick === -1 || at < tick) return at
+    let runEnd = tick
+    while (line[runEnd] === '`') runEnd++
+    const closeAt = findClosingRun(line, runEnd, runEnd - tick)
+    i = closeAt === -1 ? runEnd : closeAt + (runEnd - tick)
+  }
+}
+
+/** The fence pattern cannot match past a CRLF note's trailing `\r`. */
+function withoutCr(line: string): string {
+  return line.endsWith('\r') ? line.slice(0, -1) : line
 }
 
 /** Start of the next backtick run exactly `length` long, or -1. */
