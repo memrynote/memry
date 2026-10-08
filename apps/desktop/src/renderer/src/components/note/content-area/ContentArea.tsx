@@ -56,7 +56,7 @@ import type { ContentAreaProps } from './types'
 import { WikiLinkMenu } from './wiki-link-menu'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
-import { FootnoteHoverCard } from './footnote-hover-card'
+import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
@@ -775,6 +775,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
   // live by note created/renamed/deleted events (#1716).
   useWikiLinkBroken(editor)
+
+  const footnoteHover = useFootnotes(editor)
 
   // Hook #4: Tag suggestions + inline plugin
   const { handleTagSuggestionSelect } = useTagSuggestions({
@@ -3284,7 +3286,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
           )}
 
-          <FootnoteHoverCard editor={editor} />
+          <FootnoteHoverCard hover={footnoteHover} />
 
           {wikiLinkHover.isVisible &&
             (wikiLinkHover.preview || wikiLinkHover.missingTarget) &&

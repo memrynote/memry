@@ -25,12 +25,21 @@ interface DocFootnotes {
 export interface FootnoteHover {
   number: number
   text: string
-  anchor: DOMRect
+  /** Viewport point under the marker's line, where the card opens. */
+  anchor: { left: number; top: number }
 }
 
 export const FOOTNOTE_PLUGIN_KEY = new PluginKey<DocFootnotes>('footnotes')
 
 const OBJECT_REPLACEMENT = '\uFFFC'
+const DEFINITION_MARKER = /^\[\^[^\s\]]+\]:[ \t]*/
+
+/** What an inline node reads as in the hover card: a wiki link as its label. */
+function leafText(node: ProseMirrorNode): string {
+  if (node.type.name === 'hardBreak') return '\n'
+  const { alias, target } = node.attrs as { alias?: string; target?: string }
+  return alias || target || node.textContent
+}
 
 /**
  * The document as markdown-shaped text for `scanFootnotes`, with the doc
@@ -75,7 +84,13 @@ function collect(doc: ProseMirrorNode): DocFootnotes {
   const byLabel = new Map<string, FootnoteDefinitionView>()
   for (const definition of definitions) {
     const key = definition.label.toLowerCase()
-    if (!byLabel.has(key)) byLabel.set(key, { number: definition.number, text: definition.text })
+    if (byLabel.has(key)) continue
+    const marker = DEFINITION_MARKER.exec(text.slice(definition.start))?.[0].length ?? 0
+    const { from, to } = range(definition.start + marker, definition.end)
+    byLabel.set(key, {
+      number: definition.number,
+      text: from < to ? doc.textBetween(from, to, '\n', leafText) : ''
+    })
   }
   return {
     definitions: byLabel,
@@ -124,12 +139,20 @@ export function createFootnotePlugin(onHover?: (hover: FootnoteHover | null) => 
           const definition = key
             ? FOOTNOTE_PLUGIN_KEY.getState(view.state)?.definitions.get(key)
             : undefined
-          if (target && definition?.number)
+          if (target && definition?.number) {
+            // The marker's own box is zero-height (its text is font-size 0),
+            // so the card opens under the line the text before it sits on.
+            const line = view.coordsAtPos(view.posAtDOM(target, 0), -1)
             onHover?.({
               number: definition.number,
               text: definition.text,
-              anchor: target.getBoundingClientRect()
+              anchor: { left: target.getBoundingClientRect().left, top: line.bottom }
             })
+          }
+          return false
+        },
+        mousedown() {
+          onHover?.(null)
           return false
         },
         mouseout(_view, event) {

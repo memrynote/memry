@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
-import { FOOTNOTE_PLUGIN_KEY, createFootnotePlugin } from './footnote-decorations'
+import {
+  FOOTNOTE_PLUGIN_KEY,
+  createFootnotePlugin,
+  type FootnoteHover
+} from './footnote-decorations'
 
 // A real mounted editor: the feature is decorations, which exist only with a view.
 
@@ -14,13 +18,16 @@ afterEach(() => {
   }
 })
 
-function mountEditor(initialContent: PartialBlock[]): BlockNoteEditor {
+function mountEditor(
+  initialContent: PartialBlock[],
+  onHover?: (hover: FootnoteHover | null) => void
+): BlockNoteEditor {
   const editor = BlockNoteEditor.create({ initialContent })
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(editor as any)._tiptapEditor.registerPlugin(createFootnotePlugin())
+  ;(editor as any)._tiptapEditor.registerPlugin(createFootnotePlugin(onHover))
   mounted.push({ editor, el })
   return editor
 }
@@ -78,6 +85,22 @@ describe('footnote decorations', () => {
     const state = FOOTNOTE_PLUGIN_KEY.getState(view(editor).state)
     expect(state?.definitions.get('a')).toEqual({ number: 2, text: 'Alpha [[Source]].' })
     expect(state?.definitions.get('b')).toEqual({ number: 1, text: 'Beta.' })
+  })
+
+  it('hands the hovered definition to the card and clears it on leave or click', () => {
+    const hovers: Array<FootnoteHover | null> = []
+    const editor = mountEditor(NOTE, (hover) => hovers.push(hover))
+    const marker = (editor.domElement as HTMLElement).querySelectorAll('.footnote-ref')[1]
+    marker.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    marker.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
+    marker.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    marker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    expect(hovers.map((hover) => hover && [hover.number, hover.text])).toEqual([
+      [2, 'Alpha [[Source]].'],
+      null,
+      [2, 'Alpha [[Source]].'],
+      null
+    ])
   })
 
   it('ignores a reference written in inline code', () => {
