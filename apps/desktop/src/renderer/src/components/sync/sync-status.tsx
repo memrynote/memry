@@ -11,6 +11,7 @@ import { SidebarMenuButton } from '@/components/ui/sidebar'
 import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
 import { useT } from '@memry/i18n/renderer'
 import { useSyncOptional } from '@/contexts/sync-context'
+import { useAuth } from '@/contexts/auth-context'
 import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
 const log = createLogger('SyncStatus')
@@ -155,6 +156,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     conflicts,
     error,
     sessionExpired,
+    deviceKeysMissing,
     clockSkewDetected,
     initialSyncProgress,
     syncActivity,
@@ -164,6 +166,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     clearError,
     clearConflicts
   } = useSyncStatus()
+  const { logout } = useAuth()
 
   const isSyncing = status === 'syncing'
   const isOffline = status === 'offline'
@@ -179,6 +182,17 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     } catch (err) {
       log.error('Manual sync trigger failed', err)
     }
+  }
+
+  // Signing in again re-runs device key setup, the only fix for missing keys
+  // (#2866). Settings shows the sign-in once the session is gone.
+  const handleSignInAgain = async (): Promise<void> => {
+    try {
+      await logout()
+    } catch (err) {
+      log.error('Sign-out before signing in again failed', err)
+    }
+    onOpenSettings()
   }
 
   const handlePauseResume = async (): Promise<void> => {
@@ -328,22 +342,33 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           onOpenSettings={onOpenSettings}
         >
           <div className="flex items-center gap-1 px-2 py-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={
-                error
-                  ? () => {
-                      clearError()
-                      void handleSync()
-                    }
-                  : () => void handleSync()
-              }
-              disabled={isSyncing || isOffline}
-              className="h-7 text-xs"
-            >
-              {error ? 'Retry' : 'Sync Now'}
-            </Button>
+            {deviceKeysMissing ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleSignInAgain()}
+                className="h-7 text-xs"
+              >
+                {tPhaseF('phaseF.componentsSyncSyncStatus.signInAgain')}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={
+                  error
+                    ? () => {
+                        clearError()
+                        void handleSync()
+                      }
+                    : () => void handleSync()
+                }
+                disabled={isSyncing || isOffline}
+                className="h-7 text-xs"
+              >
+                {error ? 'Retry' : 'Sync Now'}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

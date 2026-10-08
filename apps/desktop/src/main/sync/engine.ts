@@ -142,7 +142,17 @@ export class SyncEngine extends SyncEventEmitter {
     }
 
     this.ctx = {
-      deps: { ...deps, adapters },
+      deps: {
+        ...deps,
+        adapters,
+        // One read site for the status: every key read, whichever cycle makes
+        // it, tells the state manager whether pushes can be signed (#2866).
+        getSigningKeys: async () => {
+          const keys = await deps.getSigningKeys()
+          this.stateManager.setDeviceKeysMissing(keys === null)
+          return keys
+        }
+      },
       options: resolvedOptions,
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',

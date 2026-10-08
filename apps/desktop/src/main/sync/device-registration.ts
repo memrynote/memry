@@ -269,7 +269,8 @@ const activateSyncAfterSignIn = (): void => {
  * Signs a device back in with the email code alone (#2612). The server has
  * already confirmed that the account still lists this device's signing key;
  * here the vault key must also still be the account's. The device keeps its
- * keychain, device row and sync cursor, and only gets new tokens. Returns null
+ * keychain, device row and sync cursor, and gets new tokens plus the install
+ * identity a sign-out or reinstall dropped. Returns null
  * whenever that is not proven, and the caller asks for the recovery phrase.
  */
 export const signInKnownDevice = async (setupToken: string): Promise<string | null> => {
@@ -295,7 +296,15 @@ export const signInKnownDevice = async (setupToken: string): Promise<string | nu
       signingSecretKey,
       db ? getOrCreateVaultUuid(db) : undefined
     )
-    if (db) activateSyncAfterSignIn()
+    // The keychain can outlive the install identity: sign-out clears the store's
+    // device id and a reinstall drops userData, while the keys stay. Record the
+    // id here, or the vault opened after a vault-less sign-in seeds no device
+    // row and every push aborts for want of signing keys (#2866).
+    setStoredDeviceId(deviceId)
+    if (db) {
+      await ensureDeviceRowForVault(db)
+      activateSyncAfterSignIn()
+    }
     logger.info('Signed a known device back in with the email code', { deviceId })
     return deviceId
   } catch (err) {

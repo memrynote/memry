@@ -81,6 +81,7 @@ import type {
 } from '@memry/contracts/ipc-crdt'
 import type {
   ResolveVaultBindingResult,
+  SyncErrorCategory,
   VaultBindingChoice,
   VaultBindingState
 } from '@memry/contracts/ipc-sync-ops'
@@ -1728,6 +1729,7 @@ interface SyncOpsClientAPI {
     lastSyncAt?: number
     pendingCount: number
     error?: string
+    errorCategory?: SyncErrorCategory
     offlineSince?: number
   }>
   triggerSync: () => Promise<{

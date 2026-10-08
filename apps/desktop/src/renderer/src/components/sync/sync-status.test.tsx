@@ -12,6 +12,13 @@ const sync = vi.hoisted(() => ({
   openVaultBindingPrompt: vi.fn()
 }))
 
+const status = vi.hoisted(() => ({ overrides: {} as Record<string, unknown> }))
+const auth = vi.hoisted(() => ({ logout: vi.fn(async () => {}) }))
+
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: () => auth
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
@@ -41,13 +48,17 @@ vi.mock('@/hooks/use-sync-status', () => ({
     pause: vi.fn(),
     resume: vi.fn(),
     clearError: vi.fn(),
-    clearConflicts: vi.fn()
+    clearConflicts: vi.fn(),
+    deviceKeysMissing: false,
+    ...status.overrides
   })
 }))
 
-async function openPopover(): Promise<ReturnType<typeof userEvent.setup>> {
+async function openPopover(
+  onOpenSettings: () => void = vi.fn()
+): Promise<ReturnType<typeof userEvent.setup>> {
   const user = userEvent.setup()
-  render(<SyncStatus onOpenSettings={vi.fn()} iconOnly />)
+  render(<SyncStatus onOpenSettings={onOpenSettings} iconOnly />)
   await user.click(screen.getByRole('button', { name: /Sync status/ }))
   return user
 }
@@ -55,6 +66,7 @@ async function openPopover(): Promise<ReturnType<typeof userEvent.setup>> {
 describe('SyncStatus vault binding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    status.overrides = {}
   })
 
   it('offers to start syncing a vault kept on this device', async () => {
@@ -89,5 +101,33 @@ describe('SyncStatus vault binding', () => {
     await openPopover()
 
     expect(screen.getByText('Sync Now')).toBeTruthy()
+  })
+})
+
+// #2866: pushes aborted for want of device keys while the popover said Synced.
+describe('SyncStatus with device keys missing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sync.vaultBinding = { status: 'bound' }
+    status.overrides = {
+      status: 'error',
+      label: 'account.sync.statuses.deviceKeysMissing',
+      hasIssues: true,
+      error: 'Changes on this device are not uploading.',
+      deviceKeysMissing: true
+    }
+  })
+
+  it('offers to sign in again instead of a retry that cannot succeed', async () => {
+    const onOpenSettings = vi.fn()
+    const user = await openPopover(onOpenSettings)
+
+    expect(screen.getAllByText('account.sync.statuses.deviceKeysMissing').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Retry')).toBeNull()
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.signInAgain' })
+    )
+    expect(auth.logout).toHaveBeenCalled()
+    expect(onOpenSettings).toHaveBeenCalled()
   })
 })

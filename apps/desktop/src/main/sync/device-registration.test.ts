@@ -47,7 +47,8 @@ const mocks = vi.hoisted(() => ({
   dbWhere: vi.fn(),
   dbRun: vi.fn(),
   dbInsert: vi.fn(),
-  dbValues: vi.fn()
+  dbValues: vi.fn(),
+  currentDeviceRow: vi.fn((): { id: string } | undefined => undefined)
 }))
 
 vi.mock('electron', () => ({
@@ -175,7 +176,12 @@ function setupDb() {
     insert: mocks.dbInsert
   }
   const db = {
-    transaction: vi.fn((fn: (txArg: typeof tx) => void) => fn(tx))
+    transaction: vi.fn((fn: (txArg: typeof tx) => void) => fn(tx)),
+    insert: mocks.dbInsert,
+    // The vault's current-device row, read by ensureDeviceRowForVault.
+    select: vi.fn(() => ({
+      from: () => ({ where: () => ({ get: () => mocks.currentDeviceRow() }) })
+    }))
   }
   mocks.getDatabase.mockReturnValue(db)
   return db
@@ -450,6 +456,8 @@ describe('device registration', () => {
       })
       mocks.getFromServer.mockResolvedValue({ kdfSalt: 'salt', keyVerifier: 'account-verifier' })
       mocks.generateKeyVerifier.mockResolvedValue('account-verifier')
+      mocks.currentDeviceRow.mockReturnValue({ id: 'device-1' })
+      mocks.getStoredDeviceId.mockReturnValue('device-1')
     })
 
     it('signs in with the keys this device already holds and keeps its sync state', async () => {
@@ -475,6 +483,38 @@ describe('device registration', () => {
       expect(mocks.storeKey).not.toHaveBeenCalled()
       expect(mocks.dbDelete).not.toHaveBeenCalled()
       expect(mocks.dbInsert).not.toHaveBeenCalled()
+    })
+
+    // #2866: onboarding signs in with no vault open, after a sign-out cleared the
+    // store's device id. Without the id, the vault opened next seeds no device
+    // row, getSigningKeys() stays null and every push aborts.
+    it('records the install device id when no vault is open', async () => {
+      mocks.isDatabaseInitialized.mockReturnValue(false)
+      mocks.getStoredDeviceId.mockReturnValue(undefined)
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBe('device-1')
+
+      expect(mocks.setStoredDeviceId).toHaveBeenCalledWith('device-1')
+      expect(mocks.activate).not.toHaveBeenCalled()
+      expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+    })
+
+    it('seeds the open vault device row when the vault has none', async () => {
+      mocks.currentDeviceRow.mockReturnValue(undefined)
+      mocks.getStoredDeviceId.mockImplementation(
+        () => mocks.setStoredDeviceId.mock.calls.at(-1)?.[0]
+      )
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBe('device-1')
+
+      expect(mocks.dbValues).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'device-1', isCurrentDevice: true })
+      )
+      expect(mocks.dbInsert.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.activate.mock.invocationCallOrder[0]
+      )
     })
 
     it('asks for the recovery phrase when the vault key is not the account key', async () => {

@@ -996,6 +996,7 @@
         "syncing": "Syncing...",
         "paused": "Paused",
         "syncError": "Sync Error",
+        "deviceKeysMissing": "Sync paused: device keys missing",
         "offline": "Offline",
         "connecting": "Connecting...",
         "localOnly": "Local only",
@@ -2133,7 +2134,8 @@
       "clockSkewDetected": "Clock skew detected",
       "items": "items",
       "willSyncWhenBackOnline": "Will sync when back online",
-      "openSyncSettings": "Open sync settings"
+      "openSyncSettings": "Open sync settings",
+      "signInAgain": "Sign in again"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"

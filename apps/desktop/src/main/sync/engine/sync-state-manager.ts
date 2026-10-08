@@ -13,8 +13,15 @@ import type { SyncStatusValue } from '@memry/contracts/ipc-sync-ops'
 import { createLogger } from '../../lib/logger'
 import type { SyncContext } from './sync-context'
 import { SYNC_STATE_KEYS, CLOCK_SKEW_THRESHOLD_SECONDS } from './sync-context'
+import type { SyncErrorInfo } from '../sync-errors'
 
 const log = createLogger('SyncStateManager')
+
+const DEVICE_KEYS_MISSING: SyncErrorInfo = {
+  category: 'device_keys_missing',
+  message: 'errors:sync.deviceKeysMissing',
+  retryable: false
+}
 
 export type NodeEmit = (event: string, ...args: unknown[]) => boolean
 
@@ -38,6 +45,13 @@ export class SyncStateManager {
    */
   private knownNotPaused = false
 
+  /**
+   * Set while this signed-in session has no signing keys (#2866). Every push
+   * aborts before it is sent, so no cycle may end on `idle`: the popover read
+   * that as Synced while local edits never left the device.
+   */
+  private deviceKeysMissing = false
+
   constructor(ctx: SyncContext, nodeEmit: NodeEmit) {
     this.ctx = ctx
     this.nodeEmit = nodeEmit
@@ -48,6 +62,11 @@ export class SyncStateManager {
   }
 
   setState(requestedState: SyncStatusValue): void {
+    // No cycle reports Synced while pushes abort for want of keys (#2866).
+    if (requestedState === 'idle' && this.deviceKeysMissing) {
+      this.reportDeviceKeysMissing()
+      return
+    }
     // An account without an active sync plan is not a failure: there is nothing
     // to retry and nothing broke. Reported as `error` it paints the sidebar red,
     // offers a Retry that can only 402 again, and buries the one action that
@@ -77,6 +96,27 @@ export class SyncStateManager {
       this.ctx.lastError = undefined
       this.ctx.lastErrorInfo = undefined
     }
+    this.emitStatusChanged()
+  }
+
+  /** Every signing-key read reports here, so the status follows the keys. */
+  setDeviceKeysMissing(missing: boolean): void {
+    if (missing === this.deviceKeysMissing) return
+    this.deviceKeysMissing = missing
+    if (missing) {
+      // A running cycle reports it when it ends, through setState('idle').
+      if (this.ctx.state === 'idle' || this.ctx.state === 'error') this.reportDeviceKeysMissing()
+      return
+    }
+    if (this.ctx.lastErrorInfo?.category === 'device_keys_missing') this.setState('idle')
+  }
+
+  private reportDeviceKeysMissing(): void {
+    if (this.ctx.state === 'error' && this.ctx.lastErrorInfo === DEVICE_KEYS_MISSING) return
+    this.ctx.lastErrorInfo = DEVICE_KEYS_MISSING
+    this.ctx.lastError = DEVICE_KEYS_MISSING.message
+    this.ctx.state = 'error'
+    this.ctx.offlineSince = null
     this.emitStatusChanged()
   }
 
