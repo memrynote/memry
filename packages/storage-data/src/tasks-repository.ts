@@ -7,11 +7,18 @@ import type {
   ProjectWithStatuses,
   Status,
   Task,
+  TaskFieldValue,
+  TaskFieldsPatch,
   TaskListItem,
   TaskListOptions,
   TaskStats
 } from '@memry/domain-tasks'
-import { plainVersionedMap } from '@memry/shared/versioned'
+import {
+  canonicalJson,
+  plainVersionedMap,
+  stampVersionedMapPatch,
+  type VersionedMap
+} from '@memry/shared/versioned'
 
 type TaskRecord = Omit<
   Task,
@@ -22,6 +29,7 @@ type TaskRecord = Omit<
   repeatFrom: string | null
   /** The stored versioned map; readers get only its values. */
   fields?: unknown
+  clock?: unknown
 }
 type ProjectRecord = Project
 type StatusRecord = Status
@@ -144,6 +152,20 @@ export interface CreateTasksRepositoryDeps<TDb> {
   projectQueries: ProjectQueryModule<TDb>
 }
 
+/** The sum of a document clock's ticks, `_offline` included (chapter 06 section 6.2). */
+function clockTotal(clock: unknown): number {
+  if (typeof clock !== 'object' || clock === null) return 0
+  let total = 0
+  for (const tick of Object.values(clock)) if (typeof tick === 'number') total += tick
+  return total
+}
+
+/** A new task's map: no clock has ticked yet, so every value starts at t = 1. */
+function firstFieldMap(fields: Record<string, TaskFieldValue> | undefined): VersionedMap | null {
+  const stamped = fields ? stampVersionedMapPatch(undefined, fields, 0) : {}
+  return Object.keys(stamped).length > 0 ? stamped : null
+}
+
 function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskRecord): Task {
   const subtaskCounts = taskQueries.countSubtasks(db, task.id)
   return {
@@ -212,13 +234,35 @@ export function createTasksRepository<TDb>({
         | 'completedSubtaskCount'
       >
     ): Task {
-      const created = taskQueries.insertTask(db, task)
+      const { fields, ...row } = task
+      const created = taskQueries.insertTask(db, { ...row, fields: firstFieldMap(fields) })
       return enrichTask(db, taskQueries, created)
     },
 
     updateTask(id: string, updates: Record<string, unknown>): Task | undefined {
       const task = taskQueries.updateTask(db, id, updates)
       return task ? enrichTask(db, taskQueries, task) : undefined
+    },
+
+    /**
+     * The one writer of a task's field versions (chapter 06 section 6.11): each
+     * changed key is stamped above both the task's clock total and every
+     * version in the map, so the edit outranks what this device has seen. A
+     * patch that changes no visible value writes nothing.
+     */
+    patchTaskFields(
+      taskId: string,
+      patch: Record<string, TaskFieldValue>
+    ): TaskFieldsPatch | undefined {
+      const task = taskQueries.getTaskById(db, taskId)
+      if (!task) return undefined
+      const next = stampVersionedMapPatch(task.fields, patch, clockTotal(task.clock))
+      const before = plainVersionedMap(task.fields)
+      const after = plainVersionedMap(next)
+      if (canonicalJson(after) !== canonicalJson(before)) {
+        taskQueries.updateTask(db, taskId, { fields: next })
+      }
+      return { before, after }
     },
 
     deleteTask(id: string): void {

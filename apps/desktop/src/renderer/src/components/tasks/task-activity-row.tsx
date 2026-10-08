@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
  */
 export function fieldLabel(field: string | null, t: TFunction<'tasks'>): string {
   if (!field) return ''
+  // A task field row (`fields.<name>`) is labelled with the user's own field name.
+  if (field.startsWith('fields.')) return field.slice('fields.'.length)
   const key = `drawer.activityField${field.charAt(0).toUpperCase()}${field.slice(1)}`
   const label = t(key as never)
   return label === key ? field : label

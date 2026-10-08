@@ -45,6 +45,13 @@ const IGNORED_FIELDS = new Set(['position', 'modifiedAt'])
 /** Stored as a length delta, never as the body text. See the schema module. */
 const LENGTH_ONLY_FIELDS = new Set(['description'])
 
+/** A task field holding a longer string is logged like `description`: length only. */
+const LONG_FIELD_VALUE = 500
+
+function isLongFieldText(value: unknown): boolean {
+  return typeof value === 'string' && value.length > LONG_FIELD_VALUE
+}
+
 interface ActivityRowInput {
   taskId: string
   action: TaskActivityAction
@@ -163,6 +170,11 @@ function fieldRows(
   const rows: ActivityRowInput[] = []
 
   for (const field of auditableFields(changedFields)) {
+    if (field === 'fields') {
+      rows.push(...taskFieldRows(taskId, action, next.fields, previous?.fields, actor))
+      continue
+    }
+
     if (LENGTH_ONLY_FIELDS.has(field)) {
       rows.push(lengthOnlyRow(taskId, action, field, next, previous, actor))
       continue
@@ -179,6 +191,42 @@ function fieldRows(
     rows.push({ taskId, action, field, oldValue, newValue, actor })
   }
 
+  return rows
+}
+
+/**
+ * One row per task field whose value changed, named `fields.<name>`. A long
+ * text value is stored as its length change, so a pasted document never
+ * reaches the table or its encrypted sync payload.
+ */
+function taskFieldRows(
+  taskId: string,
+  action: TaskActivityAction,
+  next: Task['fields'],
+  previous: Task['fields'],
+  actor: TaskActivityActor
+): ActivityRowInput[] {
+  const before = previous ?? {}
+  const after = next ?? {}
+  const rows: ActivityRowInput[] = []
+  for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const oldValue = encodeValue(before[name])
+    const newValue = encodeValue(after[name])
+    if (oldValue === newValue) continue
+    const field = `fields.${name}`
+    rows.push(
+      isLongFieldText(before[name]) || isLongFieldText(after[name])
+        ? {
+            taskId,
+            action,
+            field,
+            oldValue: null,
+            newValue: JSON.stringify({ delta: textLength(after[name]) - textLength(before[name]) }),
+            actor
+          }
+        : { taskId, action, field, oldValue, newValue, actor }
+    )
+  }
   return rows
 }
 

@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { getI18n } from 'react-i18next'
 import type { Priority, RepeatAnchor, RepeatConfig } from '@memry/domain-tasks/parsing'
+import type { TaskFieldValue } from '@memry/rpc/tasks'
 
 const tasksT = (): TFunction<'tasks'> | null => {
   const i18n = getI18n()
@@ -50,6 +51,9 @@ export interface Task {
   // Tags — case-preserving, case-insensitive identity. Shared with notes/inbox
   // via the global tag_definitions store.
   tags: string[]
+
+  // Field values by name, carried as they are so a next occurrence keeps them.
+  fields?: Record<string, TaskFieldValue>
 
   // Subtasks
   parentId: string | null // ID of parent task (null if top-level)

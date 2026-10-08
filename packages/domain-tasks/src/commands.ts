@@ -6,7 +6,8 @@ import type {
   ProjectSetLinkPinnedInput,
   ProjectWithStatuses,
   Status,
-  Task
+  Task,
+  TaskFieldValue
 } from './types.ts'
 import type { TasksQueryRepository } from './queries.ts'
 
@@ -35,6 +36,8 @@ export interface TaskCreateInput {
   linkedCanvasIds?: string[]
   sourceNoteId?: string | null
   position?: number
+  /** The whole field map; a `null` value sets nothing. */
+  fields?: Record<string, TaskFieldValue>
 }
 
 export interface TaskUpdateInput {
@@ -53,6 +56,14 @@ export interface TaskUpdateInput {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
+  /** A patch: only the listed fields change, and `null` removes a field. */
+  fields?: Record<string, TaskFieldValue>
+}
+
+/** A field patch as readers see it: the values before and after, never their versions. */
+export interface TaskFieldsPatch {
+  before: Record<string, TaskFieldValue>
+  after: Record<string, TaskFieldValue>
 }
 
 export interface TaskMoveInput {
@@ -124,12 +135,18 @@ export interface TasksCommandRepository extends TasksQueryRepository {
         | 'tags'
         | 'linkedNoteIds'
         | 'linkedCanvasIds'
+        | 'fields'
         | 'hasSubtasks'
         | 'subtaskCount'
         | 'completedSubtaskCount'
       >
     >
   ): Task | undefined
+  /** Stamps the changed fields with versions; `undefined` when the task does not exist. */
+  patchTaskFields(
+    taskId: string,
+    patch: Record<string, TaskFieldValue>
+  ): TaskFieldsPatch | undefined
   deleteTask(id: string): void
   completeTask(id: string, completedAt?: string): Task | undefined
   uncompleteTask(id: string): Task | undefined
@@ -515,7 +532,8 @@ export function createTasksCommands({
           completedAt: null,
           archivedAt: null,
           createdAt: new Date().toISOString(),
-          modifiedAt: new Date().toISOString()
+          modifiedAt: new Date().toISOString(),
+          ...(input.fields ? { fields: input.fields } : {})
         })
 
         if (input.tags && input.tags.length > 0) {
@@ -542,7 +560,7 @@ export function createTasksCommands({
 
     async updateTask(input: TaskUpdateInput) {
       return commit(() => {
-        const { id, tags, linkedNoteIds, linkedCanvasIds, priority, ...rawUpdates } = input
+        const { id, tags, linkedNoteIds, linkedCanvasIds, priority, fields, ...rawUpdates } = input
         const existingTask = repository.getTask(id)
 
         const updates: Partial<Task> = definedUpdates({
@@ -596,11 +614,15 @@ export function createTasksCommands({
           repository.setTaskCanvases(id, linkedCanvasIds)
         }
 
+        const fieldsPatch =
+          fields !== undefined ? repository.patchTaskFields(id, fields) : undefined
+
         const resolvedTask: Task = {
           ...task,
           ...(tags !== undefined ? { tags } : {}),
           ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
-          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
+          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {}),
+          ...(fieldsPatch ? { fields: fieldsPatch.after } : {})
         }
         const changedFields = computeChangedFields(existingTask, updates, [
           {
@@ -617,6 +639,11 @@ export function createTasksCommands({
             field: 'linkedCanvasIds',
             before: oldCanvasIds,
             after: linkedCanvasIds
+          },
+          {
+            field: 'fields',
+            before: fieldsPatch?.before,
+            after: fieldsPatch?.after
           }
         ])
 
@@ -624,7 +651,8 @@ export function createTasksCommands({
           ...updates,
           ...(tags !== undefined ? { tags } : {}),
           ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
-          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
+          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {}),
+          ...(fieldsPatch ? { fields: fieldsPatch.after } : {})
         }
 
         const events: TasksDomainEvent[] = [
@@ -640,7 +668,8 @@ export function createTasksCommands({
               previous: pickPrevious(existingTask, changedFields, {
                 ...(oldTags !== undefined ? { tags: oldTags } : {}),
                 ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {}),
-                ...(oldCanvasIds !== undefined ? { linkedCanvasIds: oldCanvasIds } : {})
+                ...(oldCanvasIds !== undefined ? { linkedCanvasIds: oldCanvasIds } : {}),
+                ...(fieldsPatch ? { fields: fieldsPatch.before } : {})
               })
             }
           }

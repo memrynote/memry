@@ -92,6 +92,25 @@ describe('TaskActivitySection', () => {
     expect(screen.getByText('Aug 20, 2026')).toBeInTheDocument()
   })
 
+  it('names a task field row by the field name, not its storage path', async () => {
+    getActivity.mockResolvedValue({
+      entries: [
+        makeEntry({
+          field: 'fields.Waiting on',
+          oldValue: null,
+          newValue: JSON.stringify('Ahmet')
+        })
+      ],
+      total: 1,
+      hasMore: false
+    })
+
+    renderSection(section)
+
+    expect(await screen.findByText('Waiting on')).toBeInTheDocument()
+    expect(screen.queryByText(/fields\./)).not.toBeInTheDocument()
+  })
+
   it('humanizes priority instead of showing the stored integer', async () => {
     getActivity.mockResolvedValue({
       entries: [makeEntry({ field: 'priority', oldValue: '0', newValue: '3' })],

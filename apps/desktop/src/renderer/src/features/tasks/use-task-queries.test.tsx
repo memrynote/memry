@@ -315,6 +315,7 @@ describe('useTaskWorkspaceMutations', () => {
       },
       linkedNoteIds: ['note-1'],
       sourceNoteId: null,
+      fields: { 'Waiting on': ['memry://note/n1'] },
       parentId: null,
       subtaskIds: [],
       createdAt: new Date('2026-05-01T00:00:00.000Z'),
@@ -334,6 +335,8 @@ describe('useTaskWorkspaceMutations', () => {
         priority: 4,
         dueDate: '2026-05-10',
         linkedNoteIds: ['note-1'],
+        // A next occurrence is created from the spread task, so it keeps its fields.
+        fields: { 'Waiting on': ['memry://note/n1'] },
         repeatConfig: expect.objectContaining({
           frequency: 'daily',
           createdAt: '2026-05-01T00:00:00.000Z'

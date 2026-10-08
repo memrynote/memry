@@ -107,6 +107,7 @@ export function dbTaskToUiTask(dbTask: Task): UiTask {
     linkedCanvasIds: dbTask.linkedCanvasIds ?? [],
     sourceNoteId: dbTask.sourceNoteId ?? null,
     tags: dbTask.tags ?? [],
+    fields: dbTask.fields ?? {},
     parentId: dbTask.parentId,
     subtaskIds: [],
     createdAt: new Date(dbTask.createdAt),
@@ -330,7 +331,8 @@ export function useTaskWorkspaceMutations() {
           repeatFrom: task.repeatFrom ?? null,
           tags: task.tags,
           linkedNoteIds: task.linkedNoteIds,
-          linkedCanvasIds: task.linkedCanvasIds
+          linkedCanvasIds: task.linkedCanvasIds,
+          fields: task.fields
         })
         reportEnvelopeFailure('task_create', result)
         invalidateWorkspace()
