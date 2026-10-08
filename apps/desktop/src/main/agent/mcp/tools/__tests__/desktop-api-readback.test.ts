@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 
-import { desktopWriteReadback } from '../desktop-api-readback'
+import { desktopWriteReadback, writeAndReadBack } from '../desktop-api-readback'
 
 function readBack(operation: AgentMcpDesktopWriteOperation, args: unknown[], data: unknown) {
   const readback = desktopWriteReadback({ operation, args })
@@ -96,5 +96,40 @@ describe('desktop write read-backs', () => {
         stored: item
       })
     }
+  })
+
+  it("reply to a status update with the status as the project's status list stores it", async () => {
+    const replies: Record<string, unknown> = {
+      'tasks.updateStatus': { success: true, status: { id: 's1', projectId: 'p1', name: 'Old' } },
+      'tasks.listStatuses': [
+        { id: 's0', projectId: 'p1', name: 'Todo' },
+        { id: 's1', projectId: 'p1', name: 'Doing' }
+      ]
+    }
+    const invoke = vi.fn(async (request: { operation: string }) => replies[request.operation])
+    const reply = await writeAndReadBack(
+      { operation: 'tasks.updateStatus', args: ['s1', { name: 'Doing' }] },
+      invoke,
+      async () => ({})
+    )
+    expect(invoke).toHaveBeenLastCalledWith({ operation: 'tasks.listStatuses', args: ['p1'] })
+    expect(reply).toMatchObject({ stored: { id: 's1', projectId: 'p1', name: 'Doing' } })
+  })
+
+  it('reply to filing an inbox item with the filed item', async () => {
+    const filed = { id: 'i1', filedTo: 'work', filedAction: 'folder' }
+    const invoke = vi.fn(async (request: { operation: string }) =>
+      request.operation === 'inbox.file' ? { success: true, filedTo: 'work', noteId: 'n1' } : filed
+    )
+    const reply = await writeAndReadBack(
+      {
+        operation: 'inbox.file',
+        args: [{ itemId: 'i1', destination: { type: 'folder', path: 'work' } }]
+      },
+      invoke,
+      async () => ({})
+    )
+    expect(invoke).toHaveBeenLastCalledWith({ operation: 'inbox.get', args: ['i1'] })
+    expect(reply).toEqual({ success: true, filedTo: 'work', noteId: 'n1', stored: filed })
   })
 })

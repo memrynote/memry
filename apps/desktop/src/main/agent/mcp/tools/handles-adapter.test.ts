@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestIndexDb } from '@tests/utils/test-db'
+import { NoteError, NoteErrorCode } from '../../../lib/errors'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -673,6 +674,58 @@ describe('createVaultServiceHandles', () => {
     ])
     // The tag set did not move, so the live tag array is left alone.
     expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
+  })
+
+  describe('when the note file cannot be read before an update', () => {
+    const busy = () =>
+      new NoteError(
+        'Failed to read file: /vault/work/alpha.md',
+        NoteErrorCode.READ_FAILED,
+        undefined,
+        {
+          cause: Object.assign(new Error('resource busy'), { code: 'EBUSY' })
+        }
+      )
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
+    })
+
+    it('reads it again once and lands the update', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockRejectedValueOnce(busy()).mockResolvedValueOnce({
+        id: 'note-1',
+        title: 'Alpha',
+        content: 'Current',
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {}
+      })
+
+      await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+
+      expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Current\n\nNext'
+      })
+    })
+
+    it('writes nothing and names the cause when the second read fails too', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockRejectedValueOnce(busy()).mockRejectedValueOnce(busy())
+
+      const failure = handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'x' })
+
+      await expect(failure).rejects.toThrow(/could not be read before the update \(EBUSY\)/)
+      await expect(failure).rejects.not.toThrow(/\/vault\//)
+      expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
+    })
   })
 
   it.each([
