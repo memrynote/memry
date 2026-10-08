@@ -16,7 +16,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { test, expect } from './fixtures'
-import type { FileChooser, Page } from '@playwright/test'
+import type { FileChooser, Locator, Page } from '@playwright/test'
 import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
 import { openNoteByTitle } from './utils/note-sync-helpers'
 
@@ -40,6 +40,30 @@ function stripFrontmatter(markdown: string): string {
 async function openInEditor(page: Page, title: string): Promise<void> {
   await openNoteByTitle(page, title)
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 15_000 })
+}
+
+/**
+ * Click the cell until the editor's own selection is inside it.
+ *
+ * The paste handler reads ProseMirror's selection, not the DOM's, and
+ * ProseMirror picks a click up from a later `selectionchange`. A paste
+ * dispatched right after the click can still see the old selection, and the
+ * handler then skips the event because the caret is not in a cell.
+ */
+async function placeCaretInCell(cell: Locator): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await cell.click()
+        return cell.evaluate((element) => {
+          const view = (window as any).__memryEditor?.prosemirrorView
+          if (!view) return false
+          return element.contains(view.domAtPos(view.state.selection.from).node)
+        })
+      },
+      { message: 'editor selection inside the cell', timeout: 10_000 }
+    )
+    .toBe(true)
 }
 
 /** Force a re-serialize/re-save without changing content. */
@@ -286,7 +310,7 @@ test.describe('Table cell images', () => {
 
     // #when the caret is put in the second cell and an image is pasted
     const cell = page.locator(`${SELECTORS.noteEditor} tbody td`).nth(1)
-    await cell.click()
+    await placeCaretInCell(cell)
     await pasteImageAtCaret(page, PNG_BASE64, 'pasted.png')
 
     // #then the image lands INSIDE the cell — not as a block pushed out of the
@@ -331,7 +355,7 @@ test.describe('Table cell images', () => {
 
     // #when the caret is in the second cell and an image arrives as HTML only
     const cell = page.locator(`${SELECTORS.noteEditor} tbody td`).nth(1)
-    await cell.click()
+    await placeCaretInCell(cell)
     await pasteHtmlAtCaret(page, `<img src="data:image/png;base64,${PNG_BASE64}" alt="grabbed">`)
 
     // #then the picture is IN the cell
