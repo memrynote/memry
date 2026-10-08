@@ -131,7 +131,7 @@
       "required": ["id"],
       "additionalProperties": false,
       "x-memry-kind": "tool",
-      "x-memry-description": "Look at an image, or one page of a PDF, from the vault. Returns the picture as image content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that says what was sent: file, width and height, the source size for an image, and page and page_count for a PDF. Pass the id of a filed image or PDF (file_type \"image\" or \"pdf\"); page picks the PDF page, default 1, one page per call. For an image or PDF a markdown note embeds, pass the note id and the file name as attachment: the name after attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. A model that cannot take images gets a text notice instead of the picture.",
+      "x-memry-description": "Look at an image, or one page of a PDF, from the vault. Returns the picture as image content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that says what was sent: file, width and height, the source size for an image, and page and page_count for a PDF. Pass the id of a filed image or PDF (file_type \"image\" or \"pdf\"); page picks the PDF page, default 1, one page per call. For an image or PDF a markdown note embeds, pass the note id and the file name as attachment: the name after attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. In Memry chat with a local or OpenAI-compatible provider, a model that cannot take images gets a text notice instead of the picture.",
       "x-memry-requires-approval": false,
       "x-memry-example": {
         "arguments": {
@@ -1522,7 +1522,7 @@
       "required": ["title", "content_markdown"],
       "additionalProperties": false,
       "x-memry-kind": "tool",
-      "x-memry-description": "Create a new note. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. Requires user approval.",
+      "x-memry-description": "Create a new note. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. The reply lists the folders the call created in created_folders. Requires user approval.",
       "x-memry-requires-approval": true,
       "x-memry-example": {
         "arguments": {
@@ -4781,7 +4781,7 @@
       "required": ["id", "folder_path"],
       "additionalProperties": false,
       "x-memry-kind": "tool",
-      "x-memry-description": "Move a note to a folder. Requires user approval.",
+      "x-memry-description": "Move a note to a folder. The reply lists the folders the call created in created_folders. Requires user approval.",
       "x-memry-requires-approval": true,
       "x-memry-example": {
         "arguments": {
@@ -5654,7 +5654,7 @@
       "required": ["operation"],
       "additionalProperties": false,
       "x-memry-kind": "tool",
-      "x-memry-description": "Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the operation; a call with more arguments than the operation takes is refused, so put options inside its input object. A write whose reply carries no record gets a `stored` field read back after the write. properties.set(entityId, properties) replaces the entity's whole property record: a property left out is deleted, except the legacy id, title, created and modified keys, which are kept unless the call names them (null deletes one). The reply lists the stored `properties` and the names it `removed`. Requires user approval. Replies follow the vault_desktop_read rules for filed files and replies over 100 KB. vault_desktop_describe returns each operation's argument schema; a call that does not match it is refused before approval.",
+      "x-memry-description": "Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the operation; a call with more arguments than the operation takes is refused, so put options inside its input object. A write whose reply carries no record gets a `stored` field read back after the write. properties.set(entityId, properties) replaces the entity's whole property record: a property left out is deleted, except the legacy id, title, created and modified keys, which are kept unless the call names them (null deletes one). The reply lists the stored `properties` and the names it `removed`. Checkbox lines that a note, journal or template write, notes.applyTemplate, inbox.convertToNote or notes.importFiles adds are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents. Requires user approval. Replies follow the vault_desktop_read rules for filed files and replies over 100 KB. vault_desktop_describe returns each operation's argument schema; a call that does not match it is refused before approval.",
       "x-memry-requires-approval": true,
       "x-memry-example": {
         "arguments": {
@@ -12664,7 +12664,7 @@
     "notes.importFiles": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 2,
+      "maxItems": 3,
       "anyOf": [
         {
           "prefixItems": [
@@ -12692,12 +12692,37 @@
           ],
           "minItems": 2,
           "maxItems": 2
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "plainChecklists": {
+                  "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3
         }
       ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Copy files from paths on this device into the vault as notes or files.",
       "x-memry-tool": "vault_desktop_write",
-      "x-memry-call": "notes.importFiles(sourcePaths, targetFolder?)",
+      "x-memry-call": "notes.importFiles(sourcePaths, targetFolder?, options?)",
       "x-memry-params": [
         {
           "name": "sourcePaths",
@@ -12705,6 +12730,10 @@
         },
         {
           "name": "targetFolder",
+          "required": false
+        },
+        {
+          "name": "options",
           "required": false
         }
       ],
@@ -12827,6 +12856,10 @@
             "mode": {
               "type": "string",
               "enum": ["full", "body"]
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["noteId", "templateId", "mode"],
@@ -16481,21 +16514,50 @@
     },
     "inbox.convertToNote": {
       "type": "array",
-      "prefixItems": [
+      "minItems": 1,
+      "maxItems": 2,
+      "anyOf": [
         {
-          "type": "string"
+          "prefixItems": [
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "plainChecklists": {
+                  "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
         }
       ],
-      "minItems": 1,
-      "maxItems": 1,
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Turn an inbox item into a note.",
       "x-memry-tool": "vault_desktop_write",
-      "x-memry-call": "inbox.convertToNote(itemId)",
+      "x-memry-call": "inbox.convertToNote(itemId, options?)",
       "x-memry-params": [
         {
           "name": "itemId",
           "required": true
+        },
+        {
+          "name": "options",
+          "required": false
         }
       ],
       "x-memry-requires-approval": true,

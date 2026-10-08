@@ -263,9 +263,25 @@ export const SetCalendarPropertyVisibilitySchema = z.object({
   showOnCalendar: z.boolean()
 })
 
+/**
+ * `plainChecklists` marks each checkbox line a write adds with `{check}`, so the
+ * editor keeps it a checkbox. Main sets it on every agent call (#2759).
+ */
+const plainChecklists = z
+  .boolean()
+  .optional()
+  .describe(
+    "Set by memrynote on every agent call from the owner's agent checklist setting; " +
+      'a value you pass is replaced.'
+  )
+
+export const PlainChecklistsOptionSchema = z.object({ plainChecklists })
+export type PlainChecklistsOption = z.infer<typeof PlainChecklistsOptionSchema>
+
 export const ImportFilesSchema = z.object({
   sourcePaths: z.array(z.string()),
-  targetFolder: z.string().optional()
+  targetFolder: z.string().optional(),
+  options: PlainChecklistsOptionSchema.optional()
 })
 
 export const NoteRenameSchema = z.object({
@@ -428,7 +444,8 @@ export const SetLocalOnlySchema = z.object({
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
-  mode: z.enum(['full', 'body'])
+  mode: z.enum(['full', 'body']),
+  plainChecklists
 })
 
 /**

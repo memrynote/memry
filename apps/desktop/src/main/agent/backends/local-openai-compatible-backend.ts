@@ -8,6 +8,7 @@ import {
 } from '@memry/contracts/ipc-agent'
 import { stepCountIs, streamText, wrapLanguageModel } from 'ai'
 
+import { createLogger } from '../../lib/logger'
 import type { BackendEvent } from '../cli/types'
 import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
 import {
@@ -23,6 +24,8 @@ import type {
   AgentBackendTurnInput,
   BackendRunHandle
 } from './types'
+
+const logger = createLogger('Agent:LocalProvider')
 
 let nextLocalRunPid = -1
 
@@ -40,6 +43,8 @@ const PROBE_TTL_MS = 10 * 60_000
 // A "no tools" verdict is usually a model property, but a transient provider error at
 // the tool step looks identical, so it expires fast.
 const PROBE_DEGRADED_TTL_MS = 60_000
+// Long enough for a slow local thinking model to finish the tool probe's two generations.
+const PROBE_REQUEST_TIMEOUT_MS = 120_000
 
 // The assembled prompt names the vault tools, so a model that was sent no tool schemas
 // writes its tool calls out as plain text unless it is told they are gone.
@@ -398,6 +403,7 @@ async function probeLocalProvider(
 
   const streaming = await probeStreaming(settings, fetchImpl, apiKey)
   if (!streaming.streamingSupported) {
+    logger.warn(`Streaming probe failed for model ${settings.model}: ${streaming.detail}`)
     return {
       result: { ...connection, ...streaming, toolsEnabled: false },
       tools: { kind: 'off', reason: 'streaming_unsupported', detail: null }
@@ -418,6 +424,7 @@ async function probeLocalProvider(
       tools: { kind: 'on', profile: toolProbe.profile }
     }
   }
+  logger.warn(`Tool probe failed for model ${settings.model}: ${toolProbe.detail}`)
   return {
     result: {
       ...connection,
@@ -473,6 +480,7 @@ async function probeStreaming(
           'content-type': 'application/json',
           ...authHeaders(apiKey)
         },
+        signal: AbortSignal.timeout(PROBE_REQUEST_TIMEOUT_MS),
         body: JSON.stringify({
           model: settings.model,
           stream: true,
@@ -597,6 +605,7 @@ async function probeImageInput(
   try {
     await postChatCompletion(settings, fetchImpl, apiKey, {
       model,
+      max_tokens: 1,
       messages: [
         {
           role: 'user',
@@ -608,7 +617,8 @@ async function probeImageInput(
       ]
     })
     return true
-  } catch {
+  } catch (error) {
+    logger.warn(`Image input probe failed for model ${model}: ${errorMessage(error)}`)
     return false
   }
 }
@@ -669,6 +679,7 @@ async function postChatCompletion(
         'content-type': 'application/json',
         ...authHeaders(apiKey)
       },
+      signal: AbortSignal.timeout(PROBE_REQUEST_TIMEOUT_MS),
       body: JSON.stringify(body)
     }
   )

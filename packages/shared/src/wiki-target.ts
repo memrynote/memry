@@ -22,6 +22,8 @@
  * not a rewrite of it.
  */
 
+import { blankMarkdownCode } from './markdown-code.ts'
+
 export interface WikiTargetParts {
   /** The note half. Empty when the link addresses the note it sits in. */
   note: string
@@ -167,4 +169,67 @@ export async function resolveWikiTarget<T>(
 function headingAnchor(heading: string): string | null {
   if (!heading || isBlockReference(heading)) return null
   return heading
+}
+
+/**
+ * The notes a piece of markdown links to, each title once, in order.
+ * Matches [[Link Title]] and [[Link Title|Display Text]] patterns.
+ *
+ * `[[Note#Heading]]` yields `Note`: a heading link points at the note. Before
+ * that, the whole string went in as a title, resolved to nothing, and the note
+ * it named never listed the link as a backlink. The desktop index, the CLI
+ * graph and the text of HTML blocks all read links through this one function.
+ *
+ * The cost is the `Sprint #4` case: a note really called that is indexed here
+ * under `Sprint`. Navigation and hover still reach it — they fall back to the
+ * raw title against the database, which this function has no access to.
+ *
+ * Link syntax inside inline code or a fenced code block is not a link, so code
+ * is blanked before the scan. Links inside HTML comments still count.
+ */
+export function extractWikiLinks(content: string): string[] {
+  const links = new Set<string>()
+  for (const target of wikiLinkTargets(blankMarkdownCode(content))) {
+    const { note, heading } = splitWikiTarget(target)
+    // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
+    if (heading !== null && !note) continue
+    links.add(heading !== null ? note : target.trim())
+  }
+  return Array.from(links)
+}
+
+/**
+ * The targets `/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g` captures, found in linear
+ * time. The regex retries from every `[[` and rescans to the next `]` each
+ * time, so a run of unclosed `[[` took seconds; here each position's next `]`
+ * and next `]`-or-`|` are looked up once.
+ */
+function wikiLinkTargets(text: string): string[] {
+  const length = text.length
+  const nextClose = new Int32Array(length + 1).fill(length)
+  const nextStop = new Int32Array(length + 1).fill(length)
+  for (let at = length - 1; at >= 0; at--) {
+    const char = text[at]
+    nextClose[at] = char === ']' ? at : nextClose[at + 1]
+    nextStop[at] = char === ']' || char === '|' ? at : nextStop[at + 1]
+  }
+  const targets: string[] = []
+  let open = text.indexOf('[[')
+  while (open !== -1) {
+    const start = open + 2
+    const stop = nextStop[start]
+    let end = -1
+    if (stop > start && stop < length) {
+      const close = text[stop] === ']' ? stop : nextClose[stop + 1]
+      const aliased = text[stop] === '|'
+      if (text[close + 1] === ']' && (!aliased || close > stop + 1)) end = close + 2
+    }
+    if (end === -1) {
+      open = text.indexOf('[[', open + 1)
+      continue
+    }
+    targets.push(text.slice(start, stop))
+    open = text.indexOf('[[', end)
+  }
+  return targets
 }

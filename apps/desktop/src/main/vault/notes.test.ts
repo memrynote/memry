@@ -1005,6 +1005,34 @@ describe('notes operations', () => {
       expect(selfNote!.content.trimEnd()).toBe('I mention [[Self Renamed]] and [[Renamed Target]].')
     })
 
+    it('leaves a link inside an HTML block file as written when its target is renamed', async () => {
+      const target = await notes.createNote({ title: 'Block Target', content: 'Target body.' })
+      const source = await notes.createNote({ title: 'Block Source', content: 'Placeholder' })
+      const blockRef = `attachments/${source.id}/chart.html`
+      const blockHtml = '<p>Chart of [[Block Target]]</p>\n'
+      const blockPath = path.join(tempVault.path, blockRef)
+      fs.mkdirSync(path.dirname(blockPath), { recursive: true })
+      fs.writeFileSync(blockPath, blockHtml)
+      await notes.updateNote({ id: source.id, content: `![chart](${blockRef})` })
+      const sourceFile = path.join(tempVault.path, source.path)
+      const sourceRaw = fs.readFileSync(sourceFile, 'utf-8')
+      const { saveExtractedPart } = await import('@main/database/queries/extracted-text')
+      saveExtractedPart(
+        testDb.db,
+        { noteId: source.id, source: 'chart.html' },
+        1,
+        'html',
+        'Chart of [[Block Target]]'
+      )
+      await projections.flushProjectionEvents()
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.renameNote(target.id, 'Renamed Block Target')
+
+      expect(fs.readFileSync(blockPath, 'utf-8')).toBe(blockHtml)
+      expect(fs.readFileSync(sourceFile, 'utf-8')).toBe(sourceRaw)
+    })
+
     it('T364: generates unique path on collision', async () => {
       await notes.createNote({
         title: 'Existing Name',
@@ -2068,6 +2096,41 @@ describe('notes operations', () => {
       // Fixture config sets `defaultNoteFolder: 'notes'`; an empty vault-relative
       // target means "wherever a folderless new note would go", not "vault/notes".
       expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
+    })
+
+    it('keeps the checkbox lines of imported markdown plain when asked (#2759)', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      const proseBytes = Buffer.from('# Prose\r\n\r\nNo boxes here.\r\n', 'utf8')
+      const prosePath = path.join(tempVault.path, 'prose.md')
+      const latin1Bytes = Buffer.from('- [ ] Caf\xe9\n', 'latin1')
+      const latin1Path = path.join(tempVault.path, 'latin1.md')
+      fs.writeFileSync(listPath, '---\ntags: [shop]\n---\n- [ ] Buy milk\r\n- [x] Call Ana\r\n')
+      fs.writeFileSync(prosePath, proseBytes)
+      fs.writeFileSync(latin1Path, latin1Bytes)
+
+      const result = await notes.importFiles({
+        sourcePaths: [listPath, prosePath, latin1Path],
+        targetFolder: 'notes',
+        options: { plainChecklists: true }
+      })
+
+      const [list, prose, latin1] = result.importedFiles.map((file) =>
+        fs.readFileSync(file.destPath)
+      )
+      expect(list.toString('utf8')).toBe(
+        '---\ntags: [shop]\n---\n- [ ] Buy milk {check}\r\n- [x] Call Ana {check}\r\n'
+      )
+      expect(prose.equals(proseBytes)).toBe(true)
+      expect(latin1.equals(latin1Bytes)).toBe(true)
+    })
+
+    it('copies imported markdown byte for byte without the option', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      fs.writeFileSync(listPath, '- [ ] Buy milk\n')
+
+      const result = await notes.importFiles({ sourcePaths: [listPath], targetFolder: 'notes' })
+
+      expect(fs.readFileSync(result.importedFiles[0].destPath, 'utf8')).toBe('- [ ] Buy milk\n')
     })
 
     it('resolves an imported file to its indexed id from the absolute destPath (#1998)', async () => {

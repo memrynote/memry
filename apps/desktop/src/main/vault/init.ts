@@ -64,6 +64,20 @@ export function isVaultInitialized(vaultPath: string): boolean {
 }
 
 /**
+ * The vault is mounted: the database file it holds is there. A removable or
+ * network vault that is away for a moment, or a vault folder renamed away,
+ * hides every file at once. The `.memry` folder alone proves nothing, since a
+ * writer can recreate it at the path of a vault that is away.
+ */
+export function isVaultReachable(vaultPath: string): boolean {
+  try {
+    return fs.statSync(getDataDbPath(vaultPath)).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
  * Check if a path exists and is a directory
  */
 export function isValidDirectory(dirPath: string): boolean {

@@ -77,6 +77,7 @@ import {
   EnsurePropertyDefinitionSchema,
   ExportNoteSchema,
   ImportFilesSchema,
+  PlainChecklistsOptionSchema,
   NoteCreateSchema,
   NoteGetPositionsSchema,
   NoteListSchema,
@@ -407,7 +408,8 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   },
   'notes.importFiles': {
     sourcePaths: ImportFilesSchema.shape.sourcePaths,
-    targetFolder: ImportFilesSchema.shape.targetFolder
+    targetFolder: ImportFilesSchema.shape.targetFolder,
+    options: ImportFilesSchema.shape.options
   },
   'notes.setLocalOnly': {
     id: SetLocalOnlySchema.shape.id,
@@ -489,7 +491,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
       actualTags: z.array(z.string()).optional()
     })
   },
-  'inbox.convertToNote': { itemId: text },
+  'inbox.convertToNote': { itemId: text, options: PlainChecklistsOptionSchema.optional() },
   'inbox.convertToTask': {
     itemId: text,
     // filing.convertToTask reads input?.projectId and the other keys.
