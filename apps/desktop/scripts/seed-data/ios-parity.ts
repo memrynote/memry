@@ -5,6 +5,7 @@ import { serializeDateMentionToken } from '@memry/shared/date-mention'
 import type { NoteFile } from '../seed-vault/file-writer'
 import { CANVASES } from './canvas'
 import { seedDateOnly, seedISOAt, seedPastISOAt } from './date'
+import { generateNoteId } from '../../src/main/lib/id'
 import { NOTE_IDS } from './notes'
 import { taskIdForKey } from './tasks'
 
@@ -80,6 +81,8 @@ Colours: <span style="color:red">red</span> <span style="color:blue">blue</span>
 ## 3. Inline nodes
 
 Link: [memry.app](https://memry.app). Wiki link: [[Dune]]. Wiki link with alias: [[Deep Work|Cal Newport book]]. Broken wiki link: [[A Note That Does Not Exist]].
+
+Path wiki links (two notes are titled Roadmap, so autocomplete writes the folder): [[parity-links/Roadmap]], [[parity-links/archive/Roadmap#Goals|Archived roadmap goals]], [[/parity-links/archive/Roadmap.md]].
 
 Tags: #ios-parity #testing. Link mention: ((mention:https%3A%2F%2Fgithub.com%2Fmemrynote%2Fmemry)).
 
@@ -298,6 +301,32 @@ export const IOS_PARITY_NOTE: NoteFile = {
   body: IOS_PARITY_BODY,
   modified: MODIFIED
 }
+
+/**
+ * Two notes that share the title `Roadmap` in different folders. The parity
+ * note links to each by vault path (#2562), so path resolution, heading
+ * scroll, move-time link rewrite and duplicate-title autocomplete all have
+ * something real to act on.
+ */
+export const IOS_PARITY_LINK_TARGETS: { note: NoteFile; metadata: typeof IOS_PARITY_METADATA }[] = [
+  { path: 'parity-links/Roadmap.md', emoji: '🗺️', goal: 'Ship path links.' },
+  { path: 'parity-links/archive/Roadmap.md', emoji: '🗄️', goal: 'Ship heading links.' }
+].map(({ path, emoji, goal }) => ({
+  note: {
+    relativePath: path,
+    frontmatter: { tags: ['ios-parity'] },
+    body: `Linked by path from iOS Parity Test.\n\n## Goals\n\n${goal}\n`,
+    modified: MODIFIED
+  },
+  metadata: {
+    id: generateNoteId(),
+    path,
+    title: 'Roadmap',
+    emoji,
+    createdAt: seedPastISOAt(-6, 10, 0),
+    modifiedAt: MODIFIED
+  }
+}))
 
 /** Copies the note's attachments into `<vault>/attachments/<noteId>/`. */
 export function writeIosParityAttachments(vaultPath: string): number {
