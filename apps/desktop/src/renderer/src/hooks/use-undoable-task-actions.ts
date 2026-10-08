@@ -4,7 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getDefaultTodoStatus, getDefaultDoneStatus, formatDateShort } from '@/lib/task-utils'
-import { getSubtasks } from '@/lib/subtask-utils'
+import { buildTaskTree } from '@memry/domain-tasks/tree'
 import { completeRepeatingTask } from '@memry/domain-tasks/parsing'
 import { generateTaskId } from '@/data/task-model'
 import { createLogger } from '@/lib/logger'
@@ -12,6 +12,7 @@ import { createLogger } from '@/lib/logger'
 const _log = createLogger('Hook:UndoableTaskActions')
 
 export const UNDOABLE_FIELDS = new Set([
+  'parentId',
   'priority',
   'statusId',
   'dueDate',
@@ -34,7 +35,8 @@ export interface UseUndoableTaskActionsOptions {
 export interface UseUndoableTaskActionsReturn {
   /** Resolves with the stored task id when `addTask` reports one, else null. */
   createTask: (task: Task) => Promise<string | null>
-  deleteTask: (taskId: string) => void
+  /** `subtasks`: what happens to the task's subtasks (default: deleted with it). */
+  deleteTask: (taskId: string, subtasks?: 'keep' | 'delete') => void
   completeTask: (taskId: string) => void
   uncompleteTask: (taskId: string) => void
   archiveTask: (taskId: string) => void
@@ -51,6 +53,7 @@ export const useUndoableTaskActions = ({
   removeUndoEntry
 }: UseUndoableTaskActionsOptions): UseUndoableTaskActionsReturn => {
   const { t } = useT('tasks')
+  const { t: tCommon } = useT('common')
 
   const findTask = useCallback(
     (taskId: string): Task | undefined => tasks.find((t) => t.id === taskId),
@@ -78,30 +81,68 @@ export const useUndoableTaskActions = ({
   // ========== DELETE ==========
 
   const deleteTaskWithUndo = useCallback(
-    (taskId: string): void => {
+    (taskId: string, subtasks: 'keep' | 'delete' = 'delete'): void => {
       const task = findTask(taskId)
       if (!task) return
 
       const snapshot = { ...task }
+      const tree = buildTaskTree(tasks)
+      const children = tree.childrenOf(taskId)
+      // Parent before child, so an undo can recreate them top-down.
+      const branch =
+        subtasks === 'delete'
+          ? tree
+              .descendantIds(taskId)
+              .map((id) => findTask(id))
+              .filter((t): t is Task => t !== undefined)
+          : []
+
+      if (subtasks === 'keep') {
+        // The direct subtasks take the deleted task's place, one level up.
+        for (const child of children) updateTask(child.id, { parentId: task.parentId })
+      } else {
+        for (const descendant of [...branch].reverse()) deleteTask(descendant.id)
+      }
       deleteTask(taskId)
 
-      const undoId = registerUndo(`Delete "${task.title}"`, () => {
-        void addTask(snapshot)
-      })
+      // Recreating gives new ids, so children are re-pointed at the new parent.
+      const undo = async (): Promise<void> => {
+        const newId = await addTask(snapshot)
+        if (!newId) return
+        if (subtasks === 'keep') {
+          for (const child of children) updateTask(child.id, { parentId: newId })
+          return
+        }
+        const ids = new Map([[taskId, newId]])
+        for (const descendant of branch) {
+          const parentId = descendant.parentId ? (ids.get(descendant.parentId) ?? null) : null
+          const recreated = await addTask({ ...descendant, parentId, subtaskIds: [] })
+          if (recreated) ids.set(descendant.id, recreated)
+        }
+      }
 
-      toast.success(t('toasts.deleted'), {
-        description: `"${task.title}" has been deleted.`,
-        duration: 10000,
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            removeUndoEntry(undoId)
-            void addTask(snapshot)
+      const undoId = registerUndo(`Delete "${task.title}"`, () => void undo())
+
+      toast.success(
+        children.length === 0
+          ? t('toasts.deleted')
+          : subtasks === 'keep'
+            ? t('toasts.deletedKeepSubtasks', { title: task.title })
+            : t('toasts.deletedBranch', { title: task.title, count: branch.length }),
+        {
+          description: children.length === 0 ? `"${task.title}" has been deleted.` : undefined,
+          duration: 10000,
+          action: {
+            label: tCommon('action.undo'),
+            onClick: () => {
+              removeUndoEntry(undoId)
+              void undo()
+            }
           }
         }
-      })
+      )
     },
-    [findTask, deleteTask, addTask, registerUndo, removeUndoEntry, t]
+    [findTask, tasks, deleteTask, addTask, updateTask, registerUndo, removeUndoEntry, t, tCommon]
   )
 
   // ========== COMPLETE ==========
@@ -115,17 +156,21 @@ export const useUndoableTaskActions = ({
       if (!project) return
 
       const currentStatus = project.statuses.find((s) => s.id === task.statusId)
-      if (!currentStatus) return
-
-      if (currentStatus.type === 'done') {
+      // A task whose status is gone (`status_id` is ON DELETE SET NULL) is still
+      // completable; `completedAt` says whether it already is.
+      if (currentStatus?.type === 'done' || task.completedAt) {
         return
       }
 
       const doneStatus = getDefaultDoneStatus(project)
       const completedAt = new Date()
 
-      const subtasks = getSubtasks(taskId, tasks)
-      const incompleteSubtasks = subtasks.filter((s) => !s.completedAt)
+      // The whole branch, at any depth: a done row never hides open work.
+      const byId = new Map(tasks.map((t) => [t.id, t]))
+      const incompleteSubtasks = buildTaskTree(tasks)
+        .descendantIds(taskId)
+        .map((id) => byId.get(id))
+        .filter((s): s is Task => s !== undefined && !s.completedAt)
 
       const subtaskSnapshots = incompleteSubtasks.map((s) => ({
         id: s.id,
@@ -216,13 +261,7 @@ export const useUndoableTaskActions = ({
           })
         })
 
-        if (incompleteSubtasks.length > 0) {
-          toast.success(t('toasts.completed'), {
-            description: `Also marked ${incompleteSubtasks.length} subtask(s) as done.`
-          })
-        }
-
-        registerUndo(`Complete "${task.title}"`, () => {
+        const undo = (): void => {
           updateTask(taskId, {
             statusId: task.statusId,
             completedAt: null
@@ -230,10 +269,38 @@ export const useUndoableTaskActions = ({
           subtaskSnapshots.forEach((snap) => {
             updateTask(snap.id, { statusId: snap.statusId, completedAt: snap.completedAt })
           })
-        })
+        }
+        const undoId = registerUndo(`Complete "${task.title}"`, undo)
+
+        if (incompleteSubtasks.length > 0) {
+          toast.success(
+            t('toasts.completedBranch', { title: task.title, count: incompleteSubtasks.length }),
+            {
+              duration: 10000,
+              action: {
+                label: tCommon('action.undo'),
+                onClick: () => {
+                  removeUndoEntry(undoId)
+                  undo()
+                }
+              }
+            }
+          )
+        }
       }
     },
-    [findTask, findProject, tasks, updateTask, addTask, deleteTask, registerUndo, t]
+    [
+      findTask,
+      findProject,
+      tasks,
+      updateTask,
+      addTask,
+      deleteTask,
+      registerUndo,
+      removeUndoEntry,
+      t,
+      tCommon
+    ]
   )
 
   // ========== UNCOMPLETE ==========
@@ -255,14 +322,32 @@ export const useUndoableTaskActions = ({
         completedAt: null
       })
 
+      // Reopening work under a done task reopens that task too, all the way up.
+      const reopenedAncestors = buildTaskTree(tasks)
+        .ancestorIds(taskId)
+        .map((id) => findTask(id))
+        .filter((ancestor): ancestor is Task => ancestor !== undefined && !!ancestor.completedAt)
+      for (const ancestor of reopenedAncestors) {
+        updateTask(ancestor.id, {
+          statusId: todoStatus?.id || ancestor.statusId,
+          completedAt: null
+        })
+      }
+
       registerUndo(`Uncomplete "${task.title}"`, () => {
         updateTask(taskId, {
           statusId: prevStatusId,
           completedAt: prevCompletedAt
         })
+        for (const ancestor of reopenedAncestors) {
+          updateTask(ancestor.id, {
+            statusId: ancestor.statusId,
+            completedAt: ancestor.completedAt
+          })
+        }
       })
     },
-    [findTask, findProject, updateTask, registerUndo]
+    [findTask, findProject, tasks, updateTask, registerUndo]
   )
 
   // ========== ARCHIVE ==========
@@ -302,15 +387,17 @@ export const useUndoableTaskActions = ({
       }
 
       const fieldLabel =
-        undoableKeys[0] === 'priority'
-          ? `Priority → ${String(updates.priority ?? '')}`
-          : undoableKeys[0] === 'statusId'
-            ? 'Status changed'
-            : undoableKeys[0] === 'dueDate'
-              ? 'Due date changed'
-              : undoableKeys[0] === 'projectId'
-                ? 'Moved to project'
-                : 'Task updated'
+        undoableKeys[0] === 'parentId'
+          ? 'Moved'
+          : undoableKeys[0] === 'priority'
+            ? `Priority → ${String(updates.priority ?? '')}`
+            : undoableKeys[0] === 'statusId'
+              ? 'Status changed'
+              : undoableKeys[0] === 'dueDate'
+                ? 'Due date changed'
+                : undoableKeys[0] === 'projectId'
+                  ? 'Moved to project'
+                  : 'Task updated'
 
       registerUndo(fieldLabel, () => {
         updateTask(taskId, previousValues)

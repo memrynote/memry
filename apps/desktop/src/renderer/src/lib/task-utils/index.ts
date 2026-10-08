@@ -90,6 +90,7 @@ export {
   filterByHasTime,
   sortTasksAdvanced,
   applyFiltersAndSort,
+  applyFiltersAndSortWithContext,
   hasActiveFilters,
   countActiveFilters
 } from './task-filters'

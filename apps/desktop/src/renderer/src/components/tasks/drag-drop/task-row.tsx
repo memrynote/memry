@@ -16,6 +16,8 @@ import type { SectionDragState } from './list-section-drag-state'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
+import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 interface TaskRowProps {
   task: Task
@@ -133,6 +135,7 @@ const TaskRowComponent = ({
 }: TaskRowProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
   const isOverlay = renderMode === 'overlay'
+  const tree = useSubtaskTree()
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
   const {
@@ -181,6 +184,12 @@ const TaskRowComponent = ({
   }
 
   const handleRowKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.shiftKey && (e.key === 'M' || e.key === 'm') && tree) {
+      e.preventDefault()
+      e.stopPropagation()
+      tree.openMoveUnder(task.id)
+      return
+    }
     if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(task.id)
@@ -220,7 +229,7 @@ const TaskRowComponent = ({
               '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
             ]
           : [
-              'group group/row relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+              'group group/row group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
               'rounded-md hover:bg-accent/60',
               onClick && 'focus-visible:outline-none',
 
@@ -338,6 +347,8 @@ const TaskRowComponent = ({
       )}
 
       {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+
+      {!isOverlay && <AddSubtaskButton taskId={task.id} />}
 
       {!isOverlay && droppedPriority && (
         <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">

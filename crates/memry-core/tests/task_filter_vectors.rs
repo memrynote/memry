@@ -14,10 +14,10 @@ use memry_core::domain::calendar::{CivilDate, LocalDateTime};
 use memry_core::domain::task_filter::{
     CompletionFilter, DueDateFilter, FilterProject, FilterStatus, FilterTask, HasTimeFilter,
     Priority, RepeatFilter, SortDirection, SortField, StatusType, TaskFilters, TaskGroup,
-    TaskNoteInfo, TaskSort, apply_filters_and_sort, count_active_filters, filter_by_completion,
-    filter_by_due_date_range, filter_by_has_time, filter_by_priorities, filter_by_projects,
-    filter_by_repeat_type, filter_by_search, filter_by_statuses, filter_by_tags,
-    group_tasks_for_sort, has_active_filters, sort_tasks_advanced,
+    TaskNoteInfo, TaskSort, apply_filters_and_sort_with_context, count_active_filters,
+    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_priorities,
+    filter_by_projects, filter_by_repeat_type, filter_by_search, filter_by_statuses,
+    filter_by_tags, group_tasks_for_sort, has_active_filters, sort_tasks_advanced,
 };
 use serde_json::{Value, json};
 use support::vector_file;
@@ -343,7 +343,7 @@ fn applied() {
         let filters = TaskFilters::from_json(&case["filters"]);
         let sort = TaskSort::from_json(&case["sort"]).expect("sort");
         let week_starts_on = case["weekStartsOn"].as_u64().expect("weekStartsOn");
-        let result = apply_filters_and_sort(
+        let (result, context) = apply_filters_and_sort_with_context(
             &f.tasks,
             &filters,
             &sort,
@@ -351,8 +351,11 @@ fn applied() {
             f.named_now(&text(case, "now")),
             u32::try_from(week_starts_on).expect("small week start"),
         );
+        let mut context: Vec<&str> = context.into_iter().collect();
+        context.sort_unstable();
         let actual = json!({
             "taskIds": ids(&result),
+            "contextIds": context,
             "hasActiveFilters": has_active_filters(&filters),
             "countActiveFilters": count_active_filters(&filters),
         });

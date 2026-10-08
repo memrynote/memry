@@ -51,7 +51,8 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
     priority: updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
     projectId: updates.projectId,
     statusId: updates.statusId ?? undefined,
-    parentId: updates.parentId ?? undefined,
+    // `null` makes the task top level, so it reaches main as `null`.
+    parentId: 'parentId' in updates ? updates.parentId : undefined,
     dueDate: 'dueDate' in updates ? toDateKey(updates.dueDate) : undefined,
     startDate: 'startDate' in updates ? toDateKey(updates.startDate) : undefined,
     dueTime: 'dueTime' in updates ? updates.dueTime : undefined,

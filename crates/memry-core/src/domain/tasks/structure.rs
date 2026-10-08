@@ -1,11 +1,10 @@
 //! Where a task sits: its project, status, parent and position, and deleting
 //! a task that has subtasks.
 //!
-//! Two invariants from desktop's `validateSubtaskRelationship` hold across
-//! every write here: subtasks are **one level deep**, and a subtask lives in
-//! its parent's project. So moving a parent to another project moves its
-//! subtasks with it, and a subtask is only attached to a top-level task of
-//! its own project.
+//! One invariant from desktop's `checkParent` holds across every write here:
+//! a subtask lives in its parent's project, at any depth. So moving a task to
+//! another project moves its whole branch with it, and a task is only attached
+//! to a task of its own project outside its own branch.
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
@@ -19,8 +18,8 @@ use super::super::projects;
 use super::batch::{Batch, TaskWrite};
 use super::create::require_parent;
 use super::model::{
-    ProjectStatuses, StatusKind, StoredTask, find_live, load_live, status_by_id, status_kind,
-    subtask_ids,
+    ProjectStatuses, StatusKind, StoredTask, descendant_ids, find_live, load_live, status_by_id,
+    status_kind, subtask_ids,
 };
 use super::{edit, nullable};
 
@@ -29,7 +28,8 @@ use super::{edit, nullable};
 pub enum SubtaskDisposal {
     /// The subtasks are deleted with the parent.
     Delete,
-    /// The subtasks become top-level tasks (`parentId: null`).
+    /// The direct subtasks move up into the deleted task's place: top level
+    /// for a top-level task, its parent otherwise.
     Promote,
 }
 
@@ -88,13 +88,6 @@ pub fn set_parent(
     if let Some(parent_id) = parent_id {
         let task = load_live(conn, task_id)?;
         require_parent(conn, task_id, parent_id, task.project_id())?;
-        if !subtask_ids(conn, task_id)?.is_empty() {
-            return Err(StorageError::Invalid {
-                what: format!(
-                    "task {task_id} cannot be a subtask of {parent_id}: it has subtasks of its own"
-                ),
-            });
-        }
     }
     edit(
         conn,
@@ -153,11 +146,9 @@ pub(super) fn move_in(
     }
     let target = ProjectStatuses::load(batch.conn(), project_id)?;
     move_one(batch, task, project_id, &target)?;
-    if task.parent_id().is_none() {
-        for subtask_id in subtask_ids(batch.conn(), &task.id)? {
-            let subtask = load_live(batch.conn(), &subtask_id)?;
-            move_one(batch, &subtask, project_id, &target)?;
-        }
+    for subtask_id in descendant_ids(batch.conn(), &task.id)? {
+        let subtask = load_live(batch.conn(), &subtask_id)?;
+        move_one(batch, &subtask, project_id, &target)?;
     }
     Ok(())
 }
@@ -217,11 +208,19 @@ pub(super) fn delete_in(
     if find_live(batch.conn(), task_id)?.is_none() {
         return Ok(());
     }
-    for subtask_id in subtask_ids(batch.conn(), task_id)? {
-        match disposal {
-            SubtaskDisposal::Delete => batch.delete(&subtask_id)?,
-            SubtaskDisposal::Promote => {
-                batch.edit(&subtask_id, vec![("parentId", Value::Null)])?;
+    match disposal {
+        // The whole branch, deepest rows included.
+        SubtaskDisposal::Delete => {
+            for descendant_id in descendant_ids(batch.conn(), task_id)? {
+                batch.delete(&descendant_id)?;
+            }
+        }
+        // The direct subtasks take the deleted task's place, one level up.
+        SubtaskDisposal::Promote => {
+            let parent = find_live(batch.conn(), task_id)?
+                .and_then(|task| task.parent_id().map(str::to_owned));
+            for subtask_id in subtask_ids(batch.conn(), task_id)? {
+                batch.edit(&subtask_id, vec![("parentId", json!(parent))])?;
             }
         }
     }

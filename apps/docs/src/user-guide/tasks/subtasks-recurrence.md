@@ -6,19 +6,34 @@ Nest tasks under parents, and schedule repeating tasks.
 
 ## Subtasks
 
-Tasks can have multiple levels of subtasks. Each parent shows a progress bar and a small badge with the completion ratio (e.g. `3 / 7`).
+A task can have subtasks. A parent shows a progress badge with the completion ratio of its direct subtasks (e.g. `1/4`); subtasks further down count toward their own parent, not the top one.
 
 ### Adding Subtasks
 
-| How                          | Where                      |
-| ---------------------------- | -------------------------- |
-| Inline **+** on a parent row | List or kanban view        |
-| Indent during quick-add      | Quick-add input            |
-| Drag a task onto a parent    | List or kanban (re-parent) |
+| How                                      | Where              |
+| ---------------------------------------- | ------------------ |
+| Hover a row and click **+**              | List view          |
+| **Add sub-issue** at the end of the list | Task detail drawer |
+| Indent a checkbox under a task           | A note             |
 
-### Drag-Drop Re-Parenting
+The **+** opens a draft row under the task. Type a title and press <kbd>Enter</kbd> to save it and start the next one, or <kbd>Esc</kbd> to close the draft. The draft names the task it will land in.
 
-Drag a subtask onto another parent to move it. Drag to the top level to **promote** it to a parent task.
+### Subtasks at any depth
+
+With **Settings → Modules → Tasks → Subtasks inside subtasks** turned on, a subtask can have subtasks of its own, as deep as you need.
+
+- In a draft row, <kbd>Tab</kbd> moves the draft under the row above it and <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it out one level.
+- Each level indents a step and draws a thin guide line. Past five levels the indent stops growing, so long titles keep their width.
+- Select a parent row and press <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to **zoom into** it: the list shows only that branch, with the parent as the page title. The path above the title walks back, and <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>↑</kbd> goes up one level.
+- The task drawer shows the path to the task above its title. Each part opens that task in the drawer, and a subtask's title opens it in place, so the drawer moves one level at a time.
+
+Devices on older versions of memrynote show only the first level until they update.
+
+### Moving a Task Under Another
+
+Select a row and press <kbd>Shift</kbd>+<kbd>M</kbd> for **Move under…**. It lists the project as a tree; pick the new parent and press <kbd>Enter</kbd>, or <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to make the task top level. The task's own subtasks are greyed out, because a task cannot go inside its own branch. The whole branch moves with it.
+
+In a list of subtasks you can also drag a row sideways: a step to the right nests it under the row above, a step to the left moves it out one level. A label on the row says where it will land. <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the move.
 
 ### Independence
 
@@ -34,9 +49,15 @@ They don't inherit anything from the parent. This is intentional — many real w
 
 ### Completion Rules
 
-Marking a parent done **does not** auto-complete subtasks. You decide; memrynote doesn't.
+Completing a parent completes every open task under it, at every level, and a toast offers **Undo**. Reopening a subtask whose parent is done reopens the parent too, so a finished task never hides open work. Completing the last open subtask of a parent completes the parent as well, with an **Undo** in the toast.
 
-If you want strict cascade behavior, use bulk-complete from [Bulk Actions](/user-guide/tasks/bulk-actions).
+### Deleting a Parent
+
+Deleting a task that has subtasks asks once. **Keep subtasks** moves its direct subtasks up into its place, under its own parent if it has one. **Delete all** removes the whole branch. Both can be undone from the toast.
+
+### Filters and Kanban
+
+When a filter matches a subtask, the tasks above it stay in the list in a lighter colour so the match keeps its place. Kanban shows top-level tasks only; a card with subtasks shows its progress and its next open subtask.
 
 ## Recurrence
 

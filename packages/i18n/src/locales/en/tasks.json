@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Due date cleared for # subtask} other {Due date cleared for # subtasks}}",
       "prioritySet": "{count, plural, one {Priority set for # subtask} other {Priority set for # subtasks}}",
       "deleted": "{count, plural, one {# subtask deleted} other {# subtasks deleted}}"
-    }
+    },
+    "completedBranch": "Completed {title} and {count, plural, one {# open subtask} other {# open subtasks}}",
+    "deletedKeepSubtasks": "Deleted {title} and kept its subtasks",
+    "deletedBranch": "Deleted {title} and {count, plural, one {# subtask} other {# subtasks}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -1009,5 +1012,37 @@
     "indigo": "Indigo",
     "purple": "Purple",
     "pink": "Pink"
+  },
+  "subtaskTree": {
+    "addSubtask": "Add subtask",
+    "dropInto": "Into {title}",
+    "dropOut": "Out one level",
+    "draftPlaceholder": "Subtask title",
+    "draftLabel": "New subtask in {title}",
+    "draftIn": "in {title}",
+    "toggleComplete": "Complete {title}",
+    "moveUnder": {
+      "title": "Move under",
+      "placeholder": "Move under…",
+      "empty": "No matching task",
+      "topLevel": "Top level of {project}",
+      "thisTask": "This task",
+      "currentParent": "Current parent",
+      "movesOne": "Moves {title}",
+      "movesBranch": "Moves {title} and {count, plural, one {# subtask} other {# subtasks}}",
+      "keys": "↵ Move here · ⌘↵ Top level · esc Close"
+    },
+    "zoom": {
+      "path": "Task path",
+      "up": "Up one level",
+      "upShortcut": "Up one level (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Delete {title}?",
+      "summary": "{direct, plural, one {It has # subtask} other {It has # subtasks}}{deeper, plural, =0 {} one { and # more under it} other { and # more under them}}{open, plural, =0 {, all done.} other {, # still open.}}",
+      "cancel": "Cancel",
+      "deleteAll": "Delete all",
+      "keepSubtasks": "Keep subtasks"
+    }
   }
 }

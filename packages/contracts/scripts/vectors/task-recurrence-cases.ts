@@ -267,6 +267,11 @@ export const WINDOW_TASKS: readonly WindowTask[] = [
     archivedAt: '2026-01-13T10:00:00'
   }),
   t('sub-due-today-of-undated', { parentId: 'undated', dueDate: '2026-01-14' }),
+  // Any depth: a grandchild rides with its top-level task.
+  t('subsub-of-parent-today', { parentId: 'sub-of-parent-today' }),
+  // A parent loop from two devices re-parenting at once: the smaller id leads.
+  t('loop-a', { parentId: 'loop-b', dueDate: '2026-01-14' }),
+  t('loop-b', { parentId: 'loop-a' }),
   t('parent-p2-tomorrow', { projectId: 'p2', statusId: 'p2-todo', dueDate: '2026-01-15' }),
   t('sub-of-p2-parent', { projectId: 'p2', statusId: 'p2-todo', parentId: 'parent-p2-tomorrow' }),
   t('done-sunday', {

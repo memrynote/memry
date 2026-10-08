@@ -10,6 +10,8 @@ import {
   shouldSuppressCrossSectionListTransform
 } from './list-section-drag-state'
 import type { TaskRowProps } from './task-row'
+import { SubtaskDraftRow } from '@/components/tasks/subtask-tree/subtask-draft-row'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 interface SortableTaskRowProps extends Omit<
   TaskRowProps,
@@ -49,6 +51,7 @@ export const SortableTaskRow = ({
   })
 
   const { dragState } = useDragContext()
+  const tree = useSubtaskTree()
   const droppedPriorities = useDroppedPriorities()
   const isJustDropped = dragState.lastDroppedId === task.id
   const droppedPriority = droppedPriorities.get(task.id) ?? null
@@ -88,6 +91,10 @@ export const SortableTaskRow = ({
         className={className}
         {...rest}
       />
+      {/* A task's first subtask is drafted here; with one, it renders as a parent row. */}
+      {tree?.draftParentId === task.id && (
+        <SubtaskDraftRow parent={task} siblings={[]} depth={1} grandparent={null} />
+      )}
     </div>
   )
 }

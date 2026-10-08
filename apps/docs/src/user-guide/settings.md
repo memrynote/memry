@@ -281,6 +281,10 @@ Show or hide journal sidebar panes:
 - **Default Sort Order** — manual, due date, priority, or created date
 - **Default View** — which scope the Tasks page opens on (All, Today, Tomorrow, or Next 7 days). Defaults to All.
 
+### Subtasks
+
+**Subtasks inside subtasks** — off by default. Turn it on to nest subtasks at any depth: a subtask can then have subtasks of its own. It applies to this device only. Devices running an older version of memrynote show only the first level of subtasks until they update; nothing is lost, the deeper tasks reappear once they do. See [Subtasks at any depth](/user-guide/tasks/subtasks-recurrence#subtasks-at-any-depth).
+
 ### Inbox
 
 **Stale Inbox Days** — number of days a task can sit in the inbox before being flagged stale (1–90).

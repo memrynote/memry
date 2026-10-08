@@ -7,6 +7,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { useTasksContext } from '@/contexts/tasks'
@@ -16,6 +17,7 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
+  ACCENT_SWITCH,
   COMPACT_SELECT,
   SEGMENTED,
   SEGMENT_ITEM
@@ -76,6 +78,14 @@ export function TasksSettings() {
       if (isNaN(days) || days < 1 || days > 90) return
       const success = await updateSettings({ staleInboxDays: days })
       if (!success) toast.error(t('tasks.staleInbox.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleNestedSubtasksChange = useCallback(
+    async (nestedSubtasks: boolean) => {
+      const success = await updateSettings({ nestedSubtasks })
+      if (!success) toast.error(t('tasks.nestedSubtasks.error'))
     },
     [t, updateSettings]
   )
@@ -161,6 +171,19 @@ export function TasksSettings() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('tasks.groups.subtasks')}>
+        <SettingRow
+          label={t('tasks.nestedSubtasks.label')}
+          description={t('tasks.nestedSubtasks.description')}
+        >
+          <Switch
+            checked={settings.nestedSubtasks}
+            onCheckedChange={(checked) => void handleNestedSubtasksChange(checked)}
+            className={ACCENT_SWITCH}
+          />
         </SettingRow>
       </SettingsGroup>
 

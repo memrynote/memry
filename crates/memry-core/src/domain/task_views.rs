@@ -40,6 +40,7 @@ use rusqlite::{Connection, params};
 use crate::api::errors::StorageError;
 use crate::domain::calendar::{CivilDate, LocalDateTime};
 use crate::domain::notes::failed;
+use crate::domain::task_tree::{TaskTree, TreeNode};
 
 /// One task as the view predicates read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,19 +112,27 @@ pub struct TabCounts {
     pub next7: u32,
 }
 
-/// `includeSubtasksForMatchingParents`: the matched tasks, plus every subtask
-/// of one from `all`, in `all`'s order.
+/// `includeSubtasksForMatchingParents`: the matched tasks, plus every task
+/// below one of them at any depth, from `all`, in `all`'s order.
 fn with_subtasks<'a>(matching: &[&'a ViewTask], all: &'a [ViewTask]) -> Vec<&'a ViewTask> {
-    let ids: HashSet<&str> = matching.iter().map(|task| task.id.as_str()).collect();
+    let tree = TaskTree::build(all);
+    let mut ids: HashSet<&str> = HashSet::new();
+    for task in matching {
+        ids.insert(task.id.as_str());
+        ids.extend(tree.descendant_ids(&task.id));
+    }
     all.iter()
-        .filter(|task| {
-            ids.contains(task.id.as_str())
-                || task
-                    .parent_id
-                    .as_deref()
-                    .is_some_and(|parent| ids.contains(parent))
-        })
+        .filter(|task| ids.contains(task.id.as_str()))
         .collect()
+}
+
+impl TreeNode for ViewTask {
+    fn node_id(&self) -> &str {
+        &self.id
+    }
+    fn node_parent(&self) -> Option<&str> {
+        self.parent_id.as_deref()
+    }
 }
 
 /// `getFilteredTasks`: a view or a project, over non-archived tasks.
@@ -155,9 +164,10 @@ pub fn filtered<'a>(
 fn view_matches(live: &[ViewTask], view: &str, now: LocalDateTime) -> HashSet<String> {
     let today = now.date();
     let week_from_now = today.add_days(7);
+    let tree = TaskTree::build(live);
     let incomplete_top: Vec<&ViewTask> = live
         .iter()
-        .filter(|task| !task.done && task.is_top_level())
+        .filter(|task| !task.done && tree.is_root(&task.id))
         .collect();
     let due_day = |task: &ViewTask| task.due.map(LocalDateTime::date);
     let matching: Vec<&ViewTask> = match view {
@@ -182,7 +192,7 @@ fn view_matches(live: &[ViewTask], view: &str, now: LocalDateTime) -> HashSet<St
         }
         "completed" => live
             .iter()
-            .filter(|task| task.done && task.is_top_level())
+            .filter(|task| task.done && tree.is_root(&task.id))
             .collect(),
         _ => incomplete_top,
     };
@@ -202,8 +212,9 @@ pub fn in_due_window(tasks: &[ViewTask], window: DueWindow, now: LocalDateTime) 
 
     let mut overdue = Vec::new();
     let mut in_window = Vec::new();
+    let tree = TaskTree::build(tasks);
     for task in tasks {
-        if task.done || !task.is_top_level() || task.is_archived() {
+        if task.done || !tree.is_root(&task.id) || task.is_archived() {
             continue;
         }
         let due_day = task.due.map(LocalDateTime::date);

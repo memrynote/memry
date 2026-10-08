@@ -15,6 +15,7 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { applyTaskUpdate } from '@/contexts/tasks/apply-task-update'
 import { priorityReverseMap, toServiceRepeatConfig, toTaskUpdateInput } from './task-update-input'
 import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 
@@ -348,7 +349,12 @@ export function useTaskWorkspaceMutations() {
 
   const updateTask = useCallback(
     async (taskId: string, updates: Partial<UiTask>) => {
-      setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+      // A parent change also moves the id between the parents' `subtaskIds`, so
+      // the tree redraws before the refetch lands.
+      setTasks((prev) => {
+        const current = prev.find((task) => task.id === taskId)
+        return current ? applyTaskUpdate(prev, { ...current, ...updates }, taskId) : prev
+      })
 
       try {
         if ('completedAt' in updates) {

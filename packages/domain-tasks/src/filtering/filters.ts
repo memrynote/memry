@@ -18,6 +18,7 @@ import {
   startOfWeek
 } from '../parsing/dates.ts'
 import type { Priority, StatusType } from '../parsing/types.ts'
+import { buildTaskTree } from '../tree.ts'
 import type {
   CompletionFilterType,
   DueDateFilter,
@@ -330,20 +331,15 @@ export const sortTasksAdvanced = <T extends FilterTask>(
   return sorted
 }
 
-export const applyFiltersAndSort = <T extends FilterTask>(
+const applyFilterChain = <T extends FilterTask>(
   tasks: T[],
   filters: TaskFilters,
-  sort: TaskSort,
   projects: readonly FilterProject[],
   now: Date,
   weekStartsOn: 0 | 1,
-  /** Required for `folderPaths`/`noteIds` to match anything; see `filterByLocation`. */
-  noteIndex?: TaskNoteIndex
+  noteIndex: TaskNoteIndex | undefined
 ): T[] => {
-  const topLevel = tasks.filter((t) => t.parentId === null)
-  const subtasks = tasks.filter((t) => t.parentId !== null)
-
-  let result = [...topLevel]
+  let result = tasks
 
   if (filters.search) {
     result = filterBySearch(result, filters.search)
@@ -375,15 +371,108 @@ export const applyFiltersAndSort = <T extends FilterTask>(
 
   result = filterByRepeatType(result, filters.repeatType)
 
-  result = filterByHasTime(result, filters.hasTime)
-
-  const survivingParentIds = new Set(result.map((t) => t.id))
-  const attachedSubtasks = subtasks.filter(
-    (t) => t.parentId !== null && survivingParentIds.has(t.parentId)
-  )
-
-  return sortTasksAdvanced([...result, ...attachedSubtasks], sort, projects)
+  return filterByHasTime(result, filters.hasTime)
 }
+
+/**
+ * A filter that picks tasks by what they are, as opposed to the completion
+ * and project scopes every list always has. Only these reach below the top
+ * level: with none set, a subtask shows exactly when its top-level task does.
+ */
+const hasNarrowingFilter = (filters: TaskFilters): boolean =>
+  filters.search.trim() !== '' ||
+  filters.priorities.length > 0 ||
+  filters.tags.length > 0 ||
+  filters.dueDate.type !== 'any' ||
+  filters.statusIds.length > 0 ||
+  filters.repeatType !== 'all' ||
+  filters.hasTime !== 'all' ||
+  hasLocation(filters)
+
+export interface FilteredTasks<T> {
+  tasks: T[]
+  /**
+   * Ancestors shown only so a deeper match keeps its place in the tree. They
+   * did not match the filters themselves; lists draw them muted.
+   */
+  contextIds: Set<string>
+}
+
+/**
+ * Top-level tasks that match bring their whole branch, at any depth. With a
+ * narrowing filter set, a deeper task that matches also shows, with its own
+ * branch and with its ancestors as context.
+ */
+export const applyFiltersAndSortWithContext = <T extends FilterTask>(
+  tasks: T[],
+  filters: TaskFilters,
+  sort: TaskSort,
+  projects: readonly FilterProject[],
+  now: Date,
+  weekStartsOn: 0 | 1,
+  /** Required for `folderPaths`/`noteIds` to match anything; see `filterByLocation`. */
+  noteIndex?: TaskNoteIndex
+): FilteredTasks<T> => {
+  const tree = buildTaskTree(tasks)
+  const roots = tasks.filter((t) => tree.parentOf(t.id) === null)
+  const included = new Set<string>()
+  const contextIds = new Set<string>()
+  const includeBranch = (id: string): void => {
+    included.add(id)
+    contextIds.delete(id)
+    for (const descendantId of tree.descendantIds(id)) {
+      included.add(descendantId)
+      contextIds.delete(descendantId)
+    }
+  }
+
+  for (const root of applyFilterChain(roots, filters, projects, now, weekStartsOn, noteIndex)) {
+    includeBranch(root.id)
+  }
+
+  if (hasNarrowingFilter(filters)) {
+    const deeper = tasks.filter((t) => tree.parentOf(t.id) !== null && !included.has(t.id))
+    for (const match of applyFilterChain(deeper, filters, projects, now, weekStartsOn, noteIndex)) {
+      if (included.has(match.id) && !contextIds.has(match.id)) continue
+      const ancestorIds = tree.ancestorIds(match.id)
+      // Under a missing parent the task is in no tree, so it shows nowhere.
+      const top = ancestorIds[ancestorIds.length - 1]
+      if (top === undefined || tree.parentOf(top) !== null) continue
+      for (const ancestorId of ancestorIds) {
+        if (included.has(ancestorId)) continue
+        included.add(ancestorId)
+        contextIds.add(ancestorId)
+      }
+      includeBranch(match.id)
+    }
+  }
+
+  return {
+    // Roots first, then deeper rows, each in input order: the order the sort
+    // breaks ties by, which the `task-filtering` vectors pin.
+    tasks: sortTasksAdvanced(
+      [
+        ...roots.filter((t) => included.has(t.id)),
+        ...tasks.filter((t) => included.has(t.id) && tree.parentOf(t.id) !== null)
+      ],
+      sort,
+      projects
+    ),
+    contextIds
+  }
+}
+
+export const applyFiltersAndSort = <T extends FilterTask>(
+  tasks: T[],
+  filters: TaskFilters,
+  sort: TaskSort,
+  projects: readonly FilterProject[],
+  now: Date,
+  weekStartsOn: 0 | 1,
+  /** Required for `folderPaths`/`noteIds` to match anything; see `filterByLocation`. */
+  noteIndex?: TaskNoteIndex
+): T[] =>
+  applyFiltersAndSortWithContext(tasks, filters, sort, projects, now, weekStartsOn, noteIndex).tasks
 
 export const hasActiveFilters = (filters: TaskFilters): boolean => {
   return (

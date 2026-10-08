@@ -9,6 +9,7 @@ import type {
   Task
 } from './types.ts'
 import type { TasksQueryRepository } from './queries.ts'
+import { checkParent, type ParentLookup } from './tree.ts'
 
 export interface StatusDefinitionInput {
   id?: string
@@ -300,6 +301,13 @@ export interface CreateTasksCommandsDeps {
    * events are still published and the command still resolves.
    */
   onPublisherError?: (kind: TasksDomainEvent['kind'], error: unknown) => void
+  /**
+   * Subtasks below the first level (the local `tasks.nestedSubtasks` setting).
+   * Absent or false: the one-level rule older builds enforce. Sync applies
+   * remote rows without these commands, so a deep task from another device
+   * lands either way.
+   */
+  allowNestedSubtasks?: () => boolean
 }
 
 const AUTOCOMMIT_UNIT_OF_WORK: TasksUnitOfWork = {
@@ -461,14 +469,37 @@ function projectIsMissing(
 }
 
 const PROJECT_MISSING_ERROR = 'errors:task.projectMissing'
+const INVALID_PARENT_ERROR = 'errors:task.invalidParent'
+
+function repositoryParentLookup(repository: TasksCommandRepository): ParentLookup {
+  return {
+    get: (id) => repository.getTask(id),
+    hasChildren: (id) => repository.getSubtasks(id).length > 0
+  }
+}
 
 export function createTasksCommands({
   repository,
   publisher,
   generateId,
   unitOfWork = AUTOCOMMIT_UNIT_OF_WORK,
-  onPublisherError
+  onPublisherError,
+  allowNestedSubtasks
 }: CreateTasksCommandsDeps) {
+  const parentLookup = repositoryParentLookup(repository)
+  /** True when `parentId` is a place `taskId` may not go. Null/undefined parents always pass. */
+  function rejectsParent(
+    taskId: string | null,
+    parentId: string | null | undefined,
+    projectId: string | undefined
+  ): boolean {
+    if (parentId === null || parentId === undefined || projectId === undefined) return false
+    return (
+      checkParent(parentLookup, taskId, parentId, projectId, allowNestedSubtasks?.() ?? false) !==
+      null
+    )
+  }
+
   // The write phase commits before any publisher code runs: the publisher is
   // async and does I/O, which a synchronous storage transaction cannot span.
   async function commit<W extends TasksWrite<unknown>>(write: () => W): Promise<W['result']> {
@@ -489,6 +520,13 @@ export function createTasksCommands({
         if (projectIsMissing(repository, input.projectId)) {
           return {
             result: { success: false as const, task: null, error: PROJECT_MISSING_ERROR },
+            events: []
+          }
+        }
+
+        if (rejectsParent(null, input.parentId, input.projectId)) {
+          return {
+            result: { success: false as const, task: null, error: INVALID_PARENT_ERROR },
             events: []
           }
         }
@@ -553,6 +591,13 @@ export function createTasksCommands({
         if (projectIsMissing(repository, updates.projectId)) {
           return {
             result: { success: false as const, task: null, error: PROJECT_MISSING_ERROR },
+            events: []
+          }
+        }
+
+        if (rejectsParent(id, updates.parentId, updates.projectId ?? existingTask?.projectId)) {
+          return {
+            result: { success: false as const, task: null, error: INVALID_PARENT_ERROR },
             events: []
           }
         }
@@ -764,6 +809,18 @@ export function createTasksCommands({
         }
 
         const before = repository.getTask(input.taskId)
+        if (
+          rejectsParent(
+            input.taskId,
+            input.targetParentId,
+            input.targetProjectId ?? before?.projectId
+          )
+        ) {
+          return {
+            result: { success: false as const, task: null, error: INVALID_PARENT_ERROR },
+            events: []
+          }
+        }
         let targetStatusId = input.targetStatusId
         if (input.targetProjectId && !targetStatusId) {
           const currentTask = before
@@ -917,6 +974,12 @@ export function createTasksCommands({
     async convertToSubtask(taskId: string, parentId: string) {
       return commit(() => {
         const before = repository.getTask(taskId)
+        if (rejectsParent(taskId, parentId, before?.projectId)) {
+          return {
+            result: { success: false as const, task: null, error: INVALID_PARENT_ERROR },
+            events: []
+          }
+        }
         const task = repository.moveTask(taskId, { parentId })
         if (!task) {
           return { result: { success: false, task: null, error: 'Task not found' }, events: [] }

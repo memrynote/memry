@@ -197,7 +197,11 @@ export const TaskSettingsSchema = z.object({
   // `tomorrow` and `next7` are additive: older values stay valid, and the
   // renderer coerces anything it does not recognise back to `all`.
   defaultView: z.enum(['today', 'tomorrow', 'next7', 'all']),
-  staleInboxDays: z.number().int().min(1).max(90)
+  staleInboxDays: z.number().int().min(1).max(90),
+  // Subtasks below the first level. Local to this device and off by default:
+  // builds before it show only one level, so deep writes wait for the opt-in.
+  // Additive: a stored blob without it reads the default.
+  nestedSubtasks: z.boolean()
 })
 
 export type TaskSettings = z.infer<typeof TaskSettingsSchema>
@@ -206,7 +210,8 @@ export const TASK_SETTINGS_DEFAULTS: TaskSettings = {
   defaultProjectId: null,
   defaultSortOrder: 'manual',
   defaultView: 'all',
-  staleInboxDays: 7
+  staleInboxDays: 7,
+  nestedSubtasks: false
 }
 
 // ============================================================================

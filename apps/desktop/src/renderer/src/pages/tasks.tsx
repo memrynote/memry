@@ -80,9 +80,14 @@ import {
   AllSubtasksCompleteDialog,
   BulkDueDateDialog,
   BulkPriorityDialog,
-  DeleteAllSubtasksDialog
+  DeleteAllSubtasksDialog,
+  DeleteParentDialog
 } from '@/components/tasks/dialogs'
-import { getSubtasks } from '@/lib/subtask-utils'
+import { describeBranch, getSubtasks } from '@/lib/subtask-utils'
+import { SubtaskTreeContext } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { MoveUnderDialog } from '@/components/tasks/subtask-tree/move-under-dialog'
+import { ZoomedBranchView } from '@/components/tasks/subtask-tree/zoomed-branch-view'
+import { useSubtaskTreeController } from '@/hooks/use-subtask-tree-controller'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
 import { createLogger } from '@/lib/logger'
@@ -449,7 +454,7 @@ export const TasksPage = ({
   }, [isArchivedScope, tasks, selectedId, selectedType, projects, selectedProjectId, currentDay])
 
   // Apply advanced filters and sort to base filtered tasks
-  const { filteredTasks, totalCount, filteredCount } = useFilteredAndSortedTasks({
+  const { filteredTasks, contextIds, totalCount, filteredCount } = useFilteredAndSortedTasks({
     tasks: baseFilteredTasks,
     filters,
     sort,
@@ -545,6 +550,30 @@ export const TasksPage = ({
         }
       })()
     }
+  })
+
+  // Zoom: the list scoped to one task's branch (A2). Tab state, so it restores.
+  const [zoomedTaskId, setZoomedTaskId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.zoomedTaskId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+  const zoomedTask = useMemo(
+    () =>
+      zoomedTaskId ? (tasks.find((t) => t.id === zoomedTaskId && !t.archivedAt) ?? null) : null,
+    [tasks, zoomedTaskId]
+  )
+  const zoomedProject = zoomedTask
+    ? (projects.find((p) => p.id === zoomedTask.projectId) ?? null)
+    : null
+
+  const subtaskTree = useSubtaskTreeController({
+    tasks,
+    allowNested: taskPrefs.nestedSubtasks,
+    contextIds,
+    createTask: (task) => void undoable.createTask(task),
+    updateTask: undoable.updateTaskWithUndo,
+    onZoom: setZoomedTaskId
   })
 
   // Derived: tab counts for TasksTabBar (scoped by dropdown project).
@@ -926,6 +955,26 @@ export const TasksPage = ({
     [tasks, projects, undoable]
   )
 
+  // A subtask with its own subtasks completes its whole branch, and reopening a
+  // subtask reopens its done ancestors — both through the undoable path (E1).
+  // A plain leaf keeps the "all subtasks done" behaviour of the subtask hook.
+  const handleToggleSubtaskComplete = useCallback(
+    (taskId: string): void => {
+      const task = tasks.find((t) => t.id === taskId)
+      if (!task) return
+      if (task.completedAt !== null) {
+        undoable.uncompleteTask(taskId)
+        return
+      }
+      if (task.subtaskIds.length > 0) {
+        undoable.completeTask(taskId)
+        return
+      }
+      subtaskManagement.handleCompleteSubtask(taskId)
+    },
+    [tasks, undoable, subtaskManagement]
+  )
+
   const handleUpdateTask = useCallback(
     (taskId: string, updates: Partial<Task>): void => {
       undoable.updateTaskWithUndo(taskId, updates)
@@ -940,12 +989,32 @@ export const TasksPage = ({
     [undoable]
   )
 
+  // A task with subtasks asks once what happens to them (E2).
+  const [pendingDeleteParentId, setPendingDeleteParentId] = useState<string | null>(null)
+  const pendingDeleteParent = pendingDeleteParentId
+    ? (tasks.find((t) => t.id === pendingDeleteParentId) ?? null)
+    : null
+  const pendingDeleteBranch = useMemo(
+    () => describeBranch(pendingDeleteParentId, tasks),
+    [pendingDeleteParentId, tasks]
+  )
+
   const handleDeleteTaskFromDrawer = useCallback(
     (taskId: string): void => {
       undoable.deleteTask(taskId)
       setDetailTaskId(null)
     },
     [setDetailTaskId, undoable]
+  )
+
+  const confirmDeleteParent = useCallback(
+    (keepSubtasks: boolean): void => {
+      if (!pendingDeleteParentId) return
+      undoable.deleteTask(pendingDeleteParentId, keepSubtasks ? 'keep' : 'delete')
+      setPendingDeleteParentId(null)
+      setDetailTaskId(null)
+    },
+    [pendingDeleteParentId, setDetailTaskId, undoable]
   )
 
   // ========== BULK ACTION HANDLERS ==========
@@ -1073,7 +1142,7 @@ export const TasksPage = ({
   }, [selectedType, selectedProject, selectedProjectId, projects])
 
   return (
-    <>
+    <SubtaskTreeContext.Provider value={subtaskTree.value}>
       <div className={cn('relative h-full flex overflow-hidden', className)}>
         {/* Main Content Area */}
         <main
@@ -1323,10 +1392,27 @@ export const TasksPage = ({
             </div>
           )}
 
+          {/* Zoomed into one branch (A2): replaces the list until the user zooms out */}
+          {zoomedTask && zoomedProject && (
+            <ZoomedBranchView
+              task={zoomedTask}
+              tasks={tasks.filter((t) => !t.archivedAt)}
+              project={zoomedProject}
+              onZoom={setZoomedTaskId}
+              onToggleComplete={handleToggleComplete}
+              onToggleSubtaskComplete={handleToggleSubtaskComplete}
+              onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+              onTaskClick={handleTaskClick}
+            />
+          )}
+
           {/* No entrance animation: a tab/view switch paints immediately */}
           <div
             key={`${activeInternalTab}:${isArchivedScope ? 'archived' : ''}:${effectiveView}`}
-            className="flex flex-1 min-h-0 flex-col overflow-hidden"
+            className={cn(
+              'flex flex-1 min-h-0 flex-col overflow-hidden',
+              zoomedTask && zoomedProject && 'hidden'
+            )}
           >
             {/* Content Body - due-date window (flat listing, overdue first) */}
             {windowFilteredTasks !== null && (
@@ -1347,7 +1433,7 @@ export const TasksPage = ({
                     selectedType="view"
                     onToggleComplete={handleToggleComplete}
                     onUpdateTask={handleUpdateTask}
-                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                    onToggleSubtaskComplete={handleToggleSubtaskComplete}
                     onQuickAdd={handleQuickAdd}
                     onFocusQuickAdd={focusQuickAdd}
                     onTaskClick={handleTaskClick}
@@ -1386,7 +1472,7 @@ export const TasksPage = ({
                     selectedType="view"
                     onToggleComplete={handleToggleComplete}
                     onUpdateTask={handleUpdateTask}
-                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                    onToggleSubtaskComplete={handleToggleSubtaskComplete}
                     onQuickAdd={handleQuickAdd}
                     onFocusQuickAdd={focusQuickAdd}
                     onTaskClick={handleTaskClick}
@@ -1448,10 +1534,12 @@ export const TasksPage = ({
           projects={projects}
           onToggleComplete={handleToggleComplete}
           onUpdateTask={handleUpdateTask}
-          onAddSubtask={subtaskManagement.handleAddSubtask}
+          onAddSubtask={subtaskTree.value.addSubtask}
           onNoteClick={(...args) => void handleNoteClick(...args)}
           onCanvasClick={handleCanvasClick}
           onDeleteTask={handleDeleteTaskFromDrawer}
+          onDeleteParentTask={setPendingDeleteParentId}
+          onOpenTask={handleTaskClick}
         />
       </div>
 
@@ -1546,6 +1634,29 @@ export const TasksPage = ({
         onClose={subtaskManagement.closeDeleteAllSubtasksDialog}
         onConfirm={subtaskManagement.confirmDeleteAllSubtasks}
       />
-    </>
+
+      {/* Delete a task that has subtasks (E2) */}
+      <DeleteParentDialog
+        open={pendingDeleteParent !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteParentId(null)
+        }}
+        parent={pendingDeleteParent}
+        branch={pendingDeleteBranch}
+        onConfirm={confirmDeleteParent}
+      />
+
+      {/* Move under… picker (B2) */}
+      <MoveUnderDialog
+        task={
+          subtaskTree.moveUnderTaskId
+            ? (tasks.find((t) => t.id === subtaskTree.moveUnderTaskId) ?? null)
+            : null
+        }
+        tasks={tasks}
+        projects={projects}
+        onClose={subtaskTree.closeMoveUnder}
+      />
+    </SubtaskTreeContext.Provider>
   )
 }

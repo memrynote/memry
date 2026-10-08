@@ -20,11 +20,15 @@ import { PriorityBars } from '@/components/tasks/task-icons'
 import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
+import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 export interface ParentTaskRowProps {
   task: Task
   project: Project
   projects?: Project[]
+  /** Where subtasks below the first level are looked up. */
+  allTasks?: Task[]
   subtasks: Task[]
   progress: SubtaskProgress
   isExpanded: boolean
@@ -82,6 +86,7 @@ export const ParentTaskRow = ({
   task,
   project,
   projects: _projects = [],
+  allTasks,
   subtasks,
   progress,
   isExpanded,
@@ -115,6 +120,8 @@ export const ParentTaskRow = ({
 }: ParentTaskRowProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
   const isOverlay = renderMode === 'overlay'
+  const tree = useSubtaskTree()
+  const isContext = tree?.contextIds.has(task.id) ?? false
   const rowRef = useRef<HTMLDivElement>(null)
   const {
     settings: { clockFormat }
@@ -151,6 +158,18 @@ export const ParentTaskRow = ({
   }
 
   const handleRowKeyDown = (e: React.KeyboardEvent): void => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && tree && !isSelectionMode) {
+      e.preventDefault()
+      e.stopPropagation()
+      tree.zoomInto(task.id)
+      return
+    }
+    if (e.shiftKey && (e.key === 'M' || e.key === 'm') && tree) {
+      e.preventDefault()
+      e.stopPropagation()
+      tree.openMoveUnder(task.id)
+      return
+    }
     if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(task.id)
@@ -203,7 +222,7 @@ export const ParentTaskRow = ({
                 '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
               ]
             : [
-                'relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+                'group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
                 'rounded-md hover:bg-muted',
                 onClick && 'focus-visible:outline-none',
 
@@ -308,7 +327,9 @@ export const ParentTaskRow = ({
                 : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
               : isOverlay
                 ? 'text-foreground/90'
-                : 'text-foreground/90'
+                : isContext
+                  ? 'text-text-tertiary'
+                  : 'text-foreground/90'
           )}
         >
           {task.title}
@@ -360,6 +381,8 @@ export const ParentTaskRow = ({
 
         {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
 
+        {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+
         {!isOverlay && droppedPriority && (
           <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
             {tPhaseF('phaseF.componentsTasksParentTaskRow.priority')}
@@ -368,11 +391,11 @@ export const ParentTaskRow = ({
         )}
       </div>
 
-      {!isOverlay && isExpanded && (
+      {!isOverlay && (isExpanded || tree?.draftParentId === task.id) && (
         <SortableSubtaskList
-          parentId={task.id}
-          parentTitle={task.title}
-          subtasks={subtasks}
+          parent={task}
+          subtasks={isExpanded ? subtasks : []}
+          allTasks={allTasks ?? subtasks}
           statuses={project.statuses}
           onReorder={onReorderSubtasks || (() => {})}
           onToggleComplete={onToggleSubtaskComplete || onToggleComplete}

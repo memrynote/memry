@@ -26,6 +26,7 @@ import {
   startOfDay
 } from './dates.ts'
 import type { ViewProject, ViewTask } from './types.ts'
+import { buildTaskTree } from '../tree.ts'
 
 const hasStarted = (task: ViewTask, today: Date): boolean =>
   !!task.startDate && !isAfter(startOfDay(task.startDate), today)
@@ -42,11 +43,14 @@ const includeSubtasksForMatchingParents = <T extends ViewTask>(
   matchingTopLevel: readonly T[],
   allTasks: readonly T[]
 ): T[] => {
-  const matchingIds = new Set(matchingTopLevel.map((t) => t.id))
+  const tree = buildTaskTree(allTasks)
+  const included = new Set<string>()
+  for (const task of matchingTopLevel) {
+    included.add(task.id)
+    for (const id of tree.descendantIds(task.id)) included.add(id)
+  }
 
-  return allTasks.filter(
-    (t) => matchingIds.has(t.id) || (t.parentId !== null && matchingIds.has(t.parentId))
-  )
+  return allTasks.filter((t) => included.has(t.id))
 }
 
 /**
@@ -69,7 +73,8 @@ export const getFilteredTasks = <T extends ViewTask>(
   }
 
   const isComplete = (task: T): boolean => !isIncomplete(task)
-  const isSubtask = (task: T): boolean => task.parentId !== null
+  const tree = buildTaskTree(tasks)
+  const isSubtask = (task: T): boolean => tree.parentOf(task.id) !== null
 
   const incompleteTopLevel = nonArchivedTasks.filter((t) => isIncomplete(t) && !isSubtask(t))
   const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
@@ -169,10 +174,11 @@ export const getTasksInDueWindow = <T extends ViewTask>(
 
   const overdue: T[] = []
   const inWindow: T[] = []
+  const tree = buildTaskTree(tasks)
 
   tasks.forEach((task) => {
     if (isTaskCompleted(task, projects)) return
-    if (task.parentId !== null) return
+    if (tree.parentOf(task.id) !== null) return
     if (task.archivedAt) return
     if (
       window === 'today' &&

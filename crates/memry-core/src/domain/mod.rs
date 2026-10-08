@@ -45,6 +45,7 @@ pub mod task_merge;
 pub mod task_parse;
 pub mod task_records;
 pub mod task_settings;
+pub mod task_tree;
 pub mod task_views;
 pub mod tasks;
 pub mod template_admin;

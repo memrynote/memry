@@ -6,7 +6,7 @@ import type { Task, Priority } from '@/data/task-model'
 const log = createLogger('Hook:TaskFilters')
 import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
-import { applyFiltersAndSort, hasActiveFilters } from '@/lib/task-utils'
+import { applyFiltersAndSortWithContext, hasActiveFilters } from '@/lib/task-utils'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
 import {
   savedFiltersService,
@@ -266,6 +266,8 @@ interface UseFilteredTasksOptions {
 
 interface UseFilteredTasksReturn {
   filteredTasks: Task[]
+  /** Ancestors shown only as context for a deeper match. */
+  contextIds: ReadonlySet<string>
   totalCount: number
   filteredCount: number
 }
@@ -291,14 +293,22 @@ export const useFilteredAndSortedTasks = ({
   )
 
   // Apply filters and sort
-  const filteredTasks = useMemo(
+  const { tasks: filteredTasks, contextIds } = useMemo(
     () =>
-      applyFiltersAndSort(tasks, filtersWithDebouncedSearch, sort, projects, new Date(), noteIndex),
+      applyFiltersAndSortWithContext(
+        tasks,
+        filtersWithDebouncedSearch,
+        sort,
+        projects,
+        new Date(),
+        noteIndex
+      ),
     [tasks, filtersWithDebouncedSearch, sort, projects, noteIndex]
   )
 
   return {
     filteredTasks,
+    contextIds,
     totalCount: tasks.length,
     filteredCount: filteredTasks.length
   }
