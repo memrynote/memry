@@ -558,7 +558,6 @@
   "outline": {
     "title": "Balangkas",
     "aria": "Balangkas ng dokumento",
-    "empty": "Walang mga heading",
     "emptyYet": "Wala pang heading",
     "readTime": "{count} minutong pagbasa",
     "words": "{count} salita",

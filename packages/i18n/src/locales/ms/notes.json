@@ -558,7 +558,6 @@
   "outline": {
     "title": "Kerangka",
     "aria": "Kerangka dokumen",
-    "empty": "Tiada tajuk",
     "emptyYet": "Tiada tajuk lagi",
     "readTime": "{count} min bacaan",
     "words": "{count} perkataan",

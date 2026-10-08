@@ -558,7 +558,6 @@
   "outline": {
     "title": "Garis besar",
     "aria": "Garis besar dokumen",
-    "empty": "Tidak ada judul",
     "emptyYet": "Belum ada judul",
     "readTime": "{count} mnt baca",
     "words": "{count} kata",

@@ -558,7 +558,6 @@
   "outline": {
     "title": "מתאר",
     "aria": "מתאר המסמך",
-    "empty": "אין כותרות",
     "emptyYet": "עדיין אין כותרות",
     "readTime": "{count} דקות קריאה",
     "words": "{count} מילים",

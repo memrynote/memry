@@ -558,7 +558,6 @@
   "outline": {
     "title": "목차",
     "aria": "문서 목차",
-    "empty": "표시할 제목 없음",
     "emptyYet": "아직 제목이 없습니다",
     "readTime": "읽는 시간 {count}분",
     "words": "단어 {count}개",

@@ -558,7 +558,6 @@
   "outline": {
     "title": "大纲",
     "aria": "文档大纲",
-    "empty": "没有标题",
     "emptyYet": "尚无标题",
     "readTime": "阅读约 {count} 分钟",
     "words": "{count} 字",

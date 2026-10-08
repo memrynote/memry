@@ -558,7 +558,6 @@
   "outline": {
     "title": "Structuur",
     "aria": "Documentstructuur",
-    "empty": "Geen koppen",
     "emptyYet": "Nog geen koppen",
     "readTime": "{count} min. leestijd",
     "words": "{count} woorden",

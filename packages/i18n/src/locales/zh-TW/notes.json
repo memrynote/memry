@@ -558,7 +558,6 @@
   "outline": {
     "title": "大綱",
     "aria": "文件大綱",
-    "empty": "沒有標題",
     "emptyYet": "尚無標題",
     "readTime": "閱讀時間 {count} 分鐘",
     "words": "{count} 個字",

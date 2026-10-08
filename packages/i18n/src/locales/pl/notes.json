@@ -558,7 +558,6 @@
   "outline": {
     "title": "Konspekt",
     "aria": "Konspekt dokumentu",
-    "empty": "Brak nagłówków",
     "emptyYet": "Nie ma jeszcze nagłówków",
     "readTime": "{count} min czytania",
     "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",

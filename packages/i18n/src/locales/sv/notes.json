@@ -558,7 +558,6 @@
   "outline": {
     "title": "Disposition",
     "aria": "Dokumentdisposition",
-    "empty": "Inga rubriker",
     "emptyYet": "Inga rubriker än",
     "readTime": "{count} min lästid",
     "words": "{count} ord",
