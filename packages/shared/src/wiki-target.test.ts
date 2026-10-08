@@ -302,9 +302,19 @@ describe('extractWikiLinks', () => {
       seed = (seed * 1103515245 + 12345) % 2147483648
       return seed % n
     }
-    for (let round = 0; round < 3000; round++) {
-      let text = ''
-      for (let i = random(24); i > 0; i--) text += '[]|ab '[random(6)]
+    const fixed = [
+      '[[a|]] [[b]]',
+      '[[|a]]',
+      '[[a|b|c]]',
+      '[[[[a]]',
+      '[[a]',
+      '[[a|b]',
+      '[[a]]]]',
+      '[[]]'
+    ]
+    for (let round = 0; round < 3000 + fixed.length; round++) {
+      let text = fixed[round] ?? ''
+      for (let i = text ? 0 : random(24); i > 0; i--) text += '[]|ab '[random(6)]
       const expected = [...new Set(Array.from(text.matchAll(pattern), (match) => match[1].trim()))]
       expect(extractWikiLinks(text), text).toEqual(expected)
     }

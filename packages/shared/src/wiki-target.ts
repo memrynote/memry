@@ -188,17 +188,48 @@ function headingAnchor(heading: string): string | null {
  * is blanked before the scan. Links inside HTML comments still count.
  */
 export function extractWikiLinks(content: string): string[] {
-  const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
-  const text = blankMarkdownCode(content)
   const links = new Set<string>()
-  let match
-
-  while ((match = linkPattern.exec(text)) !== null) {
-    const { note, heading } = splitWikiTarget(match[1])
+  for (const target of wikiLinkTargets(blankMarkdownCode(content))) {
+    const { note, heading } = splitWikiTarget(target)
     // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
     if (heading !== null && !note) continue
-    links.add(heading !== null ? note : match[1].trim())
+    links.add(heading !== null ? note : target.trim())
   }
-
   return Array.from(links)
+}
+
+/**
+ * The targets `/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g` captures, found in linear
+ * time. The regex retries from every `[[` and rescans to the next `]` each
+ * time, so a run of unclosed `[[` took seconds; here each position's next `]`
+ * and next `]`-or-`|` are looked up once.
+ */
+function wikiLinkTargets(text: string): string[] {
+  const length = text.length
+  const nextClose = new Int32Array(length + 1).fill(length)
+  const nextStop = new Int32Array(length + 1).fill(length)
+  for (let at = length - 1; at >= 0; at--) {
+    const char = text[at]
+    nextClose[at] = char === ']' ? at : nextClose[at + 1]
+    nextStop[at] = char === ']' || char === '|' ? at : nextStop[at + 1]
+  }
+  const targets: string[] = []
+  let open = text.indexOf('[[')
+  while (open !== -1) {
+    const start = open + 2
+    const stop = nextStop[start]
+    let end = -1
+    if (stop > start && stop < length) {
+      const close = text[stop] === ']' ? stop : nextClose[stop + 1]
+      const aliased = text[stop] === '|'
+      if (text[close + 1] === ']' && (!aliased || close > stop + 1)) end = close + 2
+    }
+    if (end === -1) {
+      open = text.indexOf('[[', open + 1)
+      continue
+    }
+    targets.push(text.slice(start, stop))
+    open = text.indexOf('[[', end)
+  }
+  return targets
 }
