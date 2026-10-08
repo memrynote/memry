@@ -8,8 +8,8 @@ import SwiftUI
 // this file only lays its answer out the way desktop's
 // `virtualized-all-tasks-view.tsx` and `lib/virtual-list-utils.ts` do:
 //
-// - top-level rows only, each followed by its subtasks (`getTopLevelTasks`,
-//   `getSubtasks`);
+// - top-level rows only, each followed by its subtasks two levels deep
+//   (`treeRows`, TasksStore+Tree);
 // - one section per core group, or one `flat` section when the sort has none;
 //   on Today and Next 7 a flat list's leading overdue rows get their own
 //   Overdue header;
@@ -138,13 +138,8 @@ extension TasksStore {
             count: ids.count,
             isCollapsed: collapsed,
             dropBucket: bucket,
-            rows: collapsed ? [] : ordered.flatMap(rowsUnder)
+            rows: collapsed ? [] : ordered.flatMap { treeRows($0) }
         )
-    }
-
-    /// A top-level task and the subtasks that ride under it.
-    private func rowsUnder(_ id: String) -> [TaskListRow] {
-        [TaskListRow(id: id, depth: 0)] + subtasks(of: id).map { TaskListRow(id: $0.id, depth: 1) }
     }
 
     /// Bumped when the device-local order changes, so the list redraws.

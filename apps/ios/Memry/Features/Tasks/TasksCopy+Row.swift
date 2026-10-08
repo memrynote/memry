@@ -29,7 +29,6 @@ extension TasksCopy {
     // MARK: More actions
 
     static let rowDuplicate = "Duplicate"
-    static let rowMakeSubtaskOf = "Make subtask of..."
     static let rowArchive = "Archive"
     static let rowUnarchive = "Unarchive"
 

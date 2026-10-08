@@ -57,6 +57,9 @@ final class TasksStore {
     private(set) var savedFilters: [SavedFilterItem] = []
     private(set) var settings: TaskSettingsItem?
     private(set) var result: TaskViewResult?
+    /// Every live task's place in the tree and the moves it allows (the core's
+    /// `Tasks::tree`), by id.
+    private(set) var tree: [String: TaskTreeEntry] = [:]
 
     // MARK: State
 
@@ -133,10 +136,11 @@ final class TasksStore {
                     try core.all(),
                     try core.projects(includeArchived: true),
                     try core.savedFilters(),
-                    try core.taskSettings()
+                    try core.taskSettings(),
+                    try core.tree()
                 )
             }
-            apply(tasks: loaded.0)
+            apply(tasks: loaded.0, tree: loaded.4)
             projects = loaded.1
             savedFilters = loaded.2
             settings = loaded.3
@@ -152,9 +156,9 @@ final class TasksStore {
         let core = core
         do {
             let loaded = try await executor.run {
-                (try core.all(), try core.projects(includeArchived: true), try core.savedFilters())
+                (try core.all(), try core.projects(includeArchived: true), try core.savedFilters(), try core.tree())
             }
-            apply(tasks: loaded.0)
+            apply(tasks: loaded.0, tree: loaded.3)
             projects = loaded.1
             savedFilters = loaded.2
             try await query()
@@ -183,7 +187,8 @@ final class TasksStore {
         do { try await query() } catch { report(error) }
     }
 
-    private func apply(tasks: [TaskItem]) {
+    private func apply(tasks: [TaskItem], tree entries: [TaskTreeEntry]) {
+        tree = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         ordered = tasks
         items = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
