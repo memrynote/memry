@@ -64,6 +64,12 @@ struct ToggleSummaryRow: View {
     var alignment: TextAlignment = .leading
     var toggle: (() -> Void)?
 
+    /// How much further than one indent step a toggle's children sit:
+    /// past the chevron column and its gap to the summary, plus 4pt more.
+    /// Desktop's offset: BlockNote's 20px chevron button puts the summary at
+    /// 20px and a nested group's 24px margin puts the children at 24px.
+    static let childShift = Tokens.Space.small + Tokens.Space.tight
+
     var body: some View {
         if let toggle {
             row
