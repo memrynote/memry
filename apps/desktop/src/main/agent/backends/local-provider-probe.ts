@@ -32,10 +32,21 @@ export interface LocalProbe {
   tools: ToolAccess
 }
 
+/**
+ * A probe run as observed. `transient` means the provider failed for a reason unrelated
+ * to the model (network, timeout, 408, 429, 5xx), so the run says nothing about tools.
+ */
+export interface ProbeRun {
+  result: AgentLocalProviderProbeResult
+  tools: ToolAccess | { kind: 'transient' }
+}
+
 type ToolProbe =
   | { ok: true; profile: ToolCallProfile }
+  | { ok: false; transient: true; detail: string }
   | {
       ok: false
+      transient: false
       reason: Exclude<AgentToolsOffReason, 'streaming_unsupported'>
       called: boolean
       detail: string
@@ -76,7 +87,7 @@ export async function probeLocalProvider(
   settings: AgentLocalProviderSettings,
   fetchImpl: typeof fetch,
   apiKey: string | null
-): Promise<LocalProbe> {
+): Promise<ProbeRun> {
   const connection = await testOpenAiCompatibleConnection(settings, fetchImpl, apiKey)
   if (!connection.connected || !connection.modelAvailable) {
     return { result: connection, tools: { kind: 'unreachable' } }
@@ -103,6 +114,20 @@ export async function probeLocalProvider(
         detail: null
       },
       tools: { kind: 'on', profile: toolProbe.profile }
+    }
+  }
+  if (toolProbe.transient) {
+    logger.warn(
+      `Tool probe hit a transient error for model ${settings.model}, tools stay on: ${toolProbe.detail}`
+    )
+    return {
+      result: {
+        ...connection,
+        ...streaming,
+        toolsEnabled: true,
+        detail: `Tool check hit a temporary provider error, tools stay on: ${toolProbe.detail}`
+      },
+      tools: { kind: 'transient' }
     }
   }
   logger.warn(`Tool probe failed for model ${settings.model}: ${toolProbe.detail}`)
@@ -208,7 +233,8 @@ async function probeToolCalling(
       ...request,
       tool_choice: { type: 'function', function: { name: PROBE_TOOL_NAME } }
     })
-  } catch {
+  } catch (error) {
+    if (isTransientError(error)) return { ok: false, transient: true, detail: errorMessage(error) }
     // DeepSeek in thinking mode answers a named tool_choice with HTTP 400 although it
     // calls tools fine without one (#2609). The chat then sends no tool_choice either.
     toolChoice = 'omit'
@@ -216,7 +242,15 @@ async function probeToolCalling(
       first = await postChatCompletion(settings, fetchImpl, apiKey, request)
     } catch (error) {
       const detail = errorMessage(error)
-      return { ok: false, reason: 'tools_rejected', called: false, detail, providerDetail: detail }
+      if (isTransientError(error)) return { ok: false, transient: true, detail }
+      return {
+        ok: false,
+        transient: false,
+        reason: 'tools_rejected',
+        called: false,
+        detail,
+        providerDetail: detail
+      }
     }
   }
 
@@ -226,6 +260,7 @@ async function probeToolCalling(
   if (!replay) {
     return {
       ok: false,
+      transient: false,
       reason: 'no_tool_call',
       called: false,
       detail: `Model did not emit the synthetic ${PROBE_TOOL_NAME} tool call.`,
@@ -249,6 +284,7 @@ async function probeToolCalling(
     if (!second.choices?.[0]?.message) {
       return {
         ok: false,
+        transient: false,
         reason: 'tool_result_rejected',
         called: true,
         detail: 'Model returned no message after the tool result.',
@@ -257,8 +293,10 @@ async function probeToolCalling(
     }
   } catch (error) {
     const detail = errorMessage(error)
+    if (isTransientError(error)) return { ok: false, transient: true, detail }
     return {
       ok: false,
+      transient: false,
       reason: 'tool_result_rejected',
       called: true,
       detail,
@@ -357,11 +395,34 @@ async function postChatCompletion(
     }
   )
   if (!response.ok) {
-    throw new Error(
+    throw new ProviderHttpError(
+      response.status,
       `/v1/chat/completions returned HTTP ${response.status}${await providerErrorSuffix(response)}`
     )
   }
   return response.json()
+}
+
+class ProviderHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message)
+  }
+}
+
+// fetch rejects with a TypeError when the connection fails and with a DOMException when
+// the probe's timeout aborts it. Any other error is the provider's answer about the model.
+function isTransientError(error: unknown): boolean {
+  if (error instanceof ProviderHttpError) {
+    return error.status === 408 || error.status === 429 || error.status >= 500
+  }
+  return (
+    error instanceof TypeError ||
+    (error instanceof DOMException &&
+      (error.name === 'TimeoutError' || error.name === 'AbortError'))
+  )
 }
 
 // OpenAI-style error bodies carry the provider's own reason, which the chat shows when

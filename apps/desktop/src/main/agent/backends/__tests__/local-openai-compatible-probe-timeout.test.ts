@@ -28,7 +28,7 @@ describe('LocalOpenAICompatibleBackend tool probe on a hung server', () => {
     warn.mockClear()
   })
 
-  it('gives up on the tool probe after the timeout and logs it once', async () => {
+  it('keeps tools on when the tool probe times out and logs it once', async () => {
     const timeout = AbortSignal.timeout.bind(AbortSignal)
     vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => timeout(20))
     const backend = new LocalOpenAICompatibleBackend({
@@ -46,7 +46,7 @@ describe('LocalOpenAICompatibleBackend tool probe on a hung server', () => {
 
     const result = await backend.probeCapabilities()
 
-    expect(result).toMatchObject({ connected: true, streamingSupported: true, toolsEnabled: false })
+    expect(result).toMatchObject({ connected: true, streamingSupported: true, toolsEnabled: true })
     expect(result.detail).toMatch(/timeout|timed out/i)
     expect(warn).toHaveBeenCalledTimes(1)
     const line = warn.mock.calls[0]!.map(String).join(' ')

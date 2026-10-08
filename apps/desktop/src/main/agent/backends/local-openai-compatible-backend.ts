@@ -17,7 +17,7 @@ import {
   probeSettingsKey,
   testOpenAiCompatibleConnection
 } from './local-provider-probe'
-import { toolCallProfileMiddleware } from './tool-call-profile'
+import { toolCallProfileMiddleware, type ToolCallProfile } from './tool-call-profile'
 import { toolImageMiddleware } from './tool-images'
 import type { TurnWriteGrant } from '../turn-grants'
 import type {
@@ -35,14 +35,13 @@ let nextLocalRunPid = -1
 // if someone needs to tune it.
 const OLLAMA_NUM_CTX = 8192
 
-// ponytail: a capability probe costs /v1/models, a streaming completion and two full
-// tool round-trip generations (#1009), so it cannot run per message. Results are cached
-// per (preset, baseUrl, model, api key); anything the user can change from outside the
-// app is bounded by these TTLs instead.
+// The image-input probe's answer can change when the provider swaps the model behind a
+// name, so it expires; a "no" expires faster because a provider error looks the same.
 const PROBE_TTL_MS = 10 * 60_000
-// A "no tools" verdict is usually a model property, but a transient provider error at
-// the tool step looks identical, so it expires fast.
 const PROBE_DEGRADED_TTL_MS = 60_000
+// Used when a transient provider error leaves the tool probe without an answer and no
+// earlier pass is known for this configuration.
+const DEFAULT_TOOL_PROFILE: ToolCallProfile = { toolChoice: 'auto' }
 
 // The assembled prompt names the vault tools, so a model that was sent no tool schemas
 // writes its tool calls out as plain text unless it is told they are gone.
@@ -67,7 +66,6 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     settingsKey: string
     apiKey: string | null
     probe: LocalProbe
-    expiresAt: number
   } | null = null
   private probeInFlight: {
     settingsKey: string
@@ -133,13 +131,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const settingsKey = probeSettingsKey(settings)
     if (!options.force) {
       const cached = this.probeCache
-      if (
-        cached?.settingsKey === settingsKey &&
-        cached.apiKey === apiKey &&
-        cached.expiresAt > Date.now()
-      ) {
-        return cached.probe
-      }
+      if (cached?.settingsKey === settingsKey && cached.apiKey === apiKey) return cached.probe
       // Two turns starting at once must share one probe rather than racing.
       const pending = this.probeInFlight
       if (pending?.settingsKey === settingsKey && pending.apiKey === apiKey) return pending.promise
@@ -159,9 +151,27 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     settings: AgentLocalProviderSettings,
     apiKey: string | null
   ): Promise<LocalProbe> {
-    const probe = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
-    const ttl = probeCacheTtlMs(probe.result)
-    this.probeCache = ttl > 0 ? { settingsKey, apiKey, probe, expiresAt: Date.now() + ttl } : null
+    const run = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
+    if (run.tools.kind === 'transient') {
+      // Not cached: the next turn probes again. This turn keeps its tools, and if the
+      // provider still fails, the turn shows that error instead of quietly losing tools.
+      const cached = this.probeCache
+      const known =
+        cached?.settingsKey === settingsKey &&
+        cached.apiKey === apiKey &&
+        cached.probe.tools.kind === 'on'
+          ? cached.probe.tools.profile
+          : DEFAULT_TOOL_PROFILE
+      return { result: run.result, tools: { kind: 'on', profile: known } }
+    }
+    const probe = { result: run.result, tools: run.tools }
+    // A pass or a model verdict holds until the preset, base URL, model or key changes,
+    // or the app restarts; the settings screen's forced probe refreshes it. Unreachable
+    // provider, missing model and no streaming are fixed outside the app and cost no
+    // tool probe, so they are never cached and starting the server takes effect next turn.
+    const cacheable =
+      probe.result.connected && probe.result.modelAvailable && probe.result.streamingSupported
+    this.probeCache = cacheable ? { settingsKey, apiKey, probe } : null
     return probe
   }
 
@@ -327,14 +337,6 @@ function partToBackendEvent(part: unknown): BackendEvent | null {
 async function* textToStream(getText: () => string): AsyncIterable<Buffer> {
   const text = getText()
   if (text) yield Buffer.from(text)
-}
-
-function probeCacheTtlMs(result: AgentLocalProviderProbeResult): number {
-  // Unreachable provider, model not pulled yet, or no streaming: the user fixes all of
-  // these outside the app, and none of them paid for the expensive tool probe, so never
-  // cache them — starting the local server must take effect on the very next turn.
-  if (!result.connected || !result.modelAvailable || !result.streamingSupported) return 0
-  return result.toolsEnabled ? PROBE_TTL_MS : PROBE_DEGRADED_TTL_MS
 }
 
 function toToolError(value: unknown): { code: string; message: string } | undefined {
