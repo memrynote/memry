@@ -1270,7 +1270,7 @@
       "indexing": "正在建立索引 {done} / {total}",
       "indexingUnknown": "正在建立索引…",
       "filters": "篩選條件可疊加 · 依需要選擇",
-      "tags": "你在儲存庫中使用的標籤"
+      "tags": "你在保險庫中使用的標籤"
     },
     "empty": {
       "unscoped": "沒有與「{query}」相符的內容",

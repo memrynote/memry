@@ -348,7 +348,7 @@
       },
       "modelSettingsLabel": "Tetapan model ejen: {model}, {settings}",
       "unavailable": {
-        "vaultToolsOnly": "Alat peti besi sahaja dengan model ini"
+        "vaultToolsOnly": "Alat bilik kebal sahaja dengan model ini"
       }
     },
     "refPicker": {
