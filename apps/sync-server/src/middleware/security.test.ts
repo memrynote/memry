@@ -13,6 +13,7 @@ const createMockContext = () => {
       header: vi.fn((name: string, value: string) => {
         headers[name] = value
       }),
+      res: new Response(),
       _headers: headers
     },
     next: vi.fn().mockResolvedValue(undefined)

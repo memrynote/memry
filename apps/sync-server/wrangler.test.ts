@@ -30,6 +30,22 @@ describe('wrangler config', () => {
     expect(occurrences).toBe(3)
   })
 
+  it('binds the OCR language data bucket in the top level and every environment', () => {
+    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
+
+    // R2 bindings are not inherited by env blocks; a missing one makes every
+    // /ocr/v1 request a 500 in that environment.
+    expect(toml).toContain(
+      '[[r2_buckets]]\nbinding = "OCR_DATA"\nbucket_name = "memry-encrypted-blobs-staging"'
+    )
+    expect(toml).toContain(
+      '[[env.staging.r2_buckets]]\nbinding = "OCR_DATA"\nbucket_name = "memry-encrypted-blobs-staging"'
+    )
+    expect(toml).toContain(
+      '[[env.production.r2_buckets]]\nbinding = "OCR_DATA"\nbucket_name = "memry-encrypted-blobs-production"'
+    )
+  })
+
   it('schedules both the cleanup sweep and the daily release download pull', () => {
     const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
 

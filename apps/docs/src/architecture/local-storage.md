@@ -315,6 +315,14 @@ Two helper processes do the heavy work, both at low OS priority and closed after
   view never gets. `openPdfDocument(path, size)` and `renderPage(page, maxEdge)` are the page
   renderer for any feature that needs a PDF page as an image.
 
+The sync server serves Tesseract's `tessdata_fast` models for every language Memry has UI
+translations for at `GET /ocr/v1/<lang>.traineddata.gz` (`apps/sync-server/src/routes/ocr.ts`).
+The route is public, answers only the names in `src/lib/ocr-languages.ts`, and marks each file
+`immutable`. The files sit under `ocr/v1/` in the R2 bucket bound as `OCR_DATA`, which is the same
+bucket as `STORAGE`. `scripts/upload-ocr-language-data.ts` uploads them by hand together with
+`ocr/v1/manifest.json` (`{lang, bytes, sha256}` per file), and refuses to replace a file whose
+hash the manifest already records. The current app reads only the bundled English data.
+
 ## Migrations
 
 ```bash
