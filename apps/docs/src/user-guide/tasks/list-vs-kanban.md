@@ -50,7 +50,8 @@ When grouping is on, group headers show counts and roll up subtask progress.
 
 Columns reflect statuses. Drag cards across columns to update status.
 
-- Each card shows title, due date, priority, and a subtask progress indicator
+- Cards are top-level tasks only. Subtasks at any depth stay inside their parent's card
+- Each card shows title, due date, priority, and, for a task with subtasks, its progress and its next open subtask
 - The kanban groups by **status** by default but can group by other fields
 - Empty columns offer "Add task" affordances
 

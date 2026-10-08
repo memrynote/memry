@@ -150,6 +150,39 @@ describe('KanbanBoard', () => {
     expect(onQuickAdd).toHaveBeenCalledWith('Quick task', 'todo')
   })
 
+  it('shows only top-level tasks as cards', () => {
+    const child = (id: string, title: string, parentId: string): Task => ({
+      ...task(id, title, 'todo'),
+      parentId
+    })
+
+    render(
+      <KanbanBoard
+        tasks={[
+          task('parent', 'Parent', 'todo'),
+          child('child', 'Child', 'parent'),
+          child('grandchild', 'Grandchild', 'child'),
+          child('orphan', 'Orphan', 'deleted-elsewhere'),
+          child('loop-b', 'Loop B', 'loop-a'),
+          child('loop-a', 'Loop A', 'loop-b')
+        ]}
+        projects={projects}
+        selectedId="project-1"
+        selectedType="project"
+        selectedProjectId="project-1"
+        sortField="status"
+        onUpdateTask={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Parent')).toBeInTheDocument()
+    expect(screen.getByText('Loop A')).toBeInTheDocument()
+    for (const hidden of ['Child', 'Grandchild', 'Orphan', 'Loop B']) {
+      expect(screen.queryByText(hidden)).not.toBeInTheDocument()
+    }
+  })
+
   it('supports keyboard focus navigation and activation across columns', () => {
     const onToggleComplete = vi.fn()
     const onTaskClick = vi.fn()
