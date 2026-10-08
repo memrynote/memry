@@ -694,4 +694,23 @@ describe('HTML comments in a doc a build before #2741 seeded (BBF-29)', () => {
       expect(h.files.get(NOTE_FILE)).toBe(to === undefined ? raw : raw.replace('Line to edit.', to))
     }
   )
+
+  it('does not bring back the last comment a user deleted from a doc this build seeded', async () => {
+    const body = 'Title\n=====\n\nPara one.\n\n<!-- only [[Alpha]] -->\n\nTail.\n'
+    writtenElsewhere(NOTE, `---\nid: x\n---\n${body}`)
+    const doc = await docWith(body)
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const blocks = ((await yFragmentToBlocks(fragment)) as Block[]).filter(
+      (block) =>
+        !(block.content as Array<{ type: string }>).some((item) => item.type === 'htmlComment')
+    )
+    doc.transact(() => {
+      fragment.delete(0, fragment.length)
+      blocksToYFragment(blocks, fragment)
+    })
+
+    await pass(NOTE, doc, 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe('---\nid: x\n---\nTitle\n=====\n\nPara one.\n\nTail.\n')
+  })
 })

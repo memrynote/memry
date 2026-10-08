@@ -168,7 +168,7 @@ once, not a local correction.
 desktop is the only writer; and desktop writes from the Y.Doc
 (`apps/desktop/src/main/sync/crdt-writeback.ts:459-466`, `:552-560`).
 `restoreMarkdownSource` returns the source untouched when `ours === base`
-(`packages/shared/src/markdown-source.ts:68`),
+(`packages/shared/src/markdown-source.ts:73`),
 `serializeParsedMarkdownNote` re-emits the raw frontmatter block and the body
 verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
 `writebackExisting` skips the write entirely when the bytes match
@@ -425,15 +425,15 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 (`apps/desktop/src/main/sync/crdt-persistence.ts:229-231`) and cleared
 (`:256-259`).
 
-| Root                       | Type                     | Writer                                                                                                                                                                                                                                                                                        | Reader                                                                                                      | Consequence of dropping it                                                                                                                                                |
-| -------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prosemirror`              | XmlFragment              | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1681`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                                      |
-| `meta`                     | Map (`title`, `date`)    | `apps/desktop/src/main/sync/crdt-provider.ts:1163-1165`, `:1184-1186`                                                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                             |
-| `tags`                     | Array\<string\>          | `apps/desktop/src/main/sync/crdt-provider.ts:1167-1171`, `apps/desktop/src/main/sync/crdt-feed.ts:93-99`                                                                                                                                                                                      | `apps/desktop/src/main/sync/crdt-writeback.ts:993-1001` → `:950-955`                                        | desktop keeps the file's tags while the array is empty (the `yjsTags.length > 0` guard at `:952`), so a drop is **silent divergence** until a later record push overrides |
-| `markdownSource`           | Map (`record: {source}`) | `packages/shared/src/markdown-source.ts:166-174` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region"         |
-| `linkReferenceDefinitions` | Array                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                  | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                         |
-| `linkReferenceUsages`      | Array                    | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                           | same (`:191`)                                                                                               | same                                                                                                                                                                      |
-| `criticMarkupMarks`        | Array                    | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                       | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**            |
+| Root                       | Type                                    | Writer                                                                                                                                                                                                                                                                                        | Reader                                                                                                      | Consequence of dropping it                                                                                                                                                |
+| -------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prosemirror`              | XmlFragment                             | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1681`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                                      |
+| `meta`                     | Map (`title`, `date`)                   | `apps/desktop/src/main/sync/crdt-provider.ts:1163-1165`, `:1184-1186`                                                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                             |
+| `tags`                     | Array\<string\>                         | `apps/desktop/src/main/sync/crdt-provider.ts:1167-1171`, `apps/desktop/src/main/sync/crdt-feed.ts:93-99`                                                                                                                                                                                      | `apps/desktop/src/main/sync/crdt-writeback.ts:993-1001` → `:950-955`                                        | desktop keeps the file's tags while the array is empty (the `yjsTags.length > 0` guard at `:952`), so a drop is **silent divergence** until a later record push overrides |
+| `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region"         |
+| `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                  | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                         |
+| `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                           | same (`:191`)                                                                                               | same                                                                                                                                                                      |
+| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                       | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**            |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -441,7 +441,7 @@ Root name constants:
 `LINK_REFERENCE_DEFINITIONS_ARRAY` and `LINK_REFERENCE_USAGES_ARRAY`
 (`packages/shared/src/link-references.ts:158-159`),
 `MARKDOWN_SOURCE_MAP = 'markdownSource'`
-(`packages/shared/src/markdown-source.ts:149`).
+(`packages/shared/src/markdown-source.ts:154`).
 
 `criticMarkupMarks` is the root that proves the rule: dropping it violates FR-033
 and destroys user data.
@@ -703,7 +703,7 @@ two categories are different and MUST NOT be conflated.
 | ---------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | suggestion marks | `criticMarkupMarks`                                                       | `packages/shared/src/critic-markup/yjs.ts:9`; CriticMarkup parser at `packages/shared/src/critic-markup/parser.ts:153` |
 | link references  | `linkReferenceDefinitions`, `linkReferenceUsages`; stripped from the body | `packages/shared/src/link-references.ts:158-159`                                                                       |
-| preserved source | `markdownSource`                                                          | `packages/shared/src/markdown-source.ts:149`                                                                           |
+| preserved source | `markdownSource`                                                          | `packages/shared/src/markdown-source.ts:154`                                                                           |
 
 **In-fragment encodings**, carried inside `prosemirror`, **with no preservation
 duty beyond the fragment itself**:
@@ -834,25 +834,28 @@ only inside desktop main's `yDocToMarkdown`. The core never calls them.
 
 - `restoreMarkdownSource(canonicalNow, source, canonicalize)` returns `source`
   **untouched** when the canonical form is unchanged
-  (`packages/shared/src/markdown-source.ts:66-68`).
+  (`packages/shared/src/markdown-source.ts:71-73`).
 - Trailing newlines are trimmed on both sides before comparison, because an open
   editor keeps an empty trailing paragraph (`:66`).
 - **A merge is never trusted unproven**: the merged text is re-parsed and used
   only if it canonicalises back to the same canonical form, or to the same text
   the canonical form itself canonicalises to. The second case covers a
   paragraph that ends in a space or a tab, which no parse keeps. Otherwise the
-  house style wins (`packages/shared/src/markdown-source.ts:70-80`).
-- The merge itself (`:95-143`): line diffs of the source and the canonical form
+  house style wins (`packages/shared/src/markdown-source.ts:75-85`).
+- The merge itself (`:100-148`): line diffs of the source and the canonical form
   against a common base, both computed with `markdownAlignmentKey`
-  (`:222-228`, which strips heading, bullet and quote markers, strips `_` and
+  (`:243-255`, which strips heading, bullet and quote markers, strips `_` and
   `*`, and collapses whitespace); hunks sorted by base position; adjacent hunks
   with no stable base line between them coalesced into one region; then per
   region: ours-only wins ours, theirs-only wins theirs, and **a genuine
-  both-sides conflict resolves to _ours_, the house style** (`:134-138`).
-- The channel is the `markdownSource` Y.Map root, one key holding `{source}`
-  (`packages/shared/src/markdown-source.ts:149`, `:166-174`). The write is
-  skipped when the value is already identical, so no spurious Y update
-  (`:172`). Recording is budgeted at
+  both-sides conflict resolves to _ours_, the house style** (`:139-143`).
+- The channel is the `markdownSource` Y.Map root, one key holding
+  `{source, htmlComments: true}` (`packages/shared/src/markdown-source.ts:182-191`).
+  Builds before #2741 wrote `{source}` alone, and their parse dropped every HTML
+  comment from the document, so desktop reads a record without `htmlComments`
+  with comments dropped too (`apps/desktop/src/main/sync/blocknote-converter.ts:225-231`).
+  The write is skipped when the value is already identical, so no spurious Y
+  update (`:189`). Recording is budgeted at
   `MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES = floor(NOTE_SYNC_MAX_BYTES / 2)`
   (`apps/desktop/src/main/sync/blocknote-converter.ts:505`).
 
@@ -862,7 +865,7 @@ implementation is NOT required to reproduce the diff or the alignment key**,
 because it never runs the merge.
 
 **Q12.4 — `MAX_EDIT_DISTANCE = 2000`** aborts the whole merge with `null`
-(`packages/shared/src/markdown-source.ts:207`, applied at `:105`, `:291`), which
+(`packages/shared/src/markdown-source.ts:228`, applied at `:110`, `:290`), which
 falls back to house style. **It is one writer's implementation budget, not a
 protocol constant.** A client MUST NOT model it, and desktop MAY change it
 without a protocol change.

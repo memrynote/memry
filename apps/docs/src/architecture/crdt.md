@@ -753,6 +753,13 @@ document to its vault `.md` file and re-indexes it for search.
   style itself re-parses to. Markdown drops the space or tab a paragraph ends in, so a doc
   saved mid-sentence (`last word `) fails its own re-parse, and that used to fail every
   proof and write the whole note in house style (#2753).
+  The record also says how its source was parsed. Builds before #2741 dropped every HTML
+  comment from the doc, and their record holds `{ source }` alone. This build writes
+  `{ source, htmlComments: true }`. For a record without the flag, the pass reads the source
+  and the file with comments dropped, as the doc was read, so a comment counts as an
+  unchanged region and comes back from the source. Read with this build's parser, every
+  comment counted as a deletion the doc made, and the first write-back of an older note
+  removed them all (BBF-29).
 
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one

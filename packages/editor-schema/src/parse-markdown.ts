@@ -233,10 +233,14 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
  * Every markdown→blocks conversion on either surface goes through here, so a
  * body, a toggle summary, a callout run and a quote run all get the same
  * treatment.
+ *
+ * `htmlComments: false` parses as builds before #2741 did, dropping every
+ * comment, for reading a source the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
-  markdown: string
+  markdown: string,
+  { htmlComments = true }: { htmlComments?: boolean } = {}
 ): Promise<T[]> {
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
@@ -244,7 +248,8 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(maskHtmlComments(markdown)))
+  const commentsMasked = htmlComments ? maskHtmlComments(markdown) : markdown
+  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
   const { markdown: masked, breaks } = maskHardBreaks(source)

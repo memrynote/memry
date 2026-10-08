@@ -73,7 +73,11 @@ import {
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
-import { parseMarkdownToBlocks } from './blocknote-parse-breaks'
+import {
+  parseDroppingHtmlComments,
+  parseMarkdownToBlocks,
+  parsesHtmlComments
+} from './blocknote-parse-breaks'
 import {
   createBlockNestingMarker,
   restoreBlockNesting,
@@ -88,7 +92,7 @@ import {
   writeLinkReferencesToYDoc
 } from '@memry/shared/link-references'
 import {
-  readMarkdownSourceFromYDoc,
+  readMarkdownSourceRecordFromYDoc,
   restoreMarkdownSource,
   writeMarkdownSourceToYDoc
 } from '@memry/shared/markdown-source'
@@ -214,12 +218,18 @@ export async function yDocToMarkdown(
     return canonical
   }
 
-  const source = readMarkdownSourceFromYDoc(doc)
-  if (source === null) return report('no-record')
+  const record = readMarkdownSourceRecordFromYDoc(doc)
+  if (record === null) return report('no-record')
   if (readCriticMarkupMarksFromYDoc(doc).length > 0) return report('critic-marks')
 
+  const { source } = record
+  // A record from before #2741 sits beside a document whose parse dropped
+  // every comment, so the source is read the same way, and the merge takes
+  // the comments from the source like any other unchanged region (BBF-29).
   const canonicalize = (markdown: string): Promise<string | null> =>
-    canonicalMarkdown(markdown, options.notePath)
+    record.htmlComments
+      ? canonicalMarkdown(markdown, options.notePath)
+      : parseDroppingHtmlComments(() => canonicalMarkdown(markdown, options.notePath))
   try {
     const restored = await restoreMarkdownSource(canonical, source, canonicalize)
     if (restored === source) {
@@ -473,7 +483,7 @@ export async function markdownToBlocks(
     // HTML comments come off before anything splits the note into lines, so a
     // multi-line comment holding blank lines or a fence stays one comment
     // (AF-015). The fences counted below are then the ones the parse sees.
-    const masked = maskHtmlComments(markdown)
+    const masked = parsesHtmlComments() ? maskHtmlComments(markdown) : markdown
     const blocks = await markdownToBlocksPreserving(editor, masked, notePath)
     restoreUntaggedFenceLanguages(masked, blocks)
     return blocks
