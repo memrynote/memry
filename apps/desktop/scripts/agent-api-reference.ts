@@ -91,6 +91,7 @@ export function buildSchemaFile(appVersion: string, examples: AgentApiExamples):
   for (const name of [...READ_TOOL_NAMES, ...WRITE_TOOL_NAMES]) {
     const example = examples.tools[name]
     defs[name] = {
+      $id: name,
       ...toolInputSchema(name),
       'x-memry-kind': 'tool',
       'x-memry-description': TOOL_SCHEMAS[name].description,
@@ -102,6 +103,7 @@ export function buildSchemaFile(appVersion: string, examples: AgentApiExamples):
     const description = describeOperation(operation)
     const example = examples.operations[operation]
     defs[operation] = {
+      $id: operation,
       ...operationArgsSchema(description),
       'x-memry-kind': 'desktop-operation',
       'x-memry-summary': description.summary,
@@ -120,7 +122,8 @@ export function buildSchemaFile(appVersion: string, examples: AgentApiExamples):
       'The arguments of every Memry MCP tool and every desktop API operation, for agents. ' +
       'Each $defs entry named vault_* is the `arguments` object of that tools/call. Each other ' +
       'entry is the `args` array that vault_desktop_read or vault_desktop_write (x-memry-tool) ' +
-      `takes for that operation. Human-readable page: ${PAGE_URL}`,
+      'takes for that operation. Each entry is its own schema resource whose $id is its name, so ' +
+      `its internal $refs resolve the same inside this file and on their own. Human-readable page: ${PAGE_URL}`,
     'x-memry-app-version': appVersion,
     'x-memry-endpoint': 'http://127.0.0.1:<port>/mcp',
     $defs: defs
@@ -352,7 +355,8 @@ ${code('vault_desktop_describe')} and the ${code('VALIDATION')} errors, and is r
 The same content as JSON Schema (draft 2020-12), for an agent to fetch:
 [${SCHEMA_URL}](/agent-api/memry-agent-api.schema.json). Its ${code('$defs')} hold one entry per
 tool (the ${code('arguments')} object) and one per desktop operation (the ${code('args')} array), each
-with its description, whether it needs approval, and the example below.
+with its description, whether it needs approval, and the example below. Each entry's ${code('$id')} is
+its name, so an entry compiles the same inside the file and on its own.
 
 ## Calling a tool
 

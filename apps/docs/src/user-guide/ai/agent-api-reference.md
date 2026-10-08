@@ -19,7 +19,8 @@ is generated from the schemas Memry checks every call against, the same schemas 
 The same content as JSON Schema (draft 2020-12), for an agent to fetch:
 [https://docs.memrynote.com/agent-api/memry-agent-api.schema.json](/agent-api/memry-agent-api.schema.json). Its `$defs` hold one entry per
 tool (the `arguments` object) and one per desktop operation (the `args` array), each
-with its description, whether it needs approval, and the example below.
+with its description, whether it needs approval, and the example below. Each entry's `$id` is
+its name, so an entry compiles the same inside the file and on its own.
 
 ## Calling a tool
 
