@@ -2,6 +2,7 @@ import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import type { AgentMcpDesktopOperation } from '@memry/contracts/agent-mcp-channels'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
+import { fileSpelling } from '../../../vault/yaml-dates'
 import type { ReplyCap } from '../reply-cap'
 
 type FiledFileType = Exclude<NoteFileType, 'markdown'>
@@ -75,7 +76,24 @@ function filedFileMetadata(row: FileRow, fileType: FiledFileType): FiledFileMeta
   }
 }
 
-export function withoutFileBodies(
+/**
+ * A desktop API reply as an agent sees it. `properties.get` answers from the
+ * index, which keeps a YAML date as its JSON text; the agent gets the file's
+ * spelling, the same one write replies use.
+ */
+export function agentDesktopReply(
+  operation: AgentMcpDesktopOperation,
+  data: unknown,
+  fileRowOf: (id: string) => FileRow | undefined
+): unknown {
+  const reply = withoutFileBodies(data, fileRowOf)
+  if (operation !== 'properties.get' || !Array.isArray(reply)) return reply
+  return reply.map((property) =>
+    isPlainObject(property) ? { ...property, value: fileSpelling(property.value) } : property
+  )
+}
+
+function withoutFileBodies(
   value: unknown,
   fileRowOf: (id: string) => FileRow | undefined
 ): unknown {

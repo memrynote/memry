@@ -780,7 +780,8 @@ spells a real calendar date, such as `2026-10-09`, is written as a plain date, n
 (`2026-02-30` stays text). The reply lists the stored `properties` and the names it `removed`, and
 spells a date as the file does
 (`2026-10-07`, or the full timestamp when it has a time of day). Stored note and journal records in
-write replies spell dates the same way. The tag writers that edit a note's `tags` list
+write replies spell dates the same way, and so do the reads: `properties.get` values and the
+`frontmatter` that `vault_read_note` returns. The tag writers that edit a note's `tags` list
 (`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and `tags.removeTagFromNote`) keep the other
 lines byte for byte too.
 
