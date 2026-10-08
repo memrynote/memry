@@ -39,6 +39,7 @@ import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
+import { placeLinkedDownloads } from './attachment-files'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
@@ -694,7 +695,8 @@ async function performWriteback(
 }
 
 /**
- * Apply, on this device, the attachment rename a body change carries.
+ * Apply, on this device, the attachment rename a body change carries, and put
+ * files that downloaded before this body where it links them (#2755).
  *
  * Isolated from the write-back's own failure path on purpose: the file is
  * already written when this runs, so a vault lookup or an unreadable
@@ -706,7 +708,11 @@ function applyAttachmentRenames(
   nextContent: string
 ): void {
   try {
-    reconcileRenamedAttachments(noteId, previousContent, nextContent, getVaultRoot())
+    const vaultRoot = getVaultRoot()
+    reconcileRenamedAttachments(noteId, previousContent, nextContent, vaultRoot)
+    void placeLinkedDownloads(getDatabase(), vaultRoot, noteId).catch((err: unknown) =>
+      log.warn('Placing linked downloads failed during write-back', { noteId, err })
+    )
   } catch (err) {
     log.warn('Attachment rename reconcile failed during write-back', { noteId, err })
   }

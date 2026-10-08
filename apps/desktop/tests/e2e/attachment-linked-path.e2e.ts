@@ -155,6 +155,19 @@ test.describe('Attachments linked outside the note folder', () => {
       .toBe(sharedBytes)
     expect(readOrNull(path.join(vaultPathB, 'sources', 'shared.txt'))).toBe(sharedBytes)
 
+    const bodyOnB = async (): Promise<string | null> => {
+      await pageB.evaluate(() => window.api.syncOps.triggerSync())
+      const rows = await query<{ path: string }>(
+        electronAppB,
+        'SELECT path FROM note_metadata WHERE id = ?',
+        noteId
+      )
+      return rows[0] ? readOrNull(path.join(vaultPathB, rows[0].path)) : null
+    }
+    await expect
+      .poll(bodyOnB, { message: 'the second embed reaches B', timeout: 120_000 })
+      .toContain('sources/shared.txt')
+
     await goOffline(electronAppB)
     await goOnline(electronAppB)
     const sharedRecord = (): Promise<Array<{ id: string | null }>> =>

@@ -324,6 +324,16 @@ export function recordAttachmentFile(
   insertRecord(db, noteId, recordPath, attachmentId)
 }
 
+function moveRecord(db: DrizzleDb, noteId: string, from: string, to: string): void {
+  db.delete(attachmentFiles)
+    .where(and(eq(attachmentFiles.noteId, noteId), eq(attachmentFiles.path, to)))
+    .run()
+  db.update(attachmentFiles)
+    .set({ path: to, recordedAt: Date.now() })
+    .where(and(eq(attachmentFiles.noteId, noteId), eq(attachmentFiles.path, from)))
+    .run()
+}
+
 async function pathExists(file: string): Promise<boolean> {
   return fs.promises.lstat(file).then(
     () => true,
@@ -341,14 +351,40 @@ async function isFreeInsideVault(vaultPath: string, target: string): Promise<boo
 }
 
 /**
+ * The vault path the body links a file in the note's own folder under, when
+ * that is the one embed outside the note folders with its name, nothing is
+ * there and it is inside the vault. A file the body also links where it is
+ * stays, and so does a type the vault lists as a note of its own: that one
+ * reaches its path through its own sync, and a copy there first would be
+ * listed as a second note.
+ */
+async function linkedPathOf(
+  db: DrizzleDb,
+  vaultPath: string,
+  noteId: string,
+  file: string
+): Promise<string | null> {
+  const name = path.basename(file)
+  if (getFileType(path.extname(name)) !== null) return null
+  const note = getNoteMetadataById(db, noteId)
+  if (!note?.path.endsWith('.md')) return null
+  const markdown = await fs.promises.readFile(path.join(vaultPath, note.path), 'utf8')
+  if (referencedVaultFiles(markdown, vaultPath, note.path, noteId).includes(path.resolve(file))) {
+    return null
+  }
+  const linked = embeddedFilesOutsideNoteFolders(db, markdown, vaultPath, note.path, noteId).filter(
+    (embed) => path.basename(embed) === name
+  )
+  if (linked.length !== 1) return null
+  return (await isFreeInsideVault(vaultPath, linked[0])) ? linked[0] : null
+}
+
+/**
  * Move a file an embed download put in the note's own folder to where the body
- * links it (#2755). The manifest names the file by the basename it was uploaded
- * from, so a body linking `sources/x.txt` got `attachments/<noteId>/x.txt` and a
- * broken link. The file moves only when exactly one embed outside the note
- * folders has its name and that path is free and inside the vault. A type the
- * vault lists as a note of its own stays: it reaches that path through its own
- * sync, and a copy there first would be listed as a second note. The body is
- * never rewritten. Returns where the file is.
+ * links it (#2755), and its record with it. The manifest names the file by the
+ * basename it was uploaded from, so a body linking `sources/x.txt` got
+ * `attachments/<noteId>/x.txt` and a broken link. The body is never rewritten.
+ * Returns where the file is.
  */
 export async function placeDownloadedFile(
   db: DrizzleDb,
@@ -356,22 +392,13 @@ export async function placeDownloadedFile(
   noteId: string,
   downloadedPath: string
 ): Promise<string> {
-  const name = path.basename(downloadedPath)
-  if (getFileType(path.extname(name)) !== null) return downloadedPath
-  const note = getNoteMetadataById(db, noteId)
-  if (!note?.path.endsWith('.md')) return downloadedPath
+  const from = recordPathOf(vaultPath, downloadedPath)
+  let target: string | null
+  let to: string | null
   try {
-    const markdown = await fs.promises.readFile(path.join(vaultPath, note.path), 'utf8')
-    const linked = embeddedFilesOutsideNoteFolders(
-      db,
-      markdown,
-      vaultPath,
-      note.path,
-      noteId
-    ).filter((file) => path.basename(file) === name)
-    if (linked.length !== 1) return downloadedPath
-    const target = linked[0]
-    if (!(await isFreeInsideVault(vaultPath, target))) return downloadedPath
+    target = await linkedPathOf(db, vaultPath, noteId, downloadedPath)
+    to = target && recordPathOf(vaultPath, target)
+    if (!from || !target || !to) return downloadedPath
     await fs.promises.mkdir(path.dirname(target), { recursive: true })
     // A link fails on a name that is taken, where a rename would replace it.
     await fs.promises.link(downloadedPath, target)
@@ -381,15 +408,35 @@ export async function placeDownloadedFile(
       await fs.promises.unlink(target)
       throw error
     }
-    return target
   } catch (error) {
     logger.warn('Could not move a downloaded attachment to its linked path', { noteId, error })
     return downloadedPath
   }
+  try {
+    moveRecord(db, noteId, from, to)
+  } catch (error) {
+    logger.warn('Could not move the record of a placed attachment', { noteId, error })
+  }
+  return target
 }
 
+/**
+ * Place the files sync downloaded into a note's own folder, once its body is
+ * on disk. A download can land before the body that links it arrives.
+ */
 export async function placeLinkedDownloads(
-  _db: DrizzleDb,
-  _vaultPath: string,
-  _noteId: string
-): Promise<void> {}
+  db: DrizzleDb,
+  vaultPath: string,
+  noteId: string
+): Promise<void> {
+  const folder = `attachments/${noteId}/`
+  const downloads = db
+    .select({ path: attachmentFiles.path })
+    .from(attachmentFiles)
+    .where(eq(attachmentFiles.noteId, noteId))
+    .all()
+    .filter((row) => row.path.startsWith(folder) && getFileType(path.extname(row.path)) === null)
+  for (const row of downloads) {
+    await placeDownloadedFile(db, vaultPath, noteId, path.join(vaultPath, ...row.path.split('/')))
+  }
+}
