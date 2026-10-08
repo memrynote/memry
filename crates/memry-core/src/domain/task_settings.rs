@@ -14,6 +14,9 @@
 //! from `settings-sync.ts`). Here it lives in the device-local `meta` table
 //! under [`DEFAULT_VIEW_META_KEY`], never in the synced payload.
 //!
+//! `nestedSubtasks` is device-local the same way, under
+//! [`NESTED_SUBTASKS_META_KEY`], and on by default.
+//!
 //! Reads coerce like desktop's schema: a value that is absent, of the wrong
 //! type, not one of the enum members, or out of range reads as its default
 //! (`TASK_SETTINGS_DEFAULTS`). Writes refuse such values instead of storing
@@ -42,6 +45,9 @@ pub const STALE_INBOX_DAYS_MAX: i64 = 90;
 /// The device-local `meta` key holding `defaultView`.
 pub const DEFAULT_VIEW_META_KEY: &str = "tasks.default_view";
 
+/// The device-local `meta` key holding `nestedSubtasks` (`true` / `false`).
+pub const NESTED_SUBTASKS_META_KEY: &str = "tasks.nested_subtasks";
+
 const GROUP: &str = "tasks";
 const DEFAULT_PROJECT_ID: &str = "defaultProjectId";
 const DEFAULT_SORT_ORDER_KEY: &str = "defaultSortOrder";
@@ -58,6 +64,8 @@ pub struct TaskSettings {
     pub default_view: String,
     /// In `STALE_INBOX_DAYS_MIN..=STALE_INBOX_DAYS_MAX`.
     pub stale_inbox_days: i64,
+    /// Subtasks below the first level may be made. Device-local.
+    pub nested_subtasks: bool,
 }
 
 impl Default for TaskSettings {
@@ -67,6 +75,7 @@ impl Default for TaskSettings {
             default_sort_order: DEFAULT_SORT_ORDER.to_owned(),
             default_view: DEFAULT_VIEW.to_owned(),
             stale_inbox_days: DEFAULT_STALE_INBOX_DAYS,
+            nested_subtasks: true,
         }
     }
 }
@@ -96,12 +105,14 @@ pub fn read(conn: &Connection) -> Result<TaskSettings, StorageError> {
     let default_view = read_meta(conn, DEFAULT_VIEW_META_KEY)?
         .filter(|value| VIEWS.contains(&value.as_str()))
         .unwrap_or_else(|| DEFAULT_VIEW.to_owned());
+    let nested_subtasks = read_meta(conn, NESTED_SUBTASKS_META_KEY)?.as_deref() != Some("false");
 
     Ok(TaskSettings {
         default_project_id,
         default_sort_order,
         default_view,
         stale_inbox_days,
+        nested_subtasks,
     })
 }
 
@@ -173,6 +184,17 @@ pub fn set_default_view(conn: &Connection, view: &str) -> Result<TaskSettings, S
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         params![DEFAULT_VIEW_META_KEY, view],
+    )
+    .map_err(failed)?;
+    read(conn)
+}
+
+/// Sets `nestedSubtasks` in the device-local `meta` table. Never synced.
+pub fn set_nested_subtasks(conn: &Connection, on: bool) -> Result<TaskSettings, StorageError> {
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![NESTED_SUBTASKS_META_KEY, if on { "true" } else { "false" }],
     )
     .map_err(failed)?;
     read(conn)

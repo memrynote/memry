@@ -75,9 +75,53 @@ impl<'a> TaskTree<'a> {
         out
     }
 
-    fn children_of(&self, id: &str) -> &[&'a str] {
+    /// `id`'s children, in input order.
+    pub fn children_of(&self, id: &str) -> &[&'a str] {
         self.children.get(id).map_or(&[], Vec::as_slice)
     }
+
+    /// `checkParent`: whether `task_id` (`None` for a task not created yet)
+    /// may sit under `parent_id`, read from the tree. A task never goes inside
+    /// its own branch. With `allow_nested` off (the `tasks.nestedSubtasks`
+    /// setting), the one-level rule of builds before nested subtasks holds:
+    /// the parent is top level and the task has no subtasks.
+    pub fn check_parent(
+        &self,
+        task_id: Option<&str>,
+        parent_id: &str,
+        same_project: bool,
+        allow_nested: bool,
+    ) -> Option<ParentRejection> {
+        if task_id == Some(parent_id) {
+            return Some(ParentRejection::SelfParent);
+        }
+        if !self.parents.contains_key(parent_id) {
+            return Some(ParentRejection::Missing);
+        }
+        if !same_project {
+            return Some(ParentRejection::OtherProject);
+        }
+        if task_id.is_some_and(|task| self.ancestor_ids(parent_id).contains(&task)) {
+            return Some(ParentRejection::OwnBranch);
+        }
+        if !allow_nested
+            && (!self.is_root(parent_id)
+                || task_id.is_some_and(|task| !self.children_of(task).is_empty()))
+        {
+            return Some(ParentRejection::TooDeep);
+        }
+        None
+    }
+}
+
+/// Why [`TaskTree::check_parent`] refuses a parent (desktop's `ParentRejection`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParentRejection {
+    SelfParent,
+    Missing,
+    OtherProject,
+    OwnBranch,
+    TooDeep,
 }
 
 /// The smallest id of every `parentId` loop.
@@ -152,6 +196,32 @@ mod tests {
         assert!(tree.is_root("x"));
         assert!(!tree.is_root("y") && !tree.is_root("z"));
         assert_eq!(tree.ancestor_ids("z"), ["y", "x"]);
+    }
+
+    #[test]
+    fn check_parent_locks_the_own_branch_and_gates_depth() {
+        let rows = [
+            Row("a", None),
+            Row("b", Some("a")),
+            Row("c", Some("b")),
+            Row("d", None),
+        ];
+        let tree = TaskTree::build(&rows);
+        assert_eq!(
+            tree.check_parent(Some("a"), "c", true, true),
+            Some(ParentRejection::OwnBranch)
+        );
+        assert_eq!(tree.check_parent(Some("d"), "c", true, true), None);
+        assert_eq!(
+            tree.check_parent(Some("d"), "b", true, false),
+            Some(ParentRejection::TooDeep)
+        );
+        assert_eq!(
+            tree.check_parent(Some("b"), "d", true, false),
+            Some(ParentRejection::TooDeep)
+        );
+        assert_eq!(tree.check_parent(Some("c"), "d", true, false), None);
+        assert_eq!(tree.check_parent(None, "c", true, true), None);
     }
 
     #[test]
