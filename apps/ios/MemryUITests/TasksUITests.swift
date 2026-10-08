@@ -8,8 +8,8 @@ import XCTest
 // **Precondition:** the simulator is signed in to the staging test account
 // with the MemryNote vault available (tasks.md §0.4). There is no sign-in in
 // here: it needs an emailed code. A test that lands on the sign-in screen
-// fails with that instruction instead of skipping, so a green UI plan always
-// means the flows ran.
+// skips, with that instruction as the reason. A skip is
+// not a pass: check the run's skip count before calling a UI plan green.
 //
 // Every task a test writes is named `[agent] ui-<run>…` and filed under the
 // `Agent Test Redesign` project (made on first use); spec 005 RD93 deletes them with it. Each test narrows
@@ -189,12 +189,15 @@ final class TasksUITests: XCTestCase {
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
         let tasksTab = app.buttons["Tasks"].firstMatch
-        let signIn = app.staticTexts["Sign in to Memry"]
+        // Signed out lands on the welcome screen first, or on sign-in once
+        // past it.
+        let signIn = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
+        )).firstMatch
         let deadline = Date().addingTimeInterval(60)
         while Date() < deadline, !tasksTab.exists {
             if signIn.exists {
-                XCTFail("Signed out: sign in to the staging test account first (tasks.md §0.4).")
-                throw XCTSkip("signed out")
+                throw XCTSkip("Signed out: sign in to the staging test account first (tasks.md §0.4).")
             }
             if vault.exists, vault.isHittable { vault.tap() }
             Thread.sleep(forTimeInterval: 0.5)

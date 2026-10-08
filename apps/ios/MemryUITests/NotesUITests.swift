@@ -3,9 +3,10 @@ import XCTest
 // The Notes tab end to end on a real vault.
 //
 // **Precondition:** the simulator is signed in to the staging test account,
-// as `TasksUITests` needs. A test that lands on sign-in fails rather than
-// skips. Every note a test writes is titled `[agent] ui-<run>…` and deleted
-// by the test.
+// as `TasksUITests` needs. A test that lands on sign-in skips, with that
+// instruction as the reason. A skip is not a pass: check the run's skip count
+// before calling a UI plan green. Every note a test writes is titled
+// `[agent] ui-<run>…` and deleted by the test.
 @MainActor
 final class NotesUITests: XCTestCase {
     let app = XCUIApplication()
@@ -56,11 +57,15 @@ final class NotesUITests: XCTestCase {
         // the menu as a finger would, then tap it where it is on screen.
         let delete = app.buttons["trash"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5))
-        for _ in 0 ..< 3 where !delete.isHittable {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.55)).press(
-                forDuration: 0.1,
-                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.09))
-            )
+        // Short drags just below the menu's first rows: with the keyboard up
+        // the menu is only a few rows tall, and a drag that starts outside
+        // it closes it. The anchor is read once, since its row scrolls away.
+        let find = app.buttons["Find in note"].frame
+        let top = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: find.midX, dy: find.midY))
+        for _ in 0 ..< 8 where !delete.isHittable {
+            top.withOffset(CGVector(dx: 0, dy: 120))
+                .press(forDuration: 0.1, thenDragTo: top.withOffset(CGVector(dx: 0, dy: -40)))
         }
         XCTAssertTrue(delete.isHittable, "Delete never scrolled into the menu")
         delete.tap()
@@ -105,14 +110,21 @@ final class NotesUITests: XCTestCase {
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
         let notesTab = app.buttons["Notes"].firstMatch
-        let signIn = app.staticTexts["Sign in to Memry"]
+        // Signed out lands on the welcome screen first, or on sign-in once
+        // past it.
+        let signIn = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
+        )).firstMatch
+        // The app restores the last screen, and a restored note page hides
+        // the tab bar: back out of it rather than tap a tab that is leaving.
+        let back = app.buttons["BackButton"]
         let deadline = Date().addingTimeInterval(60)
-        while Date() < deadline, !notesTab.exists {
+        while Date() < deadline, !(notesTab.exists && notesTab.isHittable) {
             if signIn.exists {
-                XCTFail("Signed out: sign in to the staging test account first.")
-                throw XCTSkip("signed out")
+                throw XCTSkip("Signed out: sign in to the staging test account first.")
             }
             if vault.exists, vault.isHittable { vault.tap() }
+            if back.exists, back.isHittable { back.tap() }
             Thread.sleep(forTimeInterval: 0.5)
         }
         notesTab.tap()
