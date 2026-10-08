@@ -10322,15 +10322,20 @@ Change a note’s title, content, tags, properties or emoji.
 
 `notes.update(input)` through `vault_desktop_write`; needs approval.
 
-| Argument            | Type                  | Required | Allowed values                   |
-| ------------------- | --------------------- | -------- | -------------------------------- |
-| `input`             | `object`              | yes      |                                  |
-| `input.id`          | `string`              | yes      |                                  |
-| `input.title`       | `string`              | no       | min length `1`; max length `200` |
-| `input.content`     | `string`              | no       |                                  |
-| `input.tags`        | `string[]`            | no       | max items `50`                   |
-| `input.frontmatter` | `Record<string, any>` | no       |                                  |
-| `input.emoji`       | `string \| null`      | no       |                                  |
+| Argument                         | Type                  | Required | Allowed values                   |
+| -------------------------------- | --------------------- | -------- | -------------------------------- |
+| `input`                          | `object`              | yes      |                                  |
+| `input.id`                       | `string`              | yes      |                                  |
+| `input.title`                    | `string`              | no       | min length `1`; max length `200` |
+| `input.content`                  | `string`              | no       |                                  |
+| `input.headerTags`               | `object`              | no       |                                  |
+| `input.headerTags.add`           | `string[]`            | no       | max items `50`                   |
+| `input.headerTags.remove`        | `string[]`            | no       | max items `50`                   |
+| `input.headerTags.rename`        | `object[]`            | no       | max items `50`                   |
+| `input.headerTags.rename[].from` | `string`              | yes      | min length `1`; max length `50`  |
+| `input.headerTags.rename[].to`   | `string`              | yes      | min length `1`; max length `50`  |
+| `input.frontmatter`              | `Record<string, any>` | no       |                                  |
+| `input.emoji`                    | `string \| null`      | no       |                                  |
 
 Example call:
 

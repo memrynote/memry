@@ -1,10 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import {
-  createHashTagInlineContent,
-  extractInlineTags,
-  HashTag,
-  normalizeHashTags
-} from './hash-tag'
+import { createHashTagInlineContent, HashTag, normalizeHashTags } from './hash-tag'
 import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 describe('hash tag inline content', () => {
@@ -151,23 +146,6 @@ describe('hash tag inline content', () => {
     })
     expect(render.dom.textContent).toBe('📚#books')
     expect(render.dom.getAttribute('data-hash-tag-icon')).toBe('📚')
-  })
-
-  it('extracts inline tag content and text tags recursively', () => {
-    const tags = extractInlineTags([
-      {
-        id: 'a',
-        type: 'paragraph',
-        content: [
-          { type: 'hashTag', props: { tag: 'Work' } },
-          { type: 'text', text: ' #Personal email#a' }
-        ],
-        children: [{ id: 'b', type: 'paragraph', content: ['Child #Nested'] }]
-      },
-      { id: 'code', type: 'codeBlock', content: '#ignored' }
-    ] as any)
-
-    expect(tags.sort()).toEqual(['Nested', 'Personal', 'Work'])
   })
 })
 

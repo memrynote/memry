@@ -57,6 +57,7 @@ function makeNote(overrides: Partial<Note> = {}): Note {
     created: new Date('2026-01-01'),
     modified: new Date('2026-01-01'),
     tags: [],
+    headerTags: [],
     aliases: [],
     wordCount: 2,
     properties: {},

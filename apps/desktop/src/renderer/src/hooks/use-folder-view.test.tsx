@@ -301,14 +301,14 @@ describe('useFolderView', () => {
 
     await act(async () => {
       await result.current.updateNoteProperty('n1', 'status', 'review')
-      await result.current.updateNoteTags('n1', ['new'])
+      await result.current.updateNoteHeaderTags('n1', { add: ['new'] })
       await result.current.updateNoteIcons([{ noteId: 'n1', emoji: '🚀' }])
       result.current.removeNotesOptimistically(['n2'])
       await result.current.refresh()
     })
 
     expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', { status: 'review' })
-    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', tags: ['new'] })
+    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', headerTags: { add: ['new'] } })
     expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', emoji: '🚀' })
     expect(window.api.folderView.getViews).toHaveBeenCalled()
   })
@@ -455,7 +455,7 @@ describe('useFolderView', () => {
 
     mocks.notesUpdate.mockResolvedValueOnce({ success: false, error: 'No tags' })
     await act(async () => {
-      await result.current.updateNoteTags('n1', ['bad'])
+      await result.current.updateNoteHeaderTags('n1', { remove: ['bad'] })
     })
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateTags')
 
@@ -575,7 +575,7 @@ describe('useFolderView', () => {
 
     await act(async () => {
       await result.current.updateNoteProperty('n1', 'status', 'review')
-      await result.current.updateNoteTags('n1', ['broken'])
+      await result.current.updateNoteHeaderTags('n1', { add: ['broken'] })
     })
 
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateProperty')

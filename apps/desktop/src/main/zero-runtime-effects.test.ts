@@ -287,7 +287,6 @@ describe('main zero-covered runtime surfaces', () => {
     inbox.syncInboxDelete('inbox-1', '{"id":"inbox-1"}')
     inbox.publishInboxUpserted('inbox-2')
 
-    tags.syncTaggedNote('note-1')
     tags.syncTagDefinitionRename('Old', ' New ', { name: 'Old' })
     tags.syncTagDefinitionRename('Ignored', 'Ignored2')
     tags.syncTagDefinitionUpdate('tag')

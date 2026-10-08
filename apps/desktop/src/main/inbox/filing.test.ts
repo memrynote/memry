@@ -241,6 +241,7 @@ describe('Inbox Filing Operations', () => {
     mockCreateNote.mockReset()
     mockGetNoteById.mockReset()
     mockUpdateNote.mockReset()
+    mockUpdateNote.mockResolvedValue({ note: null, headerTagChange: null })
     mockCreateFolder.mockReset()
     mockGetFolders.mockResolvedValue([])
     mockSend.mockClear()

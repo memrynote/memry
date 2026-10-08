@@ -10,9 +10,6 @@ vi.mock('../vault/templates', async (importActual) => {
 vi.mock('./domain', () => ({
   updateNoteCommand: vi.fn()
 }))
-vi.mock('../sync/crdt-feed', () => ({
-  replaceNoteTagsInCrdt: vi.fn()
-}))
 vi.mock('../vault-locks/registry', () => ({
   assertNoteWritable: vi.fn((noteId: string) => {
     if (noteId === 'locked-note') throw new Error('The owner made this note read-only.')
@@ -23,7 +20,6 @@ import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
 import { getNoteById } from '../vault/notes'
 import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'
-import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, VaultError } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
 
@@ -58,9 +54,11 @@ describe('buildTemplateApplyUpdate', () => {
     expect(u.content).not.toContain('{{title}}')
   })
 
-  it('full mode: unions tags and merges properties with existing winning', () => {
+  it('full mode: adds the template tags to the header and merges properties with existing winning', () => {
     const u = buildTemplateApplyUpdate(note, template, 'full')
-    expect(new Set(u.tags)).toEqual(new Set(['work', 'daily', 'meeting']))
+    // A delta of the template's own tags: the note's index list, inline tags
+    // included, never reaches the header.
+    expect(u.headerTags).toEqual({ add: ['meeting', 'work'] })
     // existing status 'done' wins over template 'scheduled'; template adds 'attendees'; existing priority kept
     expect(u.properties).toEqual({ status: 'done', priority: 5, attendees: '' })
   })
@@ -86,7 +84,7 @@ describe('buildTemplateApplyUpdate', () => {
 
   it('body mode: leaves tags and properties undefined (untouched by updateNote)', () => {
     const u = buildTemplateApplyUpdate(note, template, 'body')
-    expect(u.tags).toBeUndefined()
+    expect(u.headerTags).toBeUndefined()
     expect(u.properties).toBeUndefined()
     expect(u.content).toContain('## Notes')
   })
@@ -104,7 +102,7 @@ describe('buildTemplateApplyUpdate', () => {
     expect(buildTemplateApplyUpdate(bare, withHeader, 'full')).toEqual({
       id: 'n1',
       content: 'Agenda',
-      tags: ['client'],
+      headerTags: { add: ['client'] },
       properties: { project: ['Alpha'] },
       emoji: '🚀'
     })
@@ -137,7 +135,6 @@ describe('applyTemplateToNote', () => {
       applyTemplateToNote({ noteId: 'locked-note', templateId: 't1', mode: 'full' })
     ).rejects.toThrow('The owner made this note read-only.')
     expect(updateNoteCommand).not.toHaveBeenCalled()
-    expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 
   it('throws VaultError when the template does not exist', async () => {
@@ -149,7 +146,7 @@ describe('applyTemplateToNote', () => {
     expect(updateNoteCommand).not.toHaveBeenCalled()
   })
 
-  it('full mode: persists the merged update and feeds the tags to the open editor', async () => {
+  it('full mode: persists the merged update through the note command', async () => {
     vi.mocked(getNoteById).mockResolvedValue(note)
     vi.mocked(getTemplate).mockResolvedValue(template)
     vi.mocked(updateNoteCommand).mockResolvedValue(note)
@@ -159,11 +156,10 @@ describe('applyTemplateToNote', () => {
     expect(result).toBe(note)
     const update = vi.mocked(updateNoteCommand).mock.calls[0][0]
     expect(update.id).toBe('n1')
-    expect(new Set(update.tags)).toEqual(new Set(['work', 'daily', 'meeting']))
-    expect(replaceNoteTagsInCrdt).toHaveBeenCalledWith('n1', update.tags)
+    expect(update.headerTags).toEqual({ add: ['meeting', 'work'] })
   })
 
-  it('body mode: replaces the body but does not touch the open editor tags', async () => {
+  it('body mode: replaces the body and leaves the header tags alone', async () => {
     vi.mocked(getNoteById).mockResolvedValue(note)
     vi.mocked(getTemplate).mockResolvedValue(template)
     vi.mocked(updateNoteCommand).mockResolvedValue(note)
@@ -174,7 +170,6 @@ describe('applyTemplateToNote', () => {
       id: 'n1',
       content: '# Standup\n\n## Notes\n'
     })
-    expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 
   it('keeps the checkbox lines a template adds plain when asked, leaving the note\u2019s own lines alone (#2759)', async () => {

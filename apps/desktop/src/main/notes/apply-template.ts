@@ -8,7 +8,6 @@
 import { applyTemplate, getTemplate } from '../vault/templates'
 import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
 import { updateNoteCommand } from './domain'
-import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { assertNoteWritable } from '../vault-locks/registry'
 import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
@@ -17,8 +16,9 @@ import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
 
 /**
  * Build the NoteUpdateInput for applying a template to a note.
- * - `full`: union tags, merge properties (existing values win on conflict), and
- *   adopt the template's icon only when the note has none of its own.
+ * - `full`: add the template's tags to the header, merge properties (existing
+ *   values win on conflict), and adopt the template's icon only when the note
+ *   has none of its own.
  * - `body`: content only; tags/properties left undefined so updateNote keeps them.
  */
 export function buildTemplateApplyUpdate(
@@ -30,7 +30,7 @@ export function buildTemplateApplyUpdate(
   const update: NoteUpdateInput = { id: note.id, content: applied.content }
 
   if (mode === 'full') {
-    update.tags = [...new Set([...note.tags, ...applied.tags])]
+    if (applied.tags.length > 0) update.headerTags = { add: applied.tags }
     update.properties = { ...applied.properties, ...note.properties }
     if (!note.emoji && applied.icon) {
       update.emoji = applied.icon
@@ -58,12 +58,6 @@ export async function applyTemplateToNote(
   if (input.plainChecklists && update.content !== undefined) {
     update.content = markAddedChecklistLinesPlain(update.content, note.content)
   }
-  // Feeds the body to the note's Y.Doc, so an open editor shows it live.
-  const updated = await updateNoteCommand(update)
-
-  if (input.mode === 'full' && update.tags) {
-    replaceNoteTagsInCrdt(input.noteId, update.tags)
-  }
-
-  return updated
+  // Feeds the body and the header tags to the note's Y.Doc, so an open editor shows them live.
+  return updateNoteCommand(update)
 }

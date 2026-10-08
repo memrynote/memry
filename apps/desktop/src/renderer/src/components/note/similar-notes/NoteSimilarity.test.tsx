@@ -152,7 +152,7 @@ describe('NoteSuggestedTags', () => {
     mocks.mutateAsync.mockResolvedValue({ success: true })
     render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} />)
     await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.acceptAria:sleep' }))
-    expect(mocks.mutateAsync).toHaveBeenCalledWith({ id: 'a', tags: ['sleep'] })
+    expect(mocks.mutateAsync).toHaveBeenCalledWith({ id: 'a', headerTags: { add: ['sleep'] } })
   })
 
   it('hides for tagged notes and once dismissed', async () => {

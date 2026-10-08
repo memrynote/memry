@@ -12,6 +12,7 @@ import {
 } from '../vault/notes'
 import { extractTags } from '../vault/frontmatter'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
@@ -40,7 +41,7 @@ export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
 }
 
 export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
-  const note = await updateNote(input)
+  const { note, headerTagChange } = await updateNote(input)
   // `updateNote` moves the index hash to the new bytes, so the watcher never
   // feeds this edit, and the next write-back would put the doc's older body
   // back over it (#2646). No `writing`: the doc keeps its own alternatives.
@@ -53,9 +54,13 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
     }
     queueEmbeddedVaultFiles(input.id, input.content)
   }
+  // Write-back writes an open doc's `tags` array over the file's `tags:` list
+  // whenever the array is not empty, so the array has to follow every header
+  // edit and hold the header alone, or the next body edit reverts the edit.
+  if (input.headerTags) replaceNoteTagsInCrdt(input.id, note.headerTags)
   const hasMetadataChanges =
     input.title !== undefined ||
-    input.tags !== undefined ||
+    headerTagChange !== null ||
     input.frontmatter !== undefined ||
     input.emoji !== undefined
 

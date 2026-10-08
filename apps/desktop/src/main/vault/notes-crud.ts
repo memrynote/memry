@@ -15,7 +15,8 @@ import {
   parseNote,
   serializeNote,
   serializeUpdatedNote,
-  extractInlineTagsFromMarkdown,
+  extractTags,
+  applyHeaderTagEdit,
   normalizePropertiesToRoot,
   replacePropertiesOnRoot,
   writePropertiesToRoot,
@@ -61,6 +62,7 @@ import { resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
+  type HeaderTagEdit,
   type NoteSizeClass,
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
@@ -121,7 +123,10 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
+  /** Header and inline `#tags` together. */
   tags: string[]
+  /** The frontmatter `tags:` list alone. */
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown>
@@ -190,10 +195,16 @@ export interface NoteUpdateInput {
   id: string
   title?: string
   content?: string
-  tags?: string[]
+  headerTags?: HeaderTagEdit
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown>
   emoji?: string | null
+}
+
+export interface NoteUpdateOutcome {
+  note: Note
+  /** Null when the frontmatter `tags:` list is unchanged. */
+  headerTagChange: { added: string[]; removed: string[] } | null
 }
 
 /**
@@ -343,6 +354,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     created: new Date(created),
     modified: new Date(modified),
     tags: mergedTags,
+    headerTags: extractTags(frontmatter),
     aliases: frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties,
@@ -390,6 +402,7 @@ function largeFileNote(
     created: new Date(cached.createdAt),
     modified: new Date(cached.modifiedAt),
     tags: getNoteTags(db, id),
+    headerTags: [],
     aliases: [],
     wordCount: cached.wordCount ?? 0,
     properties: getNotePropertiesAsRecord(db, id),
@@ -501,6 +514,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     created: new Date(cached.createdAt),
     modified: new Date(cached.modifiedAt),
     tags: getNoteTags(db, id),
+    headerTags: extractTags(parsed.frontmatter),
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: cached.wordCount ?? 0,
     properties: getNotePropertiesAsRecord(db, id),
@@ -601,6 +615,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     created: new Date(parsed.created),
     modified: new Date(parsed.modified),
     tags: syncResult.tags,
+    headerTags: syncResult.headerTags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties: syncResult.properties,
@@ -612,7 +627,22 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // Update
 // ============================================================================
 
-export async function updateNote(input: NoteUpdateInput): Promise<Note> {
+// One read-modify-write of a note's file at a time. Two quick edits of the same
+// note (add #a, then add #b, or a tag and a property) would otherwise both
+// start from the file as it was, and the later write would drop the earlier one.
+const noteWrites = new Map<string, Promise<unknown>>()
+
+export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
+  const write = (noteWrites.get(input.id) ?? Promise.resolve()).then(() => writeNote(input))
+  const settled = write.catch(() => {})
+  noteWrites.set(input.id, settled)
+  void settled.then(() => {
+    if (noteWrites.get(input.id) === settled) noteWrites.delete(input.id)
+  })
+  return write
+}
+
+async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -640,22 +670,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
-  let newTags = input.tags ?? existing.tags
-
-  if (input.content !== undefined && input.tags === undefined) {
-    const oldInline = new Set(extractInlineTagsFromMarkdown(existing.content))
-    const newInline = new Set(extractInlineTagsFromMarkdown(input.content))
-
-    const removedInline = [...oldInline].filter((t) => !newInline.has(t))
-    const addedInline = [...newInline].filter((t) => !oldInline.has(t))
-
-    if (removedInline.length > 0 || addedInline.length > 0) {
-      newTags = newTags.filter((t) => !removedInline.includes(t))
-      for (const tag of addedInline) {
-        if (!newTags.includes(tag)) newTags.push(tag)
-      }
-    }
-  }
+  // Header tags change only through an edit of the file's own `tags:` list:
+  // never from the inline `#tags` of a body, and never from the index list,
+  // which holds both.
+  const headerTags = input.headerTags
+    ? applyHeaderTagEdit(existing.headerTags, input.headerTags)
+    : existing.headerTags
+  const headerTagChange = compareHeaderTags(existing.headerTags, headerTags)
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
 
   if (input.content !== undefined && input.content !== existing.content) {
@@ -698,20 +719,21 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
   }
 
-  if (newTags.length > 0) {
-    newFrontmatter.tags = newTags
-  } else {
-    delete newFrontmatter.tags
-  }
-
-  const tagsChanged =
-    newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
+  // A `frontmatter` patch never sets `tags`, and an unchanged list keeps its bytes.
+  const tagsValue =
+    headerTagChange === null
+      ? existing.frontmatter.tags
+      : headerTags.length > 0
+        ? headerTags
+        : undefined
+  if (tagsValue === undefined) delete newFrontmatter.tags
+  else newFrontmatter.tags = tagsValue
 
   // Re-stringify when a caller changed frontmatter or when normalizing a
   // legacy nested property block. Otherwise the raw block stays byte-identical.
   const frontmatterEdited =
     !isDeepStrictEqual(newFrontmatter, existing.frontmatter) ||
-    tagsChanged ||
+    headerTagChange !== null ||
     (input.properties !== undefined && !isDeepStrictEqual(input.properties, existing.properties)) ||
     (input.frontmatter !== undefined &&
       !isDeepStrictEqual({ ...existing.frontmatter, ...input.frontmatter }, existing.frontmatter))
@@ -767,8 +789,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       )
     : null
 
+  const tags = syncResult?.tags ?? existing.tags
+  const tagsChanged =
+    headerTagChange !== null ||
+    tags.length !== existing.tags.length ||
+    tags.some((t) => !existing.tags.includes(t))
   if (tagsChanged) {
-    ensureTagDefinitions(dataDb, newTags)
+    ensureTagDefinitions(dataDb, tags)
   }
 
   const note: Note = {
@@ -779,7 +806,8 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     frontmatter: writtenFrontmatter,
     created: existing.created,
     modified: new Date(newModified),
-    tags: newTags,
+    tags,
+    headerTags,
     aliases: newFrontmatter.aliases ?? [],
     wordCount: syncResult?.wordCount ?? cached?.wordCount ?? existing.wordCount,
     properties: newProperties,
@@ -792,7 +820,8 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       changes: {
         title: newTitle,
         content: newContent,
-        tags: newTags,
+        tags,
+        headerTags,
         properties: newProperties,
         emoji: newEmoji
       },
@@ -816,7 +845,21 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     emitNoteEvent('notes:tags-changed', undefined)
   }
 
-  return note
+  return { note, headerTagChange }
+}
+
+/** What a header edit added and removed, or null when it left the list exactly as it was. */
+function compareHeaderTags(
+  before: readonly string[],
+  after: readonly string[]
+): NoteUpdateOutcome['headerTagChange'] {
+  if (after.length === before.length && after.every((tag, i) => tag === before[i])) return null
+  const holds = (list: readonly string[], tag: string): boolean =>
+    list.some((held) => held.toLowerCase() === tag.toLowerCase())
+  return {
+    added: after.filter((tag) => !holds(before, tag)),
+    removed: before.filter((tag) => !holds(after, tag))
+  }
 }
 
 // ============================================================================

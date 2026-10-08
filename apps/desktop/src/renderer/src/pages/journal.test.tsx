@@ -602,27 +602,6 @@ describe('JournalPage', () => {
     expect(props.noteTags).toEqual(['work'])
     expect(props.tagColorMap.get('work')).toBe('blue')
     expect(props.tagIconMap).toBeInstanceOf(Map)
-    expect(props.onInlineTagsChange).toEqual(expect.any(Function))
-  })
-
-  it('seeds the inline tag baseline on open and writes only typed tag changes', () => {
-    render(<JournalPage />)
-    const { onInlineTagsChange } = mocks.contentAreaProps
-
-    // #when the entry opens carrying `#work` and `#draft` in its body
-    act(() => onInlineTagsChange(['work', 'draft'], 'load'))
-
-    // #then opening it modified nothing (#1454)
-    expect(mocks.updateTags).not.toHaveBeenCalled()
-
-    // #when the user types `#life`
-    act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
-    expect(mocks.updateTags).toHaveBeenCalledWith(['work', 'life'])
-
-    // #when the user deletes the body's `#work` (the mocked entry still lists
-    // only `work`, since `updateTags` is a stub)
-    act(() => onInlineTagsChange(['draft', 'life'], 'edit'))
-    expect(mocks.updateTags).toHaveBeenLastCalledWith([])
   })
 
   it("opens an entry's outgoing link through the wiki-link resolver", async () => {

@@ -33,6 +33,7 @@ const sourceNote = (overrides: Partial<Note> = {}): Note => ({
   created: new Date('2026-01-01'),
   modified: new Date('2026-01-02'),
   tags: ['client-a', '2026'],
+  headerTags: ['client-a', '2026'],
   aliases: [],
   wordCount: 5,
   properties: { project: ['Project X'], Status: 'Active', Priority: 'High' },

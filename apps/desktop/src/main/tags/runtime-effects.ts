@@ -6,10 +6,6 @@ import {
 import { commitLocalChange } from '../sync/sync-intents'
 import type { DataDb } from '../database'
 
-export function syncTaggedNote(noteId: string): void {
-  enqueueLocalSyncUpdate('note', noteId)
-}
-
 export function syncTagDefinitionRename(
   oldName: string,
   newName: string,

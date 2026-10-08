@@ -22,7 +22,8 @@ import type {
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
   NoteClustersResponse,
-  PlainChecklistsOption
+  PlainChecklistsOption,
+  HeaderTagEdit
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -46,7 +47,10 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
+  /** Header and inline `#tags` together: the set the editor turns into chips. */
   tags: string[]
+  /** The frontmatter `tags:` list alone: what the tags row shows and `headerTags` edits change. */
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown>
@@ -293,7 +297,7 @@ export interface NoteUpdateInput {
   id: string
   title?: string
   content?: string
-  tags?: string[]
+  headerTags?: HeaderTagEdit
   frontmatter?: Record<string, unknown>
   emoji?: string | null
 }

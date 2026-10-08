@@ -173,7 +173,7 @@ export function NoteSuggestedTags({
       if (disabled) return
       if (tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return
       try {
-        await updateNote.mutateAsync({ id: noteId, tags: [...tags, tag] })
+        await updateNote.mutateAsync({ id: noteId, headerTags: { add: [tag] } })
       } catch (err) {
         log.error('Failed to add suggested tag:', err)
         toast.error(extractErrorMessage(err, t('suggestedTags.failed')))

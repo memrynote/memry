@@ -29,14 +29,7 @@ import {
   useNoteTasksChoice
 } from '@/components/note/delete-note-tasks'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
-import {
-  NoteLayout,
-  HeadingItem,
-  ContentArea,
-  HeadingInfo,
-  InlineTagsOrigin,
-  Block
-} from '@/components/note'
+import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
@@ -711,8 +704,8 @@ export function NotePage({ noteId }: NotePageProps) {
     return map
   }, [allAvailableTags])
 
-  const noteTags: Tag[] = useMemo(() => {
-    return (note?.tags || []).map((tagName) => ({
+  const headerTags: Tag[] = useMemo(() => {
+    return (note?.headerTags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
       color:
@@ -721,7 +714,7 @@ export function NotePage({ noteId }: NotePageProps) {
         '',
       icon: tagIconMap.get(tagName.toLowerCase()) ?? null
     }))
-  }, [note?.tags, tagColorMap, tagIconMap])
+  }, [note?.headerTags, tagColorMap, tagIconMap])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
@@ -1013,10 +1006,9 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
-        const newTags = [...note.tags, tagToAdd.name]
+      if (tagToAdd && !note.headerTags.includes(tagToAdd.name)) {
         try {
-          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          await updateNote.mutateAsync({ id: noteId, headerTags: { add: [tagToAdd.name] } })
           // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
           log.error('Failed to add tag:', err)
@@ -1037,11 +1029,10 @@ export function NotePage({ noteId }: NotePageProps) {
         return
       }
 
-      if (!note.tags.includes(name)) {
+      if (!note.headerTags.includes(name)) {
         pendingTagColorsRef.current.set(name.toLowerCase(), color)
-        const newTags = [...note.tags, name]
         try {
-          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          await updateNote.mutateAsync({ id: noteId, headerTags: { add: [name] } })
         } catch (err) {
           pendingTagColorsRef.current.delete(name.toLowerCase())
           log.error('Failed to create tag:', err)
@@ -1062,66 +1053,11 @@ export function NotePage({ noteId }: NotePageProps) {
         return
       }
 
-      const newTags = note.tags.filter((t) => t !== tagId)
       try {
-        await updateNote.mutateAsync({ id: noteId, tags: newTags })
+        await updateNote.mutateAsync({ id: noteId, headerTags: { remove: [tagId] } })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         log.error('Failed to remove tag:', err)
-      }
-    },
-    [noteId, note, isDeleted, updateNote]
-  )
-
-  // Inline #tag sync: track which tags come from editor content
-  // pendingTagsRef bridges concurrent async calls so the second update
-  // builds on top of the first instead of overwriting it with stale data
-  const inlineTagsRef = useRef<Set<string>>(new Set())
-  const pendingTagsRef = useRef<string[] | null>(null)
-
-  const handleInlineTagsChange = useCallback(
-    async (currentInlineTags: string[], origin: InlineTagsOrigin) => {
-      if (!noteId || !note || isDeleted) return
-
-      // Opening a note must not modify it (#1454). A load report is the tag set
-      // the body already carried, so it only seeds the baseline later edits are
-      // diffed against: a tag that lives only in the body stays there — the
-      // index still indexes it — until the user actually adds or removes one.
-      if (origin === 'load') {
-        inlineTagsRef.current = new Set(currentInlineTags)
-        return
-      }
-
-      const prev = inlineTagsRef.current
-      const current = new Set(currentInlineTags)
-
-      const baseTags = pendingTagsRef.current ?? note.tags
-
-      const tagsToAdd = currentInlineTags.filter((t) => !prev.has(t) && !baseTags.includes(t))
-      const tagsToRemove = Array.from(prev).filter((t) => !current.has(t) && baseTags.includes(t))
-
-      inlineTagsRef.current = current
-
-      if (tagsToAdd.length === 0 && tagsToRemove.length === 0) return
-
-      let newTags = [...baseTags]
-      for (const tag of tagsToAdd) {
-        if (!newTags.includes(tag)) newTags.push(tag)
-      }
-      for (const tag of tagsToRemove) {
-        newTags = newTags.filter((t) => t !== tag)
-      }
-
-      pendingTagsRef.current = newTags
-
-      try {
-        await updateNote.mutateAsync({ id: noteId, tags: newTags })
-      } catch (err) {
-        log.error('Failed to sync inline tags:', err)
-      } finally {
-        if (pendingTagsRef.current === newTags) {
-          pendingTagsRef.current = null
-        }
       }
     },
     [noteId, note, isDeleted, updateNote]
@@ -1944,7 +1880,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Tags: visible when tags exist */}
           <TagsRow
-            tags={noteTags}
+            tags={headerTags}
             availableTags={availableTags}
             recentTags={recentTags}
             onAddTag={(...args) => void handleAddTag(...args)}
@@ -1988,7 +1924,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <GhostAffordanceRow
             availableTags={availableTags}
             recentTags={recentTags}
-            currentTagIds={noteTags.map((t) => t.id)}
+            currentTagIds={headerTags.map((t) => t.id)}
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
@@ -2075,7 +2011,6 @@ export function NotePage({ noteId }: NotePageProps) {
                   noteTags={note.tags}
                   tagColorMap={tagColorMap}
                   tagIconMap={tagIconMap}
-                  onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
                   focusAtEndRef={focusAtEndRef}
                   openTemplateInsertRef={openTemplateInsertRef}
                   marqueeZoneEl={marqueeZoneEl}

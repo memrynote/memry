@@ -167,7 +167,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags,
+    updateNoteHeaderTags,
     updateNoteIcons,
     hasMore,
     loadMore
@@ -479,7 +479,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [openSidebarItem, tagMetaMap]
   )
 
-  // `updateNoteTags` goes to the notes-only `notesService.update` IPC, but the
+  // `updateNoteHeaderTags` goes to the notes-only `notesService.update` IPC, but the
   // table wires this to every row's tag chips — and a row can be a task, an
   // inbox item, or a PDF/image filed in the folder. The cells no longer offer
   // the remove affordance on those rows; this stays as the last line before
@@ -497,10 +497,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         })
         return
       }
-      const nextTags = note.tags.filter((t) => t !== tag)
-      void updateNoteTags(noteId, nextTags)
+      void updateNoteHeaderTags(noteId, { remove: [tag] })
     },
-    [notes, updateNoteTags]
+    [notes, updateNoteHeaderTags]
   )
 
   // Same gate for the property cells: `propertiesService.set` lands in the very
@@ -978,14 +977,13 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       await Promise.all(
         selectedNoteIds.map((id) => {
           const note = notes.find((n) => n.id === id)
-          if (!note || note.tags.includes(tag)) return Promise.resolve()
           // A PDF/image row in a mixed selection has no frontmatter to write.
-          if (!isMetadataEditableRow(note)) return Promise.resolve()
-          return updateNoteTags(id, [...note.tags, tag])
+          if (!note || !isMetadataEditableRow(note)) return Promise.resolve()
+          return updateNoteHeaderTags(id, { add: [tag] })
         })
       )
     },
-    [selectedNoteIds, notes, updateNoteTags]
+    [selectedNoteIds, notes, updateNoteHeaderTags]
   )
 
   const { setRowIcon, setSelectionIcon } = useFolderNoteIcons({

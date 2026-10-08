@@ -170,7 +170,7 @@ describe('NoteUpdateSchema', () => {
         id: 'note-123',
         title: 'Updated Title',
         content: 'Updated content',
-        tags: ['updated', 'tags'],
+        headerTags: { add: [' updated '], remove: ['old'], rename: [{ from: 'a', to: 'b' }] },
         frontmatter: { status: 'in-progress', priority: 3 },
         emoji: '📝'
       })
@@ -178,7 +178,18 @@ describe('NoteUpdateSchema', () => {
       if (result.success) {
         expect(result.data.emoji).toBe('📝')
         expect(result.data.frontmatter).toEqual({ status: 'in-progress', priority: 3 })
+        expect(result.data.headerTags).toEqual({
+          add: ['updated'],
+          remove: ['old'],
+          rename: [{ from: 'a', to: 'b' }]
+        })
       }
+    })
+
+    it('drops a whole tag list, so no caller can write the header as one', () => {
+      const result = NoteUpdateSchema.safeParse({ id: 'note-123', tags: ['work', 'inline'] })
+      expect(result.success).toBe(true)
+      if (result.success) expect(result.data).toEqual({ id: 'note-123' })
     })
 
     it('should accept null emoji (to remove emoji)', () => {
@@ -247,12 +258,14 @@ describe('NoteUpdateSchema', () => {
       expect(result.success).toBe(false)
     })
 
-    it('should reject more than 50 tags', () => {
-      const tags = Array.from({ length: 51 }, (_, i) => `tag${i}`)
-      const result = NoteUpdateSchema.safeParse({
-        id: 'note-123',
-        tags
-      })
+    it('should reject more than 50 header tags in one edit', () => {
+      const add = Array.from({ length: 51 }, (_, i) => `tag${i}`)
+      const result = NoteUpdateSchema.safeParse({ id: 'note-123', headerTags: { add } })
+      expect(result.success).toBe(false)
+    })
+
+    it('should reject a blank header tag name', () => {
+      const result = NoteUpdateSchema.safeParse({ id: 'note-123', headerTags: { add: ['  '] } })
       expect(result.success).toBe(false)
     })
 

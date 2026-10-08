@@ -5,7 +5,6 @@
  * @module ipc/tags-handlers
  */
 
-import { readFile } from 'fs/promises'
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { eq, inArray, like, or } from 'drizzle-orm'
@@ -27,6 +26,7 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@memry/contracts/tags-api'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
@@ -66,13 +66,10 @@ import {
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
-import { toAbsolutePath } from '../vault/notes'
-import { parseNote, serializeUpdatedNote, type NoteFrontmatter } from '../vault/frontmatter'
-import { atomicWrite } from '../vault/file-ops'
+import { updateNoteCommand } from '../notes/domain'
 import { assertNoteWritable, hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
 import {
   syncMergedTagDefinitions,
-  syncTaggedNote,
   syncTagDefinitionDelete,
   syncTagDefinitionRename,
   syncTagDefinitionUpdate,
@@ -175,38 +172,24 @@ function keepLockedNoteTags(indexDb: ReturnType<typeof getIndexDatabase>, tag: s
   }
 }
 
-async function updateNoteFrontmatterTag(
+/**
+ * One note's part of a vault-wide tag rename, merge or delete. The header edit
+ * goes through the note command, so an open editor's doc follows it instead of
+ * writing the old list back. A locked note keeps its file, and a filed binary
+ * has no frontmatter: the index rows the caller already rewrote are its tags.
+ */
+async function editNoteHeaderTags(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
-  mutate: (tags: string[]) => string[]
+  headerTags: HeaderTagEdit
 ): Promise<void> {
   const cached = getNoteCacheById(indexDb, noteId)
-  if (!cached) return
-  // A vault-wide tag rename, merge or delete leaves a locked note's file as it is.
+  if (!cached || cached.fileType !== 'markdown') return
   if (isNoteLocked(noteId, cached.path)) {
     log.info('Left the tags of a locked note unchanged', { noteId })
     return
   }
-
-  const absolutePath = toAbsolutePath(cached.path)
-  const raw = await readFile(absolutePath, 'utf-8')
-  const parsed = parseNote(raw, absolutePath)
-
-  const currentTags: string[] = Array.isArray(parsed.frontmatter.tags)
-    ? parsed.frontmatter.tags
-    : []
-  const updatedTags = mutate(currentTags)
-
-  const nextFrontmatter: NoteFrontmatter = { ...parsed.frontmatter, tags: updatedTags }
-  if (updatedTags.length === 0) delete nextFrontmatter.tags
-
-  const serialized = serializeUpdatedNote(parsed, nextFrontmatter, parsed.content, {
-    frontmatterEdited: true
-  })
-  if (serialized !== raw) {
-    await atomicWrite(absolutePath, serialized)
-  }
-  syncTaggedNote(noteId)
+  await updateNoteCommand({ id: noteId, headerTags })
 }
 
 /**
@@ -328,13 +311,11 @@ export function registerTagsHandlers(): void {
 
         syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
 
-        const normalizedOld = input.oldName.toLowerCase().trim()
-        const trimmedNew = input.newName.trim()
         await Promise.all(
           noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.map((t) => (t.toLowerCase() === normalizedOld ? trimmedNew : t))
-            ).catch((err) => {
+            editNoteHeaderTags(indexDb, noteId, {
+              rename: [{ from: input.oldName, to: input.newName }]
+            }).catch((err) => {
               log.warn('Failed to update frontmatter for note', { noteId, err })
               // DB and vault file now diverge silently; must reach Error Tracking.
               trackMainError('tags', 'frontmatter_writeback', err)
@@ -428,9 +409,7 @@ export function registerTagsHandlers(): void {
         syncTagDefinitionDelete(normalizedTag, tagSnapshot)
         await Promise.all(
           noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.filter((t) => t.toLowerCase() !== normalizedTag)
-            ).catch((err) => {
+            editNoteHeaderTags(indexDb, noteId, { remove: [tag] }).catch((err) => {
               log.warn('Failed to update frontmatter for note', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)
             })
@@ -463,10 +442,7 @@ export function registerTagsHandlers(): void {
         assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
 
-        const normalizedTag = input.tag.toLowerCase().trim()
-        await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
-          tags.filter((t) => t.toLowerCase() !== normalizedTag)
-        ).catch((err) => {
+        await editNoteHeaderTags(db, input.noteId, { remove: [input.tag] }).catch((err) => {
           log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
           trackMainError('tags', 'frontmatter_writeback', err)
         })
@@ -539,10 +515,8 @@ export function registerTagsHandlers(): void {
 
         await Promise.all(
           noteResult.noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
-              const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
-              const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
-              return hasTarget ? withoutSource : [...withoutSource, trimmedTarget]
+            editNoteHeaderTags(indexDb, noteId, {
+              rename: [{ from: input.source, to: trimmedTarget }]
             }).catch((err) => {
               log.warn('Failed to update frontmatter for note during merge', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)

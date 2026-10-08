@@ -27,6 +27,7 @@ import type {
   ViewScope,
   ViewConfig as ContractViewConfig
 } from '@memry/contracts/folder-view-api'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { propertiesService } from '@/services/properties-service'
@@ -154,6 +155,9 @@ export interface FormulaInfo {
   expression: string
 }
 
+/** The header edits a table row offers: its tag chips add and remove, never rename. */
+type HeaderTagAddRemove = Pick<HeaderTagEdit, 'add' | 'remove'>
+
 /** Response from listWithProperties API */
 interface ListWithPropertiesResponse {
   notes: NoteWithProperties[]
@@ -249,8 +253,8 @@ interface UseFolderViewResult {
   removeNotesOptimistically: (noteIds: string[]) => void
   /** Update a property value on a note */
   updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
-  /** Update tags on a note */
-  updateNoteTags: (noteId: string, tags: string[]) => Promise<void>
+  /** Add or remove tags in a note's header */
+  updateNoteHeaderTags: (noteId: string, edit: HeaderTagAddRemove) => Promise<void>
   /**
    * Set (or clear, with `null`) the icon on each note named. Resolves to the
    * inverse of the writes that landed, which replays as Undo.
@@ -921,10 +925,10 @@ export function useFolderView({
   )
 
   /**
-   * Update tags for a note with optimistic cache update.
+   * Add or remove tags in a note's header, with an optimistic cache update.
    */
-  const updateNoteTags = useCallback(
-    async (noteId: string, tags: string[]) => {
+  const updateNoteHeaderTags = useCallback(
+    async (noteId: string, edit: HeaderTagAddRemove) => {
       const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
         folderViewKeys.notes(scope)
       )
@@ -937,14 +941,19 @@ export function useFolderView({
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              notes: page.notes.map((note) => (note.id === noteId ? { ...note, tags } : note))
+              notes: page.notes.map((note) => {
+                if (note.id !== noteId) return note
+                const kept = note.tags.filter((t) => !edit.remove?.includes(t))
+                const added = (edit.add ?? []).filter((t) => !kept.includes(t))
+                return { ...note, tags: [...kept, ...added] }
+              })
             }))
           }
         }
       )
 
       try {
-        const result = await notesService.update({ id: noteId, tags })
+        const result = await notesService.update({ id: noteId, headerTags: edit })
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update tags')
         }
@@ -1237,7 +1246,7 @@ export function useFolderView({
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags,
+    updateNoteHeaderTags,
     updateNoteIcons
   }
 }

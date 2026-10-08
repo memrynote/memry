@@ -150,11 +150,11 @@ export function useGraphEdits(): GraphEdits {
       try {
         const note = await notesService.get(noteId)
         if (!note) throw new Error('Note not found')
-        if (hasTag(note.tags, tag)) {
+        if (hasTag(note.headerTags, tag)) {
           toast(t('edit.tag-exists', { tag }))
           return
         }
-        const result = await updateNoteAsync({ id: noteId, tags: [...note.tags, tag] })
+        const result = await updateNoteAsync({ id: noteId, headerTags: { add: [tag] } })
         if (!result.success) throw new Error(result.error ?? 'Failed to add tag')
         refreshGraph()
         toast(t('edit.tag-added', { tag, note: note.title }), {
@@ -164,11 +164,8 @@ export function useGraphEdits(): GraphEdits {
               void (async () => {
                 try {
                   const latest = await notesService.get(noteId)
-                  if (!latest || !latest.tags.includes(tag)) return
-                  await updateNoteAsync({
-                    id: noteId,
-                    tags: latest.tags.filter((existing) => existing !== tag)
-                  })
+                  if (!latest || !latest.headerTags.includes(tag)) return
+                  await updateNoteAsync({ id: noteId, headerTags: { remove: [tag] } })
                   refreshGraph()
                 } catch (err) {
                   log.error('undo tag failed:', err)

@@ -51,7 +51,6 @@ import { notesService } from '@/services/notes-service'
 import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
-import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
@@ -1091,8 +1090,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
-  const handleInlineTagsChange = useJournalInlineTags(entryTags, updateTags)
-
   // Backlinks transform
   const backlinks: Backlink[] = useMemo(() => {
     return rawBacklinks.map((bl) => {
@@ -1397,7 +1394,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                   noteTags={entryTags}
                                   tagColorMap={tagColorMap}
                                   tagIconMap={tagIconMap}
-                                  onInlineTagsChange={handleInlineTagsChange}
                                   focusAtEndRef={focusAtEndRef}
                                   openTemplateInsertRef={openTemplateInsertRef}
                                   marqueeZoneEl={marqueeZoneEl}

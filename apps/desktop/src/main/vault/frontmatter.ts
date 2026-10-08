@@ -17,6 +17,7 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { isRelationValue } from '@memry/contracts/relation-uri'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
@@ -298,6 +299,26 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()]
+}
+
+/**
+ * The header tag list after `edit`: removes first, then renames in place, then
+ * appends the adds it does not already hold. Names compare case-insensitively,
+ * and a name already in the list keeps its spelling.
+ */
+export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
+  const key = (tag: string): string => tag.trim().toLowerCase()
+  const removed = new Set((edit.remove ?? []).map(key))
+  const renamed = new Map((edit.rename ?? []).map(({ from, to }) => [key(from), to.trim()]))
+  const next: string[] = []
+  const append = (tag: string): void => {
+    if (tag && !next.some((held) => key(held) === key(tag))) next.push(tag)
+  }
+  for (const tag of current) {
+    if (!removed.has(key(tag))) append(renamed.get(key(tag)) ?? tag)
+  }
+  for (const tag of edit.add ?? []) append(tag.trim())
+  return next
 }
 
 /**

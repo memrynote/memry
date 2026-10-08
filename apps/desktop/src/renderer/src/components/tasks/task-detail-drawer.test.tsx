@@ -632,6 +632,7 @@ describe('TaskDetailDrawer — editable properties', () => {
       created: new Date(),
       modified: new Date(),
       tags: [],
+      headerTags: [],
       aliases: [],
       wordCount: 0,
       properties: {}

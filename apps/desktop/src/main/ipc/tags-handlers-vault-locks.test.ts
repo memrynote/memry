@@ -20,10 +20,7 @@ import { getNoteTags, insertNoteCache, setNoteTags } from '@main/database/querie
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
 
-const files = vi.hoisted(() => ({
-  readFile: vi.fn(async () => '---\ntags: [old]\n---\nBody\n'),
-  atomicWrite: vi.fn(async () => undefined)
-}))
+const notes = vi.hoisted(() => ({ updateNoteCommand: vi.fn(async () => undefined) }))
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -41,14 +38,11 @@ vi.mock('../database', () => ({
   requireDatabase: () => state.data
 }))
 
-vi.mock('fs/promises', () => ({ readFile: files.readFile }))
-vi.mock('../vault/notes', () => ({ toAbsolutePath: (p: string) => `/vault/${p}` }))
-vi.mock('../vault/file-ops', () => ({ atomicWrite: files.atomicWrite }))
+vi.mock('../notes/domain', () => notes)
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 vi.mock('../tags/runtime-effects', () => ({
   syncMergedTagDefinitions: vi.fn(),
-  syncTaggedNote: vi.fn(),
   syncTagDefinitionDelete: vi.fn(),
   syncTagDefinitionRename: vi.fn(),
   syncTagDefinitionUpdate: vi.fn(),
@@ -127,7 +121,9 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
     expect(getNoteTags(index.db, 'note-free')).toEqual(['fresh', 'keep'])
     expect(rows('note-locked')).toEqual(lockedRows)
     expect(rows('note-own-lock')).toEqual(lockedRows)
-    expect(files.atomicWrite).toHaveBeenCalledTimes(1)
+    expect(notes.updateNoteCommand.mock.calls).toEqual([
+      [{ id: 'note-free', headerTags: { rename: [{ from: 'old', to: 'fresh' }] } }]
+    ])
   })
 
   it('delete keeps the tag on locked notes and removes it from the free one', async () => {

@@ -53,7 +53,10 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
+  /** Header and inline `#tags` together: the set the editor turns into chips. */
   tags: string[]
+  /** The frontmatter `tags:` list alone: what the tags row shows and `headerTags` edits change. */
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   emoji?: string | null // Emoji icon for visual identification
@@ -165,12 +168,30 @@ export const NoteCreateSchema = z.object({
   emoji: z.string().nullable().optional()
 })
 
+const HeaderTagNameSchema = z.string().trim().min(1).max(50)
+
+/**
+ * A change to a note's frontmatter `tags:` list, applied to the list in the
+ * file: removes first, then renames in place, then adds the list does not hold.
+ * Names compare case-insensitively. A delta rather than a list, so a caller can
+ * never write the inline `#tags` it read from a note into its header.
+ */
+export const HeaderTagEditSchema = z.object({
+  add: z.array(HeaderTagNameSchema).max(50).optional(),
+  remove: z.array(HeaderTagNameSchema).max(50).optional(),
+  rename: z
+    .array(z.object({ from: HeaderTagNameSchema, to: HeaderTagNameSchema }))
+    .max(50)
+    .optional()
+})
+export type HeaderTagEdit = z.infer<typeof HeaderTagEditSchema>
+
 export const NoteUpdateSchema = z.object({
   id: z.string(),
   title: z.string().min(1).max(200).optional(),
   content: z.string().optional(),
-  tags: z.array(z.string().max(50)).max(50).optional(),
-  frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields
+  headerTags: HeaderTagEditSchema.optional(),
+  frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields; never `tags`
   emoji: z.string().nullable().optional() // Emoji icon for visual identification
 })
 

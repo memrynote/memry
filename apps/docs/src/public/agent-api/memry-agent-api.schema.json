@@ -11751,13 +11751,50 @@
             "content": {
               "type": "string"
             },
-            "tags": {
-              "maxItems": 50,
-              "type": "array",
-              "items": {
-                "type": "string",
-                "maxLength": 50
-              }
+            "headerTags": {
+              "type": "object",
+              "properties": {
+                "add": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "remove": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "rename": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "to": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      }
+                    },
+                    "required": ["from", "to"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
             },
             "frontmatter": {
               "type": "object",
