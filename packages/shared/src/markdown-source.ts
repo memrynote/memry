@@ -211,14 +211,23 @@ export const MAX_EDIT_DISTANCE = 2000
  * which turns the list into an insertion on one side and a conflict on the
  * other and writes it twice. Stability stays byte-exact: a key-equal pair whose
  * bytes differ is a one-line change, never a stable line.
+ *
+ * A rule or a setext underline (`---`, `***`, `-------`) erases to nothing, and
+ * nothing is also the key of a blank line. Paired with the blank line below an
+ * ATX heading, a `-------` underline glues the heading's region to the edit in
+ * the next paragraph, and the untouched heading comes back in house style
+ * (#2615). Such a line keeps a key of its own instead.
  */
 function markdownAlignmentKey(line: string): string {
-  return line
-    .trim()
+  const trimmed = line.trim()
+  const key = trimmed
     .replace(/^[#>*+\-\s]+/, '')
     .replace(/[_*]/g, '')
     .replace(/\s+/g, ' ')
+  return key === '' && trimmed !== '' ? RULE_LINE_KEY : key
 }
+
+const RULE_LINE_KEY = '\u0000rule'
 
 /**
  * The edit script from `a` to `b`, as hunks in ascending order. Minimal over

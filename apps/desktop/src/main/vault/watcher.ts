@@ -32,6 +32,7 @@ import {
   findCanonicalNoteByPath
 } from './note-sync'
 import {
+  getAllNoteRefRows,
   getNoteCacheByPath,
   getNoteCacheById,
   ensureTagDefinitions,
@@ -62,6 +63,9 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { restoreLockedNoteFile } from '../vault-locks/service'
+import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
@@ -69,12 +73,17 @@ import {
   syncNoteCreate,
   syncNoteDelete,
   syncNoteUpdate,
+  queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { normalizeRelativePath } from '../lib/paths'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
+import { isVaultReachable } from './init'
+import { findVaultFiles } from './indexer'
 
 const logger = createLogger('Watcher')
+
+const VAULT_RETURN_POLL_MS = 2000
 
 // ============================================================================
 // Types
@@ -158,6 +167,21 @@ function extractJournalDate(relativePath: string): string {
   return extractDateFromPath(relativePath) ?? ''
 }
 
+async function isFileMissing(absolutePath: string): Promise<boolean> {
+  try {
+    await fs.stat(absolutePath)
+    return false
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    return code === 'ENOENT' || code === 'ENOTDIR'
+  }
+}
+
+async function isModifiedSince(absolutePath: string, indexedAt: string): Promise<boolean> {
+  const stats = await fs.stat(absolutePath).catch(() => null)
+  return stats !== null && stats.mtimeMs > Date.parse(indexedAt)
+}
+
 /** Cache timestamps come back as an ISO string or a Date, depending on driver. */
 function toIsoOrNull(value: string | Date | null | undefined): string | null {
   if (!value) return null
@@ -174,6 +198,9 @@ export class VaultWatcher {
   private excludePatterns: string[] = []
   private onError?: (error: Error) => void
   private isReady = false
+  private options: WatcherOptions | null = null
+  private generation = 0
+  private vaultReturnPoll: NodeJS.Timeout | null = null
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
@@ -188,6 +215,7 @@ export class VaultWatcher {
       await this.stop()
     }
 
+    this.options = options
     this.vaultPath = vaultPath
     this.excludePatterns = excludePatterns
     this.onError = onError
@@ -290,6 +318,11 @@ export class VaultWatcher {
    * Stop watching the vault.
    */
   async stop(): Promise<void> {
+    this.generation++
+    if (this.vaultReturnPoll) {
+      clearTimeout(this.vaultReturnPoll)
+      this.vaultReturnPoll = null
+    }
     // Clear any pending rename detections
     clearAllPendingDeletes()
     // Drop queued backfills: they belong to the vault being closed.
@@ -312,6 +345,78 @@ export class VaultWatcher {
   }
 
   // ==========================================================================
+  // Unreachable vault
+  // ==========================================================================
+
+  /**
+   * The vault went away: a drive unplugged, a network share dropped, its folder
+   * renamed. chokidar reports that as every file unlinked and then hears
+   * nothing when the vault returns, so the watcher polls for it, restarts and
+   * rescans.
+   */
+  private waitForVaultReturn(): void {
+    const options = this.options
+    if (this.vaultReturnPoll || !options) return
+    logger.warn('Vault is unreachable; file removals are ignored until it is back', {
+      vaultPath: options.vaultPath
+    })
+    const generation = this.generation
+    const poll = (): void => {
+      this.vaultReturnPoll = setTimeout(() => {
+        if (!isVaultReachable(options.vaultPath)) return poll()
+        this.vaultReturnPoll = null
+        void this.resumeAfterReturn(options, generation)
+      }, VAULT_RETURN_POLL_MS)
+    }
+    poll()
+  }
+
+  private async resumeAfterReturn(options: WatcherOptions, generation: number): Promise<void> {
+    logger.info('Vault is reachable again; restarting the watcher and rescanning', {
+      vaultPath: options.vaultPath
+    })
+    try {
+      await this.stop()
+      // Anything else that stopped or started the watcher meanwhile owns it now.
+      if (this.generation !== generation + 1) return
+      await this.start(options)
+      await this.rescan(this.generation)
+    } catch (err) {
+      this.onError?.(err instanceof Error ? err : new Error(String(err)))
+    }
+  }
+
+  /**
+   * Replay what changed while the vault was away through the handlers chokidar
+   * would have called. Removals go first, so a file renamed meanwhile matches
+   * its pending delete by content hash when its new path is added.
+   */
+  private async rescan(generation: number): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    const isCurrent = (): boolean => this.generation === generation
+    const db = getIndexDatabase()
+
+    for (const row of getAllNoteRefRows(db)) {
+      if (!isCurrent()) return
+      const absolutePath = path.join(vaultPath, row.path)
+      if (await isFileMissing(absolutePath)) this.handleFileDelete(absolutePath)
+    }
+
+    const excludes = [...this.excludePatterns, getConfig().attachmentsFolder].filter(Boolean)
+    for (const relativePath of await findVaultFiles(vaultPath, vaultPath, excludes)) {
+      if (!isCurrent()) return
+      const absolutePath = path.join(vaultPath, relativePath)
+      const cached = getNoteCacheByPath(db, relativePath)
+      if (!cached) {
+        await this.handleFileAdd(absolutePath)
+      } else if (await isModifiedSince(absolutePath, cached.indexedAt)) {
+        await this.handleFileChange(absolutePath)
+      }
+    }
+  }
+
+  // ==========================================================================
   // File Event Handlers
   // ==========================================================================
 
@@ -323,7 +428,10 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -371,6 +479,10 @@ export class VaultWatcher {
         message: error.message
       })
       this.onError?.(error)
+    } finally {
+      // A file moved into a locked folder, a locked note renamed or a locked
+      // file recreated from outside comes in writable.
+      await protectLockedFile(absolutePath)
     }
   }
 
@@ -634,7 +746,10 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -661,6 +776,29 @@ export class VaultWatcher {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       this.onError?.(error)
+    } finally {
+      // `atomic` reports a quick delete and recreate as a change.
+      await protectLockedFile(absolutePath)
+    }
+  }
+
+  /**
+   * The app's own write-back is dropped for a few seconds after it lands, but
+   * an outside edit to a locked note inside that window still gets the locked
+   * text back (#2606). The write-back itself matches the locked baseline it
+   * just recorded, so it is left alone.
+   */
+  private async checkLockedFileInWritebackWindow(absolutePath: string): Promise<void> {
+    if (!this.vaultPath || !hasAnyVaultLock()) return
+    try {
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
+      if (getFileType(getExtension(absolutePath)) !== 'markdown') return
+      const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
+      if (!cached || !isNoteLocked(cached.id, relativePath)) return
+      const content = await safeRead(absolutePath)
+      if (content !== null) await restoreLockedNoteFile(cached.id, content)
+    } catch (err) {
+      this.onError?.(err instanceof Error ? err : new Error(String(err)))
     }
   }
 
@@ -687,6 +825,15 @@ export class VaultWatcher {
       return
     }
 
+    // A locked note's outside edit is kept as a version and its locked text
+    // written back; it never reaches the index, the CRDT or the peers (#2606).
+    if (
+      isNoteLocked(cached.id, relativePath) &&
+      (await restoreLockedNoteFile(cached.id, content))
+    ) {
+      return
+    }
+
     const syncResult = syncNoteToCache(
       db,
       {
@@ -704,6 +851,7 @@ export class VaultWatcher {
       { isNew: false }
     )
     void flushProjectionEvents()
+    queueEmbeddedVaultFiles(cached.id, parsed.content)
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -814,10 +962,15 @@ export class VaultWatcher {
    * Tracks as pending delete to detect renames (delete + add with same UUID).
    */
   private handleFileDelete(absolutePath: string): void {
-    if (!this.vaultPath) return
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    if (!isVaultReachable(vaultPath)) {
+      this.waitForVaultReturn()
+      return
+    }
 
     try {
-      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
+      const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
 
       const db = getIndexDatabase()
 
@@ -849,6 +1002,20 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
+          // The vault can leave inside the rename window: an unmount or a
+          // recursive delete takes the files before the database.
+          if (!isVaultReachable(vaultPath)) {
+            this.waitForVaultReturn()
+            return
+          }
+          // A locked note removed outside the app gets its locked text back
+          // instead of a delete that would reach every device (#2606).
+          if (
+            isNoteLocked(cached.id, relativePath) &&
+            (await restoreLockedNoteFile(cached.id, null))
+          ) {
+            return
+          }
           // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
           if (isJournal && journalDate) {
             enqueueJournalDelete(cached.id, journalDate)

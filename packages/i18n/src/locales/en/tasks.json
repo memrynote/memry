@@ -564,6 +564,9 @@
       "status": "status",
       "projectIs": "Project is",
       "project": "project",
+      "locationIs": "Location is",
+      "location": "location",
+      "unknownNote": "Unknown note",
       "due": "Due",
       "dueDate": "due date",
       "search": "search",
@@ -584,6 +587,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Due date"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Location",
+      "search": "Search folders and notes...",
+      "empty": "No folders or notes with tasks"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priority",

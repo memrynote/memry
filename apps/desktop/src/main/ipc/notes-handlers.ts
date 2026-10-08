@@ -30,7 +30,19 @@ import {
   AttachmentActionSchema,
   AttachmentRenameSchema,
   InsertExistingAttachmentSchema,
-  DownloadAttachmentFromUrlSchema
+  DownloadAttachmentFromUrlSchema,
+  CreatePropertyDefinitionSchema,
+  ExportNoteSchema,
+  UpdatePropertyDefinitionSchema,
+  EnsurePropertyDefinitionSchema,
+  AddPropertyOptionSchema,
+  AddStatusOptionSchema,
+  RemovePropertyOptionSchema,
+  RenamePropertyOptionSchema,
+  UpdateOptionColorSchema,
+  DeletePropertyDefinitionSchema,
+  SetCalendarPropertyVisibilitySchema,
+  ImportFilesSchema
 } from '@memry/contracts/notes-api'
 import {
   resolveAttachment,
@@ -51,7 +63,6 @@ import {
   closeLargeFileSession,
   closeAllLargeFileSessions
 } from '../vault/large-file-session'
-import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
 import {
   createValidatedHandler,
@@ -60,6 +71,7 @@ import {
   withErrorHandler
 } from './validate'
 import { registerCommand } from './lib/register-command'
+import { DeleteAttachmentSchema, UploadAttachmentSchema } from './notes-schemas'
 import type { Note } from '../vault/notes'
 import { cleanCachedSnippet } from '../vault/frontmatter'
 import {
@@ -119,44 +131,20 @@ import {
 } from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { resolveWikiTarget } from '@memry/shared/wiki-target'
-import { countLocalOnlyNoteMetadata, listPropertyDefinitions } from '@memry/storage-data'
+import {
+  countLocalOnlyNoteMetadata,
+  getPropertyDefinition,
+  listPropertyDefinitions
+} from '@memry/storage-data'
 import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
 import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
-import {
-  createPropertyDefinitionRecord,
-  deletePropertyDefinitionRecord,
-  updatePropertyDefinitionRecord
-} from '../vault/property-definition-store'
+import { deletePropertyDefinitionRecord } from '../vault/property-definition-store'
 import { trackMainEvent } from '../telemetry/track'
 import { trackMainError } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('NotesHandlers')
-
-// ============================================================================
-// Zod Schemas for Property Definitions (T017-T018)
-// Note: T015-T016 (get/set properties) moved to properties-handlers.ts
-// ============================================================================
-
-const CreatePropertyDefinitionSchema = z.object({
-  name: z.string().min(1),
-  type: z.enum([
-    PropertyTypes.TEXT,
-    PropertyTypes.NUMBER,
-    PropertyTypes.CHECKBOX,
-    PropertyTypes.DATE,
-    PropertyTypes.URL,
-    PropertyTypes.STATUS,
-    PropertyTypes.SELECT,
-    PropertyTypes.MULTISELECT
-  ]),
-  options: z
-    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
-    .optional(),
-  defaultValue: z.unknown().optional(),
-  color: z.string().optional()
-})
 
 function stringifyDefaultValue(value: unknown): string {
   if (typeof value === 'string') return value
@@ -168,54 +156,6 @@ function stringifyDefaultValue(value: unknown): string {
   return JSON.stringify(value) ?? ''
 }
 
-// ============================================================================
-// Zod Schemas for Attachments (T070)
-// ============================================================================
-
-const UploadAttachmentSchema = z.object({
-  noteId: z.string().min(1),
-  filename: z.string().min(1),
-  data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
-})
-
-const DeleteAttachmentSchema = z.object({
-  noteId: z.string().min(1),
-  filename: z.string().min(1)
-})
-
-const UpdatePropertyDefinitionSchema = z.object({
-  name: z.string().min(1),
-  type: z
-    .enum([
-      PropertyTypes.TEXT,
-      PropertyTypes.NUMBER,
-      PropertyTypes.CHECKBOX,
-      PropertyTypes.DATE,
-      PropertyTypes.URL,
-      PropertyTypes.STATUS,
-      PropertyTypes.SELECT,
-      PropertyTypes.MULTISELECT
-    ])
-    .optional(),
-  options: z
-    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
-    .optional(),
-  defaultValue: z.unknown().optional(),
-  color: z.string().optional()
-})
-
-// ============================================================================
-// Zod Schemas for Export (T106, T108)
-// ============================================================================
-
-const ExportNoteSchema = z.object({
-  noteId: z.string().min(1),
-  includeMetadata: z.boolean().default(true),
-  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
-  // Headless export target — when provided, skip the save dialog (Agent MCP).
-  outputPath: z.string().min(1).optional()
-})
-
 /**
  * Render a note for export with its images carried inside the document.
  *
@@ -223,7 +163,10 @@ const ExportNoteSchema = z.object({
  * no base URL to resolve a relative `<img src>` against, and an exported
  * `.html` only kept its images while it sat next to the attachments (#1935).
  */
-async function renderNoteForExport(note: Note, includeMetadata: boolean): Promise<string> {
+async function renderNoteForExport(
+  note: Note,
+  { includeMetadata, includeTaskMarkers }: { includeMetadata: boolean; includeTaskMarkers: boolean }
+): Promise<string> {
   const html = renderNoteAsHtml(
     {
       id: note.id,
@@ -234,7 +177,11 @@ async function renderNoteForExport(note: Note, includeMetadata: boolean): Promis
       created: note.created,
       modified: note.modified
     },
-    { includeMetadata, findCustomIcon: (id) => getCustomIcon(getDatabase(), id) }
+    {
+      includeMetadata,
+      includeTaskMarkers,
+      findCustomIcon: (id) => getCustomIcon(getDatabase(), id)
+    }
   )
   return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
 }
@@ -646,30 +593,18 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
     CreatePropertyDefinitionSchema,
     async (input) => {
-      const isSelectType =
-        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
-
-      if (isSelectType) {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        await service.upsert({
-          name: input.name,
-          type: input.type,
-          options: input.type !== 'status' ? input.options : undefined,
-          defaultValue:
-            input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
-        })
-        return { success: true as const, definition: service.get(input.name) }
-      }
-
-      const definition = createPropertyDefinitionRecord({
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      await PropertyDefinitionsService.get().upsert({
         name: input.name,
         type: input.type,
-        options: input.options ? JSON.stringify(input.options) : null,
-        defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
-        color: input.color ?? null
+        options: input.type !== 'status' ? input.options : undefined,
+        defaultValue:
+          input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
       })
-      return { success: true as const, definition }
+      return {
+        success: true as const,
+        definition: getPropertyDefinition(getDatabase(), input.name) ?? null
+      }
     },
     'errors:property.createDefinitionFailed'
   )
@@ -679,41 +614,29 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
     UpdatePropertyDefinitionSchema,
     async (input) => {
-      const isSelectType =
-        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      const existing = service.find(input.name)
+      if (!existing)
+        return {
+          success: false as const,
+          definition: null,
+          error: getMainI18n().t('system:error.definitionNotFound')
+        }
 
-      if (isSelectType) {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        const existing = service.get(input.name)
-        if (!existing)
-          return {
-            success: false as const,
-            definition: null,
-            error: getMainI18n().t('system:error.definitionNotFound')
-          }
-
-        await service.upsert({
-          ...existing,
-          name: input.name,
-          type: input.type ?? existing.type,
-          options: input.options ?? existing.options,
-          defaultValue:
-            input.defaultValue != null
-              ? stringifyDefaultValue(input.defaultValue)
-              : existing.defaultValue
-        })
-        return { success: true as const, definition: service.get(input.name) }
-      }
-
-      const { name, ...updates } = input
-      const definition = updatePropertyDefinitionRecord(name, {
-        type: updates.type,
-        options: updates.options ? JSON.stringify(updates.options) : undefined,
-        defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
-        color: updates.color
+      await service.upsert({
+        ...existing,
+        type: input.type ?? existing.type,
+        options: input.options ?? existing.options,
+        defaultValue:
+          input.defaultValue != null
+            ? stringifyDefaultValue(input.defaultValue)
+            : existing.defaultValue
       })
-      return { success: true as const, definition }
+      return {
+        success: true as const,
+        definition: getPropertyDefinition(getDatabase(), input.name) ?? null
+      }
     },
     'errors:property.updateDefinitionFailed'
   )
@@ -721,7 +644,7 @@ export function registerNotesHandlers(): void {
   // notes:set-calendar-property-visibility - Toggle a date property's calendar visibility
   registerCommand(
     NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY,
-    z.object({ name: z.string().min(1), showOnCalendar: z.boolean() }),
+    SetCalendarPropertyVisibilitySchema,
     async (input) => {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
       await PropertyDefinitionsService.get().setShowOnCalendar(input.name, input.showOnCalendar)
@@ -745,124 +668,85 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
-    createValidatedHandler(
-      z.object({
-        name: z.string().min(1),
-        type: z.enum(['status', 'select', 'multiselect'])
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
-          await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        if (service.get(input.name)) return { success: true }
+    createValidatedHandler(EnsurePropertyDefinitionSchema, async (input) => {
+      const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
+        await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      if (service.get(input.name)) return { success: true }
 
-        if (input.type === 'status') {
-          await service.upsert({ ...DEFAULT_STATUS_DEFINITION, name: input.name })
-        } else {
-          await service.upsert({ name: input.name, type: input.type, options: [] })
-        }
-        return { success: true }
+      if (input.type === 'status') {
+        await service.upsert({ ...DEFAULT_STATUS_DEFINITION, name: input.name })
+      } else {
+        await service.upsert({ name: input.name, type: input.type, options: [] })
       }
-    )
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.ADD_PROPERTY_OPTION,
-    createValidatedHandler(
-      z.object({
-        propertyName: z.string().min(1),
-        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        const existing = service.get(input.propertyName)
-        if (!existing) {
-          await service.upsert({
-            name: input.propertyName,
-            type: 'select',
-            options: [input.option]
-          })
-        } else {
-          await service.addOption(input.propertyName, input.option)
-        }
-        return { success: true }
+    createValidatedHandler(AddPropertyOptionSchema, async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      const existing = service.get(input.propertyName)
+      if (!existing) {
+        await service.upsert({
+          name: input.propertyName,
+          type: 'select',
+          options: [input.option]
+        })
+      } else {
+        await service.addOption(input.propertyName, input.option)
       }
-    )
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.ADD_STATUS_OPTION,
-    createValidatedHandler(
-      z.object({
-        propertyName: z.string().min(1),
-        categoryKey: z.enum(['todo', 'in_progress', 'done']),
-        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        // The service materializes a missing status definition itself, so the
-        // pre-upsert this used to do only cost a second write of the same file.
-        await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
-        return { success: true }
-      }
-    )
+    createValidatedHandler(AddStatusOptionSchema, async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      // The service materializes a missing status definition itself, so the
+      // pre-upsert this used to do only cost a second write of the same file.
+      await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.REMOVE_PROPERTY_OPTION,
-    createValidatedHandler(
-      z.object({
-        propertyName: z.string().min(1),
-        optionValue: z.string().min(1)
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        await service.removeOption(input.propertyName, input.optionValue)
-        return { success: true }
-      }
-    )
+    createValidatedHandler(RemovePropertyOptionSchema, async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      await service.removeOption(input.propertyName, input.optionValue)
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.RENAME_PROPERTY_OPTION,
-    createValidatedHandler(
-      z.object({
-        propertyName: z.string().min(1),
-        oldValue: z.string().min(1),
-        newValue: z.string().min(1)
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        await service.renameOption(input.propertyName, input.oldValue, input.newValue)
-        return { success: true }
-      }
-    )
+    createValidatedHandler(RenamePropertyOptionSchema, async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      await service.renameOption(input.propertyName, input.oldValue, input.newValue)
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.UPDATE_OPTION_COLOR,
-    createValidatedHandler(
-      z.object({
-        propertyName: z.string().min(1),
-        optionValue: z.string().min(1),
-        newColor: z.string().min(1)
-      }),
-      async (input) => {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        await service.updateOptionColor(input.propertyName, input.optionValue, input.newColor)
-        return { success: true }
-      }
-    )
+    createValidatedHandler(UpdateOptionColorSchema, async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      await service.updateOptionColor(input.propertyName, input.optionValue, input.newColor)
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     NotesChannels.invoke.DELETE_PROPERTY_DEFINITION,
-    createValidatedHandler(z.object({ name: z.string().min(1) }), async (input) => {
+    createValidatedHandler(DeletePropertyDefinitionSchema, async (input) => {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
       const service = PropertyDefinitionsService.get()
       await service.remove(input.name)
@@ -1026,7 +910,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = await renderNoteForExport(note, input.includeMetadata)
+      const html = await renderNoteForExport(note, input)
 
       const win = new BrowserWindow({
         show: false,
@@ -1114,7 +998,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = await renderNoteForExport(note, input.includeMetadata)
+      const html = await renderNoteForExport(note, input)
 
       await fs.writeFile(targetPath, html, 'utf-8')
 
@@ -1218,10 +1102,7 @@ export function registerNotesHandlers(): void {
   // notes:import-files - Import files from external paths into the vault
   registerCommand(
     NotesChannels.invoke.IMPORT_FILES,
-    z.object({
-      sourcePaths: z.array(z.string()),
-      targetFolder: z.string().optional()
-    }),
+    ImportFilesSchema,
     async (input) => {
       const result = await importFiles(input)
       trackMainEvent('note_imported', {

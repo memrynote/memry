@@ -1,4 +1,5 @@
 import { ipcRenderer, webUtils } from 'electron'
+import { AppChannels } from '@memry/contracts/ipc-channels'
 import { invoke, subscribe } from '../lib/ipc'
 import { applyZoomFactor } from '../lib/startup-zoom'
 
@@ -6,6 +7,8 @@ export const windowApi = {
   windowMinimize: (): void => ipcRenderer.send('window-minimize'),
   windowMaximize: (): void => ipcRenderer.send('window-maximize'),
   windowClose: (): void => ipcRenderer.send('window-close'),
+  setTitleBarSymbolColor: (color: string): void =>
+    ipcRenderer.send(AppChannels.send.TITLE_BAR_SYMBOL_COLOR, color),
   setZoomFactor: (factor: number): void => applyZoomFactor(factor)
 }
 

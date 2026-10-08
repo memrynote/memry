@@ -88,6 +88,9 @@ describe('useYjsCollaboration', () => {
     expect(result.current.provider?.isSynced).toBe(true)
     expect(result.current.isRemoteUpdateRef.current).toBe(false)
 
+    // Outside a vault workspace there is no vault to name.
+    expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-1' })
+
     rerender({ noteId: 'note-2' })
 
     await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-1' }))
@@ -236,6 +239,11 @@ describe('useYjsCollaboration', () => {
     expect(a.result.current.collab.provider?.noteId).toBe('j2026-09-26')
     expect(b.result.current.collab.provider?.noteId).toBe('j2026-09-26')
     expect(mockOpenDoc).toHaveBeenCalledTimes(2)
+    // Each open names its vault, so main refuses it once it serves the other one.
+    expect(mockOpenDoc.mock.calls.map(([input]) => input)).toEqual([
+      { noteId: 'j2026-09-26', vaultPath: '/a' },
+      { noteId: 'j2026-09-26', vaultPath: '/b' }
+    ])
     // Each is its note's sole editor in its own vault.
     expect(a.result.current.collab.isSideEffectOwner).toBe(true)
     expect(b.result.current.collab.isSideEffectOwner).toBe(true)

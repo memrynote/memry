@@ -36,6 +36,17 @@ describe('image resize grips in base.css', () => {
     }
   })
 
+  it('shows the corner grips whenever the side grips show, and while selected (#2696)', () => {
+    for (const selector of [
+      ".bn-resize-handle:not([style*='display: none']) ~ .memry-image-corner-handle",
+      ".bn-editor[contenteditable='true'] .bn-block-content.ProseMirror-selectednode[data-content-type='image'] .memry-image-corner-handle"
+    ]) {
+      expect(declarationsFor(selector)).toContain('display: block')
+    }
+    // A trackpad-sized hit box, not the 12px bracket it draws.
+    expect(declarationsFor('[data-file-block] .memry-image-corner-handle')).toContain('width: 24px')
+  })
+
   it('caps an image at its block width so a nested image stays inside the list indent', () => {
     expect(
       declarationsFor(

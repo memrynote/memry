@@ -7,6 +7,8 @@
     "callout",
     "checkListItem",
     "codeBlock",
+    "column",
+    "columnList",
     "diagram",
     "divider",
     "file",
@@ -26,6 +28,7 @@
   "inline": [
     "dateMention",
     "hashTag",
+    "htmlComment",
     "inlineCheckbox",
     "inlineImage",
     "link",

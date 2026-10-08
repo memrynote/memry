@@ -130,6 +130,7 @@ const runtimeMocks = vi.hoisted(() => {
     templateSync: service('template'),
     homePageSync: service('home_page'),
     customIconSync: service('custom_icon'),
+    vaultLockSync: service('vault_lock'),
     projectSync: service('project'),
     settingsSync: service('settings'),
     noteSync: service('note'),
@@ -249,7 +250,10 @@ vi.mock('../crypto', () => ({
   secureCleanup: runtimeMocks.secureCleanup
 }))
 
-vi.mock('../store', () => ({ store: { get: runtimeMocks.storeGet } }))
+vi.mock('../store', () => ({
+  store: { get: runtimeMocks.storeGet },
+  getCurrentVaultPath: () => null
+}))
 
 vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: runtimeMocks.getOrCreateVaultUuid
@@ -326,6 +330,10 @@ vi.mock('@memry/sync-client/home-page-sync', () => ({
 vi.mock('@memry/sync-client/custom-icon-sync', () => ({
   initCustomIconSyncService: runtimeMocks.customIconSync.init,
   resetCustomIconSyncService: runtimeMocks.customIconSync.reset
+}))
+vi.mock('@memry/sync-client/vault-lock-sync', () => ({
+  initVaultLockSyncService: runtimeMocks.vaultLockSync.init,
+  resetVaultLockSyncService: runtimeMocks.vaultLockSync.reset
 }))
 vi.mock('@memry/sync-client/reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,

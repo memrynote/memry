@@ -271,7 +271,10 @@ and a client that breaks any of them reintroduces divergence.**
   by `document_gate` (`crates/memry-core/src/domain/task_merge.rs`) for every
   type but `settings`. It compares the stored `sync_items` payload, which is
   the payload it pushes (P2), and a local row that is deleted or flagged
-  corrupt applies (#2304).
+  corrupt applies (#2304). Whatever the clock outcome, a desktop note apply
+  keeps the later of the local and incoming `modifiedAt`, compared as
+  instants, because a note body edit moves `modifiedAt` without advancing the
+  record clock (#2616).
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
@@ -497,6 +500,7 @@ a client uses when a row has a document clock but no field clocks yet
 | `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
+| `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`

@@ -158,7 +158,8 @@
       "richTextAria": "محرر النص المنسق",
       "headingPlaceholder": "العنوان",
       "listPlaceholder": "عنصر القائمة",
-      "todoPlaceholder": "بند مهمة"
+      "todoPlaceholder": "بند مهمة",
+      "htmlComment": "تعليق HTML مخفي"
     },
     "table": {
       "keyboardMenuAria": "إجراءات الجدول للصف {row}، العمود {column}",
@@ -245,6 +246,25 @@
       "warning": "تحذير",
       "error": "خطأ",
       "success": "نجاح"
+    },
+    "columns": {
+      "group": "الكتل الأساسية",
+      "two": {
+        "title": "2 أعمدة",
+        "subtext": "ضع الكتل جنبًا إلى جنب في عمودين"
+      },
+      "three": {
+        "title": "3 أعمدة",
+        "subtext": "ضع الكتل جنبًا إلى جنب في ثلاثة أعمدة"
+      },
+      "four": {
+        "title": "4 أعمدة",
+        "subtext": "ضع الكتل جنبًا إلى جنب في أربعة أعمدة"
+      },
+      "five": {
+        "title": "5 أعمدة",
+        "subtext": "ضع الكتل جنبًا إلى جنب في خمسة أعمدة"
+      }
     },
     "diagram": {
       "title": "رسم تخطيطي",

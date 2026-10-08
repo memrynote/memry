@@ -18,6 +18,8 @@ import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { findNotesReferencingAttachment } from './attachment-reference-scan'
+import { assertNoteWritable, isNoteLocked, isLockedWriteAllowed } from '../vault-locks/registry'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const logger = createLogger('VaultAttachments')
 
@@ -402,6 +404,12 @@ export async function saveAttachment(
   originalFilename: string,
   options?: SaveAttachmentOptions
 ): Promise<AttachmentResult> {
+  // `attachments/<noteId>/` sits outside the note's folder, so a folder lock
+  // reaches it only through the owning note's path.
+  if (!isLockedWriteAllowed() && isNoteLocked(noteId, options?.notePath)) {
+    return { success: false, error: VAULT_LOCKED_NOTE_MESSAGE }
+  }
+
   // Validate file type
   const ext = getFileExtension(originalFilename)
   const extraAllowed = options?.extraAllowedExtensions ?? []
@@ -488,6 +496,7 @@ export async function deleteAttachment(
   noteId: string,
   filename: string
 ): Promise<DeleteAttachmentOutcome> {
+  assertNoteWritable(noteId)
   const vaultPath = getVaultPath()
   const filePath = getAttachmentPath(vaultPath, noteId, filename)
 

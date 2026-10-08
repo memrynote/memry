@@ -291,6 +291,18 @@ describe('PropertyRow', () => {
     expect(onDelete).toHaveBeenCalled()
   })
 
+  it('shows no delete button on a disabled row, as on a locked note (#2606)', () => {
+    const onDelete = vi.fn()
+
+    render(
+      <PropertyRow property={property()} onValueChange={vi.fn()} onDelete={onDelete} disabled />
+    )
+    fireEvent.mouseEnter(screen.getByText('Title').closest('div')!.parentElement!)
+
+    expect(screen.queryByLabelText('properties.delete: Title')).not.toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
   it('renders primitive editors and disabled name editing', () => {
     const onValueChange = vi.fn()
     const { rerender } = render(

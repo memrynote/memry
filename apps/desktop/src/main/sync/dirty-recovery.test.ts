@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
@@ -14,6 +14,7 @@ import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
@@ -35,6 +36,10 @@ import {
   initCustomIconSyncService,
   resetCustomIconSyncService
 } from '@memry/sync-client/custom-icon-sync'
+import {
+  initVaultLockSyncService,
+  resetVaultLockSyncService
+} from '@memry/sync-client/vault-lock-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 import {
   initCanvasFolderSyncService,
@@ -45,6 +50,8 @@ import {
   resetTaskActivitySyncService
 } from '@memry/sync-client/task-activity-sync'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { trackMainEvent } from '../telemetry/track'
 import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
 
@@ -990,6 +997,27 @@ describe('dirty-recovery', () => {
         readClock: (id) => db.select().from(customIcons).where(eq(customIcons.id, id)).get()?.clock
       },
       {
+        type: 'vault_lock',
+        init: () => initVaultLockSyncService(deps()),
+        reset: resetVaultLockSyncService,
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(vaultLocks)
+            .values({
+              id,
+              targetKind: 'note',
+              target: id,
+              locked: true,
+              clock,
+              syncedAt,
+              createdAt: modifiedAt,
+              updatedAt: modifiedAt
+            })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(vaultLocks).where(eq(vaultLocks.id, id)).get()?.clock
+      },
+      {
         type: 'reminder',
         init: () => initReminderSyncService(deps()),
         reset: resetReminderSyncService,
@@ -1194,6 +1222,77 @@ describe('dirty-recovery', () => {
 
       expect(queue.getPendingCount()).toBe(0)
       resetCanvasFolderSyncService()
+    })
+  })
+
+  describe('a lock dead-lettered by a server that predates vault_lock (#2606)', () => {
+    const LOCK_ID = 'note:note-locked'
+
+    beforeEach(() => {
+      initVaultLockSyncService({ queue, db, getDeviceId: () => 'device-A' })
+      db.insert(vaultLocks)
+        .values({
+          id: LOCK_ID,
+          targetKind: 'note',
+          target: 'note-locked',
+          locked: true,
+          clock: { 'device-A': 1 },
+          syncedAt: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z'
+        })
+        .run()
+      // An old server answers the push with no verdict for the lock, so every
+      // attempt is marked failed until the row leaves the retry budget.
+      const queued = queue.enqueue({
+        type: 'vault_lock',
+        itemId: LOCK_ID,
+        operation: 'create',
+        payload: '{}'
+      })
+      for (let attempt = 0; attempt < DEFAULT_MAX_ATTEMPTS; attempt++) {
+        queue.markFailed(queued, 'Unknown rejection')
+      }
+    })
+
+    afterEach(() => resetVaultLockSyncService())
+
+    const queuedLockRows = () =>
+      db
+        .select({ attempts: syncQueue.attempts, operation: syncQueue.operation })
+        .from(syncQueue)
+        .where(eq(syncQueue.itemId, LOCK_ID))
+        .all()
+
+    it('queues the lock again at the next start, next to the dead-lettered row', () => {
+      expect(queue.getPendingCount()).toBe(0)
+
+      const result = recoverDirtyItems(db)
+
+      expect(result.byType.vault_lock).toBe(1)
+      expect(queuedLockRows()).toEqual(
+        expect.arrayContaining([
+          { attempts: DEFAULT_MAX_ATTEMPTS, operation: 'create' },
+          { attempts: 0, operation: 'create' }
+        ])
+      )
+      expect(queue.getPendingCount()).toBe(1)
+    })
+
+    it('stops re-pushing once a server that knows vault_lock accepts it', () => {
+      recoverDirtyItems(db)
+      db.update(vaultLocks)
+        .set({ syncedAt: '2026-01-02T00:00:00Z' })
+        .where(eq(vaultLocks.id, LOCK_ID))
+        .run()
+      db.delete(syncQueue)
+        .where(and(eq(syncQueue.itemId, LOCK_ID), eq(syncQueue.attempts, 0)))
+        .run()
+
+      const result = recoverDirtyItems(db)
+
+      expect(result.byType.vault_lock).toBeUndefined()
+      expect(queue.getPendingCount()).toBe(0)
     })
   })
 })

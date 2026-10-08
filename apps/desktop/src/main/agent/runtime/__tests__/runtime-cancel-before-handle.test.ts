@@ -25,9 +25,9 @@ vi.mock('../../../telemetry/diagnostics', () => ({
   trackMainLog: vi.fn()
 }))
 
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn(() => ({
-    chat: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: vi.fn(() => ({
+    chatModel: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
   }))
 }))
 

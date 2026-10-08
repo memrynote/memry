@@ -47,6 +47,7 @@ vi.mock('../services/auth', () => ({
 }))
 
 vi.mock('../services/device', () => ({
+  isActiveDeviceKey: vi.fn().mockResolvedValue(false),
   listDeviceSigningKeys: vi.fn().mockResolvedValue([
     {
       id: 'device-1',
@@ -651,8 +652,41 @@ describe('auth routes', () => {
         success: true,
         isNewUser: true,
         needsSetup: true,
+        knownDevice: false,
         setupToken: 'mock-setup-token'
       })
+    })
+
+    // #2612: a device that still holds its keys signs back in without the
+    // recovery phrase, so the reply says whether the account still lists it.
+    it('tells an existing account that the signing device is still listed', async () => {
+      const { getOrCreateUserByEmail } = await import('../services/user')
+      vi.mocked(getOrCreateUserByEmail).mockResolvedValueOnce({
+        user: { id: 'user-1', kdf_salt: 'salt' },
+        isNewUser: false
+      } as never)
+      const { isActiveDeviceKey } = await import('../services/device')
+      vi.mocked(isActiveDeviceKey).mockResolvedValueOnce(true)
+
+      const res = await app.request(
+        '/auth/otp/verify',
+        jsonPost('/auth/otp/verify', {
+          email: 'test@example.com',
+          code: '123456',
+          devicePublicKey: 'device-key'
+        }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'mock-setup-token'
+      })
+      expect(isActiveDeviceKey).toHaveBeenCalledWith(env.DB, 'user-1', 'device-key')
     })
 
     it('grants Kaan a local dev paid sync entitlement', async () => {
@@ -997,8 +1031,33 @@ describe('auth routes', () => {
         success: true,
         isNewUser: true,
         needsSetup: true,
+        knownDevice: false,
         setupToken: 'mock-setup-token'
       })
+    })
+
+    it('tells an existing account that the signing device is still listed (#2612)', async () => {
+      const { getOrCreateUserByEmail } = await import('../services/user')
+      vi.mocked(getOrCreateUserByEmail).mockResolvedValueOnce({
+        user: { id: 'user-1', kdf_salt: 'salt' },
+        isNewUser: false
+      } as never)
+      const { isActiveDeviceKey } = await import('../services/device')
+      vi.mocked(isActiveDeviceKey).mockResolvedValueOnce(true)
+
+      const res = await app.request(
+        '/auth/oauth/google/callback',
+        jsonPost('/auth/oauth/google/callback', {
+          code: 'auth-code',
+          state: 'valid-state',
+          devicePublicKey: 'device-key'
+        }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({ needsSetup: false, knownDevice: true })
+      expect(isActiveDeviceKey).toHaveBeenCalledWith(env.DB, 'user-1', 'device-key')
     })
 
     it('should return 401 when state verification fails', async () => {

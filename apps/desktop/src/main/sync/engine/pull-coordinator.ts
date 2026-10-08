@@ -474,7 +474,7 @@ export class PullCoordinator {
         inSliceCursor,
         listedCursor
       )
-      runState.pulledCount += pageResult.applied
+      runState.pulledCount += pageResult.settled
       runState.totalConflictsResolved += pageResult.conflicts
       postCommitWork ||= pageResult.postCommitWork === true
       cursorCommitted ||= pageResult.cursorCommitted === true
@@ -725,7 +725,7 @@ export class PullCoordinator {
     pageCursor: string | null,
     listedCursor: (id: string) => number
   ): Promise<{
-    applied: number
+    settled: number
     conflicts: number
     stop: PageStopReason
     postCommitWork?: boolean
@@ -759,7 +759,7 @@ export class PullCoordinator {
         source: 'pull',
         dimensions: { transport: 'record' }
       })
-      return { applied: 0, conflicts: 0, stop: 'invalid_response' }
+      return { settled: 0, conflicts: 0, stop: 'invalid_response' }
     }
 
     if (parsed.unnamed > 0)
@@ -787,6 +787,8 @@ export class PullCoordinator {
     await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
     log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
 
+    // Settled counts every item the handler took, skipped and conflict included.
+    let pageSettled = 0
     let pageApplied = 0
     let pageSkipped = 0
     let pageFailed = 0
@@ -862,7 +864,7 @@ export class PullCoordinator {
           dimensions: { transport: 'record' }
         })
         this.ctx.deps.onVaultKeyMismatch?.()
-        return { applied: 0, conflicts: 0, stop: 'mismatch' }
+        return { settled: 0, conflicts: 0, stop: 'mismatch' }
       }
       if (keyCheck === 'transition') {
         // Sign-in / recovery / linking is mid-swap: the failures are expected
@@ -872,7 +874,7 @@ export class PullCoordinator {
           'Pull: key material is being re-established — stopping cycle without recording item failures',
           { failedCount: failures.length }
         )
-        return { applied: 0, conflicts: 0, stop: 'transition' }
+        return { settled: 0, conflicts: 0, stop: 'transition' }
       }
     }
 
@@ -951,7 +953,8 @@ export class PullCoordinator {
             if (result === 'conflict') {
               reportConflict(conflictDeps, dec)
               pageConflicts++
-            }
+            } else if (result === 'skipped') pageSkipped++
+            else pageApplied++
 
             this.queueBodyPull(
               runState,
@@ -961,7 +964,7 @@ export class PullCoordinator {
             )
 
             applied.record(dec, listedCursor(dec.id))
-            pageApplied++
+            pageSettled++
             // A skipped row changed nothing, and every ITEM_SYNCED makes the
             // renderer refetch (the task list re-queries per event).
             if (result !== 'skipped') {
@@ -1032,10 +1035,11 @@ export class PullCoordinator {
     if (noteBodies) await this.noteBodyFeed.land(noteBodies)
 
     const refetchRefs = [...failures.filter((f) => f.isCryptoError), ...parseErrorIds]
-    if (refetchRefs.length > 0 && pageApplied > 0) {
+    if (refetchRefs.length > 0 && pageSettled > 0) {
       const onChanged = (dec: RecoveredItem, itemOp: 'create' | 'update' | 'delete'): void => {
         this.queueBodyPull(runState, dec, itemOp)
         applied.record(dec, listedCursor(dec.id))
+        pageSettled++
         pageApplied++
         pageFailed--
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -1061,7 +1065,7 @@ export class PullCoordinator {
       pageFailed > 0 &&
       pageFailed === cryptoFailCount &&
       parsed.items.length > 0 &&
-      pageApplied === 0
+      pageSettled === 0
     ) {
       tripPullBreaker(
         { ctx: this.ctx, stateManager: this.stateManager, corruptTracker: this.corruptTracker },
@@ -1071,6 +1075,6 @@ export class PullCoordinator {
       stop = 'breaker'
     }
 
-    return { applied: pageApplied, conflicts: pageConflicts, stop, postCommitWork, cursorCommitted }
+    return { settled: pageSettled, conflicts: pageConflicts, stop, postCommitWork, cursorCommitted }
   }
 }

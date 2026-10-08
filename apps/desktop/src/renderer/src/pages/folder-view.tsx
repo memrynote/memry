@@ -168,8 +168,16 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     removeNotesOptimistically,
     updateNoteProperty,
     updateNoteTags,
-    updateNoteIcons
+    updateNoteIcons,
+    hasMore,
+    loadMore
   } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
+
+  // Filters, sorts, groups and summaries run over the loaded rows, so a folder
+  // past the first page must load every page or its later entries never show.
+  useEffect(() => {
+    if (hasMore) void loadMore()
+  }, [hasMore, loadMore, notes.length])
 
   // Get first note for formula preview in editor
   const sampleNote = notes.length > 0 ? notes[0] : null

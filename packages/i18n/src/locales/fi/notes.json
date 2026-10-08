@@ -158,7 +158,8 @@
       "richTextAria": "Rikastekstieditori",
       "headingPlaceholder": "Otsikko",
       "listPlaceholder": "Luettelokohde",
-      "todoPlaceholder": "Tehtävä"
+      "todoPlaceholder": "Tehtävä",
+      "htmlComment": "Piilotettu HTML-kommentti"
     },
     "table": {
       "keyboardMenuAria": "Taulukon toiminnot: rivi {row}, sarake {column}",
@@ -245,6 +246,25 @@
       "warning": "Varoitus",
       "error": "Virhe",
       "success": "Onnistuminen"
+    },
+    "columns": {
+      "group": "Peruslohkot",
+      "two": {
+        "title": "2 saraketta",
+        "subtext": "Aseta lohkot vierekkäin kahteen sarakkeeseen"
+      },
+      "three": {
+        "title": "3 saraketta",
+        "subtext": "Aseta lohkot vierekkäin kolmeen sarakkeeseen"
+      },
+      "four": {
+        "title": "4 saraketta",
+        "subtext": "Aseta lohkot vierekkäin neljään sarakkeeseen"
+      },
+      "five": {
+        "title": "5 saraketta",
+        "subtext": "Aseta lohkot vierekkäin viiteen sarakkeeseen"
+      }
     },
     "diagram": {
       "title": "Kaavio",

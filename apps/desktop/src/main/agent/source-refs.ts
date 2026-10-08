@@ -22,6 +22,7 @@ export function extractAgentSourceRefs(
       refs.push(...refsFromPayloadArrays(resultPayloads, noteRefFromRecord))
       break
     case 'vault_read_note':
+    case 'vault_view_file':
     case 'vault_get_current_note':
       refs.push(...maybeRefFromPayloads(resultPayloads, noteRefFromRecord))
       break
@@ -281,7 +282,8 @@ function projectRefFromRecord(record: JsonRecord): AgentSourceRef | null {
 
 function folderEntryRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const kind = firstString(record.kind)
-  if (kind === 'note') return noteRefFromRecord({ ...record, title: record.name })
+  if (kind === 'note' || kind === 'file')
+    return noteRefFromRecord({ ...record, title: record.name })
   if (kind !== 'folder') return null
   const path = firstString(record.path, record.id)
   const title = firstString(record.name, record.path)

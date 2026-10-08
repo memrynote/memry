@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('node:fs/promises', () => ({
-  mkdtemp: vi.fn(async () => '/tmp/memry-agy-test'),
-  rm: vi.fn(async () => {})
-}))
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 vi.mock('../agy-config', () => ({
   ensureAgyConfig: vi.fn(async (input: { permissions: { accessMode: string } }) => ({
@@ -18,11 +14,10 @@ vi.mock('../agy-config', () => ({
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
-import { rm } from 'node:fs/promises'
-
 import { ensureAgyConfig } from '../agy-config'
 import { agyBridgeRuntime, spawnAgyTurn } from '../agy-spawn'
 
+const WORKDIR = '/user-data/agent-workdirs/vault-1'
 const BRIDGE = { command: '/Apps/MemryNote', scriptPath: '/Apps/out/main/agy-mcp-bridge.js' }
 
 describe('spawnAgyTurn', () => {
@@ -31,6 +26,7 @@ describe('spawnAgyTurn', () => {
 
     await spawnAgyTurn({
       binaryPath: 'agy',
+      cwd: WORKDIR,
       prompt: 'User: /notes please',
       bridge: BRIDGE,
       mcp: {
@@ -57,7 +53,7 @@ describe('spawnAgyTurn', () => {
       stdio: string[]
       env: NodeJS.ProcessEnv
     }
-    expect(options.cwd).toBe('/tmp/memry-agy-test')
+    expect(options.cwd).toBe(WORKDIR)
     expect(options.stdio).toEqual(['pipe', 'pipe', 'pipe'])
     // agy reads MCP servers from a static file that does not expand env
     // references, so the stdio bridge it launches inherits these instead.
@@ -80,6 +76,7 @@ describe('spawnAgyTurn', () => {
 
     await spawnAgyTurn({
       binaryPath: 'agy',
+      cwd: WORKDIR,
       prompt: 'inspect files',
       bridge: BRIDGE,
       permissions: { accessMode: 'computer_access', webSearchEnabled: false }
@@ -94,7 +91,7 @@ describe('spawnAgyTurn', () => {
   it('defaults to vault-only permissions when the caller passes none', async () => {
     mockSpawnedProc()
 
-    await spawnAgyTurn({ binaryPath: 'agy', prompt: 'hello', bridge: BRIDGE })
+    await spawnAgyTurn({ binaryPath: 'agy', cwd: WORKDIR, prompt: 'hello', bridge: BRIDGE })
 
     expect(vi.mocked(ensureAgyConfig).mock.lastCall?.[0].permissions).toEqual({
       accessMode: 'vault_only',
@@ -109,6 +106,7 @@ describe('spawnAgyTurn', () => {
 
     await spawnAgyTurn({
       binaryPath: 'agy',
+      cwd: WORKDIR,
       prompt: 'hello',
       bridge: BRIDGE,
       model: 'gemini-3.1-pro-high'
@@ -118,22 +116,15 @@ describe('spawnAgyTurn', () => {
     expect(args[args.indexOf('--model') + 1]).toBe('gemini-3.1-pro-high')
   })
 
-  it('cleans up its working directory when the caller is done', async () => {
-    mockSpawnedProc()
-
-    const sub = await spawnAgyTurn({ binaryPath: 'agy', prompt: 'hello', bridge: BRIDGE })
-    await sub.cleanup()
-
-    expect(vi.mocked(rm)).toHaveBeenCalledWith('/tmp/memry-agy-test', {
-      recursive: true,
-      force: true
-    })
-  })
-
   it('survives a stdin error from a CLI that exits before reading the prompt', async () => {
     const fakeProc = mockSpawnedProc()
 
-    const sub = await spawnAgyTurn({ binaryPath: 'agy', prompt: 'hello', bridge: BRIDGE })
+    const sub = await spawnAgyTurn({
+      binaryPath: 'agy',
+      cwd: WORKDIR,
+      prompt: 'hello',
+      bridge: BRIDGE
+    })
     // EPIPE arrives on stdin, not on the child; unhandled it is a main-process
     // uncaughtException.
     expect(() =>
@@ -152,7 +143,7 @@ describe('spawnAgyTurn', () => {
   it('omits the turn environment for title and summary prompts', async () => {
     mockSpawnedProc()
 
-    await spawnAgyTurn({ binaryPath: 'agy', prompt: 'Title this', bridge: BRIDGE })
+    await spawnAgyTurn({ binaryPath: 'agy', cwd: WORKDIR, prompt: 'Title this', bridge: BRIDGE })
 
     const options = vi.mocked(spawn).mock.calls[0][2] as { env: NodeJS.ProcessEnv }
     expect(options.env.MEMRY_AGENT_TOKEN).toBeUndefined()

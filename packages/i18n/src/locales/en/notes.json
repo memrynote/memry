@@ -98,6 +98,7 @@
       "openToTheSide": "Open to the Side",
       "newNote": "New Note",
       "newFolder": "New Folder",
+      "showTasks": "Show Tasks",
       "expandSubfolders": "Expand All Subfolders",
       "collapseSubfolders": "Collapse All Subfolders",
       "rename": "Rename",
@@ -166,7 +167,8 @@
       "richTextAria": "Rich text editor",
       "headingPlaceholder": "Heading",
       "listPlaceholder": "List item",
-      "todoPlaceholder": "To-do item"
+      "todoPlaceholder": "To-do item",
+      "htmlComment": "Hidden HTML comment"
     },
     "table": {
       "keyboardMenuAria": "Table actions for row {row}, column {column}",
@@ -265,6 +267,25 @@
       "warning": "Warning",
       "error": "Error",
       "success": "Success"
+    },
+    "columns": {
+      "group": "Basic blocks",
+      "two": {
+        "title": "2 columns",
+        "subtext": "Place blocks side by side in two columns"
+      },
+      "three": {
+        "title": "3 columns",
+        "subtext": "Place blocks side by side in three columns"
+      },
+      "four": {
+        "title": "4 columns",
+        "subtext": "Place blocks side by side in four columns"
+      },
+      "five": {
+        "title": "5 columns",
+        "subtext": "Place blocks side by side in five columns"
+      }
     },
     "diagram": {
       "title": "Diagram",
@@ -640,7 +661,18 @@
     "readTime": "{count} min read",
     "words": "{count} words",
     "created": "Created",
-    "modified": "Modified"
+    "modified": "Modified",
+    "sync": {
+      "label": "Sync",
+      "confirmed": "On the server {time}",
+      "pending": "Waiting since {time}",
+      "sent": "Sending",
+      "rejected": "The server refused the last change",
+      "notRecorded": "Nothing waiting to send",
+      "localOnly": "Local only",
+      "notSyncing": "Not syncing",
+      "waiting": "Waiting to send"
+    }
   },
   "backlinks": {
     "sortRecent": "Recent",
@@ -1613,5 +1645,15 @@
       "cut": "Cut",
       "cutAll": "Cut all"
     }
+  },
+  "vaultLock": {
+    "lockNote": "Lock note",
+    "unlockNote": "Unlock note",
+    "lockFolder": "Lock folder",
+    "unlockFolder": "Unlock folder",
+    "toggleFailed": "Could not change the lock",
+    "readOnlyIndicator": "Locked. Read-only for you and for agents.",
+    "externalEditRestored": "“{title}” is locked, so its outside edit was undone",
+    "externalEditRestoredHint": "The edited text is saved in the note's version history."
   }
 }

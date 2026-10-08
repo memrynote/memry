@@ -26,6 +26,10 @@ export const AppChannels = {
   events: {
     NAVIGATION_COMMAND: 'app:navigation-command',
     MENU_COMMAND: 'app:menu-command'
+  },
+  send: {
+    /** Renderer -> main: caption-button symbol color for the Windows title bar overlay. */
+    TITLE_BAR_SYMBOL_COLOR: 'app:title-bar-symbol-color'
   }
 } as const
 
@@ -1077,6 +1081,30 @@ export type CustomIconsInvokeChannel =
   (typeof CustomIconsChannels.invoke)[keyof typeof CustomIconsChannels.invoke]
 export type CustomIconsEventChannel =
   (typeof CustomIconsChannels.events)[keyof typeof CustomIconsChannels.events]
+
+// ============================================================================
+// Vault Locks Channels
+// ============================================================================
+
+export const VaultLocksChannels = {
+  invoke: {
+    /** Every locked note id and folder path in the open vault */
+    LIST: 'vault-locks:list',
+    /** Lock or unlock one note or folder */
+    SET: 'vault-locks:set'
+  },
+  events: {
+    /** The set of locked notes and folders changed (locally or from a peer) */
+    CHANGED: 'vault-locks:changed',
+    /** A locked file changed outside the app and the locked text was written back */
+    EXTERNAL_EDIT_RESTORED: 'vault-locks:external-edit-restored'
+  }
+} as const
+
+export type VaultLocksInvokeChannel =
+  (typeof VaultLocksChannels.invoke)[keyof typeof VaultLocksChannels.invoke]
+export type VaultLocksEventChannel =
+  (typeof VaultLocksChannels.events)[keyof typeof VaultLocksChannels.events]
 
 // ============================================================================
 // Telemetry Channels

@@ -1,9 +1,20 @@
-import type { ZodTypeAny } from 'zod'
-
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { assertDesktopApiArgs } from './desktop-api-params'
+import { DESKTOP_API_REPLY_CAP } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
+import { parse } from './tool-input'
+import {
+  afterWrite,
+  bodyWarnings,
+  CRDT_STORE_UNAVAILABLE,
+  desktopNoteWrite,
+  storedNoteReply,
+  tagChanges,
+  withStoredNoteContent,
+  withWarnings
+} from './write-replies'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
 
@@ -18,14 +29,6 @@ export interface GateContext {
 export type WriteToolGate = (
   ctx: GateContext
 ) => Promise<{ approved: true; args?: unknown } | { approved: false; reason?: string }>
-
-function parse<T>(schema: ZodTypeAny, input: unknown): T {
-  const r = schema.safeParse(input)
-  if (!r.success) {
-    throw new AgentToolError('VALIDATION', 'Invalid tool input', { issues: r.error.issues })
-  }
-  return r.data as T
-}
 
 type ToolHandlerContext = Parameters<ToolRegistration['handler']>[1]
 
@@ -67,6 +70,11 @@ export function buildWriteTools(
   handles: VaultServiceHandles,
   gate: WriteToolGate | null
 ): ToolRegistration[] {
+  const storedTask = (id: string) => afterWrite(() => handles.tasks.get(id), { id })
+  const storedProject = (id: string) => afterWrite(() => handles.projects.get(id), { id })
+  const storedInboxItem = (id: string) => afterWrite(() => handles.inbox.get(id), { id })
+  const storedStatus = (id: string) => afterWrite(() => handles.statuses.get(id), { id })
+
   const factories: Record<(typeof WRITE_TOOL_NAMES)[number], ToolRegistration> = {
     vault_create_note: {
       name: 'vault_create_note',
@@ -85,7 +93,11 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.notes.create(args)
+        const { id, body, ...written } = await handles.notes.create(args)
+        return withWarnings(
+          { ...(await storedNoteReply(handles, id)), ...written },
+          bodyWarnings(body)
+        )
       }
     },
     vault_rename_note: {
@@ -98,7 +110,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_rename_note', parsed, ctx)
-        return handles.notes.rename(args)
+        await handles.notes.rename(args)
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_delete_note: {
@@ -154,7 +167,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_create_task', parsed, ctx)
-        return handles.tasks.create(args)
+        const { id } = await handles.tasks.create(args)
+        return storedTask(id)
       }
     },
     vault_delete_task: {
@@ -177,7 +191,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_complete_task', parsed, ctx)
-        return handles.tasks.complete(args)
+        await handles.tasks.complete(args)
+        return storedTask(args.id)
       }
     },
     vault_uncomplete_task: {
@@ -187,7 +202,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_uncomplete_task.input, input)
         const args = await approvedArgs(gate, 'vault_uncomplete_task', parsed, ctx)
-        return handles.tasks.uncomplete(args.id)
+        await handles.tasks.uncomplete(args.id)
+        return storedTask(args.id)
       }
     },
     vault_archive_task: {
@@ -197,7 +213,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_task.input, input)
         const args = await approvedArgs(gate, 'vault_archive_task', parsed, ctx)
-        return handles.tasks.archive(args.id)
+        await handles.tasks.archive(args.id)
+        return storedTask(args.id)
       }
     },
     vault_unarchive_task: {
@@ -207,7 +224,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_unarchive_task.input, input)
         const args = await approvedArgs(gate, 'vault_unarchive_task', parsed, ctx)
-        return handles.tasks.unarchive(args.id)
+        await handles.tasks.unarchive(args.id)
+        return storedTask(args.id)
       }
     },
     vault_move_task: {
@@ -220,7 +238,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_move_task', parsed, ctx)
-        return handles.tasks.move(args)
+        await handles.tasks.move(args)
+        return storedTask(args.task_id)
       }
     },
     vault_reorder_tasks: {
@@ -233,7 +252,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_tasks', parsed, ctx)
-        return handles.tasks.reorder(args)
+        const { ids } = await handles.tasks.reorder(args)
+        return { ids, tasks: await Promise.all(ids.map(storedTask)) }
       }
     },
     vault_duplicate_task: {
@@ -243,7 +263,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_duplicate_task.input, input)
         const args = await approvedArgs(gate, 'vault_duplicate_task', parsed, ctx)
-        return handles.tasks.duplicate(args.id)
+        const { id } = await handles.tasks.duplicate(args.id)
+        return storedTask(id)
       }
     },
     vault_convert_task_to_subtask: {
@@ -256,7 +277,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_convert_task_to_subtask', parsed, ctx)
-        return handles.tasks.convertToSubtask(args)
+        await handles.tasks.convertToSubtask(args)
+        return storedTask(args.task_id)
       }
     },
     vault_convert_subtask_to_task: {
@@ -269,7 +291,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_convert_subtask_to_task', parsed, ctx)
-        return handles.tasks.convertToTask(args.id)
+        await handles.tasks.convertToTask(args.id)
+        return storedTask(args.id)
       }
     },
     vault_create_project: {
@@ -282,7 +305,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_create_project', parsed, ctx)
-        return handles.projects.create(args)
+        const { id } = await handles.projects.create(args)
+        return storedProject(id)
       }
     },
     vault_update_project: {
@@ -295,7 +319,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_project', parsed, ctx)
-        return handles.projects.update(args)
+        await handles.projects.update(args)
+        return storedProject(args.id)
       }
     },
     vault_delete_project: {
@@ -315,7 +340,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_project.input, input)
         const args = await approvedArgs(gate, 'vault_archive_project', parsed, ctx)
-        return handles.projects.archive(args.id)
+        await handles.projects.archive(args.id)
+        return storedProject(args.id)
       }
     },
     vault_reorder_projects: {
@@ -328,7 +354,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_projects', parsed, ctx)
-        return handles.projects.reorder(args)
+        const { ids } = await handles.projects.reorder(args)
+        return { ids, projects: await Promise.all(ids.map(storedProject)) }
       }
     },
     vault_create_status: {
@@ -377,7 +404,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_statuses', parsed, ctx)
-        return handles.statuses.reorder(args)
+        const { ids } = await handles.statuses.reorder(args)
+        return { ids, statuses: await Promise.all(ids.map(storedStatus)) }
       }
     },
     vault_create_journal_entry: {
@@ -395,7 +423,9 @@ export function buildWriteTools(
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.journal.createIfMissing(args)
+        const { id, body, ...written } = await handles.journal.createIfMissing(args)
+        const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
+        return withWarnings({ ...stored, ...written }, bodyWarnings(body))
       }
     },
     vault_update_journal_entry: {
@@ -408,7 +438,9 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        return handles.journal.update(args)
+        const { id, body, ...written } = await handles.journal.update(args)
+        const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
+        return withWarnings({ ...stored, ...written }, bodyWarnings(body))
       }
     },
     vault_delete_journal_entry: {
@@ -436,7 +468,8 @@ export function buildWriteTools(
           toolName: 'vault_add_to_inbox',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.inbox.add(args)
+        const { id } = await handles.inbox.add(args)
+        return storedInboxItem(id)
       }
     },
     vault_update_inbox_item: {
@@ -449,7 +482,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_inbox_item', parsed, ctx)
-        return handles.inbox.update(args)
+        await handles.inbox.update(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_snooze_inbox_item: {
@@ -462,7 +496,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_snooze_inbox_item', parsed, ctx)
-        return handles.inbox.snooze(args)
+        await handles.inbox.snooze(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_archive_inbox_item: {
@@ -472,7 +507,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_inbox_item.input, input)
         const args = await approvedArgs(gate, 'vault_archive_inbox_item', parsed, ctx)
-        return handles.inbox.archive(args.id)
+        await handles.inbox.archive(args.id)
+        return storedInboxItem(args.id)
       }
     },
     vault_unarchive_inbox_item: {
@@ -482,7 +518,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_unarchive_inbox_item.input, input)
         const args = await approvedArgs(gate, 'vault_unarchive_inbox_item', parsed, ctx)
-        return handles.inbox.unarchive(args.id)
+        await handles.inbox.unarchive(args.id)
+        return storedInboxItem(args.id)
       }
     },
     vault_delete_inbox_item: {
@@ -505,7 +542,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_add_inbox_tag', parsed, ctx)
-        return handles.inbox.addTag(args)
+        await handles.inbox.addTag(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_remove_inbox_tag: {
@@ -518,7 +556,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_remove_inbox_tag', parsed, ctx)
-        return handles.inbox.removeTag(args)
+        await handles.inbox.removeTag(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_update_note: {
@@ -537,8 +576,11 @@ export function buildWriteTools(
           toolName: 'vault_update_note',
           parsedArgs: parsed
         })) as typeof parsed
-        await handles.notes.update(args)
-        return { id: args.id }
+        const before = await handles.notes.stored(args.id)
+        const { sent, stored, ...written } = await handles.notes.update(args)
+        const after = await storedNoteReply(handles, args.id)
+        const changes = before && 'tags' in after ? tagChanges(before.tags, after.tags) : {}
+        return withWarnings({ ...after, ...changes, ...written }, bodyWarnings({ sent, stored }))
       }
     },
     vault_add_html_artifact: {
@@ -555,8 +597,15 @@ export function buildWriteTools(
         // an unreferenced file, which is harmless; the reverse order would leave
         // a block pointing at nothing.
         const { marker, url } = await handles.notes.saveHtmlAttachment(args)
-        await handles.notes.update({ id: args.id, mode: 'append', content_markdown: marker })
-        return { id: args.id, url }
+        const body = await handles.notes.update({
+          id: args.id,
+          mode: 'append',
+          content_markdown: marker
+        })
+        return withWarnings(
+          { ...(await storedNoteReply(handles, args.id)), url },
+          bodyWarnings(body)
+        )
       }
     },
     vault_update_task: {
@@ -570,7 +619,7 @@ export function buildWriteTools(
         const args = await approvedArgs(gate, 'vault_update_task', parsed, ctx)
         const { id, ...patch } = args
         await handles.tasks.update(id, patch)
-        return { id }
+        return storedTask(id)
       }
     },
     vault_add_tag: {
@@ -588,9 +637,12 @@ export function buildWriteTools(
           toolName: 'vault_add_tag',
           parsedArgs: parsed
         })) as typeof parsed
-        if (args.kind === 'note') await handles.notes.addTag({ id: args.id, tag: args.tag })
-        else await handles.tasks.addTag({ id: args.id, tag: args.tag })
-        return { id: args.id }
+        if (args.kind === 'task') {
+          await handles.tasks.addTag({ id: args.id, tag: args.tag })
+          return storedTask(args.id)
+        }
+        await handles.notes.addTag({ id: args.id, tag: args.tag })
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_remove_tag: {
@@ -608,9 +660,12 @@ export function buildWriteTools(
           toolName: 'vault_remove_tag',
           parsedArgs: parsed
         })) as typeof parsed
-        if (args.kind === 'note') await handles.notes.removeTag({ id: args.id, tag: args.tag })
-        else await handles.tasks.removeTag({ id: args.id, tag: args.tag })
-        return { id: args.id }
+        if (args.kind === 'task') {
+          await handles.tasks.removeTag({ id: args.id, tag: args.tag })
+          return storedTask(args.id)
+        }
+        await handles.notes.removeTag({ id: args.id, tag: args.tag })
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_move_to_folder: {
@@ -628,8 +683,8 @@ export function buildWriteTools(
           toolName: 'vault_move_to_folder',
           parsedArgs: parsed
         })) as typeof parsed
-        await handles.notes.moveToFolder(args)
-        return { id: args.id }
+        const created = await handles.notes.moveToFolder(args)
+        return { ...(await storedNoteReply(handles, args.id)), ...created }
       }
     },
     vault_add_canvas_item: {
@@ -724,16 +779,36 @@ export function buildWriteTools(
       name: 'vault_desktop_write',
       description: TOOL_SCHEMAS.vault_desktop_write.description,
       inputSchema: TOOL_SCHEMAS.vault_desktop_write.input,
+      replyCap: DESKTOP_API_REPLY_CAP,
       handler: async (input, ctx) => {
         const parsed = parse<{ operation: AgentMcpDesktopWriteOperation; args: unknown[] }>(
           TOOL_SCHEMAS.vault_desktop_write.input,
           input
         )
+        assertDesktopApiArgs(parsed)
         const args = await approvedArgs(gate, 'vault_desktop_write', parsed, ctx)
-        return handles.desktop.write(args, ctx.windowId)
+        // The byte check compares with the body after the checkbox step (AF-005),
+        // so only a respelling by the save itself is reported.
+        const request = await handles.desktop.prepareWrite(args)
+        const result = await handles.desktop.write(request, ctx.windowId)
+        const write = desktopNoteWrite(request.operation, request.args, result)
+        if (!write) return result
+        const body = await handles.notes.storedBody(write.id, write.sent)
+        return withWarnings(withStoredNoteContent(result, body.stored), bodyWarnings(body))
       }
     }
   }
 
-  return WRITE_TOOL_NAMES.map((name) => factories[name])
+  return WRITE_TOOL_NAMES.map((name) => {
+    const tool = factories[name]
+    return {
+      ...tool,
+      handler: async (input, ctx) => {
+        const result = await tool.handler(input, ctx)
+        // The write has landed: a failed status read must not report it as failed.
+        const storeUp = await handles.sync.crdtStoreAvailable().catch(() => true)
+        return withWarnings(result, storeUp ? [] : [CRDT_STORE_UNAVAILABLE])
+      }
+    }
+  })
 }

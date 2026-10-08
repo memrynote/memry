@@ -1874,6 +1874,177 @@ public func FfiConverterTypeBackgroundExec_lower(_ value: BackgroundExec) -> UIn
 
 
 
+/**
+ * The canvas surface over one opened vault.
+ */
+public protocol CanvasesProtocol: AnyObject, Sendable {
+    
+    /**
+     * One live canvas, or `nil` when it is deleted or has not synced yet.
+     */
+    func canvas(id: String) throws  -> CanvasRecord?
+    
+    /**
+     * Creates a canvas and returns it. `scene` is Excalidraw JSON, or `nil`
+     * for an empty board; it is stored in desktop's canonical form.
+     */
+    func create(title: String?, ownerNoteId: String?, scene: String?) throws  -> CanvasRecord
+    
+    /**
+     * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     */
+    func setScene(id: String, scene: String) throws  -> CanvasRecord
+    
+}
+/**
+ * The canvas surface over one opened vault.
+ */
+open class Canvases: CanvasesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_canvases(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_canvases(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * One live canvas, or `nil` when it is deleted or has not synced yet.
+     */
+open func canvas(id: String)throws  -> CanvasRecord?  {
+    return try  FfiConverterOptionTypeCanvasRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_canvas(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Creates a canvas and returns it. `scene` is Excalidraw JSON, or `nil`
+     * for an empty board; it is stored in desktop's canonical form.
+     */
+open func create(title: String?, ownerNoteId: String?, scene: String?)throws  -> CanvasRecord  {
+    return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_create(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(ownerNoteId),
+        FfiConverterOptionString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     */
+open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
+    return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_set_scene(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvases: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Canvases
+
+    public static func lift(_ handle: UInt64) throws -> Canvases {
+        return Canvases(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Canvases) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Canvases {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Canvases, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvases_lift(_ handle: UInt64) throws -> Canvases {
+    return try FfiConverterTypeCanvases.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvases_lower(_ value: Canvases) -> UInt64 {
+    return FfiConverterTypeCanvases.lower(value)
+}
+
+
+
+
+
+
 public protocol CodeCapture: AnyObject, Sendable {
     
     func permission() async  -> CapturePermission
@@ -2762,323 +2933,6 @@ public func FfiConverterTypeDeviceLink_lift(_ handle: UInt64) throws -> DeviceLi
 #endif
 public func FfiConverterTypeDeviceLink_lower(_ value: DeviceLink) -> UInt64 {
     return FfiConverterTypeDeviceLink.lower(value)
-}
-
-
-
-
-
-
-public protocol EditorHost: AnyObject, Sendable {
-    
-    /**
-     * Relays a message to the guest and waits for its reply.
-     */
-    func request(message: BridgeMessage) async throws  -> BridgeMessage
-    
-    /**
-     * Relays a message with no reply expected.
-     */
-    func post(message: BridgeMessage) throws 
-    
-    /**
-     * The bundle's protocol version, read once at load. A mismatch with the
-     * core's expected version is a hard failure rather than a degraded mode:
-     * the bundle and the core ship together, so a mismatch means the build
-     * pairing broke.
-     */
-    func bridgeProtocolVersion()  -> UInt32
-    
-}
-open class EditorHostImpl: EditorHost, @unchecked Sendable {
-    fileprivate let handle: UInt64
-
-    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public struct NoHandle {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    required public init(unsafeFromHandle handle: UInt64) {
-        self.handle = handle
-    }
-
-    // This constructor can be used to instantiate a fake object.
-    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    //
-    // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public init(noHandle: NoHandle) {
-        self.handle = 0
-    }
-
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public func uniffiCloneHandle() -> UInt64 {
-        return try! rustCall { uniffi_memry_core_fn_clone_editorhost(self.handle, $0) }
-    }
-    // No primary constructor declared for this class.
-
-    deinit {
-        if handle == 0 {
-            // Mock objects have handle=0 don't try to free them
-            return
-        }
-
-        try! rustCall { uniffi_memry_core_fn_free_editorhost(handle, $0) }
-    }
-
-    
-
-    
-    /**
-     * Relays a message to the guest and waits for its reply.
-     */
-open func request(message: BridgeMessage)async throws  -> BridgeMessage  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_memry_core_fn_method_editorhost_request(
-                        self.uniffiCloneHandle(),FfiConverterTypeBridgeMessage_lower(message)
-                )
-            },
-            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
-            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
-            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeBridgeMessage_lift,
-            errorHandler: FfiConverterTypeEditorError_lift
-        )
-}
-    
-    /**
-     * Relays a message with no reply expected.
-     */
-open func post(message: BridgeMessage)throws   {try rustCallWithError(FfiConverterTypeEditorError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_editorhost_post(
-            self.uniffiCloneHandle(),
-        FfiConverterTypeBridgeMessage_lower(message),uniffiCallStatus
-    )
-}
-}
-    
-    /**
-     * The bundle's protocol version, read once at load. A mismatch with the
-     * core's expected version is a hard failure rather than a degraded mode:
-     * the bundle and the core ship together, so a mismatch means the build
-     * pairing broke.
-     */
-open func bridgeProtocolVersion() -> UInt32  {
-    return try!  FfiConverterUInt32.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_editorhost_bridge_protocol_version(
-            self.uniffiCloneHandle(),uniffiCallStatus
-    )
-})
-}
-    
-
-    
-}
-
-
-
-// Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceEditorHost {
-
-    // Create the VTable using a series of closures.
-    // Swift automatically converts these into C callback functions.
-    //
-    // Store the vtable directly.
-    static let vtable: UniffiVTableCallbackInterfaceEditorHost = UniffiVTableCallbackInterfaceEditorHost(
-        uniffiFree: { (uniffiHandle: UInt64) -> () in
-            do {
-                try FfiConverterTypeEditorHost.handleMap.remove(handle: uniffiHandle)
-            } catch {
-                print("Uniffi callback interface EditorHost: handle missing in uniffiFree")
-            }
-        },
-        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
-            do {
-                return try FfiConverterTypeEditorHost.handleMap.clone(handle: uniffiHandle)
-            } catch {
-                fatalError("Uniffi callback interface EditorHost: handle missing in uniffiClone")
-            }
-        },
-        request: { (
-            uniffiHandle: UInt64,
-            message: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutDroppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
-        ) in
-            let makeCall = {
-                () async throws -> BridgeMessage in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.request(
-                     message: try FfiConverterTypeBridgeMessage_lift(message)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: BridgeMessage) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureResultRustBuffer(
-                        returnValue: FfiConverterTypeBridgeMessage_lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureResultRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeEditorError_lower,
-                droppedCallback: uniffiOutDroppedCallback
-            )
-        },
-        post: { (
-            uniffiHandle: UInt64,
-            message: RustBuffer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.post(
-                     message: try FfiConverterTypeBridgeMessage_lift(message)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeEditorError_lower
-            )
-        },
-        bridgeProtocolVersion: { (
-            uniffiHandle: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UInt32>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> UInt32 in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return uniffiObj.bridgeProtocolVersion(
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterUInt32.lower($0) }
-            uniffiTraitInterfaceCall(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn
-            )
-        }
-    )
-
-    // Rust stores this pointer for future callback invocations, so it must live
-    // for the process lifetime (not just for the init function call).
-    //
-    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
-    // This is safe because the pointee is initialized once during static init
-    // and never mutated by either side of the FFI.  Its fields are C function pointers.
-    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceEditorHost> = {
-        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceEditorHost>.allocate(capacity: 1)
-        ptr.initialize(to: vtable)
-        return UnsafePointer(ptr)
-    }()
-}
-
-private func uniffiCallbackInitEditorHost() {
-    uniffi_memry_core_fn_init_callback_vtable_editorhost(UniffiCallbackInterfaceEditorHost.vtablePtr)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeEditorHost: FfiConverter {
-    fileprivate static let handleMap = UniffiHandleMap<EditorHost>()
-
-    typealias FfiType = UInt64
-    typealias SwiftType = EditorHost
-
-    public static func lift(_ handle: UInt64) throws -> EditorHost {
-        if ((handle & 1) == 0) {
-            // Rust-generated handle, construct a new class that uses the handle to implement the
-            // interface
-            return EditorHostImpl(unsafeFromHandle: handle)
-        } else {
-            // Swift-generated handle, get the object from the handle map
-            return try handleMap.remove(handle: handle)
-        }
-    }
-
-    public static func lower(_ value: EditorHost) -> UInt64 {
-         if let rustImpl = value as? EditorHostImpl {
-             // Rust-implemented object.  Clone the handle and return it
-            return rustImpl.uniffiCloneHandle()
-         } else {
-            // Swift object, generate a new vtable handle and return that.
-            return handleMap.insert(obj: value)
-         }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EditorHost {
-        let handle: UInt64 = try readInt(&buf)
-        return try lift(handle)
-    }
-
-    public static func write(_ value: EditorHost, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(value))
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorHost_lift(_ handle: UInt64) throws -> EditorHost {
-    return try FfiConverterTypeEditorHost.lift(handle)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorHost_lower(_ value: EditorHost) -> UInt64 {
-    return FfiConverterTypeEditorHost.lower(value)
 }
 
 
@@ -5292,7 +5146,7 @@ public protocol NotesProtocol: AnyObject, Sendable {
     /**
      * Every review comment and suggestion on one note (N604).
      *
-     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * **Read only, and normatively so.** §12.5.1 forbids a non-desktop client
      * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
      * deletes every suggestion from the file on desktop's next write-back.
      * There is no matching write on this API on purpose.
@@ -5312,6 +5166,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
      * "Add to favorites" / "Remove from favorites".
      */
     func isBookmarked(itemType: String, itemId: String) throws  -> Bool
+    
+    /**
+     * The live journal days carrying one tag, each titled by its
+     * `YYYY-MM-DD` date. A tag view block lists them beside the notes, as
+     * desktop does; [`Notes::notes_tagged`] holds notes only.
+     */
+    func journalsTagged(tag: String) throws  -> [NoteSummary]
     
     /**
      * The tasks linked to one note (N807).
@@ -5580,7 +5441,7 @@ open func bookmarks()throws  -> [BookmarkEntry]  {
     /**
      * Every review comment and suggestion on one note (N604).
      *
-     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * **Read only, and normatively so.** §12.5.1 forbids a non-desktop client
      * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
      * deletes every suggestion from the file on desktop's next write-back.
      * There is no matching write on this API on purpose.
@@ -5621,6 +5482,21 @@ open func isBookmarked(itemType: String, itemId: String)throws  -> Bool  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(itemType),
         FfiConverterString.lower(itemId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The live journal days carrying one tag, each titled by its
+     * `YYYY-MM-DD` date. A tag view block lists them beside the notes, as
+     * desktop does; [`Notes::notes_tagged`] holds notes only.
+     */
+open func journalsTagged(tag: String)throws  -> [NoteSummary]  {
+    return try  FfiConverterSequenceTypeNoteSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_journals_tagged(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),uniffiCallStatus
     )
 })
 }
@@ -11326,6 +11202,13 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func calendar(store: SecureStore) throws  -> VaultCalendar
     
     /**
+     * Every whiteboard read and write over this vault. Needs the keychain for
+     * the same reason [`Vault::tasks`] does, and carries this vault's id,
+     * which every canvas payload states.
+     */
+    func canvases(store: SecureStore) throws  -> Canvases
+    
+    /**
      * The id this vault was opened under, so a handle passed around the shell
      * says which vault it is rather than relying on the caller to remember.
      */
@@ -11496,6 +11379,21 @@ open func calendar(store: SecureStore)throws  -> VaultCalendar  {
     return try  FfiConverterTypeVaultCalendar_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_calendar(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every whiteboard read and write over this vault. Needs the keychain for
+     * the same reason [`Vault::tasks`] does, and carries this vault's id,
+     * which every canvas payload states.
+     */
+open func canvases(store: SecureStore)throws  -> Canvases  {
+    return try  FfiConverterTypeCanvases_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_canvases(
             self.uniffiCloneHandle(),
         FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
@@ -14118,67 +14016,6 @@ public func FfiConverterTypeBookmarkEntry_lower(_ value: BookmarkEntry) -> RustB
 
 
 /**
- * A message crossing the host-to-guest bridge.
- *
- * `payload` is the JSON body as bytes. It is opaque to the shell: the shell
- * relays it and does not read it, because a shell that reads it grows an
- * opinion about `BRIDGE_PROTOCOL_VERSION`.
- */
-public struct BridgeMessage: Equatable, Hashable {
-    public var kind: String
-    public var payload: Data
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(kind: String, payload: Data) {
-        self.kind = kind
-        self.payload = payload
-    }
-
-    
-
-    
-}
-
-#if compiler(>=6)
-extension BridgeMessage: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeBridgeMessage: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BridgeMessage {
-        return
-            try BridgeMessage(
-                kind: FfiConverterString.read(from: &buf), 
-                payload: FfiConverterData.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: BridgeMessage, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.kind, into: &buf)
-        FfiConverterData.write(value.payload, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeBridgeMessage_lift(_ buf: RustBuffer) throws -> BridgeMessage {
-    return try FfiConverterTypeBridgeMessage.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeBridgeMessage_lower(_ value: BridgeMessage) -> RustBuffer {
-    return FfiConverterTypeBridgeMessage.lower(value)
-}
-
-
-/**
  * One cached attachment.
  */
 public struct CachedAttachment: Equatable, Hashable {
@@ -16234,6 +16071,83 @@ public func FfiConverterTypeCalendarZoneTransition_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeCalendarZoneTransition_lower(_ value: CalendarZoneTransition) -> RustBuffer {
     return FfiConverterTypeCalendarZoneTransition.lower(value)
+}
+
+
+/**
+ * One live canvas.
+ */
+public struct CanvasRecord: Equatable, Hashable {
+    public var id: String
+    public var title: String?
+    /**
+     * The note whose whiteboard block embeds this canvas.
+     */
+    public var ownerNoteId: String?
+    /**
+     * Excalidraw JSON in desktop's canonical form.
+     */
+    public var scene: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String?, 
+        /**
+         * The note whose whiteboard block embeds this canvas.
+         */ownerNoteId: String?, 
+        /**
+         * Excalidraw JSON in desktop's canonical form.
+         */scene: String) {
+        self.id = id
+        self.title = title
+        self.ownerNoteId = ownerNoteId
+        self.scene = scene
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CanvasRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CanvasRecord {
+        return
+            try CanvasRecord(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                ownerNoteId: FfiConverterOptionString.read(from: &buf), 
+                scene: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CanvasRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.ownerNoteId, into: &buf)
+        FfiConverterString.write(value.scene, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasRecord_lift(_ buf: RustBuffer) throws -> CanvasRecord {
+    return try FfiConverterTypeCanvasRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasRecord_lower(_ value: CanvasRecord) -> RustBuffer {
+    return FfiConverterTypeCanvasRecord.lower(value)
 }
 
 
@@ -25283,6 +25197,10 @@ public enum BlockEdit: Equatable, Hashable {
     )
     /**
      * Lifts a block out to its parent's level (N406).
+     *
+     * A block directly in a column is refused as a column layout edit:
+     * there is no level inside the column to lift it to, and desktop leaves
+     * it where it is.
      */
     case outdent(blockId: String
     )
@@ -25345,12 +25263,31 @@ public enum BlockEdit: Equatable, Hashable {
      * props, marks and inline nodes it had; the blocks nested under it are
      * left as they are. When it is gone, the whole container returns after
      * the sibling it followed, else first in the block it was nested in, else
-     * first in the body.
+     * first in the column it sat in, else where that column's list stood
+     * (its column rebuilt when the list is still there), else first in the
+     * body.
      *
      * `snapshot` is opaque and belongs to the shell's undo stack only: it is
      * never stored or synced.
      */
     case restoreBlock(snapshot: String
+    )
+    /**
+     * Inserts a side-by-side column layout (chapter 12 §12.9):
+     * `columnList > column(width 1) > blockContainer > paragraph`, one empty
+     * paragraph per column.
+     *
+     * Lands after `after_block_id`, or at the start of the body when it is
+     * `None`. An anchor inside a column (or nested under another block) lands
+     * the list after the top-level row that holds it, because a column list
+     * never nests. `columns` outside 2..=3 is refused.
+     *
+     * `new_block_id` becomes the `columnList`'s own `id`; the core mints the
+     * ids of each column and of each column's paragraph container.
+     *
+     * Last in the enum so the variants before it keep their FFI indices.
+     */
+    case insertColumnList(afterBlockId: String?, columns: UInt32, newBlockId: String
     )
 
 
@@ -25437,6 +25374,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 22: return .restoreBlock(snapshot: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 23: return .insertColumnList(afterBlockId: try FfiConverterOptionString.read(from: &buf), columns: try FfiConverterUInt32.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -25595,6 +25535,13 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case let .restoreBlock(snapshot):
             writeInt(&buf, Int32(22))
             FfiConverterString.write(snapshot, into: &buf)
+            
+        
+        case let .insertColumnList(afterBlockId,columns,newBlockId):
+            writeInt(&buf, Int32(23))
+            FfiConverterOptionString.write(afterBlockId, into: &buf)
+            FfiConverterUInt32.write(columns, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
             
         }
     }
@@ -26561,123 +26508,6 @@ public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> Rus
     return FfiConverterTypeDevicePlatform.lower(value)
 }
 
-
-
-/**
- * Failures of the `EditorHost` seam (chapter 12).
- */
-public 
-enum EditorError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
-
-    
-    
-    /**
-     * No WebView is attached. The core queues rather than losing the message.
-     */
-    case NotAttached
-    /**
-     * The guest did not answer in time.
-     */
-    case Timeout(elapsedMs: UInt64
-    )
-    /**
-     * The bundle's `BRIDGE_PROTOCOL_VERSION` is not the one this core speaks.
-     * A hard failure, not a degraded mode: the bundle and the core ship
-     * together, so a mismatch means the build pairing broke.
-     */
-    case ProtocolMismatch(expected: UInt32, found: UInt32
-    )
-    case Failed(what: String
-    )
-
-    
-
-    
-
-    
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-    
-}
-
-#if compiler(>=6)
-extension EditorError: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeEditorError: FfiConverterRustBuffer {
-    typealias SwiftType = EditorError
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EditorError {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-
-        
-
-        
-        case 1: return .NotAttached
-        case 2: return .Timeout(
-            elapsedMs: try FfiConverterUInt64.read(from: &buf)
-            )
-        case 3: return .ProtocolMismatch(
-            expected: try FfiConverterUInt32.read(from: &buf), 
-            found: try FfiConverterUInt32.read(from: &buf)
-            )
-        case 4: return .Failed(
-            what: try FfiConverterString.read(from: &buf)
-            )
-
-         default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: EditorError, into buf: inout [UInt8]) {
-        switch value {
-
-        
-
-        
-        
-        case .NotAttached:
-            writeInt(&buf, Int32(1))
-        
-        
-        case let .Timeout(elapsedMs):
-            writeInt(&buf, Int32(2))
-            FfiConverterUInt64.write(elapsedMs, into: &buf)
-            
-        
-        case let .ProtocolMismatch(expected,found):
-            writeInt(&buf, Int32(3))
-            FfiConverterUInt32.write(expected, into: &buf)
-            FfiConverterUInt32.write(found, into: &buf)
-            
-        
-        case let .Failed(what):
-            writeInt(&buf, Int32(4))
-            FfiConverterString.write(what, into: &buf)
-            
-        }
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorError_lift(_ buf: RustBuffer) throws -> EditorError {
-    return try FfiConverterTypeEditorError.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorError_lower(_ value: EditorError) -> RustBuffer {
-    return FfiConverterTypeEditorError.lower(value)
-}
 
 
 /**
@@ -29032,6 +28862,30 @@ fileprivate struct FfiConverterOptionTypeCalendarItemBinding: FfiConverterRustBu
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeCalendarItemBinding.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCanvasRecord: FfiConverterRustBuffer {
+    typealias SwiftType = CanvasRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCanvasRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCanvasRecord.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -32133,6 +31987,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feeds_due() != 47367) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_canvases_canvas() != 7099) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 42908) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32388,13 +32251,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_bookmarks() != 18357) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_comments() != 23328) {
+    if (uniffi_memry_core_checksum_method_notes_comments() != 52547) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_journals_tagged() != 30574) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_linked_tasks() != 59020) {
@@ -32877,6 +32743,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_calendar() != 13188) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vault_canvases() != 3488) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32935,15 +32804,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_codecapture_cancel() != 52096) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_editorhost_request() != 48182) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_editorhost_post() != 3063) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_editorhost_bridge_protocol_version() != 58807) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notifications_permission() != 20630) {
@@ -33033,7 +32893,6 @@ private let initializationResult: InitializationResult = {
 
     uniffiCallbackInitBackgroundExec()
     uniffiCallbackInitCodeCapture()
-    uniffiCallbackInitEditorHost()
     uniffiCallbackInitFileProtection()
     uniffiCallbackInitLifecycleObserver()
     uniffiCallbackInitNotifications()

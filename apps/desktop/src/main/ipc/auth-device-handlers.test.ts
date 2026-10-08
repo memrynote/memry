@@ -59,8 +59,10 @@ vi.mock('../store', () => ({
 }))
 
 const mockPersistKeysAndRegisterDevice = vi.fn()
+const mockSignInKnownDevice = vi.fn()
 vi.mock('../sync/device-registration', () => ({
-  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args)
+  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args),
+  signInKnownDevice: (...args: unknown[]) => mockSignInKnownDevice(...args)
 }))
 
 const mockApproveDeviceLinking = vi.fn().mockResolvedValue({ success: true })
@@ -293,6 +295,75 @@ describe('auth-device handlers', () => {
         needsSetup: false,
         needsRecoveryInput: true
       })
+    })
+
+    // #2612: the account still lists this device and the device still holds
+    // its keys, so the email code alone signs it back in.
+    it('signs a known device back in without the recovery phrase', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'setup-token-123'
+      })
+      mockSignInKnownDevice.mockResolvedValue('device-1')
+
+      const result = await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(mockSignInKnownDevice).toHaveBeenCalledWith('setup-token-123')
+      expect(result).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        needsRecoveryInput: false,
+        deviceId: 'device-1'
+      })
+    })
+
+    it('asks for the recovery phrase when a known device cannot sign back in', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'setup-token-123'
+      })
+      mockSignInKnownDevice.mockResolvedValue(null)
+
+      const result = await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(result).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        needsRecoveryInput: true
+      })
+    })
+
+    it('never skips the recovery phrase for a device the server does not list', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        setupToken: 'setup-token-123'
+      })
+
+      await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(mockSignInKnownDevice).not.toHaveBeenCalled()
     })
 
     it('returns status for new user requiring setup', async () => {
@@ -807,6 +878,54 @@ describe('auth-device handlers', () => {
         needsRecoveryConfirmation: true,
         devices: [{ id: 'dev-1', isCurrentDevice: true }]
       })
+    })
+
+    it('keeps the local devices while the keychain read throws, then recovers', async () => {
+      registerAuthDeviceHandlers()
+      mockStoreGet.mockReturnValue({ email: 'user@example.com' })
+      mockSelectRows = [
+        {
+          id: 'dev-1',
+          name: 'Kaan MBP',
+          platform: 'macos',
+          linkedAt: new Date('2026-05-01T10:00:00.000Z'),
+          lastSyncAt: null,
+          isCurrentDevice: true
+        }
+      ]
+      mockGetValidAccessToken.mockRejectedValueOnce(
+        new Error('Failed to retrieve key from keychain (access-token): could not be read')
+      )
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
+        email: 'user@example.com',
+        needsRecoveryConfirmation: false,
+        devices: [
+          {
+            id: 'dev-1',
+            name: 'Kaan MBP',
+            platform: 'macos',
+            linkedAt: new Date('2026-05-01T10:00:00.000Z').getTime(),
+            lastSyncAt: undefined,
+            isCurrentDevice: true
+          }
+        ]
+      })
+
+      mockGetFromServer.mockResolvedValueOnce({
+        devices: [
+          { id: 'dev-1', name: 'Kaan MBP', platform: 'macos', createdAt: 1777629600 },
+          { id: 'dev-2', name: 'Linux box', platform: 'linux', createdAt: 1777802400 }
+        ]
+      })
+
+      const recovered = (await invokeHandler(SYNC_CHANNELS.GET_DEVICES)) as {
+        devices: Array<{ id: string; isCurrentDevice: boolean }>
+      }
+      expect(recovered.devices.map((d) => [d.id, d.isCurrentDevice])).toEqual([
+        ['dev-1', true],
+        ['dev-2', false]
+      ])
     })
 
     it('refreshes active devices from the sync server when authenticated', async () => {

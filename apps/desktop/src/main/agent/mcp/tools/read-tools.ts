@@ -2,9 +2,16 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { describeDesktopOperation } from './desktop-api-describe'
+import { assertDesktopApiArgs } from './desktop-api-params'
+import { DESKTOP_API_REPLY_CAP } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
+import { withNoteSync } from './note-sync-reply'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
-import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
+import type {
+  AgentMcpDesktopOperation,
+  AgentMcpDesktopReadOperation
+} from '@memry/contracts/agent-mcp-channels'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
@@ -28,12 +35,13 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           folder_id?: string
           file_types?: NoteFileType[]
         }>(TOOL_SCHEMAS.vault_search_notes.input, input)
-        return handles.notes.search({
+        const hits = await handles.notes.search({
           query: a.query,
           limit: a.limit,
           folderId: a.folder_id,
           fileTypes: a.file_types
         })
+        return withNoteSync(handles, hits)
       }
     },
     vault_read_note: {
@@ -41,21 +49,38 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       description: TOOL_SCHEMAS.vault_read_note.description,
       inputSchema: TOOL_SCHEMAS.vault_read_note.input,
       handler: async (input) => {
-        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_note.input, input)
-        const note = await handles.notes.read(a.id)
+        const a = parse<{ id: string; from_page?: number }>(
+          TOOL_SCHEMAS.vault_read_note.input,
+          input
+        )
+        const note = await handles.notes.read(a.id, { fromPage: a.from_page })
         if (!note) throw new AgentToolError('NOT_FOUND', `Note ${a.id} not found`, { id: a.id })
         // A filed pdf/image/audio/video indexes as a "note" row (#800). Handing
-        // its body to an agent would be binary garbage dressed as markdown, so
-        // refuse loudly instead of letting it read or edit one. See #919.
-        if (note.file_type !== 'markdown') {
+        // its body to an agent would be binary garbage dressed as markdown
+        // (#919). A PDF or image answers with the text extracted from it;
+        // audio and video have none, so refuse those loudly.
+        if (note.file_type !== 'markdown' && !note.extracted_text) {
           throw new AgentToolError(
             'VALIDATION',
             `Note ${a.id} is a filed ${note.file_type} file, not a markdown note. ` +
-              'vault_read_note returns markdown only.',
+              'vault_read_note returns markdown notes and the text of filed PDFs and images.',
             { id: a.id, file_type: note.file_type }
           )
         }
-        return note
+        const [withSync] = await withNoteSync(handles, [note])
+        return withSync
+      }
+    },
+    vault_view_file: {
+      name: 'vault_view_file',
+      description: TOOL_SCHEMAS.vault_view_file.description,
+      inputSchema: TOOL_SCHEMAS.vault_view_file.input,
+      handler: async (input) => {
+        const a = parse<{ id: string; attachment?: string; page?: number }>(
+          TOOL_SCHEMAS.vault_view_file.input,
+          input
+        )
+        return handles.files.view(a)
       }
     },
     vault_list_folder: {
@@ -67,7 +92,11 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           TOOL_SCHEMAS.vault_list_folder.input,
           input
         )
-        return handles.folders.list(a)
+        return withNoteSync(
+          handles,
+          await handles.folders.list(a),
+          (entry) => entry.kind === 'note'
+        )
       }
     },
     vault_get_current_note: {
@@ -133,7 +162,10 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       inputSchema: TOOL_SCHEMAS.vault_get_journal_entry.input,
       handler: async (input) => {
         const a = parse<{ date: string }>(TOOL_SCHEMAS.vault_get_journal_entry.input, input)
-        return handles.journal.getByDate(a.date)
+        const entry = await handles.journal.getByDate(a.date)
+        if (!entry) return null
+        const [withSync] = await withNoteSync(handles, [entry])
+        return withSync
       }
     },
     vault_list_journal_entries: {
@@ -145,7 +177,7 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           TOOL_SCHEMAS.vault_list_journal_entries.input,
           input
         )
-        return handles.journal.listInRange(a)
+        return withNoteSync(handles, await handles.journal.listInRange(a))
       }
     },
     vault_list_inbox_items: {
@@ -204,12 +236,26 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       name: 'vault_desktop_read',
       description: TOOL_SCHEMAS.vault_desktop_read.description,
       inputSchema: TOOL_SCHEMAS.vault_desktop_read.input,
+      replyCap: DESKTOP_API_REPLY_CAP,
       handler: async (input, ctx) => {
         const a = parse<{ operation: AgentMcpDesktopReadOperation; args: unknown[] }>(
           TOOL_SCHEMAS.vault_desktop_read.input,
           input
         )
+        assertDesktopApiArgs(a)
         return handles.desktop.read(a, ctx.windowId)
+      }
+    },
+    vault_desktop_describe: {
+      name: 'vault_desktop_describe',
+      description: TOOL_SCHEMAS.vault_desktop_describe.description,
+      inputSchema: TOOL_SCHEMAS.vault_desktop_describe.input,
+      handler: async (input) => {
+        const a = parse<{ operation?: AgentMcpDesktopOperation }>(
+          TOOL_SCHEMAS.vault_desktop_describe.input,
+          input
+        )
+        return describeDesktopOperation(a.operation)
       }
     }
   }

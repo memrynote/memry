@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
+import { ImageToolResult } from '../tool-image'
+import { DESKTOP_API_REPLY_CAP } from '../tools/desktop-api-reply'
+import { TOOL_SCHEMAS } from '../tools/schemas'
 
 describe('Agent MCP HTTP server', () => {
   let handle: AgentMcpServerHandle
@@ -88,6 +91,75 @@ describe('Agent MCP server tool round-trip', () => {
       expect(r.status).toBe(200)
       const text = await r.text()
       expect(text).toContain('"echoed":"hi"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('names an unknown argument in the error an external MCP client gets', async () => {
+    const handler = vi.fn(async () => ({ ok: true }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_update_task',
+          description: 'update a task',
+          inputSchema: TOOL_SCHEMAS.vault_update_task.input,
+          handler
+        }
+      ]
+    })
+
+    try {
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'vault_update_task', arguments: { id: 't1', colour: 'red' } }
+        })
+      })
+
+      expect(await r.text()).toContain('Unknown argument: colour.')
+      expect(handler).not.toHaveBeenCalled()
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('advertises additionalProperties false for every tool, and runs a no-argument tool called without arguments', async () => {
+    const handler = vi.fn(async () => ({ tags: [] }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: Object.entries(TOOL_SCHEMAS).map(([name, schema]) => ({
+        name,
+        description: schema.description,
+        inputSchema: schema.input,
+        handler
+      }))
+    })
+
+    try {
+      const list = await mcpPost(handle, { method: 'tools/list', params: {} })
+      const tools = (
+        list as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }
+      ).result.tools
+      expect(tools).toHaveLength(Object.keys(TOOL_SCHEMAS).length)
+      const open = tools
+        .filter((tool) => tool.inputSchema.additionalProperties !== false)
+        .map((tool) => tool.name)
+      expect(open).toEqual([])
+
+      const call = await mcpPost(handle, {
+        method: 'tools/call',
+        params: { name: 'vault_get_tags' }
+      })
+      expect(JSON.stringify(call)).not.toContain('isError')
+      expect(handler).toHaveBeenCalledWith({}, expect.anything())
     } finally {
       await handle.stop()
     }
@@ -453,6 +525,150 @@ describe('Agent MCP server shutdown', () => {
   })
 })
 
+describe('Agent MCP server reply cap', () => {
+  const eventList = (length: number) =>
+    Array.from({ length }, (_, i) => ({
+      id: `event-${i}`,
+      title: `Synthetic event ${i}`,
+      startAt: '2026-10-05T09:00:00.000Z',
+      endAt: '2026-10-05T10:00:00.000Z',
+      description: 'x'.repeat(40)
+    }))
+  let reply: unknown
+  let handle: AgentMcpServerHandle
+
+  beforeEach(async () => {
+    handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_desktop_read',
+          description: 'desktop read',
+          inputSchema: z.object({ operation: z.string(), args: z.array(z.unknown()) }),
+          replyCap: DESKTOP_API_REPLY_CAP,
+          handler: async () => reply
+        }
+      ]
+    })
+  })
+
+  afterEach(async () => {
+    await handle.stop()
+  })
+
+  async function call(operation: string, args: unknown[]) {
+    const r = await callTool(handle, 'vault_desktop_read', { operation, args })
+    const body = await r.text()
+    const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
+    const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
+    const text = rpc.result.content[0].text as string
+    return { text, delivered: JSON.parse(text), structured: rpc.result.structuredContent }
+  }
+
+  it('cuts a desktop reply after source refs are added, so the agent gets at most 100 KB', async () => {
+    reply = { events: eventList(450) }
+    const { text, delivered, structured } = await call('calendar.listEvents', [{}])
+
+    expect(Buffer.byteLength(JSON.stringify(reply))).toBeLessThan(102_400)
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(102_400)
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.totalBytes).toBeGreaterThan(200_000)
+    expect(delivered.partial.startsWith('{"events":[{"id":"event-0"')).toBe(true)
+    expect(structured).toEqual(delivered)
+  })
+
+  it('points a cut calendar event list at a date range, since the list takes no limit', async () => {
+    reply = { events: eventList(450) }
+    const { delivered } = await call('calendar.listEvents', [{}])
+
+    expect(delivered.message).toMatch(
+      /calendar\.listEvents returns every event; call calendar\.getRange with a date range instead\.$/
+    )
+    expect(delivered.message).not.toMatch(/limit|vault_read_note/)
+  })
+
+  it('tells the agent to narrow the date range of a cut calendar range, which takes no limit', async () => {
+    reply = { events: eventList(1200) }
+    const { delivered } = await call('calendar.getRange', [
+      { startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-11-01T00:00:00.000Z' }
+    ])
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.message).toMatch(/Call calendar\.getRange again with a shorter date range\.$/)
+    expect(delivered.message).not.toMatch(/limit|vault_read_note/)
+  })
+
+  it('suggests a smaller limit or vault_read_note for other cut replies', async () => {
+    reply = { notes: [{ id: 'n1', content: 'x'.repeat(150_000) }] }
+    const { delivered } = await call('notes.list', [{}])
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.message).toMatch(
+      /Call an operation that returns less, such as a list with a smaller limit, or vault_read_note for a note body\.$/
+    )
+  })
+})
+
+describe('Agent MCP server empty replies', () => {
+  it('replies null for a tool that returns nothing, as vault.reindex does', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [buildTool('vault_desktop_write', async () => undefined)]
+    })
+
+    try {
+      const rpc = (await mcpPost(handle, {
+        method: 'tools/call',
+        params: { name: 'vault_desktop_write', arguments: {} }
+      })) as {
+        error?: unknown
+        result: { isError?: boolean; content: unknown[]; structuredContent: unknown }
+      }
+
+      expect(rpc.error).toBeUndefined()
+      expect(rpc.result.isError).toBeFalsy()
+      expect(rpc.result.content).toEqual([{ type: 'text', text: 'null' }])
+      expect(rpc.result.structuredContent).toEqual({ result: null })
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
+describe('Agent MCP server image replies', () => {
+  it('sends an ImageToolResult as a text part with the reply and an image part', async () => {
+    const reply = { id: 'file-1', title: 'Login screen', width: 4, height: 2 }
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_view_file',
+          description: 'view a file',
+          inputSchema: z.object({ id: z.string() }),
+          handler: async () =>
+            new ImageToolResult(reply, { data: 'iVBORw0KGgo=', mimeType: 'image/png' })
+        }
+      ]
+    })
+
+    try {
+      const r = await callTool(handle, 'vault_view_file', { id: 'file-1' })
+      const body = await r.text()
+      const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
+      const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
+      const [text, image, ...rest] = rpc.result.content
+
+      expect(rest).toEqual([])
+      expect(text.type).toBe('text')
+      expect(JSON.parse(text.text)).toMatchObject({
+        ...reply,
+        href: 'memry://note/file-1'
+      })
+      expect(image).toEqual({ type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' })
+      expect(rpc.result.structuredContent).toEqual(JSON.parse(text.text))
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
 function buildTool(
   name: string,
   handler: (
@@ -476,6 +692,24 @@ function withDeadline(promise: Promise<unknown>, ms: number): Promise<'stopped'>
   return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() =>
     clearTimeout(timer)
   )
+}
+
+async function mcpPost(
+  handle: AgentMcpServerHandle,
+  message: { method: string; params: Record<string, unknown> }
+): Promise<unknown> {
+  const r = await fetch(`${handle.url}/mcp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${handle.token}`,
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream'
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: crypto.randomUUID(), ...message })
+  })
+  const text = await r.text()
+  const data = text.split('\n').find((line) => line.startsWith('data: '))
+  return JSON.parse(data ? data.slice('data: '.length) : text)
 }
 
 function callTool(

@@ -13,7 +13,7 @@ import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
-import { getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { getNoteById, createFolder, getFolders } from '../vault/notes'
 // Filing creates notes the user expects on every device, so it goes through the
 // notes domain command rather than the raw vault write. `createNoteCommand` is
 // what enqueues the note's own sync push and seeds its CRDT doc; without it the
@@ -21,7 +21,7 @@ import { getNoteById, updateNote, createFolder, getFolders } from '../vault/note
 // on this device — the peer hides the item and never draws the note. Nothing
 // rescues it in-session either: `seedUnclockedNotes` runs only from a full sync,
 // and the vault watcher enqueues creates for binaries, not markdown.
-import { createNoteCommand } from '../notes/domain'
+import { createNoteCommand, updateNoteCommand } from '../notes/domain'
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
@@ -41,7 +41,8 @@ import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { saveAttachment } from '../vault/attachments'
 import { emitNoteAttachmentSaved, syncNoteCreate } from '../notes/runtime-effects'
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
-import type { NoteListItem } from '@memry/contracts/notes-api'
+import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
+import type { NoteListItem, PlainChecklistsOption } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
@@ -54,6 +55,7 @@ import { commitLocalChange } from '../sync/sync-intents'
 import { recordTaskCreated } from '../tasks/activity-log'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
+import { assertFolderWritable, assertNoteWritable } from '../vault-locks/registry'
 
 const log = createLogger('Inbox:Filing')
 
@@ -644,6 +646,8 @@ async function fileBinaryToFolder(
     // markdown path so binaries keep their assigned tags after filing.
     const mergedTags = [...new Set([...getItemTags(db, itemId), ...tags, 'inbox'])]
 
+    assertFolderWritable(folderPath)
+
     // Ensure destination folder exists
     await ensureFolderExists(folderPath)
 
@@ -786,7 +790,10 @@ export async function fileToFolder(
  *
  * @param itemId - Inbox item ID
  */
-export async function convertToNote(itemId: string): Promise<FileResponse> {
+export async function convertToNote(
+  itemId: string,
+  options: PlainChecklistsOption = {}
+): Promise<FileResponse> {
   try {
     const db = requireDatabase()
 
@@ -809,7 +816,8 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
 
     // Generate title from item content
     const title = generateNoteTitle(item)
-    const content = generateNoteContent(item)
+    const generated = generateNoteContent(item)
+    const content = options.plainChecklists ? markAddedChecklistLinesPlain(generated) : generated
 
     // Create note in root folder
     const note = await createNoteCommand({
@@ -1202,7 +1210,7 @@ async function embedImageInNotes(
       ? targetNote.content.replace(/^(## Inbox Captures)$/m, `$1\n\n${entry}`)
       : `${targetNote.content.trimEnd()}\n\n## Inbox Captures\n\n${entry}`
 
-    await updateNote({ id: targetNote.id, content: updatedContent })
+    await updateNoteCommand({ id: targetNote.id, content: updatedContent })
   }
 
   // Uploads the blob and records the reference on the owner note, so peers get
@@ -1339,7 +1347,7 @@ async function linkBinaryToNotes(
       }
 
       // Update target note
-      await updateNote({
+      await updateNoteCommand({
         id: targetNote.id,
         content: updatedContent
       })
@@ -1419,6 +1427,13 @@ export async function linkToNotes(
       return { success: false, error: 'Item has already been filed' }
     }
 
+    // A locked target note or folder refuses the whole filing before anything
+    // moves, is created or leaves the inbox (#2606).
+    for (const target of targets) {
+      if (target.kind === 'note') assertNoteWritable(target.noteId)
+    }
+    if (folderPath) assertFolderWritable(folderPath)
+
     // Only now, past every rejection above: a staged note must not be created
     // for a filing that was going to fail anyway.
     const resolved = await resolveFilingTargets(targets, folderPath)
@@ -1483,7 +1498,7 @@ export async function linkToNotes(
       }
 
       // Update target note
-      await updateNote({
+      await updateNoteCommand({
         id: targetNote.id,
         content: updatedContent
       })

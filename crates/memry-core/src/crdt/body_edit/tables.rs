@@ -66,14 +66,15 @@ pub(super) fn cell_at(
         .ok_or_else(|| out_of_range(table_id, "column"))
 }
 
-/// Builds an empty cell: `tableCell > tableParagraph`, which is the shape
-/// BlockNote builds and the one y-prosemirror can construct.
+/// Builds an empty cell: `tableCell > tableParagraph` (or `tableHeader`),
+/// which is the shape BlockNote builds and the one y-prosemirror can construct.
 pub(super) fn build_cell(
     txn: &mut TransactionMut,
     row: &XmlElementRef,
     index: u32,
+    tag: &str,
 ) -> XmlElementRef {
-    let cell = row.insert(txn, index, XmlElementPrelim::empty("tableCell"));
+    let cell = row.insert(txn, index, XmlElementPrelim::empty(tag));
     for prop in node_shapes::cell_defaults() {
         cell.insert_attribute(txn, prop.name, prop.value.to_any());
     }
@@ -206,9 +207,26 @@ pub(super) fn insert_row(
     };
     let row = table.insert(txn, position, XmlElementPrelim::empty("tableRow"));
     for column in 0..columns {
-        build_cell(txn, &row, column as u32);
+        build_cell(txn, &row, column as u32, "tableCell");
     }
     Ok(())
+}
+
+/// Fills a fresh `table` with [`node_shapes::EMPTY_TABLE`]. A table with no
+/// rows is a node y-prosemirror cannot construct, so it would be deleted.
+pub(super) fn build_empty_grid(txn: &mut TransactionMut, table: &XmlElementRef) {
+    let grid = node_shapes::EMPTY_TABLE;
+    for index in 0..grid.rows {
+        let row = table.insert(txn, index, XmlElementPrelim::empty("tableRow"));
+        let tag = if index < grid.header_rows {
+            "tableHeader"
+        } else {
+            "tableCell"
+        };
+        for column in 0..grid.columns {
+            build_cell(txn, &row, column, tag);
+        }
+    }
 }
 
 pub(super) fn delete_row(
@@ -239,7 +257,7 @@ pub(super) fn insert_column(
             Some(cell) => child_index(txn, &row, cell).unwrap_or_else(|| row.len(txn)),
             None => row.len(txn),
         };
-        build_cell(txn, &row, position);
+        build_cell(txn, &row, position, "tableCell");
     }
     Ok(())
 }

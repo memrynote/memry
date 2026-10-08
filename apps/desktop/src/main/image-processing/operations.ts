@@ -2,13 +2,21 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import { createLogger } from '../lib/logger'
-import type { ImageProcessingThumbnailPayload, InboxImageProcessingPayload } from './protocol'
+import type {
+  ImageProcessingThumbnailPayload,
+  InboxImageProcessingPayload,
+  ViewImagePayload,
+  ViewImageSource
+} from './protocol'
 
 const log = createLogger('ImageProcessing')
 const execFileAsync = promisify(execFile)
 
 const MAX_THUMBNAIL_DIMENSION = 200
 const MAX_INBOX_THUMBNAIL_DIMENSION = 400
+/** A larger PNG goes out as JPEG, which keeps one agent image near a megabyte. */
+const VIEW_IMAGE_PNG_MAX_BYTES = 1024 * 1024
+const VIEW_IMAGE_JPEG_QUALITY = 85
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'])
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm'])
@@ -59,6 +67,53 @@ export async function processInboxImageFile(
       hasExif: Boolean(metadata.exif || metadata.icc)
     },
     thumbnailData
+  }
+}
+
+/**
+ * An upright copy of the image, its long edge at most `maxEdge` px, as PNG, or
+ * as JPEG on white when the PNG would pass VIEW_IMAGE_PNG_MAX_BYTES. An animated
+ * image gives its first frame. Throws when the bytes are not an image.
+ */
+export async function prepareViewImage(
+  source: ViewImageSource,
+  maxEdge: number
+): Promise<ViewImagePayload> {
+  const sharp = await loadSharp()
+  const input = source.kind === 'file' ? source.path : Buffer.from(source.data)
+  const upright = sharp(input).rotate()
+  const metadata = await upright.metadata()
+  if (!metadata.width || !metadata.height) throw new Error('The file has no image size')
+  const turned = (metadata.orientation ?? 1) >= 5
+  const sourceWidth = turned ? metadata.height : metadata.width
+  const sourceHeight = turned ? metadata.width : metadata.height
+
+  const resized = upright.resize({
+    width: maxEdge,
+    height: maxEdge,
+    fit: 'inside',
+    withoutEnlargement: true
+  })
+  const png = await resized.clone().png().toBuffer({ resolveWithObject: true })
+  const encoded =
+    png.data.byteLength <= VIEW_IMAGE_PNG_MAX_BYTES
+      ? { ...png, mimeType: 'image/png' as const }
+      : {
+          ...(await resized
+            .clone()
+            .flatten({ background: '#ffffff' })
+            .jpeg({ quality: VIEW_IMAGE_JPEG_QUALITY })
+            .toBuffer({ resolveWithObject: true })),
+          mimeType: 'image/jpeg' as const
+        }
+
+  return {
+    data: encoded.data,
+    mimeType: encoded.mimeType,
+    width: encoded.info.width,
+    height: encoded.info.height,
+    sourceWidth,
+    sourceHeight
   }
 }
 

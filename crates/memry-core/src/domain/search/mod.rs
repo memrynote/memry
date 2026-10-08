@@ -55,7 +55,8 @@
 //!
 //! The core owns no markdown here either. `content` comes from
 //! `extract_text` over the body document (chapter 12 §12.1), which is the
-//! core's only text operation; this module writes no second extractor.
+//! core's only document-to-text operation; this module writes no second
+//! extractor.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 

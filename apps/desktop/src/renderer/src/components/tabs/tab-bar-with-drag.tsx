@@ -112,7 +112,9 @@ export const TabBarWithDrag = ({
     isResizing: isDayPanelResizing
   } = useDayPanel()
   const shouldReserveDayPanelSpace = reserveDayPanelSpace && isDayPanelOpen
-  // Only the top-right tab bar shows the day-panel toggle (and reserves room for it)
+  // Only the top-right tab bar shows the day-panel toggle (and reserves room for it).
+  // It owns the window's top-end corner while the panel is closed, so it also
+  // clears the Windows caption buttons (--caption-reserve-end, 0 elsewhere).
   const showDayPanelToggleButton = !isDayPanelOpen && showDayPanelToggle
 
   // Scroll state — "start"/"end" are logical, so the math holds in RTL where
@@ -208,7 +210,10 @@ export const TabBarWithDrag = ({
               : 'transition-[padding-inline-start,margin-inline-end] duration-200 ease-linear',
             className
           )}
-          style={{ marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0 }}
+          style={{
+            marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0,
+            paddingInlineEnd: showDayPanelToggleButton ? 'var(--caption-reserve-end)' : undefined
+          }}
           role="tablist"
           aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
           aria-orientation="horizontal"
@@ -350,11 +355,15 @@ export const TabBarWithDrag = ({
                 'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
                 'hover:from-surface-active/95',
                 'transition-all duration-150 ease-out z-20',
-                // Clears the pinned new-tab button (36px), plus the day-panel toggle (48px)
-                showDayPanelToggleButton
-                  ? 'absolute end-[84px] bottom-px'
-                  : 'absolute end-[36px] bottom-px'
+                'absolute bottom-px'
               )}
+              // Clears the pinned new-tab button (36px), plus the day-panel toggle (48px)
+              // and the caption buttons: absolute offsets ignore the bar's padding.
+              style={{
+                insetInlineEnd: showDayPanelToggleButton
+                  ? 'calc(84px + var(--caption-reserve-end))'
+                  : '36px'
+              }}
               aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
             >
               <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />

@@ -26,10 +26,11 @@
       "calendar_event",
       "calendar_external_event",
       "calendar_binding",
-      "bookmark"
+      "bookmark",
+      "canvas"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 80
+    "caseCount": 84
   },
   "groups": [
     {
@@ -2423,6 +2424,100 @@
           "name": "bookmark: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"itemType\":\"note\",\"itemId\":\"note-1\",\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "expectedPushedPayloadJson": "{\"itemType\":\"note\",\"itemId\":\"note-1\",\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "canvas",
+      "cases": [
+        {
+          "name": "canvas: valid, every modelled field populated",
+          "payload": {
+            "id": "cnv-1",
+            "vaultId": "vault-1",
+            "title": "A board",
+            "scene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+            "folder": "Work",
+            "icon": null,
+            "ownerNoteId": "note-1",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "expectedParsed": {
+            "id": "cnv-1",
+            "vaultId": "vault-1",
+            "title": "A board",
+            "scene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+            "folder": "Work",
+            "icon": null,
+            "ownerNoteId": "note-1",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "canvas: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "title": null,
+            "scene": "",
+            "ownerNoteId": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "title": null,
+            "scene": "",
+            "ownerNoteId": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "canvas: an unknown field a newer client wrote",
+          "payload": {
+            "id": "cnv-1",
+            "vaultId": "vault-1",
+            "title": "A board",
+            "scene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+            "folder": "Work",
+            "icon": null,
+            "ownerNoteId": "note-1",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null,
+            "thumbnail": {
+              "hash": "h1",
+              "width": 320
+            }
+          },
+          "expectedParsed": {
+            "id": "cnv-1",
+            "vaultId": "vault-1",
+            "title": "A board",
+            "scene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+            "folder": "Work",
+            "icon": null,
+            "ownerNoteId": "note-1",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "strippedByParse": [
+            "thumbnail"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "canvas: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"id\":\"cnv-1\",\"vaultId\":\"vault-1\",\"title\":\"A board\",\"scene\":\"{\\\"type\\\":\\\"excalidraw\\\",\\\"version\\\":2,\\\"source\\\":\\\"memry\\\",\\\"elements\\\":[],\\\"appState\\\":{},\\\"files\\\":{}}\",\"folder\":\"Work\",\"icon\":null,\"ownerNoteId\":\"note-1\",\"clock\":{\"device-a\":1},\"deletedAt\":null,\"thumbnail\":{\"hash\":\"h1\",\"width\":320}}",
+          "expectedPushedPayloadJson": "{\"id\":\"cnv-1\",\"vaultId\":\"vault-1\",\"title\":\"A board\",\"scene\":\"{\\\"type\\\":\\\"excalidraw\\\",\\\"version\\\":2,\\\"source\\\":\\\"memry\\\",\\\"elements\\\":[],\\\"appState\\\":{},\\\"files\\\":{}}\",\"folder\":\"Work\",\"icon\":null,\"ownerNoteId\":\"note-1\",\"clock\":{\"device-a\":1},\"deletedAt\":null,\"thumbnail\":{\"hash\":\"h1\",\"width\":320}}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

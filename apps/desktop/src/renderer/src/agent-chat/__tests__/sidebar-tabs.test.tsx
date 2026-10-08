@@ -449,6 +449,36 @@ describe('SidebarTabs', () => {
     expect(clearActiveConversation).toHaveBeenCalledTimes(1)
   })
 
+  it('folds the agent actions into one menu while Windows caption buttons cover the header', async () => {
+    const user = userEvent.setup()
+    const { createConversation } = mockAgentWithConversations()
+    const overlay = Object.assign(new EventTarget(), { visible: true })
+    Object.defineProperty(navigator, 'windowControlsOverlay', {
+      value: overlay,
+      configurable: true
+    })
+
+    try {
+      renderTabs({ defaultTab: 'agent' })
+
+      expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Close agent' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'More agent actions' }))
+      await user.click(screen.getByRole('menuitem', { name: 'New conversation' }))
+      expect(createConversation).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByRole('button', { name: 'More agent actions' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Open conversation in tab' }))
+      expect(mockOpenTab).toHaveBeenCalledWith(
+        expect.objectContaining({ entityId: 'conversation-1' })
+      )
+      expect(mockCloseDayPanel).toHaveBeenCalledTimes(1)
+    } finally {
+      Reflect.deleteProperty(navigator, 'windowControlsOverlay')
+    }
+  })
+
   it('does not show the pop-out action before a conversation exists', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {

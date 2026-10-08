@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "このデバイスでは編集履歴が保持されていません",
-    "persistenceDegradedBody": "ノートは安全です。保管庫にプレーンファイルとして保存されており、通常どおり開いて保存できます。このデバイスのローカルの編集履歴とマージ状態だけがメモリー上で動作しているため、memrynote を開くたびにリセットされます。"
+    "persistenceDegradedBody": "ノートは安全です。保管庫にプレーンファイルとして保存されており、通常どおり開いて保存できます。このデバイスのローカルの編集履歴とマージ状態だけがメモリー上で動作しているため、memrynote を開くたびにリセットされます。",
+    "writebackFailedTitle": "ディスク上のノートファイルを更新できませんでした",
+    "writebackFailedTitleNamed": "ディスク上の「{title}」を更新できませんでした",
+    "writebackFailedBody": "ディスク上のファイルは変更されていません。編集内容はアプリの実行中は memrynote で開いたままです。次に編集したときに memrynote が再試行します。"
   },
   "encryption": {
     "failed": "データを暗号化できませんでした。キーの再生成が必要な場合があります。",
@@ -313,5 +316,9 @@
     "invalidUrl": "Web リンクではありません。http または https で始まる画像のアドレスを貼り付けてください。",
     "downloadFailed": "画像をダウンロードできませんでした。リンクを確認して、もう一度お試しください。",
     "unsupportedUrl": "このリンクは PNG、JPG、GIF、WEBP、SVG 形式の画像ではありません。"
+  },
+  "vaultLock": {
+    "noteReadOnly": "所有者がこのノートを読み取り専用にしました。",
+    "folderReadOnly": "所有者がこのフォルダを読み取り専用にしました。"
   }
 }

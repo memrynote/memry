@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "V tomto zařízení se neukládá historie úprav",
-    "persistenceDegradedBody": "Vaše poznámky jsou v bezpečí – jsou uložené v trezoru jako obyčejné soubory a normálně se otevírají i ukládají. Jen místní historie úprav a stav slučování v tomto zařízení běží v paměti, takže při každém spuštění aplikace memrynote začínají od nuly."
+    "persistenceDegradedBody": "Vaše poznámky jsou v bezpečí – jsou uložené v trezoru jako obyčejné soubory a normálně se otevírají i ukládají. Jen místní historie úprav a stav slučování v tomto zařízení běží v paměti, takže při každém spuštění aplikace memrynote začínají od nuly.",
+    "writebackFailedTitle": "Soubor poznámky na disku se nepodařilo aktualizovat",
+    "writebackFailedTitleNamed": "„{title}“ se na disku nepodařilo aktualizovat",
+    "writebackFailedBody": "Soubor na disku zůstal beze změny. Vaše úprava zůstává otevřená v memrynote, dokud aplikace běží; memrynote to zkusí znovu při vaší další úpravě."
   },
   "encryption": {
     "failed": "Data se nepodařilo zašifrovat. Vaše klíče může být nutné regenerovat.",
@@ -313,5 +316,9 @@
     "invalidUrl": "Toto není webový odkaz. Vložte adresu obrázku začínající na http nebo https.",
     "downloadFailed": "Tento obrázek se nepodařilo stáhnout. Zkontrolujte odkaz a zkuste to znovu.",
     "unsupportedUrl": "Tento odkaz nevede na obrázek PNG, JPG, GIF, WEBP ani SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Vlastník nastavil tuto poznámku jen pro čtení.",
+    "folderReadOnly": "Vlastník nastavil tuto složku jen pro čtení."
   }
 }

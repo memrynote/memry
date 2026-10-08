@@ -41,6 +41,7 @@ describe('AgentChannels', () => {
         PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
         GET_TOOL_GRANTS: 'agent:getToolGrants',
+        CLEAR_MEMORY: 'agent:clearMemory',
         GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
         LIST_BACKEND_MODELS: 'agent:listBackendModels',
         GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
@@ -458,6 +459,24 @@ describe('agent IPC schemas', () => {
         }
       }).success
     ).toBe(true)
+  })
+
+  it('reads the tools-off reason from new messages and tolerates old and unknown ones', () => {
+    const parse = (toolsUnavailable: unknown): unknown =>
+      MessageContentSchema.parse({ role: 'assistant', data: { text: 'hi', toolsUnavailable } })
+
+    expect(parse({ reason: 'no_tool_call', detail: null })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { reason: 'no_tool_call', detail: null } }
+    })
+    expect(parse({ detail: 'HTTP 400' })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { detail: 'HTTP 400' } }
+    })
+    expect(parse({ reason: 'some_future_reason', detail: null })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { reason: undefined, detail: null } }
+    })
   })
 
   it('type-checks all renderer event variants', () => {

@@ -448,6 +448,9 @@ pub(super) fn turn_into(
     for prop in &defaults {
         rebuilt.insert_attribute(txn, prop.name, prop.value.to_any());
     }
+    if kind == "table" {
+        build_empty_grid(txn, &rebuilt);
+    }
     if node_shapes::holds_inline(kind) {
         if rich {
             restore_pieces(txn, &rebuilt, &carried.children);

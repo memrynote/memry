@@ -207,6 +207,10 @@ through `belongsToOtherType` (`item-handlers/note-row-type.ts`). On a mismatch t
 A remote note delete also removes the note's `note_date` reminders, directly and with no sync hooks.
 The device that deleted the note owns those tombstones, so the receiver enqueues nothing.
 
+A note upsert applied over an existing row keeps the later of the local and incoming `modifiedAt`,
+compared as instants, because a body edit moves `modifiedAt` without advancing the note's clock
+(#2616).
+
 ## Atomicity
 
 All `applyUpsert` and `applyDelete` paths run inside `db.transaction()`:

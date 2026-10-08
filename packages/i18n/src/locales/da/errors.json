@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistorikken gemmes ikke på denne enhed",
-    "persistenceDegradedBody": "Dine noter er i sikkerhed – de ligger i din boks som almindelige filer og kan stadig åbnes og gemmes som normalt. Kun denne enheds lokale redigeringshistorik og flettetilstand kører i hukommelsen, så de starter forfra, hver gang memrynote åbnes."
+    "persistenceDegradedBody": "Dine noter er i sikkerhed – de ligger i din boks som almindelige filer og kan stadig åbnes og gemmes som normalt. Kun denne enheds lokale redigeringshistorik og flettetilstand kører i hukommelsen, så de starter forfra, hver gang memrynote åbnes.",
+    "writebackFailedTitle": "En notes fil på disken kunne ikke opdateres",
+    "writebackFailedTitleNamed": "»{title}« kunne ikke opdateres på disken",
+    "writebackFailedBody": "Filen på disken blev ikke ændret. Din ændring forbliver åben i memrynote, så længe appen kører; memrynote prøver igen ved din næste ændring."
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Dine nøgler skal muligvis regenereres.",
@@ -313,5 +316,9 @@
     "invalidUrl": "Det er ikke et weblink. Indsæt en billedadresse, der starter med http eller https.",
     "downloadFailed": "Kunne ikke hente billedet. Tjek linket, og prøv igen.",
     "unsupportedUrl": "Linket er ikke et PNG-, JPG-, GIF-, WEBP- eller SVG-billede."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Ejeren har gjort denne note skrivebeskyttet.",
+    "folderReadOnly": "Ejeren har gjort denne mappe skrivebeskyttet."
   }
 }

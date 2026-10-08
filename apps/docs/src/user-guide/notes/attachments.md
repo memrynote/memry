@@ -184,7 +184,8 @@ The text stays where it was. A link around the image stays in the line, labelled
 alt text, so the target is kept. Notes imported from OneNote often use this shape. A note you do
 not edit keeps its file exactly as written.
 
-**Resizing.** Hover the image, or click to select it, and drag the grip on either side. The grips
+**Resizing.** Hover the image, or click to select it, and drag any corner or the grip on either
+side. The height follows the width, so the picture keeps its proportions. The grips
 stay up while the image is selected. This works the same for an image nested under a bullet, and an
 image never grows past its column, so a picture in an indented list stays inside the list.
 

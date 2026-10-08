@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kaydedilmemiş içeriği panoya kopyala",
     "addBookmark": "Yer imlerine ekle",
     "removeBookmark": "Yer imlerinden kaldır",
-    "deleteEntry": "Girdiyi sil"
+    "deleteEntry": "Girdiyi sil",
+    "lockEntry": "Girdiyi kilitle",
+    "unlockEntry": "Girdinin kilidini aç"
   },
   "editor": {
     "placeholder": {

@@ -31,7 +31,9 @@ the first click even when the sidebar opened on the Day view. The assistant back
 on first use rather than at launch, so the panel can show a brief loading state while providers and
 conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
-button for moving the current conversation into a workspace tab. Popped-out conversations keep the
+button for moving the current conversation into a workspace tab. On Windows, where the window's
+minimize, maximize, and close buttons share that row, these three actions sit in one **More agent
+actions** (**...**) menu instead. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
 edge while the chat content stays centered, and the tab name is the only conversation title shown in
@@ -177,6 +179,18 @@ search for an earlier query is discarded rather than shown.
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 
+### Agent memory
+
+Claude, Codex and Antigravity turns run in one folder per vault, kept in the app's data folder and
+outside the vault: `agent-workdirs/<vault id>`. A vault id that is not a plain uuid is hashed into
+the folder name. Claude Code keeps its project memory for that
+folder, so what the agent saves about the vault in one turn is still there in the next turn and in
+the next conversation. Nothing in this folder syncs.
+
+Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** asks first, then deletes the
+folder and the project memory Claude Code keeps for it. This cannot be undone. Notes and chat
+history stay. The next turn starts with an empty folder.
+
 ### Dictating a prompt
 
 The microphone in the prompt bar records a prompt and types it for you. Click it once to start
@@ -188,6 +202,25 @@ Dictation uses the same engine as inbox voice memos, so it needs a transcription
 first — see [Voice Transcription](/user-guide/ai/voice-transcription). Audio recorded here is
 transcribed and discarded; it does not create an inbox item. If the microphone is blocked at the
 operating-system level, memrynote points you at the relevant privacy settings.
+
+### Queueing a message while the agent works
+
+The prompt box stays editable while a turn runs. Press Enter, or the arrow button next to Stop, and
+the message waits in a **Queued messages** list above the prompt box instead of interrupting the
+turn. When the turn ends, the oldest queued message goes out as its own turn, then the next one when
+that turn ends. Nothing is added to a turn that is already running. Stopping a turn also counts as
+its end, so the next queued message goes out after Stop.
+
+Each queued message keeps the model, permissions and context it was sent with. Use the pencil to
+change its text or the cross to remove it before it goes out. While the next message's editor is
+open, the queue waits for you to save or cancel. If memrynote cannot send a queued
+message, it stays in the list marked **Not sent** and holds the messages behind it, including new
+ones you send; edit it to send it again, or remove it to let the rest go out. Pressing Stop while a
+queued message is on its way stops that message's turn too. A queued message that goes out only
+after you press Stop, because the turn ended on its own first, is not stopped. After Stop the cursor
+returns to the prompt box. The queue lives in the window it was typed in and is not saved, so
+reloading the window clears it. Switching to another vault marks every queued message **Not sent**,
+so nothing goes out to the vault you switched to. Switch back to edit and send it, or remove it.
 
 ### Connected tools
 
@@ -234,7 +267,22 @@ Local model support uses OpenAI-compatible HTTP APIs. memrynote ships presets fo
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
 model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
-disabled.
+disabled. The reply then starts with a note that vault tools are off for this model and why, in plain
+words: the provider refused requests with tools, the model answered without calling the test tool, the
+model failed after getting the tool result back, or the provider did not stream. When the provider sent
+its own error message, the note quotes it. The model is told not to write tool calls as text.
+
+Models call tools in different ways, and memrynote adapts to each provider configuration instead of
+asking you to. Hosted OpenAI-compatible APIs work through the Custom preset. The probe records what
+worked and every chat turn repeats it:
+
+- The probe first asks the model to call a named tool, and retries without naming one when the
+  provider rejects that, as DeepSeek does in thinking mode. The chat then sends no tool choice either.
+- Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind LM Studio or
+  llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
+- Some servers return a model's tool call as plain reply text, as `<tool_call>{...}</tool_call>`.
+  memrynote reads these calls out of the text and runs them like any other tool call. Only the names
+  of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
 up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
@@ -261,6 +309,12 @@ background. The unfinished reply is lost, but your message and the rest of the c
 so you can send the prompt again. A turn that is simply taking a long time is never stopped this way.
 The same applies when a turn fails before the reply even starts streaming, such as a disk or database
 error while saving the empty reply.
+
+When the provider or the chat backend reports an error, for example a local provider that rejects
+the request or a CLI that exits with an error, the reply shows as a red box. It says the reply
+stopped with an error and quotes the provider's own message. Your message is kept, so you can send
+it again. Errors from memrynote itself, such as a message or a Stop that could not reach the agent,
+show above the prompt box until the next message goes out.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
@@ -309,6 +363,13 @@ holding the endpoint token, or a stale capability from a turn that has already f
 with `PERMISSION_DENIED` and the reason that writes need a running memrynote Agent turn. A conversation
 id is not a credential: knowing one, even a real one, does not let a client write.
 
+A note or folder the owner [locked](../notes/read-only-locks) refuses every write tool, approved or
+not, with `PERMISSION_DENIED` and the message "The owner made this note read-only.", or "The owner
+made this folder read-only." when it adds something to a locked folder or renames, moves, or deletes
+the folder. This includes `vault_desktop_write` operations that report a refused write as
+`{ success: false }`. The agent can still read it. Canvases are not lockable: the canvas tools never
+write a note's file, and the canvases folder does not appear in the folder tree.
+
 External clients still see the write tools listed. They are advertised to every client because
 memrynote's own Claude CLI, Codex CLI, Antigravity CLI, and local-model backends discover their
 tools from that same list. Calling one without an active turn fails rather than writes.
@@ -323,10 +384,15 @@ outlives its turn cannot write afterwards.
 
 ## Tools
 
+The [Agent API reference](./agent-api-reference.md) lists every tool and desktop
+operation with its parameters and a recorded example call and reply. The same schemas are
+published as JSON Schema at `/agent-api/memry-agent-api.schema.json`.
+
 Read tools are available to Agent Chat and external MCP clients:
 
 - `vault_search_notes`
 - `vault_read_note`
+- `vault_view_file`
 - `vault_list_folder`
 - `vault_get_current_note`
 - `vault_list_tasks`
@@ -343,23 +409,88 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_read_canvas`
 - `vault_read_canvas_elements`
 - `vault_desktop_read`
+- `vault_desktop_describe`
 
 ### Notes and filed files
 
 Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
 so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
 
-- `markdown` — a real note. `vault_read_note` returns its content.
-- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
-  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
-  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
-  cannot overwrite a filed document with markdown.
+- `markdown` — a real note. `vault_read_note` returns its content. When the note embeds PDFs,
+  images or HTML blocks from its attachments folder, the reply adds `attachment_text`: one `{ file, text }` entry
+  per file with the text read from it, about 100 KB at most (`attachment_text_truncated` says when
+  it was cut). `vault_search_notes` matches the note on that text too.
+- `pdf`, `image` — a filed file whose text Memry reads on this device: the PDF's own text layer, or
+  OCR for scanned pages and images (see [Text in PDFs and images](/user-guide/search#text-in-pdfs-and-images)).
+  `vault_search_notes` matches on that text, and `vault_read_note` returns it as `extracted_text`
+  instead of markdown: one `{ page, text }` entry per page, a `status` of `extracting`, `done`, or
+  `failed`, `page_count`, and `pages_read`. A reply stops at about 100 KB on a page boundary and
+  names `next_page`; pass it back as `from_page` to read on.
+- `audio`, `video` — a filed file with no text. `vault_read_note` refuses it with a `VALIDATION`
+  error naming the file type instead of returning bytes for the client to treat as text.
+
+`vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
+markdown.
+
+### Looking at images and PDF pages
+
+`vault_view_file` hands the model an image, or one page of a PDF, to look at. It works on files
+already in the vault and needs nothing installed:
+
+- a filed image or PDF: pass its `id`. For a PDF, `page` picks the page, page 1 by default, one page
+  per call.
+- an image or PDF that a markdown note embeds from its attachments folder: pass the note's `id` and
+  the file name as `attachment`, the name after `attachments/<note id>/` in the note or the `file`
+  of an `attachment_text` entry.
+
+The image is downscaled so its long edge is at most 1568 px and sent as image content, PNG or, for a
+large image, JPEG. A PDF page is rendered on this device by the same reader that extracts PDF text.
+The JSON part of the reply says what was sent: `file`, `file_type`, `mime_type`, `width` and
+`height`, `source_width` and `source_height` for an image, and `page` and `page_count` for a PDF. A
+page past the end fails with a `VALIDATION` error that names `page_count`.
+
+A file that is a symlink to something outside the vault, or a symlink whose target is gone, fails
+with a `PERMISSION_DENIED` error that names its vault path and says it points outside the vault.
+Nothing outside the vault is read. A symlink to another file in the vault works, and so does a vault
+folder that is itself a symlink. Text extraction skips the same files, and drops text an earlier
+version read through such a symlink, so `vault_read_note` never returns text read from outside the
+vault either.
+
+Claude Code, Codex, and Antigravity receive the image from the MCP server as it is. For a local or
+OpenAI-compatible provider, Memry checks once whether the model takes images, by sending it a
+one-pixel image, and sends the picture after the tool result. A model that does not take images
+gets a text notice instead, so the turn goes on. The chat shows the call, but the image bytes are
+not kept in the chat history.
+
+`vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
+`kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
+files it would delete apart from the notes.
+
+### Checking that a write reached the server
+
+`vault_read_note`, `vault_search_notes`, `vault_list_folder` (note entries),
+`vault_get_journal_entry`, and `vault_list_journal_entries` add a `sync` object to each note:
+
+```json
+{ "state": "confirmed", "body_confirmed_at": "2026-10-07T10:00:00.000Z" }
+```
+
+`state` is `pending` (changes waiting on this device, since `waiting_since`), `sent` (a push has no
+answer yet, `last_sent_at`), `confirmed` (the server stored the last text push at
+`body_confirmed_at`), `not_recorded` (nothing waiting, but no confirmed push recorded since the
+update that added this field), `rejected` (the server refused the latest push, `last_rejected_at`),
+`local_only`, or `not_syncing`. `last_failed_at` appears after a push that will be retried. Times are
+ISO strings and appear only when known. To check a write, read the note again until `state` is
+`confirmed` and `body_confirmed_at` is later than the write. A record push the server reports as
+already seen never counts as confirmed.
 
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
 it inline in the same sandbox as an `.html` file you attach yourself: scripts run, `https:`
 resources load, but the page cannot read the vault or the app. It syncs like any other attachment.
-The HTML is capped at 512 KB and the call needs your approval.
+The HTML is capped at 512 KB and the call needs your approval. Its visible text is searchable
+under the note, and `[[wiki links]]` in it count as the note's links (see
+[Text in HTML blocks](/user-guide/search#text-in-html-blocks)).
 
 Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
 `["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
@@ -367,6 +498,54 @@ counts only matching rows. Omit `file_types` to search every file type.
 
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
+
+### Write replies
+
+A write reply can carry a `warnings` list of plain sentences:
+
+- A note or journal write whose stored body is not the body it sent says so with both byte
+  counts. That includes `notes.create` and `notes.update` through `vault_desktop_write`, whose
+  reply `note.content` is the stored body. For `vault_update_note` in `append` or `prepend` mode, and for
+  `vault_add_html_artifact`, the body sent is the whole body the call asked the note to hold:
+  the current body joined with the new text by one blank line, not the new text alone. The note is read back
+  once any save it was waiting on has run. Line endings count, so an LF body saved into a CRLF
+  note is reported. Only the final newline at the end of the body does not count. The body
+  sent is measured after the checkbox step below, so a checkbox line stored with `{check}` or
+  turned into a task is not reported.
+- While this device runs without its CRDT store, every write reply says so. Note edits are
+  still saved to the vault and synced, but without merge history for that session.
+
+`warnings` is the first key of the reply, so a reply cut at the size limit still starts with
+it. A reply that is not a plain object comes back as `{ warnings, result }`.
+
+### Checkboxes in agent writes
+
+A checkbox line an agent writes into a note or journal entry stays a plain checkbox: memrynote
+stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
+tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
+`vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
+`journal.createEntry`, `journal.updateEntry`, `templates.create` and `templates.update` operations of
+`vault_desktop_write`. It also covers the checkbox lines that `notes.applyTemplate`,
+`inbox.convertToNote` and `notes.importFiles` write when an agent calls them, whoever wrote the
+template, the inbox item or the imported file. A checkbox line that was already in the note before
+the write is left exactly as it was.
+
+To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
+in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
+tasks during the write and list each one in the reply as `created_tasks`, with its `id` and
+`title`. `vault_desktop_write` replies with the operation's own result, so its checkbox lines are
+left for the editor to convert when the note opens.
+
+### Folder paths
+
+Every tool names a folder by its path from the vault root, with no leading slash: `projects/active`.
+That form appears in `folder_path` on notes and in `path` on `vault_list_folder` entries. Tools that
+take a folder path also accept the form with a leading slash, so `/projects/active` still works.
+A note directly in the vault root has a `folder_path` of `null`.
+
+`vault_list_folder` fails with a `NOT_FOUND` error that names the path when the folder does not
+exist, so a stale or misspelled folder name no longer looks like an empty folder. An empty folder
+that exists returns an empty list. Omit `path` to list the vault root and find the right name.
 
 Create, update, delete, archive, move, and reorder tools require Agent Chat context. They pause for
 inline approval unless you set the Agent Permissions confirmation to **Always allow**:
@@ -496,6 +675,153 @@ allowlist, including account/auth flows, provider connect/disconnect/refresh act
 actions, external open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and
 diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
 return a structured MCP error instead of falling back to an arbitrary desktop call.
+
+A desktop API call on a filed PDF, image, audio file, or video, such as `notes.get` or
+`notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
+`mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
+sentence that says how the content can be read. For a PDF or an image it names `vault_read_note`,
+which returns the text read from the file (see [Notes and filed files](#notes-and-filed-files)), and
+`vault_view_file`, which shows the image or a PDF page (see
+[Looking at images and PDF pages](#looking-at-images-and-pdf-pages)).
+
+A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
+added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start
+of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
+valid JSON on its own. `message` says what to call instead: a shorter date range for
+`calendar.getRange`, `calendar.getRange` with a date range for `calendar.listEvents`, and a list
+with a smaller limit or `vault_read_note` for anything else.
+
+`args` are the operation's positional arguments. Every allowlisted operation has a schema for its
+arguments, and `vault_desktop_describe` returns it, so an agent can look a call up before making
+it. With `operation`, the reply names the tool that runs it (`vault_desktop_read` or
+`vault_desktop_write`), whether it needs approval, its parameters in call order and `args_schema`,
+the JSON Schema (draft 2020-12) of the `args` array with every type, required key, allowed value and
+default. Without `operation`, the reply lists every operation with its tool and call shape, such as
+`notes.list(options?)`, where `?` marks an argument the call may leave out. Where the app reads a
+`null` optional argument as left out, such as the options of `notes.list`, the tags of
+`inbox.linkToNote` or the days of `tasks.getUpcoming`, the argument also takes `null`, and its
+schema lists `null` as an allowed type. An operation that takes no arguments has no `prefixItems` in
+its `args_schema`, only `"maxItems": 0`. An operation whose last arguments are optional lists each
+call length it accepts as its own tuple under `anyOf`, so `notes.list` has one entry for `[]` and
+one for `[options]`. Strict validators such as Ajv refuse a `prefixItems` tuple that may stop early,
+and this form compiles under them.
+
+```json
+{
+  "operation": "notes.ensurePropertyDefinition",
+  "tool": "vault_desktop_write",
+  "call": "notes.ensurePropertyDefinition(name, type)",
+  "requires_approval": true,
+  "params": [
+    { "name": "name", "required": true },
+    { "name": "type", "required": true }
+  ],
+  "args_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "prefixItems": [
+      { "type": "string", "minLength": 1 },
+      { "type": "string", "enum": ["status", "select", "multiselect"] }
+    ],
+    "minItems": 2,
+    "maxItems": 2
+  }
+}
+```
+
+Every call is checked against that schema before it reaches the app, and before the approval
+prompt for a write. A call that does not match fails with a `VALIDATION` error and nothing runs.
+The error names each field (the parameter name, then the key path inside it), the type it takes,
+the allowed values and what was sent, for example `type: expected one of "status", "select",
+"multiselect", got "text"` or `scope: expected { kind: "folder", path: string } | { kind: "tag",
+tag: string, andTags?: string[] }, got "Projects"`. Its `details.issues` list the same as
+`{ field, expected, allowed, received }`. A call that passes more arguments than the operation takes
+names the parameters instead. Options go inside the operation's input object, never in an extra
+argument. A key inside an input object that the operation does not take fails the same way and is
+named with its argument, for example `notes.createPropertyDefinition does not take input.optionz` or
+`folderView.setView does not take view.colour`. Every key the operation's handler reads is accepted;
+the open record of `properties.set` accepts any property name. A settings write takes any subset of
+that group's settings. `calendar.getRange` still takes the older `(start, end)` pair of strings, and
+`calendar.listEvents` its options as a JSON string.
+
+A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a property
+option, a tag color, pinning a note to a tag, saving a folder view, creating a folder) gets a
+`stored` field with the record read back after the write. Writes whose reply is already the record
+(create and update calls) do not need one. These writes reply without `stored`:
+
+- Deletes, which leave nothing to read: every `delete*` operation, `bookmarks.bulkDelete`,
+  `inbox.deletePermanent`, `notes.deleteFolder`, `notes.deleteVersion`, `tags.deleteCategory` and
+  `folderView.deleteView`.
+- Reorders, which reply `{ success }`: `notes.reorder`, `tasks.reorder`, `tasks.reorderProjects`,
+  `tasks.reorderStatuses`, `savedFilters.reorder`, `bookmarks.reorder`, `homePages.reorder` and
+  `tags.reorder`. Read the list again to see the new order.
+- Bulk calls and conversions, which reply with counts or the new item's id: the `bulk*` operations,
+  `inbox.fileAllStale`, `inbox.convertTo*`, `tasks.captureUrlToProject`,
+  `tasks.importFilesToProject` and `notes.importFiles`.
+- `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
+  `tasks.listStatuses`.
+- `inbox.file`, which replies `{ success, filedTo, noteId }`; read the filed note with
+  `notes.get`.
+- `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
+  store no record.
+
+If the write lands but the read after it fails, the reply is the write's own reply with a
+`warnings` entry that says so. The write is not reported as failed, so do not repeat it; read the
+record instead. Named write tools do the same.
+
+`properties.set(entityId, properties)` replaces the entity's whole property record. It does not
+merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
+keys that older notes carry in their frontmatter are the exception for agents: they are kept when
+the call leaves them out, and a call deletes one only by passing it as `null`. Any key the call does
+not change keeps its line in the file byte for byte and in its place, whatever order the call lists
+the keys in, so `created: 2024-03-05` stays exactly that. A value passed back as a read returned it
+is written as the file holds it, so a date stays a date. A new value for a key that holds a date and
+spells a real calendar date, such as `2026-10-09`, is written as a plain date, not a quoted string
+(`2026-02-30` stays text). The reply lists the stored `properties` and the names it `removed`, and
+spells a date as the file does
+(`2026-10-07`, or the full timestamp when it has a time of day). Stored note and journal records in
+write replies spell dates the same way. The tag writers that edit a note's `tags` list
+(`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and `tags.removeTagFromNote`) keep the other
+lines byte for byte too.
+
+Named note, journal, task, project and inbox writes answer with the record as a read returns it after
+the write. The other named writes answer with what the write itself returned, as listed below. Every
+tool rejects an argument it does not take, at any depth (inside a list of statuses or canvas items too),
+before the approval prompt. The error names the key: `Unknown argument: colour`.
+
+- Note writes (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
+  `vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
+  note) reply with `id`, `title`, `folder_path`, `tags`, `properties`, `body_bytes` and
+  `body_sha256`. Both are `null` for a note too large to read. `vault_update_note` also reports
+  `tags_added` and `tags_removed`, because inline `#tags` in the new body change the note's tag set.
+- Journal writes reply with `id`, `date`, `tags`, `properties`, `body_bytes` and `body_sha256`. The
+  journal writer keeps the user's keys and the legacy `id`, `created` and `modified` an older entry
+  carries, byte for byte. It drops any other key Memry reserves, such as a legacy `emoji`, and
+  `vault_update_journal_entry` lists what it dropped in `frontmatter_removed`.
+- `body_bytes` and `body_sha256` cover the body exactly as the file stores it after its frontmatter,
+  in UTF-8. The file writer ends the body with a newline, so a body sent without a final newline is
+  stored with one. Checkbox lines the agent added are stored with the `{check}` marker, or rewritten
+  as the tasks they became when the owner turned on task conversion (see
+  [Checkboxes in agent writes](#checkboxes-in-agent-writes)). To check a write, hash what you sent
+  with those two changes applied and compare. Any other difference means the stored body is not the
+  one you sent.
+- A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
+- `vault_create_note` and `vault_move_to_folder` list the folders the call created in
+  `created_folders`, shallowest first, when the folder they wrote into did not exist yet.
+- Task, project and inbox writes reply with the stored task, project or inbox item.
+  `vault_create_status` and `vault_update_status` reply with the status the task store returned from
+  the write, not a fresh read.
+  Reorders (`vault_reorder_tasks`, `vault_reorder_projects`, `vault_reorder_statuses`) reply with
+  the ids and the stored records in order. Deletes reply with what they deleted.
+- `vault_create_folder` and `vault_rename_folder` reply with the folder's `path`.
+- Canvas writes (`vault_add_canvas_item`, `vault_remove_canvas_item`, `vault_draw_on_canvas` and
+  `vault_edit_canvas_elements`) reply with an outcome object. Adding and removing items list the
+  items `applied` and `skipped`; drawing and editing list the element ids created, updated and
+  deleted. Read the canvas to see it whole. `vault_create_canvas` replies like the
+  `canvas.create` desktop write.
+- Tools that take no arguments (`vault_get_current_note`, `vault_get_tags`, `vault_list_projects`
+  and `vault_list_canvases`) list an empty object schema with `additionalProperties: false`. A call
+  may send `{}` or omit `arguments`.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`

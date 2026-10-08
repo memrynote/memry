@@ -38,6 +38,11 @@ On the free plan sync stays local-only, so the status shows **Local only** and t
 toggle for an upgrade card with an **Unlock Sync** button that opens the plan picker in your
 browser.
 
+When some notes have changes the server has not stored yet, the group adds **Notes with unsent
+changes**. Expand it to see each note, why it is listed (**Text**, **Details**, **File not merged
+yet**, or **Refused by the server**) and how long its changes have waited. See
+[Has a note reached the server?](/user-guide/sync/conflict-health#has-a-note-reached-the-server).
+
 ### Billing
 
 Shows the current sync plan, activation state, storage limit, max file size, synced vault limit, and
@@ -222,6 +227,12 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 ### Spelling
 
 **Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write. Correcting a flagged word happens from the editor's context menu — see [Spell Check](/user-guide/notes/editing#spell-check).
+
+### Checklists
+
+**Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).
+
+**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note, journal entry or template stays a plain checkbox, and so does one in a template the agent applies, an inbox item it turns into a note or a file it imports, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks as it writes them, and the agent's reply lists each task it created. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
 
 ---
 
@@ -455,10 +466,14 @@ machine-local and are not synced between devices.
 
 - **Default Access** — starts each new Agent turn in **Vault only** or **Computer access**
 - **Confirm Actions** — **Ask before changes** is the default: every vault write pauses and shows
-  what it would change before it lands. **Always allow** accepts writes without a preview
+  what it would change before it lands. **Always allow** accepts writes without a preview.
+  [Locked](/user-guide/notes/read-only-locks) notes and folders stay read-only in both modes: the
+  agent gets a refusal it can report, and nothing is written
 - **Always allowed** — tools you granted a standing approval for in this vault, each with a
   **Revoke**. Grants are made from an approval card and never cover deletes. Note and journal
   edits always ask, so an older grant for them is listed as ignored
+- **Clear agent memory** — after a confirmation, deletes what agents saved about this vault in its
+  agent folder, including Claude Code's project memory for that folder. Notes and chat history stay
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually
@@ -485,7 +500,8 @@ Local MCP server controls are also collapsed inside AI Assistant for external de
 Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create, update
 and delete tools require active Agent Chat context and, by default, pause for inline approval with a
 preview of the change. Setting **Confirm Actions** to **Always allow** accepts them automatically
-and shows them as collapsed tool rows instead. Plain external clients can use read tools, but
+and shows them as collapsed tool rows instead; a write to a locked note or folder is still refused.
+Plain external clients can use read tools, but
 context-free writes are denied. See [Agent MCP Server](/user-guide/ai/agent-mcp).
 
 ---
@@ -546,7 +562,7 @@ Create, rename, recolor, and reorder property options.
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `colorTheme`, `useThemeAccent`, `backgroundLight`, `foregroundLight`, `backgroundDark`, `foregroundDark`, `reduceMotion`, `pointerCursors`, `fontSmoothing`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`, `openPagesInNewTab`
-- Editor: `width`, `toolbarMode`, `spellCheck`
+- Editor: `width`, `toolbarMode`, `spellCheck`, `convertChecklistsToTasks`, `convertAgentChecklistsToTasks`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`

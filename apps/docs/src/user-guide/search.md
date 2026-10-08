@@ -18,7 +18,8 @@ Press <kbd>⌘</kbd>+<kbd>F</kbd> for global search and command execution from a
 
 Type to search across:
 
-- **Notes** — title and body
+- **Notes** — title and body, and the text inside their HTML blocks (see [Text in HTML blocks](#text-in-html-blocks))
+- **PDFs and images** filed in the vault, by the text inside them (see [Text in PDFs and images](#text-in-pdfs-and-images))
 - **Journal entries** — title and body
 - **Tasks** — title, description, project name
 - **Inbox items** — title, source URL, captured text
@@ -79,6 +80,37 @@ For each result row:
 - <kbd>⌘</kbd>+<kbd>Enter</kbd> — open in new tab
 - <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>Enter</kbd> — open in split pane
 - <kbd>→</kbd> — preview without opening
+
+## Text in PDFs and images
+
+Memry reads the text inside the PDFs and images you file in the vault, and inside the ones you paste or attach into a note, so search finds them by what is written on them. The snippet under the result shows the matching text.
+
+- A filed PDF or image comes up as its own result and opens in the file viewer.
+- A screenshot or PDF inside a note brings up that note. Removing it from the note removes its text from search, even though the file stays in the note's attachments folder.
+
+- A PDF page that already carries text (a document saved or exported as PDF) is read from that text.
+- A scanned page, a photo, or a screenshot goes through OCR. OCR runs on your device with English language data that ships with the app. Nothing is downloaded and nothing leaves the machine.
+- The work runs in the background after the vault opens, one file and one page at a time, at low priority. A long scan becomes searchable while it is read, and a restart continues with the pages it has not finished.
+- A file whose contents change is read again. Renaming or moving a filed file is not.
+- A file that could not be read, or a page in it that could not be read, is tried again after an app update, or a day later.
+
+The text lives in the index on this device and does not sync. Each device reads its own copy of the files, and rebuilding the index reads them again.
+
+Agents read the same text through `vault_read_note` (see [Agent MCP](/user-guide/ai/agent-mcp#notes-and-filed-files)). Similar-notes suggestions use it too: a filed PDF or image can be suggested by its text and opens in the file viewer, and a note's attachment text counts toward that note.
+
+## Text in HTML blocks
+
+An HTML block (an `.html` file attached to a note, or one an agent adds with `vault_add_html_artifact`) is searchable by the text it shows. A match brings up the note that embeds the block.
+
+- Only the visible text counts. Scripts, styles and the tags themselves are left out, and the block's scripts never run while it is read.
+- A `[[wiki link]]` written in the block's text links the note like one in the note's body: it shows up in the graph, in the target note's backlinks and in `memrynote graph`. Link syntax inside code (`<code>`, `<pre>`, `<kbd>` or `<samp>`) is not a link, the same as inside code in a note's markdown. Its text is still searchable.
+- Renaming a note does not update links to it inside HTML blocks. The block's file keeps the old title, so the link stops reaching the renamed note once the note that embeds the block is read again. Links to it in note bodies are updated as usual.
+- `memrynote graph` reads the block text the desktop app stored for the vault, so it sees these links only after the app has opened the vault and read the block.
+- The block's file is only read, never changed, so it keeps its scripts, styles and layout.
+- A block file larger than 2 MB is not read for search. The block still shows in the note.
+- A block whose file changes is read again when the note changes, when the file arrives through sync, and every time the vault opens. Removing the block from the note removes its text and links from search, the graph and backlinks.
+
+Like the text in PDFs and images, it lives in the index on this device and does not sync.
 
 ## Performance
 

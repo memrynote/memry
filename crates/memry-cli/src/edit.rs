@@ -1,12 +1,12 @@
 //! `notes edit <id> --append <text>`: the headless write G5 needs (T125).
 //!
 //! This exists for one reason: quickstart §G5 asks for a write a **real
-//! desktop renders as a real block**, made by a client that is not the editor
-//! bundle. It is not a markdown path, it is not reachable from the phone, and
-//! it will never grow one — chapter 12 §12.1 puts both markdown directions
-//! inside the editor bundle and §12.1.2 leaves a non-editor client with
-//! `extract_text` and nothing else. What this file does instead is build one
-//! schema-shaped node with the yrs API and hand it to the document.
+//! desktop renders as a real block**, made by a client that is not desktop.
+//! It is not a markdown path, it is not reachable from the phone, and it will
+//! never grow one: chapter 12 §12.1 gives desktop both markdown directions,
+//! and §12.1.2 lets a non-desktop client parse markdown only through
+//! `markdown_seed`, for two writes this is not. So this file builds one
+//! schema-shaped node with the yrs API and hands it to the document.
 //!
 //! **The node** and the parent it goes into are [`node`]'s, which is also
 //! where the sources for each part of the shape are written down.

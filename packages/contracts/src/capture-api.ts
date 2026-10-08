@@ -26,7 +26,13 @@ export const ArticleCaptureSchema = z.object({
   // unbounded string. 255 is the usual filesystem name limit.
   pdfFilename: z.string().max(255).optional(),
   tags: z.array(z.string()).optional(),
-  force: z.boolean().optional()
+  force: z.boolean().optional(),
+  // Optional destination, added after the first release; older extensions omit
+  // both and land in the Inbox. `folder` is a vault-relative path from GET
+  // /folders, `vaultId` the id that listing returned. The server files the clip
+  // only when both still match the open vault; otherwise it stays in the Inbox.
+  folder: z.string().min(1).max(1024).optional(),
+  vaultId: z.string().min(1).max(128).optional()
 })
 
 export type ArticleCaptureInput = z.infer<typeof ArticleCaptureSchema>

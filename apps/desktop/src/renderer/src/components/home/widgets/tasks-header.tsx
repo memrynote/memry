@@ -1,9 +1,11 @@
 import type React from 'react'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { useSavedFilters } from '@/hooks/use-task-filters'
+import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import {
   resolveTasksFilter,
   selectTasksForWidget,
+  widgetNeedsNoteIndex,
   TASK_WIDGET_DATE_VIEWS,
   TASK_WIDGET_NO_DUE_VIEW,
   type TaskWidgetView
@@ -91,9 +93,10 @@ export function TasksHeaderFilter({
 export function TasksHeaderCount({ config }: WidgetComponentProps): React.JSX.Element | null {
   const { tasks, projects, isLoading } = useTaskWorkspaceData({ enabled: true })
   const { savedFilters } = useSavedFilters()
+  const noteIndex = useTaskNoteIndex(widgetNeedsNoteIndex(savedFilters ?? [], config))
   if (isLoading) return null
 
-  const count = selectTasksForWidget(tasks, projects, savedFilters ?? [], config).length
+  const count = selectTasksForWidget(tasks, projects, savedFilters ?? [], config, noteIndex).length
   return (
     <span className="font-mono text-[11px] font-semibold text-[var(--text-tertiary)]">{count}</span>
   )

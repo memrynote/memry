@@ -16,6 +16,24 @@ describe('export-utils', () => {
     expect(html).toContain('<span class="wiki-link">Display</span>')
   })
 
+  it('markdownToHtml leaves HTML and %% comments out, links inside them included', () => {
+    const markdown = [
+      '<!-- hidden [[Alpha]] -->',
+      'Visible <!-- [[Beta]] --> text %% [[Gamma]] %% here.',
+      '',
+      '%%',
+      'block [[Delta]]',
+      '%%',
+      '',
+      'Code `%% kept %%` and `<!-- kept -->`.'
+    ].join('\n')
+    const html = markdownToHtml(markdown)
+    for (const name of ['Alpha', 'Beta', 'Gamma', 'Delta']) expect(html).not.toContain(name)
+    expect(html).not.toMatch(/<!--(?! kept)/)
+    expect(html).toContain('<code>%% kept %%</code>')
+    expect(html).toContain('<code>&lt;!-- kept --&gt;</code>')
+  })
+
   it('markdownToHtml drops the heading half of a heading link (issue #1556)', () => {
     const html = markdownToHtml('see [[Sprint Notes#Retro]] and [[Sprint Notes|retro]]')
     expect(html).toContain('<span class="wiki-link">Sprint Notes</span>')
@@ -118,6 +136,42 @@ describe('export-utils', () => {
     const html = renderNoteAsHtml(note, { includeMetadata: false })
     expect(html).not.toContain('<div class="note-meta">')
     expect(html).not.toContain('<div class="note-tags">')
+  })
+
+  describe('task markers', () => {
+    const note: NoteExportData = {
+      id: 'note789',
+      title: 'Checklist',
+      content: '- [ ] Pack bags {task:t1}\n- [x] Book train {task:t2}\n  - [ ] Seat {task:}',
+      tags: [],
+      created: new Date(2026, 0, 2),
+      modified: new Date(2026, 0, 3)
+    }
+
+    it('prints each task as its checkbox and title', () => {
+      const html = renderNoteAsHtml(note)
+
+      expect(html).toContain(
+        [
+          '<ul>',
+          '<li><input disabled="" type="checkbox"> Pack bags</li>',
+          '<li><input checked="" disabled="" type="checkbox"> Book train<ul>',
+          '<li><input disabled="" type="checkbox"> Seat</li>',
+          '</ul>',
+          '</li>',
+          '</ul>'
+        ].join('\n')
+      )
+      expect(html).not.toContain('{task:')
+    })
+
+    it('keeps the markers when asked to', () => {
+      const html = renderNoteAsHtml(note, { includeTaskMarkers: true })
+
+      expect(html).toContain('Pack bags {task:t1}</li>')
+      expect(html).toContain('Book train {task:t2}<ul>')
+      expect(html).toContain('Seat {task:}</li>')
+    })
   })
 
   it('sanitizeFilename removes invalid characters and limits length', () => {

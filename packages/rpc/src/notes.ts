@@ -21,7 +21,8 @@ import type {
   LinkVia,
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
-  NoteClustersResponse
+  NoteClustersResponse,
+  PlainChecklistsOption
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -244,6 +245,8 @@ export interface ExportNoteInput {
   noteId: string
   includeMetadata?: boolean
   pageSize?: 'A4' | 'Letter' | 'Legal'
+  // Keep each task's `{task:<id>}` suffix in the output. Off by default.
+  includeTaskMarkers?: boolean
   // When set, write directly to this path and skip the native save dialog
   // (enables headless export, e.g. from the Agent MCP server).
   outputPath?: string
@@ -295,7 +298,7 @@ export interface NoteUpdateInput {
   emoji?: string | null
 }
 
-export interface ApplyTemplateInput {
+export interface ApplyTemplateInput extends PlainChecklistsOption {
   noteId: string
   templateId: string
   mode: 'full' | 'body'
@@ -835,11 +838,15 @@ export const notesRpc = defineDomain({
       invokeArgs: ['{ folderPath, notePaths }']
     }),
     importFiles: defineMethod<
-      (sourcePaths: string[], targetFolder?: string) => Promise<ImportFilesResponse>
+      (
+        sourcePaths: string[],
+        targetFolder?: string,
+        options?: PlainChecklistsOption
+      ) => Promise<ImportFilesResponse>
     >({
       channel: NotesChannels.invoke.IMPORT_FILES,
-      params: ['sourcePaths', 'targetFolder'],
-      invokeArgs: ['{ sourcePaths, targetFolder }']
+      params: ['sourcePaths', 'targetFolder', 'options'],
+      invokeArgs: ['{ sourcePaths, targetFolder, options }']
     }),
     showImportDialog: defineMethod<() => Promise<ImportDialogResponse>>({
       channel: NotesChannels.invoke.SHOW_IMPORT_DIALOG

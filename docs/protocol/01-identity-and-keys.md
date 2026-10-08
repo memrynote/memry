@@ -51,7 +51,7 @@ Three of the logical names are also declared in contracts:
 `LINKING_HKDF_CONTEXTS` (`packages/contracts/src/crypto.ts:55-59`). The mapping
 from logical name to `ctx` and id exists only in the two implementation copies,
 `apps/desktop/src/main/crypto/keys.ts:19-27` and
-`apps/mobile/src/crypto/libsodium.ts:29-30`, and in the vector fixture table
+`crates/memry-core/src/crypto/keys.rs:55-91`, and in the vector fixture table
 (`packages/contracts/scripts/vector-fixtures.ts:18-19`). A conforming client
 MUST reproduce all seven rows exactly; they are pinned as vectors under
 `kdfDeriveFromKey` in `packages/contracts/test-vectors/crypto-vectors.json`.
@@ -98,8 +98,9 @@ The BIP39 library layer supplies only step 1 — `bip39@3.1.0`'s
 Memry's application layer supplies the other four:
 `apps/desktop/src/renderer/src/components/sync/recovery-phrase-input.tsx:59`
 (`phrase.trim().toLowerCase().replace(/\s+/g, ' ')`) and
-`apps/mobile/src/lib/vault-unlock.ts:41`. Validation gates derivation on both:
-desktop `apps/desktop/src/main/ipc/auth-device-handlers.ts:421` precedes `:445`.
+`crates/memry-core/src/crypto/recovery.rs:34-42`. Validation gates derivation on both:
+desktop `apps/desktop/src/main/ipc/auth-device-handlers.ts:428` precedes `:452`, and the
+core's `phrase_to_seed` validates first (`crates/memry-core/src/crypto/recovery.rs:100-104`).
 
 **Mandating this changes no existing phrase.** Every master key in existence was
 derived from a canonical phrase: at creation the seed comes straight from
@@ -238,11 +239,6 @@ client can do none of these and cannot re-derive anything if a new subkey id is
 ever introduced (§1.2.1). Deriving the vault key costs one BLAKE2b KDF call, not
 an Argon2id pass, so there is no performance argument for caching it.
 
-**The frozen Expo app is non-conforming here and MUST NOT be used as a second
-reference**: it stores the vault key per vault
-(`apps/mobile/src/lib/secure-store.ts:27`, `:57-59`) and discards the master key
-(`apps/mobile/src/lib/vault-unlock.ts:58-62`). It is unreleased and superseded.
-
 **Disposition of Q01.3: answered** (this section).
 
 ## 1.7 One vault key per account — Q01.4
@@ -260,8 +256,8 @@ plus item ids, nothing else.
 
 Every derivation site passes the same fixed context:
 `apps/desktop/src/main/crypto/keys.ts:130`,
-`apps/desktop/src/main/crypto/vault-key-state.ts:39`, and mobile's
-`apps/mobile/src/lib/vault-unlock.ts:58`. Exactly one `MASTER_KEY` keychain entry
+`apps/desktop/src/main/crypto/vault-key-state.ts:39`, and the core's
+`crates/memry-core/src/crypto/keys.rs:138`. Exactly one `MASTER_KEY` keychain entry
 exists per account (`packages/contracts/src/crypto.ts:71`).
 
 **Security-critical consequence.** Because all vaults on an account share one

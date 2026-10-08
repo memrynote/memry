@@ -13,6 +13,8 @@ import { StatusProjectPickerPanel } from './filter-panels/status-project-picker-
 import { DueDatePanel } from './filter-panels/due-date-panel'
 import { ProjectPanel } from './filter-panels/project-panel'
 import { TagPanel } from './filter-panels/tag-panel'
+import { LocationIcon, LocationPanel } from './filter-panels/location-panel'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 import { SavedFiltersSection } from './saved-filters-section'
 import { useT } from '@memry/i18n/renderer'
 
@@ -24,6 +26,8 @@ interface FilterDropdownProps {
   onClearFilters: () => void
   tasks: Task[]
   projects: Project[]
+  /** Folder and note lookup for the Location panel; `undefined` while loading. */
+  noteIndex?: TaskNoteIndex
   savedFilters: SavedFilter[]
   activeSavedFilterId?: string | null
   hasActiveFilters: boolean
@@ -36,13 +40,21 @@ interface FilterDropdownProps {
 }
 
 type ActivePanel =
-  null | 'priority' | 'status' | 'dueDate' | 'project' | 'tags' | 'status-project-picker'
+  | null
+  | 'priority'
+  | 'status'
+  | 'dueDate'
+  | 'project'
+  | 'location'
+  | 'tags'
+  | 'status-project-picker'
 
 const FILTER_CATEGORIES: { key: NonNullable<ActivePanel>; label: string }[] = [
   { key: 'priority', label: 'Priority' },
   { key: 'status', label: 'Status' },
   { key: 'dueDate', label: 'Due date' },
   { key: 'project', label: 'Project' },
+  { key: 'location', label: 'Location' },
   { key: 'tags', label: 'Tags' }
 ]
 
@@ -82,6 +94,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
       />
     </svg>
   ),
+  location: <LocationIcon />,
   tags: (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <path
@@ -103,6 +116,7 @@ export const FilterDropdown = ({
   onClearFilters: _onClearFilters,
   tasks,
   projects,
+  noteIndex,
   savedFilters,
   activeSavedFilterId,
   hasActiveFilters,
@@ -212,6 +226,29 @@ export const FilterDropdown = ({
     onUpdateFilters({ projectIds: [] })
   }, [onUpdateFilters])
 
+  const selectedFolderPaths = useMemo(() => filters.folderPaths ?? [], [filters.folderPaths])
+  const selectedNoteIds = useMemo(() => filters.noteIds ?? [], [filters.noteIds])
+
+  const toggleFolder = useCallback(
+    (folderPath: string) => {
+      const next = selectedFolderPaths.includes(folderPath)
+        ? selectedFolderPaths.filter((path) => path !== folderPath)
+        : [...selectedFolderPaths, folderPath]
+      onUpdateFilters({ folderPaths: next })
+    },
+    [selectedFolderPaths, onUpdateFilters]
+  )
+
+  const toggleNote = useCallback(
+    (noteId: string) => {
+      const next = selectedNoteIds.includes(noteId)
+        ? selectedNoteIds.filter((id) => id !== noteId)
+        : [...selectedNoteIds, noteId]
+      onUpdateFilters({ noteIds: next })
+    },
+    [selectedNoteIds, onUpdateFilters]
+  )
+
   const filteredCategories = useMemo(() => {
     if (!searchQuery) return FILTER_CATEGORIES
     const q = searchQuery.toLowerCase()
@@ -222,7 +259,8 @@ export const FilterDropdown = ({
     <Picker open={open} onOpenChange={handleOpenChange} closeOnSelect={false}>
       <Picker.Trigger asChild>{children}</Picker.Trigger>
       <Picker.Content
-        width={220}
+        // Folder trees nest; the other panels are flat lists that fit in 220.
+        width={activePanel === 'location' ? 280 : 220}
         align="end"
         sideOffset={8}
         className="max-h-[calc(100vh-120px)] overflow-y-auto"
@@ -318,6 +356,20 @@ export const FilterDropdown = ({
             onToggleProject={toggleProject}
             onClearProjectFilter={clearProjectFilter}
             onGoBack={goBack}
+          />
+        )}
+
+        {activePanel === 'location' && (
+          <LocationPanel
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedFolderPaths={selectedFolderPaths}
+            selectedNoteIds={selectedNoteIds}
+            onToggleFolder={toggleFolder}
+            onToggleNote={toggleNote}
+            onGoBack={goBack}
+            tasks={tasks}
+            noteIndex={noteIndex}
           />
         )}
 

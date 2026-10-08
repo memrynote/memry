@@ -53,6 +53,10 @@ vi.mock('@/lib/task-utils/task-filters', () => ({
   applyFiltersAndSort: (...args: unknown[]) => applyFiltersAndSort(...(args as [typeof tasks]))
 }))
 
+vi.mock('@/hooks/use-task-note-index', () => ({
+  useTaskNoteIndex: () => undefined
+}))
+
 vi.mock('@/lib/task-utils/task-view-helpers', () => ({
   getFilteredTasks: (input: typeof tasks) => input,
   getTasksInDueWindow: (input: typeof tasks) => input
@@ -93,7 +97,14 @@ describe('TasksWidget', () => {
     render(<TasksWidget config={{ savedFilterId: 'sf1' }} size="M" />)
     expect(screen.getByText('Beta')).toBeInTheDocument()
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-    expect(applyFiltersAndSort).toHaveBeenCalledWith(tasks, { search: 'beta' }, defaultSort, [])
+    expect(applyFiltersAndSort).toHaveBeenCalledWith(
+      tasks,
+      { search: 'beta' },
+      defaultSort,
+      [],
+      expect.any(Date),
+      undefined
+    )
   })
 
   it('falls back to the today view when the saved filter is missing', () => {

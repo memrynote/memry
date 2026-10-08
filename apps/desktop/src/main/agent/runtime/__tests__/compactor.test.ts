@@ -187,6 +187,40 @@ describe('Conversation compactor', () => {
     expect(all.filter((item) => item.role === 'user')).toHaveLength(6)
   })
 
+  it('keeps display-only assistant notes out of the summary prompt', async () => {
+    const seed = [
+      message({
+        id: 'm0',
+        role: 'assistant',
+        content: {
+          role: 'assistant',
+          data: {
+            text: 'Plain answer',
+            reasoning: 'Thinking it over.',
+            reasoningDurationMs: 900,
+            toolsUnavailable: { detail: 'HTTP 400' }
+          }
+        },
+        createdAt: 0
+      }),
+      message({ id: 'm1', createdAt: 1 })
+    ]
+    const summarize = vi.fn(async () => 'summary')
+
+    await maybeCompact({
+      conversationId: 'conversation-1',
+      messages: fakeStore(seed),
+      history: seed,
+      summarize,
+      estimateLimit: 1,
+      currentEstimate: 2
+    })
+
+    expect(summarize).toHaveBeenCalledWith(
+      `${COMPACT_PROMPT}\n\n[assistant] {"text":"Plain answer"}`
+    )
+  })
+
   it('uses the fixed compaction instruction', () => {
     expect(COMPACT_PROMPT).toContain('Earlier in this conversation')
   })
