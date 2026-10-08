@@ -530,6 +530,36 @@ describe('vault read-only locks (#2606)', () => {
     }
   )
 
+  it.skipIf(isWindows)(
+    'a file recreated read-only while locked keeps its own mode through unlock',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      const ownerOnly = path.join(vault, 'shared/owner-only.pdf')
+      const sameAsLocked = path.join(vault, 'shared/same-as-locked.pdf')
+      const attachment = path.join(vault, 'attachments/note-a/pic.png')
+      const recreated = { [ownerOnly]: 0o400, [sameAsLocked]: 0o444, [attachment]: 0o400 }
+      for (const file of Object.keys(recreated)) {
+        fs.mkdirSync(path.dirname(file), { recursive: true })
+        fs.writeFileSync(file, 'old')
+        fs.chmodSync(file, 0o664)
+      }
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: true })
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+
+      for (const [file, mode] of Object.entries(recreated)) {
+        fs.rmSync(file, { force: true })
+        fs.writeFileSync(file, 'new')
+        fs.chmodSync(file, mode)
+      }
+      await protectLockedFile(ownerOnly)
+      await checkLockedFilesAtOpen()
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+
+      expect(Object.keys(recreated).map(modeOf)).toEqual([0o400, 0o444, 0o400])
+    }
+  )
+
   it("locks the attachments folder the app saves a note's attachments in", async () => {
     addNote('note-a', 'notes/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
