@@ -121,10 +121,11 @@ vi.mock('./journal-folder-follow', async (importOriginal) => ({
 }))
 
 const enqueueLocalSyncCreate = vi.hoisted(() => vi.fn())
+const enqueueLocalSyncDelete = vi.hoisted(() => vi.fn())
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: vi.fn(),
-  enqueueLocalSyncDelete: vi.fn()
+  enqueueLocalSyncDelete
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({
@@ -152,6 +153,7 @@ import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
+import { syncFolderConfigRename } from '../notes/folder-config-effects'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 
 describe('vault watcher', () => {
@@ -556,6 +558,70 @@ describe('vault watcher', () => {
     expect(enqueueLocalSyncCreate.mock.calls).toEqual([
       ['folder_config', 'Finder'],
       ['folder_config', 'Finder/Empty']
+    ])
+    await stopWatcher()
+  })
+
+  it('tombstones the records of a folder removed outside the app (#2850)', async () => {
+    vi.useFakeTimers()
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+    const trigger = (event: string, ...args: unknown[]) => {
+      for (const handler of listeners.get(event) ?? []) handler(...args)
+    }
+    const mockWatcher = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+    const startPromise = startWatcher(vault.path)
+    trigger('ready')
+    await startPromise
+
+    for (const [folder, icon] of [
+      ['Gone', 'star'],
+      ['Gone/Child', null],
+      ['Back', null],
+      ['Moved', 'moon'],
+      ['journal', null]
+    ] as const) {
+      dataDb.db
+        .insert(folderConfigs)
+        .values({ path: folder, icon, createdAt: 'x', modifiedAt: 'x' })
+        .run()
+    }
+    fs.mkdirSync(path.join(vault.path, 'Back'))
+    fs.mkdirSync(path.join(vault.path, 'Renamed'))
+
+    // Deleted in Finder, children reported before the parent.
+    trigger('unlinkDir', path.join(vault.path, 'Gone', 'Child'))
+    trigger('unlinkDir', path.join(vault.path, 'Gone'))
+    // Removed and recreated (an editor's atomic swap) inside the window.
+    trigger('unlinkDir', path.join(vault.path, 'Back'))
+    // Renamed in the app: the event lands before the app re-keys the rows.
+    trigger('unlinkDir', path.join(vault.path, 'Moved'))
+    syncFolderConfigRename('Moved', 'Renamed')
+    // Hidden folders never get a row from the watcher, nor lose one.
+    trigger('unlinkDir', path.join(vault.path, 'journal'))
+    enqueueLocalSyncDelete.mockClear()
+
+    await vi.advanceTimersByTimeAsync(1000)
+
+    const rows = dataDb.db.select().from(folderConfigs).all()
+    expect(rows.map((r) => [r.path, r.icon]).sort()).toEqual([
+      ['Back', null],
+      ['Renamed', 'moon'],
+      ['journal', null]
+    ])
+    expect(enqueueLocalSyncDelete.mock.calls.map((c) => c.slice(0, 2)).sort()).toEqual([
+      ['folder_config', 'Gone'],
+      ['folder_config', 'Gone/Child']
     ])
     await stopWatcher()
   })
