@@ -89,7 +89,8 @@ The log is cleared when you sign out of sync; it is not aged out on a timer.
 
 A note's text travels separately from its title, tags, and properties, so the last-synced time
 alone cannot say whether your latest edit left the device. Hover the outline rail on the right of a
-note or journal day and look at the **Sync** line under the dates:
+note or journal day and look at the **Sync** line under the dates. A note without headings has no
+rail; hover the small dot in its place instead. The panel shows from the medium window width up:
 
 | Sync line                              | Meaning                                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |

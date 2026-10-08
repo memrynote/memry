@@ -558,7 +558,6 @@
   "outline": {
     "title": "Esquema",
     "aria": "Esquema del documento",
-    "empty": "Sin encabezados",
     "emptyYet": "Aún no hay encabezados",
     "readTime": "{count} min de lectura",
     "words": "{count} palabras",

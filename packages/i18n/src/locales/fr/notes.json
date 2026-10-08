@@ -558,7 +558,6 @@
   "outline": {
     "title": "Plan",
     "aria": "Plan du document",
-    "empty": "Aucun titre",
     "emptyYet": "Aucun titre pour l'instant",
     "readTime": "{count} min de lecture",
     "words": "{count} mots",

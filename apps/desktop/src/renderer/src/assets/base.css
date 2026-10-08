@@ -4422,6 +4422,12 @@ del.bn-inline-content {
   animation: outline-fade-in 0.4s var(--ease-out);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .outline-indicator {
+    animation: none;
+  }
+}
+
 @keyframes outline-fade-in {
   from {
     opacity: 0;

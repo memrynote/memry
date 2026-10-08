@@ -558,7 +558,6 @@
   "outline": {
     "title": "Jäsennys",
     "aria": "Asiakirjan jäsennys",
-    "empty": "Ei otsikoita",
     "emptyYet": "Ei vielä otsikoita",
     "readTime": "Lukuaika {count} min",
     "words": "{count, plural, one {# sana} other {# sanaa}}",

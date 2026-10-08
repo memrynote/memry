@@ -558,7 +558,6 @@
   "outline": {
     "title": "Disposition",
     "aria": "Dokumentets disposition",
-    "empty": "Ingen overskrifter",
     "emptyYet": "Ingen overskrifter endnu",
     "readTime": "{count} min. læsetid",
     "words": "{count} ord",

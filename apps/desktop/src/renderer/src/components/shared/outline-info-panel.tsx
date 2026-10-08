@@ -32,7 +32,7 @@ export interface OutlineInfoPanelProps {
    * without this it lands on the image and takes the clicks meant for it.
    */
   belowCover?: boolean
-  /** Adds the note's sync line under its dates (#2647). */
+  /** Adds the note's sync line, and keeps the panel for a note without headings (#2647). */
   noteId?: string | null
 }
 
@@ -145,12 +145,12 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
     return () => clearAllTimeouts()
   }, [clearAllTimeouts])
 
-  if (headings.length === 0) {
+  const hasOutline = headings.length > 0
+  if (!hasOutline && !stats && !noteId) {
     return null
   }
 
-  const verticalLineHeight = headings.length > 0 ? Math.max(0, (headings.length - 1) * 14 + 4) : 0
-  const hasOutline = headings.length > 0
+  const verticalLineHeight = Math.max(0, (headings.length - 1) * 14 + 4)
 
   return (
     <div
@@ -168,7 +168,16 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
     >
       {!isExpanded ? (
         <div className="flex items-start gap-0 cursor-pointer">
-          {headings.length > 0 && (
+          {!hasOutline && (
+            <div className="flex size-6 items-start justify-end py-1">
+              <div
+                className="size-1.5 rounded-full bg-text-tertiary opacity-40"
+                aria-hidden="true"
+              />
+            </div>
+          )}
+
+          {hasOutline && (
             <div className="flex flex-col items-end gap-2.5 py-1">
               {headings.map((heading) => {
                 const isActive = heading.id === activeHeadingId
@@ -192,7 +201,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
             </div>
           )}
 
-          {headings.length > 0 && (
+          {hasOutline && (
             <div
               className="vertical-connector ms-1.5 mt-1"
               style={{
@@ -214,7 +223,8 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
             'min-w-[240px] max-w-[300px]',
             // Anchor the zoom to where the collapsed rail lives (top inline-end)
             'origin-top-right rtl:origin-top-left',
-            !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
+            !isFadingOut &&
+              'animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none'
           )}
           style={
             isFadingOut
@@ -227,13 +237,15 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
           }
         >
           <div className="py-3 px-3.5 flex flex-col gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-                {t('outline.title')}
-              </span>
-            </div>
+            {hasOutline && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+                  {t('outline.title')}
+                </span>
+              </div>
+            )}
 
-            {hasOutline ? (
+            {hasOutline && (
               <nav
                 aria-label={t('outline.aria')}
                 className="flex flex-col gap-0.5 max-h-[50vh] overflow-y-auto"
@@ -277,13 +289,12 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                   )
                 })}
               </nav>
-            ) : (
-              <span className="text-xs text-text-tertiary">{t('outline.empty')}</span>
             )}
+
+            {hasOutline && (stats || noteId) && <div className="h-px bg-border/50" />}
 
             {stats && (
               <>
-                <div className="h-px bg-border/50" />
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-text-tertiary leading-3.5">
                     {t('outline.words', { count: stats.wordCount })}
@@ -318,9 +329,10 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                     )}
                   </div>
                 )}
-                {noteId && <NoteSyncLine noteId={noteId} />}
               </>
             )}
+
+            {noteId && <NoteSyncLine noteId={noteId} />}
           </div>
         </div>
       )}

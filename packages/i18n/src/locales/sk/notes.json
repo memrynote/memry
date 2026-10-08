@@ -558,7 +558,6 @@
   "outline": {
     "title": "Osnova",
     "aria": "Osnova dokumentu",
-    "empty": "Žiadne nadpisy",
     "emptyYet": "Zatiaľ žiadne nadpisy",
     "readTime": "{count} min čítania",
     "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",

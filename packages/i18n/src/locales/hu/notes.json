@@ -558,7 +558,6 @@
   "outline": {
     "title": "Vázlat",
     "aria": "Dokumentumvázlat",
-    "empty": "Nincsenek címsorok",
     "emptyYet": "Még nincsenek címsorok",
     "readTime": "{count} perc olvasás",
     "words": "{count} szó",

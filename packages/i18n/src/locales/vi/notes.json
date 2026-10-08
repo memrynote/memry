@@ -558,7 +558,6 @@
   "outline": {
     "title": "Dàn ý",
     "aria": "Dàn ý tài liệu",
-    "empty": "Không có tiêu đề",
     "emptyYet": "Chưa có tiêu đề nào",
     "readTime": "{count} phút đọc",
     "words": "{count} từ",

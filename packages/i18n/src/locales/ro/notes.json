@@ -558,7 +558,6 @@
   "outline": {
     "title": "Structură",
     "aria": "Structura documentului",
-    "empty": "Fără titluri",
     "emptyYet": "Încă nu există titluri",
     "readTime": "Citire: {count} min",
     "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",

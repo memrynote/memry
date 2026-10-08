@@ -558,7 +558,6 @@
   "outline": {
     "title": "Структура",
     "aria": "Структура документа",
-    "empty": "Нет заголовков",
     "emptyYet": "Заголовков пока нет",
     "readTime": "{count} мин чтения",
     "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",

@@ -558,7 +558,6 @@
   "outline": {
     "title": "Ana hat",
     "aria": "Belge ana hattı",
-    "empty": "Başlık yok",
     "emptyYet": "Henüz başlık yok",
     "readTime": "{count} dk okuma",
     "words": "{count} kelime",

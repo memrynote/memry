@@ -558,7 +558,6 @@
   "outline": {
     "title": "Struttura",
     "aria": "Struttura del documento",
-    "empty": "Nessuna intestazione",
     "emptyYet": "Ancora nessuna intestazione",
     "readTime": "{count} min di lettura",
     "words": "{count} parole",

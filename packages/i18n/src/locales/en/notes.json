@@ -657,7 +657,6 @@
   "outline": {
     "title": "Outline",
     "aria": "Document outline",
-    "empty": "No headings",
     "emptyYet": "No headings yet",
     "readTime": "{count} min read",
     "words": "{count} words",

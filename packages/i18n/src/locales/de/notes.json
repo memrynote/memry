@@ -558,7 +558,6 @@
   "outline": {
     "title": "Gliederung",
     "aria": "Gliederung des Dokuments",
-    "empty": "Keine Überschriften",
     "emptyYet": "Noch keine Überschriften",
     "readTime": "{count} Min. Lesezeit",
     "words": "{count} Wörter",
