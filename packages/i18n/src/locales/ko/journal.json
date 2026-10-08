@@ -30,7 +30,9 @@
     "copyUnsavedContent": "저장되지 않은 내용을 클립보드에 복사",
     "addBookmark": "북마크 추가",
     "removeBookmark": "북마크 제거",
-    "deleteEntry": "항목 삭제"
+    "deleteEntry": "항목 삭제",
+    "lockEntry": "항목 잠그기",
+    "unlockEntry": "항목 잠금 해제"
   },
   "editor": {
     "placeholder": {

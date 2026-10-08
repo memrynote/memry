@@ -316,5 +316,9 @@
     "invalidUrl": "웹 링크가 아닙니다. http 또는 https 이미지 주소를 붙여넣으세요.",
     "downloadFailed": "이미지를 다운로드하지 못했습니다. 링크를 확인하고 다시 시도하세요.",
     "unsupportedUrl": "이 링크는 PNG, JPG, GIF, WEBP 또는 SVG 이미지가 아닙니다."
+  },
+  "vaultLock": {
+    "noteReadOnly": "소유자가 이 노트를 읽기 전용으로 설정했습니다.",
+    "folderReadOnly": "소유자가 이 폴더를 읽기 전용으로 설정했습니다."
   }
 }

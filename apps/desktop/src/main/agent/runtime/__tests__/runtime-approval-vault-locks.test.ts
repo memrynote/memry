@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import {
   asClientDb,
@@ -140,10 +143,10 @@ describe('read-only locks under Always allow (#2606)', () => {
     vault.cleanup()
   })
 
-  function expectLockRefusal(error: unknown): void {
+  function expectLockRefusal(error: unknown, message = VAULT_LOCKED_NOTE_MESSAGE): void {
     expect(JSON.parse(toMcpToolErrorContent(error).content[0].text)).toMatchObject({
       code: 'PERMISSION_DENIED',
-      message: VAULT_LOCKED_NOTE_MESSAGE
+      message
     })
   }
 
@@ -190,7 +193,7 @@ describe('read-only locks under Always allow (#2606)', () => {
       expect(mocks.broadcastAgentEvent).not.toHaveBeenCalledWith(
         expect.objectContaining({ kind: 'tool_call_pending_approval' })
       )
-      expectLockRefusal(error)
+      expectLockRefusal(error, VAULT_LOCKED_FOLDER_MESSAGE)
     }
     expect(fs.readdirSync(path.join(vault.path, 'archive'))).toEqual([])
   })

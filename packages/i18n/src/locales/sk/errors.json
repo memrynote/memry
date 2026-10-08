@@ -316,5 +316,9 @@
     "invalidUrl": "Toto nie je webový odkaz. Prilepte adresu obrázka http alebo https.",
     "downloadFailed": "Obrázok sa nepodarilo stiahnuť. Skontrolujte odkaz a skúste to znova.",
     "unsupportedUrl": "Tento odkaz nie je obrázok PNG, JPG, GIF, WEBP ani SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Vlastník nastavil túto poznámku iba na čítanie.",
+    "folderReadOnly": "Vlastník nastavil tento priečinok iba na čítanie."
   }
 }

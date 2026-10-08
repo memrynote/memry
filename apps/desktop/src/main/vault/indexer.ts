@@ -96,7 +96,7 @@ export interface IndexVaultOptions {
  * @param excludePatterns - Patterns to exclude from scanning
  * @param activity - Collects unsupported files for the vault activity log
  */
-async function findVaultFiles(
+export async function findVaultFiles(
   dirPath: string,
   basePath: string,
   excludePatterns: string[] = [],

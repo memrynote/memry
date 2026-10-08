@@ -77,6 +77,7 @@ import {
   EnsurePropertyDefinitionSchema,
   ExportNoteSchema,
   ImportFilesSchema,
+  PlainChecklistsOptionSchema,
   NoteCreateSchema,
   NoteGetPositionsSchema,
   NoteListSchema,
@@ -176,6 +177,20 @@ const none = {} as const satisfies DesktopOperationParams
  */
 function nullAsAbsent<T extends z.ZodType>(schema: T) {
   return schema.nullish()
+}
+
+const nullPastPreload = new WeakSet<z.ZodType>()
+
+/** `nullAsAbsent` where the preload passes null on and the responder or handler reads it. */
+function nullAsAbsentPastPreload<T extends z.ZodType>(schema: T) {
+  const nullable = nullAsAbsent(schema)
+  nullPastPreload.add(nullable)
+  return nullable
+}
+
+/** Whether null for this parameter is read as left out after the preload, not by it. */
+export function readsNullPastPreload(schema: z.ZodType): boolean {
+  return nullPastPreload.has(schema)
 }
 
 const calendarRangeInput = z.object({
@@ -284,7 +299,8 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   // date meaning that whole local day, and still the older (start, end) pair.
   'calendar.getRange': {
     inputOrStart: z.union([calendarRangeInput, z.string()]),
-    end: nullAsAbsent(z.string())
+    // The responder builds the range from args[0] alone unless both are strings.
+    end: nullAsAbsentPastPreload(z.string())
   },
 
   'settings.get': { key: text },
@@ -392,7 +408,8 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   },
   'notes.importFiles': {
     sourcePaths: ImportFilesSchema.shape.sourcePaths,
-    targetFolder: ImportFilesSchema.shape.targetFolder
+    targetFolder: ImportFilesSchema.shape.targetFolder,
+    options: ImportFilesSchema.shape.options
   },
   'notes.setLocalOnly': {
     id: SetLocalOnlySchema.shape.id,
@@ -474,10 +491,11 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
       actualTags: z.array(z.string()).optional()
     })
   },
-  'inbox.convertToNote': { itemId: text },
+  'inbox.convertToNote': { itemId: text, options: PlainChecklistsOptionSchema.optional() },
   'inbox.convertToTask': {
     itemId: text,
-    input: nullAsAbsent(
+    // filing.convertToTask reads input?.projectId and the other keys.
+    input: nullAsAbsentPastPreload(
       z.object({
         projectId: z.string().optional(),
         dueDate: z.string().nullable().optional(),
@@ -692,19 +710,37 @@ export function desktopOperationArgsSchema(operation: AgentMcpDesktopOperation):
   return schema
 }
 
-export interface DesktopArgsJsonSchema {
-  [key: string]: unknown
-  type: 'array'
-  prefixItems?: Array<Record<string, unknown>>
+type JsonSchemaNode = Record<string, unknown>
+
+export interface DesktopArgsTuple {
+  prefixItems?: JsonSchemaNode[]
   minItems: number
   maxItems: number
+}
+
+export interface DesktopArgsJsonSchema extends DesktopArgsTuple {
+  [key: string]: unknown
+  type: 'array'
+  /** One exact-length call per allowed argument count, when trailing arguments are optional. */
+  anyOf?: DesktopArgsTuple[]
+}
+
+function exactTuple(items: JsonSchemaNode[]): DesktopArgsTuple {
+  return {
+    ...(items.length > 0 ? { prefixItems: items } : {}),
+    minItems: items.length,
+    maxItems: items.length
+  }
 }
 
 /**
  * The JSON Schema (draft 2020-12) of an operation's `args` array, for what the
  * caller sends: a parameter with a default shows as optional with its default.
- * An operation without parameters publishes no `prefixItems` (2020-12 requires at
- * least one entry); `maxItems: 0` says it takes no arguments.
+ * Strict validators (Ajv `strictTuples`) refuse a `prefixItems` tuple that may
+ * stop early, so an operation whose trailing arguments are optional lists each
+ * allowed call length as its own tuple under `anyOf`. An operation without
+ * parameters publishes no `prefixItems` (2020-12 requires at least one entry);
+ * `maxItems: 0` says it takes no arguments.
  */
 export function desktopOperationJsonSchema(
   operation: AgentMcpDesktopOperation
@@ -712,12 +748,22 @@ export function desktopOperationJsonSchema(
   const { prefixItems, ...schema } = z.toJSONSchema(desktopOperationArgsSchema(operation), {
     io: 'input',
     unrepresentable: 'any'
-  }) as Record<string, unknown>
+  }) as JsonSchemaNode
+  const items = Array.isArray(prefixItems) ? (prefixItems as JsonSchemaNode[]) : []
+  const required = desktopOperationRequiredCount(operation)
+  if (required === items.length) return { ...schema, type: 'array', ...exactTuple(items) }
   return {
     ...schema,
-    ...(Array.isArray(prefixItems) && prefixItems.length > 0 ? { prefixItems } : {}),
     type: 'array',
-    minItems: desktopOperationRequiredCount(operation),
-    maxItems: desktopOperationParamNames(operation).length
+    minItems: required,
+    maxItems: items.length,
+    anyOf: Array.from({ length: items.length - required + 1 }, (_, index) =>
+      exactTuple(items.slice(0, required + index))
+    )
   }
+}
+
+/** Each parameter's JSON Schema in call order, read from the longest call the schema allows. */
+export function desktopArgsItemSchemas(schema: DesktopArgsJsonSchema): JsonSchemaNode[] {
+  return (schema.anyOf?.at(-1) ?? schema).prefixItems ?? []
 }

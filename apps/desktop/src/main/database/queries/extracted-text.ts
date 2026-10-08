@@ -366,23 +366,6 @@ export function readAttachmentText(
   return { files, truncated: false }
 }
 
-/** The visible text of each HTML block a markdown note embeds, by file name. */
-export function listHtmlBlockText(db: IndexDb, noteId: string): string[] {
-  return db
-    .select({ text: extractedText.text })
-    .from(extractedText)
-    .where(
-      and(
-        eq(extractedText.noteId, noteId),
-        eq(extractedText.method, 'html'),
-        ne(extractedText.text, '')
-      )
-    )
-    .orderBy(asc(extractedText.source), asc(extractedText.part))
-    .all()
-    .map((row) => row.text)
-}
-
 /** Filed (non-markdown) notes with any extracted text to search or embed. */
 export function listFilesWithExtractedText(db: IndexDb): Array<{ id: string; title: string }> {
   return db

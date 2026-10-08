@@ -170,7 +170,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:capture-text": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-voice": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:convert-to-event": (...args: [any, any]) => Awaited<Promise<{ success: boolean; eventId: string | null; error?: string | undefined; }>>
-  "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
+  "inbox:convert-to-note": (...args: [any, any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
   "inbox:convert-to-reminder": (...args: [any, any]) => Awaited<Promise<{ success: boolean; noteId: string | null; error?: string | undefined; }>>
   "inbox:convert-to-task": (...args: [any, any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
   "inbox:delete-permanent": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
@@ -219,7 +219,7 @@ export interface MainIpcInvokeHandlers {
   "notes:add-property-option": (...args: [{ propertyName: string; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:append-blocks": (...args: [{ sourceNoteId: string; targetNoteId: string; markdown: string; }]) => Awaited<Promise<{ targetPath: string; success: true; }> | { success: false; error: string }>
-  "notes:apply-template": (...args: [{ noteId: string; templateId: string; mode: "full" | "body"; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
+  "notes:apply-template": (...args: [{ noteId: string; templateId: string; mode: "full" | "body"; plainChecklists?: boolean | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:attachment-open-external": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
   "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentRenameResult>>
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentResolveResult>>
@@ -256,7 +256,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get-tags": (...args: []) => Awaited<Promise<{ tag: string; color: string; count: number; }[]>>
   "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotDetail | null>>
   "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotListItem[]>>
-  "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").ImportFilesResult> | { success: false; error: string }>
+  "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; options?: { plainChecklists?: boolean | undefined; } | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").ImportFilesResult> | { success: false; error: string }>
   "notes:insert-existing-attachment": (...args: [{ noteId: string; ownerNoteId: string; filename: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").InsertExistingAttachmentResult>>
   "notes:large-file-close": (...args: [string]) => Awaited<Promise<void>>
   "notes:large-file-open": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileOpenResult>>

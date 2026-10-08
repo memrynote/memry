@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopioi tallentamaton sisältö leikepöydälle",
     "addBookmark": "Lisää kirjanmerkki",
     "removeBookmark": "Poista kirjanmerkki",
-    "deleteEntry": "Poista merkintä"
+    "deleteEntry": "Poista merkintä",
+    "lockEntry": "Lukitse merkintä",
+    "unlockEntry": "Avaa merkinnän lukitus"
   },
   "editor": {
     "placeholder": {

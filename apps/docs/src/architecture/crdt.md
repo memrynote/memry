@@ -749,6 +749,10 @@ document to its vault `.md` file and re-indexes it for search.
   the file restore), because the parse reads a `\r` as a space. Seeded as it was, a CRLF note
   had a trailing space on every line of the doc, so its first edit wrote the whole note in
   house style. The pass puts the file's own line endings back when it writes.
+  The proof accepts a merge that re-parses to the doc's house style, or to what that house
+  style itself re-parses to. Markdown drops the space or tab a paragraph ends in, so a doc
+  saved mid-sentence (`last word `) fails its own re-parse, and that used to fail every
+  proof and write the whole note in house style (#2753).
 
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one

@@ -53,7 +53,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
 import { useVaultConfig } from '@/hooks/use-vault-config'
-import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
@@ -238,6 +238,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     entryId,
     vaultConfig ? journalPathForDate(selectedDate, vaultConfig) : null
   )
+  const hasOwnLock = useHasOwnNoteLock(entryId)
+  const lockAction = hasOwnLock ? 'unlock' : entryId && !isLocked ? 'lock' : undefined
 
   // Show toast when save error occurs
   useEffect(() => {
@@ -975,6 +977,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [entryId, notesT])
 
+  const handleToggleLock = useCallback(async () => {
+    if (!entryId) return
+    try {
+      await setVaultLock('note', entryId, !hasOwnLock)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, notesT('vaultLock.toggleFailed')))
+    }
+  }, [entryId, hasOwnLock, notesT])
+
   const openFind = findInPage.open
   const handleMenuAction = useCallback(
     (action: JournalMenuAction) => {
@@ -1003,6 +1014,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         case 'attachments':
           setIsAttachmentsOpen(true)
           break
+        case 'lock':
+          void handleToggleLock()
+          break
         case 'delete':
           setIsDeleteConfirmOpen(true)
           break
@@ -1013,7 +1027,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           break
       }
     },
-    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal]
+    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal, handleToggleLock]
   )
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -1217,6 +1231,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isMindMapAvailable={mindMap.isAvailable}
               isMindMapOpen={isMindMapOpen}
               isLocalGraphOpen={isLocalGraphOpen}
+              lockAction={lockAction}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={toggleJournalWidth}

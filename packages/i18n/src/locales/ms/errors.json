@@ -316,5 +316,9 @@
     "invalidUrl": "Itu bukan pautan web. Tampal alamat imej http atau https.",
     "downloadFailed": "Imej itu tidak dapat dimuat turun. Semak pautan dan cuba lagi.",
     "unsupportedUrl": "Pautan itu bukan imej PNG, JPG, GIF, WEBP atau SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Pemilik telah menjadikan nota ini baca sahaja.",
+    "folderReadOnly": "Pemilik telah menjadikan folder ini baca sahaja."
   }
 }

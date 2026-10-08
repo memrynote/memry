@@ -316,5 +316,9 @@
     "invalidUrl": "這不是網頁連結。請貼上 http 或 https 圖片網址。",
     "downloadFailed": "無法下載這張圖片。請檢查連結後再試一次。",
     "unsupportedUrl": "此連結不是 PNG、JPG、GIF、WEBP 或 SVG 圖片。"
+  },
+  "vaultLock": {
+    "noteReadOnly": "擁有者已將此筆記設為唯讀。",
+    "folderReadOnly": "擁有者已將此資料夾設為唯讀。"
   }
 }

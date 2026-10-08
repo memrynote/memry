@@ -316,5 +316,9 @@
     "invalidUrl": "Web リンクではありません。http または https で始まる画像のアドレスを貼り付けてください。",
     "downloadFailed": "画像をダウンロードできませんでした。リンクを確認して、もう一度お試しください。",
     "unsupportedUrl": "このリンクは PNG、JPG、GIF、WEBP、SVG 形式の画像ではありません。"
+  },
+  "vaultLock": {
+    "noteReadOnly": "所有者がこのノートを読み取り専用にしました。",
+    "folderReadOnly": "所有者がこのフォルダを読み取り専用にしました。"
   }
 }

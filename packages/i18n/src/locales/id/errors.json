@@ -316,5 +316,9 @@
     "invalidUrl": "Itu bukan tautan web. Tempel alamat gambar http atau https.",
     "downloadFailed": "Gambar tersebut tidak dapat diunduh. Periksa tautannya, lalu coba lagi.",
     "unsupportedUrl": "Tautan tersebut bukan gambar PNG, JPG, GIF, WEBP, atau SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Pemilik membuat catatan ini hanya-baca.",
+    "folderReadOnly": "Pemilik membuat folder ini hanya-baca."
   }
 }

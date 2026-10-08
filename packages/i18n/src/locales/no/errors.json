@@ -316,5 +316,9 @@
     "invalidUrl": "Det er ikke en nettlenke. Lim inn en bildeadresse som begynner med http eller https.",
     "downloadFailed": "Bildet kunne ikke lastes ned. Sjekk lenken og prøv igjen.",
     "unsupportedUrl": "Lenken peker ikke til et PNG-, JPG-, GIF-, WEBP- eller SVG-bilde."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Eieren har gjort dette notatet skrivebeskyttet.",
+    "folderReadOnly": "Eieren har gjort denne mappen skrivebeskyttet."
   }
 }

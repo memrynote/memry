@@ -216,6 +216,19 @@ describe('restoreMarkdownSource', () => {
     ).toBe('* One\n\nPara, edited.')
   })
 
+  it('writes the merge when it re-parses to what house style re-parses to (BBF-08)', async () => {
+    // A paragraph that ends in a space: markdown drops it on parse, so house
+    // style does not survive its own re-parse either.
+    const r = record('* One\n\nPara', '- One\n\nPara')
+    const edited = '- One\n\nPara, edited '
+    const merged = '* One\n\nPara, edited '
+    const canonicalize = canonicalizer(r, {
+      [merged]: '- One\n\nPara, edited',
+      [edited]: '- One\n\nPara, edited'
+    })
+    expect(await restoreMarkdownSource(edited, r.source, canonicalize)).toBe(merged)
+  })
+
   it('falls back to house style when the merge means something else', async () => {
     // The author's list is glued to its paragraph. Emptying the only item
     // leaves `Text:\n-`, which is one paragraph, not a list — the reviewer's

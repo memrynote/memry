@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Impossible d'afficher l'aperçu de cette modification",
       "description": "L'agent souhaite mettre à jour {title}. Vérifiez la modification avant de l'appliquer.",
+      "descriptionCreate": "L'agent souhaite créer {title}. Vérifiez la modification avant de l'appliquer.",
+      "descriptionDelete": "L'agent souhaite supprimer {title}. Vérifiez la modification avant de l'appliquer.",
       "fallbackTitle": "cet élément",
       "current": "Actuel",
       "candidate": "Proposé",

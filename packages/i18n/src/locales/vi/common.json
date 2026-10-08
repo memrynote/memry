@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Không thể xem trước thay đổi này",
       "description": "Tác nhân muốn cập nhật {title}. Xem lại thay đổi trước khi áp dụng.",
+      "descriptionCreate": "Tác nhân muốn tạo {title}. Xem lại thay đổi trước khi áp dụng.",
+      "descriptionDelete": "Tác nhân muốn xóa {title}. Xem lại thay đổi trước khi áp dụng.",
       "fallbackTitle": "mục này",
       "current": "Hiện tại",
       "candidate": "Bản đề xuất",

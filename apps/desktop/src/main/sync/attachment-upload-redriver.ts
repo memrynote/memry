@@ -1,11 +1,8 @@
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
 import { backfillUnsyncedAttachments } from './attachment-backfill'
-import {
-  drainAttachmentOutbox,
-  dropUploadsWithoutFile,
-  isVaultReachable
-} from './attachment-outbox'
+import { isVaultReachable } from '../vault/init'
+import { drainAttachmentOutbox, dropUploadsWithoutFile } from './attachment-outbox'
 import { getValidAccessToken } from './token-manager'
 
 const log = createLogger('AttachmentUploadRedriver')

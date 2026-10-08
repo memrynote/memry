@@ -9,6 +9,13 @@ import { normalizeExtractedText } from '../database/queries/extracted-text'
 /** Never rendered as text. */
 const HIDDEN_ELEMENTS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD'])
 
+/**
+ * Inline code, written out as a markdown code span (and `pre` as a fenced
+ * block) so the link scan skips it the way it skips code in a note's markdown
+ * (AF-006). Search still reads the words.
+ */
+const INLINE_CODE_ELEMENTS = new Set(['CODE', 'KBD', 'SAMP'])
+
 /** Elements that start a new paragraph, so their words never run together. */
 const BLOCK_ELEMENTS = new Set([
   'ADDRESS',
@@ -75,6 +82,14 @@ export async function readHtmlText(html: string): Promise<string> {
       if (item.nodeType !== ELEMENT_NODE) continue
       const name = (item as Element).tagName
       if (HIDDEN_ELEMENTS.has(name)) continue
+      if (name === 'PRE') {
+        out.push(codeBlock(codeText(item as Element)))
+        continue
+      }
+      if (INLINE_CODE_ELEMENTS.has(name)) {
+        out.push(codeSpan(codeText(item as Element)))
+        continue
+      }
       if (name === 'BR') {
         out.push('\n')
         continue
@@ -88,4 +103,45 @@ export async function readHtmlText(html: string): Promise<string> {
   } finally {
     dom.window.close()
   }
+}
+
+/** The text of a code element, line breaks kept, hidden elements left out. */
+function codeText(element: Element): string {
+  const parts: string[] = []
+  const stack: Node[] = [element]
+  for (let node = stack.pop(); node; node = stack.pop()) {
+    if (node.nodeType === TEXT_NODE) {
+      parts.push(node.nodeValue ?? '')
+      continue
+    }
+    if (node.nodeType !== ELEMENT_NODE) continue
+    const name = (node as Element).tagName
+    if (HIDDEN_ELEMENTS.has(name)) continue
+    if (name === 'BR') parts.push('\n')
+    for (let child = node.lastChild; child; child = child.previousSibling) stack.push(child)
+  }
+  return parts.join('')
+}
+
+function longestBacktickRun(text: string): number {
+  let longest = 0
+  for (const run of text.matchAll(/`+/g)) longest = Math.max(longest, run[0].length)
+  return longest
+}
+
+/** One line of inline code, as an HTML renderer collapses its whitespace. */
+function codeSpan(text: string): string {
+  const content = text.replace(/\s+/g, ' ').trim()
+  if (!content) return ''
+  const ticks = '`'.repeat(longestBacktickRun(content) + 1)
+  const pad = content.startsWith('`') || content.endsWith('`') ? ' ' : ''
+  return `${ticks}${pad}${content}${pad}${ticks}`
+}
+
+/** A fenced block, its fence longer than any backtick run inside it. */
+function codeBlock(text: string): string {
+  const content = text.replace(/^\n+|\n+$/g, '')
+  if (!content.trim()) return ''
+  const fence = '`'.repeat(Math.max(3, longestBacktickRun(content) + 1))
+  return `\n\n${fence}\n${content}\n${fence}\n\n`
 }
