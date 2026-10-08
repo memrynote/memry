@@ -4,7 +4,7 @@ import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
 import { describeDesktopOperation } from './desktop-api-describe'
 import { assertDesktopApiArgs } from './desktop-api-params'
-import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
+import { DESKTOP_API_REPLY_CAP } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
 import { withNoteSync } from './note-sync-reply'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
@@ -236,7 +236,7 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       name: 'vault_desktop_read',
       description: TOOL_SCHEMAS.vault_desktop_read.description,
       inputSchema: TOOL_SCHEMAS.vault_desktop_read.input,
-      maxReplyBytes: DESKTOP_API_REPLY_MAX_BYTES,
+      replyCap: DESKTOP_API_REPLY_CAP,
       handler: async (input, ctx) => {
         const a = parse<{ operation: AgentMcpDesktopReadOperation; args: unknown[] }>(
           TOOL_SCHEMAS.vault_desktop_read.input,

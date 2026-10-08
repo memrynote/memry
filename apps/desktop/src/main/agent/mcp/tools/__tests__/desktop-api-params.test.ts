@@ -32,6 +32,7 @@ import { ipcRenderer } from 'electron'
 import { rpcDomains } from '@memry/rpc'
 import {
   AGENT_DESKTOP_OPERATION_PARAMS,
+  desktopArgsItemSchemas,
   desktopOperationJsonSchema,
   desktopOperationParamNames,
   desktopOperationRequiredCount,
@@ -135,7 +136,7 @@ describe('desktop API parameter lists', () => {
     }
     for (const operation of AgentMcpDesktopWriteOperations) {
       const names = desktopOperationParamNames(operation)
-      const items = desktopOperationJsonSchema(operation).prefixItems ?? []
+      const items = desktopArgsItemSchemas(desktopOperationJsonSchema(operation))
       const args = items.map((item, index) =>
         names[index] === 'scope' ? { kind: 'folder', path: 'a' } : sample(item, index)
       )
@@ -206,12 +207,14 @@ describe('desktop API parameter lists', () => {
   })
 
   it('publish null as allowed for an optional argument that accepts it', () => {
-    expect(desktopOperationJsonSchema('notes.list').prefixItems?.[0]).toMatchObject({
+    expect(desktopArgsItemSchemas(desktopOperationJsonSchema('notes.list'))[0]).toMatchObject({
       anyOf: expect.arrayContaining([{ type: 'null' }])
     })
-    expect(desktopOperationJsonSchema('inbox.linkToNote').prefixItems?.[2]).toMatchObject({
-      anyOf: expect.arrayContaining([{ type: 'null' }])
-    })
+    expect(desktopArgsItemSchemas(desktopOperationJsonSchema('inbox.linkToNote'))[2]).toMatchObject(
+      {
+        anyOf: expect.arrayContaining([{ type: 'null' }])
+      }
+    )
     expect(() =>
       assertDesktopApiArgs({ operation: 'reminders.getUpcoming', args: [null] })
     ).toThrow('days: expected number, got null')

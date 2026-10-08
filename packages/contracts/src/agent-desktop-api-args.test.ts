@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AGENT_DESKTOP_OPERATION_PARAMS,
+  desktopArgsItemSchemas,
   desktopOperationArgsSchema,
   desktopOperationJsonSchema,
   desktopOperationParamNames
@@ -22,7 +23,7 @@ describe('agent desktop API argument schemas', () => {
       const params = desktopOperationParamNames(operation)
       const schema = desktopOperationJsonSchema(operation)
       expect(schema.type, operation).toBe('array')
-      expect(schema.prefixItems ?? [], operation).toHaveLength(params.length)
+      expect(desktopArgsItemSchemas(schema), operation).toHaveLength(params.length)
       expect(schema.maxItems, operation).toBe(params.length)
       expect(schema.minItems, operation).toBeLessThanOrEqual(params.length)
       expect(JSON.stringify(schema).length, operation).toBeLessThan(64 * 1024)
@@ -103,7 +104,9 @@ describe('agent desktop API argument schemas', () => {
     expect(desktopOperationArgsSchema('reminders.getUpcoming').safeParse([null]).success).toBe(
       false
     )
-    expect(desktopOperationJsonSchema('tasks.getUpcoming').prefixItems?.[0]).toMatchObject({
+    expect(
+      desktopArgsItemSchemas(desktopOperationJsonSchema('tasks.getUpcoming'))[0]
+    ).toMatchObject({
       anyOf: expect.arrayContaining([{ type: 'null' }])
     })
   })

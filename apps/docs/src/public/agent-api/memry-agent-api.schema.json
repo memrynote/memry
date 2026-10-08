@@ -1114,7 +1114,7 @@
       "required": ["operation"],
       "additionalProperties": false,
       "x-memry-kind": "tool",
-      "x-memry-description": "Run an allowlisted read-only desktop API operation through the memrynote window. A note in the reply that is a filed pdf/image/audio/video file comes back as its metadata with contentOmitted: true and contentAccess naming how to read it. A reply whose JSON is over 100 KB in UTF-8 bytes comes back as { truncated, totalBytes, message, partial }. `args` are the positional arguments; vault_desktop_describe returns each operation's argument schema, and a call that does not match it is refused with the field, the expected type and the allowed values. Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args [{\"startAt\":\"2026-05-14T00:00:00.000Z\",\"endAt\":\"2026-06-15T00:00:00.000Z\"}].",
+      "x-memry-description": "Run an allowlisted read-only desktop API operation through the memrynote window. A note in the reply that is a filed pdf/image/audio/video file comes back as its metadata with contentOmitted: true; its contentAccess field says which tool reads the content. A reply whose JSON is over 100 KB in UTF-8 bytes comes back as { truncated, totalBytes, message, partial }, and message says what to call instead. `args` are the positional arguments; vault_desktop_describe returns each operation's argument schema, and a call that does not match it is refused with the field, the expected type and the allowed values. Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args [{\"startAt\":\"2026-05-14T00:00:00.000Z\",\"endAt\":\"2026-06-15T00:00:00.000Z\"}].",
       "x-memry-requires-approval": false,
       "x-memry-example": {
         "arguments": {
@@ -5186,7 +5186,9 @@
                     {
                       "type": "number"
                     }
-                  ]
+                  ],
+                  "minItems": 2,
+                  "maxItems": 2
                 }
               },
               "pressures": {
@@ -5905,61 +5907,71 @@
     },
     "notes.list": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "folder": {
-                  "type": "string"
-                },
-                "tags": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "sortBy": {
-                  "default": "modified",
-                  "type": "string",
-                  "enum": ["modified", "created", "title", "position"]
-                },
-                "sortOrder": {
-                  "default": "desc",
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                },
-                "limit": {
-                  "default": 100,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 10000
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                },
-                "fields": {
-                  "type": "string",
-                  "enum": ["full", "tree"]
-                },
-                "includeJournals": {
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "folder": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sortBy": {
+                      "default": "modified",
+                      "type": "string",
+                      "enum": ["modified", "created", "title", "position"]
+                    },
+                    "sortOrder": {
+                      "default": "desc",
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "limit": {
+                      "default": 100,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10000
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "fields": {
+                      "type": "string",
+                      "enum": ["full", "tree"]
+                    },
+                    "includeJournals": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List notes, filtered by folder or tags, sorted and paged.",
       "x-memry-tool": "vault_desktop_read",
@@ -6508,91 +6520,101 @@
     },
     "tasks.list": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "projectId": {
-                  "type": "string"
-                },
-                "statusId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "parentId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "includeCompleted": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "includeArchived": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "dueBefore": {
-                  "type": "string"
-                },
-                "dueAfter": {
-                  "type": "string"
-                },
-                "tags": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "search": {
-                  "type": "string"
-                },
-                "sortBy": {
-                  "default": "position",
-                  "type": "string",
-                  "enum": ["position", "dueDate", "priority", "created", "modified"]
-                },
-                "sortOrder": {
-                  "default": "asc",
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                },
-                "limit": {
-                  "default": 100,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 1000
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "statusId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "parentId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "includeCompleted": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "includeArchived": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "dueBefore": {
+                      "type": "string"
+                    },
+                    "dueAfter": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "search": {
+                      "type": "string"
+                    },
+                    "sortBy": {
+                      "default": "position",
+                      "type": "string",
+                      "enum": ["position", "dueDate", "priority", "created", "modified"]
+                    },
+                    "sortOrder": {
+                      "default": "asc",
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "limit": {
+                      "default": 100,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List tasks, filtered by project, status, due date or completion, sorted and paged.",
       "x-memry-tool": "vault_desktop_read",
@@ -7179,23 +7201,33 @@
     },
     "tasks.getUpcoming": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "default": 7,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 365
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "default": 7,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 365
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Tasks due in the next number of days (7 by default), grouped by day.",
       "x-memry-tool": "vault_desktop_read",
@@ -7529,53 +7561,72 @@
     },
     "inbox.list": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": ["link", "note", "image", "voice", "clip", "pdf", "social", "reminder"]
-                },
-                "includeSnoozed": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "sortBy": {
-                  "default": "created",
-                  "type": "string",
-                  "enum": ["created", "modified", "title"]
-                },
-                "sortOrder": {
-                  "default": "desc",
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                },
-                "limit": {
-                  "default": 50,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 200
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "link",
+                        "note",
+                        "image",
+                        "voice",
+                        "clip",
+                        "pdf",
+                        "social",
+                        "reminder"
+                      ]
+                    },
+                    "includeSnoozed": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "sortBy": {
+                      "default": "created",
+                      "type": "string",
+                      "enum": ["created", "modified", "title"]
+                    },
+                    "sortOrder": {
+                      "default": "desc",
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "limit": {
+                      "default": 50,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 200
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List inbox items, filtered by type and paged.",
       "x-memry-tool": "vault_desktop_read",
@@ -7808,38 +7859,48 @@
     },
     "inbox.getJobs": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "itemIds": {
-                  "maxItems": 200,
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "statuses": {
-                  "maxItems": 10,
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": ["pending", "running", "failed", "complete"]
-                  }
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "itemIds": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "statuses": {
+                      "maxItems": 10,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["pending", "running", "failed", "complete"]
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Background jobs on inbox items, such as transcription and metadata fetches.",
       "x-memry-tool": "vault_desktop_read",
@@ -7946,38 +8007,48 @@
     },
     "inbox.listArchived": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "search": {
-                  "type": "string"
-                },
-                "limit": {
-                  "default": 50,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 200
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "search": {
+                      "type": "string"
+                    },
+                    "limit": {
+                      "default": 50,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 200
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Archived inbox items, searchable and paged.",
       "x-memry-tool": "vault_desktop_read",
@@ -8020,29 +8091,39 @@
     },
     "inbox.getFilingHistory": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "limit": {
-                  "default": 20,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 100
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "default": 20,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Recently filed inbox items and where each went.",
       "x-memry-tool": "vault_desktop_read",
@@ -8494,48 +8575,58 @@
     },
     "bookmarks.list": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "itemType": {
-                  "type": "string"
-                },
-                "sortBy": {
-                  "default": "position",
-                  "type": "string",
-                  "enum": ["position", "createdAt"]
-                },
-                "sortOrder": {
-                  "default": "asc",
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                },
-                "limit": {
-                  "default": 100,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 1000
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "itemType": {
+                      "type": "string"
+                    },
+                    "sortBy": {
+                      "default": "position",
+                      "type": "string",
+                      "enum": ["position", "createdAt"]
+                    },
+                    "sortOrder": {
+                      "default": "asc",
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "limit": {
+                      "default": 100,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List bookmarks, optionally of one item type.",
       "x-memry-tool": "vault_desktop_read",
@@ -9359,67 +9450,77 @@
     },
     "reminders.list": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "targetType": {
-                  "type": "string",
-                  "enum": ["note", "journal", "highlight", "task", "note_date"]
-                },
-                "targetId": {
-                  "type": "string"
-                },
-                "status": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "enum": ["pending", "triggered", "dismissed", "snoozed"]
-                    },
-                    {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "enum": ["pending", "triggered", "dismissed", "snoozed"]
-                      }
-                    }
-                  ]
-                },
-                "fromDate": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                },
-                "toDate": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                },
-                "limit": {
-                  "default": 50,
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 200
-                },
-                "offset": {
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "targetType": {
+                      "type": "string",
+                      "enum": ["note", "journal", "highlight", "task", "note_date"]
+                    },
+                    "targetId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["pending", "triggered", "dismissed", "snoozed"]
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["pending", "triggered", "dismissed", "snoozed"]
+                          }
+                        }
+                      ]
+                    },
+                    "fromDate": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "toDate": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "limit": {
+                      "default": 50,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 200
+                    },
+                    "offset": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List reminders, filtered by target or status.",
       "x-memry-tool": "vault_desktop_read",
@@ -9509,13 +9610,23 @@
     },
     "reminders.getUpcoming": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "number"
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "number"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Reminders due in the next number of days (7 by default).",
       "x-memry-tool": "vault_desktop_read",
@@ -9790,34 +9901,44 @@
     },
     "calendar.listEvents": {
       "type": "array",
-      "prefixItems": [
+      "minItems": 0,
+      "maxItems": 1,
+      "anyOf": [
         {
-          "anyOf": [
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
             {
               "anyOf": [
                 {
-                  "type": "object",
-                  "properties": {
-                    "includeArchived": {
-                      "default": false,
-                      "type": "boolean"
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "includeArchived": {
+                          "default": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "string"
                     }
-                  },
-                  "additionalProperties": false
+                  ]
                 },
                 {
-                  "type": "string"
+                  "type": "null"
                 }
               ]
-            },
-            {
-              "type": "null"
             }
-          ]
+          ],
+          "minItems": 1,
+          "maxItems": 1
         }
       ],
-      "minItems": 0,
-      "maxItems": 1,
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "List memrynote calendar events.",
       "x-memry-tool": "vault_desktop_read",
@@ -9921,45 +10042,82 @@
     },
     "calendar.getRange": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "startAt": {
-                  "type": "string"
-                },
-                "endAt": {
-                  "type": "string"
-                },
-                "start": {
-                  "type": "string"
-                },
-                "end": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "string"
-            }
-          ]
-        },
-        {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 1,
       "maxItems": 2,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "startAt": {
+                      "type": "string"
+                    },
+                    "endAt": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "startAt": {
+                      "type": "string"
+                    },
+                    "endAt": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Calendar items (events, tasks, reminders) between two times, or on one YYYY-MM-DD day.",
       "x-memry-tool": "vault_desktop_read",
@@ -10689,21 +10847,36 @@
     },
     "search.quick": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "string"
-        },
-        {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["markdown", "pdf", "image", "audio", "video"]
-          }
-        }
-      ],
       "minItems": 1,
       "maxItems": 2,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["markdown", "pdf", "image", "audio", "video"]
+              }
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "The fast search behind the command palette: a few hits per type.",
       "x-memry-tool": "vault_desktop_read",
@@ -12490,19 +12663,37 @@
     },
     "notes.importFiles": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        {
-          "type": "string"
-        }
-      ],
       "minItems": 1,
       "maxItems": 2,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Copy files from paths on this device into the vault as notes or files.",
       "x-memry-tool": "vault_desktop_write",
@@ -16319,52 +16510,67 @@
     },
     "inbox.convertToTask": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "string"
-        },
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "projectId": {
-                  "type": "string"
-                },
-                "dueDate": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "dueTime": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "priority": {
-                  "type": "number"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 1,
       "maxItems": 2,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "dueDate": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "dueTime": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "priority": {
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Turn an inbox item into a task.",
       "x-memry-tool": "vault_desktop_write",
@@ -16516,29 +16722,47 @@
     },
     "inbox.linkToNote": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "string"
-        },
-        {
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 2,
       "maxItems": 3,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Append an inbox item to a note and file it there.",
       "x-memry-tool": "vault_desktop_write",
@@ -19835,150 +20059,299 @@
           ]
         }
       },
-      "prefixItems": [
-        {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "const": "folder"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": ["kind", "path"],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "const": "tag"
-                },
-                "tag": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "andTags": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                }
-              },
-              "required": ["kind", "tag"],
-              "additionalProperties": false
-            }
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "type": {
-              "default": "table",
-              "type": "string",
-              "enum": ["table", "grid", "list"]
-            },
-            "default": {
-              "type": "boolean"
-            },
-            "columns": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "width": {
-                    "type": "integer",
-                    "minimum": 50,
-                    "maximum": 800
-                  },
-                  "displayName": {
-                    "type": "string"
-                  },
-                  "showSummary": {
-                    "type": "boolean"
-                  }
-                },
-                "required": ["id"],
-                "additionalProperties": false
-              }
-            },
-            "filters": {
-              "$ref": "#/$defs/__schema0"
-            },
-            "order": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "property": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "direction": {
-                    "type": "string",
-                    "enum": ["asc", "desc"]
-                  }
-                },
-                "required": ["property", "direction"],
-                "additionalProperties": false
-              }
-            },
-            "groupBy": {
-              "type": "object",
-              "properties": {
-                "property": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "direction": {
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                },
-                "collapsed": {
-                  "type": "boolean"
-                },
-                "showSummary": {
-                  "type": "boolean"
-                }
-              },
-              "required": ["property"],
-              "additionalProperties": false
-            },
-            "limit": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 10000
-            },
-            "showSummaries": {
-              "type": "boolean"
-            },
-            "columnBorders": {
-              "type": "boolean"
-            }
-          },
-          "required": ["name"],
-          "additionalProperties": false
-        },
-        {
-          "type": "string"
-        }
-      ],
       "minItems": 2,
       "maxItems": 3,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "folder"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["kind", "path"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "tag"
+                    },
+                    "tag": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "andTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": ["kind", "tag"],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "default": "table",
+                  "type": "string",
+                  "enum": ["table", "grid", "list"]
+                },
+                "default": {
+                  "type": "boolean"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": 50,
+                        "maximum": 800
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "showSummary": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                  }
+                },
+                "filters": {
+                  "$ref": "#/$defs/__schema0"
+                },
+                "order": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "property": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": ["asc", "desc"]
+                      }
+                    },
+                    "required": ["property", "direction"],
+                    "additionalProperties": false
+                  }
+                },
+                "groupBy": {
+                  "type": "object",
+                  "properties": {
+                    "property": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "collapsed": {
+                      "type": "boolean"
+                    },
+                    "showSummary": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["property"],
+                  "additionalProperties": false
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "showSummaries": {
+                  "type": "boolean"
+                },
+                "columnBorders": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "prefixItems": [
+            {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "folder"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["kind", "path"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "tag"
+                    },
+                    "tag": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "andTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": ["kind", "tag"],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "default": "table",
+                  "type": "string",
+                  "enum": ["table", "grid", "list"]
+                },
+                "default": {
+                  "type": "boolean"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": 50,
+                        "maximum": 800
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "showSummary": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                  }
+                },
+                "filters": {
+                  "$ref": "#/$defs/__schema0"
+                },
+                "order": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "property": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": ["asc", "desc"]
+                      }
+                    },
+                    "required": ["property", "direction"],
+                    "additionalProperties": false
+                  }
+                },
+                "groupBy": {
+                  "type": "object",
+                  "properties": {
+                    "property": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": ["asc", "desc"]
+                    },
+                    "collapsed": {
+                      "type": "boolean"
+                    },
+                    "showSummary": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["property"],
+                  "additionalProperties": false
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "showSummaries": {
+                  "type": "boolean"
+                },
+                "columnBorders": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Create or change a saved view of a folder or tag scope.",
       "x-memry-tool": "vault_desktop_write",
@@ -22588,17 +22961,33 @@
     },
     "vault.downloadRemote": {
       "type": "array",
-      "prefixItems": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "string"
-        }
-      ],
       "minItems": 1,
       "maxItems": 2,
+      "anyOf": [
+        {
+          "prefixItems": [
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Download a vault of the signed-in account from the sync server.",
       "x-memry-tool": "vault_desktop_write",
@@ -22621,67 +23010,77 @@
     },
     "canvas.create": {
       "type": "array",
-      "prefixItems": [
-        {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "scene": {
-                  "type": "string"
-                },
-                "folder": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "icon": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "ownerNoteId": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      ],
       "minItems": 0,
       "maxItems": 1,
+      "anyOf": [
+        {
+          "minItems": 0,
+          "maxItems": 0
+        },
+        {
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "scene": {
+                      "type": "string"
+                    },
+                    "folder": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "ownerNoteId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        }
+      ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Create an empty canvas.",
       "x-memry-tool": "vault_desktop_write",

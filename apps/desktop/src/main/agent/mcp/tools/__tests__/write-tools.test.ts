@@ -994,11 +994,9 @@ describe('what a write reply says about what was stored (#2615)', () => {
     }
     const tool = buildWriteTools(storeDown, approve).find((t) => t.name === 'vault_desktop_write')!
 
-    const reply = await tool.handler(
-      { operation: 'notes.update', args: [{ id: 'n1' }] },
-      { writeGrant: 'turn-grant-1', windowId: 'w1' }
-    )
-    const delivered = capReply(reply, tool.maxReplyBytes!) as { truncated: true; partial: string }
+    const input = { operation: 'notes.update', args: [{ id: 'n1' }] }
+    const reply = await tool.handler(input, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+    const delivered = capReply(reply, tool.replyCap!, input) as { truncated: true; partial: string }
 
     expect(delivered.truncated).toBe(true)
     expect(delivered.partial).toContain(STORE_WARNING)

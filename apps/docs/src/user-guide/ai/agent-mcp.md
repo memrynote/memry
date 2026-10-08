@@ -683,7 +683,9 @@ which returns the text read from the file (see [Notes and filed files](#notes-an
 A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
 added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start
 of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
-valid JSON on its own.
+valid JSON on its own. `message` says what to call instead: a shorter date range for
+`calendar.getRange`, `calendar.getRange` with a date range for `calendar.listEvents`, and a list
+with a smaller limit or `vault_read_note` for anything else.
 
 `args` are the operation's positional arguments. Every allowlisted operation has a schema for its
 arguments, and `vault_desktop_describe` returns it, so an agent can look a call up before making
@@ -695,7 +697,10 @@ default. Without `operation`, the reply lists every operation with its tool and 
 `null` optional argument as left out, such as the options of `notes.list`, the tags of
 `inbox.linkToNote` or the days of `tasks.getUpcoming`, the argument also takes `null`, and its
 schema lists `null` as an allowed type. An operation that takes no arguments has no `prefixItems` in
-its `args_schema`, only `"maxItems": 0`.
+its `args_schema`, only `"maxItems": 0`. An operation whose last arguments are optional lists each
+call length it accepts as its own tuple under `anyOf`, so `notes.list` has one entry for `[]` and
+one for `[options]`. Strict validators such as Ajv refuse a `prefixItems` tuple that may stop early,
+and this form compiles under them.
 
 ```json
 {

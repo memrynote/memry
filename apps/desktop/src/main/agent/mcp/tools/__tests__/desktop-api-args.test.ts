@@ -3,6 +3,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_DESKTOP_OPERATION_PARAMS,
+  desktopArgsItemSchemas,
   desktopOperationJsonSchema,
   desktopOperationParamNames
 } from '@memry/contracts/agent-desktop-api-args'
@@ -259,7 +260,7 @@ describe('desktop API argument schemas', () => {
     const mismatches: string[] = []
     for (const param of params) {
       const schema = desktopOperationJsonSchema(param.operation)
-      const item = (schema.prefixItems?.[param.index] ?? {}) as JsonSchema
+      const item = (desktopArgsItemSchemas(schema)[param.index] ?? {}) as JsonSchema
       const id = `${param.operation}:${desktopOperationParamNames(param.operation)[param.index]}`
       const required = param.index < (schema.minItems ?? 0)
       if (required === param.optional) {

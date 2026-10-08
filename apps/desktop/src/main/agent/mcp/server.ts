@@ -10,7 +10,7 @@ import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { getMainRedactOptions } from '../../telemetry/redact-options'
 import { decorateToolResultWithAgentSources } from '../source-refs'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
-import { capReply } from './reply-cap'
+import { capReply, type ReplyCap } from './reply-cap'
 import { createMcpSession } from './session'
 import { ImageToolResult } from './tool-image'
 
@@ -25,7 +25,7 @@ export interface ToolRegistration {
   description: string
   inputSchema: ZodTypeAny
   /** Caps the serialized reply the agent receives, source refs included. */
-  maxReplyBytes?: number
+  replyCap?: ReplyCap
   handler: (
     input: unknown,
     ctx: { writeGrant: string | null; windowId: string | null }
@@ -80,7 +80,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
             )
             // A handler that returns nothing (vault.reindex) still owes the client a
             // text part; JSON.stringify(undefined) has none and the SDK refuses it.
-            const capped = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
+            const capped = reg.replyCap ? capReply(decorated, reg.replyCap, input) : decorated
             const delivered = capped === undefined ? null : capped
             return {
               content: [

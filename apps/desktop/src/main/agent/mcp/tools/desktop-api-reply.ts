@@ -1,7 +1,8 @@
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
+import type { AgentMcpDesktopOperation } from '@memry/contracts/agent-mcp-channels'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
-export const DESKTOP_API_REPLY_MAX_BYTES = 100 * 1024
+import type { ReplyCap } from '../reply-cap'
 
 type FiledFileType = Exclude<NoteFileType, 'markdown'>
 
@@ -36,6 +37,27 @@ const CONTENT_ACCESS: Record<FiledFileType, string> = {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]'
+}
+
+// What a cut reply tells the agent to call instead, for operations without a limit argument.
+const CUT_ADVICE = new Map<string, string>([
+  ['calendar.getRange', 'Call calendar.getRange again with a shorter date range.'],
+  [
+    'calendar.listEvents',
+    'calendar.listEvents returns every event; call calendar.getRange with a date range instead.'
+  ]
+] satisfies Array<[AgentMcpDesktopOperation, string]>)
+
+const DEFAULT_CUT_ADVICE =
+  'Call an operation that returns less, such as a list with a smaller limit, or ' +
+  'vault_read_note for a note body.'
+
+export const DESKTOP_API_REPLY_CAP: ReplyCap = {
+  maxBytes: 100 * 1024,
+  advice: (input) =>
+    (isPlainObject(input) && typeof input.operation === 'string'
+      ? CUT_ADVICE.get(input.operation)
+      : undefined) ?? DEFAULT_CUT_ADVICE
 }
 
 function filedFileMetadata(row: FileRow, fileType: FiledFileType): FiledFileMetadata {

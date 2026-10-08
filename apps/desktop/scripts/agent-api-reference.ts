@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { format, resolveConfig } from 'prettier'
 import { z } from 'zod'
 
+import { desktopArgsItemSchemas } from '@memry/contracts/agent-desktop-api-args'
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 import type { AgentMcpDesktopOperation } from '@memry/contracts/agent-mcp-channels'
 
@@ -244,11 +245,11 @@ function toolRows(schema: JsonNode): ParamRow[] {
   return rows
 }
 
-function operationRows(description: DesktopOperationDescription, schema: JsonNode): ParamRow[] {
+function operationRows(description: DesktopOperationDescription): ParamRow[] {
   const rows: ParamRow[] = []
-  const items = (schema.prefixItems as JsonNode[] | undefined) ?? []
+  const items = desktopArgsItemSchemas(description.args_schema)
   description.params.forEach((param, index) => {
-    rowsFor(param.name, items[index] ?? {}, param.required, schema, 0, rows)
+    rowsFor(param.name, items[index] ?? {}, param.required, description.args_schema, 0, rows)
   })
   return rows
 }
@@ -413,7 +414,7 @@ argument it does not take.
       `${code(description.call)} through ${code(description.tool)}` +
         `${description.requires_approval ? '; needs approval' : ''}.\n\n`
     )
-    out.push(table(operationRows(description, operationArgsSchema(description))))
+    out.push(table(operationRows(description)))
     out.push('\n')
     out.push(
       exampleSection(
