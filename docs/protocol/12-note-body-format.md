@@ -673,9 +673,11 @@ included; the boundaries of both forms come from `replaceMarkdownComments`
 `source`. A comment on a line of its own is a paragraph holding only this node;
 one inside a line of text, or glued to the line above or below, is a node in
 that paragraph, so it is written back where it was. The serializer sees it as a
-token of hex (`MEMRYCMT<hex>X`, `packages/shared/src/html-comments.ts`) that
-`normalizeSerializedMarkdown` turns back into `source`, so nothing the
-serializer escapes or re-breaks reaches the comment. Comments in fenced code and
+token of hex (`MEMRYCMT<word><hex>X`, `packages/shared/src/html-comments.ts`)
+that `normalizeSerializedMarkdown` turns back into `source`, so nothing the
+serializer escapes or re-breaks reaches the comment. `<word>` is drawn once per
+process, so note text that only looks like a token stays text (BBF-30); the
+token never leaves the process and never reaches a vault file or a peer. Comments in fenced code and
 code spans stay code, and Memry's own marker comments (§12.8, file markers,
 nesting markers, writing tools markers) keep their own readers. A client built
 before the type finds it unrepresentable and keeps the file (§12.1).
