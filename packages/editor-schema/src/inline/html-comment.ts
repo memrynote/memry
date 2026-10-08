@@ -17,6 +17,9 @@
  * On disk the node is its token (`@memry/shared/html-comments`), which
  * `normalizeSerializedMarkdown` turns back into `source`. The serializer never
  * sees the comment itself, so nothing it escapes or re-breaks can reach it.
+ * The token exists only inside `writeHtmlCommentTokens`. Every other export,
+ * the clipboard's HTML and plain text included, writes nothing for the node,
+ * so a token never reaches another app (BBF-31).
  *
  * Older builds have no spec for this node. Their write-back finds it with
  * `findUnrepresentableNodes` and keeps the file as it is.
@@ -38,11 +41,27 @@ export function createHtmlCommentContent(source: string) {
   return { type: 'htmlComment' as const, props: { source } }
 }
 
-/** The node's on-disk form: its token, which the serializer passes through untouched. */
-export function createHtmlCommentTokenDOM(source: string): HTMLSpanElement {
+let markdownWrites = 0
+
+/**
+ * Runs a blocks-to-markdown serialization with every comment written as its
+ * token. The scope is synchronous: whatever `serialize` exports after it
+ * returns writes nothing for the node.
+ */
+export function writeHtmlCommentTokens<T>(serialize: () => T): T {
+  markdownWrites++
+  try {
+    return serialize()
+  } finally {
+    markdownWrites--
+  }
+}
+
+/** The node outside the editor: its token while Memry writes markdown, empty anywhere else. */
+export function createHtmlCommentExternalDOM(source: string): HTMLSpanElement {
   const dom = document.createElement('span')
   dom.className = 'html-comment'
-  dom.textContent = encodeHtmlCommentToken(source)
+  if (markdownWrites > 0) dom.textContent = encodeHtmlCommentToken(source)
   return dom
 }
 
@@ -74,7 +93,7 @@ type HtmlCommentRender = CustomInlineContentImplementation<
 /** Everything that decides the node's on-disk form. Shared by every surface. */
 export const htmlCommentSerialization = {
   toExternalHTML: (inlineContent: { props: { source: string } }) => ({
-    dom: createHtmlCommentTokenDOM(inlineContent.props.source)
+    dom: createHtmlCommentExternalDOM(inlineContent.props.source)
   })
 }
 

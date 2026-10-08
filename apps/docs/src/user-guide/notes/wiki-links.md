@@ -264,6 +264,10 @@ comment and `%%%%` for a `%%` comment, never as their text. A note's preview and
 in the Backlinks panel leave comments out as well, so a backlink that comes from a hidden link
 lists its note with no snippet.
 
+Copying text that holds a comment and pasting it into another app leaves the comment out. Copy
+from the block menu also puts the note's markdown on the clipboard, so a plain text paste from
+there shows the comment as written. A paste into another note keeps the comment.
+
 Text between two `%%` in prose is a comment, even across paragraphs, so `A 50%% sale` and a
 later `B 20%% tax` hide everything between them. A `%%` in a code block, or in inline code on
 a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
