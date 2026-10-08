@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "defuddle": "^0.19.0",
+    "defuddle": "^0.19.1",
     "linkedom": "^0.18.12"
   },
   "devDependencies": {
