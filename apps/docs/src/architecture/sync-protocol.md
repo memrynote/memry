@@ -1031,8 +1031,10 @@ across devices:
   moment hides every file at once, so while it is unreachable the re-drive
   skips its whole pass (no drop, no backfill, no drain), the drain leaves such
   a row untouched, and a save-time upload that fails keeps its row as a
-  failure. The `.memry` folder alone is not the test: the activity log
-  recreates it at the path of a vault that is away.
+  failure. The `.memry` folder alone is not the test: a writer can recreate
+  it at the path of a vault that is away. The file watcher uses the same test
+  before it turns a removed file into a delete (see
+  [Local Storage](/architecture/local-storage)).
 - **Attachment file record** — attachment ids are random per upload, so a note
   that holds references cannot say by itself whether a file on disk is one of
   them. Uploads and downloads record each file by vault-relative path

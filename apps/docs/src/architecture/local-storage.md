@@ -31,6 +31,17 @@ no user keys has no YAML block at all.
 - **External renames match by content hash.** The file watcher pairs a delete with a following add
   inside a short window using the cached content hash (identical-content collisions match FIFO),
   since files carry no embedded id to match on.
+- **A vanished vault is not a deleted vault.** A vault on a removable or network drive that is
+  away for a moment, or a vault folder renamed away, makes the watcher see every file removed at
+  once. A removal becomes a delete only while `<vault>/.memry/data.db` is still a file
+  (`isVaultReachable` in `src/main/vault/init.ts`), checked when the removal arrives and again
+  when the rename window ends. While the vault is away the watcher drops removals, queues no
+  delete and polls for the vault every two seconds. When it is back the watcher restarts, since
+  chokidar hears nothing after its root was moved, and rescans: an indexed file that is gone takes
+  the normal delete path, a file newer than its index stamp takes the change path, and a file the
+  index does not know takes the add path (`src/main/vault/watcher.ts`). A note renamed while the
+  vault was away matches by content hash only if its new path is reached inside the rename window,
+  so in a large vault it can come back as a delete plus a new note.
 
 ## Derived State Projections
 
