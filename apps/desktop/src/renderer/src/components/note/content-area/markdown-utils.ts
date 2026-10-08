@@ -36,6 +36,7 @@ import {
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
+import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import { maskHtmlComments } from '@memry/shared/html-comments'
 import {
@@ -79,7 +80,9 @@ const CHECKBOX_MARKER = /^[-*+] \[[ xX]\] ?/
 export function checkboxLineMarkdown(editor: any, block: { content?: unknown }): string {
   const line = { type: 'checkListItem', props: { checked: false }, content: block.content }
   const { blocks, replacements } = extractInlineColorRuns([line] as never[])
-  const md = normalizeSerializedMarkdown(editor.blocksToMarkdownLossy(blocks))
+  const md = normalizeSerializedMarkdown(
+    writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(blocks))
+  )
   return restoreInlineColorTokens(md, replacements).trim().replace(CHECKBOX_MARKER, '').trim()
 }
 
@@ -167,7 +170,9 @@ async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
   const { blocks: wrapped, replacements } = extractInlineColorRuns(
     withPlainCheckboxMarkers(blocks) as never[]
   )
-  const md = normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(wrapped))
+  const md = normalizeSerializedMarkdown(
+    await writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(wrapped))
+  )
   return restoreInlineColorTokens(md, replacements)
 }
 

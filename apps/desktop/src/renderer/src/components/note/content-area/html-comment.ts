@@ -6,14 +6,15 @@
  * process registers the identical node and writes the same bytes. Only the
  * node view differs, gated on `renderType === 'nodeView'` as in
  * `inline-checkbox.ts`: BlockNote reaches this function with `renderType:
- * 'dom'` when it serializes a table cell, and that path must get the token.
+ * 'dom'` when it serializes a table cell, and that path must write what
+ * `toExternalHTML` writes.
  */
 
 import { getI18n } from 'react-i18next'
 import {
   createHtmlCommentMarkerDOM,
   createHtmlCommentSpec,
-  createHtmlCommentTokenDOM,
+  createHtmlCommentExternalDOM,
   isPercentComment
 } from '@memry/editor-schema/inline'
 
@@ -22,7 +23,7 @@ export function renderHtmlComment(
   inlineContent: { props: { source: string } }
 ): { dom: HTMLElement } {
   if (this?.renderType !== 'nodeView') {
-    return { dom: createHtmlCommentTokenDOM(inlineContent.props.source) }
+    return { dom: createHtmlCommentExternalDOM(inlineContent.props.source) }
   }
   const { source } = inlineContent.props
   const t = getI18n().getFixedT(null, 'notes')

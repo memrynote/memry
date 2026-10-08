@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
+import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
 import { renderHtmlComment } from './html-comment'
 
 const nodeView = { renderType: 'nodeView' }
@@ -20,10 +21,12 @@ describe('htmlComment node view', () => {
     expect(dom.getAttribute('contenteditable')).toBe('false')
   })
 
-  it('writes the token outside the node view', () => {
+  it('writes the token outside the node view only while Memry writes markdown', () => {
     const source = '%% [[Topic]] %%'
-    expect(
+    const render = () =>
       renderHtmlComment.call({ renderType: 'dom' }, { props: { source } }).dom.textContent
-    ).toBe(encodeHtmlCommentToken(source))
+
+    expect(writeHtmlCommentTokens(render)).toBe(encodeHtmlCommentToken(source))
+    expect(render()).toBe('')
   })
 })
