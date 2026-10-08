@@ -12584,10 +12584,15 @@ public func FfiConverterTypeVaultCalendar_lower(_ value: VaultCalendar) -> UInt6
 public protocol VaultRealtimeProtocol: AnyObject, Sendable {
     
     /**
-     * Holds the socket open until [`Self::stop`], or until a close says
-     * reconnecting cannot help (§9.9). Answers `true` only for the second.
-     * That close latches this vault's sync: every later socket it mints
-     * answers `true` at once without a handshake.
+     * Holds the socket open, reconnecting along §9.10's ladder, until one of
+     * three things ends it:
+     *
+     * - A close 4004 or 4009 (§9.9), or a handshake refused 403 or 426
+     * (§9.10). Answers `true` and latches this vault's sync: every later
+     * socket it mints answers `true` at once, without a handshake.
+     * - [`Self::stop`]. Answers `false`.
+     * - A handshake refused 401 (§9.10). Answers `false` and latches nothing,
+     * so the next foreground's socket tries again.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -12658,10 +12663,15 @@ open class VaultRealtime: VaultRealtimeProtocol, @unchecked Sendable {
 
     
     /**
-     * Holds the socket open until [`Self::stop`], or until a close says
-     * reconnecting cannot help (§9.9). Answers `true` only for the second.
-     * That close latches this vault's sync: every later socket it mints
-     * answers `true` at once without a handshake.
+     * Holds the socket open, reconnecting along §9.10's ladder, until one of
+     * three things ends it:
+     *
+     * - A close 4004 or 4009 (§9.9), or a handshake refused 403 or 426
+     * (§9.10). Answers `true` and latches this vault's sync: every later
+     * socket it mints answers `true` at once, without a handshake.
+     * - [`Self::stop`]. Answers `false`.
+     * - A handshake refused 401 (§9.10). Answers `false` and latches nothing,
+     * so the next foreground's socket tries again.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -28852,6 +28862,14 @@ enum TransportError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError
      */
     case SocketClosed(code: UInt16, reason: String
     )
+    /**
+     * The server answered the socket handshake with this HTTP status instead
+     * of `101` (chapter 09 §9.2): 401, 403 or 426 each mean reconnecting
+     * cannot help (§9.10), so the shell reports the status rather than a
+     * generic failure.
+     */
+    case HandshakeRejected(status: UInt16
+    )
 
     
 
@@ -28896,6 +28914,9 @@ public struct FfiConverterTypeTransportError: FfiConverterRustBuffer {
             code: try FfiConverterUInt16.read(from: &buf), 
             reason: try FfiConverterString.read(from: &buf)
             )
+        case 7: return .HandshakeRejected(
+            status: try FfiConverterUInt16.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -28935,6 +28956,11 @@ public struct FfiConverterTypeTransportError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(6))
             FfiConverterUInt16.write(code, into: &buf)
             FfiConverterString.write(reason, into: &buf)
+            
+        
+        case let .HandshakeRejected(status):
+            writeInt(&buf, Int32(7))
+            FfiConverterUInt16.write(status, into: &buf)
             
         }
     }
@@ -32876,7 +32902,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_realtimelistener_changes_available() != 17505) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 56322) {
+    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 21342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultrealtime_stop() != 53929) {

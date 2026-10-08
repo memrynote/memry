@@ -24,9 +24,19 @@ use super::socket::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunEnd {
     Stopped,
-    /// §9.9's 4004 or 4009: reconnecting cannot help.
+    /// §9.9's 4004 or 4009, or the handshake's 403 or 426: reconnecting
+    /// cannot help, for the rest of the session.
     Terminal,
+    /// §9.10: the handshake was refused `401`. Not latched; the next run
+    /// tries again.
+    Refused,
 }
+
+/// A handshake still unanswered after this long is dropped and retried along
+/// the ladder. Without it a request the network swallows, with no open and no
+/// error, holds the run forever. Longer than a slow handshake over a poor
+/// mobile link takes.
+pub const HANDSHAKE_TIMEOUT_MS: u64 = 15_000;
 
 /// §9.9's latch, held above any one run: a shell mints a new socket on each
 /// foreground, and a 4004 or 4009 must not get a fresh handshake every time.
@@ -118,6 +128,7 @@ pub async fn run(
                 latch.set(terminal);
                 return RunEnd::Terminal;
             }
+            Reconnect::Refused => return RunEnd::Refused,
             Reconnect::Stopped => return RunEnd::Stopped,
         };
         if stop.sleep(pause).await {
@@ -134,6 +145,8 @@ async fn hold(
     on_connected: &(dyn Fn() + Sync),
 ) -> bool {
     let mut announced = false;
+    let handshake_deadline =
+        tokio::time::Instant::now() + Duration::from_millis(HANDSHAKE_TIMEOUT_MS);
     let mut beat = tokio::time::interval(Duration::from_millis(PING_INTERVAL_MS));
     beat.tick().await;
     loop {
@@ -150,6 +163,15 @@ async fn hold(
         tokio::select! {
             () = stop.wake.notified() => {}
             () = client.changed() => {}
+            () = tokio::time::sleep_until(handshake_deadline), if !announced => {
+                // The open or close may have landed in the same turn as the
+                // deadline; the loop's top handles both.
+                if client.is_open() || client.has_ended() {
+                    continue;
+                }
+                client.abandon();
+                return false;
+            }
             _ = beat.tick() => {
                 if client
                     .quiet_for()
