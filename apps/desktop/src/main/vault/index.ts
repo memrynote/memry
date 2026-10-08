@@ -104,6 +104,7 @@ import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
+import { backfillHeaderTagFlags } from './header-tag-backfill'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -556,6 +557,10 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   if (isStale()) return
 
   await reindexCodeLinks({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  await backfillHeaderTagFlags({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
 
   if (isStale()) return
 

@@ -68,6 +68,15 @@ export type ProjectionEvent =
       noteId: string
     }
   | {
+      /**
+       * The note's frontmatter `tags:` as read by vault/header-tag-backfill.ts,
+       * for its tag rows an older build wrote without a header flag.
+       */
+      type: 'note.header-tags-resolved'
+      noteId: string
+      headerTags: string[]
+    }
+  | {
       type: 'task.upserted'
       taskId: string
     }

@@ -25,6 +25,8 @@ export {
 
 export {
   setNoteTags,
+  listNotesWithUnresolvedHeaderTags,
+  resolveHeaderTagFlags,
   getNoteTags,
   getTagsForNotes,
   getAllTags,

@@ -1,4 +1,4 @@
-import { eq, and, or, inArray, like, count, desc } from 'drizzle-orm'
+import { eq, and, or, inArray, isNull, like, count, desc } from 'drizzle-orm'
 import {
   noteCache,
   noteTags,
@@ -43,6 +43,37 @@ export function setNoteTags(db: IndexDb, noteId: string, tags: NoteTagSet): void
     }))
     db.insert(noteTags).values(tagRecords).run()
   }
+}
+
+/** Notes with tag rows an older build wrote without a header flag. */
+export function listNotesWithUnresolvedHeaderTags(
+  db: IndexDb
+): Array<Pick<NoteCache, 'id' | 'path' | 'fileType'>> {
+  return db
+    .selectDistinct({ id: noteCache.id, path: noteCache.path, fileType: noteCache.fileType })
+    .from(noteTags)
+    .innerJoin(noteCache, eq(noteCache.id, noteTags.noteId))
+    .where(isNull(noteTags.inHeader))
+    .all()
+}
+
+/**
+ * Flags the note's unresolved tag rows from its frontmatter `tags:`. A row the
+ * projector wrote since already carries its flag and is left alone.
+ */
+export function resolveHeaderTagFlags(
+  db: IndexDb,
+  noteId: string,
+  headerTags: readonly string[]
+): void {
+  const unresolved = and(eq(noteTags.noteId, noteId), isNull(noteTags.inHeader))
+  if (headerTags.length > 0) {
+    db.update(noteTags)
+      .set({ inHeader: true })
+      .where(and(unresolved, inArray(noteTags.tag, [...headerTags])))
+      .run()
+  }
+  db.update(noteTags).set({ inHeader: false }).where(unresolved).run()
 }
 
 export function getNoteTags(db: IndexDb, noteId: string): string[] {
