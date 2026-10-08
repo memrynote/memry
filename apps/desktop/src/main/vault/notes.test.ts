@@ -694,6 +694,19 @@ describe('notes operations', () => {
         expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
       })
 
+      it('indexes a date sent in timestamp form as the date the file holds', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, due: '2026-10-09T00:00:00.000Z' })
+        await projections.flushProjectionEvents()
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
+        expect(getNotePropertiesAsRecord(testDb.db, id).due).toBe('"2026-10-09T00:00:00.000Z"')
+      })
+
       it('keeps CRLF and changes one line in a CRLF note', async () => {
         const { id, filePath } = await writeNote('\r\n')
         const { setEntityProperties } = await import('../notes/entity-properties')

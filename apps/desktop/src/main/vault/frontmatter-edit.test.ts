@@ -34,6 +34,9 @@ describe('editFrontmatterBlock', () => {
     expect(edit(block, { due: '2026-10-09' })).toBe(
       '---\ndue: 2026-10-09\nat: 2026-09-01T08:30:00.000Z\n---'
     )
+    expect(edit(block, { due: '2026-02-30' })).toBe(
+      "---\ndue: '2026-02-30'\nat: 2026-09-01T08:30:00.000Z\n---"
+    )
     expect(edit(block, { due: 'soon' })).toBe('---\ndue: soon\nat: 2026-09-01T08:30:00.000Z\n---')
   })
 
