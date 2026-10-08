@@ -302,8 +302,8 @@ export interface CreateTasksCommandsDeps {
    */
   onPublisherError?: (kind: TasksDomainEvent['kind'], error: unknown) => void
   /**
-   * Subtasks below the first level (the local `tasks.nestedSubtasks` setting).
-   * Absent or false: the one-level rule older builds enforce. Sync applies
+   * Subtasks below the first level (the local `tasks.nestedSubtasks` setting,
+   * on by default). Absent or false: the one-level rule older builds enforce. Sync applies
    * remote rows without these commands, so a deep task from another device
    * lands either way.
    */

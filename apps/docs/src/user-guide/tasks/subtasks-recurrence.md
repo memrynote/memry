@@ -20,7 +20,7 @@ The **+** opens a draft row under the task. Type a title and press <kbd>Enter</k
 
 ### Subtasks at any depth
 
-With **Settings → Modules → Tasks → Subtasks inside subtasks** turned on, a subtask can have subtasks of its own, as deep as you need.
+A subtask can have subtasks of its own, as deep as you need. To keep subtasks one level deep, turn off **Settings → Modules → Tasks → Subtasks inside subtasks**.
 
 - In a draft row, <kbd>Tab</kbd> moves the draft under the row above it and <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it out one level.
 - Each level indents a step and draws a thin guide line. Past five levels the indent stops growing, so long titles keep their width.

@@ -7,7 +7,7 @@ const DEFAULTS = {
   defaultSortOrder: 'manual' as const,
   defaultView: 'all' as const,
   staleInboxDays: 7,
-  nestedSubtasks: false
+  nestedSubtasks: true
 }
 
 describe('useTaskPreferences', () => {
@@ -178,7 +178,7 @@ describe('useTaskPreferences', () => {
       defaultSortOrder: 'priority',
       defaultView: 'all',
       staleInboxDays: 14,
-      nestedSubtasks: false
+      nestedSubtasks: true
     })
   })
 

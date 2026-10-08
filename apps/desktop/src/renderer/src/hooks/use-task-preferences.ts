@@ -9,7 +9,7 @@ const DEFAULTS: TaskSettingsDTO = {
   defaultSortOrder: 'manual',
   defaultView: 'all',
   staleInboxDays: 7,
-  nestedSubtasks: false
+  nestedSubtasks: true
 }
 
 interface UseTaskPreferencesReturn {

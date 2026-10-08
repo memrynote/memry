@@ -283,7 +283,7 @@ Show or hide journal sidebar panes:
 
 ### Subtasks
 
-**Subtasks inside subtasks** — off by default. Turn it on to nest subtasks at any depth: a subtask can then have subtasks of its own. It applies to this device only. Devices running an older version of memrynote show only the first level of subtasks until they update; nothing is lost, the deeper tasks reappear once they do. See [Subtasks at any depth](/user-guide/tasks/subtasks-recurrence#subtasks-at-any-depth).
+**Subtasks inside subtasks** — on by default: a subtask can have subtasks of its own, at any depth. Turn it off to keep subtasks one level deep. It applies to this device only. Devices running an older version of memrynote show only the first level of subtasks until they update; nothing is lost, the deeper tasks reappear once they do. See [Subtasks at any depth](/user-guide/tasks/subtasks-recurrence#subtasks-at-any-depth).
 
 ### Inbox
 
