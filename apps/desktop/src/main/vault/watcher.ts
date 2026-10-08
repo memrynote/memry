@@ -76,7 +76,11 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
-import { syncFolderConfigDelete, syncFolderConfigDiscovered } from '../notes/folder-config-effects'
+import {
+  isAppFolderChange,
+  syncFolderConfigDelete,
+  syncFolderConfigDiscovered
+} from '../notes/folder-config-effects'
 import { normalizeRelativePath } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
@@ -87,10 +91,9 @@ const logger = createLogger('Watcher')
 
 const VAULT_RETURN_POLL_MS = 2000
 /**
- * How long a removed folder waits before its folder_config rows are deleted.
- * The app's own rename and delete re-key or delete the rows after awaiting the
- * disk move, so the watcher's unlinkDir can arrive first; waiting lets them
- * finish, and the delete then finds nothing to do.
+ * How long a folder removed outside the app waits before its folder_config
+ * rows are deleted, so a remove-and-recreate (an editor's atomic swap) keeps
+ * them. The app's own rename and delete are skipped by isAppFolderChange.
  */
 const DIR_UNLINK_SETTLE_MS = 1000
 
@@ -522,9 +525,9 @@ export class VaultWatcher {
   /**
    * A folder renamed or deleted outside the app keeps its folder_config row
    * otherwise, and another device that applies the row recreates it (#2850).
-   * The rows are tombstoned only once the folder is still gone after the settle
-   * window: the app's rename and delete and a remote delete apply have removed
-   * the rows by then, so the delete is a no-op for them.
+   * The app's own rename and delete own their rows (isAppFolderChange), and a
+   * remote delete removes its row before it removes the directory, so only
+   * outside removals reach the delete, once the folder stays gone.
    */
   private handleDirUnlink(absolutePath: string): void {
     const vaultPath = this.vaultPath
@@ -535,9 +538,11 @@ export class VaultWatcher {
     }
     const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
     if (!relativePath || !createTreeFolderFilter(getConfig())(relativePath)) return
+    if (isAppFolderChange(relativePath)) return
     const timer = setTimeout(() => {
       this.dirUnlinkTimers.delete(timer)
       if (!isVaultReachable(vaultPath) || existsSync(absolutePath)) return
+      if (isAppFolderChange(relativePath)) return
       try {
         syncFolderConfigDelete(relativePath)
       } catch (err) {

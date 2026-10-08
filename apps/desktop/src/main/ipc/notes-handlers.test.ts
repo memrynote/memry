@@ -49,7 +49,6 @@ vi.mock('../vault/notes', () => ({
   getFolders: vi.fn(),
   createFolder: vi.fn(),
   renameFolder: vi.fn(),
-  deleteFolder: vi.fn(),
   noteExists: vi.fn(),
   openExternal: vi.fn(),
   revealInFinder: vi.fn(),
@@ -60,9 +59,7 @@ vi.mock('../vault/notes', () => ({
 
 vi.mock('../notes/folder-config-effects', () => ({
   syncFolderConfigCreate: vi.fn(),
-  syncFolderConfigSet: vi.fn(),
-  syncFolderConfigRename: vi.fn(),
-  syncFolderConfigDelete: vi.fn()
+  syncFolderConfigSet: vi.fn()
 }))
 
 vi.mock('../notes/domain', () => ({
@@ -71,6 +68,7 @@ vi.mock('../notes/domain', () => ({
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
   renameFolderCommand: vi.fn(),
+  deleteFolderCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   setNoteLocalOnlyCommand: vi.fn()
 }))
@@ -506,8 +504,6 @@ describe('notes-handlers', () => {
     })
 
     it('should delete a folder', async () => {
-      ;(notesVault.deleteFolder as Mock).mockResolvedValue(undefined)
-
       const result = await invokeHandler(NotesChannels.invoke.DELETE_FOLDER, 'folder-to-delete')
 
       expect(result).toEqual({ success: true })

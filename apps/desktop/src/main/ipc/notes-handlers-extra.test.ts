@@ -62,8 +62,6 @@ const mocks = vi.hoisted(() => {
     getFolderTemplate: vi.fn(),
     syncFolderConfigCreate: vi.fn(),
     syncFolderConfigSet: vi.fn(),
-    syncFolderConfigRename: vi.fn(),
-    syncFolderConfigDelete: vi.fn(),
     setNoteLocalOnlyCommand: vi.fn(),
     deletePropertyDefinitionRecord: vi.fn(),
     countLocalOnlyNoteMetadata: vi.fn(),
@@ -120,7 +118,6 @@ vi.mock('../vault/notes', () => ({
   getFolders: vi.fn(),
   createFolder: vi.fn(),
   renameFolder: vi.fn(),
-  deleteFolder: vi.fn(),
   noteExists: vi.fn(),
   openExternal: vi.fn(),
   revealInFinder: vi.fn(),
@@ -140,6 +137,7 @@ vi.mock('../notes/domain', () => ({
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
   renameFolderCommand: vi.fn(),
+  deleteFolderCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   setNoteLocalOnlyCommand: mocks.setNoteLocalOnlyCommand
 }))
@@ -169,9 +167,7 @@ vi.mock('../vault/folders', () => ({
 
 vi.mock('../notes/folder-config-effects', () => ({
   syncFolderConfigCreate: mocks.syncFolderConfigCreate,
-  syncFolderConfigSet: mocks.syncFolderConfigSet,
-  syncFolderConfigRename: mocks.syncFolderConfigRename,
-  syncFolderConfigDelete: mocks.syncFolderConfigDelete
+  syncFolderConfigSet: mocks.syncFolderConfigSet
 }))
 
 vi.mock('../vault/property-definition-store', () => ({
