@@ -687,6 +687,14 @@ describe('createVaultServiceHandles', () => {
         }
       )
 
+    const updateNote = (content_markdown: string) =>
+      buildWriteTools(createVaultServiceHandles(deps), async () => ({ approved: true }))
+        .find((tool) => tool.name === 'vault_update_note')!
+        .handler(
+          { id: 'note-1', mode: 'append', content_markdown },
+          { writeGrant: 'g', windowId: null }
+        )
+
     beforeEach(() => {
       mocks.getNoteCacheById.mockReturnValue({
         id: 'note-1',
@@ -694,12 +702,7 @@ describe('createVaultServiceHandles', () => {
         path: 'work/alpha.md',
         fileType: 'markdown'
       })
-      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
-    })
-
-    it('reads it again once and lands the update', async () => {
-      const handles = createVaultServiceHandles(deps)
-      mocks.getNoteById.mockRejectedValueOnce(busy()).mockResolvedValueOnce({
+      mocks.getNoteById.mockReset().mockResolvedValue({
         id: 'note-1',
         title: 'Alpha',
         content: 'Current',
@@ -707,8 +710,13 @@ describe('createVaultServiceHandles', () => {
         path: 'work/alpha.md',
         frontmatter: {}
       })
+      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
+    })
 
-      await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+    it('reads it again once and lands the update', async () => {
+      mocks.getNoteById.mockRejectedValueOnce(busy())
+
+      await updateNote('Next')
 
       expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
         id: 'note-1',
@@ -717,10 +725,9 @@ describe('createVaultServiceHandles', () => {
     })
 
     it('writes nothing and names the cause when the second read fails too', async () => {
-      const handles = createVaultServiceHandles(deps)
       mocks.getNoteById.mockRejectedValueOnce(busy()).mockRejectedValueOnce(busy())
 
-      const failure = handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'x' })
+      const failure = updateNote('x')
 
       await expect(failure).rejects.toThrow(/could not be read before the update \(EBUSY\)/)
       await expect(failure).rejects.not.toThrow(/\/vault\//)
