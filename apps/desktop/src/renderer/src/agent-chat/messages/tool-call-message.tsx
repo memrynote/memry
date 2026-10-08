@@ -42,6 +42,10 @@ const descriptionKeys: Partial<Record<ChangePreviewIntent, string>> = {
   delete: 'agentChat.diff.descriptionDelete'
 }
 
+function descriptionKey(intent: ChangePreviewIntent | undefined): string {
+  return (intent && descriptionKeys[intent]) ?? 'agentChat.diff.description'
+}
+
 const updateToolNames = new Set(['vault_move_to_folder', 'vault_add_tag', 'vault_remove_tag'])
 
 function isUpdateTool(name: string): boolean {
@@ -243,7 +247,7 @@ function InlineDiffApproval({
   return (
     <Confirmation state="pending">
       <ConfirmationTitle>
-        {t((preview && descriptionKeys[preview.preview.intent]) ?? 'agentChat.diff.description', {
+        {t(descriptionKey(preview?.preview.intent), {
           title: preview?.title ?? t('agentChat.diff.fallbackTitle')
         })}
       </ConfirmationTitle>
