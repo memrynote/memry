@@ -710,7 +710,6 @@ export function desktopOperationArgsSchema(operation: AgentMcpDesktopOperation):
 
 type JsonSchemaNode = Record<string, unknown>
 
-/** A call with exactly `minItems` (= `maxItems`) arguments, one schema per position. */
 export interface DesktopArgsTuple {
   prefixItems?: JsonSchemaNode[]
   minItems: number

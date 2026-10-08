@@ -1,4 +1,3 @@
-/** How big a tool's reply may get, and what a cut reply tells the agent to call instead. */
 export interface ReplyCap {
   maxBytes: number
   advice: (input: unknown) => string
@@ -34,20 +33,19 @@ function truncatedReply(
 }
 
 export function capReply(value: unknown, cap: ReplyCap, input: unknown): unknown {
-  const { maxBytes } = cap
   const text = JSON.stringify(value) ?? ''
   const totalBytes = utf8Bytes(text)
-  if (totalBytes <= maxBytes) return value
+  if (totalBytes <= cap.maxBytes) return value
 
   const advice = cap.advice(input)
 
   // `partial` is escaped again when the reply is serialized, so the cut point
   // shrinks until the whole serialized reply fits.
-  let end = Math.min(text.length, maxBytes)
+  let end = Math.min(text.length, cap.maxBytes)
   let reply = truncatedReply(text, totalBytes, end, advice)
   let replyBytes = utf8Bytes(JSON.stringify(reply))
-  while (replyBytes > maxBytes) {
-    end = Math.min(end - 1, Math.floor((end * maxBytes) / replyBytes))
+  while (replyBytes > cap.maxBytes) {
+    end = Math.min(end - 1, Math.floor((end * cap.maxBytes) / replyBytes))
     reply = truncatedReply(text, totalBytes, end, advice)
     replyBytes = utf8Bytes(JSON.stringify(reply))
   }
