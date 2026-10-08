@@ -880,8 +880,6 @@ describe('auth-device handlers', () => {
       })
     })
 
-    // A locked keychain is not a sign-out: the renderer must keep the session
-    // and pick up the server list once the keychain answers again.
     it('keeps the local devices while the keychain read throws, then recovers', async () => {
       registerAuthDeviceHandlers()
       mockStoreGet.mockReturnValue({ email: 'user@example.com' })
