@@ -7,7 +7,10 @@ import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sy
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
+import { joinVersionedMap, owesHeal, plainVersionedMap } from '@memry/shared/versioned'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { getTaskSyncService } from '@memry/sync-client/task-sync'
+import { taskRowToWire } from '@memry/sync-client/task-wire'
 import { increment } from '@memry/sync-client/vector-clock'
 import {
   mergeTaskFields,
@@ -89,6 +92,11 @@ function queryCanvasIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.canvasId)
 }
 
+/** What the renderer is told: field values only, never their versions. */
+function plainTask(row: typeof tasks.$inferSelect | undefined) {
+  return row && { ...row, fields: plainVersionedMap(row.fields) }
+}
+
 function writeTags(db: DrizzleDb, taskId: string, tagList: string[]): void {
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
   // Case preserved; dedupe case-insensitively (NOCASE PK on (taskId, tag))
@@ -134,16 +142,32 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
     data: TaskSyncPayload,
     clock: VectorClock
   ): ApplyResult {
-    return ctx.db.transaction((tx): ApplyResult => {
+    let heal = false
+    const result = ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const remoteFieldClocks = data.fieldClocks ?? null
       const now = utcNow()
+      // Field values join per key by their own versions on every branch, the
+      // skip included (chapter 06 §6.11): an older peer can carry older or
+      // newer entries under any document clock.
+      const fields = joinVersionedMap(existing?.fields, data.fields)
+      const fieldsWrite = fields.localChanged ? { fields: fields.value ?? null } : {}
 
       if (existing) {
         const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
 
         if (resolution.action === 'skip') {
+          if (fields.localChanged) {
+            tx.update(tasks).set(fieldsWrite).where(eq(tasks.id, itemId)).run()
+            const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
+            ctx.emit(TasksChannels.events.UPDATED, {
+              id: itemId,
+              task: plainTask(updated),
+              changes: {}
+            })
+            publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
+          }
           return 'skipped'
         }
 
@@ -187,6 +211,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           tx.update(tasks)
             .set({
               ...result.merged,
+              ...fieldsWrite,
               clock: resolution.mergedClock,
               fieldClocks: result.mergedFieldClocks,
               syncedAt: now,
@@ -239,9 +264,15 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           }
 
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
-          ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+          ctx.emit(TasksChannels.events.UPDATED, {
+            id: itemId,
+            task: plainTask(updated),
+            changes: {}
+          })
           if (data.tags) ctx.emit('notes:tags-changed', {})
           publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
+          // A conflict re-queues the merged row at the union clock already.
+          heal = owesHeal('merge', fields, result.hadConflicts)
           return result.hadConflicts ? 'conflict' : 'applied'
         }
 
@@ -270,6 +301,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             sourceNoteId: data.sourceNoteId ?? null,
             completedAt: data.completedAt ?? null,
             archivedAt: data.archivedAt ?? null,
+            ...fieldsWrite,
             clock: resolution.mergedClock,
             fieldClocks: appliedFC,
             syncedAt: now,
@@ -291,9 +323,14 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
-        ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+        ctx.emit(TasksChannels.events.UPDATED, {
+          id: itemId,
+          task: plainTask(updated),
+          changes: {}
+        })
         if (data.tags) ctx.emit('notes:tags-changed', {})
         publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
+        heal = owesHeal('apply', fields, false)
         return 'applied'
       }
 
@@ -320,6 +357,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           sourceNoteId: data.sourceNoteId ?? null,
           completedAt: data.completedAt ?? null,
           archivedAt: data.archivedAt ?? null,
+          fields: fields.value ?? null,
           clock: remoteClock,
           fieldClocks: insertedFC,
           syncedAt: now,
@@ -334,11 +372,15 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
         writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
-      ctx.emit(TasksChannels.events.CREATED, { task: inserted })
+      ctx.emit(TasksChannels.events.CREATED, { task: plainTask(inserted) })
       if (data.tags) ctx.emit('notes:tags-changed', {})
       publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
+    // An empty field list ticks this device into the document clock only, which
+    // is what lets the re-push pass the server's replay check.
+    if (heal) getTaskSyncService()?.enqueueUpdate(itemId, [])
+    return result
   }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
@@ -375,10 +417,13 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
   ): string | null {
     const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!task) return null
-    const tagList = queryTags(db, itemId)
-    const linkedNoteIds = queryNoteIds(db, itemId)
-    const linkedCanvasIds = queryCanvasIds(db, itemId)
-    return JSON.stringify({ ...task, tags: tagList, linkedNoteIds, linkedCanvasIds })
+    return JSON.stringify(
+      taskRowToWire(task, {
+        tags: queryTags(db, itemId),
+        linkedNoteIds: queryNoteIds(db, itemId),
+        linkedCanvasIds: queryCanvasIds(db, itemId)
+      })
+    )
   }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
@@ -395,14 +440,16 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
         type: 'task',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({
-          ...item,
-          clock,
-          fieldClocks,
-          tags: queryTags(db, item.id),
-          linkedNoteIds: queryNoteIds(db, item.id),
-          linkedCanvasIds: queryCanvasIds(db, item.id)
-        }),
+        payload: JSON.stringify(
+          taskRowToWire(
+            { ...item, clock, fieldClocks },
+            {
+              tags: queryTags(db, item.id),
+              linkedNoteIds: queryNoteIds(db, item.id),
+              linkedCanvasIds: queryCanvasIds(db, item.id)
+            }
+          )
+        ),
         priority: 0
       })
     }
