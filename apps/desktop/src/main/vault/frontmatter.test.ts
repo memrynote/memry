@@ -534,6 +534,13 @@ describe('cleanCachedSnippet (issue #2554)', () => {
     expect(cleanCachedSnippet('first <span style="color:red">red</sp...')).toBe('first red...')
   })
 
+  it('drops a %% comment cached before BBF-26', () => {
+    expect(cleanCachedSnippet('Tail text %% Topic secret %% end. %% block Other %% After')).toBe(
+      'Tail text end. After'
+    )
+    expect(cleanCachedSnippet('Sale 50%% off, cut mid...')).toBe('Sale 50%% off, cut mid...')
+  })
+
   it('leaves a clean snippet untouched', () => {
     expect(cleanCachedSnippet('a < b and c > d...')).toBe('a < b and c > d...')
     expect(cleanCachedSnippet(createSnippet('plain **text**'))).toBe('plain text')
