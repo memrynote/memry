@@ -95,9 +95,10 @@ struct NoteTitleEditor: View {
     private func commit() {
         guard editing else { return }
         editing = false
-        // Unchanged titles are filtered by the model, so tapping in and out
-        // does not enqueue a push.
-        rename(draft)
+        // Unchanged titles write nothing, so tapping in and out does not
+        // enqueue a push. Compared here as well as in the model: the model's
+        // `current` reads "Untitled note" while the page reloads.
+        if draft != title { rename(draft) }
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
         )
@@ -165,6 +166,10 @@ struct NoteTitleEditor: View {
                 .onAppear {
                     if title.isEmpty { focused = true }
                 }
+                // Leaving the page, or the page reloading under the field,
+                // ends the edit without a focus change; the typed title
+                // still lands (#2680).
+                .onDisappear(perform: commit)
                 .accessibilityLabel("Title")
             } else {
                 Text(title)
