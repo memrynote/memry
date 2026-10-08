@@ -13,6 +13,7 @@ import {
   asClientDb,
   createTestDataDb,
   createTestIndexDb,
+  sql,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { getNoteTags, insertNoteCache, setNoteTags } from '@main/database/queries/notes'
@@ -88,7 +89,7 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
         createdAt: '2026-01-10T00:00:00.000Z',
         modifiedAt: '2026-01-12T00:00:00.000Z'
       })
-      setNoteTags(index.db, id, ['old', 'keep'])
+      setNoteTags(index.db, id, { header: ['old'], inline: ['keep'] })
     }
     installVaultLockSource({
       dataDb: () => asClientDb(data.db),
@@ -102,6 +103,17 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
     registerTagsHandlers()
   })
 
+  /** A locked note's rows, header flags included, must come back exactly as they were. */
+  function rows(noteId: string): Array<{ tag: string; in_header: number | null }> {
+    return index.db.all(
+      sql`SELECT tag, in_header FROM note_tags WHERE note_id = ${noteId} ORDER BY position`
+    )
+  }
+  const lockedRows = [
+    { tag: 'old', in_header: 1 },
+    { tag: 'keep', in_header: 0 }
+  ]
+
   afterEach(() => {
     unregisterTagsHandlers()
     installVaultLockSource({ dataDb: () => null, notePathOf: () => null, noteIdAtPath: () => null })
@@ -113,8 +125,8 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
     await invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'fresh' })
 
     expect(getNoteTags(index.db, 'note-free')).toEqual(['fresh', 'keep'])
-    expect(getNoteTags(index.db, 'note-locked')).toEqual(['old', 'keep'])
-    expect(getNoteTags(index.db, 'note-own-lock')).toEqual(['old', 'keep'])
+    expect(rows('note-locked')).toEqual(lockedRows)
+    expect(rows('note-own-lock')).toEqual(lockedRows)
     expect(files.atomicWrite).toHaveBeenCalledTimes(1)
   })
 
@@ -122,15 +134,15 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
     await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'old')
 
     expect(getNoteTags(index.db, 'note-free')).toEqual(['keep'])
-    expect(getNoteTags(index.db, 'note-locked')).toEqual(['old', 'keep'])
-    expect(getNoteTags(index.db, 'note-own-lock')).toEqual(['old', 'keep'])
+    expect(rows('note-locked')).toEqual(lockedRows)
+    expect(rows('note-own-lock')).toEqual(lockedRows)
   })
 
   it('merge keeps the source tag on locked notes and merges it on the free one', async () => {
     await invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'keep' })
 
     expect(getNoteTags(index.db, 'note-free')).toEqual(['keep'])
-    expect(getNoteTags(index.db, 'note-locked')).toEqual(['old', 'keep'])
-    expect(getNoteTags(index.db, 'note-own-lock')).toEqual(['old', 'keep'])
+    expect(rows('note-locked')).toEqual(lockedRows)
+    expect(rows('note-own-lock')).toEqual(lockedRows)
   })
 })

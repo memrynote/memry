@@ -169,6 +169,13 @@
       "when": 1791100000000,
       "tag": "0023_extracted_text",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1791200000000,
+      "tag": "0024_note_tags_in_header",
+      "breakpoints": true
     }
   ]
 }

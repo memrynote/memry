@@ -763,7 +763,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
           localOnly: cached?.localOnly ?? false,
           emoji: newEmoji
         },
-        { isNew: false, tagsOverride: newTags }
+        { isNew: false }
       )
     : null
 

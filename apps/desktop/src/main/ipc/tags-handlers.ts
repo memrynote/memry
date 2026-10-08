@@ -8,7 +8,7 @@
 import { readFile } from 'fs/promises'
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { eq, like, or } from 'drizzle-orm'
+import { eq, inArray, like, or } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -49,7 +49,6 @@ import {
   updateTagColor,
   updateTagIcon,
   getNoteTags,
-  setNoteTags,
   getNoteCacheById
 } from '../tags/store'
 import {
@@ -153,25 +152,26 @@ function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: s
 }
 
 /**
- * Snapshot the index tags of every locked note that carries `tag` (or a child
- * of it) before a vault-wide rename, merge or delete, and put them back after
- * it. The file of a locked note is left as it is, so its index row must not
- * change either (#2606).
+ * Snapshot the index tag rows of every locked note that carries `tag` (or a
+ * child of it) before a vault-wide rename, merge or delete, and put them back
+ * verbatim after it. The file of a locked note is left as it is, so its index
+ * rows must not change either (#2606).
  */
 function keepLockedNoteTags(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): () => void {
   if (!hasAnyVaultLock()) return () => {}
   const normalized = tag.toLowerCase().trim()
-  const noteIds = indexDb
+  const lockedIds = indexDb
     .selectDistinct({ noteId: noteTags.noteId })
     .from(noteTags)
     .where(or(eq(noteTags.tag, normalized), like(noteTags.tag, `${normalized}/%`)))
     .all()
     .map((row) => row.noteId)
-  const kept = noteIds
     .filter((noteId) => isNoteLocked(noteId))
-    .map((noteId) => ({ noteId, tags: getNoteTags(indexDb, noteId) }))
+  if (lockedIds.length === 0) return () => {}
+  const kept = indexDb.select().from(noteTags).where(inArray(noteTags.noteId, lockedIds)).all()
   return () => {
-    for (const { noteId, tags } of kept) setNoteTags(indexDb, noteId, tags)
+    indexDb.delete(noteTags).where(inArray(noteTags.noteId, lockedIds)).run()
+    indexDb.insert(noteTags).values(kept).run()
   }
 }
 

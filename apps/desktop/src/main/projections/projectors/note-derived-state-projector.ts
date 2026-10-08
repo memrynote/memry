@@ -150,7 +150,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
 
   if (bodyUnread) return
 
-  setNoteTags(db, note.noteId, note.tags)
+  setNoteTags(db, note.noteId, { header: note.headerTags, inline: note.tags })
   setNoteProperties(db, note.noteId, note.properties ?? {}, (name, value) =>
     getPropertyType(db, name, value, inferPropertyType)
   )

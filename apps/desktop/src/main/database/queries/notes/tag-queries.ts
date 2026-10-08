@@ -11,24 +11,35 @@ import type { IndexDb } from '../../types'
 // Tag Operations
 // ============================================================================
 
-export function setNoteTags(db: IndexDb, noteId: string, tags: string[]): void {
+export interface NoteTagSet {
+  /** The frontmatter `tags:` list, in file order. */
+  header: readonly string[]
+  /** Body `#tags`. One that is also in `header` is stored once, as a header tag. */
+  inline: readonly string[]
+}
+
+export function setNoteTags(db: IndexDb, noteId: string, tags: NoteTagSet): void {
   db.delete(noteTags).where(eq(noteTags.noteId, noteId)).run()
 
   // Case-preserving, case-insensitive dedupe (tag column is COLLATE NOCASE,
-  // so case variants would violate the (noteId, tag) primary key)
-  const byKey = new Map<string, string>()
-  for (const raw of tags) {
+  // so case variants would violate the (noteId, tag) primary key). Header
+  // first, so its spelling and position win over an inline copy.
+  const byKey = new Map<string, { tag: string; inHeader: boolean }>()
+  const add = (raw: string, inHeader: boolean): void => {
     const tag = raw.trim()
-    if (!tag) continue
+    if (!tag) return
     const key = tag.toLowerCase()
-    if (!byKey.has(key)) byKey.set(key, tag)
+    if (!byKey.has(key)) byKey.set(key, { tag, inHeader })
   }
+  for (const tag of tags.header) add(tag, true)
+  for (const tag of tags.inline) add(tag, false)
 
   if (byKey.size > 0) {
-    const tagRecords: NewNoteTag[] = [...byKey.values()].map((tag, index) => ({
+    const tagRecords: NewNoteTag[] = [...byKey.values()].map(({ tag, inHeader }, index) => ({
       noteId,
       tag,
-      position: index
+      position: index,
+      inHeader
     }))
     db.insert(noteTags).values(tagRecords).run()
   }

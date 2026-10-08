@@ -17,7 +17,8 @@ vi.mock('../../vault/notes', () => ({
   toAbsolutePath: vi.fn((p: string) => path.join(VAULT_ROOT, p))
 }))
 
-vi.mock('../../vault/frontmatter', () => ({
+vi.mock('../../vault/frontmatter', async (importOriginal) => ({
+  mergeTagLists: (await importOriginal<typeof import('../../vault/frontmatter')>()).mergeTagLists,
   parseNote: vi.fn(() => ({
     frontmatter: { id: 'note-1', title: 'a1', tags: ['local'] },
     content: 'old content'
@@ -316,7 +317,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
     // #then
     expect(result).toBe('applied')
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'note-1', ['remote'])
+    expect(setNoteTags).toHaveBeenCalledWith({}, 'note-1', { header: ['remote'], inline: [] })
     expect(setNoteProperties).toHaveBeenCalledWith(
       {},
       'note-1',

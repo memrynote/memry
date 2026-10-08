@@ -36,6 +36,7 @@ export {
   renameTag,
   deleteTag,
   removeTagFromNote,
+  type NoteTagSet,
   type NoteWithTagInfo
 } from './tag-queries'
 

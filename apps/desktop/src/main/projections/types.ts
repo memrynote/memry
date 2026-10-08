@@ -25,7 +25,10 @@ export interface MarkdownNoteProjection {
   parsedContent: string | null
   /** Only set by tier 0, where it is the one thing `stat` knows about the body. */
   fileSize?: number | null
+  /** Header and inline tags together, header spelling first. */
   tags: string[]
+  /** The subset of `tags` in the frontmatter `tags:` list. */
+  headerTags: string[]
   /**
    * Null when the frontmatter was not read: tier 0 and the large-file tier.
    * An empty object means the note has no properties, which unlinks it from

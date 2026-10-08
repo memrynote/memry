@@ -301,6 +301,19 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
 }
 
 /**
+ * Header tags followed by the inline tags they do not already hold, compared
+ * case-insensitively; the header spelling wins.
+ */
+export function mergeTagLists(header: readonly string[], inline: readonly string[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const tag of [...header, ...inline]) {
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
+}
+
+/**
  * Extract inline #tag patterns from markdown body text.
  * Strips code blocks and inline code first, then matches tags
  * preceded by whitespace or start-of-string.

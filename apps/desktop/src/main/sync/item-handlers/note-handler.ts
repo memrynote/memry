@@ -37,6 +37,7 @@ import {
   serializeNote,
   serializeParsedNote,
   extractInlineTagsFromMarkdown,
+  mergeTagLists,
   inferPropertyType,
   resolvePropertyType,
   replacePropertiesOnRoot,
@@ -60,7 +61,8 @@ import {
   noteCacheExists,
   setNoteTags,
   updateNoteCache,
-  setNoteProperties
+  setNoteProperties,
+  type NoteTagSet
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -107,9 +109,8 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
 }
 
 /**
- * Remote frontmatter tags ∪ the body `#hashtags` of this device's copy of the
- * note, merged case-insensitively with the frontmatter spelling winning — the
- * same merge `extractNoteMetadata` performs when indexing a note from disk.
+ * Remote frontmatter tags as the header half, and the body `#hashtags` of this
+ * device's copy of the note as the inline half.
  *
  * A push payload carries frontmatter tags only, so a tag that exists solely as
  * a body hashtag never leaves the sending device. Re-deriving that half here is
@@ -117,22 +118,14 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
  * body is the same on both devices, so nothing has to be asked of the sender —
  * and nothing body-derived leaks back into frontmatter (#1471).
  */
-function mergeWithLocalBodyTags(remoteTags: string[], relPath: string): string[] {
-  let bodyTags: string[]
+function withLocalBodyTags(remoteTags: string[], relPath: string): NoteTagSet {
   try {
     const parsed = parseNote(fs.readFileSync(toAbsolutePath(relPath), 'utf-8'))
-    bodyTags = extractInlineTagsFromMarkdown(parsed.content)
+    return { header: remoteTags, inline: extractInlineTagsFromMarkdown(parsed.content) }
   } catch {
     log.warn('Could not read note body to merge its inline tags', { path: relPath })
-    return remoteTags
+    return { header: remoteTags, inline: [] }
   }
-
-  const byKey = new Map<string, string>()
-  for (const tag of [...remoteTags, ...bodyTags]) {
-    const key = tag.toLowerCase()
-    if (!byKey.has(key)) byKey.set(key, tag)
-  }
-  return [...byKey.values()]
 }
 
 function mergeAttachmentReferences(
@@ -513,7 +506,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
         indexed && tagsChanged && remoteTags
-          ? mergeWithLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
+          ? withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
       if (indexTags) {
@@ -590,7 +583,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         changes: {
           title: newTitle,
           emoji: resolvedEmoji,
-          ...(indexTags ? { tags: indexTags } : {})
+          ...(indexTags ? { tags: mergeTagLists(indexTags.header, indexTags.inline) } : {})
         },
         source: 'sync'
       })

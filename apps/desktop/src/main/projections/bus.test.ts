@@ -24,6 +24,7 @@ const upsert = (noteId: string, parsedContent: string): ProjectionEvent => ({
     modifiedAt: '2026-01-01T00:00:00.000Z',
     parsedContent,
     tags: [],
+    headerTags: [],
     properties: {},
     wikiLinks: []
   }
