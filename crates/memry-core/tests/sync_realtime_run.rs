@@ -451,3 +451,24 @@ async fn a_handshake_that_never_answers_is_dropped_and_retried() {
     h.stop.stop();
     assert_eq!(h.running.await.unwrap(), RunEnd::Stopped);
 }
+
+#[tokio::test(start_paused = true)]
+async fn an_open_landing_with_the_handshake_deadline_is_kept() {
+    // `select!` polls ready branches in random order, so repeat to make the
+    // deadline win at least once when both are ready.
+    for _ in 0..32 {
+        let h = start();
+        settle().await;
+        tokio::time::sleep(Duration::from_millis(15_000 - 1)).await;
+        h.socket.latest().on_open();
+        settle().await;
+        assert_eq!(
+            h.socket.closes.load(Ordering::SeqCst),
+            0,
+            "the open socket is kept"
+        );
+        assert_eq!(h.passes.count(), 1);
+        h.stop.stop();
+        h.running.await.unwrap();
+    }
+}

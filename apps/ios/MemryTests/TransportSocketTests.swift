@@ -321,4 +321,44 @@ struct TransportSocketTests {
         }
         withExtendedLifetime(handle) {}
     }
+
+    /// #2872: a handshake the server refuses with an HTTP status reaches the
+    /// core as that status, because §9.10 forbids reconnecting into 401, 403
+    /// and 426 and the core can only tell them apart by it.
+    @Test("a refused handshake reports its HTTP status")
+    func refusedHandshakeReportsStatus() async throws {
+        let server = try NWListener(using: .tcp, on: .any)
+        server.newConnectionHandler = { connection in
+            connection.start(queue: .global())
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { _, _, _, _ in
+                let answer = "HTTP/1.1 426 Upgrade Required\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+                connection.send(content: Data(answer.utf8), completion: .contentProcessed { _ in connection.cancel() })
+            }
+        }
+        server.start(queue: .global())
+        defer { server.cancel() }
+        #expect(await settle { (server.port?.rawValue ?? 0) != 0 })
+        let port = try #require(server.port?.rawValue)
+
+        let statuses = Mutex<[UInt16]>([])
+        final class StatusListener: SocketListener, @unchecked Sendable {
+            let record: @Sendable (UInt16) -> Void
+            init(record: @escaping @Sendable (UInt16) -> Void) { self.record = record }
+            func onOpen() { record(101) }
+            func onMessage(payload: Data) {}
+            func onClosed(code: UInt16, reason: String) { record(code) }
+            func onError(error: TransportError) {
+                if case let .HandshakeRejected(status) = error { record(status) } else { record(0) }
+            }
+        }
+        let listener = StatusListener { status in statuses.withLock { $0.append(status) } }
+        let subject = transport()
+        let handle = try subject.openSocket(
+            request: SocketRequest(url: "ws://127.0.0.1:\(port)/sync/ws", headers: [:]),
+            listener: listener
+        )
+        #expect(await settle { !statuses.withLock { $0.isEmpty } })
+        #expect(statuses.withLock { $0 } == [426])
+        withExtendedLifetime((subject, handle)) {}
+    }
 }

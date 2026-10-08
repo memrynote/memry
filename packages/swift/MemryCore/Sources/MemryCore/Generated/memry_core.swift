@@ -12584,12 +12584,15 @@ public func FfiConverterTypeVaultCalendar_lower(_ value: VaultCalendar) -> UInt6
 public protocol VaultRealtimeProtocol: AnyObject, Sendable {
     
     /**
-     * Holds the socket open until [`Self::stop`], until a close or a refused
-     * handshake says reconnecting cannot help (§9.9, §9.10), or until the
-     * handshake is refused `401`. Answers `true` only for the second, which
-     * latches this vault's sync: every later socket it mints answers `true`
-     * at once without a handshake. A `401` answers `false` and latches
-     * nothing; the next foreground's socket tries again.
+     * Holds the socket open, reconnecting along §9.10's ladder, until one of
+     * three things ends it:
+     *
+     * - A close 4004 or 4009 (§9.9), or a handshake refused 403 or 426
+     * (§9.10). Answers `true` and latches this vault's sync: every later
+     * socket it mints answers `true` at once, without a handshake.
+     * - [`Self::stop`]. Answers `false`.
+     * - A handshake refused 401 (§9.10). Answers `false` and latches nothing,
+     * so the next foreground's socket tries again.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -12660,12 +12663,15 @@ open class VaultRealtime: VaultRealtimeProtocol, @unchecked Sendable {
 
     
     /**
-     * Holds the socket open until [`Self::stop`], until a close or a refused
-     * handshake says reconnecting cannot help (§9.9, §9.10), or until the
-     * handshake is refused `401`. Answers `true` only for the second, which
-     * latches this vault's sync: every later socket it mints answers `true`
-     * at once without a handshake. A `401` answers `false` and latches
-     * nothing; the next foreground's socket tries again.
+     * Holds the socket open, reconnecting along §9.10's ladder, until one of
+     * three things ends it:
+     *
+     * - A close 4004 or 4009 (§9.9), or a handshake refused 403 or 426
+     * (§9.10). Answers `true` and latches this vault's sync: every later
+     * socket it mints answers `true` at once, without a handshake.
+     * - [`Self::stop`]. Answers `false`.
+     * - A handshake refused 401 (§9.10). Answers `false` and latches nothing,
+     * so the next foreground's socket tries again.
      *
      * One run per object: a stopped object stays stopped, so mint a new one
      * on the next foreground.
@@ -32896,7 +32902,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_realtimelistener_changes_available() != 17505) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 11890) {
+    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 21342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultrealtime_stop() != 53929) {

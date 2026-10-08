@@ -164,6 +164,11 @@ async fn hold(
             () = stop.wake.notified() => {}
             () = client.changed() => {}
             () = tokio::time::sleep_until(handshake_deadline), if !announced => {
+                // The open or close may have landed in the same turn as the
+                // deadline; the loop's top handles both.
+                if client.is_open() || client.has_ended() {
+                    continue;
+                }
                 client.abandon();
                 return false;
             }

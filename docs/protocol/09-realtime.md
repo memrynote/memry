@@ -30,8 +30,8 @@ running:
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
   (`crates/memry-core/src/sync/socket.rs:247`, `:287`) and observes no app
   state itself. The shell starts `VaultRealtime::run` and calls
-  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:92`,
-  `:108`); iOS runs it until the scene goes to the background
+  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:95`,
+  `:111`); iOS runs it until the scene goes to the background
   (`apps/ios/Memry/Features/Tasks/TasksRootView.swift:173`, `:193`).
 - **A resident desktop process keeps the socket open for as long as the process
   runs and sync is started.** Closing the main window hides it to the tray and
@@ -65,15 +65,15 @@ broadcasts sent while it was away are gone. Desktop pulls on every socket
 ## 9.2 Handshake
 
 **Normative.** `GET /sync/ws`
-(`apps/sync-server/src/routes/sync.ts:258`). **Authentication is handshake
+(`apps/sync-server/src/routes/sync.ts:311`). **Authentication is handshake
 headers only — never a query parameter and never a subprotocol**
 (`packages/contracts/src/sync-socket.ts:12-16`).
 
 | Header                                | Required        | Effect                                                                                                                                                                       |
 | ------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Authorization: Bearer <accessToken>` | yes             | `401 AUTH_INVALID_TOKEN` when invalid (`apps/sync-server/src/durable-objects/user-sync-state.ts:95-104`)                                                                     |
-| `X-App-Version: <semver>`             | **yes**         | absent is `426 SYNC_VERSION_INCOMPATIBLE` (`:106-117`)                                                                                                                       |
-| `X-Memry-Vault-Id: <uuid>`            | effectively yes | defaults to `default` (`:156`); **a socket on the wrong vault connects and then hears nothing**, because every broadcast is filtered by the socket's attached vault (`:198`) |
+| `Authorization: Bearer <accessToken>` | yes             | `401 AUTH_INVALID_TOKEN` when invalid (`apps/sync-server/src/durable-objects/user-sync-state.ts:91-106`)                                                                     |
+| `X-App-Version: <semver>`             | **yes**         | absent is `426 SYNC_VERSION_INCOMPATIBLE` (`:109-120`)                                                                                                                       |
+| `X-Memry-Vault-Id: <uuid>`            | effectively yes | defaults to `default` (`:182`); **a socket on the wrong vault connects and then hears nothing**, because every broadcast is filtered by the socket's attached vault (`:234`) |
 | `X-Memry-Socket-Items: 1`             | no              | opts the socket in to socket items (§9.13); any other value or absence means hint-only frames (`apps/sync-server/src/lib/socket-items.ts:45-48`)                             |
 | `X-Memry-Sync-Types: <csv>`           | no              | read only with the opt-in above; same grammar and resolution as the HTTP header (chapter 05 §5.3), and it decides which item types the socket receives                       |
 
@@ -81,13 +81,13 @@ Failures:
 
 | Condition                       | Answer                                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| invalid token                   | `401 AUTH_INVALID_TOKEN` (`:93-96`)                                                        |
-| missing `X-App-Version`         | `426 SYNC_VERSION_INCOMPATIBLE` (`:101-109`)                                               |
-| version below `MIN_APP_VERSION` | `426 SYNC_VERSION_INCOMPATIBLE` with `minVersion` **inside** the error object (`:112-121`) |
-| unknown or revoked device       | `403 AUTH_DEVICE_REVOKED` (`:130-135`)                                                     |
+| invalid token                   | `401 AUTH_INVALID_TOKEN` (`:91-106`)                                                       |
+| missing `X-App-Version`         | `426 SYNC_VERSION_INCOMPATIBLE` (`:109-120`)                                               |
+| version below `MIN_APP_VERSION` | `426 SYNC_VERSION_INCOMPATIBLE` with `minVersion` **inside** the error object (`:121-131`) |
+| unknown or revoked device       | `403 AUTH_DEVICE_REVOKED` (`:139-144`)                                                     |
 
 A successful handshake answers `101` with the socket
-(`apps/sync-server/src/durable-objects/user-sync-state.ts:168`).
+(`apps/sync-server/src/durable-objects/user-sync-state.ts:195`).
 
 **Normative.** Before answering `101`, the server stores the handshake's
 `X-App-Version` as the device's `app_version` when it differs from the stored
@@ -278,14 +278,21 @@ adopts it:
 delay = min(BASE * 2^attempt + random()*JITTER, MAX)
 ```
 
-(`apps/desktop/src/main/sync/websocket.ts:342-346`), with `attempt` incremented
-per scheduled reconnect (`:348`) and **reset to zero on a successful open**.
+(`apps/desktop/src/main/sync/websocket.ts:340-344`), with `attempt` incremented
+per scheduled reconnect (`:346`) and **reset to zero on a successful open**.
 
 A reconnect MUST NOT be scheduled when any of these latches is set:
-the client no longer wants a connection, the handshake was rejected `401`, the
-version was rejected, or transport pinning failed
-(`apps/desktop/src/main/sync/websocket.ts:338-339`). A reconnect MUST only fire
-when the device believes it is online (`:352`).
+the client no longer wants a connection, the handshake was rejected `401` or
+`403`, the version was rejected (a `426` handshake or a 4009 close), or
+transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:336-337`).
+A `403` handshake is §9.9's 4004 met before the upgrade: an unknown or revoked
+device (§9.2), which reconnecting cannot fix. A reconnect MUST only fire when
+the device believes it is online (`:350`).
+
+**Known gap.** Desktop does not yet latch a `403` handshake: its
+`unexpected-response` handler sets latches only for `401` and `426`
+(`apps/desktop/src/main/sync/websocket.ts:210-230`), so a handshake refused `403`
+falls through to `close` and reconnects along the ladder.
 
 The Rust core learns the handshake's status from the shell as
 `TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
