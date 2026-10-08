@@ -140,6 +140,36 @@ describe('SyncStatus with device keys missing', () => {
     expect(onOpenSettings).not.toHaveBeenCalled()
   })
 
+  it('disables Repair while a repair runs', async () => {
+    let finish: (value: { status: 'repaired' }) => void = () => {}
+    repairDeviceKeys.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const user = await openPopover()
+    const button = screen.getByRole('button', {
+      name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys'
+    })
+
+    await user.click(button)
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+    await user.click(button)
+    expect(repairDeviceKeys).toHaveBeenCalledTimes(1)
+
+    finish({ status: 'repaired' })
+    await vi.waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('keeps the session and explains why sync did not start', async () => {
+    repairDeviceKeys.mockResolvedValue({ status: 'sync-not-started', reason: 'entitlement' })
+    const onOpenSettings = vi.fn()
+    const user = await openPopover(onOpenSettings)
+
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
+    )
+
+    expect(auth.resetAuthState).not.toHaveBeenCalled()
+    expect(onOpenSettings).not.toHaveBeenCalled()
+  })
+
   it('sends the user to sign in when main signed the device out', async () => {
     repairDeviceKeys.mockResolvedValue({ status: 'sign-in-required' })
     const onOpenSettings = vi.fn()

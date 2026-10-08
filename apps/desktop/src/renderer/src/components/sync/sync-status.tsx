@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { Cloud, CloudOff, RefreshCw, Settings } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons'
@@ -188,16 +188,27 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // Main restores the device row when the keychain key is still registered,
   // and otherwise signs out keeping queued changes (#2866). Never logout():
   // that drops the sync queue and the vault key.
+  const [repairing, setRepairing] = useState(false)
   const handleRepairDeviceKeys = async (): Promise<void> => {
+    if (repairing) return
+    setRepairing(true)
     try {
-      const { status: outcome } = await window.api.syncOps.repairDeviceKeys()
-      if (outcome === 'repaired') return
+      const result = await window.api.syncOps.repairDeviceKeys()
+      if (result.status === 'repaired') return
+      if (result.status === 'sync-not-started') {
+        toast.info(tPhaseF(`phaseF.componentsSyncSyncStatus.syncNotStarted.${result.reason}`), {
+          duration: 10000
+        })
+        return
+      }
       resetAuthState()
       toast.info(tPhaseF('phaseF.componentsSyncSyncStatus.signInToRepair'), { duration: 10000 })
       onOpenSettings()
     } catch (err) {
       log.error('Device key repair failed', err)
       toast.error(tPhaseF('phaseF.componentsSyncSyncStatus.repairFailed'))
+    } finally {
+      setRepairing(false)
     }
   }
 
@@ -353,6 +364,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
                 variant="ghost"
                 size="sm"
                 onClick={() => void handleRepairDeviceKeys()}
+                disabled={repairing}
                 className="h-7 text-xs"
               >
                 {tPhaseF('phaseF.componentsSyncSyncStatus.repairDeviceKeys')}

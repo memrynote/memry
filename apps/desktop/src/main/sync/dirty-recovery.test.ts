@@ -479,6 +479,67 @@ describe('dirty-recovery', () => {
     })
   })
 
+  // #2866: with no device id, edits get `_offline` clocks and no queue row.
+  // The device-keys repair restarts the runtime so this sweep queues them.
+  it('queues task, note and inbox edits made while device keys were missing', () => {
+    initInboxSyncService({ queue, db, getDeviceId: () => 'device-A' })
+    const notesQueued: string[] = []
+    const adapters = {
+      getLocal: (type: string) =>
+        type === 'note'
+          ? { enqueueRecoveredUpdate: (id: string) => notesQueued.push(id) }
+          : undefined
+    } as unknown as Parameters<typeof recoverDirtyItems>[1]
+    db.insert(tasks)
+      .values({
+        id: 'task-keyless',
+        projectId: 'proj-1',
+        title: 'Edited without keys',
+        priority: 0,
+        position: 0,
+        clock: { _offline: 1 },
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      .run()
+    db.insert(inboxItems)
+      .values({
+        id: 'inbox-keyless',
+        type: 'link',
+        title: 'Captured without keys',
+        createdAt: '2026-01-02T00:00:00Z',
+        clock: { _offline: 1 },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      } as never)
+      .run()
+    db.insert(noteMetadata)
+      .values({
+        id: 'note-keyless',
+        path: 'notes/note-keyless.md',
+        title: 'Written without keys',
+        createdAt: '2026-01-02T00:00:00Z',
+        clock: { _offline: 1 },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      } as never)
+      .run()
+    expect(queue.getPendingCount()).toBe(0)
+
+    const result = recoverDirtyItems(db, adapters)
+
+    expect(result.tasks).toBe(1)
+    expect(result.inbox).toBe(1)
+    expect(result.notes).toBe(1)
+    expect(notesQueued).toEqual(['note-keyless'])
+    const queued = queue.peek(10)
+    expect(queued.map((item) => `${item.type}:${item.itemId}`).sort()).toEqual([
+      'inbox:inbox-keyless',
+      'task:task-keyless'
+    ])
+    for (const item of queued) expect(item.payload).not.toContain('_offline')
+    resetInboxSyncService()
+  })
+
   describe('notes', () => {
     const recovered: string[] = []
     const noteAdapters = {

@@ -2136,8 +2136,13 @@
       "willSyncWhenBackOnline": "Will sync when back online",
       "openSyncSettings": "Open sync settings",
       "repairDeviceKeys": "Repair",
-      "signInToRepair": "Sign in again to set up this device's keys. Your unsynced changes are kept. You may need your recovery phrase.",
-      "repairFailed": "Couldn't repair this device's keys. Try again."
+      "signInToRepair": "Sign in again to set up this device's keys. Unsynced notes, tasks and projects are kept. You may need your recovery phrase.",
+      "repairFailed": "Couldn't repair this device's keys. Try again.",
+      "syncNotStarted": {
+        "vault-binding": "This device's keys are restored, but this vault isn't set to sync with your account yet. Choose how to sync it from the sync menu.",
+        "entitlement": "This device's keys are restored, but sync needs an active Sync plan.",
+        "unavailable": "This device's keys are restored, but sync couldn't start. It will retry; restart Memry if it doesn't."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"

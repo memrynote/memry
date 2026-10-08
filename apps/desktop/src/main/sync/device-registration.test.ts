@@ -51,7 +51,17 @@ const mocks = vi.hoisted(() => ({
   currentDeviceRow: vi.fn((): { id: string } | undefined => undefined),
   getValidAccessToken: vi.fn(),
   stopSyncRuntime: vi.fn(),
+  vaultBinding: vi.fn(() => ({ status: 'bound' })),
+  entitlement: vi.fn((): { isPaid: boolean } | null => ({ isPaid: true })),
   teardownSession: vi.fn()
+}))
+
+vi.mock('./vault-account-binding', () => ({
+  getVaultBindingState: () => mocks.vaultBinding()
+}))
+
+vi.mock('../billing/entitlement-cache', () => ({
+  getCachedEntitlement: () => mocks.entitlement()
 }))
 
 vi.mock('./session-teardown', () => ({
@@ -568,9 +578,9 @@ describe('device registration', () => {
         () => mocks.setStoredDeviceId.mock.calls.at(-1)?.[0]
       )
       mocks.currentDeviceRow.mockReturnValue(undefined)
-    })
-
-    it('restores the device row when the keychain key is still registered', async () => {
+      mocks.startSyncRuntime.mockResolvedValue({ engine: true })
+      mocks.vaultBinding.mockReturnValue({ status: 'bound' })
+      mocks.entitlement.mockReturnValue({ isPaid: true })
       mocks.getFromServer.mockResolvedValue({
         devices: [
           {
@@ -589,6 +599,9 @@ describe('device registration', () => {
           }
         ]
       })
+    })
+
+    it('restores the device row when the keychain key is still registered', async () => {
       const { repairDeviceKeys } = await importModule()
 
       await expect(repairDeviceKeys()).resolves.toEqual({ status: 'repaired' })
@@ -604,6 +617,40 @@ describe('device registration', () => {
         mocks.startSyncRuntime.mock.invocationCallOrder[0]
       )
       expect(mocks.teardownSession).not.toHaveBeenCalled()
+    })
+
+    it('runs once for concurrent calls', async () => {
+      const { repairDeviceKeys } = await importModule()
+
+      const results = await Promise.all([repairDeviceKeys(), repairDeviceKeys()])
+
+      expect(results).toEqual([{ status: 'repaired' }, { status: 'repaired' }])
+      expect(mocks.dbInsert).toHaveBeenCalledTimes(1)
+      expect(mocks.stopSyncRuntime).toHaveBeenCalledTimes(1)
+      expect(mocks.startSyncRuntime).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not report repaired when a sync gate keeps the runtime down', async () => {
+      mocks.startSyncRuntime.mockResolvedValue(null)
+      mocks.entitlement.mockReturnValue({ isPaid: false })
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({
+        status: 'sync-not-started',
+        reason: 'entitlement'
+      })
+      expect(mocks.teardownSession).not.toHaveBeenCalled()
+    })
+
+    it('names the vault binding when it holds sync back', async () => {
+      mocks.startSyncRuntime.mockResolvedValue(null)
+      mocks.vaultBinding.mockReturnValue({ status: 'local-only' })
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({
+        status: 'sync-not-started',
+        reason: 'vault-binding'
+      })
     })
 
     it('signs out keeping the queue when the key is not on the account', async () => {

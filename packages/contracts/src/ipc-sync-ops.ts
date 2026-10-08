@@ -29,13 +29,21 @@ export const SYNC_OP_CHANNELS = {
 // Types
 // ============================================================================
 
+/** Why sync stayed down after a device row was restored. */
+export type SyncNotStartedReason = 'vault-binding' | 'entitlement' | 'unavailable'
+
 /**
  * Outcome of the "device keys missing" repair (#2866). `repaired`: the keychain
- * key is still registered, so the device row was restored and sync resumed.
- * `sign-in-required`: the device was signed out with its queued changes kept,
- * and signing in again (possibly with the recovery phrase) sets up new keys.
+ * key is still registered, the device row was restored and the runtime is up.
+ * `sync-not-started`: the row was restored but a sync gate kept the runtime
+ * down. `sign-in-required`: the device was signed out with its queued changes
+ * kept, and signing in again (possibly with the recovery phrase) sets up new
+ * keys.
  */
-export type RepairDeviceKeysResult = { status: 'repaired' | 'sign-in-required' }
+export type RepairDeviceKeysResult =
+  | { status: 'repaired' }
+  | { status: 'sync-not-started'; reason: SyncNotStartedReason }
+  | { status: 'sign-in-required' }
 
 export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error' | 'local_only'
 

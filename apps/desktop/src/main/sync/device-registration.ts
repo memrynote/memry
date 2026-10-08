@@ -7,7 +7,7 @@ import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
-import type { RepairDeviceKeysResult } from '@memry/contracts/ipc-sync-ops'
+import type { RepairDeviceKeysResult, SyncNotStartedReason } from '@memry/contracts/ipc-sync-ops'
 import {
   DeviceRegisterResponseSchema,
   RecoveryDataResponseSchema,
@@ -376,7 +376,29 @@ export const ensureDeviceRowForVault = async (
  * so sign out the way an integrity failure does, which keeps the sync queue and
  * the vault key, and the next sign-in registers new keys.
  */
-export const repairDeviceKeys = async (): Promise<RepairDeviceKeysResult> => {
+let repairInProgress: Promise<RepairDeviceKeysResult> | null = null
+
+/** Concurrent calls share one run: two would each insert a row and restart. */
+export const repairDeviceKeys = (): Promise<RepairDeviceKeysResult> => {
+  repairInProgress ??= performDeviceKeysRepair().finally(() => {
+    repairInProgress = null
+  })
+  return repairInProgress
+}
+
+/** Why a repaired device row did not bring the runtime up. */
+const reasonSyncDidNotStart = async (): Promise<SyncNotStartedReason> => {
+  // Dynamic like the rest of this module's runtime-side imports.
+  const [{ getVaultBindingState }, { getCachedEntitlement }] = await Promise.all([
+    import('./vault-account-binding'),
+    import('../billing/entitlement-cache')
+  ])
+  if (getVaultBindingState().status !== 'bound') return 'vault-binding'
+  if (getCachedEntitlement()?.isPaid === false) return 'entitlement'
+  return 'unavailable'
+}
+
+const performDeviceKeysRepair = async (): Promise<RepairDeviceKeysResult> => {
   const db = isDatabaseInitialized() ? getDatabase() : null
   const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
   try {
@@ -400,15 +422,18 @@ export const repairDeviceKeys = async (): Promise<RepairDeviceKeysResult> => {
         // Pulls cache every device as a peer row, this one included.
         db.delete(syncDevices).where(eq(syncDevices.id, device.id)).run()
         await ensureDeviceRowForVault(db)
-        // A restart, not activate(): without a device id, task and project
-        // edits were only stamped with offline clocks, never queued. The start's
-        // dirty sweep rebinds those clocks and queues them.
+        // A restart, not activate(): without a device id, record edits were
+        // not queued. The start's dirty sweep queues tasks, projects and the
+        // other swept types, rebinding their offline clocks. Types exempt from
+        // the sweep (dirty-recovery.ts DIRTY_RECOVERY) are not recovered.
         await stopSyncRuntime()
-        await startSyncRuntime()
+        const engine = await startSyncRuntime()
         logger.info('Restored the device row from the registered signing key', {
-          deviceId: device.id
+          deviceId: device.id,
+          started: engine !== null
         })
-        return { status: 'repaired' }
+        if (engine) return { status: 'repaired' }
+        return { status: 'sync-not-started', reason: await reasonSyncDidNotStart() }
       }
     }
   } finally {
