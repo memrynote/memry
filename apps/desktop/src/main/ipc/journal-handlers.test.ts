@@ -66,6 +66,10 @@ vi.mock('../sync/crdt-provider', () => ({
   }))
 }))
 
+vi.mock('../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: vi.fn().mockResolvedValue(true)
+}))
+
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
   enqueueJournalUpdate: vi.fn(),
@@ -115,6 +119,7 @@ import * as domainNotes from '@memry/domain-notes'
 import * as projections from '../projections'
 import * as runtimeEffects from '../journal/runtime-effects'
 import { BrowserWindow } from 'electron'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -400,6 +405,31 @@ describe('journal-handlers', () => {
       JournalChannels.events.ENTRY_UPDATED,
       expect.objectContaining({ entry: expect.objectContaining({ id: 'cache-1' }) })
     )
+  })
+
+  // An open journal editor is bound to the entry's CRDT doc, and the update
+  // moves the index hash to the new bytes, so the watcher never feeds it. An
+  // update from outside the editor (the desktop API) stayed invisible, and the
+  // editor's next write-back put the old body back.
+  it('feeds the saved body to the entry CRDT doc so an open editor shows it', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry, content: 'Updated content' },
+      fileContent: 'serialized',
+      frontmatter: { date: baseEntry.date, tags: baseEntry.tags }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(journalVault.serializeJournalEntry as Mock).mockReturnValue('serialized')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Updated content'
+    })
+
+    expect(feedExternalEditToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
   })
 
   it('flushes projections when update creates a missing journal entry', async () => {

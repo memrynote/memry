@@ -1128,6 +1128,19 @@ describe('ContentArea', () => {
       expect(block.props.plain).toBe(true)
     })
 
+    // With conversion off only a checkbox under a task becomes a task, so the
+    // hint's "a new checkbox becomes a task" would be false.
+    it('says nothing about conversion when checklist conversion is off', async () => {
+      contentAreaMocks.editorSettings = {
+        isLoading: false,
+        settings: { convertChecklistsToTasks: false }
+      }
+      render(<ContentArea noteId="note-1" />)
+      await convertSubCheck()
+
+      expect(contentAreaMocks.toast).not.toHaveBeenCalled()
+    })
+
     it('says once, on the first conversion, how to keep a checkbox', async () => {
       render(<ContentArea noteId="note-1" />)
       await convertSubCheck()
