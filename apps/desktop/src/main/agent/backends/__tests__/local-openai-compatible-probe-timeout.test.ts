@@ -9,7 +9,6 @@ vi.mock('../../../lib/logger', () => ({
 
 const MODEL = 'slow-model'
 
-/** Lists the model and streams fine, but never answers a tool request until aborted. */
 const hangingToolProvider = vi.fn(async (url: string | URL, init?: RequestInit) => {
   if (String(url).endsWith('/models')) {
     return new Response(JSON.stringify({ data: [{ id: MODEL }] }))

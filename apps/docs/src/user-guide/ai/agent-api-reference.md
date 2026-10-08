@@ -148,7 +148,7 @@ Reply:
 
 #### vault_view_file
 
-Look at an image, or one page of a PDF, from the vault. Returns the picture as image content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that says what was sent: file, width and height, the source size for an image, and page and page_count for a PDF. Pass the id of a filed image or PDF (file_type "image" or "pdf"); page picks the PDF page, default 1, one page per call. For an image or PDF a markdown note embeds, pass the note id and the file name as attachment: the name after attachments/&lt;note id>/ in the note, or attachment_text[].file from vault_read_note. A model that cannot take images gets a text notice instead of the picture.
+Look at an image, or one page of a PDF, from the vault. Returns the picture as image content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that says what was sent: file, width and height, the source size for an image, and page and page_count for a PDF. Pass the id of a filed image or PDF (file_type "image" or "pdf"); page picks the PDF page, default 1, one page per call. For an image or PDF a markdown note embeds, pass the note id and the file name as attachment: the name after attachments/&lt;note id>/ in the note, or attachment_text[].file from vault_read_note. In Memry chat with a local or OpenAI-compatible provider, a model that cannot take images gets a text notice instead of the picture.
 
 Read tool.
 

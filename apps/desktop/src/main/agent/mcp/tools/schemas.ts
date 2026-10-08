@@ -156,7 +156,8 @@ const LOOSE_TOOL_SCHEMAS = {
       'page picks the PDF page, default 1, one page per call. For an image or PDF a markdown ' +
       'note embeds, pass the note id and the file name as attachment: the name after ' +
       'attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. ' +
-      'A model that cannot take images gets a text notice instead of the picture.'
+      'In Memry chat with a local or OpenAI-compatible provider, a model that cannot take ' +
+      'images gets a text notice instead of the picture.'
   },
   vault_list_folder: {
     input: z.object({
