@@ -71,7 +71,8 @@ export interface JournalRenamePlan {
 }
 
 export interface JournalRenameResult {
-  renamed: number
+  /** The renames that landed, file and row both; `revertJournalRenames` takes them back. */
+  moved: JournalRename[]
   skipped: number
   failed: number
 }
@@ -177,7 +178,7 @@ export async function renameJournalsForFormatChange(
   oldFormat: string,
   newFormat: string
 ): Promise<JournalRenameResult> {
-  const result: JournalRenameResult = { renamed: 0, skipped: 0, failed: 0 }
+  const result: JournalRenameResult = { moved: [], skipped: 0, failed: 0 }
   const folder = normalizeJournalFolder(journalFolder)
   if (!folder) return result
 
@@ -213,7 +214,8 @@ export async function renameJournalsForFormatChange(
 
   const db = getDatabase()
 
-  for (const { from, to } of plan.renames) {
+  for (const rename of plan.renames) {
+    const { from, to } = rename
     const fromRel = `${folder}/${from}`
     const toRel = `${folder}/${to}`
 
@@ -239,7 +241,7 @@ export async function renameJournalsForFormatChange(
       const row = getNoteMetadataByPath(db, fromRel)
       if (row) updateNoteMetadata(db, row.id, { path: toRel })
       carryPositionToPath(db, fromRel, toRel)
-      result.renamed += 1
+      result.moved.push(rename)
       await pruneEmptyParents(dir, from)
     } catch (error) {
       // File and row must agree, or the rebuild mints a new id for the moved
@@ -259,9 +261,47 @@ export async function renameJournalsForFormatChange(
   logger.info('Journal files renamed for new date format', {
     oldFormat,
     newFormat,
-    ...result
+    renamed: result.moved.length,
+    skipped: result.skipped,
+    failed: result.failed
   })
   if (plan.skipped.length > 0) logger.warn('Journal files not renamed', { skipped: plan.skipped })
 
   return result
+}
+
+/**
+ * Take back the renames of a format change whose new format was not saved, so
+ * every journal file matches the format it is read with again. Newest first,
+ * file then row, the same pairing the forward pass keeps. A file that cannot
+ * go back is logged and left where it is.
+ */
+export async function revertJournalRenames(
+  vaultPath: string,
+  journalFolder: string,
+  moved: readonly JournalRename[]
+): Promise<void> {
+  const folder = normalizeJournalFolder(journalFolder)
+  if (!folder || moved.length === 0) return
+  const dir = path.join(vaultPath, folder)
+  const db = getDatabase()
+
+  for (const { from, to } of [...moved].reverse()) {
+    const fromRel = `${folder}/${from}`
+    const toRel = `${folder}/${to}`
+    try {
+      await fs.mkdir(path.dirname(path.join(dir, from)), { recursive: true })
+      await fs.rename(path.join(dir, to), path.join(dir, from))
+      const row = getNoteMetadataByPath(db, toRel)
+      if (row) updateNoteMetadata(db, row.id, { path: fromRel })
+      carryPositionToPath(db, toRel, fromRel)
+      await pruneEmptyParents(dir, to)
+    } catch (error) {
+      logger.error('Could not move a journal file back to its old name', {
+        from: toRel,
+        to: fromRel,
+        error
+      })
+    }
+  }
 }

@@ -23,11 +23,13 @@ import { folderExists } from '../vault/folders'
 import { generateContentHash } from '../vault/frontmatter'
 import { getStatus } from '../vault/index'
 import { createSnapshot } from '../vault/notes-versions'
-import { setFileReadOnly } from './files'
+import { getNoteAttachmentsDir } from '../vault/attachments'
+import { releaseLockedFile, setFileReadOnly } from './files'
 import {
   getVaultLockState,
   invalidateVaultLocks,
   isNoteLocked,
+  isVaultPathLocked,
   lockedFolderCovering,
   normalizeLockFolderPath,
   runWithLockedWritesAllowed
@@ -37,6 +39,7 @@ import {
   deleteBaseline,
   getBaseline,
   listBaselineNoteIds,
+  listFileModePaths,
   writeBaseline,
   writeLockRow
 } from './store'
@@ -76,7 +79,10 @@ function getNoteIdByPath(relativePath: string): string | null {
   return getNoteCacheByPath(getIndexDatabase(), relativePath)?.id ?? null
 }
 
-/** Read-only on disk, with its current bytes as the baseline when it is a markdown note. */
+/**
+ * Read-only on disk with the files of its attachments folder, and its current
+ * bytes as the baseline when it is a markdown note.
+ */
 async function protectNoteFile(noteId: string, relativePath: string, root: string): Promise<void> {
   const absolutePath = path.join(root, relativePath)
   if (relativePath.endsWith('.md') && !getBaseline(getDatabase(), noteId)) {
@@ -86,6 +92,9 @@ async function protectNoteFile(noteId: string, relativePath: string, root: strin
     }
   }
   await setFileReadOnly(absolutePath, true)
+  for (const attachment of await listFilesUnder(getNoteAttachmentsDir(root, noteId))) {
+    await setFileReadOnly(attachment, true)
+  }
 }
 
 async function releaseNoteFile(
@@ -93,15 +102,16 @@ async function releaseNoteFile(
   relativePath: string | null,
   root: string
 ): Promise<void> {
-  if (relativePath !== null) await setFileReadOnly(path.join(root, relativePath), false)
+  if (relativePath !== null) await releaseLockedFile(path.join(root, relativePath))
   deleteBaseline(getDatabase(), noteId)
 }
 
 /**
  * Bring the disk in line with the locks: every locked file read-only, every
  * locked markdown note with a baseline, and every note that lost its lock
- * writable again with its baseline dropped. A folder that was just unlocked is
- * passed in so its other files (PDFs, images) are made writable too.
+ * writable again with its baseline dropped. Every file a lock made read-only
+ * and no lock covers any more gets its recorded mode back. A folder that was
+ * just unlocked is passed in so files an older build locked are freed too.
  */
 export async function reconcileLockedFiles(unlockedFolder?: string): Promise<void> {
   const root = vaultPath()
@@ -134,8 +144,12 @@ export async function reconcileLockedFiles(unlockedFolder?: string): Promise<voi
       if (lockedFolderCovering(relative) !== null) continue
       const noteId = getNoteIdByPath(relative)
       if (noteId && isNoteLocked(noteId, relative)) continue
-      await setFileReadOnly(absolutePath, false)
+      await releaseLockedFile(absolutePath)
     }
+  }
+
+  for (const relative of listFileModePaths(db)) {
+    if (!isVaultPathLocked(relative)) await releaseLockedFile(path.join(root, relative))
   }
 }
 

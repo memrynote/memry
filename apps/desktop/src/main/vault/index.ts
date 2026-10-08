@@ -55,7 +55,11 @@ import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/err
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
-import { renameJournalsForFormatChange } from './journal-format-migration'
+import {
+  renameJournalsForFormatChange,
+  revertJournalRenames,
+  type JournalRename
+} from './journal-format-migration'
 import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
@@ -999,17 +1003,19 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
   // paths they were computed for. Restarting after the renames replays nothing
   // (`ignoreInitial`), and the rebuild below re-indexes every moved file.
   let watcherPaused = false
+  let movedJournals: JournalRename[] = []
   if (renameJournals) {
     await flushPendingWritebacks()
     watcherPaused = getWatcher().isWatching()
     if (watcherPaused) await stopWatcher()
     try {
-      await renameJournalsForFormatChange(
+      const renamed = await renameJournalsForFormatChange(
         vaultPath,
         oldConfig.journalFolder,
         oldConfig.journalDateFormat,
         renameJournals.newFormat
       )
+      movedJournals = renamed.moved
     } catch (error) {
       // A locked entry refuses the whole change: the old format stays, so every
       // journal file still matches the format it is read with.
@@ -1024,6 +1030,10 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
 
   try {
     writeVaultConfig(vaultPath, updates)
+  } catch (error) {
+    // The old format stays, so the moved files go back to the names it reads.
+    await revertJournalRenames(vaultPath, oldConfig.journalFolder, movedJournals)
+    throw error
   } finally {
     if (watcherPaused) await startWatcher(vaultPath)
   }

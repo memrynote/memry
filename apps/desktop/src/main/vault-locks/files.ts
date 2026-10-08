@@ -39,7 +39,14 @@ import {
   noteLockedError,
   vaultLockSource
 } from './registry'
-import { deleteBaseline, getBaseline, writeBaseline } from './store'
+import {
+  deleteBaseline,
+  forgetFileMode,
+  getBaseline,
+  getFileMode,
+  recordFileMode,
+  writeBaseline
+} from './store'
 
 const log = createLogger('VaultLockFiles')
 
@@ -49,15 +56,30 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && 'code' in err
 }
 
-function modeFor(current: number, readOnly: boolean): number {
-  return readOnly ? current & ~0o222 : current | 0o200
+/**
+ * The mode a lock change leaves the file in, or null when it already has it.
+ * Locking records the file's permission bits once, then clears every write
+ * bit; lifting the lock gives the recorded bits back. A file with no record
+ * (no data DB yet, or locked by an older build) only gets the owner write bit.
+ */
+function nextMode(absolutePath: string, current: number, readOnly: boolean): number | null {
+  const relative = isDatabaseInitialized() ? lockableRelativePath(absolutePath) : null
+  let recorded = relative === null ? undefined : getFileMode(getDatabase(), relative)
+  if (readOnly && recorded === undefined && relative !== null && current & 0o222) {
+    recorded = current & 0o777
+    recordFileMode(getDatabase(), relative, recorded)
+  }
+  const next = readOnly
+    ? (recorded ?? current & 0o777) & ~0o222
+    : (recorded ?? (current | 0o200) & 0o777)
+  return next === (current & 0o777) ? null : (current & 0o7000) | next
 }
 
 export async function setFileReadOnly(absolutePath: string, readOnly: boolean): Promise<void> {
   try {
     const { mode } = await fs.promises.stat(absolutePath)
-    const next = modeFor(mode, readOnly)
-    if ((next & 0o777) !== (mode & 0o777)) await fs.promises.chmod(absolutePath, next & 0o7777)
+    const next = nextMode(absolutePath, mode, readOnly)
+    if (next !== null) await fs.promises.chmod(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
     log.warn('Could not change the read-only attribute', { readOnly, error: err })
@@ -67,11 +89,44 @@ export async function setFileReadOnly(absolutePath: string, readOnly: boolean): 
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
   try {
     const { mode } = fs.statSync(absolutePath)
-    const next = modeFor(mode, readOnly)
-    if ((next & 0o777) !== (mode & 0o777)) fs.chmodSync(absolutePath, next & 0o7777)
+    const next = nextMode(absolutePath, mode, readOnly)
+    if (next !== null) fs.chmodSync(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
     log.warn('Could not change the read-only attribute', { readOnly, error: err })
+  }
+}
+
+/** A lock no longer covers the file: its recorded bits back, and the record dropped. */
+export async function releaseLockedFile(absolutePath: string): Promise<void> {
+  await setFileReadOnly(absolutePath, false)
+  forgetRecordedMode(absolutePath)
+}
+
+function releaseLockedFileSync(absolutePath: string): void {
+  setFileReadOnlySync(absolutePath, false)
+  forgetRecordedMode(absolutePath)
+}
+
+function forgetRecordedMode(absolutePath: string): void {
+  const relative = lockableRelativePath(absolutePath)
+  if (relative === null || !isDatabaseInitialized()) return
+  try {
+    forgetFileMode(getDatabase(), relative)
+  } catch (err) {
+    log.warn('Could not drop the recorded mode of an unlocked file', { error: err })
+  }
+}
+
+/**
+ * After the watcher saw a file added, moved in, renamed or replaced from
+ * outside: read-only again when a lock covers it. Never throws.
+ */
+export async function protectLockedFile(absolutePath: string): Promise<void> {
+  try {
+    if (isLockedFile(absolutePath) !== null) await setFileReadOnly(absolutePath, true)
+  } catch (err) {
+    log.warn('Could not protect a locked file changed outside the app', { error: err })
   }
 }
 
@@ -126,25 +181,6 @@ export async function beforeVaultFileWrite(absolutePath: string): Promise<string
   return relative
 }
 
-/**
- * For writers that only ever apply another device's change (the sync file
- * writes): no refusal, just clear the read-only attribute of a locked file so
- * Windows lets the write, rename over or delete through.
- *
- * @returns the file's vault-relative path when it is locked, else null
- */
-export function unprotectForRemoteWriteSync(absolutePath: string): string | null {
-  const relative = isLockedFile(absolutePath)
-  if (relative !== null) setFileReadOnlySync(absolutePath, false)
-  return relative
-}
-
-export async function unprotectForRemoteWrite(absolutePath: string): Promise<string | null> {
-  const relative = isLockedFile(absolutePath)
-  if (relative !== null) await setFileReadOnly(absolutePath, false)
-  return relative
-}
-
 /** After an allowed write to a locked file: read-only again, and its bytes become the baseline. */
 export async function afterLockedFileWrite(
   absolutePath: string,
@@ -155,13 +191,39 @@ export async function afterLockedFileWrite(
   if (content !== null) recordLockedBytes(relative, content)
 }
 
-export function afterLockedFileWriteSync(
+/**
+ * For writers that only ever apply another device's change (the sync file
+ * writes): no refusal. A locked file's read-only attribute is cleared so
+ * Windows lets the write, rename over or delete through, and set again after,
+ * whether `write` landed or threw. `write` returns the bytes it put in the
+ * file, which become the locked baseline, or null.
+ */
+export function writeThroughLockSync(absolutePath: string, write: () => string | null): void {
+  const relative = isLockedFile(absolutePath)
+  if (relative !== null) setFileReadOnlySync(absolutePath, false)
+  let written: string | null = null
+  try {
+    written = write()
+  } finally {
+    if (relative !== null) {
+      setFileReadOnlySync(absolutePath, true)
+      if (written !== null) recordLockedBytes(relative, written)
+    }
+  }
+}
+
+export async function writeThroughLock(
   absolutePath: string,
-  relative: string,
-  content: string | null
-): void {
-  setFileReadOnlySync(absolutePath, true)
-  if (content !== null) recordLockedBytes(relative, content)
+  write: () => Promise<string | null>
+): Promise<void> {
+  const relative = isLockedFile(absolutePath)
+  if (relative !== null) await setFileReadOnly(absolutePath, false)
+  let written: string | null = null
+  try {
+    written = await write()
+  } finally {
+    if (relative !== null) await afterLockedFileWrite(absolutePath, relative, written)
+  }
 }
 
 /**
@@ -186,7 +248,7 @@ export function settleRemoteNoteFileSync(
       return
     }
     if (hasBaseline(noteId)) {
-      setFileReadOnlySync(absolutePath, false)
+      releaseLockedFileSync(absolutePath)
       deleteBaseline(getDatabase(), noteId)
     }
   } catch (err) {

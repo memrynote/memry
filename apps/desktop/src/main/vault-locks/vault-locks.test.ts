@@ -51,13 +51,12 @@ import {
   runWithLockedWritesAllowed
 } from './registry'
 import {
-  afterLockedFileWriteSync,
   beforeVaultFileWrite,
   installVaultLockFileGuard,
   setFileReadOnly,
   setFileReadOnlySync,
   settleRemoteNoteFileSync,
-  unprotectForRemoteWriteSync
+  writeThroughLockSync
 } from './files'
 import {
   checkLockedFilesAtOpen,
@@ -66,7 +65,7 @@ import {
   scheduleLockedFileReconcile,
   setVaultLock
 } from './service'
-import { getBaseline, writeLockRow } from './store'
+import { getBaseline, writeBaseline, writeLockRow } from './store'
 import { atomicWrite, deleteFile } from '../vault/file-ops'
 
 const isWindows = process.platform === 'win32'
@@ -361,15 +360,31 @@ describe('vault read-only locks (#2606)', () => {
     writeRemoteLock('note', 'note-a', true)
     setFileReadOnlySync(file, true)
 
-    expect(unprotectForRemoteWriteSync(file)).toBe('notes/a.md')
-    expect(isWritable(file)).toBe(true)
-    fs.writeFileSync(file, 'remote\n')
-    afterLockedFileWriteSync(file, 'notes/a.md', 'remote\n')
+    writeThroughLockSync(file, () => {
+      expect(isWritable(file)).toBe(true)
+      fs.writeFileSync(file, 'remote\n')
+      return 'remote\n'
+    })
 
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('remote\n')
-    expect(unprotectForRemoteWriteSync(path.join(vault, 'notes/free.md'))).toBeNull()
     expect(() => setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)).not.toThrow()
+  })
+
+  it('a remote write that throws leaves the locked file read-only with its baseline', () => {
+    const file = addNote('note-a', 'notes/a.md', 'a\n')
+    writeRemoteLock('note', 'note-a', true)
+    setFileReadOnlySync(file, true)
+    writeBaseline(asClientDb(data.db), 'note-a', 'a\n', 'hash-a')
+
+    expect(() =>
+      writeThroughLockSync(file, () => {
+        throw new Error('ENOSPC')
+      })
+    ).toThrow('ENOSPC')
+
+    if (!isWindows) expect(isWritable(file)).toBe(false)
+    expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
   })
 
   const modeOf = (absolutePath: string): number => fs.statSync(absolutePath).mode & 0o777

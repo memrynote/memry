@@ -304,9 +304,15 @@ export async function writeJournalEntryWithContent(
   const existing =
     existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
   const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)
-  const lockedPath = await beforeGuardedWrite(store.resolve(relativePath))
-  await store.write(relativePath, result.fileContent)
-  await afterGuardedWrite(store.resolve(relativePath), lockedPath, result.fileContent)
+  const absolutePath = store.resolve(relativePath)
+  const lockedPath = await beforeGuardedWrite(absolutePath)
+  let written: string | null = null
+  try {
+    await store.write(relativePath, result.fileContent)
+    written = result.fileContent
+  } finally {
+    await afterGuardedWrite(absolutePath, lockedPath, written)
+  }
   return result
 }
 
@@ -429,8 +435,13 @@ export async function writeJournalEntry(
 export async function deleteJournalEntryFile(date: string): Promise<boolean> {
   const store = getContentStore()
   const relativePath = store.getJournalRelativePath(date)
-  await beforeGuardedWrite(store.resolve(relativePath))
-  return store.remove(relativePath)
+  const absolutePath = store.resolve(relativePath)
+  const lockedPath = await beforeGuardedWrite(absolutePath)
+  try {
+    return await store.remove(relativePath)
+  } finally {
+    await afterGuardedWrite(absolutePath, lockedPath, null)
+  }
 }
 
 /**

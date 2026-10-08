@@ -29,6 +29,7 @@ vi.mock('chokidar', () => ({ default: { watch: vi.fn() }, watch: vi.fn() }))
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
   getDatabase: vi.fn(),
+  isDatabaseInitialized: () => true,
   updateFtsContent: vi.fn()
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
@@ -45,9 +46,15 @@ vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
-vi.mock('./index', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./index')>()),
-  getStatus: () => ({ path: mocks.vaultPath })
+vi.mock('./index', () => ({
+  getStatus: () => ({ path: mocks.vaultPath }),
+  getConfig: () => ({
+    excludePatterns: [],
+    defaultNoteFolder: 'notes',
+    journalFolder: 'journal',
+    journalDateFormat: 'YYYY-MM-DD',
+    attachmentsFolder: 'attachments'
+  })
 }))
 
 import { getDatabase, getIndexDatabase } from '../database'

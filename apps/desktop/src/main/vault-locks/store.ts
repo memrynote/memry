@@ -7,6 +7,7 @@
 import { eq } from 'drizzle-orm'
 import {
   vaultLockBaselines,
+  vaultLockFileModes,
   vaultLocks,
   type VaultLockBaselineRow,
   type VaultLockRow
@@ -86,4 +87,29 @@ export function listBaselineNoteIds(db: DataDb): string[] {
     .from(vaultLockBaselines)
     .all()
     .map((row) => row.noteId)
+}
+
+export function getFileMode(db: DataDb, path: string): number | undefined {
+  return db
+    .select({ mode: vaultLockFileModes.mode })
+    .from(vaultLockFileModes)
+    .where(eq(vaultLockFileModes.path, path))
+    .get()?.mode
+}
+
+/** Keeps the first mode recorded for a path: later locks see the bits the lock itself set. */
+export function recordFileMode(db: DataDb, path: string, mode: number): void {
+  db.insert(vaultLockFileModes).values({ path, mode }).onConflictDoNothing().run()
+}
+
+export function forgetFileMode(db: DataDb, path: string): void {
+  db.delete(vaultLockFileModes).where(eq(vaultLockFileModes.path, path)).run()
+}
+
+export function listFileModePaths(db: DataDb): string[] {
+  return db
+    .select({ path: vaultLockFileModes.path })
+    .from(vaultLockFileModes)
+    .all()
+    .map((row) => row.path)
 }
