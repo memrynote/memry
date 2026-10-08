@@ -1,12 +1,4 @@
-/**
- * Verifier for `versioned-values.json` (chapter 06 §6.11).
- *
- * The committed JSON is the input; the production functions in
- * `packages/shared/src/versioned.ts` are recomputed against it. Every join case
- * is also run with the seats swapped: the stored value must not depend on
- * which device evaluates the join. The Rust core runs the same file in
- * `crates/memry-core/tests/versioned_values_vectors.rs`.
- */
+/** Verifier for `versioned-values.json` (chapter 06 §6.11). */
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -17,7 +9,8 @@ import {
   plainVersionedMap,
   stampVersionedMapPatch,
   stampVersionedValue,
-  type JsonValue
+  type JsonValue,
+  type VersionedObject
 } from '../../../shared/src/versioned.ts'
 import { loadVectorFile } from './vector-loader'
 
@@ -71,7 +64,7 @@ function check(c: Case, input: Record<string, unknown>): void {
       ).toEqual(c.expected.value)
       return
     case 'stamp-value':
-      expect(stampVersionedValue(input.previous, input.edited as Record<string, unknown>)).toEqual(
+      expect(stampVersionedValue(input.previous, input.edited as VersionedObject)).toEqual(
         c.expected.value
       )
       return

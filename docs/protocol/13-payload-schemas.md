@@ -138,7 +138,7 @@ A client MUST NOT add a required field to an existing payload type.
 ## 13.4 Absent versus null
 
 **Normative, and load-bearing.** It is stated in three separate schema comments
-(`packages/contracts/src/sync-payloads.ts:142-143`, `:349-351`, `:356-357`):
+(`packages/contracts/src/sync-payloads.ts:141-142`, `:348-350`, `:355-356`):
 
 - **`undefined` (key absent)** means the sender does not know the field; **the
   local value MUST be kept**.
@@ -276,7 +276,7 @@ create or update without it is rejected by **an explicit guard in the handler,
 not by the schema**. Deletes never reach any parser at all: the applier
 short-circuits `operation === 'delete'` before decoding the body.
 
-### 13.7.3 `task` — `:39-65`
+### 13.7.3 `task` — `:39-64`
 
 15 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
 `linkedCanvasIds`, **`fields`**, `clock`, **`fieldClocks`**, `createdAt`,
@@ -290,29 +290,29 @@ versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
 
 #### 13.7.3.1 `fields`
 
-The task's field values by field name (`:60`), declared as an opaque, nullable,
+The task's field values by field name (`:59`), declared as an opaque, nullable,
 optional record that reads a non-object as absent (`:33-37`). **Normative**:
 
 - An entry is `{ "v": <any JSON value>, "t": <integer >= 0> }`, keyed by the
   field name: the vault property key, case-sensitive, 1 to 200 characters on a
-  local write (`packages/contracts/src/tasks-api.ts:69`). `v: null` is a removal.
+  local write (`packages/contracts/src/tasks-api.ts:63`). `v: null` is a removal.
   An entry MAY carry further keys, and a receiver MUST keep an entry whole: the
   join stores the winning entry as it arrived
-  (`packages/shared/src/versioned.ts:153-174`).
+  (`packages/shared/src/versioned.ts:114-135`).
 - A relation value is an array of `memry://note/<id>` strings, even for a
   single-valued field (`packages/contracts/src/relation-uri.ts:48-52`).
 - **Absent** means the sender does not model the key, as on every desktop
   build that predates this section. The receiver keeps its local map (§13.4) and heals it (chapter
   06 §6.11.4).
 - **`null`** carries no version and MUST NOT be sent. A receiver treats it as
-  no information: no write and no heal (`packages/shared/src/versioned.ts:155`).
+  no information: no write and no heal (`packages/shared/src/versioned.ts:116`).
 - A value that is not an object MUST read as absent rather than fail the item
   (`.catch(undefined)`, the `cover` precedent of §13.7.1.1), and an entry that is
-  not an object is dropped, never stored (`packages/shared/src/versioned.ts:118-125`).
+  not an object is dropped, never stored (`packages/shared/src/versioned.ts:87-96`).
 - A sender that holds no map MUST omit the key. Desktop's NULL column is
-  omitted by its one row-to-payload step (`packages/sync-client/src/task-wire.ts:14-20`),
+  omitted by its one row-to-payload step (`packages/sync-client/src/task-wire.ts:8-14`),
   which builds the push rebuild, the seed and the sync service's payload
-  (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:421`, `:444`,
+  (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:423`, `:446`,
   `packages/sync-client/src/task-sync.ts:42`). `{}` is a valid empty map.
 
 ```json
@@ -324,11 +324,11 @@ optional record that reads a non-object as absent (`:33-37`). **Normative**:
 ```
 
 The Rust core projects it as `Field::opt_null("fields", Kind::Any)` with no
-column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:84`). It
+column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:83`). It
 carries the bytes on a wholesale apply, keeps its local copy on a concurrent
 merge (chapter 06 §6.9.2), and copies the map to a duplicate and to a next
-occurrence (`crates/memry-core/src/domain/tasks/create.rs:128`,
-`crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
+occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
+`crates/memry-core/src/domain/tasks/lifecycle.rs:35`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.
 
 ### 13.7.4 `project` — `:239-253`
@@ -338,7 +338,7 @@ occurrence (`crates/memry-core/src/domain/tasks/create.rs:128`,
 nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 `:216-223`) and `links` (`ProjectLinkSyncSchema`).
 
-### 13.7.5 `task_activity` — `:102-112`
+### 13.7.5 `task_activity` — `:101-111`
 
 `taskId`, `action`, `field`, `oldValue`, `newValue`, `actor`, `deviceId`,
 `clock`, `createdAt`.
@@ -350,14 +350,14 @@ nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 A task field value (§13.7.3.1) is logged as `field: "fields.<name>"`, one row
 per changed field, and a string value over 500 characters is logged like
 `description`: `oldValue` is `null` and `newValue` is `{"delta": n}`
-(`apps/desktop/src/main/tasks/activity-log.ts:202-231`).
+(`apps/desktop/src/main/tasks/activity-log.ts:206-228`).
 
-### 13.7.6 `template` — `:114-128`
+### 13.7.6 `template` — `:113-127`
 
 `name`, `description`, `icon`, `tags`, `properties`, `content`, `clock`,
 `createdAt`, `modifiedAt`.
 
-**`properties` must stay an array** (`TemplatePropertySchema[]`, `:123`) or note
+**`properties` must stay an array** (`TemplatePropertySchema[]`, `:122`) or note
 creation from the template throws.
 
 **The element shape**, from `packages/contracts/src/templates-api.ts:102-117`:
@@ -380,19 +380,19 @@ two were written for different purposes and have drifted. This is recorded as
 an observation, not a rule to enforce — `type` is advisory on both sides and
 neither list is a wire constraint on the other.
 
-### 13.7.7 `tag_definition` — `:346-364`
+### 13.7.7 `tag_definition` — `:345-362`
 
 `name` and `color` are **required**; `icon`, `categoryId`, `sortOrder`,
 `colorAuthored`, `views`, **`schema`**, `clock`, `createdAt`.
 
 - **`colorAuthored` absent means "cannot tell" and the receiver honours the
-  colour**; only a sender that knows the field can say `false` (`:349-351`).
+  colour**; only a sender that knows the field can say `false` (`:348-350`).
 - **`views`: `undefined` keeps the local value, `null` is an explicit clear**
-  (`:356-357`). **A sender that holds no views omits the key** (desktop: a NULL
+  (`:355-356`). **A sender that holds no views omits the key** (desktop: a NULL
   column), and an explicit "no views" travels as `[]`
-  (`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:210`,
-  `apps/desktop/src/main/database/queries/tag-definitions.ts:233-238`); deleting
-  a tag's last view writes `[]` (`apps/desktop/src/main/ipc/folder-view-handlers.ts:170`).
+  (`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:205`,
+  `apps/desktop/src/main/database/queries/tag-definitions.ts:229-234`); deleting
+  a tag's last view writes `[]` (`apps/desktop/src/main/ipc/folder-view-handlers.ts:296`).
   Desktop builds before this rule send `views: null` for a tag without saved
   views, which clears a peer's; the receive rule is unchanged.
 - **`schema`: absent keeps the local value, `null` carries no information, and
@@ -402,7 +402,7 @@ neither list is a wire constraint on the other.
 #### 13.7.7.1 `schema`
 
 One versioned object holding the tag's fields, template, parent and preset
-(`:361`), declared like `task.fields` (`:33-37`). **Normative**:
+(`:359`), declared like `task.fields` (`:33-37`). **Normative**:
 
 ```json
 "schema": {
@@ -432,14 +432,14 @@ One versioned object holding the tag's fields, template, parent and preset
   the definition came from, or `null`; an unknown string round-trips.
 - Every object inside `schema` is open: a receiver MUST keep every key at every
   depth, and the join stores the winning object as it arrived
-  (`packages/shared/src/versioned.ts:137-147`), so a schema a newer build wrote is
+  (`packages/shared/src/versioned.ts:102-112`), so a schema a newer build wrote is
   stored and pushed verbatim.
 - A sender that holds no schema MUST omit the key (desktop: a NULL column,
-  `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:211`).
+  `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:206`).
   Removing everything is a versioned empty value, never `null`.
 
 The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
-column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:65`):
+column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`):
 a wholesale apply stores it verbatim, and a concurrent tag definition takes the
 remote payload (chapter 06 §6.8), which a desktop then heals.
 
@@ -556,13 +556,13 @@ The bytes ride in the record payload rather than the attachment pipeline because
 a normalised icon is a few KB, and this keeps every device's icon directory
 self-healing from the row (`:348-354`).
 
-### 13.7.12 `reminder` — `:171-187`
+### 13.7.12 `reminder` — `:170-186`
 
 `targetType`, `targetId`, `remindAt`, `anchorId`, `highlightText`,
 `highlightStart`, `highlightEnd`, `title`, `note`, `status`, `dismissedAt`,
 `snoozedUntil`, `clock`, `createdAt`, `modifiedAt`.
 
-**`triggeredAt` is deliberately absent from the payload** (`:166-170`): each
+**`triggeredAt` is deliberately absent from the payload** (`:165-169`): each
 device shows its own notification, so a synced value would suppress it on a
 device that never displayed it. **Dismiss and snooze state does sync.**
 
@@ -588,7 +588,7 @@ removal** (a removal ticks the clock): the receiver keeps its value. A device
 seeds a key from its own device-local value only while no device has clocked
 that path.
 
-### 13.7.14 `filter` — `:86-92`
+### 13.7.14 `filter` — `:85-91`
 
 `name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
 `fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
@@ -602,7 +602,7 @@ push is its whole `saved_filters` row serialised
 edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
 Starring writes `config.starred` as a boolean, `false` included.
 
-### 13.7.15 `inbox` — `:67-83`
+### 13.7.15 `inbox` — `:66-82`
 
 `title`, `content`, `type`, `metadata`, `filedAt`, `filedTo`, `filedAction`,
 `snoozedUntil`, `snoozeReason`, `archivedAt`, `sourceUrl`, `sourceTitle`,
@@ -689,7 +689,7 @@ an item (by `createdAt`, then id) decides which provider writes it**
 (`provider/write-routing.ts`); a promote writes one `provider_managed` /
 `time_and_text` binding beside the new event.
 
-### 13.7.20 `bookmark` — `:155-161`
+### 13.7.20 `bookmark` — `:154-160`
 
 `itemType`, `itemId`, `position`, `clock`, `createdAt`. No `modifiedAt` and
 no `fieldClocks`: `bookmark` takes the document-level resolver (§13.9).
@@ -704,7 +704,7 @@ to a live row, `folder` by path and `tag` by name, and hides anything else,
 as desktop's sidebar does (`resolveBookmarkItem`). This client reads
 bookmarks and does not write them.
 
-### 13.7.21 `canvas` — `:199-219`
+### 13.7.21 `canvas` — `:198-218`
 
 `id`, `vaultId`, `title`, `scene`, `folder`, `icon`, `ownerNoteId`, `clock`,
 `deletedAt`, every one optional on the wire. Desktop's push states all nine,
@@ -763,7 +763,7 @@ is a new item, not a re-push of the merged one.
 
 | Type                        | Algorithm                                                | Carries `fieldClocks`                              |
 | --------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:62`) |
+| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:61`) |
 | `project`                   | field-level                                              | yes (`:247`)                                       |
 | `calendar_event`            | field-level                                              | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |

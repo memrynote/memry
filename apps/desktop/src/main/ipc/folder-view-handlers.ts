@@ -163,15 +163,16 @@ async function readScopedViews(scope: ViewScope): Promise<ViewConfig[] | null> {
   return folderConfig?.views ?? null
 }
 
-async function writeScopedViews(scope: ViewScope, views: ViewConfig[] | null): Promise<void> {
+async function writeScopedViews(scope: ViewScope, views: ViewConfig[]): Promise<void> {
   if (scope.kind === 'tag') {
-    // Deleting the last view is an explicit "no views": stored as [] so the tag
-    // push carries it, where a NULL column would be left out.
-    writeTagViews(getDatabase(), scope.tag, views ?? [])
+    writeTagViews(getDatabase(), scope.tag, views)
     return
   }
   const currentConfig = (await readFolderConfig(scope.path)) || {}
-  await writeFolderConfig(scope.path, { ...currentConfig, views: views ?? undefined })
+  await writeFolderConfig(scope.path, {
+    ...currentConfig,
+    views: views.length > 0 ? views : undefined
+  })
 }
 
 // ============================================================================
@@ -289,14 +290,10 @@ export function registerFolderViewHandlers(): void {
 
         const filtered = views.filter((v) => v.name !== input.viewName)
 
-        if (filtered.length === 0) {
-          await writeScopedViews(input.scope, null)
-        } else {
-          if (!filtered.some((v) => v.default)) {
-            filtered[0].default = true
-          }
-          await writeScopedViews(input.scope, filtered)
+        if (filtered.length > 0 && !filtered.some((v) => v.default)) {
+          filtered[0].default = true
         }
+        await writeScopedViews(input.scope, filtered)
 
         return { success: true }
       }, 'errors:folderView.deleteViewFailed')

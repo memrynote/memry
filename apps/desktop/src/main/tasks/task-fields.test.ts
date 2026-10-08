@@ -1,8 +1,3 @@
-/**
- * Task field values through the real desktop tasks domain, storage and
- * data.db: callers see plain values, and only storage stamps versions
- * (chapter 06 section 6.11).
- */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 

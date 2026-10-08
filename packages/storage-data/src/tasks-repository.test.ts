@@ -7,6 +7,7 @@ import type {
   Task,
   TaskStats
 } from '@memry/domain-tasks'
+import type { VersionedMap } from '@memry/shared/versioned'
 import {
   createTasksRepository,
   type ProjectQueryModule,
@@ -15,10 +16,11 @@ import {
 
 type TestDb = { __test: true }
 
-type TaskRow = Omit<Task, 'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom'> & {
+type TaskRow = Omit<Task, 'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom' | 'fields'> & {
   priority: number
   repeatConfig: unknown
   repeatFrom: string | null
+  fields?: VersionedMap | null
 }
 
 function makeTaskRow(overrides: Partial<TaskRow> = {}): TaskRow {

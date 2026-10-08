@@ -1,13 +1,8 @@
-//! The core carries `task.fields` and `tag_definition.schema` without merging
-//! them (chapter 06 §6.11, chapter 13 §13.7.3.1 and §13.7.7.1). Every apply
-//! and copy path keeps the bytes a desktop wrote, which is what lets a desktop
-//! join and heal them. Real SQLite, the real apply entry, the real task writes.
-//!
 //! | Test                                              | Rule                     |
 //! | ------------------------------------------------- | ------------------------ |
 //! | a wholesale apply stores both keys as sent        | §13.2 rule 1, §6.3.1     |
 //! | a concurrent task merge keeps the local fields    | §6.9.2                   |
-//! | a duplicate and a next occurrence copy the fields | `DUPLICATED_FIELDS`, D3  |
+//! | a duplicate and a next occurrence copy the fields | §13.7.3.1                |
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -55,12 +50,10 @@ fn payload_of(conn: &Connection, item_type: &str, item_id: &str) -> Value {
     serde_json::from_str(&raw).expect("valid JSON")
 }
 
-/// A desktop's field map: a relation, a removal, and an entry key this build
-/// does not model.
 fn fields() -> Value {
     json!({
         "Waiting on": {"v": ["memry://note/abc123def456"], "t": 2},
-        "Thread": {"v": null, "t": 3, "d": {"source": "agent"}}
+        "Thread": {"v": null, "t": 3, "addedByNewerBuild": {"source": "agent"}}
     })
 }
 
@@ -75,7 +68,6 @@ fn schema() -> Value {
     })
 }
 
-/// A project with desktop's three default statuses.
 fn seed_project(conn: &Connection) {
     apply(
         conn,
@@ -132,7 +124,6 @@ fn a_concurrent_task_merge_keeps_the_local_fields_and_imports_none() {
             json!({"title": "Ask", "projectId": "pa", "fields": fields(), "clock": {"device-a": 1}}),
         );
 
-        // A concurrent edit from a peer that holds another map.
         apply(
             conn,
             "task",

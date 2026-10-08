@@ -55,8 +55,7 @@ export const TaskSyncPayloadSchema = z.object({
   tags: z.array(z.string()).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
   linkedCanvasIds: z.array(z.string()).optional(),
-  // Field values by name, `{ v, t }` per entry (chapter 13 §13.7.3.1). Not one of
-  // the fifteen field-merged fields.
+  // Chapter 13 §13.7.3.1.
   fields: VersionedValueSyncSchema,
   clock: VectorClockSchema.optional(),
   fieldClocks: FieldClocksSchema.optional(),
@@ -356,8 +355,7 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   // `undefined` (key absent) means the sender predates saved views and must not
   // clobber the local value; `null` is an explicit clear. See tag-definition-handler.ts.
   views: z.array(ViewConfigSchema).nullable().optional(),
-  // The tag's fields, template, parent and preset as one versioned object
-  // (chapter 13 §13.7.7.1).
+  // Chapter 13 §13.7.7.1.
   schema: VersionedValueSyncSchema,
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()

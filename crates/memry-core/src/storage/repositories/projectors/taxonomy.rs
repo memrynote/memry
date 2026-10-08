@@ -59,9 +59,8 @@ const TAG_DEFINITION_FIELDS: &[Field] = &[
     Field::opt_null("colorAuthored", Kind::Bool),
     // `undefined` keeps the local value, `null` is an explicit clear (§13.4).
     Field::opt_null("views", Kind::Array),
-    // §13.7.7.1: one versioned object, carried verbatim and never merged
-    // here (chapter 06 §6.11). `Any`, because a shape this build does not
-    // know must never mark a tag corrupt (the `cover` lesson).
+    // §13.7.7.1. `Any`, because a shape this build does not know must never
+    // mark a tag corrupt (the `cover` lesson).
     Field::opt_null("schema", Kind::Any),
     Field::opt_null("clock", Kind::Clock),
     Field::opt_null("createdAt", Kind::Text),

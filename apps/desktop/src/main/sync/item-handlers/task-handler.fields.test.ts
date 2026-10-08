@@ -1,7 +1,3 @@
-/**
- * `task.fields` on pull (chapter 06 section 6.11) and the task push payload,
- * against a real data.db, the real handler and the real task sync service.
- */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
@@ -219,7 +215,6 @@ describe('task push payload', () => {
   /** `id` and `syncedAt` are the envelope keys receivers ignore (unknown-fields.ts). */
   const SENDABLE = new Set([...Object.keys(TaskSyncPayloadSchema.shape), 'id', 'syncedAt'])
 
-  /** Every column set, junctions included, and no clock so `seedUnclocked` takes it. */
   function seedEveryColumn(fields: VersionedMap | null): void {
     testDb.db
       .insert(tasks)
@@ -249,7 +244,6 @@ describe('task push payload', () => {
     testDb.db.insert(taskCanvases).values({ taskId: 'task-1', canvasId: 'canvas-1' }).run()
   }
 
-  /** The three row-to-payload sites: the seed, a local edit's queued payload, and the push rebuild. */
   function payloads(): Record<string, Record<string, unknown>> {
     const db = testDb.db as unknown as DrizzleDb
     taskHandler.seedUnclocked(db, 'device-a', queue)

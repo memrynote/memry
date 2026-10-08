@@ -1425,8 +1425,6 @@ describe('0068_note_body_sync migration', () => {
   })
 })
 
-// Tags with fields: a 0057+ build kept a newer peer's `schema` and `fields` in
-// sync_unknown_fields, and the upgrade adopts them once.
 describe('0071_tag_schema_task_fields migration', () => {
   let tempDir: string
   const migrationsDir = path.join(__dirname, 'drizzle-data')
@@ -1462,7 +1460,6 @@ describe('0071_tag_schema_task_fields migration', () => {
   }
   const waitingOn = { 'Waiting on': { v: ['memry://note/abc'], t: 3 } }
 
-  /** A pre-0071 install: rows plus what #2265 captured from newer peers. */
   function upgradeWithCaptures(): Database.Database {
     const sqlite = new Database(path.join(tempDir, 'data.db'))
     const db = drizzle(sqlite)
@@ -1541,7 +1538,6 @@ describe('0071_tag_schema_task_fields migration', () => {
       },
       tasks: { t1: waitingOn, t2: null, t3: null, t4: null, t5: null, t6: null }
     })
-    // The next pull of each item rewrites its capture without the known key.
     expect(sqlite.prepare('SELECT count(*) AS n FROM sync_unknown_fields').get()).toEqual({ n: 12 })
     sqlite.close()
   })

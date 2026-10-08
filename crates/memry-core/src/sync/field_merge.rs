@@ -239,8 +239,7 @@ pub fn init_all_field_clocks(
         .collect()
 }
 
-/// §6.4.2's canonical form of one value: the string chapter 06 compares for
-/// field equality here and for the versioned-value order of §6.11.
+/// §6.4.2's canonical form of one value.
 pub fn canonical_json(value: &Json) -> String {
     let mut out = String::new();
     write_canonical(value, &mut out);

@@ -153,9 +153,6 @@ describe('TaskSyncPayloadSchema', () => {
   })
 })
 
-// A peer on another build can send a shape this one cannot read. Failing the
-// parse would retry the whole task or tag forever (schema_invalid); the
-// versioned keys read it as absent instead, like `cover`.
 describe.each([
   { type: 'task', schema: TaskSyncPayloadSchema, base: {}, key: 'fields' },
   {

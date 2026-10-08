@@ -1,26 +1,3 @@
-/**
- * Convergence of the two versioned keys (chapter 06 §6.11) against every
- * peer that ships today, over the production join, stamps and heal rule.
- *
- * One item, five devices and a server:
- *  - N (two of them): this build. It joins on every clock-gate outcome and
- *    heals per `owesHeal`, ticking its own clock entry as `enqueueUpdate` does.
- *  - D1: a desktop before #2265. It strips the key on apply and never sends it.
- *  - D2: a desktop since #2265. It captures the key from every pulled payload
- *    before the clock gate and echoes that capture on its next push, so it can
- *    push a stale value it skipped under a newer clock.
- *  - R: the Rust core. A wholesale apply stores the remote bytes. A concurrent
- *    task merge keeps its local key and re-queues nothing; a concurrent tag
- *    definition takes the remote payload.
- *  - The server keeps one row and refuses a push whose clock exceeds the
- *    stored clock in no component (`detectReplay`).
- *
- * Old desktops re-queue a concurrent task merge only when a listed field
- * conflicted, which this model draws at random, and always re-queue a
- * concurrent tag definition. The oracle is independent of the join: after
- * quiescence both N devices and the server row hold, per key, the greatest
- * entry an N device ever stamped.
- */
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -69,11 +46,10 @@ function seededRandom(seed: number): () => number {
 
 interface Scenario {
   join(local: unknown, remote: unknown): JoinResult<unknown>
-  /** One local edit of the key; `created` is what the oracle must find afterwards. */
   edit(stored: unknown, clock: Clock, random: () => number): { stored: unknown; created: unknown }
-  /** The handler's merge branch returns 'conflict', which re-queues at the union clock. */
   mergeRequeues: boolean
   rustConcurrent: 'keep-local' | 'take-remote'
+  /** Orders entries without the production code, so a broken join cannot confirm itself. */
   oracle(created: unknown[]): unknown
   empty: unknown
 }
@@ -143,13 +119,11 @@ interface Rules {
 const PRODUCTION: Rules = { heal: owesHeal, joinOnApply: true }
 
 interface Device {
-  readonly kind: 'N' | 'D1' | 'D2' | 'R'
+  readonly kind: 'thisBuild' | 'stripsUnknownKeys' | 'echoesLastCapture' | 'rustCore'
   readonly id: string
   clock: Clock
-  /** The key as stored; `undefined` is a NULL column, omitted on push. */
   stored: unknown
-  /** D2 only: the key captured from the last pulled payload. */
-  remainder: unknown
+  capturedFromLastPull: unknown
   dirty: boolean
 }
 
@@ -161,12 +135,19 @@ function run(seed: number, scenario: Scenario, rules: Rules): boolean {
   const random = seededRandom(seed)
   const same = (a: unknown, b: unknown): boolean =>
     canonicalJson(a ?? scenario.empty) === canonicalJson(b ?? scenario.empty)
-  const devices: Device[] = (['N', 'N', 'D1', 'D2', 'R'] as const).map((kind, index) => ({
+  const kinds = [
+    'thisBuild',
+    'thisBuild',
+    'stripsUnknownKeys',
+    'echoesLastCapture',
+    'rustCore'
+  ] as const
+  const devices: Device[] = kinds.map((kind, index) => ({
     kind,
     id: `${kind}${index}`,
     clock: {},
     stored: undefined,
-    remainder: undefined,
+    capturedFromLastPull: undefined,
     dirty: false
   }))
   const server: Server = {}
@@ -195,21 +176,22 @@ function run(seed: number, scenario: Scenario, rules: Rules): boolean {
   function pull(device: Device): void {
     const row = server.row
     if (!row) return
-    if (device.kind === 'D2') device.remainder = row.value
-    if (device.kind === 'N') return applyThisBuild(device, row)
+    if (device.kind === 'echoesLastCapture') device.capturedFromLastPull = row.value
+    if (device.kind === 'thisBuild') return applyThisBuild(device, row)
     const order = compareClocks(device.clock, row.clock)
     if (order === 'after') return
     if (order === 'concurrent') {
       device.clock = unionClock(device.clock, row.clock)
-      if (device.kind === 'R') {
+      if (device.kind === 'rustCore') {
         if (scenario.rustConcurrent === 'take-remote') device.stored = row.value
         return
       }
-      if (scenario.mergeRequeues || random() < 0.5) device.dirty = true
+      const listedFieldConflicted = random() < 0.5
+      if (scenario.mergeRequeues || listedFieldConflicted) device.dirty = true
       return
     }
     device.clock = row.clock
-    if (device.kind === 'R') device.stored = row.value
+    if (device.kind === 'rustCore') device.stored = row.value
   }
 
   function push(device: Device): void {
@@ -219,12 +201,16 @@ function run(seed: number, scenario: Scenario, rules: Rules): boolean {
     const ahead = !stored || Object.entries(device.clock).some(([id, n]) => n > (stored[id] ?? 0))
     if (!ahead) return
     const value =
-      device.kind === 'D1' ? undefined : device.kind === 'D2' ? device.remainder : device.stored
+      device.kind === 'stripsUnknownKeys'
+        ? undefined
+        : device.kind === 'echoesLastCapture'
+          ? device.capturedFromLastPull
+          : device.stored
     server.row = { clock: device.clock, value }
   }
 
   function edit(device: Device): void {
-    if (device.kind === 'N' && random() < 0.8) {
+    if (device.kind === 'thisBuild' && random() < 0.8) {
       const next = scenario.edit(device.stored, device.clock, random)
       device.stored = next.stored
       created.push(next.created)
@@ -255,7 +241,7 @@ function run(seed: number, scenario: Scenario, rules: Rules): boolean {
 
   const expected = scenario.oracle(created)
   return (
-    devices.filter((d) => d.kind === 'N').every((d) => same(d.stored, expected)) &&
+    devices.filter((d) => d.kind === 'thisBuild').every((d) => same(d.stored, expected)) &&
     same(server.row?.value, expected)
   )
 }

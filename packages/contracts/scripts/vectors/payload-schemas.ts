@@ -131,13 +131,11 @@ const SPECS: TypeSpec[] = [
       categoryId: 'cat-1',
       sortOrder: 3,
       views: [],
-      // `format` is a key a newer build put inside an array element: the opaque
-      // record keeps it where a declared element shape would strip it.
       schema: {
         t: 3,
         fields: [
           { name: 'Company', relation: { target: 'company', many: false, inverse: 'People' } },
-          { name: 'Phone', format: 'e164' }
+          { name: 'Phone', addedByNewerBuild: 'e164' }
         ],
         template: { id: 'tpl_8f2c', autofill: true },
         extends: null,
@@ -221,10 +219,9 @@ const SPECS: TypeSpec[] = [
       tags: ['protocol'],
       linkedNoteIds: ['abc123def456'],
       linkedCanvasIds: [],
-      // `d` is a key a newer build put on one entry; `v: null` is a removal.
       fields: {
         'Waiting on': { v: ['memry://note/abc123def456'], t: 2 },
-        'Follow up': { v: '2026-05-14', t: 1, d: { source: 'agent' } },
+        'Follow up': { v: '2026-05-14', t: 1, addedByNewerBuild: { source: 'agent' } },
         Thread: { v: null, t: 3 }
       },
       clock: CLOCK,

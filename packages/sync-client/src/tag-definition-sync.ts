@@ -16,10 +16,6 @@ interface TagDefinitionSyncDeps {
 
 let instance: TagDefinitionSyncService | null = null
 
-/**
- * The TEXT columns of a `tag_definitions` row that hold JSON, and the shape
- * `TagDefinitionSyncPayloadSchema` accepts for each.
- */
 const JSON_TEXT_KEYS: Record<string, (value: unknown) => boolean> = {
   views: Array.isArray,
   schema: (value) => readVersionedObject(value) !== undefined
@@ -37,10 +33,6 @@ function parseJsonText(raw: unknown): unknown {
 /**
  * Normalise a raw `tag_definitions` row into something
  * `TagDefinitionSyncPayloadSchema` accepts.
- *
- * `views` and `schema` are TEXT columns holding JSON. Shipping the row verbatim
- * put a *string* on the wire, so `safeParse` failed on the receiving device and
- * the whole tag definition — colour included — was dropped.
  *
  * The push coordinator normally rebuilds this payload via
  * `tagDefinitionHandler.buildPushPayload`, so the frozen queue payload only

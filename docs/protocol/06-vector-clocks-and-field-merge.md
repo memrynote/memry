@@ -735,31 +735,31 @@ value, and a union of vector clocks on a tie is not associative.
 ### 6.11.2 Order and join
 
 - `version(x)` is `x.t` when it is a safe integer `>= 0`, and 0 otherwise
-  (`packages/shared/src/versioned.ts:53-57`).
+  (`packages/shared/src/versioned.ts:33-37`).
 - `canonical(x)` is §6.4.2's canonical form written out: object keys sorted by
   UTF-16 code units at every depth, arrays in order, no whitespace, numbers as
   the shortest round-trip digits with no exponent, `-0` as `0`, `undefined`
-  members dropped (`:65-98`). It is the same string as the Rust core's writer
-  (`crates/memry-core/src/sync/field_merge.rs:244`).
+  members dropped (`:43-72`). It is the same string as the Rust core's writer
+  (`crates/memry-core/src/sync/field_merge.rs:243`).
 - `a` wins over `b` iff `version(a) > version(b)`, or the versions are equal and
   `canonical(a)` is greater than `canonical(b)` compared as UTF-16 code units
-  (`packages/shared/src/versioned.ts:101-107`). Equal canonical forms are the
+  (`packages/shared/src/versioned.ts:74-80`). Equal canonical forms are the
   same value.
 - **`schema`**: the joined value is the winner of local and remote
-  (`packages/shared/src/versioned.ts:137-147`).
+  (`packages/shared/src/versioned.ts:102-112`).
 - **`fields`**: per field name, the winner of the two entries, and an entry
   present on one side only is taken from that side
-  (`packages/shared/src/versioned.ts:153-174`). A removal (`v: null`) is an
+  (`packages/shared/src/versioned.ts:114-135`). A removal (`v: null`) is an
   entry like any other, so a removal at `t = 3` beats a value at `t = 2` and
   loses to one at `t = 4`; a stale echo cannot resurrect a value.
 - A remote `null` carries no information: the join keeps the local value and
-  owes no heal (`packages/shared/src/versioned.ts:139`, `:155`). A remote that
+  owes no heal (`packages/shared/src/versioned.ts:104`, `:116`). A remote that
   is absent or not an object reads as absent.
 
 The join is commutative, associative and idempotent and uses no device id. It
 MUST run on every apply path, insert, apply, merge and a document-gate skip
-included (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:154`,
-`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:55`). A skip
+included (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:159`,
+`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:54`). A skip
 still joins because a #2265 capture can carry a value the receiver never saw
 directly. A client writes the joined value only when it differs from its own.
 
@@ -768,14 +768,14 @@ directly. A client writes the joined value only when it differs from its own.
 - A task field edit stamps every key it changes with one
   `t = max(clockTotal(C), highest t in the map) + 1`, where `C` is the task's
   document clock before this edit ticks it, `_offline` included (§6.2)
-  (`packages/shared/src/versioned.ts:184-197`, called from
-  `packages/storage-data/src/tasks-repository.ts:253-266`). An edit made after
+  (`packages/shared/src/versioned.ts:143-156`, called from
+  `packages/storage-data/src/tasks-repository.ts:244-257`). An edit made after
   seeing more history therefore outranks one made before it. A key whose value
   does not change keeps its entry, an entry keeps the keys a newer build added,
-  and a new task's values start at `t = 1` (`:164-167`).
+  and a new task's values start at `t = 1` (`:160-163`).
 - A schema edit stamps `t = version(previous) + 1` with no clock floor, so a
   device that never learned a newer schema cannot outrank it with one edit
-  (`packages/shared/src/versioned.ts:204-210`). An edit that changes nothing
+  (`packages/shared/src/versioned.ts:163-169`). An edit that changes nothing
   keeps the previous value and its `t`.
 - Neither stamp carries a device id, so rebinding `_offline` (§6.6) never touches
   a value: rebinding moves ticks without changing `clockTotal`.
@@ -784,10 +784,10 @@ directly. A client writes the joined value only when it differs from its own.
 
 After an apply, or a merge that does not return `'conflict'`, whose join left the
 remote behind (the key was absent, older, or missing entries), a client that
-models the key MUST re-push the item (`packages/shared/src/versioned.ts:227-233`).
+models the key MUST re-push the item (`packages/shared/src/versioned.ts:181-187`).
 Desktop enqueues a local update after the apply's transaction
-(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:382`,
-`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:157`). The
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:384`,
+`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:152`). The
 enqueue ticks this device into the document clock, which is what lets the
 re-push pass the server's replay check
 (`apps/sync-server/src/services/sync.ts:229-240`): the apply stored the remote's
@@ -812,7 +812,7 @@ test over the production join, stamps and heal rule
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | desktop before #2265              | strips both on apply and never sends them                                                                                                                                            | a newer desktop keeps its value (absent keeps) and heals                           |
 | desktop since #2265, before §6.11 | keeps them in `sync_unknown_fields` and echoes the last capture, possibly stale, under a newer clock                                                                                 | the join rejects the stale value by `t`, and the receiver heals                    |
-| desktop upgrading to §6.11        | data migration 0071 adopts a captured object into the new column once (`apps/desktop/src/main/database/drizzle-data/0071_tag_schema_task_fields.sql:29-65`)                          | the values show at once and push as stored                                         |
+| desktop upgrading to §6.11        | data migration 0071 adopts a captured object into the new column once (`apps/desktop/src/main/database/drizzle-data/0071_tag_schema_task_fields.sql:14-50`)                          | the values show at once and push as stored                                         |
 | Rust core                         | stores both verbatim, keeps local `fields` on a concurrent task merge, takes the remote payload on a concurrent tag definition, copies `fields` to a duplicate and a next occurrence | desktop joins and heals for it (`crates/memry-core/tests/versioned_keys_carry.rs`) |
 | server                            | stores ciphertext                                                                                                                                                                    | no change, and no version floor: an Electron desktop sends no client header        |
 

@@ -1,11 +1,4 @@
 /**
- * Class: versioned values (`versioned-values.json`), chapter 06 §6.11.
- *
- * The order, joins, stamps and plain read of the two versioned payload keys,
- * `tag_definition.schema` (one object) and `task.fields` (a map of `{ v, t }`
- * entries). Every expectation is the real output of
- * `packages/shared/src/versioned.ts`; nothing here predicts a result.
- *
  * Case kinds and their inputs (a key missing from `input` is an absent side):
  *  - `canonical`: `value` → the §6.4.2 canonical string;
  *  - `order`: `a`, `b` → the sign of `compareVersioned(a, b)`;
@@ -16,8 +9,6 @@
  *  - `stamp-map`: `stored`, `patch`, `clockTotal` → the stamped map;
  *  - `stamp-value`: `previous`, `edited` → the stamped object;
  *  - `plain`: `stored` → what a non-sync reader sees.
- *
- * Determinism: D1. Every function is pure.
  */
 import {
   canonicalJson,
@@ -27,7 +18,8 @@ import {
   plainVersionedMap,
   stampVersionedMapPatch,
   stampVersionedValue,
-  type JsonValue
+  type JsonValue,
+  type VersionedObject
 } from '../../../shared/src/versioned.ts'
 import { meta } from './shared'
 
@@ -415,7 +407,7 @@ function expectedOf(spec: CaseSpec): Record<string, unknown> {
       }
     case 'stamp-value':
       return {
-        value: stampVersionedValue(input.previous, input.edited as Record<string, unknown>)
+        value: stampVersionedValue(input.previous, input.edited as VersionedObject)
       }
     case 'plain':
       return { plain: plainVersionedMap(input.stored) }

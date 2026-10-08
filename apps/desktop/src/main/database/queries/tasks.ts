@@ -530,7 +530,6 @@ export function duplicateTask(db: DataDb, id: string, newId: string): Task | und
     startDate: original.startDate,
     repeatConfig: original.repeatConfig,
     repeatFrom: original.repeatFrom,
-    // Verbatim, versions included: a new item id has nothing to conflict with.
     fields: original.fields,
     createdAt: now,
     modifiedAt: now
@@ -570,7 +569,6 @@ export function duplicateSubtask(
     startDate: original.startDate,
     repeatConfig: original.repeatConfig,
     repeatFrom: original.repeatFrom,
-    // Verbatim, versions included: a new item id has nothing to conflict with.
     fields: original.fields,
     createdAt: now,
     modifiedAt: now

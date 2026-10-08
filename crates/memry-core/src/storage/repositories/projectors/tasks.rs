@@ -79,8 +79,7 @@ const TASK_FIELDS: &[Field] = &[
     // No column at all, by design (see the module comment), so a null here
     // reaches nothing but the verbatim payload.
     Field::opt_null("linkedCanvasIds", Kind::TextArray),
-    // §13.7.3.1: versioned field values, carried verbatim and never merged
-    // here (chapter 06 §6.11); not one of the fifteen, and no column.
+    // §13.7.3.1.
     Field::opt_null("fields", Kind::Any),
     // `task_merge` already reads both as `None` when they are null (§6.7,
     // §6.10), so refusing the payload here contradicted the merge that was

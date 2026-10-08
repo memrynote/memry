@@ -25,6 +25,7 @@ import {
   type TaskActivityActor
 } from '@memry/db-schema/schema/task-activity'
 import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
+import { TASK_FIELD_ACTIVITY_PREFIX } from '@memry/contracts/tasks-api'
 import { TaskActivityChannels } from '@memry/contracts/ipc-channels'
 import { utcNow } from '@memry/shared/utc'
 import { getDatabase } from '../database'
@@ -45,11 +46,10 @@ const IGNORED_FIELDS = new Set(['position', 'modifiedAt'])
 /** Stored as a length delta, never as the body text. See the schema module. */
 const LENGTH_ONLY_FIELDS = new Set(['description'])
 
-/** A task field holding a longer string is logged like `description`: length only. */
-const LONG_FIELD_VALUE = 500
+const TASK_FIELD_LENGTH_ONLY_ABOVE_CHARS = 500
 
 function isLongFieldText(value: unknown): boolean {
-  return typeof value === 'string' && value.length > LONG_FIELD_VALUE
+  return typeof value === 'string' && value.length > TASK_FIELD_LENGTH_ONLY_ABOVE_CHARS
 }
 
 interface ActivityRowInput {
@@ -176,7 +176,16 @@ function fieldRows(
     }
 
     if (LENGTH_ONLY_FIELDS.has(field)) {
-      rows.push(lengthOnlyRow(taskId, action, field, next, previous, actor))
+      rows.push(
+        lengthOnlyRow(
+          taskId,
+          action,
+          field,
+          next[field as keyof Task],
+          previous?.[field as keyof Task],
+          actor
+        )
+      )
       continue
     }
 
@@ -194,11 +203,6 @@ function fieldRows(
   return rows
 }
 
-/**
- * One row per task field whose value changed, named `fields.<name>`. A long
- * text value is stored as its length change, so a pasted document never
- * reaches the table or its encrypted sync payload.
- */
 function taskFieldRows(
   taskId: string,
   action: TaskActivityAction,
@@ -213,17 +217,10 @@ function taskFieldRows(
     const oldValue = encodeValue(before[name])
     const newValue = encodeValue(after[name])
     if (oldValue === newValue) continue
-    const field = `fields.${name}`
+    const field = `${TASK_FIELD_ACTIVITY_PREFIX}${name}`
     rows.push(
       isLongFieldText(before[name]) || isLongFieldText(after[name])
-        ? {
-            taskId,
-            action,
-            field,
-            oldValue: null,
-            newValue: JSON.stringify({ delta: textLength(after[name]) - textLength(before[name]) }),
-            actor
-          }
+        ? lengthOnlyRow(taskId, action, field, after[name], before[name], actor)
         : { taskId, action, field, oldValue, newValue, actor }
     )
   }
@@ -231,19 +228,19 @@ function taskFieldRows(
 }
 
 /**
- * A row for a field whose value must never be stored — today only
- * `description`. Carries the character delta so the UI can say what happened
- * without the body ever reaching the database or an encrypted payload.
+ * A row for a value that must never be stored: `description`, or a task field
+ * holding long text. Carries the character delta so the UI can say what
+ * happened without the text ever reaching the database or an encrypted payload.
  */
 function lengthOnlyRow(
   taskId: string,
   action: TaskActivityAction,
   field: string,
-  next: Partial<Task>,
-  previous: Partial<Task> | undefined,
+  next: unknown,
+  previous: unknown,
   actor: TaskActivityActor
 ): ActivityRowInput {
-  const delta = textLength(next[field as keyof Task]) - textLength(previous?.[field as keyof Task])
+  const delta = textLength(next) - textLength(previous)
   return { taskId, action, field, oldValue: null, newValue: JSON.stringify({ delta }), actor }
 }
 

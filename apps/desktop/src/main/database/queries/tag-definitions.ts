@@ -225,11 +225,7 @@ export function readTagViews(db: DrizzleDb, tag: string): ViewConfig[] | null {
   }
 }
 
-/**
- * `null` empties the column: this device holds no views, and a push leaves the
- * key out. `[]` is an explicit "no views", which a push sends so a peer clears
- * its own (a NULL column is never sent).
- */
+/** `null` empties the column, which a push leaves out; `[]` is pushed, so peers clear theirs too. */
 export function writeTagViews(db: DrizzleDb, tag: string, views: ViewConfig[] | null): void {
   db.update(tagDefinitions)
     .set({ views: views === null ? null : JSON.stringify(views) })

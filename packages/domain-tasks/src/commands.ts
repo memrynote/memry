@@ -7,7 +7,8 @@ import type {
   ProjectWithStatuses,
   Status,
   Task,
-  TaskFieldValue
+  TaskFieldValue,
+  TaskFields
 } from './types.ts'
 import type { TasksQueryRepository } from './queries.ts'
 
@@ -36,7 +37,6 @@ export interface TaskCreateInput {
   linkedCanvasIds?: string[]
   sourceNoteId?: string | null
   position?: number
-  /** The whole field map; a `null` value sets nothing. */
   fields?: Record<string, TaskFieldValue>
 }
 
@@ -56,14 +56,12 @@ export interface TaskUpdateInput {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
-  /** A patch: only the listed fields change, and `null` removes a field. */
   fields?: Record<string, TaskFieldValue>
 }
 
-/** A field patch as readers see it: the values before and after, never their versions. */
 export interface TaskFieldsPatch {
-  before: Record<string, TaskFieldValue>
-  after: Record<string, TaskFieldValue>
+  before: TaskFields
+  after: TaskFields
 }
 
 export interface TaskMoveInput {
@@ -119,10 +117,12 @@ export interface TasksCommandRepository extends TasksQueryRepository {
       | 'tags'
       | 'linkedNoteIds'
       | 'linkedCanvasIds'
+      | 'fields'
       | 'hasSubtasks'
       | 'subtaskCount'
       | 'completedSubtaskCount'
-    >
+    > &
+      Pick<TaskCreateInput, 'fields'>
   ): Task
   updateTask(
     id: string,
@@ -142,7 +142,6 @@ export interface TasksCommandRepository extends TasksQueryRepository {
       >
     >
   ): Task | undefined
-  /** Stamps the changed fields with versions; `undefined` when the task does not exist. */
   patchTaskFields(
     taskId: string,
     patch: Record<string, TaskFieldValue>

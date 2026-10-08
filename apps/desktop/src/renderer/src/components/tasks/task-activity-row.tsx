@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { TFunction } from 'i18next'
 import type { TaskActivityEntry } from '@memry/rpc/tasks'
+import { TASK_FIELD_ACTIVITY_PREFIX } from '@memry/contracts/tasks-api'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
@@ -16,8 +17,9 @@ import { cn } from '@/lib/utils'
  */
 export function fieldLabel(field: string | null, t: TFunction<'tasks'>): string {
   if (!field) return ''
-  // A task field row (`fields.<name>`) is labelled with the user's own field name.
-  if (field.startsWith('fields.')) return field.slice('fields.'.length)
+  if (field.startsWith(TASK_FIELD_ACTIVITY_PREFIX)) {
+    return field.slice(TASK_FIELD_ACTIVITY_PREFIX.length)
+  }
   const key = `drawer.activityField${field.charAt(0).toUpperCase()}${field.slice(1)}`
   const label = t(key as never)
   return label === key ? field : label

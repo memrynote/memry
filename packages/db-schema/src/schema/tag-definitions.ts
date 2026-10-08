@@ -18,10 +18,7 @@ export const tagDefinitions = sqliteTable('tag_definitions', {
   categoryId: text('category_id'),
   sortOrder: integer('sort_order').notNull().default(0),
   views: text('views'),
-  // The tag's fields, template, parent and preset as one versioned JSON object
-  // (`@memry/shared/versioned`), synced as `schema`. Plain TEXT like `views`, so
-  // a bad blob cannot break selecting every tag. NULL means this device holds
-  // none, and the push omits the key. See drizzle-data/0071_tag_schema_task_fields.sql.
+  // Plain TEXT like `views`, so a bad blob cannot break selecting every tag.
   schema: text('schema')
 })
 

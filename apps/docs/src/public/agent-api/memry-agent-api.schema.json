@@ -13496,7 +13496,8 @@
               },
               "additionalProperties": {
                 "$ref": "#/$defs/__schema0"
-              }
+              },
+              "description": "Field values by name. A null value sets nothing."
             }
           },
           "required": ["projectId", "title"],
@@ -13800,7 +13801,8 @@
               },
               "additionalProperties": {
                 "$ref": "#/$defs/__schema0"
-              }
+              },
+              "description": "Changes to field values by name. Fields left out keep their values, and null removes one."
             }
           },
           "required": ["id"],

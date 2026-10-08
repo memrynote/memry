@@ -92,7 +92,12 @@ function queryCanvasIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.canvasId)
 }
 
-/** What the renderer is told: field values only, never their versions. */
+/**
+ * A heal's changed fields. Leaving them out would tick all fifteen field clocks,
+ * and this device would then win merges of fields it never edited.
+ */
+const NO_CHANGED_FIELDS: string[] = []
+
 function plainTask(row: typeof tasks.$inferSelect | undefined) {
   return row && { ...row, fields: plainVersionedMap(row.fields) }
 }
@@ -271,7 +276,6 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           })
           if (data.tags) ctx.emit('notes:tags-changed', {})
           publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
-          // A conflict re-queues the merged row at the union clock already.
           heal = owesHeal('merge', fields, result.hadConflicts)
           return result.hadConflicts ? 'conflict' : 'applied'
         }
@@ -377,9 +381,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
       publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
-    // An empty field list ticks this device into the document clock only, which
-    // is what lets the re-push pass the server's replay check.
-    if (heal) getTaskSyncService()?.enqueueUpdate(itemId, [])
+    if (heal) getTaskSyncService()?.enqueueUpdate(itemId, NO_CHANGED_FIELDS)
     return result
   }
 

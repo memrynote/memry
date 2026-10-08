@@ -12,6 +12,7 @@ export type {
   RepeatConfig,
   Task,
   TaskFieldValue,
+  TaskFields,
   TaskListItem,
   Project,
   ProjectContents,
@@ -48,13 +49,6 @@ export const RepeatConfigSchema = z.object({
   createdAt: z.string()
 })
 
-/**
- * A task's field values by field name: any JSON value. The tag that lists the
- * field decides a value's shape, not this schema, because a newer build may
- * write a shape this one does not model and a next occurrence must still carry
- * it. Main stamps the versions (`@memry/shared/versioned`); callers never see
- * them.
- */
 const TaskFieldValueSchema: z.ZodType<TaskFieldValue, TaskFieldValue> = z.lazy(() =>
   z.union([
     z.string(),
@@ -89,8 +83,7 @@ export const TaskCreateSchema = z.object({
   linkedCanvasIds: z.array(z.string()).optional(),
   sourceNoteId: z.string().nullish(),
   position: z.number().int().optional(),
-  /** The whole map. A `null` value sets nothing. */
-  fields: TaskFieldsSchema.optional()
+  fields: TaskFieldsSchema.describe('Field values by name. A null value sets nothing.').optional()
 })
 
 export const TaskUpdateSchema = z.object({
@@ -113,8 +106,9 @@ export const TaskUpdateSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
   linkedCanvasIds: z.array(z.string()).optional(),
-  /** A patch: only the listed fields change, and `null` removes a field. */
-  fields: TaskFieldsSchema.optional()
+  fields: TaskFieldsSchema.describe(
+    'Changes to field values by name. Fields left out keep their values, and null removes one.'
+  ).optional()
 })
 
 export const TaskCompleteSchema = z.object({
@@ -325,6 +319,9 @@ export const TaskActivityListSchema = z.object({
   /** Omit for "everything"; otherwise only these actions. */
   actions: z.array(z.string()).optional()
 })
+
+/** `TaskActivityEntry.field` of a task field value is this prefix and the field name. */
+export const TASK_FIELD_ACTIVITY_PREFIX = 'fields.'
 
 export interface TaskActivityEntry {
   id: string

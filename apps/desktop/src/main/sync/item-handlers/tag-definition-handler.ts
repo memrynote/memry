@@ -23,7 +23,6 @@ import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/it
 
 const log = createLogger('TagDefinitionHandler')
 
-/** The `schema` column as an object. Unreadable JSON reads as absent, as `readTagViews` treats views. */
 function readSchemaColumn(raw: string | null, tag: string): VersionedObject | undefined {
   if (raw === null) return undefined
   try {
@@ -116,8 +115,6 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           writeTagViews(tx, itemId, data.views)
         }
 
-        // A merge returns 'conflict', which re-queues the merged row at the
-        // union clock, so only an apply owes its own re-push.
         heal = owesHeal(resolution.action, schema, resolution.action === 'merge')
 
         // The colour the row actually kept, not the one that was offered — the
@@ -152,8 +149,6 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       ctx.emit('notes:tags-changed', {})
       return 'applied'
     })
-    // Ticks this device into the clock, so the re-push passes the server's
-    // replay check that a push at the remote's own clock would fail.
     if (heal) getTagDefinitionSyncService()?.enqueueUpdate(itemId)
     return result
   }
@@ -220,8 +215,6 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     for (const item of items) {
       const clock = nextLocalClock(db, 'tag_definition', item.name, null, deviceId, 'create')
       db.update(tagDefinitions).set({ clock }).where(eq(tagDefinitions.name, item.name)).run()
-      // The push payload, not the row: `views` and `schema` are JSON text in
-      // the row, and a string there fails or vanishes on the receiver.
       const payload = this.buildPushPayload(db, item.name, deviceId, 'create')
       if (payload === null) continue
       queue.enqueue({

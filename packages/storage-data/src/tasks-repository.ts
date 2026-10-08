@@ -27,9 +27,8 @@ type TaskRecord = Omit<
   priority: number
   repeatConfig: unknown
   repeatFrom: string | null
-  /** The stored versioned map; readers get only its values. */
-  fields?: unknown
-  clock?: unknown
+  fields?: VersionedMap | null
+  clock?: Readonly<Record<string, number>> | null
 }
 type ProjectRecord = Project
 type StatusRecord = Status
@@ -152,15 +151,12 @@ export interface CreateTasksRepositoryDeps<TDb> {
   projectQueries: ProjectQueryModule<TDb>
 }
 
-/** The sum of a document clock's ticks, `_offline` included (chapter 06 section 6.2). */
-function clockTotal(clock: unknown): number {
-  if (typeof clock !== 'object' || clock === null) return 0
+function clockTotal(clock: Readonly<Record<string, number>> | null | undefined): number {
   let total = 0
-  for (const tick of Object.values(clock)) if (typeof tick === 'number') total += tick
+  for (const tick of Object.values(clock ?? {})) total += tick
   return total
 }
 
-/** A new task's map: no clock has ticked yet, so every value starts at t = 1. */
 function firstFieldMap(fields: Record<string, TaskFieldValue> | undefined): VersionedMap | null {
   const stamped = fields ? stampVersionedMapPatch(undefined, fields, 0) : {}
   return Object.keys(stamped).length > 0 ? stamped : null
@@ -229,10 +225,11 @@ export function createTasksRepository<TDb>({
         | 'tags'
         | 'linkedNoteIds'
         | 'linkedCanvasIds'
+        | 'fields'
         | 'hasSubtasks'
         | 'subtaskCount'
         | 'completedSubtaskCount'
-      >
+      > & { fields?: Record<string, TaskFieldValue> }
     ): Task {
       const { fields, ...row } = task
       const created = taskQueries.insertTask(db, { ...row, fields: firstFieldMap(fields) })
@@ -244,12 +241,6 @@ export function createTasksRepository<TDb>({
       return task ? enrichTask(db, taskQueries, task) : undefined
     },
 
-    /**
-     * The one writer of a task's field versions (chapter 06 section 6.11): each
-     * changed key is stamped above both the task's clock total and every
-     * version in the map, so the edit outranks what this device has seen. A
-     * patch that changes no visible value writes nothing.
-     */
     patchTaskFields(
       taskId: string,
       patch: Record<string, TaskFieldValue>

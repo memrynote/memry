@@ -31,9 +31,7 @@ use super::model::{
 /// The fields the next occurrence copies from the one completed. Desktop
 /// spreads the whole task and re-creates it through `tasksService.create`,
 /// which carries these and not `sourceNoteId`; `dueDate`, `statusId`,
-/// `repeatConfig` and `position` are set separately. `fields` keeps its
-/// versions here where desktop restamps them at 1, which is the same thing for
-/// a new item that has nothing to outrank.
+/// `repeatConfig` and `position` are set separately.
 const OCCURRENCE_FIELDS: [&str; 12] = [
     "title",
     "description",

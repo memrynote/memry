@@ -602,7 +602,18 @@ describe('folder-view-handlers', () => {
       })
 
       expect(result.views).toEqual([DEFAULT_VIEW])
-      // An explicit "no views" travels on the next tag push, so peers clear theirs.
+    })
+
+    it('pushes deleting the last view as an explicit empty list, so peers clear theirs', async () => {
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        view: { name: 'Open tasks', type: 'table', default: true }
+      })
+      await invokeHandler(FolderViewChannels.invoke.DELETE_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        viewName: 'Open tasks'
+      })
+
       const pushed = tagDefinitionHandler.buildPushPayload(
         dataDb.db as unknown as DrizzleDb,
         'araba',
