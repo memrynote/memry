@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Salin kandungan yang belum disimpan ke papan keratan",
     "addBookmark": "Tambah penanda halaman",
     "removeBookmark": "Alih keluar penanda halaman",
-    "deleteEntry": "Padam entri"
+    "deleteEntry": "Padam entri",
+    "lockEntry": "Kunci entri",
+    "unlockEntry": "Buka kunci entri"
   },
   "editor": {
     "placeholder": {

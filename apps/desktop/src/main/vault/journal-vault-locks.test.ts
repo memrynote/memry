@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
+import { insertNoteCache } from '@main/database/queries/notes/note-crud'
 import {
   asClientDb,
   createTestDataDb,
@@ -64,6 +68,17 @@ describe('journal writes under a locked folder are refused (#2606)', () => {
     file = getJournalPath(DATE)
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, ORIGINAL)
+    insertNoteCache(index.db, {
+      id: 'j_locked',
+      path: 'Life/Daily/2026-03-04.md',
+      title: DATE,
+      contentHash: 'hash-locked-day',
+      wordCount: 2,
+      characterCount: 10,
+      date: DATE,
+      createdAt: '2026-03-04T00:00:00.000Z',
+      modifiedAt: '2026-03-04T00:00:00.000Z'
+    })
     installVaultLockFileGuard()
     writeLockRow(asClientDb(data.db), 'folder', 'Life', true)
     invalidateVaultLocks()
@@ -89,7 +104,7 @@ describe('journal writes under a locked folder are refused (#2606)', () => {
 
   it('creating a day under the locked folder is refused and writes no file', async () => {
     await expect(writeJournalEntryWithContent(EMPTY_DATE, 'New day')).rejects.toThrow(
-      VAULT_LOCKED_NOTE_MESSAGE
+      VAULT_LOCKED_FOLDER_MESSAGE
     )
 
     expect(fs.existsSync(getJournalPath(EMPTY_DATE))).toBe(false)

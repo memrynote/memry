@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "تعذّر معاينة هذا التغيير",
       "description": "يريد الوكيل تحديث {title}. راجع التغيير قبل تطبيقه.",
+      "descriptionCreate": "يريد الوكيل إنشاء {title}. راجع التغيير قبل تطبيقه.",
+      "descriptionDelete": "يريد الوكيل حذف {title}. راجع التغيير قبل تطبيقه.",
       "fallbackTitle": "هذا العنصر",
       "current": "الحالي",
       "candidate": "المقترح",

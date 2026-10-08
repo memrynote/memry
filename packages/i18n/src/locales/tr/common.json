@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Bu değişiklik önizlenemedi",
       "description": "Ajan, {title} için bir güncelleme yapmak istiyor. Uygulamadan önce değişikliği inceleyin.",
+      "descriptionCreate": "Ajan, {title} oluşturmak istiyor. Uygulamadan önce değişikliği inceleyin.",
+      "descriptionDelete": "Ajan, {title} öğesini silmek istiyor. Uygulamadan önce değişikliği inceleyin.",
       "fallbackTitle": "bu öğe",
       "current": "Mevcut",
       "candidate": "Önerilen",

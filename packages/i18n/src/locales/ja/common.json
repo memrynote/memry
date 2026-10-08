@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "この変更をプレビューできませんでした",
       "description": "エージェントが {title} を更新しようとしています。適用する前に変更内容を確認してください。",
+      "descriptionCreate": "エージェントが {title} を作成しようとしています。適用する前に変更内容を確認してください。",
+      "descriptionDelete": "エージェントが {title} を削除しようとしています。適用する前に変更内容を確認してください。",
       "fallbackTitle": "この項目",
       "current": "現在",
       "candidate": "候補",

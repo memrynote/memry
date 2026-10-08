@@ -90,13 +90,17 @@ async function waitForEditor(page: Page) {
  * settling after a reload — so this retries the gesture rather than asserting
  * once and pressing a shortcut into a caret, which applies a stored mark,
  * changes no text, and shows up 20 seconds later as an unchanged file.
+ *
+ * The check reads the editor's selection, not the DOM's. ProseMirror takes the
+ * double-click's selection from a later `selectionchange`, so under load the
+ * DOM already shows the word selected while the editor still holds a caret.
  */
 async function selectWordInCell(page: Page, cell: Locator, word: string): Promise<void> {
   await expect
     .poll(
       async () => {
         await cell.dblclick({ position: WORD_START })
-        return page.evaluate(() => window.getSelection()?.toString() ?? '')
+        return page.evaluate(() => (window as any).__memryEditor?.getSelectedText() ?? '')
       },
       { timeout: 20_000 }
     )

@@ -662,7 +662,14 @@ describe('Read tools', () => {
       requires_approval: false,
       call: 'notes.list(options?)',
       params: [{ name: 'options', required: false }],
-      args_schema: { minItems: 0, maxItems: 1 }
+      args_schema: {
+        minItems: 0,
+        maxItems: 1,
+        anyOf: [
+          { minItems: 0, maxItems: 0 },
+          { minItems: 1, maxItems: 1, prefixItems: [{ anyOf: expect.any(Array) }] }
+        ]
+      }
     })
   })
 

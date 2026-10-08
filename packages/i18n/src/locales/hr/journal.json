@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopiraj nespremljeni sadržaj u međuspremnik",
     "addBookmark": "Dodaj u favorite",
     "removeBookmark": "Ukloni iz favorita",
-    "deleteEntry": "Izbriši zapis"
+    "deleteEntry": "Izbriši zapis",
+    "lockEntry": "Zaključaj zapis",
+    "unlockEntry": "Otključaj zapis"
   },
   "editor": {
     "placeholder": {

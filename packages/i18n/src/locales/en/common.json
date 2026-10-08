@@ -170,6 +170,8 @@
     "diff": {
       "previewError": "Could not preview this change",
       "description": "The agent wants to update {title}. Review the change before applying it.",
+      "descriptionCreate": "The agent wants to create {title}. Review the change before applying it.",
+      "descriptionDelete": "The agent wants to delete {title}. Review the change before applying it.",
       "fallbackTitle": "this item",
       "current": "Current",
       "candidate": "Candidate",

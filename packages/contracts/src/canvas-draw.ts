@@ -130,7 +130,8 @@ const LabelSchema = z.object({
   strokeColor: ColorSchema.optional()
 })
 
-const PointSchema = z.tuple([z.number(), z.number()])
+// z.toJSONSchema leaves a tuple's length open; the bounds close it for JSON Schema clients.
+const PointSchema = z.tuple([z.number(), z.number()]).meta({ minItems: 2, maxItems: 2 })
 
 const styleFields = {
   strokeColor: ColorSchema.optional(),

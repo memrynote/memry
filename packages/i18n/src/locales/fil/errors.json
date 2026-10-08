@@ -316,5 +316,9 @@
     "invalidUrl": "Hindi iyan web link. Mag-paste ng http o https na address ng larawan.",
     "downloadFailed": "Hindi ma-download ang larawang iyon. Tingnan ang link at subukan ulit.",
     "unsupportedUrl": "Hindi PNG, JPG, GIF, WEBP o SVG na larawan ang link na iyon."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Ginawang read-only ng may-ari ang tala na ito.",
+    "folderReadOnly": "Ginawang read-only ng may-ari ang folder na ito."
   }
 }
