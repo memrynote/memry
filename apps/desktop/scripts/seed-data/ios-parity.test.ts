@@ -9,11 +9,13 @@ import {
 import {
   IOS_PARITY_ATTACHMENTS,
   IOS_PARITY_BODY,
+  IOS_PARITY_LINK_TARGETS,
   IOS_PARITY_NOTE,
   IOS_PARITY_NOTE_PATH,
   iosParityAssetSize
 } from './ios-parity'
 import { TASKS } from './tasks'
+import { extractWikiLinks, noteLinkStem, wikiPathStem } from '@memry/shared/wiki-target'
 
 const FRAGMENT = 'prosemirror'
 
@@ -162,5 +164,20 @@ describe('iOS Parity Test seed note', () => {
       'related',
       'project'
     ])
+  })
+})
+
+describe('iOS Parity Test path wiki-links', () => {
+  it('every path link names a seeded note, and two of them share a title', () => {
+    const stems = new Set(
+      IOS_PARITY_LINK_TARGETS.map((target) => noteLinkStem(target.note.relativePath).toLowerCase())
+    )
+    const pathLinks = extractWikiLinks(IOS_PARITY_BODY)
+      .map(wikiPathStem)
+      .filter((stem): stem is string => stem !== null)
+
+    expect(pathLinks.length).toBeGreaterThanOrEqual(3)
+    for (const stem of pathLinks) expect(stems).toContain(noteLinkStem(stem).toLowerCase())
+    expect(new Set(IOS_PARITY_LINK_TARGETS.map((target) => target.metadata.title)).size).toBe(1)
   })
 })

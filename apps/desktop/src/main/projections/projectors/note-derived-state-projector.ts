@@ -145,7 +145,13 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
     // was, until now, an unresolved link with no edge in `note_links` — the
     // gap create-from-link (and every other creation route) hits (#2209).
     // Resolve those rows retroactively so the new note gets its backlink.
-    backfillUnresolvedLinksByTitle(db, note.noteId, note.title)
+    backfillUnresolvedLinksByTitle(db, note.noteId, note.title, note.path)
+  }
+
+  // A moved note now answers path links to its new location (`[[Folder/Note]]`)
+  // that were written before it got there.
+  if (existing && existing.path !== note.path) {
+    backfillUnresolvedLinksByTitle(db, note.noteId, note.title, note.path)
   }
 
   if (bodyUnread) return
