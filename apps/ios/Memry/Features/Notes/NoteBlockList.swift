@@ -34,6 +34,9 @@ enum NoteBlockList {
         /// Indentation steps. The block's depth, except inside a column,
         /// where `NoteColumns.layout` counts from the column.
         var indent: UInt32 = 0
+        /// How many toggles this row sits inside. Each one shifts it past
+        /// the toggle's chevron, by `ToggleSummaryRow.childShift`.
+        var toggleDepth: UInt32 = 0
     }
 
     /// The rows to draw.
@@ -56,6 +59,8 @@ enum NoteBlockList {
         var tableDepth: UInt32?
         // The depth of the closed toggle whose body is being skipped.
         var foldedDepth: UInt32?
+        // The depths of the toggles enclosing the current block.
+        var toggles: [UInt32] = []
 
         for (offset, block) in blocks.enumerated() {
             if let depth = foldedDepth {
@@ -67,11 +72,14 @@ enum NoteBlockList {
                 tableDepth = nil
             }
             if block.kind == "table" { tableDepth = block.depth }
+            toggles.removeAll { $0 >= block.depth }
+            let toggleDepth = UInt32(toggles.count)
 
             var isOpen = false
             if block.kind == "toggleListItem" {
                 isOpen = storedOpen(block) != flipped.contains(toggleKey(block, at: offset))
                 if !isOpen { foldedDepth = block.depth }
+                toggles.append(block.depth)
             }
 
             var marker: String?
@@ -86,7 +94,8 @@ enum NoteBlockList {
                 counters = counters.filter { $0.key < block.depth }
             }
 
-            rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen, indent: block.depth))
+            rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen, indent: block.depth,
+                            toggleDepth: toggleDepth))
         }
         return rows
     }
@@ -98,10 +107,10 @@ enum NoteBlockList {
         block.id ?? "#\(offset)"
     }
 
-    /// `flipped` after the body changed from `old` to `new`, with every closed
-    /// toggle that gained a child opened. Desktop's rule (BlockNote's
-    /// `createToggleWrapper`): a block indented or inserted under a closed
-    /// toggle shows it, instead of vanishing into it.
+    /// `flipped` after the body changed from `old` to `new`. Desktop's rule
+    /// (BlockNote's `createToggleWrapper`): a closed toggle that gains a child
+    /// opens, so a block indented or inserted under it shows instead of
+    /// vanishing into it; an open toggle whose last child leaves closes.
     static func flipped(_ flipped: Set<String>, from old: [Block], to new: [Block]) -> Set<String> {
         var before: [String: Int] = [:]
         for (offset, block) in old.enumerated() where block.kind == "toggleListItem" {
@@ -111,9 +120,11 @@ enum NoteBlockList {
         for (offset, block) in new.enumerated() where block.kind == "toggleListItem" {
             let key = toggleKey(block, at: offset)
             let isOpen = storedOpen(block) != result.contains(key)
-            guard !isOpen, let previous = before[key], childCount(at: offset, in: new) > previous
-            else { continue }
-            result.formSymmetricDifference([key])
+            guard let previous = before[key] else { continue }
+            let count = childCount(at: offset, in: new)
+            let gained = !isOpen && count > previous
+            let emptied = isOpen && count == 0 && previous > 0
+            if gained || emptied { result.formSymmetricDifference([key]) }
         }
         return result
     }

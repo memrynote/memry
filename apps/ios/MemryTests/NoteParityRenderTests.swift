@@ -158,13 +158,42 @@ struct NoteBlockListFoldTests {
         #expect(texts(NoteBlockList.rows(of: after, flipped: flipped)) == ["Toggle", "Child"])
     }
 
-    @Test("an open toggle stays open when it gains a child, and a toggle that only loses one is left alone")
-    func onlyAClosedToggleThatGainsOpens() {
+    @Test("an open toggle stays open when it gains a child")
+    func anOpenToggleThatGainsStaysOpen() {
         var grown = blocks
         grown.insert(block("paragraph", depth: 1, text: "New"), at: 4)
         #expect(NoteBlockList.flipped(["closed"], from: blocks, to: grown) == ["closed"])
-        let shrunk = blocks.filter { $0.inline.first?.text != "Shown" }
-        #expect(NoteBlockList.flipped([], from: blocks, to: shrunk).isEmpty)
+    }
+
+    @Test("an open toggle closes when its last child leaves, as desktop does (#2819)")
+    func losingTheLastChildCloses() {
+        let emptied = blocks.filter { $0.inline.first?.text != "Shown" }
+        let flipped = NoteBlockList.flipped([], from: blocks, to: emptied)
+        #expect(flipped == ["open"])
+        #expect(NoteBlockList.rows(of: emptied, flipped: flipped).first { $0.block.id == "open" }?.isOpen == false)
+    }
+
+    @Test("an open toggle that keeps a child stays open")
+    func losingOneOfTwoChildrenKeepsItOpen() {
+        var two = blocks
+        two.insert(block("paragraph", depth: 1, text: "Second"), at: 4)
+        #expect(NoteBlockList.flipped([], from: two, to: blocks).isEmpty)
+    }
+
+    @Test("a toggle's children sit 4pt past its summary text, as desktop's do (#2819)")
+    func childrenIndentPastTheSummary() {
+        let nested = [
+            block("toggleListItem", id: "outer", props: ["open": "true"], text: "Outer"),
+            block("toggleListItem", id: "inner", depth: 1, props: ["open": "true"], text: "Inner"),
+            block("paragraph", depth: 2, text: "Deep"),
+            block("paragraph", depth: 1, text: "Child"),
+            block("paragraph", text: "After"),
+        ]
+        #expect(NoteBlockList.rows(of: nested).map(\.toggleDepth) == [0, 1, 2, 1, 0])
+        // The summary starts after the chevron column and its gap.
+        let summary = Tokens.Space.inset + Tokens.Space.small
+        let child = Tokens.Space.inset + ToggleSummaryRow.childShift
+        #expect(child - summary == 4)
     }
 
     @Test("an opened toggle keeps its state when a block above it comes or goes")
