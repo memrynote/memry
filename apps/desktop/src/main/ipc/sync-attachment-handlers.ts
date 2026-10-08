@@ -29,7 +29,12 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
-import { recordAttachmentFile, recordedFileOf } from '../sync/attachment-files'
+import {
+  placeDownloadedFile,
+  recordAttachmentFile,
+  recordedFileOf,
+  reusableAttachmentIds
+} from '../sync/attachment-files'
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
@@ -251,6 +256,11 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
         .get()
       if (!device?.signingPublicKey) return null
       return sodium.from_base64(device.signingPublicKey, sodium.base64_variants.ORIGINAL)
+    },
+    getReusableAttachmentIds: (noteId: string, filePath: string) => {
+      const vaultPath = getVaultStatus().path
+      if (!vaultPath || !isDatabaseInitialized()) return []
+      return reusableAttachmentIds(getDatabase(), vaultPath, noteId, filePath)
     },
     getSyncServerUrl: () => resolveSyncServerUrl()
   })
@@ -632,8 +642,12 @@ export function registerAttachmentHandlers(): void {
           // The note body is the authority — rename to what it asks for before
           // anything is told the file exists.
           if (intoDir && isDatabaseInitialized()) {
-            recordFile(noteId, result.filePath, attachmentId)
-            await applyDownloadedAttachmentName(noteId, result.filePath)
+            const vaultPath = getVaultStatus().path
+            const placed = vaultPath
+              ? await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
+              : result.filePath
+            recordFile(noteId, placed, attachmentId)
+            await applyDownloadedAttachmentName(noteId, placed)
           }
           // The bytes are on disk now, but a note that is already open resolved
           // its attachment URLs when its blocks were built and never asks again.
