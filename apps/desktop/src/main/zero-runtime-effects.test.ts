@@ -161,7 +161,7 @@ vi.mock('@memry/sync-core', () => {
 function createDb(existing: Record<string, unknown> | null = null) {
   const get = vi.fn(() => existing)
   const run = vi.fn()
-  return {
+  const db = {
     get,
     run,
     select: vi.fn(() => ({
@@ -172,7 +172,7 @@ function createDb(existing: Record<string, unknown> | null = null) {
       }))
     })),
     insert: vi.fn(() => ({
-      values: vi.fn(() => ({ run }))
+      values: vi.fn(() => ({ run, onConflictDoUpdate: vi.fn(() => ({ run })) }))
     })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
@@ -181,8 +181,10 @@ function createDb(existing: Record<string, unknown> | null = null) {
     })),
     delete: vi.fn(() => ({
       where: vi.fn(() => ({ run }))
-    }))
+    })),
+    transaction: vi.fn((fn: (tx: unknown) => void) => fn(db))
   }
+  return db
 }
 
 describe('main zero-covered runtime surfaces', () => {
