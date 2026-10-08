@@ -1750,6 +1750,26 @@ describe('notes operations', () => {
       expect(propertyEntry?.contexts).toEqual([])
     })
 
+    it('keeps a backlink from a comment but shows no comment text in its excerpts', async () => {
+      const target = await notes.createNote({ title: 'Hidden Target', content: 'Target.' })
+      const mixed = await notes.createNote({
+        title: 'Mixed Source',
+        content:
+          'Seen [[Hidden Target]] here %% [[Hidden Target]] secret %% <!-- [[Hidden Target]] note --> end.'
+      })
+      const hidden = await notes.createNote({
+        title: 'Hidden Source',
+        content: 'Before.\n\n%%\nblock [[Hidden Target]] secret\n%%\n\nAfter.'
+      })
+
+      const incoming = (await notes.getNoteLinks(target.id)).incoming
+
+      expect(incoming.find((bl) => bl.sourceId === mixed.id)?.contexts).toEqual([
+        { snippet: 'Seen [[Hidden Target]] here   end.', linkStart: 5, linkEnd: 22 }
+      ])
+      expect(incoming.find((bl) => bl.sourceId === hidden.id)?.contexts).toEqual([])
+    })
+
     it('excludes a property-relation backlink whose source note was deleted', async () => {
       const { setPropertyRefs } = await import('@main/database/queries/notes')
 

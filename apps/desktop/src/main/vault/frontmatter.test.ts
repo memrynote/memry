@@ -441,6 +441,22 @@ More text here to ensure the snippet is long enough.
     expect(snippet).toBe('first second third')
     expect(snippet).not.toContain('<!--')
   })
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('createSnippet strips Obsidian comments on a %s note', (_label, eol) => {
+    const content = [
+      'Tail text %% [[Topic]] secret %% end of line.',
+      '',
+      '%%',
+      'block [[Other]] secret',
+      '%%',
+      '',
+      'Sale 50%% off, `%% code %%` stays.'
+    ].join(eol)
+    expect(createSnippet(content)).toBe('Tail text end of line. Sale 50%% off, `%% code %%` stays.')
+  })
 })
 
 describe('resolvePropertyType — the shared precedence ladder', () => {

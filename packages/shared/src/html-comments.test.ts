@@ -77,3 +77,38 @@ describe('maskHtmlComments (AF-015)', () => {
     expect(masked('Text <!-- align:center -->')).not.toContain('<!--')
   })
 })
+
+describe('maskHtmlComments with %% comments (BBF-26)', () => {
+  const note =
+    'Tail text %% [[Topic]] secret %% end of line.\n\n%%\nblock [[Other]] secret\n%%\n\nAfter'
+
+  it.each([
+    ['LF', note],
+    ['CRLF', note.replaceAll('\n', '\r\n')]
+  ])('masks inline and block Obsidian comments on a %s note', (_label, markdown) => {
+    const eol = markdown.includes('\r\n') ? '\r\n' : '\n'
+    const out = maskHtmlComments(markdown)
+    expect(out).not.toContain('%%')
+    expect(out).not.toContain('[[')
+    expect(splitHtmlCommentTokens(out.split(eol)[0])).toEqual([
+      { kind: 'text', text: 'Tail text ' },
+      { kind: 'comment', source: '%% [[Topic]] secret %%' },
+      { kind: 'text', text: ' end of line.' }
+    ])
+    expect(splitHtmlCommentTokens(out.split(eol)[2])).toEqual([
+      { kind: 'comment', source: ['%%', 'block [[Other]] secret', '%%'].join(eol) }
+    ])
+    expect(decodeHtmlCommentTokens(out)).toBe(markdown)
+  })
+
+  it('leaves a %% in code and a %% with no partner as text', () => {
+    const markdown = [
+      'Sale 50%% off',
+      '`%% x %%`',
+      '```bat',
+      'for %%i in (*) do echo %%i',
+      '```'
+    ].join('\n')
+    expect(maskHtmlComments(markdown)).toBe(markdown)
+  })
+})
