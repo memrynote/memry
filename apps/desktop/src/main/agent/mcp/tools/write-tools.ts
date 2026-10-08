@@ -683,8 +683,8 @@ export function buildWriteTools(
           toolName: 'vault_move_to_folder',
           parsedArgs: parsed
         })) as typeof parsed
-        await handles.notes.moveToFolder(args)
-        return storedNoteReply(handles, args.id)
+        const created = await handles.notes.moveToFolder(args)
+        return { ...(await storedNoteReply(handles, args.id)), ...created }
       }
     },
     vault_add_canvas_item: {

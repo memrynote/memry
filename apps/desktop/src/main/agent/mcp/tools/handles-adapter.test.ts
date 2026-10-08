@@ -2195,7 +2195,7 @@ describe('createVaultServiceHandles', () => {
         'window-1'
       )
       await handles.desktop.write(
-        { operation: 'inbox.convertToNote', args: ['inbox-1'] },
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: false }] },
         'window-1'
       )
       await handles.desktop.write(
@@ -2371,22 +2371,47 @@ describe('createVaultServiceHandles', () => {
       expect(taskDomain.createTask).not.toHaveBeenCalled()
     })
 
-    it('sends template, inbox and import writes unchanged for the editor to convert', async () => {
+    it('leaves template, inbox and import lines for the editor, whatever the agent passed', async () => {
       const handles = createVaultServiceHandles(deps)
       mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
-      const requests = [
-        { operation: 'templates.create' as const, args: [{ name: 'Shop', content: '- [ ] A' }] },
+      const template = {
+        operation: 'templates.create' as const,
+        args: [{ name: 'Shop', content: '- [ ] A' }]
+      }
+
+      await handles.desktop.write(template, 'window-1')
+      await handles.desktop.write(
         {
-          operation: 'notes.applyTemplate' as const,
-          args: [{ noteId: 'note-1', templateId: 'template-1', mode: 'body' }]
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: true }
+          ]
         },
-        { operation: 'inbox.convertToNote' as const, args: ['inbox-1'] },
-        { operation: 'notes.importFiles' as const, args: [['/tmp/list.md']] }
-      ]
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: true }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.importFiles', args: [['/tmp/list.md']] },
+        'window-1'
+      )
 
-      for (const request of requests) await handles.desktop.write(request, 'window-1')
-
-      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual(requests)
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        template,
+        {
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: false }
+          ]
+        },
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: false }] },
+        {
+          operation: 'notes.importFiles',
+          args: [['/tmp/list.md'], undefined, { plainChecklists: false }]
+        }
+      ])
     })
   })
 

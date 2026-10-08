@@ -9,6 +9,7 @@
 
 import { z } from 'zod'
 import { InboxChannels } from './ipc-channels'
+import type { PlainChecklistsOption } from './notes-api'
 import type { ReminderTargetType } from './reminder-types'
 
 // Re-export channels for convenience
@@ -626,7 +627,10 @@ export interface InboxHandlers {
   // Filing
   [InboxChannels.invoke.FILE]: (input: z.infer<typeof FileItemSchema>) => Promise<FileResponse>
   [InboxChannels.invoke.GET_SUGGESTIONS]: (itemId: string) => Promise<SuggestionsResponse>
-  [InboxChannels.invoke.CONVERT_TO_NOTE]: (itemId: string) => Promise<FileResponse>
+  [InboxChannels.invoke.CONVERT_TO_NOTE]: (
+    itemId: string,
+    options?: PlainChecklistsOption
+  ) => Promise<FileResponse>
   [InboxChannels.invoke.CONVERT_TO_TASK]: (
     itemId: string
   ) => Promise<{ success: boolean; taskId: string | null; error?: string }>
@@ -788,7 +792,7 @@ export interface InboxClientAPI {
   // Filing
   file(input: z.infer<typeof FileItemSchema>): Promise<FileResponse>
   getSuggestions(itemId: string): Promise<SuggestionsResponse>
-  convertToNote(itemId: string): Promise<FileResponse>
+  convertToNote(itemId: string, options?: PlainChecklistsOption): Promise<FileResponse>
   convertToTask(
     itemId: string
   ): Promise<{ success: boolean; taskId: string | null; error?: string }>

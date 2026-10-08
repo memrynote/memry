@@ -146,8 +146,8 @@ export function registerInboxHandlers(): void {
     inboxDomain.getSuggestions(itemId)
   )
   ipcMain.handle(InboxChannels.invoke.TRACK_SUGGESTION, handleTrackSuggestionIpc)
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, async (_, itemId) => {
-    const result = await inboxDomain.convertToNote(itemId)
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, async (_, itemId, options) => {
+    const result = await inboxDomain.convertToNote(itemId, options)
     trackInboxFiled('note', Boolean(result?.success))
     return result
   })

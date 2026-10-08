@@ -249,3 +249,27 @@ export function markChecklistLinesPlain(
   }
   return lines.join('\n')
 }
+
+/** Line indexes of `markdown` whose text `previous` already holds, matched one for one. */
+export function linesAlreadyIn(markdown: string, previous: string): (lineIndex: number) => boolean {
+  const left = new Map<string, number>()
+  for (const line of previous.split('\n')) left.set(line, (left.get(line) ?? 0) + 1)
+
+  const kept = new Set<number>()
+  markdown.split('\n').forEach((line, lineIndex) => {
+    const count = left.get(line) ?? 0
+    if (count === 0) return
+    kept.add(lineIndex)
+    left.set(line, count - 1)
+  })
+  return (lineIndex) => kept.has(lineIndex)
+}
+
+/**
+ * `markChecklistLinesPlain` for a write that replaces `previous`: lines the
+ * body already held stay as they were, and only added checkbox lines get the
+ * marker.
+ */
+export function markAddedChecklistLinesPlain(markdown: string, previous = ''): string {
+  return markChecklistLinesPlain(markdown, linesAlreadyIn(markdown, previous))
+}

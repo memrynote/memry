@@ -41,7 +41,8 @@ import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { saveAttachment } from '../vault/attachments'
 import { emitNoteAttachmentSaved, syncNoteCreate } from '../notes/runtime-effects'
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
-import type { NoteListItem } from '@memry/contracts/notes-api'
+import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
+import type { NoteListItem, PlainChecklistsOption } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
@@ -789,7 +790,10 @@ export async function fileToFolder(
  *
  * @param itemId - Inbox item ID
  */
-export async function convertToNote(itemId: string): Promise<FileResponse> {
+export async function convertToNote(
+  itemId: string,
+  options: PlainChecklistsOption = {}
+): Promise<FileResponse> {
   try {
     const db = requireDatabase()
 
@@ -812,7 +816,8 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
 
     // Generate title from item content
     const title = generateNoteTitle(item)
-    const content = generateNoteContent(item)
+    const generated = generateNoteContent(item)
+    const content = options.plainChecklists ? markAddedChecklistLinesPlain(generated) : generated
 
     // Create note in root folder
     const note = await createNoteCommand({

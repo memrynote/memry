@@ -2083,7 +2083,7 @@ describe('notes operations', () => {
       const result = await notes.importFiles({
         sourcePaths: [listPath, prosePath, latin1Path],
         targetFolder: 'notes',
-        plainChecklists: true
+        options: { plainChecklists: true }
       })
 
       const [list, prose, latin1] = result.importedFiles.map((file) =>

@@ -138,7 +138,7 @@ export function createGeneratedRpcApi({
       "getPositions": ((folderPath) => invoke("notes:get-positions", { folderPath })) as GeneratedRpcApi["notes"]["getPositions"],
       "getAllPositions": (() => invoke("notes:get-all-positions")) as GeneratedRpcApi["notes"]["getAllPositions"],
       "reorder": ((folderPath, notePaths) => invoke("notes:reorder", { folderPath, notePaths })) as GeneratedRpcApi["notes"]["reorder"],
-      "importFiles": ((sourcePaths, targetFolder) => invoke("notes:import-files", { sourcePaths, targetFolder })) as GeneratedRpcApi["notes"]["importFiles"],
+      "importFiles": ((sourcePaths, targetFolder, options) => invoke("notes:import-files", { sourcePaths, targetFolder, options })) as GeneratedRpcApi["notes"]["importFiles"],
       "showImportDialog": (() => invoke("notes:show-import-dialog")) as GeneratedRpcApi["notes"]["showImportDialog"],
       "setLocalOnly": ((id, localOnly) => invoke("notes:set-local-only", { id, localOnly })) as GeneratedRpcApi["notes"]["setLocalOnly"],
       "getLocalOnlyCount": (() => invoke("notes:get-local-only-count")) as GeneratedRpcApi["notes"]["getLocalOnlyCount"],
@@ -217,7 +217,7 @@ export function createGeneratedRpcApi({
           input.suggestedTags ?? [],
           input.actualTags ?? []
         )) as GeneratedRpcApi["inbox"]["trackSuggestion"],
-      "convertToNote": ((itemId) => invoke("inbox:convert-to-note", itemId)) as GeneratedRpcApi["inbox"]["convertToNote"],
+      "convertToNote": ((itemId, options) => invoke("inbox:convert-to-note", itemId, options)) as GeneratedRpcApi["inbox"]["convertToNote"],
       "convertToTask": ((itemId, input) => invoke("inbox:convert-to-task", itemId, input)) as GeneratedRpcApi["inbox"]["convertToTask"],
       "convertToEvent": ((itemId, input) => invoke("inbox:convert-to-event", itemId, input)) as GeneratedRpcApi["inbox"]["convertToEvent"],
       "convertToReminder": ((itemId, input) => invoke("inbox:convert-to-reminder", itemId, input)) as GeneratedRpcApi["inbox"]["convertToReminder"],

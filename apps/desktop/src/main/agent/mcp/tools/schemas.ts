@@ -15,23 +15,12 @@ import type { ChangePreviewKind } from '@memry/contracts/ipc-agent'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 import { strictDeep } from '@memry/contracts/strict-schema'
 
+import { CANVAS_ID_HINT, CHECKLIST_HINT, CREATED_FOLDERS_HINT } from './tool-hints'
+
 const idSchema = z.string().min(1)
 
 /** Cap on an agent-written HTML artifact ; well under the attachment size limit. */
 export const HTML_ARTIFACT_MAX_CHARS = 512 * 1024
-/**
- * Said on every canvas tool that takes a canvas id. Two canvases in different
- * folders may share a title, so a bare title is refused when it matches more
- * than one — the tools list the candidates rather than picking one, because
- * drawing on the wrong canvas destroys work silently.
- */
-const CANVAS_ID_HINT =
-  'Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; ' +
-  'a bare title matching more than one canvas is refused with the candidates listed.'
-const CHECKLIST_HINT =
-  'Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner ' +
-  'turned on task conversion for agents; then they become tasks and the reply lists them in ' +
-  'created_tasks. Create tasks with vault_create_task.'
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -291,7 +280,7 @@ const LOOSE_TOOL_SCHEMAS = {
       folder_path: z.string().optional(),
       tags: z.array(z.string()).optional()
     }),
-    description: `Create a new note. ${CHECKLIST_HINT} Requires user approval.`
+    description: `Create a new note. ${CHECKLIST_HINT} ${CREATED_FOLDERS_HINT} Requires user approval.`
   },
   vault_rename_note: {
     input: z.object({ id: idSchema, title: z.string().min(1).max(200) }),
@@ -538,7 +527,7 @@ const LOOSE_TOOL_SCHEMAS = {
   },
   vault_move_to_folder: {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
-    description: 'Move a note to a folder. Requires user approval.'
+    description: `Move a note to a folder. ${CREATED_FOLDERS_HINT} Requires user approval.`
   },
   vault_add_canvas_item: {
     input: z.object({
@@ -614,7 +603,10 @@ const LOOSE_TOOL_SCHEMAS = {
       "replaces the entity's whole property record: a property left out is deleted, except " +
       'the legacy id, title, created and modified keys, which are kept unless the call names ' +
       'them (null deletes one). The reply lists the stored `properties` and the names it ' +
-      '`removed`. Requires user approval. Replies follow the vault_desktop_read rules for ' +
+      '`removed`. Checkbox lines that a note, journal or template write, ' +
+      'notes.applyTemplate, inbox.convertToNote or notes.importFiles adds are stored as ' +
+      'plain checkboxes, marked {check}, unless the owner turned on task conversion for ' +
+      'agents. Requires user approval. Replies follow the vault_desktop_read rules for ' +
       "filed files and replies over 100 KB. vault_desktop_describe returns each operation's " +
       'argument schema; a call that does not match it is refused before approval.'
   }

@@ -38,6 +38,7 @@ import {
 } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { recordDropCopyFailure } from './activity-log'
+import { copyImportedFile } from './import-copy'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -63,6 +64,7 @@ import {
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
+import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
@@ -229,6 +231,7 @@ export type {
 export interface ImportFilesInput {
   sourcePaths: string[]
   targetFolder?: string
+  options?: PlainChecklistsOption
 }
 
 export interface ImportedFileInfo {
@@ -1016,7 +1019,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
         }
       }
 
-      await fs.copyFile(sourcePath, destPath)
+      await copyImportedFile(sourcePath, destPath, input.options?.plainChecklists === true)
       imported++
 
       const fileType = getFileType(getExtension(destPath)) ?? 'markdown'
