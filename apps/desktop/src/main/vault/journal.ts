@@ -238,7 +238,6 @@ export function extractJournalProperties(
 // File Operations
 // ============================================================================
 
-/** The entry file's text, or null without one. A file linked outside the vault is refused, never followed. */
 async function readJournalText(date: string): Promise<string | null> {
   const vaultPath = getVaultPath()
   const store = getContentStore()

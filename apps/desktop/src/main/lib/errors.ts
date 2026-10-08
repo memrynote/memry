@@ -85,7 +85,6 @@ export class NoteError extends Error {
   }
 }
 
-/** A vault file that resolves outside the vault, which a reader refuses rather than follow. */
 export class OutsideVaultError extends Error {
   constructor(relativePath: string) {
     super(`${relativePath} points outside the vault. Memry reads only files inside the vault.`)

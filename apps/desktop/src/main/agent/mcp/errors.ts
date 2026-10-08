@@ -26,7 +26,6 @@ export function isVaultLockRefusalMessage(message: string): boolean {
   return message === VAULT_LOCKED_NOTE_MESSAGE
 }
 
-/** The failure as the model sees it: a refusal the owner or the vault imposes is a permission error. */
 export function toAgentToolError(err: unknown): AgentToolError {
   if (err instanceof AgentToolError) return err
   if (
@@ -40,10 +39,8 @@ export function toAgentToolError(err: unknown): AgentToolError {
 
 export function toMcpToolErrorContent(err: unknown): McpErrorContent {
   const { code, message, details } = toAgentToolError(err)
-  const tool = { code, message, details }
-
   return {
     isError: true,
-    content: [{ type: 'text', text: JSON.stringify(tool) }]
+    content: [{ type: 'text', text: JSON.stringify({ code, message, details }) }]
   }
 }
