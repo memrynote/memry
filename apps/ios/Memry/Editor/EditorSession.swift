@@ -116,6 +116,7 @@ final class EditorSession {
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
     @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
+    @ObservationIgnored private var backgroundTask = UIBackgroundTaskIdentifier.invalid
 
     init() {
         keyboardObserver = NotificationCenter.default.addObserver(
@@ -131,7 +132,9 @@ final class EditorSession {
         // #2820: typing is committed when editing ends, and leaving the app
         // does not end editing. A kill from the app switcher then dropped
         // everything typed since the caret went in, so the focused block is
-        // committed as the app stops being active.
+        // committed as the app stops being active. Entering the background is
+        // too late: a kill within a second of going home beats it, and
+        // swiping straight into the switcher never backgrounds the app.
         resignObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -145,17 +148,29 @@ final class EditorSession {
     }
 
     /// Commits the focused block's typing, and holds a background task until
-    /// the write lands, so suspension cannot cut it off.
+    /// the queued writes land, so suspension cannot cut them off.
     private func commitBeforeLeaving() {
-        guard let field, field.dirty else { return }
-        commit(field)
-        let tail = tail
-        let app = UIApplication.shared
-        let background = app.beginBackgroundTask(withName: "editor-commit")
-        Task { @MainActor in
-            await tail?.value
-            if background != .invalid { app.endBackgroundTask(background) }
+        // Resigning also fires for Control Center and incoming calls, and the
+        // commit's reload would cancel an IME composition, so marked text
+        // waits for the next trigger.
+        if let field, field.dirty, field.textView.markedTextRange == nil { commit(field) }
+        guard let tail else { return }
+        endBackgroundTask()
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "editor-commit") {
+            MainActor.assumeIsolated { self.endBackgroundTask() }
         }
+        Task { @MainActor in
+            await tail.value
+            self.endBackgroundTask()
+        }
+    }
+
+    /// Ends the held background task once, whichever of expiry or the
+    /// landed write gets here first.
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
     }
 
     // MARK: Input views
