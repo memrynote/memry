@@ -1,0 +1,15 @@
+-- Which file a recorded lock mode belongs to (#2788). A file deleted and
+-- recreated read-only at a locked path looks like the lock's own read-only
+-- state by its bits alone, so unlocking gave it the old file's wider mode.
+-- `identity` is the file's inode and birth time when its mode was recorded.
+--
+-- Additive only. One nullable column, no backfill. Existing rows read
+-- `identity = NULL`, which is "not known"; the next time the lock sees the
+-- file it fills it.
+--
+-- A downgrade is inert: an older build selects and inserts only `path` and
+-- `mode` (Drizzle lists columns explicitly), and its migrator applies nothing
+-- past its own journal.
+--
+-- Hand-written (project switched off the Drizzle generator after 0020).
+ALTER TABLE `vault_lock_file_modes` ADD COLUMN `identity` text;

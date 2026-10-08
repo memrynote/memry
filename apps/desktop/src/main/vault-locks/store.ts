@@ -89,18 +89,21 @@ export function listBaselineNoteIds(db: DataDb): string[] {
     .map((row) => row.noteId)
 }
 
-export function getFileMode(db: DataDb, path: string): number | undefined {
+export function getFileMode(
+  db: DataDb,
+  path: string
+): { mode: number; identity: string | null } | undefined {
   return db
-    .select({ mode: vaultLockFileModes.mode })
+    .select({ mode: vaultLockFileModes.mode, identity: vaultLockFileModes.identity })
     .from(vaultLockFileModes)
     .where(eq(vaultLockFileModes.path, path))
-    .get()?.mode
+    .get()
 }
 
-export function recordFileMode(db: DataDb, path: string, mode: number): void {
+export function recordFileMode(db: DataDb, path: string, mode: number, identity: string): void {
   db.insert(vaultLockFileModes)
-    .values({ path, mode })
-    .onConflictDoUpdate({ target: vaultLockFileModes.path, set: { mode } })
+    .values({ path, mode, identity })
+    .onConflictDoUpdate({ target: vaultLockFileModes.path, set: { mode, identity } })
     .run()
 }
 

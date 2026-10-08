@@ -63,28 +63,33 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
  * lifting the lock gives the recorded bits back. A file with no record (no
  * data DB yet, or locked by an older build) only gets the owner write bit.
  *
- * The app's own writes to a locked file keep the record. A file found
- * writable that the app did not just write was added or replaced from
- * outside, so its bits replace the record: unlocking must never give it
- * more than it had.
+ * A record belongs to one file, named by its inode and birth time. The app's
+ * own writes replace the file but keep the record. A file the app did not
+ * just write that is another file than the record's, or is found writable,
+ * was added or replaced from outside, so its bits replace the record:
+ * unlocking must never give it more than it had.
  */
 function nextMode(
   absolutePath: string,
-  current: number,
+  stats: fs.Stats,
   readOnly: boolean,
   asFound: boolean
 ): number | null {
-  const relative = isDatabaseInitialized() ? lockableRelativePath(absolutePath) : null
-  let recorded = relative === null ? undefined : getFileMode(getDatabase(), relative)
+  const current = stats.mode
   const found = current & 0o777
-  if (
-    readOnly &&
-    relative !== null &&
-    current & 0o222 &&
-    (recorded === undefined || (asFound && recorded !== found))
-  ) {
-    recorded = found
-    recordFileMode(getDatabase(), relative, recorded)
+  const relative = isDatabaseInitialized() ? lockableRelativePath(absolutePath) : null
+  const row = relative === null ? undefined : getFileMode(getDatabase(), relative)
+  let recorded = row?.mode
+  if (readOnly && relative !== null) {
+    const identity = `${stats.ino}:${stats.birthtimeMs}`
+    const writable = (current & 0o222) !== 0
+    const replaced = !!row?.identity && row.identity !== identity
+    if (row === undefined ? writable : asFound && (replaced || (writable && row.mode !== found))) {
+      recorded = found
+      recordFileMode(getDatabase(), relative, found, identity)
+    } else if (row !== undefined && row.identity !== identity) {
+      recordFileMode(getDatabase(), relative, row.mode, identity)
+    }
   }
   const next = readOnly ? (recorded ?? found) & ~0o222 : (recorded ?? (current | 0o200) & 0o777)
   return next === found ? null : (current & 0o7000) | next
@@ -96,8 +101,8 @@ async function changeMode(
   asFound: boolean
 ): Promise<void> {
   try {
-    const { mode } = await fs.promises.stat(absolutePath)
-    const next = nextMode(absolutePath, mode, readOnly, asFound)
+    const stats = await fs.promises.stat(absolutePath)
+    const next = nextMode(absolutePath, stats, readOnly, asFound)
     if (next !== null) await fs.promises.chmod(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
@@ -116,8 +121,8 @@ export async function protectFileAsFound(absolutePath: string): Promise<void> {
 
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
   try {
-    const { mode } = fs.statSync(absolutePath)
-    const next = nextMode(absolutePath, mode, readOnly, false)
+    const stats = fs.statSync(absolutePath)
+    const next = nextMode(absolutePath, stats, readOnly, false)
     if (next !== null) fs.chmodSync(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return

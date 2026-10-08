@@ -41,10 +41,13 @@ export const vaultLockBaselines = sqliteTable('vault_lock_baselines', {
  * The permission bits each file had before a lock made it read-only, keyed by
  * vault-relative path. Device-local, never synced. Unlocking gives the file
  * these bits back; a row also marks a file the lock still has to release.
+ * `identity` names the file the bits belong to (inode and birth time), so a
+ * different file at the same path is told apart; null on rows from older builds.
  */
 export const vaultLockFileModes = sqliteTable('vault_lock_file_modes', {
   path: text('path').primaryKey(),
-  mode: integer('mode').notNull()
+  mode: integer('mode').notNull(),
+  identity: text('identity')
 })
 
 export type VaultLockRow = typeof vaultLocks.$inferSelect
