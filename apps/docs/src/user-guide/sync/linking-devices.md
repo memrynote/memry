@@ -106,7 +106,7 @@ If any of that does not hold, for example after you revoked the device from anot
 after the app's data was wiped, memrynote asks for the recovery phrase or a linking code as before.
 
 Losing the network does not sign you out. After sleep, on a flight or while DNS is still waking up,
-memrynote keeps you signed in and retries once the sync server can be reached. A keychain read that fails for a moment, or a refusal the server may still take back, is retried the same way and never asks you to sign in. You are signed out
+memrynote keeps you signed in and retries once the sync server can be reached. A keychain read that fails for a moment, or a refusal the server may still take back, is retried the same way and never asks you to sign in. That includes opening the app while the keychain is still locked: the sync icon keeps showing your last sync instead of "Sync disabled" until the keychain answers. You are signed out
 only when the server rejects the device's session for good.
 
 ## Initial Sync Progress
