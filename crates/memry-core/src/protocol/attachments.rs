@@ -38,7 +38,7 @@ use std::collections::HashMap;
 use sha2::{Digest as _, Sha256};
 
 use super::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest, ManifestError};
-use super::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
+use super::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 use crate::api::errors::ApiError;
 use crate::crypto::sodium;
 
@@ -140,12 +140,13 @@ pub struct PresignedBatch {
 /// does not have the pieces to do them in any other.
 pub async fn fetch_manifest(
     client: &HttpClient,
+    vault_id: &str,
     attachment_id: &str,
     vault_key: &[u8],
     signers: &dyn SignerResolver,
 ) -> Result<(AttachmentManifest, Vec<u8>), AttachmentError> {
     let envelope: EncryptedAttachmentManifest =
-        fetch_manifest_envelope(client, attachment_id).await?;
+        fetch_manifest_envelope(client, vault_id, attachment_id).await?;
 
     // Resolved BEFORE the decrypt is attempted, so an unknown device is
     // refused rather than becoming a decrypt that happened to work.
@@ -163,6 +164,7 @@ pub async fn fetch_manifest(
 /// The raw envelope, as the route returns it.
 async fn fetch_manifest_envelope(
     client: &HttpClient,
+    vault_id: &str,
     attachment_id: &str,
 ) -> Result<EncryptedAttachmentManifest, AttachmentError> {
     #[derive(serde::Deserialize)]
@@ -180,6 +182,7 @@ async fn fetch_manifest_envelope(
         .send_json(
             ApiRequest::get(&format!("/sync/attachments/{attachment_id}/manifest"))
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -206,6 +209,7 @@ async fn fetch_manifest_envelope(
 /// a longer one.
 pub async fn presign_batch(
     client: &HttpClient,
+    vault_id: &str,
     chunk_hashes: &[String],
 ) -> Result<Option<PresignedBatch>, AttachmentError> {
     #[derive(serde::Serialize)]
@@ -222,6 +226,7 @@ pub async fn presign_batch(
 
     let request = ApiRequest::post("/sync/attachments/presign-batch")
         .auth(Auth::Session)
+        .header(VAULT_ID_HEADER, vault_id)
         .json(&Body { chunk_hashes })
         .retry(RetryPolicy::polled());
 
@@ -240,6 +245,7 @@ pub async fn presign_batch(
 /// Presigned GETs for any number of hashes, split to respect the cap.
 pub async fn presign_all(
     client: &HttpClient,
+    vault_id: &str,
     chunk_hashes: &[String],
 ) -> Result<Option<PresignedBatch>, AttachmentError> {
     let mut urls: HashMap<String, String> = HashMap::new();
@@ -248,7 +254,7 @@ pub async fn presign_all(
     let mut expires_at = i64::MAX;
 
     for window in chunk_hashes.chunks(PRESIGN_BATCH_CAP) {
-        match presign_batch(client, window).await? {
+        match presign_batch(client, vault_id, window).await? {
             Some(batch) => {
                 expires_at = expires_at.min(batch.expires_at);
                 urls.extend(batch.urls);
@@ -296,12 +302,14 @@ pub async fn fetch_chunk_presigned(
 /// One chunk's framed bytes through the Worker (§14.6's proxied path).
 pub async fn fetch_chunk_proxied(
     client: &HttpClient,
+    vault_id: &str,
     chunk_hash: &str,
 ) -> Result<Vec<u8>, AttachmentError> {
     let response = client
         .send(
             ApiRequest::get(&format!("/sync/attachments/chunks/{chunk_hash}"))
                 .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
                 .retry(RetryPolicy::polled()),
         )
         .await?;

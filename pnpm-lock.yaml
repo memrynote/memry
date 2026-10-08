@@ -26,7 +26,7 @@ overrides:
   prosemirror-model: 1.25.11
   prosemirror-view: 1.42.4
   prosemirror-transform: 1.12.1
-  qs: '>=6.15.2'
+  qs: '>=6.16.0'
   protobufjs: '>=7.6.5 <8'
   serialize-javascript: 7.0.5
   '@xmldom/xmldom': 0.8.13
@@ -36,7 +36,7 @@ overrides:
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
   ip-address: '>=10.3.1'
-  smol-toml: '>=1.6.1'
+  smol-toml: '>=1.9.0'
   srvx: '>=0.11.13'
   tmp: '>=0.2.6'
   ws: '>=8.21.0'
@@ -12562,8 +12562,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  qs@6.15.2:
-    resolution: {integrity: sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw==}
+  qs@6.16.0:
+    resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
     engines: {node: '>=0.6'}
 
   quansync@0.2.11:
@@ -13351,6 +13351,10 @@ packages:
     resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
     engines: {node: '>= 0.4'}
 
+  side-channel-list@1.0.1:
+    resolution: {integrity: sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==}
+    engines: {node: '>= 0.4'}
+
   side-channel-map@1.0.1:
     resolution: {integrity: sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==}
     engines: {node: '>= 0.4'}
@@ -13361,6 +13365,10 @@ packages:
 
   side-channel@1.1.0:
     resolution: {integrity: sha512-ZX99e6tRweoUXqR+VBrslhda51Nh5MTQwou5tnUDgbtyM0dBgmhEDtWGP/xbKn6hqfPRHujUNwz5fy/wbbhnpw==}
+    engines: {node: '>= 0.4'}
+
+  side-channel@1.1.1:
+    resolution: {integrity: sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==}
     engines: {node: '>= 0.4'}
 
   siginfo@2.0.0:
@@ -13431,8 +13439,8 @@ packages:
     resolution: {integrity: sha512-0R6YJ5hLpDH4mZR7N5eZ12oCMLspvGOHL9A9SEm2e3b/CQmQidekW4SWSKEmor/3x6m3NCBBEqLzikcZC9VJNQ==}
     engines: {node: '>=4.0.0'}
 
-  smol-toml@1.7.0:
-    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
+  smol-toml@1.9.0:
+    resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
     engines: {node: '>= 18'}
 
   socket.io-adapter@2.5.7:
@@ -20930,7 +20938,7 @@ snapshots:
       fs-extra: 11.1.1
       js-yaml: 4.3.1
       minimatch: 10.2.5
-      smol-toml: 1.7.0
+      smol-toml: 1.9.0
       zod: 3.22.4
 
   '@vercel/python-analysis@0.11.1':
@@ -20940,7 +20948,7 @@ snapshots:
       fs-extra: 11.1.1
       js-yaml: 4.3.1
       minimatch: 10.2.5
-      smol-toml: 1.7.0
+      smol-toml: 1.9.0
       zod: 3.22.4
 
   '@vercel/python@6.36.1':
@@ -20976,7 +20984,7 @@ snapshots:
   '@vercel/rust@1.1.1':
     dependencies:
       execa: 5.1.1
-      smol-toml: 1.7.0
+      smol-toml: 1.9.0
 
   '@vercel/sandbox@1.9.0':
     dependencies:
@@ -21879,7 +21887,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.2
       on-finished: 2.4.1
-      qs: 6.15.2
+      qs: 6.16.0
       raw-body: 3.0.2
       type-is: 2.1.0
     transitivePeerDependencies:
@@ -23922,7 +23930,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.7
-      qs: 6.15.2
+      qs: 6.16.0
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -28105,9 +28113,10 @@ snapshots:
     dependencies:
       react: 19.3.0
 
-  qs@6.15.2:
+  qs@6.16.0:
     dependencies:
-      side-channel: 1.1.0
+      es-define-property: 1.0.1
+      side-channel: 1.1.1
 
   quansync@0.2.11: {}
 
@@ -29276,6 +29285,11 @@ snapshots:
       es-errors: 1.3.0
       object-inspect: 1.13.4
 
+  side-channel-list@1.0.1:
+    dependencies:
+      es-errors: 1.3.0
+      object-inspect: 1.13.4
+
   side-channel-map@1.0.1:
     dependencies:
       call-bound: 1.0.4
@@ -29296,6 +29310,14 @@ snapshots:
       es-errors: 1.3.0
       object-inspect: 1.13.4
       side-channel-list: 1.0.0
+      side-channel-map: 1.0.1
+      side-channel-weakmap: 1.0.2
+
+  side-channel@1.1.1:
+    dependencies:
+      es-errors: 1.3.0
+      object-inspect: 1.13.4
+      side-channel-list: 1.0.1
       side-channel-map: 1.0.1
       side-channel-weakmap: 1.0.2
 
@@ -29370,7 +29392,7 @@ snapshots:
 
   smartquotes@2.3.2: {}
 
-  smol-toml@1.7.0: {}
+  smol-toml@1.9.0: {}
 
   socket.io-adapter@2.5.7:
     dependencies:
@@ -30407,7 +30429,7 @@ snapshots:
       luxon: 3.7.2
       proxy-agent: 6.4.0
       sandbox: 2.5.6
-      smol-toml: 1.7.0
+      smol-toml: 1.9.0
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'

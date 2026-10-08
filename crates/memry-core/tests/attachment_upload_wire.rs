@@ -18,18 +18,25 @@ use std::sync::Arc;
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::ApiError;
+use memry_core::protocol::attachment_manifest::EncryptedAttachmentManifest;
 use memry_core::protocol::attachment_upload::{
-    DEREFERENCE_CAP, DirectChunk, complete, dereference, frame_chunks, initiate, put_chunk,
-    put_chunk_presigned,
+    DEREFERENCE_CAP, DirectChunk, cancel, complete, dereference, frame_chunks, initiate, put_chunk,
+    put_chunk_presigned, put_manifest, status,
 };
-use memry_core::protocol::attachments::fetch_chunk_proxied;
-use memry_core::protocol::http::{AUTHORIZATION_HEADER, ClientIdentity, HttpClient, TokenProvider};
+use memry_core::protocol::attachments::{
+    SignerResolver, fetch_chunk_proxied, fetch_manifest, presign_batch,
+};
+use memry_core::protocol::http::{
+    AUTHORIZATION_HEADER, ClientIdentity, HttpClient, TokenProvider, VAULT_ID_HEADER,
+};
 
 const FILE_KEY: [u8; 32] = [7u8; 32];
 
 fn nonces(index: u32) -> Vec<u8> {
     vec![index as u8; 24]
 }
+
+const VAULT: &str = "vault-a";
 
 fn client(transport: Arc<FakeTransport>) -> HttpClient {
     HttpClient::new(
@@ -54,6 +61,7 @@ async fn initiate_declares_the_chunks_that_are_about_to_be_sent() {
     )]));
     let session = initiate(
         &client(Arc::clone(&transport)),
+        VAULT,
         "att-1",
         "picture.png",
         plaintext.len() as u64,
@@ -98,7 +106,7 @@ async fn a_chunk_goes_up_as_the_bytes_a_reader_will_hash() {
     let chunks = frame_chunks(&plaintext, &FILE_KEY, 4, nonces).expect("frame");
 
     let transport = Arc::new(FakeTransport::new(vec![response(200, "{}")]));
-    put_chunk(&client(Arc::clone(&transport)), "s1", &chunks[0])
+    put_chunk(&client(Arc::clone(&transport)), VAULT, "s1", &chunks[0])
         .await
         .expect("put");
 
@@ -117,7 +125,7 @@ async fn completing_an_upload_names_its_session() {
         200,
         r#"{"success":true}"#,
     )]));
-    complete(&client(Arc::clone(&transport)), "s1", &[])
+    complete(&client(Arc::clone(&transport)), VAULT, "s1", &[])
         .await
         .expect("complete");
     assert!(
@@ -137,7 +145,7 @@ async fn deleting_an_attachment_releases_its_chunks() {
     let transport = Arc::new(FakeTransport::new(vec![response(200, "{}")]));
     let hashes = vec!["a".repeat(64), "b".repeat(64)];
 
-    dereference(&client(Arc::clone(&transport)), &hashes)
+    dereference(&client(Arc::clone(&transport)), VAULT, &hashes)
         .await
         .expect("dereference");
 
@@ -161,7 +169,7 @@ async fn a_long_release_is_split_rather_than_truncated() {
         response(200, "{}"),
         response(200, "{}"),
     ]));
-    dereference(&client(Arc::clone(&transport)), &hashes)
+    dereference(&client(Arc::clone(&transport)), VAULT, &hashes)
         .await
         .expect("dereference");
 
@@ -183,7 +191,7 @@ async fn a_long_release_is_split_rather_than_truncated() {
 #[tokio::test]
 async fn releasing_nothing_asks_for_nothing() {
     let transport = Arc::new(FakeTransport::new(vec![]));
-    dereference(&client(Arc::clone(&transport)), &[])
+    dereference(&client(Arc::clone(&transport)), VAULT, &[])
         .await
         .expect("dereference");
     assert_eq!(transport.call_count(), 0);
@@ -220,15 +228,19 @@ async fn worker_routes_carry_the_session_and_presigned_urls_do_not() {
     ]));
     let signed_in = client(Arc::clone(&transport)).with_tokens(Arc::new(SignedIn));
 
-    initiate(&signed_in, "att-1", "p.png", 4, &chunks)
+    initiate(&signed_in, VAULT, "att-1", "p.png", 4, &chunks)
         .await
         .expect("initiate");
-    put_chunk(&signed_in, "s1", &chunks[0]).await.expect("put");
-    complete(&signed_in, "s1", &[]).await.expect("complete");
-    dereference(&signed_in, &["a".repeat(64)])
+    put_chunk(&signed_in, VAULT, "s1", &chunks[0])
+        .await
+        .expect("put");
+    complete(&signed_in, VAULT, "s1", &[])
+        .await
+        .expect("complete");
+    dereference(&signed_in, VAULT, &["a".repeat(64)])
         .await
         .expect("dereference");
-    fetch_chunk_proxied(&signed_in, &"b".repeat(64))
+    fetch_chunk_proxied(&signed_in, VAULT, &"b".repeat(64))
         .await
         .expect("fetch");
     put_chunk_presigned(&signed_in, "https://r2.example/put", &chunks[0])
@@ -260,6 +272,97 @@ async fn worker_routes_carry_the_session_and_presigned_urls_do_not() {
     );
 }
 
+/// **Every Worker attachment route names the vault** (chapter 05 §5.2), because
+/// the server keys manifests and chunks under the vault it resolves. A request
+/// without the header lands in the device's registration vault (`default` for
+/// iOS), where desktop, which always sends it, never looks: #2634, where every
+/// iOS upload read as "Attachment file missing" on desktop. A presigned R2 url
+/// is not our server and carries no vault.
+#[tokio::test]
+async fn worker_routes_name_the_vault_and_presigned_urls_do_not() {
+    let plaintext: Vec<u8> = (0..4u8).collect();
+    let chunks = frame_chunks(&plaintext, &FILE_KEY, 4, nonces).expect("frame");
+    let transport = Arc::new(FakeTransport::new(vec![
+        response(200, r#"{"sessionId":"s1","expiresAt":9999}"#),
+        response(200, "{}"),
+        response(200, r#"{"success":true}"#),
+        response(200, "{}"),
+        response(
+            200,
+            r#"{"sessionId":"s1","attachmentId":"att-1","chunkCount":1,"uploadedChunks":[0],"expiresAt":9999}"#,
+        ),
+        response(200, "{}"),
+        response(200, "{}"),
+        response(200, r#"{"urls":{},"expiresAt":9999}"#),
+        response(200, "bytes"),
+        response(
+            404,
+            r#"{"error":{"code":"ATTACHMENT_NOT_FOUND","message":"x"}}"#,
+        ),
+        response(200, "{}"),
+    ]));
+    let http = client(Arc::clone(&transport));
+    let envelope = EncryptedAttachmentManifest {
+        encrypted_manifest: String::new(),
+        manifest_nonce: String::new(),
+        encrypted_file_key: String::new(),
+        key_nonce: String::new(),
+        manifest_signature: String::new(),
+        signer_device_id: String::new(),
+    };
+
+    initiate(&http, VAULT, "att-1", "p.png", 4, &chunks)
+        .await
+        .expect("initiate");
+    put_chunk(&http, VAULT, "s1", &chunks[0])
+        .await
+        .expect("put");
+    complete(&http, VAULT, "s1", &[]).await.expect("complete");
+    put_manifest(&http, VAULT, "att-1", &envelope)
+        .await
+        .expect("manifest");
+    status(&http, VAULT, "s1").await.expect("status");
+    cancel(&http, VAULT, "s1").await.expect("cancel");
+    dereference(&http, VAULT, &["a".repeat(64)])
+        .await
+        .expect("dereference");
+    presign_batch(&http, VAULT, &["b".repeat(64)])
+        .await
+        .expect("presign");
+    fetch_chunk_proxied(&http, VAULT, &"b".repeat(64))
+        .await
+        .expect("fetch");
+    // Only the request matters here; the 404 is the manifest route answering.
+    let _ = fetch_manifest(&http, VAULT, "att-1", &[0u8; 32], &NoSigners).await;
+    put_chunk_presigned(&http, "https://r2.example/put", &chunks[0])
+        .await
+        .expect("presigned put");
+
+    let calls = transport.calls();
+    assert_eq!(calls.len(), 11);
+    let (presigned, worker) = calls.split_last().expect("calls");
+    for call in worker {
+        assert_eq!(
+            call.headers.get(VAULT_ID_HEADER).map(String::as_str),
+            Some(VAULT),
+            "{} must name the vault",
+            call.url
+        );
+    }
+    assert!(
+        !presigned.headers.contains_key(VAULT_ID_HEADER),
+        "a presigned url carries no vault"
+    );
+}
+
+struct NoSigners;
+
+impl SignerResolver for NoSigners {
+    fn public_key(&self, _device_id: &str) -> Option<Vec<u8>> {
+        None
+    }
+}
+
 /// **A chunk PUT straight to R2 is reported on `complete`**, or the server,
 /// which never saw it pass, answers "Missing chunks". None direct leaves the
 /// key out: the body an older server already accepts.
@@ -273,10 +376,10 @@ async fn complete_reports_the_chunks_that_went_straight_to_r2() {
     ]));
     let http = client(Arc::clone(&transport));
 
-    complete(&http, "s1", &[DirectChunk::of(&chunks[0])])
+    complete(&http, VAULT, "s1", &[DirectChunk::of(&chunks[0])])
         .await
         .expect("complete");
-    complete(&http, "s2", &[]).await.expect("complete");
+    complete(&http, VAULT, "s2", &[]).await.expect("complete");
 
     let calls = transport.calls();
     let direct: serde_json::Value =

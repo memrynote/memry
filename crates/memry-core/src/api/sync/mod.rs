@@ -498,6 +498,7 @@ impl VaultSync {
 
         let (manifest, file_key) = protocol_attachments::fetch_manifest(
             &self.session.http(),
+            &self.vault_id,
             &attachment_id,
             &vault_key,
             &DirectorySigners(directory),
