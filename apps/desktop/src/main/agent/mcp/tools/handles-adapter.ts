@@ -26,6 +26,7 @@ import {
   getNoteById,
   listNotes
 } from '../../../vault/notes'
+import { fileSpelledProperties } from '../../../vault/yaml-dates'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId, generateNoteId } from '../../../lib/id'
 import {
@@ -55,7 +56,7 @@ import { createdFoldersReply, foldersToCreate } from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
-import { withoutFileBodies } from './desktop-api-reply'
+import { agentDesktopReply } from './desktop-api-reply'
 import { assertNoteWritable } from '../../../vault-locks/registry'
 import { storedNoteBody } from './stored-body'
 import { viewVaultFile } from './file-view'
@@ -213,7 +214,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           content_markdown: note.content,
           tags: note.tags,
           folder_path: folderPathFromNotePath(note.path),
-          frontmatter: note.frontmatter,
+          frontmatter: fileSpelledProperties(note.frontmatter),
           file_type: 'markdown',
           ...(icon ? { icon } : {}),
           ...(attachments.files.length > 0
@@ -780,7 +781,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         // The escape hatch must honour the same flag as the dedicated canvas
         // tools, or an agent could reach canvas.* with the feature off.
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
+        const data = await invokeDesktopApiFromWindow(windowId, input)
+        return agentDesktopReply(input.operation, data, fileRowOf)
       },
       prepareWrite: withAgentChecklists,
       async write(input, windowId) {
@@ -788,7 +790,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return writeAndReadBack(
           input,
           async (request) =>
-            withoutFileBodies(
+            agentDesktopReply(
+              request.operation,
               await invokeDesktopApiFromWindow(windowId, await withAgentChecklists(request)),
               fileRowOf
             ),
