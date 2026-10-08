@@ -279,10 +279,11 @@ files and nothing here syncs. Two kinds of file are read: a filed PDF or image (
   its job; renaming an attachment is a new `source` and is read again. A `failed` job, or a `done`
   job with `unreadable` rows, runs again when another app version opens the vault or a day after
   it last ran. Its `unreadable` rows go first and the job reads every page it has no row for, so a
-  gap before a good page is read again and the text it already read stays. A finished job with
+  gap before a good page is read again and the text it already read stays. A `done` job with
   `ocr` rows whose `ocr_languages` lacks a language OCR now reads with runs again too. It keeps
   its rows and reads its `ocr` pages again, so search keeps the old text until each page is
-  replaced. Removing a language queues nothing.
+  replaced. A page whose new read fails keeps its old text, and the job fails with its old
+  `ocr_languages`, so it waits for the failure retry above. Removing a language queues nothing.
 
 Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
 searchable: an attachment's text sits under the markdown note that owns the folder, so a search

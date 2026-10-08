@@ -108,8 +108,8 @@ type FinishJob = (status: 'done' | 'failed', error?: string) => void
 
 /**
  * How a job saves a part. A part read again for a new OCR language keeps its
- * old text when the new read fails, and the job then keeps its old languages so
- * the next comparison queues it again.
+ * old text when the new read fails. The job then fails with its old languages,
+ * so it is read again on the failure retry schedule, not on every comparison.
  */
 type SavePart = (part: number, result: PageText) => void
 
@@ -359,10 +359,10 @@ export class FileTextRunner {
     return due && (job.status === 'failed' || hasPartsReadAs(db, file, 'unreadable'))
   }
 
-  /** A finished job with OCR text read before a language was chosen. */
+  /** A done job with OCR text read before a language was chosen. A failed one waits for its retry. */
   private isMissingOcrLanguage(db: IndexDb, job: FileTextJobRow, file: TextSourceRef): boolean {
     return (
-      job.status !== 'pending' &&
+      job.status === 'done' &&
       missesOcrLanguage(job.ocrLanguages, this.deps.ocrLanguages()) &&
       hasPartsReadAs(db, file, 'ocr')
     )
@@ -384,11 +384,17 @@ export class FileTextRunner {
       else saveExtractedPart(db, file, part, result.method, result.text)
     }
     const finish: FinishJob = (status, error) =>
-      finishFileTextJob(db, file, {
-        status,
-        error,
-        ocrLanguages: keptOldText ? job.ocrLanguages : languages.join('+')
-      })
+      finishFileTextJob(
+        db,
+        file,
+        keptOldText
+          ? {
+              status: 'failed',
+              error: error ?? 'OCR text could not be read again with the new languages',
+              ocrLanguages: job.ocrLanguages
+            }
+          : { status, error, ocrLanguages: languages.join('+') }
+      )
     const resolved = await resolveVaultFile(this.deps.vaultPath, file.path)
     if (resolved.kind === 'outside') {
       finish('failed', `${normalizeRelativePath(file.path)} points outside the vault`)
