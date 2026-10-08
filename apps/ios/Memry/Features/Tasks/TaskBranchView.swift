@@ -76,9 +76,15 @@ struct TaskBranchChip: View {
     let task: TaskItem
     let store: TasksStore
 
+    @Environment(TasksRouter.self) private var router: TasksRouter?
+
     var body: some View {
         let children = store.treeChildren(of: task.id)
-        NavigationLink(value: TasksRoute.branch(task.id)) {
+        // A borderless button, not a NavigationLink: a List row fires every
+        // link in it on a tap, so a second link would push the detail too.
+        Button {
+            router?.open(.branch(task.id))
+        } label: {
             HStack(spacing: Tokens.Space.tight) {
                 Text("\(children.filter(\.isDone).count)/\(children.count)").monospacedDigit()
                 Image(systemName: "chevron.forward")
@@ -92,8 +98,7 @@ struct TaskBranchChip: View {
             .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
             .contentShape(.rect)
         }
-        .navigationLinkIndicatorVisibility(.hidden)
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .accessibilityIdentifier("tasks.row.branch.\(task.id)")
     }
 }
