@@ -10,7 +10,7 @@ import { scanFootnotes } from '@memry/shared/footnotes'
  * definition line reads subdued in place.
  */
 
-export interface FootnoteDefinitionView {
+interface FootnoteDefinitionView {
   number: number | null
   text: string
 }
