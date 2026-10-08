@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import {
   createTestDataDb,
@@ -117,6 +118,13 @@ vi.mock('./index', () => ({
 vi.mock('./journal-folder-follow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./journal-folder-follow')>()),
   followJournalFolder: vi.fn()
+}))
+
+const enqueueLocalSyncCreate = vi.hoisted(() => vi.fn())
+vi.mock('../sync/local-mutations', () => ({
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncUpdate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn()
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({
@@ -500,6 +508,56 @@ describe('vault watcher', () => {
     expect(mockWatcher.close).toHaveBeenCalled()
     expect(getWatcher().isWatching()).toBe(false)
     expect(hasPendingDeletes()).toBe(false)
+  })
+
+  it('records and syncs a folder created outside the app (#2841)', async () => {
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+    const trigger = (event: string, ...args: unknown[]) => {
+      for (const handler of listeners.get(event) ?? []) handler(...args)
+    }
+    const mockWatcher = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+    const startPromise = startWatcher(vault.path)
+    trigger('ready')
+    await startPromise
+
+    dataDb.db
+      .insert(folderConfigs)
+      .values({ path: 'Styled', icon: 'star', createdAt: 'x', modifiedAt: 'x' })
+      .run()
+    fs.mkdirSync(path.join(vault.path, 'Finder', 'Empty'), { recursive: true })
+    trigger('addDir', path.join(vault.path, 'Finder'))
+    trigger('addDir', path.join(vault.path, 'Finder', 'Empty'))
+    trigger('addDir', path.join(vault.path, 'Styled'))
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, excludePatterns: ['ignored'] } as never)
+    trigger('addDir', vault.path)
+    trigger('addDir', path.join(vault.path, 'journal'))
+    trigger('addDir', path.join(vault.path, 'journal', '2026'))
+    trigger('addDir', path.join(vault.path, 'canvases'))
+    trigger('addDir', path.join(vault.path, 'canvases', 'Board'))
+    trigger('addDir', path.join(vault.path, 'ignored', 'deep'))
+
+    const rows = dataDb.db.select().from(folderConfigs).all()
+    expect(rows.map((r) => [r.path, r.icon]).sort()).toEqual([
+      ['Finder', null],
+      ['Finder/Empty', null],
+      ['Styled', 'star']
+    ])
+    expect(enqueueLocalSyncCreate.mock.calls).toEqual([
+      ['folder_config', 'Finder'],
+      ['folder_config', 'Finder/Empty']
+    ])
+    await stopWatcher()
   })
 
   it('applies watcher ignore rules and forwards watcher errors', async () => {

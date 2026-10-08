@@ -90,7 +90,8 @@ device, so replaying your account history cannot put it back. Nothing is recorde
 does not sync at all (signed out, or on the free plan): there is no other device holding a copy.
 
 A folder syncs in its own right, so a folder you create and leave empty — and any empty folders
-inside it — appears on your other devices without needing a note in it. Renaming or deleting a
+inside it — appears on your other devices without needing a note in it. That includes a folder
+you make outside the app, in Finder or a terminal, while desktop is running. Renaming or deleting a
 folder carries its whole subtree with it. Folders that already existed before this was fixed are
 picked up once, the next time sync starts. A folder deleted on one device is removed on the others
 once the notes inside it are gone. If any other file is still left in it on another device, that
