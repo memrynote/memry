@@ -280,9 +280,11 @@ vi.mock('@/components/journal', () => ({
     onVersionHistory,
     onExport,
     onOpenSettings,
-    onMenuAction
+    onMenuAction,
+    lockAction
   }: any) => (
     <div data-testid="header-actions">
+      {lockAction && <button onClick={() => onMenuAction?.('lock')}>{lockAction} entry</button>}
       <button onClick={onPrevious}>header prev</button>
       <button onClick={onNext}>header next</button>
       <button onClick={onToggleFullWidth}>width</button>
@@ -942,6 +944,52 @@ describe('JournalPage', () => {
       expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
       expect(mocks.contentAreaProps.editable).toBe(true)
       expect(screen.getByTestId('tags-row')).toHaveAttribute('data-disabled', 'false')
+    })
+
+    it('locks the entry itself from its menu, then unlocks it', async () => {
+      const set = vi.mocked(window.api.vaultLocks.set)
+      set.mockResolvedValueOnce({ notes: ['j2026-01-15'], folders: [] })
+      render(<JournalPage />)
+
+      fireEvent.click(screen.getByText('lock entry'))
+
+      await waitFor(() =>
+        expect(set).toHaveBeenCalledWith({ kind: 'note', target: 'j2026-01-15', locked: true })
+      )
+      expectReadOnly()
+
+      set.mockResolvedValueOnce({ notes: [], folders: [] })
+      fireEvent.click(screen.getByText('unlock entry'))
+
+      await waitFor(() =>
+        expect(set).toHaveBeenLastCalledWith({
+          kind: 'note',
+          target: 'j2026-01-15',
+          locked: false
+        })
+      )
+      expect(mocks.contentAreaProps.editable).toBe(true)
+    })
+
+    it('offers no entry lock under a folder lock', () => {
+      render(<JournalPage />)
+      broadcastLocks({ notes: [], folders: ['Journal'] })
+      expect(screen.queryByText(/lock entry/)).not.toBeInTheDocument()
+    })
+
+    it('offers no entry lock on an empty day', () => {
+      mocks.entry = null
+      render(<JournalPage />)
+      expect(screen.queryByText(/lock entry/)).not.toBeInTheDocument()
+    })
+
+    it('shows a failed lock change as a toast', async () => {
+      vi.mocked(window.api.vaultLocks.set).mockRejectedValueOnce(new Error('disk full'))
+      render(<JournalPage />)
+
+      fireEvent.click(screen.getByText('lock entry'))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk full'))
     })
 
     it('refuses a property edit with the lock text', () => {

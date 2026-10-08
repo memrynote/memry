@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
 import { NoteError, NoteErrorCode } from '../../lib/errors'
 import { folderLockedError } from '../../vault-locks/registry'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
@@ -15,10 +18,14 @@ describe('toMcpToolErrorContent for locked targets (#2606)', () => {
     expect(parsed(err)).toEqual({ code: 'PERMISSION_DENIED', message: VAULT_LOCKED_NOTE_MESSAGE })
   })
 
-  it('reports a locked folder with the same fixed text, also when a handle rethrew it', () => {
+  it('reports a locked folder with folder wording, also when a handle rethrew it', () => {
     expect(parsed(folderLockedError())).toEqual({
       code: 'PERMISSION_DENIED',
-      message: VAULT_LOCKED_NOTE_MESSAGE
+      message: 'The owner made this folder read-only.'
+    })
+    expect(parsed(new Error(VAULT_LOCKED_FOLDER_MESSAGE))).toEqual({
+      code: 'PERMISSION_DENIED',
+      message: VAULT_LOCKED_FOLDER_MESSAGE
     })
     expect(parsed(new Error(VAULT_LOCKED_NOTE_MESSAGE))).toEqual({
       code: 'PERMISSION_DENIED',

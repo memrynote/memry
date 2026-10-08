@@ -78,7 +78,14 @@ describe('extractErrorMessage', () => {
       lng: 'tr',
       fallbackLng: 'en',
       resources: {
-        tr: { errors: { vaultLock: { noteReadOnly: 'Sahibi bu notu salt okunur yapti.' } } }
+        tr: {
+          errors: {
+            vaultLock: {
+              noteReadOnly: 'Sahibi bu notu salt okunur yapti.',
+              folderReadOnly: 'Sahibi bu klasoru salt okunur yapti.'
+            }
+          }
+        }
       }
     })
 
@@ -86,6 +93,12 @@ describe('extractErrorMessage', () => {
       "Error invoking remote method 'notes:update': Error: The owner made this note read-only."
     )
     expect(extractErrorMessage(error, 'fallback')).toBe('Sahibi bu notu salt okunur yapti.')
+    const folderError = new Error(
+      "Error invoking remote method 'notes:create': Error: The owner made this folder read-only."
+    )
+    expect(extractErrorMessage(folderError, 'fallback')).toBe(
+      'Sahibi bu klasoru salt okunur yapti.'
+    )
   })
 
   it('keeps the English lock refusal for agent replies in every locale (#2606)', () => {
@@ -93,6 +106,9 @@ describe('extractErrorMessage', () => {
       "Error invoking remote method 'notes:update': Error: The owner made this note read-only."
     )
     expect(getVaultLockRefusal(error)).toBe('The owner made this note read-only.')
+    expect(getVaultLockRefusal(new Error('Error: The owner made this folder read-only.'))).toBe(
+      'The owner made this folder read-only.'
+    )
     expect(getVaultLockRefusal(new Error('disk full'))).toBeNull()
   })
 })

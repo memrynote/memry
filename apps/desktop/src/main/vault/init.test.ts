@@ -477,6 +477,28 @@ describe('writeVaultConfig', () => {
     expect(result.attachmentsFolder).toBe('files')
     expect(result.defaultNoteFolder).toBe('') // Default preserved
   })
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'reports a read-only config file as permission denied, without the errno or the path',
+    () => {
+      const configPath = path.join(tempDir.path, '.memry', 'config.json')
+      fs.writeFileSync(configPath, JSON.stringify({ journalDateFormat: 'YYYY-MM-DD' }))
+      fs.chmodSync(configPath, 0o444)
+
+      let thrown: unknown
+      try {
+        writeVaultConfig(tempDir.path, { journalDateFormat: 'YYYY-MM-DD dddd' })
+      } catch (error) {
+        thrown = error
+      }
+
+      expect(thrown).toMatchObject({
+        code: 'VAULT_PERMISSION_DENIED',
+        message: 'Permission denied. Check that you have access to this folder.'
+      })
+      expect(JSON.parse(fs.readFileSync(configPath, 'utf-8')).journalDateFormat).toBe('YYYY-MM-DD')
+    }
+  )
 })
 
 // ============================================================================
