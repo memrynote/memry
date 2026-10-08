@@ -33,9 +33,18 @@ import {
   AUTO_SAVE_DELAY_MS,
   PREFETCH_DAYS
 } from './journal-query-keys'
+import { mergeInlineTagEdits, type InlineTagEdit } from './use-inline-tag-edits'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
+
+/** Tag changes not saved yet: a new tags-row list, and the body's `#tag` changes applied on top of it. */
+interface PendingTagsEdit {
+  tags?: string[]
+  inlineTags?: InlineTagEdit
+}
+
+type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
 
 /**
  * Whether the vault this journal renders is no longer the open one. Saves are
@@ -87,6 +96,8 @@ export interface UseJournalEntryResult {
   externalUpdateCount: number
   updateContent: (content: string) => void
   updateTags: (tags: string[]) => void
+  /** The `#tags` typed into or deleted from the body; main moves the plain ones in or out of `tags`. */
+  updateInlineTags: (edit: InlineTagEdit) => void
   saveNow: () => Promise<void>
   reload: () => Promise<void>
   forceReload: () => Promise<void>
@@ -106,7 +117,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   const pendingContentRef = useRef<string | null>(null)
-  const pendingTagsRef = useRef<string[] | null>(null)
+  const pendingTagsRef = useRef<PendingTagsEdit | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDateRef = useRef(date)
   // The date whose save lifecycle is running: set by the registry effect below,
@@ -152,9 +163,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
 
     if (oldDate && oldDate !== date && (pendingContent !== null || pendingTags !== null)) {
-      const saveInput: { date: string; content?: string; tags?: string[] } = { date: oldDate }
+      const saveInput: JournalSaveInput = { date: oldDate, ...pendingTags }
       if (pendingContent !== null) saveInput.content = pendingContent
-      if (pendingTags !== null) saveInput.tags = pendingTags
 
       journalService.updateEntry(saveInput).catch((err) => {
         // The user has already navigated away — this is silent data loss.
@@ -203,7 +213,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   }, [date, queryClient])
 
   const updateMutation = useMutation({
-    mutationFn: async (input: { date: string; content?: string; tags?: string[] }) => {
+    mutationFn: async (input: JournalSaveInput) => {
       return journalService.updateEntry(input)
     },
     onSuccess: (updatedEntry) => {
@@ -296,11 +306,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     try {
-      const updateInput: { date: string; content?: string; tags?: string[] } = {
-        date: currentDate
-      }
+      const updateInput: JournalSaveInput = { date: currentDate, ...tags }
       if (content !== null) updateInput.content = content
-      if (tags !== null) updateInput.tags = tags
 
       await updateMutation.mutateAsync(updateInput)
 
@@ -381,11 +388,22 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         journalKeys.entry(currentDateRef.current),
         (old: JournalEntry | undefined) => (old ? { ...old, tags } : old)
       )
-      pendingTagsRef.current = tags
+      pendingTagsRef.current = { ...pendingTagsRef.current, tags }
       setIsDirty(true)
       void performSave()
     },
     [queryClient, performSave]
+  )
+
+  const updateInlineTags = useCallback(
+    (edit: InlineTagEdit) => {
+      const pending = pendingTagsRef.current
+      const inlineTags = pending?.inlineTags ? mergeInlineTagEdits(pending.inlineTags, edit) : edit
+      pendingTagsRef.current = { ...pending, inlineTags }
+      setIsDirty(true)
+      void performSave()
+    },
+    [performSave]
   )
 
   const saveNow = useCallback(async () => {
@@ -544,6 +562,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     externalUpdateCount,
     updateContent,
     updateTags,
+    updateInlineTags,
     saveNow,
     reload,
     forceReload,

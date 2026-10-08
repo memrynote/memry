@@ -9,7 +9,7 @@ import {
   normalizeWikiLinks,
   normalizeMarkdownHardBreaks
 } from '../wiki-link-utils'
-import { normalizeHashTags } from '../hash-tag'
+import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
 import { normalizeDateMentions } from '../date-mention-utils'
@@ -23,7 +23,7 @@ import { recordLoadedMarkdownSource, serializeMarkdownPreservingSource } from '.
 import { createLinkMentionContent } from '../link-mention'
 import { normalizeLinkMentions } from '../link-mention-utils'
 import { fetchLinkPreview } from '@/lib/url-metadata'
-import type { HeadingInfo } from '../types'
+import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { isEditingWikiLinkText } from '../wiki-link-edit-plugin'
@@ -367,6 +367,13 @@ interface EditorSyncParams {
   onContentChange?: (blocks: Block[]) => void
   onMarkdownChange?: (markdown: string) => void
   onHeadingsChange?: (headings: HeadingInfo[]) => void
+  /**
+   * Reports the inline `#tags` in the body. `origin` separates the tag set the
+   * note was OPENED with (`'load'`) from one the user just typed (`'edit'`):
+   * opening a note must not modify it, so the load report is a baseline to diff
+   * against and never something to persist (#1454).
+   */
+  onInlineTagsChange?: (tags: string[], origin: InlineTagsOrigin) => void
 }
 
 interface EditorSyncResult {
@@ -379,6 +386,7 @@ interface EditorSyncResult {
    */
   flushPendingMarkdown: (deliver?: (markdown: string) => void) => Promise<void>
   isContentReadyRef: React.RefObject<boolean>
+  prevInlineTagsRef: React.MutableRefObject<string[]>
   lastNormalizedTagsRef: React.MutableRefObject<string>
 }
 
@@ -396,14 +404,17 @@ export function useEditorSync({
   tagIconMap,
   onContentChange,
   onMarkdownChange,
-  onHeadingsChange
+  onHeadingsChange,
+  onInlineTagsChange
 }: EditorSyncParams): EditorSyncResult {
   const loadedContentRevisionRef = useRef<number | null>(null)
   const isContentReadyRef = useRef(false)
+  const prevInlineTagsRef = useRef<string[]>([])
   const lastNormalizedTagsRef = useRef<string>('')
 
   const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The debounced markdown save, kept callable so teardown can run it early.
   const pendingMarkdownSaveRef = useRef<
     ((deliver?: (markdown: string) => void) => Promise<void>) | null
@@ -418,6 +429,7 @@ export function useEditorSync({
     return () => {
       if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
     }
   }, [])
 
@@ -447,6 +459,19 @@ export function useEditorSync({
 
     let cancelled = false
 
+    /**
+     * Report the tag set the note was opened with as the baseline for later
+     * edits, without asking anyone to persist it. Opening a note must not
+     * modify it (#1454), and every hash tag in the body reads as "new" until
+     * this baseline exists.
+     */
+    const reportLoadedInlineTags = (): void => {
+      if (!onInlineTagsChange) return
+      const tags = extractInlineTags(editor.document as Block[])
+      prevInlineTagsRef.current = tags
+      onInlineTagsChange(tags, 'load')
+    }
+
     // Collaboration owns the document: the main process feeds an external edit
     // into the shared Y.Doc (`feedExternalEditToCrdt`), the IPC provider applies
     // it here, and y-prosemirror merges it into this editor in place. Replacing
@@ -475,6 +500,9 @@ export function useEditorSync({
         const headings = extractHeadings(editor.document as Block[])
         if (!cancelled) onHeadingsChange(headings)
       }
+      // The shared fragment is already bound to the editor here (that is what
+      // `extractHeadings` above reads), so this is the note's opening tag set.
+      if (!cancelled) reportLoadedInlineTags()
       return () => {
         cancelled = true
       }
@@ -559,6 +587,7 @@ export function useEditorSync({
             const headings = extractHeadings(editor.document as Block[])
             onHeadingsChange(headings)
           }
+          reportLoadedInlineTags()
         }
       }
     }
@@ -637,6 +666,20 @@ export function useEditorSync({
         onHeadingsChange(headings)
       }, 200)
     }
+
+    if (onInlineTagsChange) {
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
+      inlineTagsDebounceRef.current = setTimeout(() => {
+        const currentBlocks = editor.document as Block[]
+        const tags = extractInlineTags(currentBlocks)
+        const tagsKey = tags.sort().join(',')
+        const prevKey = [...prevInlineTagsRef.current].sort().join(',')
+        if (tagsKey !== prevKey) {
+          prevInlineTagsRef.current = tags
+          onInlineTagsChange(tags, 'edit')
+        }
+      }, 300)
+    }
   }, [
     editor,
     onContentChange,
@@ -644,7 +687,8 @@ export function useEditorSync({
     yjsFragment,
     onMarkdownChange,
     notePath,
-    onHeadingsChange
+    onHeadingsChange,
+    onInlineTagsChange
   ])
 
   // Teardown hook: run the debounced save now. The unmount cleanup above only
@@ -665,6 +709,7 @@ export function useEditorSync({
     handleChange,
     flushPendingMarkdown,
     isContentReadyRef,
+    prevInlineTagsRef,
     lastNormalizedTagsRef
   }
 }

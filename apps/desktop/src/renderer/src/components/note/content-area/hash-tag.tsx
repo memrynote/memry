@@ -332,3 +332,53 @@ export function normalizeHashTags(
 
   return { blocks: didChange ? nextBlocks : blocks, didChange }
 }
+
+// =============================================================================
+// INLINE TAG EXTRACTION (for syncing editor -> note tags)
+// =============================================================================
+
+export function extractInlineTags(blocks: Block[]): string[] {
+  // Case preserved; deduplicated case-insensitively (first occurrence wins)
+  const tagsByKey = new Map<string, string>()
+  const tagPattern = new RegExp(HASH_TAG_PATTERN)
+
+  function addTag(tag: string): void {
+    const key = tag.toLowerCase()
+    if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
+  }
+
+  function extractFromText(text: string): void {
+    tagPattern.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = tagPattern.exec(text)) !== null) {
+      const precedingChar = match.index > 0 ? text[match.index - 1] : ''
+      if (precedingChar && !/\s/.test(precedingChar)) continue
+      addTag(match[1])
+    }
+  }
+
+  function walkBlock(block: Block): void {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
+      for (const item of block.content as any[]) {
+        if (item?.type === 'hashTag' && item.props?.tag) {
+          addTag(item.props.tag as string)
+        } else if (item?.type === 'text' && item.text) {
+          extractFromText(item.text as string)
+        } else if (typeof item === 'string') {
+          extractFromText(item)
+        }
+      }
+    }
+    if (block.children) {
+      for (const child of block.children) {
+        walkBlock(child as Block)
+      }
+    }
+  }
+
+  for (const block of blocks) {
+    walkBlock(block)
+  }
+  return Array.from(tagsByKey.values())
+}

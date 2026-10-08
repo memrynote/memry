@@ -1,4 +1,4 @@
-import { count, eq, like } from 'drizzle-orm'
+import { count, eq, isNotNull, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../../lib/logger'
@@ -242,4 +242,14 @@ export function ensureTagDefinitions(
   )
 
   return normalized.map((tag) => getOrCreateTag(db, tag))
+}
+
+/** The raw `schema` blob of every definition that has one. */
+export function listTagSchemas(db: DataDb): { name: string; schema: string }[] {
+  return db
+    .select({ name: tagDefinitions.name, schema: tagDefinitions.schema })
+    .from(tagDefinitions)
+    .where(isNotNull(tagDefinitions.schema))
+    .all()
+    .flatMap((row) => (row.schema === null ? [] : [{ name: row.name, schema: row.schema }]))
 }

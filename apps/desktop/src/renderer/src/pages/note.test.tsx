@@ -460,6 +460,7 @@ vi.mock('@/components/note', () => ({
     onHeadingsChange,
     onLinkClick,
     onInternalLinkClick,
+    onInlineTagsChange,
     focusAtEndRef,
     review
   }: {
@@ -471,6 +472,7 @@ vi.mock('@/components/note', () => ({
     ) => void
     onLinkClick: (href: string) => void
     onInternalLinkClick: (target: string) => void
+    onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
   }) => {
@@ -541,6 +543,19 @@ vi.mock('@/components/note', () => ({
         </button>
         <button type="button" onClick={() => onInternalLinkClick('Sprint Board')}>
           Internal canvas link
+        </button>
+        {/* What opening the note reports: the tags the body already carried. */}
+        <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
+          Load inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['Work'], 'load')}>
+          Load cased inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'], 'edit')}>
+          Sync inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange([], 'edit')}>
+          Clear inline tags
         </button>
       </div>
     )
@@ -1091,7 +1106,7 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
   })
 
-  it('debounces markdown saves', async () => {
+  it('debounces markdown saves and reports typed inline tags', async () => {
     vi.useFakeTimers()
     renderWithProviders(<NotePage noteId="note-1" />)
 
@@ -1105,6 +1120,52 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['graph', 'note-1'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync inline tags' }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: ['work', 'urgent'], remove: [], source: 'inline' }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: [], remove: ['work', 'urgent'], source: 'inline' }
+    })
+  })
+
+  it('does not write the note when opening it reports its inline tags', async () => {
+    // #given a note opened with `#work` and then `#Work` in its body (#1454)
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+
+    // #when the editor reports the tag set it loaded with
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Load cased inline tags' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // #then nothing is persisted: opening a note may not modify it
+    expect(mocks.updateNote).not.toHaveBeenCalledWith(
+      expect.objectContaining({ headerTags: expect.anything() })
+    )
+  })
+
+  it('removes a tag when the user deletes the inline tag the note opened with', async () => {
+    // #given a note opened with `#work` in its body, so the load report sets the baseline
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+
+    // #when the user deletes it
+    fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+
+    // #then main is asked to take it off the header
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: [], remove: ['work'], source: 'inline' }
+    })
   })
 
   it('flushes pending markdown saves through the registry and unmount cleanup', async () => {

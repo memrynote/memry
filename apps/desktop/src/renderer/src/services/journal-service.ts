@@ -56,6 +56,7 @@ export const journalService: JournalClientAPI = {
     date: string
     content?: string
     tags?: string[]
+    inlineTags?: { add?: string[]; remove?: string[] }
     properties?: Record<string, unknown>
   }): Promise<JournalEntry> => {
     return window.api.journal.updateEntry(input)

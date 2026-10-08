@@ -14,6 +14,7 @@ export type {
   ContentAreaProps,
   HeadingInfo,
   HighlightInfo,
+  InlineTagsOrigin,
   SelectionInfo,
   ReviewSelection,
   Block

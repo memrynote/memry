@@ -10334,6 +10334,7 @@ Change a note’s title, content, tags, properties or emoji.
 | `input.headerTags.rename`        | `object[]`            | no       | max items `50`                   |
 | `input.headerTags.rename[].from` | `string`              | yes      | min length `1`; max length `50`  |
 | `input.headerTags.rename[].to`   | `string`              | yes      | min length `1`; max length `50`  |
+| `input.headerTags.source`        | `"inline"`            | no       | `"inline"`                       |
 | `input.frontmatter`              | `Record<string, any>` | no       |                                  |
 | `input.emoji`                    | `string \| null`      | no       |                                  |
 
@@ -15362,13 +15363,16 @@ Change the content, tags or properties of a journal entry.
 
 `journal.updateEntry(input)` through `vault_desktop_write`; needs approval.
 
-| Argument           | Type                  | Required | Allowed values                |
-| ------------------ | --------------------- | -------- | ----------------------------- |
-| `input`            | `object`              | yes      |                               |
-| `input.date`       | `string`              | yes      | pattern `^\d{4}-\d{2}-\d{2}$` |
-| `input.content`    | `string`              | no       |                               |
-| `input.tags`       | `string[]`            | no       |                               |
-| `input.properties` | `Record<string, any>` | no       |                               |
+| Argument                  | Type                  | Required | Allowed values                |
+| ------------------------- | --------------------- | -------- | ----------------------------- |
+| `input`                   | `object`              | yes      |                               |
+| `input.date`              | `string`              | yes      | pattern `^\d{4}-\d{2}-\d{2}$` |
+| `input.content`           | `string`              | no       |                               |
+| `input.tags`              | `string[]`            | no       |                               |
+| `input.inlineTags`        | `object`              | no       |                               |
+| `input.inlineTags.add`    | `string[]`            | no       |                               |
+| `input.inlineTags.remove` | `string[]`            | no       |                               |
+| `input.properties`        | `Record<string, any>` | no       |                               |
 
 Example call:
 

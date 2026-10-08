@@ -153,7 +153,7 @@ The dialog has a single field, the template name. It arrives pre-filled with the
 What gets copied:
 
 - The note's body, exactly as it is written, except that tasks become plain checkboxes (see [Tasks in a Template](#tasks-in-a-template))
-- The note's tags from its tags row (a `#tag` written in the text stays in the copied body)
+- The note's tags
 - The note's properties, with the two exceptions below
 
 `Relation` properties cannot be stored in a template, so they are dropped. `Status` properties are saved as `Select`. The summary counts only what is actually saved, so a dropped relation property shows up as a smaller count instead of disappearing quietly.

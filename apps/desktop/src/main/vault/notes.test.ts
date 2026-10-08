@@ -873,7 +873,14 @@ describe('notes operations', () => {
         )
       }
 
-      it('indexes a #tag typed into the body as inline and leaves the header alone', async () => {
+      /** A tag definition with one field, optionally extending another tag. */
+      const defineTagWithFields = (name: string, schema: Record<string, unknown>): void => {
+        dataDb.db.run(
+          sql`INSERT INTO tag_definitions (name, color, schema) VALUES (${name}, 'blue', ${JSON.stringify({ t: 1, ...schema })})`
+        )
+      }
+
+      it('adds a plain #tag typed into the body to the header', async () => {
         const created = await notes.createNote({
           title: 'Inline Typing',
           content: 'Hello world',
@@ -882,24 +889,95 @@ describe('notes operations', () => {
 
         await notes.updateNote({ id: created.id, content: 'Hello #design world' })
 
-        expect(fileHeaderTags(created.path)).toEqual(['project'])
+        expect(fileHeaderTags(created.path)).toEqual(['project', 'design'])
         expect(await indexedTags(created.id)).toEqual([
           { tag: 'project', in_header: 1 },
-          { tag: 'design', in_header: 0 }
+          { tag: 'design', in_header: 1 }
         ])
       })
 
-      it('keeps a header tag when its #tag is deleted from the body', async () => {
+      it('removes a plain #tag deleted from the body from the header', async () => {
         const created = await notes.createNote({
           title: 'Inline Removal',
           content: 'Hello #project world',
-          tags: ['project']
+          tags: ['project', 'kept']
         })
 
         await notes.updateNote({ id: created.id, content: 'Hello world' })
 
-        expect(fileHeaderTags(created.path)).toEqual(['project'])
-        expect(await indexedTags(created.id)).toEqual([{ tag: 'project', in_header: 1 }])
+        expect(fileHeaderTags(created.path)).toEqual(['kept'])
+        expect(await indexedTags(created.id)).toEqual([{ tag: 'kept', in_header: 1 }])
+      })
+
+      it('keeps a #tag with fields, own or inherited, in the text alone', async () => {
+        defineTagWithFields('meeting', { fields: [{ name: 'Attendees' }] })
+        defineTagWithFields('standup', { extends: 'Meeting' })
+        defineTagWithFields('loop-a', { extends: 'loop-b' })
+        defineTagWithFields('loop-b', { extends: 'loop-a' })
+        dataDb.db.run(
+          sql`INSERT INTO tag_definitions (name, color, schema) VALUES ('broken', 'blue', '{oops')`
+        )
+        const created = await notes.createNote({ title: 'Field Tags', content: 'Agenda' })
+
+        await notes.updateNote({
+          id: created.id,
+          content: 'Agenda #Meeting #standup #loop-a #broken #car'
+        })
+
+        expect(fileHeaderTags(created.path)).toEqual(['loop-a', 'broken', 'car'])
+        expect(await indexedTags(created.id)).toEqual([
+          { tag: 'loop-a', in_header: 1 },
+          { tag: 'broken', in_header: 1 },
+          { tag: 'car', in_header: 1 },
+          { tag: 'Meeting', in_header: 0 },
+          { tag: 'standup', in_header: 0 }
+        ])
+      })
+
+      it('keeps a header tag with fields when its #tag is deleted from the body', async () => {
+        defineTagWithFields('meeting', { fields: [{ name: 'Attendees' }] })
+        const created = await notes.createNote({
+          title: 'Field Tag Removal',
+          content: 'Agenda #meeting',
+          tags: ['meeting']
+        })
+
+        await notes.updateNote({ id: created.id, content: 'Agenda' })
+
+        expect(fileHeaderTags(created.path)).toEqual(['meeting'])
+      })
+
+      it('applies the plain tags of an editor report and every tag of a user edit', async () => {
+        defineTagWithFields('meeting', { fields: [{ name: 'Attendees' }] })
+        const created = await notes.createNote({
+          title: 'Editor Report',
+          content: 'Body',
+          tags: ['old']
+        })
+
+        await notes.updateNote({
+          id: created.id,
+          headerTags: { add: ['meeting', 'car'], remove: ['old'], source: 'inline' }
+        })
+        expect(fileHeaderTags(created.path)).toEqual(['car'])
+
+        await notes.updateNote({ id: created.id, headerTags: { add: ['meeting'] } })
+        expect(fileHeaderTags(created.path)).toEqual(['car', 'meeting'])
+      })
+
+      it('leaves the file as it is when a note with #tags is opened', async () => {
+        const created = await notes.createNote({
+          title: 'Open Only',
+          content: 'Body with #idea',
+          tags: ['project']
+        })
+        const filePath = path.join(tempVault.path, created.path)
+        const before = fs.readFileSync(filePath, 'utf-8')
+
+        await notes.getNoteById(created.id)
+        await notes.getNoteByPath(created.path)
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(before)
       })
 
       it('leaves the header alone on a property write', async () => {

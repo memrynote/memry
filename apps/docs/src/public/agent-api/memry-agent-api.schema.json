@@ -11792,6 +11792,10 @@
                     "required": ["from", "to"],
                     "additionalProperties": false
                   }
+                },
+                "source": {
+                  "type": "string",
+                  "const": "inline"
                 }
               },
               "additionalProperties": false
@@ -18332,6 +18336,24 @@
               "items": {
                 "type": "string"
               }
+            },
+            "inlineTags": {
+              "type": "object",
+              "properties": {
+                "add": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "remove": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
             },
             "properties": {
               "type": "object",

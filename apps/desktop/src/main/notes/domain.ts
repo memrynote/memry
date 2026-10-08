@@ -57,7 +57,7 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
   // Write-back writes an open doc's `tags` array over the file's `tags:` list
   // whenever the array is not empty, so the array has to follow every header
   // edit and hold the header alone, or the next body edit reverts the edit.
-  if (input.headerTags) replaceNoteTagsInCrdt(input.id, note.headerTags)
+  if (input.headerTags || headerTagChange) replaceNoteTagsInCrdt(input.id, note.headerTags)
   const hasMetadataChanges =
     input.title !== undefined ||
     headerTagChange !== null ||

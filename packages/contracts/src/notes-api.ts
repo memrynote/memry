@@ -175,6 +175,10 @@ const HeaderTagNameSchema = z.string().trim().min(1).max(50)
  * file: removes first, then renames in place, then adds the list does not hold.
  * Names compare case-insensitively. A delta rather than a list, so a caller can
  * never write the inline `#tags` it read from a note into its header.
+ *
+ * `source: 'inline'` marks the `#tags` typed into or deleted from the body.
+ * Main applies only the plain ones: a tag with fields stays a mention in the
+ * text and never joins or leaves the header that way.
  */
 export const HeaderTagEditSchema = z.object({
   add: z.array(HeaderTagNameSchema).max(50).optional(),
@@ -182,7 +186,8 @@ export const HeaderTagEditSchema = z.object({
   rename: z
     .array(z.object({ from: HeaderTagNameSchema, to: HeaderTagNameSchema }))
     .max(50)
-    .optional()
+    .optional(),
+  source: z.literal('inline').optional()
 })
 export type HeaderTagEdit = z.infer<typeof HeaderTagEditSchema>
 

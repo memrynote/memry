@@ -402,6 +402,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   noteTags,
   tagColorMap,
   tagIconMap,
+  onInlineTagsChange,
   focusAtEndRef,
   openTemplateInsertRef,
   flushMarkdownRef,
@@ -690,7 +691,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onMarkdownChange: onMarkdownChange
       ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
       : undefined,
-    onHeadingsChange
+    onHeadingsChange,
+    onInlineTagsChange
   })
 
   // Hook #2b: Explicit teardown. `useCreateBlockNote` never disposes what it

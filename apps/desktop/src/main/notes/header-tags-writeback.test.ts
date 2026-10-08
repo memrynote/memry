@@ -151,4 +151,23 @@ describe('a header tag added to an open note', () => {
     expect(raw).toContain('More text')
     expect(parseNote(raw).frontmatter.tags).toEqual(['alpha', 'beta'])
   })
+
+  it('reaches the doc when a saved body adds a plain #tag, and stays after the next save', async () => {
+    const note = await createNote({ title: 'Agent Body', content: 'Body', tags: ['alpha'] })
+    await flushProjectionEvents()
+    const doc = await openDoc(note.id, note.content, note.path)
+
+    await updateNoteCommand({ id: note.id, content: 'Body with #car' })
+    await flushProjectionEvents()
+
+    expect(doc.getArray<string>('tags').toArray()).toEqual(['alpha', 'car'])
+
+    await typeBody(doc, 'Body with #car\n\nMore text', note.path)
+    scheduleWriteback(note.id, doc, 'local')
+    await flushPendingWritebacks()
+
+    const raw = fs.readFileSync(path.join(vault.path, note.path), 'utf-8')
+    expect(raw).toContain('More text')
+    expect(parseNote(raw).frontmatter.tags).toEqual(['alpha', 'car'])
+  })
 })

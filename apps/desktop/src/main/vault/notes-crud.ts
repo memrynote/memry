@@ -26,6 +26,7 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
+import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/field-tags'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
@@ -670,12 +671,18 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
-  // Header tags change only through an edit of the file's own `tags:` list:
-  // never from the inline `#tags` of a body, and never from the index list,
-  // which holds both.
-  const headerTags = input.headerTags
-    ? applyHeaderTagEdit(existing.headerTags, input.headerTags)
-    : existing.headerTags
+  // Header tags change only through an edit of the file's own `tags:` list,
+  // never by writing back the index list, which holds the body's `#tags` too.
+  // A new body moves its added and removed plain `#tags` in and out of the
+  // header, as typing them in the editor does.
+  const headerTagEdit =
+    input.headerTags ??
+    (input.content === undefined ? null : inlineTagEditBetween(existing.content, input.content))
+  const headerTags = !headerTagEdit
+    ? existing.headerTags
+    : headerTagEdit.source === 'inline'
+      ? applyInlineTagEdit(dataDb, existing.headerTags, headerTagEdit)
+      : applyHeaderTagEdit(existing.headerTags, headerTagEdit)
   const headerTagChange = compareHeaderTags(existing.headerTags, headerTags)
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
 

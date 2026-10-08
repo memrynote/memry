@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   openSettingsModal: vi.fn(),
   updateContent: vi.fn(),
   updateTags: vi.fn(),
+  updateInlineTags: vi.fn(),
   forceReload: vi.fn(),
   retrySave: vi.fn(),
   dismissSaveError: vi.fn(),
@@ -115,6 +116,7 @@ vi.mock('@/hooks/use-journal', () => ({
     externalUpdateCount: mocks.externalUpdateCount,
     updateContent: mocks.updateContent,
     updateTags: mocks.updateTags,
+    updateInlineTags: mocks.updateInlineTags,
     forceReload: mocks.forceReload,
     retrySave: mocks.retrySave,
     dismissSaveError: mocks.dismissSaveError,
@@ -599,11 +601,35 @@ describe('JournalPage', () => {
 
     // Without these the editor has nothing to promote `#work` against, and a
     // body tag reopened from the vault file renders as plain text. A body tag
-    // never reaches the header, so the body is read for it too.
+    // with fields never reaches the header, so the body is read for it too.
     const props = mocks.contentAreaProps
     expect(props.noteTags).toEqual(['work', 'life'])
     expect(props.tagColorMap.get('work')).toBe('blue')
     expect(props.tagIconMap).toBeInstanceOf(Map)
+    expect(props.onInlineTagsChange).toEqual(expect.any(Function))
+  })
+
+  it('seeds the inline tag baseline on open and saves only changes to the entry tags', () => {
+    render(<JournalPage />)
+    const { onInlineTagsChange } = mocks.contentAreaProps
+
+    // #when the entry opens carrying `#work` and `#draft` in its body
+    act(() => onInlineTagsChange(['work', 'draft'], 'load'))
+
+    // #then opening it modified nothing (#1454)
+    expect(mocks.updateInlineTags).not.toHaveBeenCalled()
+
+    // #when the user types `#life`
+    act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
+    expect(mocks.updateInlineTags).toHaveBeenCalledWith({ add: ['life'], remove: [] })
+
+    // #when the user deletes `#draft`, which the entry's tags do not hold
+    act(() => onInlineTagsChange(['work', 'life'], 'edit'))
+    expect(mocks.updateInlineTags).toHaveBeenCalledTimes(1)
+
+    // #when the user deletes the body's `#work`
+    act(() => onInlineTagsChange(['life'], 'edit'))
+    expect(mocks.updateInlineTags).toHaveBeenLastCalledWith({ add: [], remove: ['work'] })
   })
 
   it("opens an entry's outgoing link through the wiki-link resolver", async () => {

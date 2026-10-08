@@ -611,6 +611,7 @@ export interface JournalClientAPI {
     date: string
     content?: string
     tags?: string[]
+    inlineTags?: { add?: string[]; remove?: string[] }
     properties?: Record<string, unknown>
   }): Promise<JournalEntry>
   deleteEntry(date: string): Promise<{ success: boolean }>

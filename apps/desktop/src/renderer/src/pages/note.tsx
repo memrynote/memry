@@ -72,6 +72,7 @@ import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
+import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -1063,6 +1064,20 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, note, isDeleted, updateNote]
   )
 
+  // Typing a `#tag` in the body adds it to the header and deleting it removes
+  // it again. Main applies only plain tags: a tag with fields stays a mention.
+  const handleInlineTagsChange = useInlineTagEdits(
+    useCallback(
+      (edit: InlineTagEdit) => {
+        if (!noteId || isDeleted) return
+        updateNote
+          .mutateAsync({ id: noteId, headerTags: { ...edit, source: 'inline' } })
+          .catch((err: unknown) => log.error('Failed to sync inline tags:', err))
+      },
+      [noteId, isDeleted, updateNote]
+    )
+  )
+
   // Local-only toggle
   const handleToggleLocalOnly = useCallback(
     async (value: boolean) => {
@@ -2009,6 +2024,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   initialHighlight={initialHighlight}
                   initialAnchorId={initialAnchorId}
                   noteTags={note.tags}
+                  onInlineTagsChange={handleInlineTagsChange}
                   tagColorMap={tagColorMap}
                   tagIconMap={tagIconMap}
                   focusAtEndRef={focusAtEndRef}

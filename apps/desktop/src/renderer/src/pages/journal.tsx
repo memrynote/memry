@@ -51,6 +51,7 @@ import { notesService } from '@/services/notes-service'
 import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
@@ -225,6 +226,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     externalUpdateCount,
     updateContent,
     updateTags,
+    updateInlineTags,
     forceReload,
     retrySave,
     dismissSaveError,
@@ -1098,6 +1100,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
+  // Only a change to the entry's tags is saved: a typed tag the row already
+  // holds, or a deleted one it does not, would rewrite the entry for nothing.
+  const handleInlineTagsChange = useInlineTagEdits(
+    useCallback(
+      (edit: InlineTagEdit) => {
+        const holds = (tag: string): boolean =>
+          entryTags.some((held) => held.toLowerCase() === tag.toLowerCase())
+        const add = edit.add.filter((tag) => !holds(tag))
+        const remove = edit.remove.filter(holds)
+        if (add.length > 0 || remove.length > 0) updateInlineTags({ add, remove })
+      },
+      [entryTags, updateInlineTags]
+    )
+  )
+
   // Backlinks transform
   const backlinks: Backlink[] = useMemo(() => {
     return rawBacklinks.map((bl) => {
@@ -1400,6 +1417,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                     void handleInternalLinkClick(...args)
                                   }
                                   noteTags={chipTags}
+                                  onInlineTagsChange={handleInlineTagsChange}
                                   tagColorMap={tagColorMap}
                                   tagIconMap={tagIconMap}
                                   focusAtEndRef={focusAtEndRef}
