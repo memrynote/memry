@@ -26,13 +26,15 @@ import { useT } from '@memry/i18n/renderer'
 
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { registerVaultLeaveFlush } from '@/lib/vault-workspace-lifecycle'
 
 import { invokeWhenAgentReady } from './agent-runtime-ready'
 import {
   agentReducer,
   initialAgentState,
   type AgentAction,
-  type AgentState
+  type AgentState,
+  type QueuedTurn
 } from './agent-context.reducer'
 
 interface DisclosureState {
@@ -108,6 +110,16 @@ interface AgentContextValue {
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null)
+
+/**
+ * Main broadcasts the end of a turn before it releases the conversation's turn
+ * lock (it still cleans up the backend and awaits the title), and Stop clears
+ * the renderer flag before the child has exited. A queued message sent at that
+ * moment is refused with `turn_in_flight`, so only that refusal is retried
+ * until the lock frees.
+ */
+const QUEUED_SEND_RETRY_MS = 500
+const QUEUED_SEND_ATTEMPTS = 60
 
 type AssistantStreamDelta = Extract<
   AgentEvent,
@@ -270,20 +282,133 @@ export function AgentProvider({
     [t]
   )
 
-  const cancelTurn = useCallback(
-    async (conversationId: string) => {
+  const requestCancel = useCallback(
+    async (conversationId: string): Promise<boolean> => {
       try {
         await getAgentApi().cancelTurn({ conversationId })
-        dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
+        return true
       } catch (error) {
         trackRendererError('agent_cancel_turn', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.cancelTurn'))
         })
+        return false
       }
     },
     [t]
+  )
+
+  // The latest queued send each conversation handed to main. Stop flags the
+  // attempt that was current when it was pressed, so a late answer to a stopped
+  // attempt is always cancelled, and an attempt that starts while main answers
+  // the Stop (the stopped turn ended meanwhile) is never touched by it.
+  const queuedSendAttemptsRef = useRef(new Map<string, { stopped: boolean }>())
+
+  const cancelTurn = useCallback(
+    async (conversationId: string) => {
+      const attempt = queuedSendAttemptsRef.current.get(conversationId)
+      if (!(await requestCancel(conversationId))) return
+      if (attempt) attempt.stopped = true
+      if (queuedSendAttemptsRef.current.get(conversationId) === attempt) {
+        dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
+      }
+    },
+    [requestCancel]
+  )
+
+  const sendQueuedTurn = useCallback(
+    async (turn: QueuedTurn, attempt: { stopped: boolean }) => {
+      for (let tries = 1; ; tries += 1) {
+        let result: SendTurnResponse
+        try {
+          result = await getAgentApi().sendTurn({
+            conversationId: turn.conversationId,
+            sourceWindowId: turn.sourceWindowId,
+            text: turn.text,
+            backendOptions: turn.backendOptions,
+            permissions: turn.permissions,
+            attachments: turn.attachments
+          })
+        } catch (error) {
+          trackRendererError('agent_send_queued_turn', error)
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: extractErrorMessage(error, t('agentChat.errors.sendTurn'))
+          })
+          return
+        }
+        if (result.ok) {
+          const stopped = attempt.stopped && (await requestCancel(turn.conversationId))
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: true,
+            turnId: result.turnId,
+            stopped
+          })
+          return
+        }
+        if (result.reason !== 'turn_in_flight' || tries >= QUEUED_SEND_ATTEMPTS) {
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: result.error ?? t('agentChat.errors.busy')
+          })
+          return
+        }
+        await new Promise((resolve) => setTimeout(resolve, QUEUED_SEND_RETRY_MS))
+        if (attempt.stopped) {
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: null
+          })
+          return
+        }
+      }
+    },
+    [t, requestCancel]
+  )
+
+  // One drain for the whole window, so a queue keeps going out after its
+  // conversation is no longer on screen. Each message is its own turn.
+  useEffect(() => {
+    for (const [conversationId, queue] of Object.entries(state.queuedTurns)) {
+      const head = queue[0]
+      if (
+        !head ||
+        head.status !== 'queued' ||
+        head.editing ||
+        state.inFlight[conversationId] === true
+      ) {
+        continue
+      }
+      dispatch({ type: 'start_queued_turn', conversationId, id: head.id })
+      const attempt = { stopped: false }
+      queuedSendAttemptsRef.current.set(conversationId, attempt)
+      void sendQueuedTurn(head, attempt)
+    }
+  }, [state.queuedTurns, state.inFlight, sendQueuedTurn])
+
+  // Leaving the vault shuts down its agent runtime, and this workspace stays
+  // mounted, hidden, for a switch back. Nothing queued here may go out against
+  // the next vault or fire unasked on return, so it waits for the user to resend.
+  useEffect(
+    () =>
+      registerVaultLeaveFlush(() => {
+        for (const attempt of queuedSendAttemptsRef.current.values()) attempt.stopped = true
+        dispatch({ type: 'hold_queued_turns' })
+      }),
+    []
   )
 
   const approveTool = useCallback(

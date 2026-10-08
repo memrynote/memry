@@ -76,9 +76,14 @@ export function JournalSettings() {
     }
   }, [config, journalFolder, updateConfig])
 
-  const handleJournalDateFormatBlur = useCallback(() => {
-    if (config && journalDateFormat !== config.journalDateFormat) {
-      void updateConfig({ journalDateFormat })
+  // A refused change (a locked journal entry) keeps the saved format, so the
+  // field goes back to it rather than showing a format that is not in use.
+  const handleJournalDateFormatBlur = useCallback(async () => {
+    if (!config || journalDateFormat === config.journalDateFormat) return
+    const error = await updateConfig({ journalDateFormat })
+    if (error) {
+      toast.error(error)
+      setJournalDateFormat(config.journalDateFormat)
     }
   }, [config, journalDateFormat, updateConfig])
 
@@ -306,7 +311,7 @@ export function JournalSettings() {
             <Input
               value={journalDateFormat}
               onChange={(e) => setJournalDateFormat(e.target.value)}
-              onBlur={handleJournalDateFormatBlur}
+              onBlur={() => void handleJournalDateFormatBlur()}
               placeholder={t('journal.dateFormat.placeholder')}
               className="h-7 w-40 font-mono text-xs/4"
             />

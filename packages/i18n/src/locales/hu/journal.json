@@ -30,7 +30,9 @@
     "copyUnsavedContent": "A nem mentett tartalom másolása a vágólapra",
     "addBookmark": "Könyvjelző hozzáadása",
     "removeBookmark": "Könyvjelző eltávolítása",
-    "deleteEntry": "Bejegyzés törlése"
+    "deleteEntry": "Bejegyzés törlése",
+    "lockEntry": "Bejegyzés zárolása",
+    "unlockEntry": "Bejegyzés zárolásának feloldása"
   },
   "editor": {
     "placeholder": {

@@ -18,6 +18,7 @@ export const EVENT_CHANNELS = {
   PAUSED: 'sync:paused',
   RESUMED: 'sync:resumed',
   SESSION_EXPIRED: 'auth:session-expired',
+  TOKEN_REFRESHED: 'auth:token-refreshed',
   OTP_DETECTED: 'auth:otp-detected',
   CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
   OAUTH_CALLBACK: 'auth:oauth-callback',
@@ -135,13 +136,21 @@ export interface SyncResumedEvent {
  * 'refresh_rejected' — the server rejected the refresh token itself (401
  * AUTH_INVALID_TOKEN). Unlike 'token_expired' this can never resolve on its
  * own: the client stops refreshing entirely and the user must sign in again.
+ * 'credentials_missing' — the keychain holds no refresh token, so there is
+ * nothing left to refresh with.
+ * 'token_expired' is advisory: the server rejected a refresh but the client
+ * keeps retrying, so the session may still recover.
  */
 export type SessionExpiredReason =
-  'token_expired' | 'device_revoked' | 'server_error' | 'refresh_rejected'
+  'token_expired' | 'device_revoked' | 'server_error' | 'refresh_rejected' | 'credentials_missing'
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason
 }
+
+/** Only these reasons end the session. A network failure never sends any. */
+export const isSessionEndedReason = (reason: SessionExpiredReason): boolean =>
+  reason === 'refresh_rejected' || reason === 'credentials_missing'
 
 export interface OtpDetectedEvent {
   code: string

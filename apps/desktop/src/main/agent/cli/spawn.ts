@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { AgentTurnPermissions, ClaudeEffort } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
+import { REMOVE_DIR_OPTIONS } from './workdir'
 
 const logger = createLogger('AgentCli:Spawn')
 const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
@@ -17,6 +18,7 @@ const CLAUDE_WEB_TOOLS = ['WebSearch', 'WebFetch']
 
 export interface SpawnOptions {
   binaryPath: string
+  cwd: string
   mcp?: {
     serverUrl: string
     authorizationValue: string
@@ -37,6 +39,8 @@ export interface ClaudeSubprocess {
 }
 
 export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubprocess> {
+  // Per turn, because the MCP config holds the bearer token. The CLI itself
+  // runs in the agent folder, which outlives the turn.
   const dir = await mkdtemp(path.join(tmpdir(), 'memry-claude-'))
   const configPath = path.join(dir, 'mcp-config.json')
   const permissions = opts.permissions ?? DEFAULT_TURN_PERMISSIONS
@@ -97,7 +101,7 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     opts.mcp ? 'Spawning claude with strict MCP config' : 'Spawning claude without MCP config'
   )
   const proc = spawn(opts.binaryPath, args, {
-    cwd: dir,
+    cwd: opts.cwd,
     env: { ...process.env }
   })
   // A child that never starts (binary removed after the version probe, EACCES,
@@ -114,7 +118,7 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
   } catch (error) {
     // The temp dir holds the MCP bearer token and no handle reaches the caller,
     // so nothing else would ever clean it up.
-    await rm(dir, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+    await rm(dir, REMOVE_DIR_OPTIONS).catch((cleanupError: unknown) => {
       logger.warn('Failed to clean Claude temp directory', cleanupError)
     })
     throw new Error(
@@ -135,7 +139,7 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     proc,
     cleanup: async () => {
       try {
-        await rm(dir, { recursive: true, force: true })
+        await rm(dir, REMOVE_DIR_OPTIONS)
       } catch (error) {
         logger.warn('Failed to clean Claude temp directory', error)
       }

@@ -1,7 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import type { AgentTurnPermissions } from '@memry/contracts/ipc-agent'
@@ -17,6 +15,7 @@ const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
 
 export interface AgySpawnOptions {
   binaryPath: string
+  cwd: string
   prompt: string
   model?: string
   permissions?: AgentTurnPermissions
@@ -61,7 +60,6 @@ export async function spawnAgyTurn(opts: AgySpawnOptions): Promise<AgySubprocess
     ...(opts.configRoot ? { configRoot: opts.configRoot } : {})
   })
 
-  const dir = await mkdtemp(path.join(tmpdir(), 'memry-agy-'))
   const args = [
     // Prompt over stdin, not argv: a turn carries whole notes, and an argv
     // large enough to hold one is past the platform limit.
@@ -85,7 +83,7 @@ export async function spawnAgyTurn(opts: AgySpawnOptions): Promise<AgySubprocess
 
   logger.info(`Spawning agy with project ${projectId}`)
   const proc = spawn(opts.binaryPath, args, {
-    cwd: dir,
+    cwd: opts.cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
       ...process.env,
@@ -115,10 +113,6 @@ export async function spawnAgyTurn(opts: AgySpawnOptions): Promise<AgySubprocess
   try {
     await once(proc, 'spawn')
   } catch (error) {
-    // No handle reaches the caller, so nothing else would clean the temp dir up.
-    await rm(dir, { recursive: true, force: true }).catch((cleanupError: unknown) => {
-      logger.warn('Failed to clean Antigravity temp directory', cleanupError)
-    })
     throw new Error(
       `Antigravity CLI failed to start: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
@@ -137,12 +131,6 @@ export async function spawnAgyTurn(opts: AgySpawnOptions): Promise<AgySubprocess
   return {
     pid: proc.pid ?? -1,
     proc,
-    cleanup: async () => {
-      try {
-        await rm(dir, { recursive: true, force: true })
-      } catch (error) {
-        logger.warn('Failed to clean Antigravity temp directory', error)
-      }
-    }
+    cleanup: async () => {}
   }
 }

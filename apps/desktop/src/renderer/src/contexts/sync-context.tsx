@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode
 } from 'react'
@@ -18,10 +17,11 @@ import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
 import { VaultBindingDialog } from '@/components/sync/vault-binding-dialog'
 import { SessionExpiredDialog } from '@/components/sync/session-expired-dialog'
-import type {
-  InitialSyncPhase,
-  LinkingRequestEvent,
-  VaultRecoveryNeededEvent
+import {
+  isSessionEndedReason,
+  type InitialSyncPhase,
+  type LinkingRequestEvent,
+  type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import type { VaultBindingChoice, VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
@@ -351,10 +351,6 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [reauthRequired, setReauthRequired] = useState(false)
   const [vaultBinding, setVaultBinding] = useState<VaultBindingState>(NEUTRAL_BINDING)
   const [bindingPromptDismissed, setBindingPromptDismissed] = useState(false)
-  const sessionExpiredRef = useRef(state.sessionExpired)
-  useEffect(() => {
-    sessionExpiredRef.current = state.sessionExpired
-  }, [state.sessionExpired])
 
   useEffect(() => {
     if (authState.status !== 'authenticated') {
@@ -499,14 +495,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     cleanups.push(
       window.api.onSessionExpired((event) => {
-        if (cancelled) return
-        // A rejected refresh token can never recover — the toast is too easy to
-        // miss for a session that is over, so escalate to a blocking prompt.
-        if (event.reason === 'refresh_rejected') {
-          setReauthRequired(true)
-        } else if (!sessionExpiredRef.current) {
-          toast.error(t('sync.authExpired'), { duration: 8000 })
-        }
+        // An advisory keeps the session and retries on its own, so it must
+        // not send the user into a sign-in they do not need (#2612).
+        if (cancelled || !isSessionEndedReason(event.reason)) return
+        // A session that is over escalates to a blocking prompt; a toast is
+        // too easy to miss.
+        setReauthRequired(true)
         dispatch({ type: 'SESSION_EXPIRED', error: t('sync.authExpired') })
       })
     )
@@ -752,6 +746,19 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     void logout()
   }, [logout])
 
+  // A session that comes back (sign-in, or main proving it was alive all
+  // along) leaves nothing to prompt for.
+  useEffect(() => {
+    if (authState.status === 'authenticated') setReauthRequired(false)
+  }, [authState.status])
+
+  // Keeps the device keys: a device the account still lists signs back in
+  // with the email code alone (#2612).
+  const handleSessionEndedSignIn = useCallback(() => {
+    setReauthRequired(false)
+    requestOpenSettings('account')
+  }, [])
+
   const handleVaultRecovered = useCallback(() => {
     setVaultRecovery(null)
     toast.success(t('sync.vaultRecovered'), { duration: 6000 })
@@ -773,7 +780,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         onDismiss={clearVaultRecovery}
         onSignOut={handleDeviceRevokedSignOut}
       />
-      <SessionExpiredDialog open={reauthRequired} onSignOut={handleDeviceRevokedSignOut} />
+      <SessionExpiredDialog open={reauthRequired} onSignIn={handleSessionEndedSignIn} />
       <VaultBindingDialog
         state={
           vaultBinding.status === 'needs-decision' && !bindingPromptDismissed ? vaultBinding : null

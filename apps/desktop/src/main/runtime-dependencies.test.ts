@@ -25,6 +25,9 @@ const externalRuntimeDependencies = [
   'libsodium-wrappers-sumo',
   'sharp',
   'sqlite-vec',
+  // spawns its worker_thread from a script path inside its own package and
+  // loads its wasm core next to that script, so it only runs from the loose tree
+  'tesseract.js',
   // loads a platform-specific .node binary through its own loader at import
   // time, so it can only be required lazily from the loose tree (velopack-native.ts)
   'velopack',

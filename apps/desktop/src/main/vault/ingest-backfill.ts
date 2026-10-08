@@ -32,7 +32,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { flushProjectionEvents } from '../projections'
-import { syncNoteCreate } from '../notes/runtime-effects'
+import { queueEmbeddedVaultFiles, syncNoteCreate } from '../notes/runtime-effects'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { createSnippet, extractProperties, extractTags, parseNote } from './frontmatter'
 import { safeRead } from './file-ops'
@@ -227,6 +227,7 @@ async function backfillNote(
       sizeClass: classification.sizeClass
     })
   }
+  if (!isLargeFile) queueEmbeddedVaultFiles(cached.id, parsed.content)
 
   broadcastToAllWindows(NotesChannels.events.UPDATED, {
     id: cached.id,

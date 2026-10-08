@@ -72,7 +72,7 @@ fn the_declaration_subscribes_to_bookmark() {
     assert!(
         declaration
             .header_value()
-            .ends_with(",calendar_binding,bookmark")
+            .contains(",calendar_binding,bookmark,")
     );
 }
 

@@ -89,7 +89,9 @@ export const VerifyOtpResponseSchema = z.object({
   setupToken: z.string().optional(),
   userId: z.string().optional(),
   isNewUser: z.boolean().optional(),
-  needsSetup: z.boolean().optional()
+  needsSetup: z.boolean().optional(),
+  /** The account still lists this device's signing key. Absent from older servers. */
+  knownDevice: z.boolean().optional()
 })
 
 export const DeviceRegisterResponseSchema = z.object({
@@ -104,6 +106,8 @@ export const OAuthCallbackResponseSchema = z.object({
   success: z.boolean(),
   isNewUser: z.boolean().optional(),
   needsSetup: z.boolean().optional(),
+  /** The account still lists this device's signing key. Absent from older servers. */
+  knownDevice: z.boolean().optional(),
   setupToken: z.string().optional()
 })
 

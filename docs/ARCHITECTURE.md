@@ -4,14 +4,14 @@
 > For the browsable version see the docs site under `apps/docs/src/architecture/`.
 
 MemryNote is a **local-first, end-to-end encrypted** notes / journal / tasks app.
-Your data lives on your device in plaintext SQLite; anything that leaves the
-device is encrypted client-side. The sync server stores and serves **ciphertext
+Your data lives on your device, in markdown vault files and local SQLite; anything
+that leaves the device is encrypted client-side. The sync server stores and serves **ciphertext
 only** — it never holds a key and never sees a byte of plaintext.
 
-- **Platform**: Electron 39 (Chromium + Node), three-process model.
+- **Platform**: Electron 43 (Chromium + Node), three-process model.
 - **UI**: React 19 + Vite + Tailwind v4.
-- **Storage**: two local SQLite databases (data + search/index) via Drizzle ORM.
-- **Sync**: hybrid — bulk encrypted snapshots + incremental Yjs CRDT updates.
+- **Storage**: markdown vault files for notes, plus two local SQLite databases (data + index) via Drizzle ORM.
+- **Sync**: hybrid. Whole items travel as encrypted records, and note bodies as Yjs CRDT updates and snapshots.
 - **Crypto**: XChaCha20-Poly1305 + Ed25519 + Argon2id via libsodium.
 - **Backend**: Cloudflare Workers + Hono, D1 (metadata) + R2 (blobs).
 
@@ -40,26 +40,28 @@ only** — it never holds a key and never sees a byte of plaintext.
 
 The desktop app is the product; the server is dumb encrypted storage.
 
-Every user action — typing a note, checking a task, capturing a link — writes
-first to the **local SQLite data DB** and renders instantly from there. The app
-is fully usable offline. A background **sync runtime** later encrypts those
+Every user action writes to local storage first and renders from there. A note
+edit lands in the note's Y.Doc and its markdown file in the vault, and a task, a
+setting, or a capture lands in the **local SQLite data DB**. Local reads and
+writes need no network. A background **sync runtime** later encrypts those
 changes, uploads metadata to **Cloudflare D1** and payload blobs to **R2**, and
 pulls remote changes back down, decrypting them locally.
 
 Two conflict-resolution strategies run side by side:
 
 - **Notes & journals** use **Yjs CRDTs** — character-level merge, no conflicts,
-  incremental updates over WebSocket.
+  incremental updates pushed over HTTPS.
 - **Tasks & projects** use **field-level vector clocks** — per-field
   last-writer-wins with causality tracking.
 
 A second **index DB** mirrors content into full-text search, a link graph, and
-vector embeddings for semantic search — kept fresh by projections off the data
-DB, never synced (it is derivable and device-local).
+vector embeddings for semantic search. Projections keep it fresh from each write
+path. It is device-local and can be rebuilt from the vault and the data DB, so it
+is never synced.
 
-The **main process** is the trust anchor: it owns the databases, the encryption
-keys (sealed in the OS keychain via keytar), the CRDT documents, and every
-network call. The **renderer** (React) holds no secrets and talks to main only
+The **main process** is the trust anchor: it owns the vault files, the databases,
+the encryption keys (sealed in the OS keychain via keytar), the CRDT documents, and
+every network call. The **renderer** (React) holds no secrets and talks to main only
 through a typed, Zod-validated IPC contract.
 
 ---
@@ -97,8 +99,9 @@ flowchart TB
       VoiceW["🎙️  Voice transcription"]
     end
 
-    subgraph Storage["💾  Local SQLite (better-sqlite3)"]
-      DataDB[("🗃️  Data DB<br/>notes · tasks · projects")]
+    subgraph Storage["💾  Local storage"]
+      Vault[("📁  Vault files<br/>markdown notes")]
+      DataDB[("🗃️  Data DB<br/>tasks · projects · settings · note metadata")]
       IndexDB[("🔎  Index DB<br/>FTS · graph · vectors")]
     end
   end
@@ -109,7 +112,7 @@ flowchart TB
     R2[("📦  R2<br/>encrypted blobs")]
   end
 
-  AI["✨  AI providers<br/>Claude · OpenAI · Ollama"]
+  AI["✨  AI backends<br/>Claude · Codex · Antigravity · local models"]
 
   UI --> Preload
   Editor --> YProv
@@ -120,7 +123,8 @@ flowchart TB
   IPC --> MCP
   Notes --> YDocs
   Notes --> DataDB
-  YDocs --> DataDB
+  YDocs -->|write-back| Vault
+  Vault -->|projections| IndexDB
   DataDB -->|projections| IndexDB
   Notes --> Embed
   IndexDB <--> Embed
@@ -138,13 +142,13 @@ flowchart TB
   classDef store fill:#f2f7f0,stroke:#4a8a4a,stroke-width:1px,color:#213421
   class Renderer,Main,Preload,Workers trusted
   class Worker cloud
-  class DataDB,IndexDB,D1,R2 store
+  class Vault,DataDB,IndexDB,D1,R2 store
 ```
 
 **Read it as:** everything inside `🖥️ User Device` is trusted and works
 offline. The only thing crossing into `☁️ Cloudflare` is ciphertext, via the
-sync worker over HTTPS + secure WebSocket. AI providers see only what the user
-sends in an Agent Chat turn.
+sync worker over HTTPS + secure WebSocket. AI backends see only what the user
+sends them and what their MCP tools read from the vault during a turn.
 
 ---
 
@@ -153,12 +157,12 @@ sends in an Agent Chat turn.
 Electron splits the app into isolated processes. `electron-vite` builds each
 target separately (`electron.vite.config.ts`).
 
-| Process      | Runtime             | Owns                                                                    | Trust              |
-| ------------ | ------------------- | ----------------------------------------------------------------------- | ------------------ |
-| **Main**     | Node                | DBs, crypto keys, Y.Docs, sync, network, window/menu lifecycle          | Trust anchor       |
-| **Preload**  | Isolated bridge     | `contextBridge` — exposes a typed, narrow `window.api`                  | Boundary guard     |
-| **Renderer** | Chromium (React)    | UI only. No keys, no direct DB, no raw Node                             | Untrusted for data |
-| **Workers**  | Node worker threads | CPU-heavy jobs off the main thread (see [Workers](#background-workers)) | Main-spawned       |
+| Process      | Runtime             | Owns                                                                        | Trust              |
+| ------------ | ------------------- | --------------------------------------------------------------------------- | ------------------ |
+| **Main**     | Node                | Vault files, DBs, crypto keys, Y.Docs, sync, network, window/menu lifecycle | Trust anchor       |
+| **Preload**  | Isolated bridge     | `contextBridge` — exposes a typed, narrow `window.api`                      | Boundary guard     |
+| **Renderer** | Chromium (React)    | UI only. No keys, no direct DB, no raw Node                                 | Untrusted for data |
+| **Workers**  | Node worker threads | CPU-heavy jobs off the main thread (see [Workers](#background-workers))     | Main-spawned       |
 
 Key rules (enforced by lint / architecture checks):
 
@@ -178,35 +182,37 @@ unlocked.
 
 | Concern      | Choice                                      |
 | ------------ | ------------------------------------------- |
-| Shell        | Electron 39                                 |
+| Shell        | Electron 43                                 |
 | Bundler      | electron-vite (Vite 7 under the hood)       |
 | Language     | TypeScript (strict), Node 24                |
-| UI framework | React 19.2 + React DOM                      |
+| UI framework | React 19.3 + React DOM                      |
 | Styling      | Tailwind CSS v4 (`@tailwindcss/vite`)       |
 | Components   | Radix UI primitives + shadcn-style wrappers |
-| Icons        | lucide-react · @tabler/icons · @hugeicons   |
+| Icons        | lucide-react · @hugeicons/react             |
 | Onboarding   | driver.js (first-run product tour)          |
 | Dashboards   | react-grid-layout (resizable Home widgets)  |
 
 ### Editor
 
-| Concern        | Choice                                          |
-| -------------- | ----------------------------------------------- |
-| Block editor   | BlockNote (`@blocknote/*`)                      |
-| Rich text core | TipTap 3 + ProseMirror                          |
-| Collaboration  | Yjs + y-protocols + y-prosemirror               |
-| Markdown       | marked · gray-matter (frontmatter) · streamdown |
+| Concern        | Choice                                                |
+| -------------- | ----------------------------------------------------- |
+| Block editor   | BlockNote (`@blocknote/*`)                            |
+| Schema         | `packages/editor-schema`, shared by renderer and main |
+| Rich text core | TipTap + ProseMirror, through BlockNote               |
+| Collaboration  | Yjs + y-protocols + y-prosemirror                     |
+| Markdown       | marked · gray-matter (frontmatter) · streamdown       |
 
 ### Data & storage
 
 | Concern          | Choice                                       |
 | ---------------- | -------------------------------------------- |
 | Local DB         | better-sqlite3                               |
-| ORM / migrations | Drizzle ORM + drizzle-kit                    |
+| ORM / migrations | Drizzle ORM; hand-written SQL migrations     |
 | Vector search    | sqlite-vec                                   |
 | Embeddings       | @huggingface/transformers (local, in-worker) |
 | Fuzzy search     | fuzzysort                                    |
 | Key storage      | keytar (OS keychain)                         |
+| CRDT store       | y-leveldb (LevelDB)                          |
 
 ### Crypto & sync
 
@@ -227,6 +233,7 @@ unlocked.
 | Orchestration | Vercel AI SDK (`ai`)                                                |
 | Providers     | @ai-sdk/anthropic · @ai-sdk/openai · ollama-ai-provider-v2 · openai |
 | Tooling       | Model Context Protocol (`@modelcontextprotocol/sdk`)                |
+| Agent Chat    | Claude, Codex, and Antigravity CLIs; local OpenAI-compatible models |
 | Link capture  | metascraper · jsdom · article extraction                            |
 
 ### Backend (sync server)
@@ -240,16 +247,16 @@ unlocked.
 
 ### Tooling & quality
 
-| Concern            | Choice                                            |
-| ------------------ | ------------------------------------------------- |
-| Monorepo           | pnpm workspaces + Turborepo                       |
-| Unit / integration | Vitest (shared · main · renderer projects)        |
-| E2E                | Playwright (drives the packaged Electron app)     |
-| Lint               | ESLint (flat config) + Prettier                   |
-| Contracts          | Zod + generated IPC invoke map (`pnpm ipc:check`) |
-| Packaging          | electron-builder                                  |
-| Updates            | electron-updater                                  |
-| Logging            | electron-log                                      |
+| Concern            | Choice                                                                  |
+| ------------------ | ----------------------------------------------------------------------- |
+| Monorepo           | pnpm workspaces + Turborepo                                             |
+| Unit / integration | Vitest (shared · main · main-integration · preload · renderer projects) |
+| E2E                | Playwright (drives the built Electron app in `out/`)                    |
+| Lint               | ESLint (flat config) + Prettier                                         |
+| Contracts          | Zod + generated IPC invoke map (`pnpm ipc:check`)                       |
+| Packaging          | electron-builder                                                        |
+| Updates            | Velopack on Windows, electron-updater elsewhere                         |
+| Logging            | electron-log                                                            |
 
 ---
 
@@ -258,25 +265,34 @@ unlocked.
 ```
 memry/
 ├── apps/
-│   ├── desktop/        Electron app (main · preload · renderer)
-│   ├── sync-server/    Cloudflare Workers + Hono (D1 + R2)
-│   ├── extension/      Web clipper (WXT, MV3)
-│   ├── landing/        Marketing site
-│   └── docs/           VitePress documentation site
+│   ├── desktop/           Electron app (main · preload · renderer)
+│   ├── cli/               memrynote CLI, bundled into the desktop app
+│   ├── ios/               SwiftUI shell over the Rust core
+│   ├── sync-server/       Cloudflare Workers + Hono (D1 + R2)
+│   ├── extension/         Web clipper (WXT, MV3)
+│   ├── landing/           Marketing site
+│   ├── marketing-emails/  Campaign email templates (React Email)
+│   └── docs/              VitePress documentation site
+├── crates/                Rust core (memry-core), its headless CLI, Swift bindgen
 ├── packages/
-│   ├── contracts/      IPC + API type contracts (Zod)  ← the boundary
-│   ├── rpc/            RPC contract helpers
-│   ├── db-schema/      Drizzle schemas (data + index DBs)
-│   ├── app-core/       App/domain orchestration (shared with CLI)
-│   ├── domain-notes/   Notes domain logic
-│   ├── domain-tasks/   Tasks domain logic
-│   ├── domain-inbox/   Inbox / capture domain logic
-│   ├── storage-data/   Data DB access
-│   ├── storage-vault/  Vault filesystem access
-│   ├── sync-core/      Shared sync primitives
-│   ├── shared/         Minimal cross-cutting utilities
-│   ├── i18n/           Localization
-│   └── *-import/       Per-source importers (Apple Notes, Bear, Evernote, Notion, Roam, …)
+│   ├── contracts/         IPC + API type contracts (Zod)  ← the boundary
+│   ├── rpc/               RPC contract helpers
+│   ├── db-schema/         Drizzle schemas (data + index DBs)
+│   ├── app-core/          App/domain orchestration (shared with CLI)
+│   ├── domain-notes/      Notes domain logic
+│   ├── domain-tasks/      Tasks domain logic
+│   ├── domain-inbox/      Inbox / capture domain logic
+│   ├── storage-data/      Data DB access
+│   ├── storage-vault/     Vault filesystem access
+│   ├── sync-client/       Desktop sync client: pull engine, queue, merge, adapters
+│   ├── sync-core/         Shared sync primitives
+│   ├── editor-schema/     BlockNote schema shared by renderer and main
+│   ├── article-extract/   Article extraction for captured links
+│   ├── importers/         Per-source importers (Apple Notes, Bear, Evernote, OneNote, Roam, …)
+│   ├── i18n/              Localization
+│   ├── shared/            Minimal cross-cutting utilities
+│   ├── swift/             MemryCore Swift package over the Rust core
+│   └── typescript-config/ Shared tsconfig presets
 ```
 
 Inside `apps/desktop/src`:
@@ -292,28 +308,39 @@ renderer/   src/{ components · contexts · features · hooks · pages · servic
 
 ## Local storage — dual SQLite
 
-Two databases, both better-sqlite3 + Drizzle, opened by the main process.
+Note content lives in markdown vault files. Everything else lives in two
+databases, both better-sqlite3 + Drizzle, opened by the main process.
 
 ```mermaid
 flowchart LR
-  App["📝 App writes"] --> DataDB[("🗃️ Data DB<br/>source of truth")]
-  DataDB -->|projections| IndexDB[("🔎 Index DB<br/>derived")]
+  App["📝 App writes"] --> Vault[("📁 Vault files<br/>note content")]
+  App --> DataDB[("🗃️ Data DB<br/>everything else")]
+  Vault -->|projections| IndexDB[("🔎 Index DB<br/>derived")]
+  DataDB -->|projections| IndexDB
   IndexDB --> FTS["🔤 Full-text search"]
   IndexDB --> Graph["🕸️ Link graph"]
   IndexDB --> Vec["📐 Vector embeddings"]
   DataDB -.->|encrypt + sync| Cloud["☁️ Server"]
+  Vault -.->|"encrypt + sync (CRDT)"| Cloud
   IndexDB -.->|never synced| X["🚫"]
 ```
 
-- **Data DB** — the source of truth: notes, journals, tasks, projects, inbox,
-  templates, settings, calendar events. This is what gets encrypted and synced.
-- **Index DB** — derived and device-local: full-text search, backlink graph,
-  and `sqlite-vec` embedding vectors. Rebuildable from the data DB, so it is
-  **never synced**.
+- **Vault files** hold note and journal content as markdown, owned by the user.
+  Each note's Y.Doc writes back to its file.
+- **Data DB** is the source of truth for everything that is not a vault file,
+  such as tasks, projects, inbox, templates, settings, calendar, note metadata,
+  sync state, and agent conversations. Synced items are encrypted before they
+  leave the device.
+- **Index DB** holds full-text search, the backlink graph, and `sqlite-vec`
+  embedding vectors. It is device-local and can be rebuilt from the vault and the
+  data DB, so it is **never synced**.
 
 Migrations live in `src/main/database/drizzle-data` and `drizzle-index` and are
-copied into the build output by a Vite plugin. Regenerate with
-`pnpm --filter @memry/desktop db:generate`.
+copied into the build output by a Vite plugin. They are written by hand, because
+Drizzle's snapshots stop at 0021 (data) and 0020 (index) and `db:generate`
+proposes unrelated changes. Each migration only adds, since existing installs
+carry real data. [Common Gotchas](../apps/docs/src/contribute/gotchas.md) has the
+steps.
 
 ---
 
@@ -340,9 +367,10 @@ sequenceDiagram
 - Contracts are defined once in `packages/contracts` and shared by both sides.
 - `pnpm ipc:generate` builds the invoke map from RPC contracts; `pnpm ipc:check`
   fails CI if the map drifts from the contracts.
-- Handlers wrap results in a `{ success, data | error }` envelope — a thrown
-  error **resolves** as `{ success:false }`, it does not reject. Call sites must
-  check the flag.
+- Handlers registered through `registerCommand` wrap results in a
+  `{ success, data | error }` envelope, so an error the command throws
+  **resolves** as `{ success: false }`. Input that fails contract validation
+  rejects instead, so call sites handle both.
 
 Run `pnpm ipc:generate` before `pnpm ipc:check` after editing contracts, preload
 APIs, main handlers, or Agent Chat channels.
@@ -363,7 +391,7 @@ flowchart LR
   end
   subgraph M["⚙️ Main"]
     Doc["🧠 Y.Doc (authoritative)"]
-    WB["💾 CRDT write-back → Data DB"]
+    WB["💾 CRDT write-back to the vault file"]
     Enc["🔑 Encrypt update"]
   end
   BN <--> Prov
@@ -376,19 +404,25 @@ flowchart LR
 - Edits produce incremental Yjs updates, merged conflict-free (character level).
 - Updates carry `sourceWindowId` so an update echoed back over IPC is ignored —
   no feedback loops between windows.
-- Write-backs debounce the CRDT state into the data DB; pending write-backs are
-  flushed on shutdown so nothing is lost.
+- Write-backs debounce the document into its vault file as markdown, and pending
+  write-backs flush on shutdown so nothing is lost. The Y.Doc state itself
+  persists in a LevelDB store (y-leveldb).
+- Renderer and main build their BlockNote schema from `packages/editor-schema`.
+  A node only one side can build is deleted from the shared document, and the
+  deletion syncs to every device.
 - **Tasks & projects** don't use CRDTs — they sync via **field-level vector
-  clocks** (`src/main/sync/field-merge.ts`, `vector-clock.ts`) for per-field
+  clocks** (`packages/sync-client/src/field-merge.ts`, `vector-clock.ts`) for per-field
   last-writer-wins with causality.
 
 ---
 
 ## Sync architecture
 
-Sync is **hybrid**: bulk snapshots for whole entities plus incremental CRDT
-updates for live-edited note bodies. Metadata goes to D1; encrypted payloads go
-to R2 (D1 caps rows at 1 MB).
+Sync is **hybrid**. Whole items travel as encrypted records, and note bodies as
+CRDT updates and snapshots. Metadata goes to D1, and encrypted payloads go to R2
+(D1 caps rows at 1 MB). The docs site's
+[Sync Protocol](../apps/docs/src/architecture/sync-protocol.md) page has the full
+wire behavior.
 
 ```mermaid
 sequenceDiagram
@@ -400,20 +434,23 @@ sequenceDiagram
 
   Note over Dev: local change → queue dirty item
   Dev->>Dev: 🔑 encrypt payload + sign
-  Dev->>R2: PUT ciphertext blob
-  Dev->>W: POST /sync push (metadata + blob key + vector clock)
+  Dev->>W: POST /sync/push (encrypted items + vector clocks)
   W->>D1: upsert item metadata
+  W->>R2: store encrypted payloads
   W-->>Dev: ack + server cursor
+  Note over W: Durable Object sends changes_available to the user's other devices over WSS /sync/ws
 
-  Note over Dev: periodic / on wake → pull
-  Dev->>W: GET /sync pull (since cursor)
-  W->>D1: changed items
+  Note over Dev: changes_available, a wake, or a timer starts a pull
+  Dev->>W: GET /sync/changes (since cursor)
+  W->>D1: changed rows
   D1-->>W: metadata rows
-  W-->>Dev: metadata + blob keys
-  Dev->>R2: GET blobs (bounded concurrency)
+  W-->>Dev: changes page (items, deletions, note bodies)
+  Dev->>W: POST /sync/pull (changed items)
+  W->>R2: read encrypted payloads
+  W-->>Dev: encrypted payloads
   Dev->>Dev: 🔑 verify + decrypt + merge (CRDT / vector clock)
 
-  Note over Dev,W: live note edits also stream over WSS /sync/crdt/updates
+  Note over Dev,W: note bodies push to /sync/crdt/updates and /sync/crdt/snapshot
 ```
 
 Server-side design:
@@ -421,14 +458,18 @@ Server-side design:
 - **D1** stores encrypted item metadata: vector clocks, blob keys, content
   hashes, per-vault scoping (`X-Memry-Vault-Id` — sync is **per-vault**, not
   per-account).
-- **R2** stores the encrypted payload blobs.
+- **R2** stores the encrypted payload blobs. Attachments move as
+  content-addressed chunks inside an upload session the Worker opens and
+  completes. Chunk bytes go straight to R2 over presigned URLs when the
+  deployment configures them, and through the Worker when it does not.
 - Per-type behavior lives in `src/main/sync/item-handlers/` behind a strategy
   registry (`getHandler(type)`); adding a synced entity = adding a handler.
 - Multi-device onboarding pairs devices (QR / code) and adopts the initiator's
   `vault_uuid` so both devices sync the same vault.
 
-Client sync internals live in `src/main/sync/` (`engine.ts`, `runtime.ts`,
-`queue.ts`, `crdt-provider.ts`, `websocket.ts`, `upload-queue.ts`, …).
+Client sync internals live in `packages/sync-client` (pull engine, queue, field
+merge, vector clocks, platform adapters) and `src/main/sync/` (runtime, item
+handlers, CRDT provider, WebSocket, upload queue, …).
 
 ---
 
@@ -463,21 +504,22 @@ Protocol.
 
 ```mermaid
 flowchart LR
-  Chat["🤖 Agent Chat UI"] --> Backend["🧠 Backend<br/>Claude · Codex · OpenAI-compatible · local"]
+  Chat["🤖 Agent Chat UI"] --> Backend["🧠 Backend<br/>Claude · Codex · Antigravity · local OpenAI-compatible"]
   Backend <-->|MCP| Vault["🛰️ Vault MCP server (main)"]
   Vault --> DB[("💾 Vault data")]
   Vault -.->|writes gated| Approve["✅ Approval UI"]
 ```
 
-- One MCP server, reused by the Claude CLI, Codex CLI, and local /
+- One MCP server, reused by the Claude, Codex, and Antigravity CLIs and by local
   OpenAI-compatible backends.
-- **External MCP clients are read-only by default.** Writes require an active
-  Memry Agent conversation and pass through an approval UI.
+- **External MCP clients are read-only.** A write needs a running Agent Chat
+  turn, and it waits for inline approval unless the user set Agent Permissions
+  to Always allow.
 - Provider / model / reasoning selections persist as **conversation settings**,
   not one-shot composer state.
-- Tool exposure is gated by an allowlist (`agent-mcp-channels.ts`).
+- The tools and their registry live in `src/main/agent/mcp/`.
 
-Design source of truth: `docs/superpowers/specs/2026-05-10-agent-chat-design.md`.
+User-facing behavior: `apps/docs/src/user-guide/ai/agent-mcp.md`.
 
 ---
 
@@ -492,6 +534,8 @@ Declared as separate rollup inputs in `electron.vite.config.ts`.
 | `sync-worker`                | Off-thread encrypt/decrypt + sync payload crunching |
 | `image-processing-worker`    | Thumbnail / image processing (sharp)                |
 | `voice-transcription-worker` | Voice note → text transcription                     |
+| `large-file-index-worker`    | Line-offset index and search for very large files   |
+| `ocr-worker`                 | OCR for attachment text extraction (Tesseract)      |
 
 ---
 
@@ -510,17 +554,19 @@ pnpm --filter @memry/desktop build:linux
   rebuilt for the target ABI.
 - **Native ABI matters**: Node tests need `rebuild:node`; Electron runtime needs
   `rebuild:electron`. They are not interchangeable.
-- `electron-updater` handles auto-update from published releases; release notes
-  are normalized from `releases.atom`.
+- `src/main/updater.ts` picks one updater backend per launch. Packaged Windows
+  builds installed by Velopack update through Velopack. Older NSIS installs keep
+  electron-updater until an update hands them to the Velopack installer. Every
+  other platform uses electron-updater.
 
 ---
 
 ## Verification gates
 
 ```bash
-pnpm lint                 # ESLint (flat config)
-pnpm typecheck            # TypeScript across all packages
-pnpm test                 # Vitest (desktop + sync-server)
+pnpm lint                 # ESLint over apps/desktop
+pnpm typecheck            # shared packages, CLI, desktop, sync server
+pnpm test                 # package, CLI, desktop, sync-server, and landing tests
 pnpm test:e2e             # Playwright E2E (Electron)
 pnpm ipc:check            # renderer↔main contract integrity
 pnpm check:architecture   # architecture boundary rules

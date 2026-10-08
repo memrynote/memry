@@ -151,7 +151,7 @@
       "deny": "Rechazar",
       "invalidJson": "Introduce un JSON válido antes de aplicar los cambios.",
       "thisTool": "esta herramienta",
-      "alwaysAllowHint": "«Permitir siempre» se aplica a {tool}. Las demás herramientas siguen pidiendo permiso, y las eliminaciones siempre lo piden.",
+      "alwaysAllowHint": "«Permitir siempre» se aplica a {tool}. Las demás herramientas siguen pidiendo permiso, y las eliminaciones siempre lo piden. Las notas y carpetas bloqueadas siguen siendo de solo lectura.",
       "alwaysInChat": "Permitir siempre en este chat",
       "alwaysInChatHint": "Termina cuando acaba la conversación",
       "alwaysInVault": "Permitir siempre en esta bóveda",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "No se pudo mostrar la vista previa de este cambio",
       "description": "El agente quiere actualizar {title}. Revisa el cambio antes de aplicarlo.",
+      "descriptionCreate": "El agente quiere crear {title}. Revisa el cambio antes de aplicarlo.",
+      "descriptionDelete": "El agente quiere eliminar {title}. Revisa el cambio antes de aplicarlo.",
       "fallbackTitle": "este elemento",
       "current": "Actual",
       "candidate": "Propuesta",
@@ -374,7 +376,8 @@
       "agent": "Agente",
       "pendingApproval": "{count, plural, one {# aprobación pendiente} other {# aprobaciones pendientes}}",
       "inProgress": "Turno del agente en curso",
-      "close": "Cerrar el agente"
+      "close": "Cerrar el agente",
+      "moreActions": "Más acciones del agente"
     },
     "errors": {
       "loadConversations": "No se pudieron cargar las conversaciones del agente",

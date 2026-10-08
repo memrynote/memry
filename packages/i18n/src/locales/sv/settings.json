@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Verktygsfält",
-      "spelling": "Stavning"
+      "spelling": "Stavning",
+      "checklists": "Checklistor"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -446,7 +447,17 @@
     "v2": {
       "width": "Redigerarens bredd",
       "toolbarMode": "Fast formateringsverktygsfält",
-      "spellCheck": "Kontrollera stavning"
+      "spellCheck": "Kontrollera stavning",
+      "convertChecklists": "Gör checklistpunkter till uppgifter",
+      "convertAgentChecklists": "Gör checklistpunkter från agenter till uppgifter"
+    },
+    "convertChecklists": {
+      "description": "Varje ny checklistpunkt blir en uppgift. Avstängt förblir checklistor vanliga kryssrutor; högerklicka på en för att göra den till en uppgift.",
+      "error": "Det gick inte att uppdatera konverteringen av checklistor"
+    },
+    "convertAgentChecklists": {
+      "description": "Av behåller varje kryssruta som en agent skriver som en vanlig kryssruta. Agenter skapar uppgifter med uppgiftsverktygen.",
+      "error": "Det gick inte att uppdatera konverteringen av checklistor från agenter"
     }
   },
   "templates": {
@@ -1334,7 +1345,7 @@
     "embedding": {
       "loaded": "Inläst",
       "loading": "Läser in",
-      "cacheHint": "~23 MB · Cachad lokalt · Allt på enheten",
+      "cacheHint": "~210 MB · Cachad lokalt · Allt på enheten",
       "dimensions": "Dimensioner",
       "embeddings": "Inbäddningar",
       "downloadLoad": "Ladda ner och läs in modell",
@@ -2213,7 +2224,7 @@
       },
       "confirm": {
         "label": "Bekräfta åtgärder",
-        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten.",
+        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten. Låsta anteckningar och mappar förblir skrivskyddade i båda lägena.",
         "alwaysAllow": "Tillåt alltid",
         "askBeforeChanges": "Fråga före ändringar"
       }

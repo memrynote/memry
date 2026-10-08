@@ -2,7 +2,16 @@ import { expect, type ElectronApplication, type Page } from '@playwright/test'
 import { SELECTORS } from './electron-helpers'
 
 export type SourceRestoreOutcome =
-  'no-record' | 'critic-marks' | 'source' | 'merged' | 'house-style-fallback' | 'house-style-threw'
+  | 'no-record'
+  | 'critic-marks'
+  | 'writing-marks'
+  | 'source'
+  | 'merged'
+  | 'file'
+  | 'file-merged'
+  | 'file-unreadable'
+  | 'house-style-fallback'
+  | 'restore-threw'
 
 interface MemryNoteTestHooks {
   getCrdtDocMarkdown(noteId: string): Promise<string | null>

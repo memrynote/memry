@@ -401,6 +401,25 @@ export const CustomIconSyncPayloadSchema = z.object({
   updatedAt: z.string().optional()
 })
 
+/**
+ * A read-only lock on a note (`targetKind: 'note'`, `target` = note id) or a
+ * folder (`targetKind: 'folder'`, `target` = vault-relative path). Unlocking
+ * sets `locked: false` on the same record rather than deleting it, so a later
+ * lock never has to re-create an id the server holds a tombstone for.
+ *
+ * `targetKind` stays a free-form string, as `ext` does on custom icons: a
+ * strict enum would fail the parse of a kind a newer build adds and drop the
+ * record with nothing visible. The apply site skips a kind it does not know.
+ */
+export const VaultLockSyncPayloadSchema = z.object({
+  targetKind: z.string().optional(),
+  target: z.string().optional(),
+  locked: z.boolean().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional()
+})
+
 export const CalendarEventSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -627,6 +646,7 @@ export const AgentMessageSyncPayloadSchema = z.object({
 
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
 export type CustomIconSyncPayload = z.infer<typeof CustomIconSyncPayloadSchema>
+export type VaultLockSyncPayload = z.infer<typeof VaultLockSyncPayloadSchema>
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
 export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>

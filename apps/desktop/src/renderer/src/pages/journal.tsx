@@ -52,6 +52,10 @@ import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
+import { useVaultConfig } from '@/hooks/use-vault-config'
+import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { journalPathForDate } from '@/lib/journal-path'
+import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import {
   BacklinksSection,
@@ -227,6 +231,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     deleteEntry
   } = useJournalEntry(selectedDate)
   const entryId = entry?.id ?? null
+  const vaultConfig = useVaultConfig()
+  // A journal file sits under a folder lock when the owner locked the journal
+  // folder (shown in the sidebar) or a folder above it; main refuses the write.
+  const isLocked = useIsNoteLocked(
+    entryId,
+    vaultConfig ? journalPathForDate(selectedDate, vaultConfig) : null
+  )
+  const hasOwnLock = useHasOwnNoteLock(entryId)
+  const lockAction = hasOwnLock ? 'unlock' : entryId && !isLocked ? 'lock' : undefined
 
   // Show toast when save error occurs
   useEffect(() => {
@@ -561,7 +574,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     handleDeleteProperty,
     handlePropertyNameChange,
     handlePropertyOrderChange
-  } = usePropertySection({ entityId: entry?.id ?? null, includeExplicitType: true })
+  } = usePropertySection({
+    entityId: entry?.id ?? null,
+    includeExplicitType: true,
+    canEdit: () => !isLocked,
+    onBlocked: () => toast.error(notesT('errors:vaultLock.noteReadOnly'))
+  })
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
     usePropertiesCollapsed(entry?.id ?? '')
@@ -959,6 +977,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [entryId, notesT])
 
+  const handleToggleLock = useCallback(async () => {
+    if (!entryId) return
+    try {
+      await setVaultLock('note', entryId, !hasOwnLock)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, notesT('vaultLock.toggleFailed')))
+    }
+  }, [entryId, hasOwnLock, notesT])
+
   const openFind = findInPage.open
   const handleMenuAction = useCallback(
     (action: JournalMenuAction) => {
@@ -987,6 +1014,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         case 'attachments':
           setIsAttachmentsOpen(true)
           break
+        case 'lock':
+          void handleToggleLock()
+          break
         case 'delete':
           setIsDeleteConfirmOpen(true)
           break
@@ -997,7 +1027,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           break
       }
     },
-    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal]
+    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal, handleToggleLock]
   )
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -1201,6 +1231,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isMindMapAvailable={mindMap.isAvailable}
               isMindMapOpen={isMindMapOpen}
               isLocalGraphOpen={isLocalGraphOpen}
+              lockAction={lockAction}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={toggleJournalWidth}
@@ -1267,6 +1298,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           className="group/metadata flex flex-col gap-2.5 pb-[15px]"
                           data-marquee-ignore
                         >
+                          {isLocked && <LockedNoteNotice />}
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                           <TagsRow
                             tags={journalTags}
@@ -1278,6 +1310,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             className="mb-0"
                             hideWhenEmpty
                             hideAddButton
+                            disabled={isLocked}
                           />
                           {properties.length > 0 && (
                             <InfoSection
@@ -1291,6 +1324,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onPropertyOrderChange={handlePropertyOrderChange}
                               onAddProperty={handleAddPropertyWithExpand}
                               onDeleteProperty={handleDeleteProperty}
+                              disabled={isLocked}
                               hideAddButton
                               renderPropertyAction={renderPropertyHistory}
                             />
@@ -1306,6 +1340,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
                             existingNames={properties.map((p) => p.name)}
+                            disabled={isLocked}
                           />
                         </div>
 
@@ -1334,6 +1369,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                 <ContentArea
                                   key={editorState.key}
                                   noteId={entry?.id}
+                                  editable={!isLocked}
                                   initialContent={review.editorInitialContent}
                                   contentType="markdown"
                                   externalContentRevision={externalUpdateCount}
@@ -1522,6 +1558,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               onHeadingClick={mindMapNavigation.navigateFromOutline}
               activeHeadingId={activeHeadingId ?? undefined}
               stats={documentStats}
+              noteId={entryId}
             />
           )}
         </main>

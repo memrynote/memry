@@ -18,6 +18,7 @@ import {
 } from './lib/startup-locale'
 import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
 import { applyStartupColorTheme } from './lib/startup-color-theme'
+import { applyStartupPlatform } from './lib/startup-platform'
 import { suppressFirstRunOnboardingInE2E } from './lib/e2e-onboarding'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
@@ -40,7 +41,8 @@ import {
   syncCrdt,
   onCrdtStateChanged,
   onCrdtProviderReset,
-  onCrdtProviderReady
+  onCrdtProviderReady,
+  onCrdtWriteBackFailed
 } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
@@ -49,6 +51,7 @@ import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
 import { homePagesApi, homePagesEvents } from './api/home-pages'
 import { customIconsApi, customIconsEvents } from './api/custom-icons'
+import { vaultLocksApi, vaultLocksEvents } from './api/vault-locks'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -71,6 +74,7 @@ if (typeof globalThis.window !== 'undefined') {
   }
   applyStartupTheme(startupTheme)
   applyStartupColorTheme()
+  applyStartupPlatform(process.platform)
 
   // Applied here rather than from the renderer's settings load: without it
   // every launch paints at 100% and then visibly jumps to the user's zoom.
@@ -133,6 +137,7 @@ export const api = {
   ...contentEvents,
   ...homePagesEvents,
   ...customIconsEvents,
+  ...vaultLocksEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,
@@ -157,10 +162,12 @@ export const api = {
   import: importApi,
   homePages: homePagesApi,
   customIcons: customIconsApi,
+  vaultLocks: vaultLocksApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,
   onCrdtProviderReady,
+  onCrdtWriteBackFailed,
   ...syncEvents,
   ...updaterEvents,
   ...importEvents,

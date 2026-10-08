@@ -51,9 +51,15 @@ import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
-import { VaultError, VaultErrorCode } from '../lib/errors'
+import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
-import { renameJournalsForFormatChange } from './journal-format-migration'
+import { installVaultLockFileGuard } from '../vault-locks/files'
+import { checkLockedFilesAtOpen } from '../vault-locks/service'
+import {
+  renameJournalsForFormatChange,
+  revertJournalRenames,
+  type JournalRename
+} from './journal-format-migration'
 import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
@@ -76,6 +82,8 @@ import { createSearchProjector } from '../projections/projectors/search-projecto
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
+import { createFileTextProjector } from '../projections/projectors/file-text-projector'
+import { fileTextNoteChanged, startFileTextExtraction, stopFileTextExtraction } from '../file-text'
 import { PropertyDefinitionsService } from './property-definitions'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
@@ -94,6 +102,7 @@ import {
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
+import { reindexCodeLinks } from './code-link-reindex'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -466,6 +475,12 @@ interface BackgroundIndexBuildInput {
   forcePaths: string[]
   /** Non-null when openVault reset the index DB and a recovery event is owed. */
   recoveredReason: IndexHealth | 'migration_failed' | null
+  /**
+   * Settles once locked files changed or removed while the app was closed are
+   * restored. The missing-file reconcile drops the index row of a removed
+   * file, which would hide a locked note from that restore (#2606).
+   */
+  lockedFilesChecked: Promise<void>
 }
 
 /**
@@ -485,7 +500,7 @@ interface BackgroundIndexBuildInput {
  * paths already cached.
  */
 async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
-  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths } = input
+  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths, lockedFilesChecked } = input
   const startedAt = Date.now()
   // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
   // it only after awaiting this promise, and a vault switch closes first.
@@ -539,6 +554,10 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   if (isStale()) return
 
+  await reindexCodeLinks({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
   updateStatus({
     isIndexing: false,
     indexProgress: 100,
@@ -548,6 +567,12 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   // The walk just pulled the whole vault through both page caches; nothing
   // afterwards needs most of those pages hot.
   releaseDatabaseMemory()
+
+  // After the walk, so reading PDFs and images never competes with it.
+  startFileTextExtraction(vaultPath)
+
+  await lockedFilesChecked
+  if (isStale()) return
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
@@ -599,8 +624,10 @@ async function openVault(vaultPath: string): Promise<void> {
   // deliberately defers, so this is the call that actually opens the store.
   // Not awaited: it pays for a preflight child process, and the vault must not
   // wait on it. Editors that raced it rebind on the PROVIDER_READY broadcast.
+  // The path is passed because the vault status does not carry it yet (it is
+  // set further down), and the ready broadcast has to name this vault.
   void getCrdtProvider()
-    .initPersistence()
+    .initPersistence(vaultPath)
     .catch((error) => logger.warn('CRDT persistence init failed (non-fatal):', error))
 
   // Create FTS5 virtual tables for tasks and inbox in data.db
@@ -665,7 +692,8 @@ async function openVault(vaultPath: string): Promise<void> {
       () => currentStatus.isIndexing
     ),
     createInboxStatsProjector(),
-    createNoteProjectLinksProjector()
+    createNoteProjectLinksProjector(),
+    createFileTextProjector(fileTextNoteChanged)
   ])
 
   // Set the vault path before indexing so getConfig() (and the journal-config
@@ -708,7 +736,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
     // Reload property definitions into DB cache before indexing
     // so getPropertyType() finds correct types during note sync
-    await propDefService.reload()
+    await propDefService.reloadOnOpen()
 
     const migrationState = getSetting(dataDb, ROOT_PROPERTIES_MIGRATION_KEY)
     if (migrationState !== ROOT_PROPERTIES_MIGRATION_DONE) {
@@ -751,6 +779,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // vault must not be missed. Watcher, sync apply and the walker all upsert the
   // cache keyed by path (the walker skips paths already cached), so the three
   // can interleave without duplicating entries.
+  installVaultLockFileGuard()
   await startWatcher(vaultPath)
   timer.mark('watcher')
 
@@ -761,7 +790,7 @@ async function openVault(vaultPath: string): Promise<void> {
   //
   // Vault-open must NOT wait on embeddings: the renderer only needs the index
   // to render. Embedding is deferred out of the indexing pass — the embedding
-  // projector no-ops while isIndexing and records the note ids — so the ~23MB
+  // projector no-ops while isIndexing and records the note ids — so the ~210MB
   // model load + per-note CPU inference never runs on the blocking path (this
   // stranded imported vaults on the picker for minutes; #803). The background
   // index build's tail runs reconcileProjections() to embed those
@@ -774,6 +803,12 @@ async function openVault(vaultPath: string): Promise<void> {
   timer.mark('statusOpen')
   logger.info('Vault open timing', timer.summary())
 
+  // Locked files edited or removed while the app was closed get their locked
+  // text back, and every lock is re-applied on disk (#2606).
+  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) =>
+    logger.warn('Checking locked files at vault open failed', err)
+  )
+
   // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
   // against an open vault, exactly like the old post-open reconcile call did.
   // The handle lets closeVault() stop the walk and wait it out before it tears
@@ -784,7 +819,8 @@ async function openVault(vaultPath: string): Promise<void> {
     dataDb,
     indexHealth,
     recoveredReason,
-    forcePaths: migratedRootPropertyPaths
+    forcePaths: migratedRootPropertyPaths,
+    lockedFilesChecked
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
@@ -967,18 +1003,26 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
   // paths they were computed for. Restarting after the renames replays nothing
   // (`ignoreInitial`), and the rebuild below re-indexes every moved file.
   let watcherPaused = false
+  let movedJournals: JournalRename[] = []
   if (renameJournals) {
     await flushPendingWritebacks()
     watcherPaused = getWatcher().isWatching()
     if (watcherPaused) await stopWatcher()
     try {
-      await renameJournalsForFormatChange(
+      const renamed = await renameJournalsForFormatChange(
         vaultPath,
         oldConfig.journalFolder,
         oldConfig.journalDateFormat,
         renameJournals.newFormat
       )
+      movedJournals = renamed.moved
     } catch (error) {
+      // A locked entry refuses the whole change: the old format stays, so every
+      // journal file still matches the format it is read with.
+      if (error instanceof NoteError && error.code === NoteErrorCode.READ_ONLY) {
+        if (watcherPaused) await startWatcher(vaultPath)
+        throw error
+      }
       logger.error('Journal rename for new date format failed', error)
       trackMainError('vault', 'journal_format_rename', error)
     }
@@ -986,6 +1030,10 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
 
   try {
     writeVaultConfig(vaultPath, updates)
+  } catch (error) {
+    // The old format stays, so the moved files go back to the names it reads.
+    await revertJournalRenames(vaultPath, oldConfig.journalFolder, movedJournals)
+    throw error
   } finally {
     if (watcherPaused) await startWatcher(vaultPath)
   }
@@ -1068,6 +1116,9 @@ async function closeOpenVault(): Promise<void> {
   const timer = createPhaseTimer()
   await stopBackgroundIndexBuild()
   timer.mark('indexBuild')
+
+  await stopFileTextExtraction()
+  timer.mark('fileText')
 
   await stopVaultAgentServices()
   timer.mark('agent')

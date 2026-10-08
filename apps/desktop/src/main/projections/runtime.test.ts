@@ -49,6 +49,7 @@ function eventEntityId(event: ProjectionEvent): string {
     case 'note.upserted':
       return event.note.noteId
     case 'note.deleted':
+    case 'note.text-extracted':
       return event.noteId
     case 'task.upserted':
     case 'task.deleted':

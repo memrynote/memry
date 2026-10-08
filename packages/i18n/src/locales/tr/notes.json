@@ -158,7 +158,8 @@
       "richTextAria": "Zengin metin düzenleyici",
       "headingPlaceholder": "Başlık",
       "listPlaceholder": "Liste öğesi",
-      "todoPlaceholder": "Yapılacak öğe"
+      "todoPlaceholder": "Yapılacak öğe",
+      "htmlComment": "Gizli HTML yorumu"
     },
     "table": {
       "keyboardMenuAria": "Satır {row}, sütun {column} için tablo işlemleri",
@@ -245,6 +246,25 @@
       "warning": "Uyarı",
       "error": "Hata",
       "success": "Başarılı"
+    },
+    "columns": {
+      "group": "Temel bloklar",
+      "two": {
+        "title": "2 sütun",
+        "subtext": "Blokları iki sütunda yan yana yerleştir"
+      },
+      "three": {
+        "title": "3 sütun",
+        "subtext": "Blokları üç sütunda yan yana yerleştir"
+      },
+      "four": {
+        "title": "4 sütun",
+        "subtext": "Blokları dört sütunda yan yana yerleştir"
+      },
+      "five": {
+        "title": "5 sütun",
+        "subtext": "Blokları beş sütunda yan yana yerleştir"
+      }
     },
     "diagram": {
       "title": "Diyagram",

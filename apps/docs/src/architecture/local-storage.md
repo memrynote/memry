@@ -31,6 +31,17 @@ no user keys has no YAML block at all.
 - **External renames match by content hash.** The file watcher pairs a delete with a following add
   inside a short window using the cached content hash (identical-content collisions match FIFO),
   since files carry no embedded id to match on.
+- **A vanished vault is not a deleted vault.** A vault on a removable or network drive that is
+  away for a moment, or a vault folder renamed away, makes the watcher see every file removed at
+  once. A removal becomes a delete only while `<vault>/.memry/data.db` is still a file
+  (`isVaultReachable` in `src/main/vault/init.ts`), checked when the removal arrives and again
+  when the rename window ends. While the vault is away the watcher drops removals, queues no
+  delete and polls for the vault every two seconds. When it is back the watcher restarts, since
+  chokidar hears nothing after its root was moved, and rescans: an indexed file that is gone takes
+  the normal delete path, a file newer than its index stamp takes the change path, and a file the
+  index does not know takes the add path (`src/main/vault/watcher.ts`). A note renamed while the
+  vault was away matches by content hash only if its new path is reached inside the rename window,
+  so in a large vault it can come back as a delete plus a new note.
 
 ## Derived State Projections
 
@@ -248,6 +259,87 @@ unknown version reads as "no layout", and the graph falls back to a fresh arrang
 renderer writes the row when the simulation comes to rest and immediately on pin or unpin,
 through one serialized queue, so an older write never lands after a newer one.
 
+### Extracted Text
+
+Text read out of PDFs, images and HTML blocks lives in index.db, so every device reads its own
+files and nothing here syncs. Two kinds of file are read: a filed PDF or image (its own
+`note_cache` row), and a PDF, image or `.html`/`.htm` file in a markdown note's
+`attachments/<note-id>/` folder that the note still embeds.
+
+- `extracted_text` (`note_id`, `source`, `part`, `method`, `text`) holds one row per page, keyed
+  by `(note_id, source, part)`. `source` is empty for a filed file's own text and is the stored
+  file name for an attachment. A PDF's `part` is its 1-based page; an image and an HTML file are
+  part 1. `method` is `pdf-text` (the page's text layer), `ocr`, `html` (an HTML block's visible
+  text), or `unreadable` (failed twice; kept so a resumed job skips it).
+- `file_text_jobs` (`note_id`, `source`, `signature`, `status`, `page_count`, `error`,
+  `app_version`) holds the job state per file. `signature` is the size and mtime of the bytes the
+  rows came from; a file whose signature moves starts over. Renaming or moving a filed file keeps
+  its job; renaming an attachment is a new `source` and is read again. A `failed` job, or a `done`
+  job with `unreadable` rows, runs again when another app version opens the vault or a day after
+  it last ran. Its `unreadable` rows go first and the job reads every page it has no row for, so a
+  gap before a good page is read again and the text it already read stays.
+
+Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
+searchable: an attachment's text sits under the markdown note that owns the folder, so a search
+hit opens that note. Text from a note's HTML blocks sits under the note the same way.
+
+`src/main/file-text/runner.ts` is the only writer. It starts after the open-time index pass and
+works through one file and one page at a time, oldest job first. Every `note.upserted` for a
+filed PDF or image, or for a markdown note, makes it compare that note's files again; a finished
+attachment download does the same. It looks the changed notes up 500 ids at a time, since a large
+sync or reindex can change more notes than SQLite binds in one statement, and a pass that throws
+keeps its notes for the next pass. An attachment the note no longer embeds loses its rows, even
+though its file stays on disk. A PDF page with a text layer is read with pdfjs-dist; a page
+without one, and every image, goes through tesseract.js. An HTML file is parsed with jsdom, which
+never runs its scripts; the text outside `script`, `style`, `noscript`, `template` and `head` is
+kept, with a paragraph break at each block element. `code`, `kbd` and `samp` are written as
+markdown code spans and `pre` as a fenced block, so the link scan skips link syntax in them as it
+skips code in a note's markdown. The parse runs in the main process and costs
+over 100 times the file in memory, so a file over 2 MB (`HTML_TEXT_MAX_BYTES`, four times the
+agent tool's 512K-character cap) is never parsed: its job fails with one `unreadable` part and is
+not retried while its bytes stay the same. Each page is stored as it finishes, and
+a job reads only the pages it has no row for, so a restart resumes where it stopped. The runner
+publishes `note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then
+writes the text into `fts_notes`: a filed file's text as its row, an attachment's text after the
+owning note's body. The embedding projector embeds a filed file's opening, and appends the opening
+of a note's attachment text to the note's body when the body leaves room. The note-derived-state
+projector reads `[[wiki links]]` out of the note's `html` rows and stores them in `note_links`
+with the links of the body, on every `note.upserted` and, re-reading the note file, on every
+`note.text-extracted`. When that re-read changes the links, it sends `notes:updated` with empty
+`changes` for the note and for every note that gained or lost a backlink, so open links panels
+refresh. A large-file note keeps no links, as before. The AF-006 code-link reindex writes a note's
+links through the same `setMarkdownNoteLinks`, so it keeps the HTML block links too. The CLI graph
+reads the same `html` rows (`listHtmlBlockText` in `@memry/app-core`) and the same
+`extractWikiLinks` (`@memry/shared/wiki-target`). A rename never rewrites a block's file: the file
+is a synced attachment that Memry only reads.
+
+Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
+
+- **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the English data in
+  `out/main/tessdata/`, unpacked from `app.asar`. `ocr-reader.ts` turns each image upright, grey
+  and on white, doubles a small one (under 1600 px) and caps a large one at 4000 px before
+  Tesseract reads it. Under Node, tesseract.js 7.0.0 loads the full `tesseract-core*.js` builds
+  even for LSTM-only work, so the afterPack prune keeps those and drops the LSTM and browser
+  builds. `check-packaged-runtime-deps.js` reads a fixture image through the packaged tree and
+  fails when a module resolves outside the packaged app. Without `eng.traineddata.gz` Tesseract
+  waits instead of failing, so `ocr-engine.ts` checks for it first: every OCR request fails at
+  once, and the error is logged once per run.
+- **PDF pages.** Node has no canvas, so `pdf-host.ts` loads `pdf-host.html` into a
+  `WebContentsView` that belongs to no window. It never shows, stays out of
+  `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. A range
+  that cannot be read fails the whole document, so a deleted file errors instead of stalling. It
+  renders with the `print` intent, because the display intent waits for animation frames a hidden
+  view never gets. `openPdfDocument(path, size)` and `renderPage(page, maxEdge)` are the page
+  renderer for any feature that needs a PDF page as an image.
+
+The sync server serves Tesseract's `tessdata_fast` models for every language Memry has UI
+translations for at `GET /ocr/v1/<lang>.traineddata.gz` (`apps/sync-server/src/routes/ocr.ts`).
+The route is public, answers only the names in `src/lib/ocr-languages.ts`, and marks each file
+`immutable`. The files sit under `ocr/v1/` in the R2 bucket bound as `OCR_DATA`, which is the same
+bucket as `STORAGE`. `scripts/upload-ocr-language-data.ts` uploads them by hand together with
+`ocr/v1/manifest.json` (`{lang, bytes, sha256}` per file), and refuses to replace a file whose
+hash the manifest already records. The current app reads only the bundled English data.
+
 ## Migrations
 
 ```bash
@@ -266,11 +358,13 @@ one shipped exception).
 
 Sync bookkeeping tables added this way, each additive and ignored by older builds:
 
-| Migration                 | Table                | Holds                                                                                                        |
-| ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `0059_sync_intents`       | `sync_intents`       | local changes that still owe their clock bump and queue row (#2301)                                          |
-| `0060_crdt_body_debts`    | `crdt_body_debts`    | notes and journals whose server CRDT body this device has not merged (#2297); see [CRDT](/architecture/crdt) |
-| `0062_crdt_body_withheld` | `crdt_body_withheld` | ids whose change-feed body was dropped because no row existed yet (#2421); see [CRDT](/architecture/crdt)    |
+| Migration                    | Table                   | Holds                                                                                                                                                     |
+| ---------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0059_sync_intents`          | `sync_intents`          | local changes that still owe their clock bump and queue row (#2301)                                                                                       |
+| `0060_crdt_body_debts`       | `crdt_body_debts`       | notes and journals whose server CRDT body this device has not merged (#2297); see [CRDT](/architecture/crdt)                                              |
+| `0062_crdt_body_withheld`    | `crdt_body_withheld`    | ids whose change-feed body was dropped because no row existed yet (#2421); see [CRDT](/architecture/crdt)                                                 |
+| `0065_crdt_owed_file_bodies` | `crdt_owed_file_bodies` | notes whose vault file holds a body their CRDT doc has not taken, with no store (#2646); see [CRDT](/architecture/crdt)                                   |
+| `0066_attachment_files`      | `attachment_files`      | note-attachment files this device knows the server has, by vault-relative path (#2651); see [Sync protocol](/architecture/sync-protocol#note-attachments) |
 
 ## Vault Markdown Files
 
@@ -338,6 +432,12 @@ Editor colors persist in two Obsidian-compatible forms:
 - **Inline colors** (formatting toolbar on selected text) serialize as raw HTML spans — `<span style="color:red">…</span>` / `background-color` — which Obsidian renders natively (`packages/shared/src/inline-colors.ts`). Because BlockNote's markdown pipeline drops both literal spans and inline color styles, both serializers route colored runs through markdown-inert tokens: wrapped before `blocksToMarkdownLossy` and swapped for span HTML after; masked before `tryParseMarkdownToBlocks` and re-applied as styles after. Spans inside fenced or inline code are left untouched. Files without markers or spans parse unchanged, and older app versions reading span-bearing files keep the text and lose only the color.
 
 The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
+
+### HTML comments in markdown
+
+An author's `<!-- … -->` comment is kept in the document as an inline `htmlComment` node whose `source` prop holds the comment byte for byte (`packages/editor-schema/src/inline/html-comment.ts`). The editor shows a small muted marker in its place, never the text. A comment on its own line is a paragraph holding only the node; one inside or glued to a line of text stays in that paragraph, so an edit beside it changes only the edited line.
+
+Both parse paths mask each comment into one `MEMRYCMT<hex>X` token before anything splits the note into lines (`maskHtmlComments`, `packages/shared/src/html-comments.ts`), so a multi-line comment holding blank lines, a heading or a fence stays one comment. The serializer writes the node as the same token, and `normalizeSerializedMarkdown` turns it back into the comment last. Comments inside fenced code or code spans stay code. Memry's own marker comments (block colors and alignment, table layout, file and nesting markers, writing tools markers) keep their own readers. A build that predates the node finds it unrepresentable and keeps the note's file unchanged.
 
 ### Layout markers in markdown
 

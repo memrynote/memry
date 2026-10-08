@@ -53,6 +53,7 @@ export const agentApi = {
     scope?: AlwaysAllowScope
   }): Promise<Conversation | null> => invoke(AgentChannels.invoke.EDIT_TRUST_LIST, input),
   getToolGrants: (): Promise<AgentToolGrants> => invoke(AgentChannels.invoke.GET_TOOL_GRANTS),
+  clearMemory: (): Promise<{ ok: boolean }> => invoke(AgentChannels.invoke.CLEAR_MEMORY),
   getBackendStatuses: (): Promise<BackendStatusesResponse> =>
     invoke(AgentChannels.invoke.GET_BACKEND_STATUSES),
   listBackendModels: (input: AgentBackendModelListRequest): Promise<AgentBackendModelList> =>

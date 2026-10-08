@@ -370,7 +370,9 @@ export const defaultFilters: TaskFilters = {
   statusIds: [],
   completion: 'active',
   repeatType: 'all',
-  hasTime: 'all'
+  hasTime: 'all',
+  folderPaths: [],
+  noteIds: []
 }
 
 export const defaultSort: TaskSort = {

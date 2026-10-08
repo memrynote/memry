@@ -212,6 +212,24 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
     Some(props)
 }
 
+/// The grid a fresh table is built with.
+pub struct TableGrid {
+    pub rows: u32,
+    pub columns: u32,
+    /// Leading rows whose cells are `tableHeader` rather than `tableCell`.
+    pub header_rows: u32,
+}
+
+/// Desktop's `/table` default: `TABLE_PICKER_DEFAULT` built by
+/// `buildTableContent`, which always sets `headerRows: 1`. A table with no
+/// header row gains one after a markdown round trip, so iOS writes the same
+/// header desktop does.
+pub const EMPTY_TABLE: TableGrid = TableGrid {
+    rows: 3,
+    columns: 3,
+    header_rows: 1,
+};
+
 /// A table cell's declared props.
 ///
 /// Separate from [`defaults_for`] because a cell is not a block: it has no

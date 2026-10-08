@@ -1177,6 +1177,69 @@ describe('0064_sync_unknown_nested_fields migration', () => {
   })
 })
 
+// #2646: a vault file ahead of its note's CRDT doc.
+describe('0065_crdt_owed_file_bodies migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-owed-file-bodies-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0065Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0065')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0065_crdt_owed_file_bodies')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and changes no row', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0065Folder() })
+    sqlite.prepare("INSERT INTO crdt_body_withheld (note_id, created_at) VALUES ('n1', 1)").run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+    // Idempotent: a second run applies nothing and throws nothing.
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT note_id, created_at FROM crdt_body_withheld').all()).toEqual([
+      { note_id: 'n1', created_at: 1 }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM crdt_owed_file_bodies').get()).toEqual({
+      n: 0
+    })
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite.prepare("INSERT INTO crdt_owed_file_bodies (note_id, created_at) VALUES ('n1', 1)").run()
+
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0065Folder() })).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM crdt_owed_file_bodies').get()).toEqual({
+      n: 1
+    })
+    sqlite.close()
+  })
+})
+
 // #2301 review B-6/A-8: drizzle applies a migration only when its `when` is
 // greater than the newest one already applied. Two stacked migrations that
 // share a `when` (or go backwards) make every install that has the first skip
@@ -1200,5 +1263,164 @@ describe('data DB migration journal', () => {
       ).toBeGreaterThan(newest.when)
       newest = entry
     }
+  })
+})
+
+// #2651: the record of which attachment files the server has.
+describe('0066_attachment_files migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-attachment-files-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function migrationsBefore0066(): string {
+    const copy = path.join(tempDir, 'migrations-before-0066')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0066_attachment_files')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and keeps queued uploads', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsBefore0066() })
+    sqlite
+      .prepare(
+        `INSERT INTO attachment_upload_queue (id, note_id, disk_path, attempts, created_at, updated_at)
+         VALUES ('q1', 'n1', '/vault/attachments/n1/a.png', 2, 1, 1)`
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(
+      sqlite.prepare('SELECT id, note_id, disk_path, attempts FROM attachment_upload_queue').all()
+    ).toEqual([{ id: 'q1', note_id: 'n1', disk_path: '/vault/attachments/n1/a.png', attempts: 2 }])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM attachment_files').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        "INSERT INTO attachment_files (note_id, path, attachment_id, recorded_at) VALUES ('n1', 'attachments/n1/a.png', 'att', 1)"
+      )
+      .run()
+
+    expect(() =>
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0066() })
+    ).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM attachment_files').get()).toEqual({ n: 1 })
+    sqlite.close()
+  })
+
+  it('is idempotent when the migration runs twice', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsDir })
+    expect(() =>
+      sqlite.exec(fs.readFileSync(path.join(migrationsDir, '0066_attachment_files.sql'), 'utf8'))
+    ).not.toThrow()
+    sqlite.close()
+  })
+})
+
+// #2647: where each note's body stands with the server.
+describe('0068_note_body_sync migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-body-sync-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function migrationsBefore0068(): string {
+    const copy = path.join(tempDir, 'migrations-before-0068')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0068_note_body_sync')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and keeps queued body rows', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsBefore0068() })
+    sqlite
+      .prepare(
+        `INSERT INTO sync_queue (id, type, item_id, operation, payload, priority, attempts, created_at)
+         VALUES ('q1', 'note_body', 'n1', 'update', 'AAE=', 0, 0, 1)`
+      )
+      .run()
+    sqlite.prepare("INSERT INTO crdt_owed_file_bodies (note_id, created_at) VALUES ('n2', 5)").run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT id, type, item_id, payload FROM sync_queue').all()).toEqual([
+      { id: 'q1', type: 'note_body', item_id: 'n1', payload: 'AAE=' }
+    ])
+    expect(sqlite.prepare('SELECT note_id, created_at FROM crdt_owed_file_bodies').all()).toEqual([
+      { note_id: 'n2', created_at: 5 }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM note_body_sync').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        "INSERT INTO note_body_sync (note_id, last_confirmed_at, updated_at) VALUES ('n1', 1, 1)"
+      )
+      .run()
+
+    expect(() =>
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0068() })
+    ).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM note_body_sync').get()).toEqual({ n: 1 })
+    sqlite.close()
+  })
+
+  it('is idempotent when the migration runs twice', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    migrate(drizzle(sqlite), { migrationsFolder: migrationsDir })
+    expect(() =>
+      sqlite.exec(fs.readFileSync(path.join(migrationsDir, '0068_note_body_sync.sql'), 'utf8'))
+    ).not.toThrow()
+    sqlite.close()
   })
 })

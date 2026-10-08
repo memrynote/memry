@@ -6,6 +6,7 @@ import { saveCanonicalNote } from '@memry/domain-notes'
 import { getNoteMetadataByPath } from '@memry/storage-data'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import type { FileType } from '@memry/shared/file-types'
+import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
@@ -69,6 +70,8 @@ export interface ExportResult {
 
 export interface ExportHtmlOptions {
   includeMetadata?: boolean
+  /** Keep each task's `{task:<id>}` suffix. Off by default: a reader has no use for it. */
+  includeTaskMarkers?: boolean
 }
 
 export interface ExportPdfOptions extends ExportHtmlOptions {
@@ -240,6 +243,10 @@ function wikiLinksToText(markdown: string): string {
   return replaceWikiLinks(markdown).replace(/<!--\s*file:\{[^}]+\}\s*-->/g, '')
 }
 
+function exportedBody(content: string, options: ExportHtmlOptions): string {
+  return options.includeTaskMarkers ? content : stripTaskBlockSuffixes(content)
+}
+
 function markdownToPlainText(markdown: string): string {
   return wikiLinksToText(markdown)
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, ''))
@@ -303,7 +310,7 @@ function renderNotePdf(
           ''
         ]
       : []),
-    ...markdownToPlainText(note.content).split(/\r?\n/)
+    ...markdownToPlainText(exportedBody(note.content, options)).split(/\r?\n/)
   ].flatMap((line) => wrapLine(line, 86))
 
   const content = [
@@ -345,7 +352,7 @@ function renderNoteHtml(
   options: ExportHtmlOptions
 ): string {
   const includeMetadata = options.includeMetadata ?? true
-  const contentHtml = marked.parse(wikiLinksToText(note.content)) as string
+  const contentHtml = marked.parse(wikiLinksToText(exportedBody(note.content, options))) as string
   const tags = note.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')
   const metadata = includeMetadata
     ? `

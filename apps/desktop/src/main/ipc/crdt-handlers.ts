@@ -16,6 +16,7 @@ import { getCrdtInMemorySessions } from '../store'
 import { createLogger } from '../lib/logger'
 import { trackNoteBodyEditThrottled } from '../telemetry/diagnostics'
 import { createValidatedHandler } from './validate'
+import { isNoteLocked } from '../vault-locks/registry'
 
 const log = createLogger('CrdtIpc')
 
@@ -55,6 +56,17 @@ function hookWindowClose(win: BrowserWindow): void {
 }
 
 /**
+ * A renderer edit to a locked note never reaches the doc (#2606). The editor
+ * opens locked notes read-only, so this only drops what slipped through: a
+ * keystroke in flight when the lock landed, or a stale editor.
+ */
+function refuseLockedEditorUpdate(noteId: string): boolean {
+  if (!isNoteLocked(noteId)) return false
+  log.warn('Dropped an editor update to a locked note', { noteId })
+  return true
+}
+
+/**
  * Register CRDT IPC handlers once at app bootstrap. Handlers resolve the current
  * provider via getCrdtProvider() on every invocation so they survive provider
  * destroy/reset during sign-out teardown — the renderer's useYjsCollaboration
@@ -65,7 +77,7 @@ export function registerCrdtIpcHandlers(): void {
   handlersRegistered = true
 
   ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (event, rawInput: unknown) => {
-    const { noteId } = CrdtOpenDocSchema.parse(rawInput)
+    const { noteId, vaultPath } = CrdtOpenDocSchema.parse(rawInput)
     const win = BrowserWindow.fromWebContents(event.sender)
     const windowId = win?.id
     // Hook before the first await: a window destroyed while open() is in
@@ -95,6 +107,12 @@ export function registerCrdtIpcHandlers(): void {
     if (!provider.isInitialized()) {
       return { success: false, error: 'CRDT provider not initialized' }
     }
+    // An editor kept for a vault the user left must not bind here: the note id
+    // may exist in this vault too, and the handshake would push the left
+    // vault's doc into this vault's store. It rebinds when its vault is back.
+    if (!provider.servesVault(vaultPath)) {
+      return { success: false, error: 'CRDT provider serves another vault' }
+    }
 
     const validation = provider.validateNoteForCrdt(noteId)
     if (!validation.ok) {
@@ -120,6 +138,7 @@ export function registerCrdtIpcHandlers(): void {
 
   ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
     const { noteId, update } = CrdtApplyUpdateSchema.parse(rawInput)
+    if (refuseLockedEditorUpdate(noteId)) return
     const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
     getCrdtProvider().applyIpcUpdate(noteId, update, sourceWindowId)
     // Body edits arrive through this channel, not the notes UPDATE IPC —
@@ -160,23 +179,15 @@ export function registerCrdtIpcHandlers(): void {
   ipcMain.handle(
     CRDT_CHANNELS.SYNC_STEP_2,
     createValidatedHandler(CrdtSyncStep2Schema, async (input) => {
+      if (refuseLockedEditorUpdate(input.noteId)) return
       getCrdtProvider().applyIpcSyncStep2(input.noteId, input.diff)
     })
   )
 
   // Pulled, not pushed: the verdict lands while the window is still loading, so
-  // a broadcast would routinely have no listener. Joins an init already in
-  // flight — never starts one, for the same reason open-doc does not: this
-  // caller must not be what decides which vault the store belongs to.
+  // a broadcast would routinely have no listener.
   ipcMain.handle(CRDT_CHANNELS.GET_HEALTH, async (): Promise<CrdtHealth> => {
-    const provider = getCrdtProvider()
-    if (!provider.isInitialized()) await provider.awaitPendingInit()
-    const inMemorySessions = getCrdtInMemorySessions()
-    return {
-      // Before this launch's verdict exists, the persisted streak is the best
-      // available answer: it is exactly what the previous launches decided.
-      persistent: provider.isInitialized() ? provider.hasPersistence() : inMemorySessions === 0,
-      inMemorySessions
-    }
+    const persistent = await getCrdtProvider().isPersistent()
+    return { persistent, inMemorySessions: getCrdtInMemorySessions() }
   })
 }

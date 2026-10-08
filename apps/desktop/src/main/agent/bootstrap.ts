@@ -1,3 +1,5 @@
+import { app } from 'electron'
+
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
@@ -31,6 +33,7 @@ import { detectCodexBinary } from './cli/codex-binary'
 import { spawnCodexTurn } from './cli/codex-spawn'
 import { createEscalatingKill } from './cli/kill'
 import { spawnClaudeTurn } from './cli/spawn'
+import { clearAgentMemory, ensureAgentWorkdir } from './cli/workdir'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
@@ -109,6 +112,7 @@ export async function startAgent(): Promise<AgentHandle> {
     ? createMessageStore({ db, vaultKey, deviceId })
     : createEphemeralMessageStore(deviceId)
   const handles = createVaultServiceHandles({ dataDb: db, indexDb })
+  const userDataDir = app.getPath('userData')
 
   const spawnClaudeAdapter = async ({
     prompt,
@@ -131,6 +135,7 @@ export async function startAgent(): Promise<AgentHandle> {
 
     const sub = await spawnClaudeTurn({
       binaryPath: 'claude',
+      cwd: await ensureAgentWorkdir(userDataDir, vaultId),
       ...(status?.url && status['token'] && writeGrant
         ? {
             mcp: {
@@ -188,6 +193,7 @@ export async function startAgent(): Promise<AgentHandle> {
 
     const sub = await spawnCodexTurn({
       binaryPath: 'codex',
+      cwd: await ensureAgentWorkdir(userDataDir, vaultId),
       prompt,
       reasoningEffort,
       model,
@@ -243,6 +249,7 @@ export async function startAgent(): Promise<AgentHandle> {
 
     const sub = await spawnAgyTurn({
       binaryPath: 'agy',
+      cwd: await ensureAgentWorkdir(userDataDir, vaultId),
       prompt,
       model,
       ...(permissions ? { permissions } : {}),
@@ -353,6 +360,7 @@ export async function startAgent(): Promise<AgentHandle> {
       get: getAgentPreferences,
       set: setAgentPreferences
     },
+    clearMemory: () => clearAgentMemory({ userDataDir, vaultId }),
     vaultId
   })
 

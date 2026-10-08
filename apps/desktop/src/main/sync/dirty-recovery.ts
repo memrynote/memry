@@ -12,6 +12,7 @@ import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
@@ -23,6 +24,7 @@ import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
 import { getTemplateSyncService } from '@memry/sync-client/template-sync'
 import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
 import { getCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import { getVaultLockSyncService } from '@memry/sync-client/vault-lock-sync'
 import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
 import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
@@ -373,6 +375,18 @@ const recoverDirtyCustomIcons: DirtySweep = {
   enqueue: enqueueCreateOrRecoveredUpdate
 }
 
+const recoverDirtyVaultLocks: DirtySweep = {
+  kind: 'sweep',
+  service: () => getVaultLockSyncService(),
+  select: (db) =>
+    db
+      .select({ id: vaultLocks.id, syncedAt: vaultLocks.syncedAt })
+      .from(vaultLocks)
+      .where(and(isNotNull(vaultLocks.clock), isDirty(vaultLocks.syncedAt, vaultLocks.updatedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
 /**
  * A reminder firing moves `modifiedAt` without a push (`status: 'triggered'` is
  * device-local), so this also re-pushes fired reminders once. That is harmless:
@@ -469,6 +483,7 @@ export const DIRTY_RECOVERY: Record<RecordSyncItemType, DirtySweep | DirtySweepE
   },
   folder_config: { kind: 'exempt', reason: `No syncedAt column. ${RELIES_ON_P4_2}` },
   custom_icon: recoverDirtyCustomIcons,
+  vault_lock: recoverDirtyVaultLocks,
   calendar_event: {
     kind: 'exempt',
     reason: `syncedAt is never stamped by a push (no markPushSynced), so it carries no dirty signal. ${RELIES_ON_P4_2}`

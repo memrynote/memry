@@ -70,9 +70,15 @@ function findLastCompactedIndex(messages: Message[]): number {
 }
 
 function renderForSummary(message: Message): string {
-  // Reasoning is display-only; it would only bloat the summary prompt.
+  // Reasoning and the tools-off note are display-only. A stored tools-off note would
+  // tell later turns that tools are off after the probe passes again.
   if (message.content.role === 'assistant') {
-    const { reasoning: _reasoning, reasoningDurationMs: _duration, ...data } = message.content.data
+    const {
+      reasoning: _reasoning,
+      reasoningDurationMs: _duration,
+      toolsUnavailable: _toolsUnavailable,
+      ...data
+    } = message.content.data
     return `[${message.role}] ${JSON.stringify(data)}`
   }
   return `[${message.role}] ${JSON.stringify(message.content.data)}`

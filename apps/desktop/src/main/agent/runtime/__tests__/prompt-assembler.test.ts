@@ -282,6 +282,18 @@ describe('Prompt assembler', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('# Ambiguity')
   })
 
+  it('routes looking at an image or a PDF page to vault_view_file', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain(
+      '- Looking at an image or a PDF page (a screenshot, photo, chart, or scan) → vault_view_file.'
+    )
+  })
+
+  it('points desktop API calls at vault_desktop_describe for their argument schema', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain(
+      "- Desktop API call → vault_desktop_describe with the operation first when you do not know its arguments; it returns the operation's argument schema."
+    )
+  })
+
   it('preserves write-gate and refusal guidance in the Tool Use section', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('write gate')
     expect(SYSTEM_PROMPT_HEADER).toContain('Refuse')

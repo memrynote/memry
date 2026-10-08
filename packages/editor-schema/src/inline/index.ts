@@ -6,6 +6,7 @@ import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
 import { inlineImageConfig } from './inline-image'
 import { inlineCheckboxConfig } from './inline-checkbox'
+import { htmlCommentConfig } from './html-comment'
 import { serializeThroughExternalHTML } from './table-cell-serialization'
 
 export * from './table-cell-serialization'
@@ -16,6 +17,7 @@ export * from './hash-tag'
 export * from './date-mention'
 export * from './inline-image'
 export * from './inline-checkbox'
+export * from './html-comment'
 
 /**
  * The specs each process supplies for itself. The config and the serialization
@@ -23,7 +25,7 @@ export * from './inline-checkbox'
  * or `WikiLink` / `WikiLinkSerializationOnly`), so only presentation and
  * HTML-paste behaviour differ.
  *
- * Every one of the six is listed. None can be "shared whole": BlockNote
+ * Every one of the seven is listed. None can be "shared whole": BlockNote
  * serializes inline content inside a TABLE through `render`, so the editor's
  * rich implementation reaching the main process rewrites that cell's markdown.
  */
@@ -56,6 +58,11 @@ export interface MemryInlineSpecs {
    * why the render half is still supplied per process.
    */
   inlineCheckbox: InlineContentSpec<typeof inlineCheckboxConfig>
+  /**
+   * An HTML comment kept in the document (AF-015). Portable config and
+   * serialization; each surface supplies only the marker it shows.
+   */
+  htmlComment: InlineContentSpec<typeof htmlCommentConfig>
 }
 
 /**
@@ -81,7 +88,8 @@ export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
     hashTag: serializeThroughExternalHTML(specs.hashTag),
     dateMention: serializeThroughExternalHTML(specs.dateMention),
     inlineImage: serializeThroughExternalHTML(specs.inlineImage),
-    inlineCheckbox: serializeThroughExternalHTML(specs.inlineCheckbox)
+    inlineCheckbox: serializeThroughExternalHTML(specs.inlineCheckbox),
+    htmlComment: serializeThroughExternalHTML(specs.htmlComment)
   }
   assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
   return registered
@@ -94,5 +102,6 @@ export const MEMRY_INLINE_CONTENT_TYPES = [
   'hashTag',
   'dateMention',
   'inlineImage',
-  'inlineCheckbox'
+  'inlineCheckbox',
+  'htmlComment'
 ] as const

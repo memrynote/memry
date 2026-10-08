@@ -60,7 +60,8 @@ const INLINE_NODES = new Set([
   'dateMention',
   'linkMention',
   'inlineImage',
-  'inlineCheckbox'
+  'inlineCheckbox',
+  'htmlComment'
 ])
 
 function attribute(element: Y.XmlElement, name: string): string | null {

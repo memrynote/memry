@@ -158,7 +158,8 @@
       "richTextAria": "Editor di testo formattato",
       "headingPlaceholder": "Titolo",
       "listPlaceholder": "Elemento dell'elenco",
-      "todoPlaceholder": "Cosa da fare"
+      "todoPlaceholder": "Cosa da fare",
+      "htmlComment": "Commento HTML nascosto"
     },
     "table": {
       "keyboardMenuAria": "Azioni della tabella per la riga {row}, colonna {column}",
@@ -245,6 +246,25 @@
       "warning": "Avviso",
       "error": "Errore",
       "success": "Successo"
+    },
+    "columns": {
+      "group": "Blocchi di base",
+      "two": {
+        "title": "2 colonne",
+        "subtext": "Affianca i blocchi su due colonne"
+      },
+      "three": {
+        "title": "3 colonne",
+        "subtext": "Affianca i blocchi su tre colonne"
+      },
+      "four": {
+        "title": "4 colonne",
+        "subtext": "Affianca i blocchi su quattro colonne"
+      },
+      "five": {
+        "title": "5 colonne",
+        "subtext": "Affianca i blocchi su cinque colonne"
+      }
     },
     "diagram": {
       "title": "Diagramma",

@@ -9,7 +9,7 @@ vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { writeFile } from 'node:fs/promises'
+import { rm, writeFile } from 'node:fs/promises'
 
 import { spawnClaudeTurn } from '../spawn'
 
@@ -24,6 +24,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -49,6 +50,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -86,6 +88,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -112,6 +115,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -139,6 +143,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -162,6 +167,7 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
@@ -177,12 +183,40 @@ describe('spawnClaudeTurn', () => {
     expect(fakeProc.stdin.end).toHaveBeenCalled()
   })
 
+  it('runs in the vault agent folder and removes only the MCP config folder, retrying a busy one', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    const sub = await spawnClaudeTurn({
+      binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        writeGrant: 'turn-grant-1',
+        windowId: 'w',
+        allowedTools: 'a'
+      },
+      effort: 'low',
+      prompt: 'p'
+    })
+    await sub.cleanup()
+
+    expect(vi.mocked(spawn).mock.calls[0][2]).toMatchObject({
+      cwd: '/user-data/agent-workdirs/vault-1'
+    })
+    expect(vi.mocked(rm).mock.calls).toEqual([
+      ['/tmp/fake-dir', { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }]
+    ])
+  })
+
   it('does not write MCP config or pass MCP flags for tool-free runs', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
+      cwd: '/user-data/agent-workdirs/vault-1',
       effort: 'xhigh',
       prompt: 'title only'
     })

@@ -1,4 +1,5 @@
 import { InboxChannels } from '../../contracts/src/ipc-channels.ts'
+import type { PlainChecklistsOption } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -497,9 +498,11 @@ export const inboxRpc = defineDomain({
           input.actualTags ?? []
         )`
     }),
-    convertToNote: defineMethod<(itemId: string) => Promise<InboxFileResponse>>({
+    convertToNote: defineMethod<
+      (itemId: string, options?: PlainChecklistsOption) => Promise<InboxFileResponse>
+    >({
       channel: InboxChannels.invoke.CONVERT_TO_NOTE,
-      params: ['itemId']
+      params: ['itemId', 'options']
     }),
     convertToTask: defineMethod<
       (

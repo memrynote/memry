@@ -158,7 +158,8 @@
       "richTextAria": "Editor formátovaného textu",
       "headingPlaceholder": "Nadpis",
       "listPlaceholder": "Položka zoznamu",
-      "todoPlaceholder": "Úloha"
+      "todoPlaceholder": "Úloha",
+      "htmlComment": "Skrytý komentár HTML"
     },
     "table": {
       "keyboardMenuAria": "Akcie tabuľky pre riadok {row}, stĺpec {column}",
@@ -245,6 +246,25 @@
       "warning": "Varovanie",
       "error": "Chyba",
       "success": "Úspech"
+    },
+    "columns": {
+      "group": "Základné bloky",
+      "two": {
+        "title": "2 stĺpce",
+        "subtext": "Umiestniť bloky vedľa seba do dvoch stĺpcov"
+      },
+      "three": {
+        "title": "3 stĺpce",
+        "subtext": "Umiestniť bloky vedľa seba do troch stĺpcov"
+      },
+      "four": {
+        "title": "4 stĺpce",
+        "subtext": "Umiestniť bloky vedľa seba do štyroch stĺpcov"
+      },
+      "five": {
+        "title": "5 stĺpcov",
+        "subtext": "Umiestniť bloky vedľa seba do piatich stĺpcov"
+      }
     },
     "diagram": {
       "title": "Diagram",

@@ -23,6 +23,7 @@ import {
   serializeToggleBlock,
   serializeWhiteboard
 } from './blocks/markdown'
+import { serializeColumnRegion } from './blocks/columns'
 import { serializeDateMentionToken, type DateMentionData } from '@memry/shared/date-mention'
 
 export interface RoundtripCase {
@@ -748,6 +749,75 @@ const inlineImageCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * HTML comments (AF-015): an `htmlComment` node holds each one, so the bytes
+ * come back in house style too, wherever the comment sat.
+ */
+const htmlCommentCases: RoundtripCase[] = [
+  { name: 'comment on a line of its own', markdown: '<!-- hidden [[Alpha]] -->\n\nText' },
+  {
+    name: 'comment directly above a heading',
+    markdown: '<!-- hidden [[Alpha]] -->\n# Heading',
+    canonical: '<!-- hidden [[Alpha]] -->\n\n# Heading'
+  },
+  { name: 'comment glued under a line', markdown: 'Line to edit.\n<!-- under it [[Gamma]] -->' },
+  { name: 'comment inside a line', markdown: 'Before <!-- inline [[Delta]] --> after' },
+  {
+    name: 'multi-line comment holding a blank line, a heading and a fence',
+    markdown: '<!--\nDraft [[Epsilon]]\n\n## Inside\n\n```js\nconst x = 1\n```\n-->\n\nText'
+  },
+  { name: 'comment in a list item', markdown: '- item <!-- li -->\n- two' },
+  {
+    name: 'comment in a table cell',
+    markdown: '| a             | b |\n| ------------- | - |\n| 1 <!-- td --> | 2 |'
+  },
+  { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' }
+]
+
+const columnSettings = (...lines: string[]): string =>
+  ['```column-settings', ...lines, '```'].join('\n')
+
+const columnCases: RoundtripCase[] = [
+  {
+    name: 'two column region',
+    markdown: serializeColumnRegion('r1', columnSettings('Number of Columns: 2'), ['Left', 'Right'])
+  },
+  {
+    name: 'column region keeps Obsidian settings it does not draw',
+    markdown: serializeColumnRegion(
+      'ExampleRegion1',
+      columnSettings('number of columns: 3', 'Border: off', 'Column Size: [20%, 30%, 50%]'),
+      ['One', 'Two', 'Three']
+    )
+  },
+  {
+    name: 'columns holding lists, headings, a toggle and blank lines',
+    markdown: [
+      'Above',
+      '',
+      serializeColumnRegion('r2', columnSettings('Number of Columns: 2'), [
+        '## Pros\n\n- fast\n- offline',
+        `Para one\n\n\nPara two\n\n${serializeToggleBlock('Summary', 'Body')}`
+      ]),
+      '',
+      'Below'
+    ].join('\n')
+  },
+  {
+    name: 'empty column',
+    markdown: serializeColumnRegion('r3', columnSettings('Number of Columns: 2'), ['', 'Right'])
+  },
+  {
+    name: 'column region spelled the old way is rewritten once',
+    markdown: '--- multi-column-start: old\nA\n--- column-break ---\nB\n--- multi-column-end',
+    canonical: serializeColumnRegion('old', columnSettings('Number of Columns: 2'), ['A', 'B'])
+  },
+  {
+    name: 'single column region stays text',
+    markdown: '--- start-multi-column: solo\n\nOnly\n\n--- end-multi-column'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
@@ -763,7 +833,9 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...whiteboardCases,
   ...viewBlockCases,
   ...foreignSpellingCases,
-  ...inlineImageCases
+  ...inlineImageCases,
+  ...columnCases,
+  ...htmlCommentCases
 ]
 
 // ---------------------------------------------------------------------------
@@ -1118,6 +1190,28 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     blocks: [{ type: 'whiteboard', props: { canvasId: WHITEBOARD_ID } }]
   },
   {
+    name: 'columnList',
+    pins: 'a column list is a block with no content whose columns are blocks one depth deeper, each holding its own blocks a further depth down; `width` and the MCM `regionId` are props',
+    blocks: [
+      {
+        type: 'columnList',
+        props: { regionId: 'r1' },
+        children: [
+          {
+            type: 'column',
+            props: { width: 0.5 },
+            children: [{ type: 'paragraph', content: 'Left' }]
+          },
+          {
+            type: 'column',
+            props: { width: 1.5 },
+            children: [{ type: 'bulletListItem', content: 'Right' }]
+          }
+        ]
+      }
+    ]
+  },
+  {
     name: 'table',
     pins: 'THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express',
     blocks: [
@@ -1263,6 +1357,20 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
             }
           ]
         }
+      }
+    ]
+  },
+  {
+    name: 'inline: htmlComment beside text',
+    pins: 'an HTML comment is a node holding its own bytes in `source`, never text (AF-015)',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Before ', styles: {} },
+          { type: 'htmlComment', props: { source: '<!-- hidden [[Alpha]] -->' } },
+          { type: 'text', text: ' after', styles: {} }
+        ]
       }
     ]
   },

@@ -3,6 +3,8 @@ import type { SyncSubscription } from './lib/sync-types'
 export type Bindings = {
   DB: D1Database
   STORAGE: R2Bucket
+  // Public OCR language data under ocr/v1/ (routes/ocr.ts). Not user data.
+  OCR_DATA: R2Bucket
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
   RATE_LIMITER: DurableObjectNamespace

@@ -151,7 +151,7 @@
       "deny": "Rifiuta",
       "invalidJson": "Inserisci un JSON valido prima di applicare le modifiche.",
       "thisTool": "questo strumento",
-      "alwaysAllowHint": "“Consenti sempre” vale per {tool}. Gli altri strumenti chiedono comunque conferma, e le eliminazioni la chiedono sempre.",
+      "alwaysAllowHint": "“Consenti sempre” vale per {tool}. Gli altri strumenti chiedono comunque conferma, e le eliminazioni la chiedono sempre. Le note e le cartelle bloccate restano in sola lettura.",
       "alwaysInChat": "Consenti sempre in questa chat",
       "alwaysInChatHint": "Termina alla fine della conversazione",
       "alwaysInVault": "Consenti sempre in questo vault",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Impossibile mostrare l'anteprima di questa modifica",
       "description": "L'agente vuole aggiornare {title}. Rivedi la modifica prima di applicarla.",
+      "descriptionCreate": "L'agente vuole creare {title}. Rivedi la modifica prima di applicarla.",
+      "descriptionDelete": "L'agente vuole eliminare {title}. Rivedi la modifica prima di applicarla.",
       "fallbackTitle": "questo elemento",
       "current": "Attuale",
       "candidate": "Proposta",
@@ -374,7 +376,8 @@
       "agent": "Agente",
       "pendingApproval": "{count, plural, one {# approvazione in attesa} other {# approvazioni in attesa}}",
       "inProgress": "L'agente sta rispondendo",
-      "close": "Chiudi agente"
+      "close": "Chiudi agente",
+      "moreActions": "Altre azioni dell'agente"
     },
     "errors": {
       "loadConversations": "Impossibile caricare le conversazioni dell'agente",

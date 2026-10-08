@@ -158,7 +158,8 @@
       "richTextAria": "Editor de texto enriquecido",
       "headingPlaceholder": "Encabezado",
       "listPlaceholder": "Elemento de lista",
-      "todoPlaceholder": "Tarea pendiente"
+      "todoPlaceholder": "Tarea pendiente",
+      "htmlComment": "Comentario HTML oculto"
     },
     "table": {
       "keyboardMenuAria": "Acciones de tabla para la fila {row}, columna {column}",
@@ -245,6 +246,25 @@
       "warning": "Advertencia",
       "error": "Error",
       "success": "Éxito"
+    },
+    "columns": {
+      "group": "Bloques básicos",
+      "two": {
+        "title": "2 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en dos columnas"
+      },
+      "three": {
+        "title": "3 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en tres columnas"
+      },
+      "four": {
+        "title": "4 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en cuatro columnas"
+      },
+      "five": {
+        "title": "5 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en cinco columnas"
+      }
     },
     "diagram": {
       "title": "Diagrama",

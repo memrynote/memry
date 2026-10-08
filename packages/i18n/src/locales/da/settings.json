@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Værktøjslinje",
-      "spelling": "Stavning"
+      "spelling": "Stavning",
+      "checklists": "Tjeklister"
     },
     "width": {
       "label": "Editorbredde",
@@ -446,7 +447,17 @@
     "v2": {
       "width": "Editorbredde",
       "toolbarMode": "Fast formateringslinje",
-      "spellCheck": "Kontrollér stavning"
+      "spellCheck": "Kontrollér stavning",
+      "convertChecklists": "Gør tjeklistepunkter til opgaver",
+      "convertAgentChecklists": "Gør tjeklistepunkter fra agenter til opgaver"
+    },
+    "convertChecklists": {
+      "description": "Hvert nyt tjeklistepunkt bliver en opgave. Slået fra forbliver tjeklister almindelige afkrydsningsfelter; højreklik på et for at gøre det til en opgave.",
+      "error": "Kunne ikke opdatere konvertering af tjeklister"
+    },
+    "convertAgentChecklists": {
+      "description": "Slået fra forbliver hvert afkrydsningsfelt, en agent skriver, et almindeligt afkrydsningsfelt. Agenter opretter opgaver med opgaveværktøjerne.",
+      "error": "Kunne ikke opdatere konvertering af tjeklister fra agenter"
     }
   },
   "templates": {
@@ -1334,7 +1345,7 @@
     "embedding": {
       "loaded": "Indlæst",
       "loading": "Indlæser",
-      "cacheHint": "~23 MB · Cachelagret lokalt · Alt på enheden",
+      "cacheHint": "~210 MB · Cachelagret lokalt · Alt på enheden",
       "dimensions": "Dimensioner",
       "embeddings": "Indlejringer",
       "downloadLoad": "Hent og indlæs model",
@@ -2213,7 +2224,7 @@
       },
       "confirm": {
         "label": "Bekræft handlinger",
-        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
+        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten. Låste noter og mapper forbliver skrivebeskyttede i begge tilstande.",
         "alwaysAllow": "Tillad altid",
         "askBeforeChanges": "Spørg før ændringer"
       }

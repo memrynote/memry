@@ -4,6 +4,7 @@ import { parseISO, isValid } from 'date-fns'
 import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import { useT } from '@memry/i18n/renderer'
+import { NoteSyncLine } from './note-sync-line'
 
 export interface HeadingItem {
   id: string
@@ -31,6 +32,8 @@ export interface OutlineInfoPanelProps {
    * without this it lands on the image and takes the clicks meant for it.
    */
   belowCover?: boolean
+  /** Adds the note's sync line under its dates (#2647). */
+  noteId?: string | null
 }
 
 function getLineWidth(level: number): number {
@@ -72,7 +75,8 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   className,
   activeHeadingId,
   stats,
-  belowCover = false
+  belowCover = false,
+  noteId
 }: OutlineInfoPanelProps) {
   const { t } = useT('notes')
   const dateFormat = useDateFormat()
@@ -314,6 +318,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                     )}
                   </div>
                 )}
+                {noteId && <NoteSyncLine noteId={noteId} />}
               </>
             )}
           </div>

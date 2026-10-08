@@ -33,13 +33,12 @@ final class EditorSession {
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
     @ObservationIgnored var icons: [String: String] = [:]
     @ObservationIgnored var titleExists: ((String) -> Bool)?
-    /// Opens the picture picker; `nil` hides the toolbar's picture button.
-    var pickImage: (() -> Void)?
     /// Every vault tag, most used first, for the `#` menu.
     @ObservationIgnored var tags: [String] = []
     /// Each tag's chosen colour by lowercased name, for the `hashTag` node.
     @ObservationIgnored var tagColors: [String: String] = [:]
-    /// Opens a paperclip source; `nil` hides the paperclip menu.
+    /// Opens an attachment picker; `nil` hides the paperclip menu and the
+    /// catalog's media rows.
     var attach: ((EditorAttachmentSource) -> Void)?
     /// The page's blocks, flat with `depth`, as the page draws them: what the
     /// toolbar's indent and move buttons read the focused block's place from.
@@ -51,6 +50,13 @@ final class EditorSession {
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
+    /// Schedules a vault sync pass (`requestVaultSync`), so a write reaches
+    /// other devices without waiting for the next foreground or launch.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+    /// The vault's canvases, for the Whiteboard row and the board editor.
+    @ObservationIgnored var whiteboards: (any WhiteboardBoards)?
+    /// The note's title, which names a new whiteboard.
+    @ObservationIgnored var noteTitle: () -> String? = { nil }
 
     // MARK: State the toolbar draws
 
@@ -73,17 +79,31 @@ final class EditorSession {
     private(set) var formatting = false
     /// A block waiting for the note picker (the `...` menu's Move to).
     private(set) var moveRequest: BlockMoveRequest?
-    /// Why the last Move to did not land, for the page's alert.
-    var moveFailure: UserFacingError?
+    /// Why the last Move to, or the last new whiteboard, did not land, for
+    /// the page's alert.
+    var failure: UserFacingError?
     /// A tapped date chip whose editor is open.
     private(set) var dateEdit: DateMentionEditRequest?
     /// The block that chip is in, which need not have the caret.
     @ObservationIgnored private weak var dateEditField: BlockField?
+    private(set) var linkRequest: LinkBlockRequest?
+    /// A block whose source sheet is open (`BlockSourceSheet`).
+    private(set) var sourceEdit: BlockSourceRequest?
+    /// A view block whose query sheet is open (`ViewQuerySheet`).
+    private(set) var viewEdit: ViewQueryRequest?
+    /// A whiteboard open in its editor (`WhiteboardEditor`).
+    private(set) var whiteboardEdit: WhiteboardEditRequest?
+    /// Bumped when a whiteboard editor closes, so the block re-reads its board.
+    private(set) var whiteboardRevision = 0
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
     /// A block to put the caret in once it is drawn.
     @ObservationIgnored var pendingFocus: String?
+    /// A column list just inserted, by its `id` prop: the caret goes to its
+    /// first block once a redraw shows the ids the core minted for it
+    /// (`resolveColumnFocus`).
+    @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
     @ObservationIgnored private var tail: Task<Void, Never>?
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
@@ -454,8 +474,17 @@ final class EditorSession {
     /// The core nests any block under its previous sibling, and refuses the
     /// first block of its parent (`indent` in `structure.rs`).
     var canIndent: Bool { focusedSiblings.previous != nil }
-    /// The core lifts any nested block, and refuses a top-level one.
-    var canOutdent: Bool { (focusedBlock?.depth ?? 0) > 0 }
+    /// The core lifts any nested block, and refuses a top-level one and a
+    /// column's own block (`outdent` in `structure.rs`), as desktop's
+    /// `liftItem` does nothing there.
+    var canOutdent: Bool {
+        let blocks = blocks()
+        guard let focusedBlockId, let index = blocks.firstIndex(where: { $0.id == focusedBlockId }),
+              blocks[index].depth > 0
+        else { return false }
+        guard let parent = NoteColumns.parentIndex(of: index, in: blocks) else { return true }
+        return blocks[parent].kind != "column"
+    }
 
     /// The block menu's actions for the focused block.
     var focusedRunner: BlockActionRunner? {
@@ -580,6 +609,41 @@ final class EditorSession {
         }
     }
 
+    // MARK: Source blocks
+
+    /// Opens the source sheet for a math or diagram block.
+    func editSource(_ request: BlockSourceRequest) {
+        dismissKeyboard()
+        sourceEdit = request
+    }
+
+    func cancelSourceEdit() {
+        sourceEdit = nil
+    }
+
+    /// The sheet's Done: the source is written once, as desktop writes it
+    /// when its popover closes, and only when it changed.
+    func saveSource(_ text: String) {
+        guard let request = sourceEdit else { return }
+        sourceEdit = nil
+        guard text != request.source else { return }
+        runBlockAction { [weak self] model in
+            switch request.kind {
+            case .math:
+                await model.setProp(request.blockId, "latex", text)
+                self?.history.record(.prop(
+                    blockId: request.blockId, name: "latex", from: request.source, to: text, label: "Equation"
+                ))
+            case .diagram:
+                // A diagram's source is its plain content: `ReplaceText`
+                // edits it in place, so a peer's concurrent edit survives.
+                await model.commit(text, for: request.blockId, current: request.source, formatted: true)
+                self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
+            }
+            self?.requestSync?()
+        }
+    }
+
     /// Moves the requested block to the end of `targetId`'s body, after every
     /// queued write. Not undoable here: the block now lives in another note.
     func moveToNote(_ targetId: String) {
@@ -591,7 +655,7 @@ final class EditorSession {
             let taskIds = blocks.firstIndex { $0.id == request.blockId }
                 .map { Self.taskIds(at: $0, in: blocks) } ?? []
             if let failure = await model.moveBlock(request.blockId, toNote: targetId) {
-                self.moveFailure = failure
+                self.failure = failure
             } else if let relink = self.relinkTask {
                 for taskId in taskIds { await relink(taskId, targetId) }
             }
@@ -613,16 +677,114 @@ final class EditorSession {
         }
     }
 
+    /// Opens an attachment picker once the open block's typing is written.
+    /// That write ends in a page reload, which would tear down a picker
+    /// already on screen.
+    func openAttachment(_ source: EditorAttachmentSource) {
+        guard let attach else { return }
+        if let field { commit(field) }
+        enqueue { attach(source) }
+    }
+
+    /// The link sheet for a Bookmark or YouTube row, for a block after the
+    /// caret's. The keyboard goes first, so the block's typing is committed.
+    func requestLink(_ kind: LinkBlock.Kind) {
+        linkRequest = LinkBlockRequest(kind: kind, after: field?.blockId)
+        if let field { commit(field) }
+        dismissKeyboard()
+    }
+
+    func cancelLink() {
+        linkRequest = nil
+    }
+
+    /// The View row: the query sheet for a new view block after the caret's.
+    /// Nothing is written until Done, so Cancel leaves the note as it was.
+    func requestView() {
+        viewEdit = ViewQueryRequest(blockId: nil, after: field?.blockId, text: "")
+        if let field { commit(field) }
+        dismissKeyboard()
+    }
+
+    func editView(blockId: String, text: String) {
+        dismissKeyboard()
+        viewEdit = ViewQueryRequest(blockId: blockId, after: nil, text: text)
+    }
+
+    func cancelViewEdit() {
+        viewEdit = nil
+    }
+
+    func editWhiteboard(canvasId: String, title: String) {
+        dismissKeyboard()
+        whiteboardEdit = WhiteboardEditRequest(canvasId: canvasId, title: title)
+    }
+
+    /// The editor closed: its saves are on the canvas, which the block
+    /// re-reads and the next sync pass pushes.
+    func finishWhiteboard() {
+        whiteboardEdit = nil
+        whiteboardRevision += 1
+        requestSync?()
+    }
+
+    /// Done: a new `memry-view` code block, undone as one step, or the
+    /// edited block's fence replaced in place (`ReplaceText`), so a peer's
+    /// concurrent edit survives.
+    func saveView(_ text: String) {
+        guard let request = viewEdit else { return }
+        viewEdit = nil
+        if let blockId = request.blockId {
+            guard text != request.text else { return }
+            runBlockAction { [weak self] model in
+                await model.commit(text, for: blockId, current: request.text, formatted: true)
+                self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
+                self?.requestSync?()
+            }
+            return
+        }
+        enqueue { [weak self] in
+            guard let self, let model = self.model,
+                  let newId = await model.insert("codeBlock", after: request.after, text: text) else { return }
+            let language = BlockEdit.setProp(blockId: newId, name: "language", value: ViewBlockFence.language)
+            await model.apply(language)
+            var step = EditorUndoStep.insert(blockId: newId, after: request.after, kind: "codeBlock", text: text)
+            step.forwardProps = [language]
+            self.history.record(step)
+            await self.didChange()
+            self.requestSync?()
+        }
+    }
+
+    func insertLink(_ block: LinkBlock) {
+        guard let request = linkRequest else { return }
+        linkRequest = nil
+        enqueue { [weak self] in
+            guard let self, let model = self.model,
+                  let newId = await model.insert(block.kind, after: request.after) else { return }
+            let edits = block.edits(newId: newId, after: request.after)
+            for edit in edits.dropFirst() { await model.apply(edit) }
+            self.history.record(EditorUndoStep(
+                name: "Insert block", backward: .delete(blockId: newId), forward: edits[0], forwardProps: Array(edits.dropFirst())
+            ))
+            await self.didChange()
+        }
+    }
+
     /// An uploaded attachment's block, after the caret's block (or at the end
-    /// of the body when none has had the caret). Not recorded for undo: redo
-    /// would replay a bare insert without the url.
+    /// of the body when none has had the caret). Undo removes the block and
+    /// keeps the upload, as desktop's undo does.
     func insertAttachment(_ block: AttachmentBlock) {
         let after = field?.blockId
         if let field { commit(field) }
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(block.kind, after: after) else { return }
-            for prop in block.props { await model.setProp(newId, prop.name, prop.value) }
+            let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
+            for prop in props { await model.apply(prop) }
+            var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
+            step.forwardProps = props
+            self.history.record(step)
             await self.didChange()
         }
     }
@@ -702,7 +864,7 @@ final class EditorSession {
             return
         }
         guard let step = history.popUndo() else { return }
-        replay(step.backward)
+        replay([step.backward])
     }
 
     func redo() {
@@ -711,14 +873,14 @@ final class EditorSession {
             return
         }
         guard let step = history.popRedo() else { return }
-        replay(step.forward)
+        replay([step.forward] + step.forwardProps)
     }
 
-    private func replay(_ edit: BlockEdit) {
+    private func replay(_ edits: [BlockEdit]) {
         if let field { field.dirty = false }
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
-            await model.apply(edit)
+            for edit in edits { await model.apply(edit) }
             await self.didChange()
         }
     }

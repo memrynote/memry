@@ -387,7 +387,8 @@ impl VaultSync {
                 Declaration::subscribed(),
                 cipher.clone(),
             )
-            .with_vault(&self.vault_id),
+            .with_vault(&self.vault_id)
+            .with_clock_device(&self.session.device_id()?),
         );
         let bodies = Arc::new(
             BodyPull::new(

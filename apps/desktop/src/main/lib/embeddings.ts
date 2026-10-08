@@ -3,7 +3,8 @@
  *
  * Coordinates local text embeddings through an Electron utility process.
  *
- * Model is downloaded on first use (~23MB) and cached in app data directory.
+ * Model is downloaded on first use (~210MB: ~175MB q4 weights plus the
+ * tokenizer) and cached in app data directory.
  *
  * @module main/lib/embeddings
  */
@@ -24,6 +25,7 @@ import {
   embeddingModelCacheDir,
   embeddingModelWeightsPath
 } from './embeddings-constants'
+import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import { createLogger } from './logger'
 import { broadcastToAllWindows } from './window-broadcast'
 import { isChildProcessFault, trackMainLog } from '../telemetry/diagnostics'
@@ -88,15 +90,13 @@ export interface ModelInfo {
 // ============================================================================
 
 /** Model to use for embeddings */
-const MODEL_NAME = 'all-MiniLM-L6-v2'
+const MODEL_NAME = 'EmbeddingGemma 2'
 
 export { EMBEDDING_DIMENSION } from './embeddings-constants'
 
 /** Minimum content length to generate embedding */
 const MIN_CONTENT_LENGTH = 10
 
-/** Maximum characters for embedding input (~512 tokens) */
-const MAX_CONTENT_LENGTH = 2000
 /**
  * The `serviceName` fork option, which is also what Electron reports as
  * `details.name` on `app.on('child-process-gone')` — the only channel that
@@ -104,7 +104,11 @@ const MAX_CONTENT_LENGTH = 2000
  */
 const WORKER_SERVICE_NAME = 'Embeddings'
 
-const REQUEST_TIMEOUT_MS = 5 * 60_000
+/**
+ * Covers the first-run download inside `load-model`: ~210MB at 2.5 Mbps is
+ * ~11 minutes. Five minutes was sized for the 23MB MiniLM.
+ */
+const REQUEST_TIMEOUT_MS = 15 * 60_000
 const START_TIMEOUT_MS = 10_000
 const SHUTDOWN_TIMEOUT_MS = 3_000
 const IDLE_SHUTDOWN_MS = 30_000
@@ -112,7 +116,7 @@ const IDLE_SHUTDOWN_MS = 30_000
 /**
  * Model-load retry policy (#840).
  *
- * A failed load is almost always the ~23MB download failing (offline, proxy,
+ * A failed load is almost always the ~210MB download failing (offline, proxy,
  * blocked CDN), so it IS worth retrying — one prod install would have recovered
  * on its own. But it must be retried on a widening schedule: that same install
  * re-attempted the download 48 times in 10 minutes, and every attempt costs a
@@ -189,7 +193,7 @@ export function isInformationalWorkerStderr(output: string): boolean {
 }
 
 /**
- * Whether the ~23MB model was already on disk when a worker was forked, and how
+ * Whether the model was already on disk when a worker was forked, and how
  * big it was. A torn/partially-written cache file aborts deterministically on
  * every load, which is the shape a per-install repeat crash would have; nothing
  * in the crash payload could distinguish it before.
@@ -254,7 +258,7 @@ class EmbeddingModelBridge {
   private loading = false
   // Circuit breaker: latched when model loads keep failing (download stall, worker
   // crash, timeout). While set, loadModel() and embed() short-circuit instead of
-  // re-forking the worker and re-attempting the ~23MB download per note — the loop
+  // re-forking the worker and re-attempting the ~210MB download per note — the loop
   // that made vault-open hang indefinitely (#803). Cleared on a successful load, on
   // reset(), and when AI is re-enabled (resetEmbeddingModelFailure).
   private loadFailed = false
@@ -372,7 +376,7 @@ class EmbeddingModelBridge {
       const response = await this.sendRequest({
         type: 'embed',
         requestId,
-        text: text.substring(0, MAX_CONTENT_LENGTH)
+        text: text.substring(0, MAX_EMBEDDING_INPUT_LENGTH)
       })
 
       if (response.type === 'error') {
@@ -931,7 +935,7 @@ const bridge = new EmbeddingModelBridge()
 
 /**
  * Initialize the embedding model.
- * Downloads the model on first use (~23MB).
+ * Downloads the model on first use (~210MB).
  *
  * @returns true if model loaded successfully
  */

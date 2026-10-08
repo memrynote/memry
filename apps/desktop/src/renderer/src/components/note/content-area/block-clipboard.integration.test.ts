@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
+import {
+  BlockNoteEditor,
+  BlockNoteSchema,
+  createBlockSpec,
+  defaultBlockSpecs,
+  type PartialBlock
+} from '@blocknote/core'
+import { taskBlockConfig } from '@memry/editor-schema/blocks'
 import { TextSelection } from '@tiptap/pm/state'
 import {
   blockIdsToCopy,
@@ -96,11 +103,12 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function mountEditor(initialContent?: PartialBlock[]): BlockNoteEditor {
+function mountEditor(initialContent?: PartialBlock[], schema?: any): BlockNoteEditor {
   const editor = BlockNoteEditor.create({
     pasteHandler: handleEditorPaste,
+    ...(schema ? { schema } : {}),
     ...(initialContent ? { initialContent: initialContent as any } : {})
-  })
+  }) as BlockNoteEditor
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
@@ -185,6 +193,32 @@ describe('buildBlockClipboard', () => {
     const data = await clipboardFor(editor, ['intro', 'parent', 'outro'])
 
     expect(data.markdown).toBe(['Intro', '', '- Clothes', '  - Socks', '', 'Outro'].join('\n'))
+  })
+
+  it('writes a task as its plain checkbox and pastes it back as the same task', async () => {
+    const schema = BlockNoteSchema.create({
+      blockSpecs: {
+        ...defaultBlockSpecs,
+        taskBlock: createBlockSpec(taskBlockConfig, {
+          render: (block) => {
+            const dom = document.createElement('div')
+            dom.textContent = block.props.title
+            return { dom }
+          }
+        })()
+      }
+    })
+    const task = { taskId: 't1', title: 'Pack bags', checked: true, parentTaskId: '' }
+    const source = mountEditor([{ id: 'task', type: 'taskBlock', props: task } as any], schema)
+    const target = mountEditor(undefined, schema)
+
+    const data = await clipboardFor(source, ['task'])
+    pasteInto(target, data)
+
+    expect(data.markdown).toBe('- [x] Pack bags')
+    expect(target.document.map((block: any) => [block.type, block.props])).toEqual([
+      ['taskBlock', task]
+    ])
   })
 
   it('returns null when no id resolves', async () => {

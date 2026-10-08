@@ -59,11 +59,12 @@ Round-tripping is **not** a sufficient test. All three backends decompress each
 other's output, so a suite that only asserts `decompress(compress(x)) == x`
 passes on every one of them; only the committed frame bytes catch it.
 
-The only gzip in the product is unrelated: the embedded editor bundle asset,
-packed with `node:zlib` `gzipSync` and unpacked with `pako.ungzip`
-(`apps/mobile/scripts/build-editor-web.mjs:28`, `:144`,
-`apps/mobile/src/editor/editor-web-asset.ts:24`). **That asset never touches this
-frame.** Confusing the two produces a client that cannot read any note body.
+**No gzip touches this frame.** The product's one gzip reader is unrelated: the
+Apple Notes importer unpacks Apple's own note data with `zlib.gunzipSync`
+(`apps/desktop/src/main/import/apple-notes/apple-notes-importer.ts:276`). A client
+that frames payloads with gzip cannot read any note body, and `compression.json`
+carries a case that MUST fail for exactly that implementation
+(`packages/contracts/test-vectors/compression.json:89-92`).
 
 **Writer rules** — both are load-bearing for byte identity:
 
@@ -587,8 +588,8 @@ uses no AAD** (`apps/desktop/src/main/sync/crdt-encrypt.ts:28` calls
 `wrapFileKey`, which passes none,
 `apps/desktop/src/main/crypto/encryption.ts:91`).
 
-The platform-free provider interface types AAD as a `string` because the mobile
-binding accepts only strings, with `''` meaning libsodium NULL
+The platform-free provider interface types AAD as a `string`, a constraint the
+removed React Native binding imposed, with `''` meaning libsodium NULL
 (`packages/sync-client/src/pull/crypto-provider.ts:10-13`, `:24`).
 
 **Order of operations on read**, identical in both envelopes: verify the

@@ -51,6 +51,7 @@ export {
 
 export {
   setNoteLinks,
+  setMarkdownNoteLinks,
   backfillUnresolvedLinksByTitle,
   getOutgoingLinks,
   getIncomingLinks,
@@ -59,6 +60,7 @@ export {
   resolveNoteByTitle,
   resolveNotesByTitles,
   getInboundLinkSourceIds,
+  listLinkSourceIds,
   type IncomingReference
 } from './link-queries'
 

@@ -31,6 +31,9 @@ enum NoteBlockList {
         let marker: String?
         /// For a toggle, whether it is showing its body.
         var isOpen = false
+        /// Indentation steps. The block's depth, except inside a column,
+        /// where `NoteColumns.layout` counts from the column.
+        var indent: UInt32 = 0
     }
 
     /// The rows to draw.
@@ -83,7 +86,7 @@ enum NoteBlockList {
                 counters = counters.filter { $0.key < block.depth }
             }
 
-            rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen))
+            rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen, indent: block.depth))
         }
         return rows
     }
