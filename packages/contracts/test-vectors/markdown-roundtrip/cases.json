@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 143,
+    "exportedCaseCount": 147,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 153,
+    "caseCount": 157,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1030,6 +1030,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "1984b2970036d2f7876e8d10310faa37fe7b9c82f9b02ea8b90e818cee7bddb7"
+    },
+    {
+      "name": "obsidian comment inside a line",
+      "markdown": "Tail %% [[Topic]] secret %% end.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6c6fc8ddf727a382cf291faef832b6ba8e8ae73a2093f689d46ebb0321669e2a"
+    },
+    {
+      "name": "obsidian block comment",
+      "markdown": "%%\nblock [[Other]] secret\n%%\n\nText",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0b5118c5ec3576dba3aa6d67e336962bad5b871855c6b0d7875ff862f64dd5b5"
+    },
+    {
+      "name": "obsidian comment in a code span stays code",
+      "markdown": "Use `%% x %%` here.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d677ded8ef3b3ae621bf5053ff0c50b9541a1516ad54846d0a1c9adec3e8c13b"
+    },
+    {
+      "name": "unpaired %% stays text",
+      "markdown": "Sale 50%% off",
+      "canonical": null,
+      "pending": null,
+      "sha256": "da05d212a83fb57fbe0ead8996ba3a86188630577a32aee6172f962efdb37ede"
     }
   ],
   "storageCases": [

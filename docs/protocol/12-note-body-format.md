@@ -653,7 +653,7 @@ The consequences are the reason for the shape:
 | `linkMention`    | `((mention:<encoded url>))`                                                      | `packages/editor-schema/src/inline/link-mention.ts:25`, `:50`     |
 | `inlineImage`    | `![alt](src)`, width carried in the alt as `alt\|300` with a purely numeric tail | `packages/editor-schema/src/inline/inline-image.ts:85-92`         |
 | `inlineCheckbox` | `<input type=checkbox>`-shaped DOM                                               | `packages/editor-schema/src/inline/inline-checkbox.ts:79`, `:112` |
-| `htmlComment`    | the comment's own bytes, `<!--` to `-->`, held in its `source` prop              | `packages/editor-schema/src/inline/html-comment.ts`               |
+| `htmlComment`    | the comment's own bytes, `<!--` to `-->` or `%%` to `%%`, in its `source` prop   | `packages/editor-schema/src/inline/html-comment.ts`               |
 
 `linkMention` encodes **seven characters beyond `encodeURIComponent`** —
 `! ' ( ) * ~ _` — so the token alphabet closes to `[A-Za-z0-9.%-]`
@@ -666,7 +666,11 @@ acceptance union at `:66`.
 chip-only and reaches disk through inline-colour span masking instead (§12.8).
 
 `htmlComment` (AF-015) holds an HTML comment, `<!--` and `-->` included, byte
-for byte. A comment on a line of its own is a paragraph holding only this node;
+for byte. Since BBF-26 it also holds an Obsidian `%% … %%` comment, both `%%`
+included; the boundaries of both forms come from `replaceMarkdownComments`
+(`packages/shared/src/markdown-code.ts`). A client built before BBF-26 reads a
+`%%` comment as paragraph text and still writes a node it receives back as its
+`source`. A comment on a line of its own is a paragraph holding only this node;
 one inside a line of text, or glued to the line above or below, is a node in
 that paragraph, so it is written back where it was. The serializer sees it as a
 token of hex (`MEMRYCMT<hex>X`, `packages/shared/src/html-comments.ts`) that

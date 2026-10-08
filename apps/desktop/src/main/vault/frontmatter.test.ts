@@ -441,6 +441,24 @@ More text here to ensure the snippet is long enough.
     expect(snippet).toBe('first second third')
     expect(snippet).not.toContain('<!--')
   })
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('createSnippet strips Obsidian comments on a %s note', (_label, eol) => {
+    const content = [
+      'Tail text %% [[Topic]] secret %% end of line.',
+      '',
+      '%%',
+      'block [[Other]] secret',
+      '%%',
+      '',
+      'Sale 50%% off.',
+      '',
+      '`%% code %%` stays.'
+    ].join(eol)
+    expect(createSnippet(content)).toBe('Tail text end of line. Sale 50%% off. `%% code %%` stays.')
+  })
 })
 
 describe('resolvePropertyType — the shared precedence ladder', () => {
@@ -514,6 +532,13 @@ describe('cleanCachedSnippet (issue #2554)', () => {
     expect(cleanCachedSnippet('first line <span...')).toBe('first line...')
     expect(cleanCachedSnippet('first line <span style="col...')).toBe('first line...')
     expect(cleanCachedSnippet('first <span style="color:red">red</sp...')).toBe('first red...')
+  })
+
+  it('drops a %% comment cached before BBF-26', () => {
+    expect(cleanCachedSnippet('Tail text %% Topic secret %% end. %% block Other %% After')).toBe(
+      'Tail text end. After'
+    )
+    expect(cleanCachedSnippet('Sale 50%% off, cut mid...')).toBe('Sale 50%% off, cut mid...')
   })
 
   it('leaves a clean snippet untouched', () => {

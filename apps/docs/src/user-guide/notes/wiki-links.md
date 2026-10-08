@@ -259,8 +259,10 @@ well. Comment syntax written inside inline code or a code block is text, so it s
 export as code.
 
 Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
-byte for byte. In the editor an HTML comment shows as a small muted marker, and a `%%`
-comment shows as its text.
+byte for byte. In the editor both forms show as a small muted marker, `<!---->` for an HTML
+comment and `%%%%` for a `%%` comment, never as their text. A note's preview and the snippets
+in the Backlinks panel leave comments out as well, so a backlink that comes from a hidden link
+lists its note with no snippet.
 
 Text between two `%%` in prose is a comment, even across paragraphs, so `A 50%% sale` and a
 later `B 20%% tax` hide everything between them. A `%%` in a code block, or in inline code on

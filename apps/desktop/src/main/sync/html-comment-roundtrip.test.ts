@@ -52,14 +52,12 @@ const COMMENTS = [
   '<!-- hidden links: [[Alpha]] [[Beta]] -->',
   '<!-- right under the edited line [[Gamma]] -->',
   '<!-- inline [[Delta]] -->',
-  '<!--\nA multi-line comment [[Epsilon]]\n\n## A heading inside it\n\n```js\nconst x = 1\n```\n-->'
+  '<!--\nA multi-line comment [[Epsilon]]\n\n## A heading inside it\n\n```js\nconst x = 1\n```\n-->',
+  '%% obsidian [[Zeta]] %%',
+  '%%\nblock obsidian comment [[Iota]]\n%%'
 ]
 
-const OTHER_FORMS = [
-  '%% obsidian [[Zeta]] %%',
-  '%%\nblock obsidian comment [[Iota]]\n%%',
-  '[^1]: The note [[Eta]].'
-]
+const OTHER_FORMS = ['[^1]: The note [[Eta]].']
 
 async function seed(markdown: string, { keepSource = true } = {}): Promise<Y.Doc> {
   const doc = new Y.Doc()
@@ -104,7 +102,7 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     const comments = items.filter((item) => item.type === 'htmlComment')
     expect(comments.map((item) => (item.props as { source: string }).source)).toEqual(COMMENTS)
     for (const item of items) {
-      if (item.type === 'text') expect(item.text).not.toContain('<!--')
+      if (item.type === 'text') expect(item.text).not.toMatch(/<!--|%%/)
     }
   })
 
@@ -127,7 +125,7 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     ['the line right above a comment', 'Line to edit.', 'Line, edited.'],
     ['the text around an inline comment', 'Inline ', 'Inline, edited, '],
     ['the heading under a comment', 'Hidden links', 'Hidden links, edited'],
-    ['the paragraph after a multi-line comment', '%% obsidian', '%% obsidian edited']
+    ['the paragraph after the %% comments', 'Footnote ref', 'Footnote, edited, ref']
   ])('keeps every comment through an edit to %s', async (_label, from, to) => {
     for (const keepSource of [true, false]) {
       const doc = await seed(LT_002, { keepSource })
@@ -143,6 +141,32 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     const doc = await seed(LT_002)
     await edit(doc, 'Inline ', 'Inline, edited, ')
     expect(await yDocToMarkdown(doc)).toBe(LT_002.replace('Inline ', 'Inline, edited, '))
+  })
+
+  it('reads a CRLF note into the same comment nodes', async () => {
+    const items = inlineItems(await blocksOf(await seed(LT_002.replaceAll('\n', '\r\n'))))
+    const sources = items.filter((item) => item.type === 'htmlComment')
+    expect(sources.map((item) => (item.props as { source: string }).source)).toEqual(COMMENTS)
+  })
+
+  it('keeps an inline %% comment byte for byte through an edit beside it', async () => {
+    const markdown =
+      'Tail text %% [[Topic]] secret %% end of line.\n\n%%\nblock [[Other]] secret\n%%'
+    for (const keepSource of [true, false]) {
+      const doc = await seed(markdown, { keepSource })
+      await edit(doc, ' end of line.', ' end of line, edited.')
+      expect(await yDocToMarkdown(doc)).toBe(
+        markdown.replace('end of line.', 'end of line, edited.')
+      )
+    }
+  })
+
+  it('leaves a %% in code and a stray 50%% as text', async () => {
+    const markdown =
+      'Sale 50%% off\n\nUse `%% x %%` here.\n\n```bat\nfor %%i in (*) do echo %%i\n```'
+    const doc = await seed(markdown, { keepSource: false })
+    expect(inlineItems(await blocksOf(doc)).some((item) => item.type === 'htmlComment')).toBe(false)
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
   it('leaves a comment in a code span or a fence as code', async () => {

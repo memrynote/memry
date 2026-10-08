@@ -750,8 +750,9 @@ const inlineImageCases: RoundtripCase[] = [
 ]
 
 /**
- * HTML comments (AF-015): an `htmlComment` node holds each one, so the bytes
- * come back in house style too, wherever the comment sat.
+ * HTML comments (AF-015) and Obsidian `%%` comments (BBF-26): an `htmlComment`
+ * node holds each one, so the bytes come back in house style too, wherever the
+ * comment sat.
  */
 const htmlCommentCases: RoundtripCase[] = [
   { name: 'comment on a line of its own', markdown: '<!-- hidden [[Alpha]] -->\n\nText' },
@@ -771,7 +772,11 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'comment in a table cell',
     markdown: '| a             | b |\n| ------------- | - |\n| 1 <!-- td --> | 2 |'
   },
-  { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' }
+  { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' },
+  { name: 'obsidian comment inside a line', markdown: 'Tail %% [[Topic]] secret %% end.' },
+  { name: 'obsidian block comment', markdown: '%%\nblock [[Other]] secret\n%%\n\nText' },
+  { name: 'obsidian comment in a code span stays code', markdown: 'Use `%% x %%` here.' },
+  { name: 'unpaired %% stays text', markdown: 'Sale 50%% off' }
 ]
 
 const columnSettings = (...lines: string[]): string =>

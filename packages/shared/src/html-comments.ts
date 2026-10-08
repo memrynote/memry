@@ -1,10 +1,10 @@
-import { createFenceTracker } from './markdown-fences.ts'
 import { BLOCK_COLORS_LINE_REGEX, TABLE_CELL_COLORS_LINE_REGEX } from './block-colors.ts'
 import { BLOCK_ALIGN_LINE_REGEX, TABLE_LAYOUT_LINE_REGEX } from './block-markers.ts'
+import { replaceMarkdownComments } from './markdown-code.ts'
 
 /**
  * HTML comments, carried through the editor as an inline `htmlComment` node
- * (AF-015).
+ * (AF-015). Obsidian `%% … %%` comments ride the same node (BBF-26).
  *
  * BlockNote has no node for a comment, so its markdown parser drops every one,
  * and only the source record (#1915) brought the bytes back, for regions the
@@ -88,103 +88,14 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
 }
 
 /**
- * Every HTML comment outside code replaced by its token.
- *
- * Fenced code and code spans are left as written, and so is a `<!--` that
- * never closes, which CommonMark reads as text. A comment that opens before a
- * backtick wins over it, as in `blankMarkdownCode`. An indented code block is
- * not told apart here: a comment inside one is masked and comes back as the
- * code block's own text (`parseMarkdownToBlocksRepaired`).
+ * Every HTML and `%% … %%` comment outside code replaced by its token, with
+ * the boundaries `replaceMarkdownComments` reads. Both forms become the same
+ * `htmlComment` node, whose `source` keeps its own delimiters. An indented
+ * code block is not told apart here: a comment inside one is masked and comes
+ * back as the code block's own text (`parseMarkdownToBlocksRepaired`).
  */
 export function maskHtmlComments(markdown: string): string {
-  if (!markdown.includes('<!--')) return markdown
-
-  const lines = markdown.split('\n')
-  const fence = createFenceTracker()
-  const out: string[] = []
-
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index]
-    if (fence.consume(line)) {
-      out.push(line)
-      continue
-    }
-    let current = line
-    let result = ''
-    let i = 0
-    for (;;) {
-      const tick = current.indexOf('`', i)
-      const open = current.indexOf('<!--', i)
-      if (open === -1) break
-      if (tick !== -1 && tick < open) {
-        let runEnd = tick
-        while (current[runEnd] === '`') runEnd++
-        const close = findClosingRun(current, runEnd, runEnd - tick)
-        if (close === -1) {
-          i = runEnd
-          continue
-        }
-        i = close + (runEnd - tick)
-        continue
-      }
-      const closeAt = findCommentClose(lines, index, current, open)
-      if (closeAt === null) break
-      const { endLine, endColumn } = closeAt
-      const comment =
-        endLine === index
-          ? current.slice(open, endColumn)
-          : [
-              current.slice(open),
-              ...lines.slice(index + 1, endLine),
-              lines[endLine].slice(0, endColumn)
-            ].join('\n')
-      const rest = endLine === index ? current.slice(endColumn) : lines[endLine].slice(endColumn)
-      const wholeLine =
-        result.trim() === '' &&
-        current.slice(0, open).trim() === '' &&
-        rest.trim() === '' &&
-        endLine === index
-      if (isMemryMarker(comment, wholeLine)) {
-        result += current.slice(0, endColumn)
-        current = current.slice(endColumn)
-        i = 0
-        continue
-      }
-      result += current.slice(0, open) + encodeHtmlCommentToken(comment)
-      current = rest
-      i = 0
-      index = endLine
-    }
-    out.push(result + current)
-  }
-  return out.join('\n')
-}
-
-function findCommentClose(
-  lines: readonly string[],
-  index: number,
-  current: string,
-  open: number
-): { endLine: number; endColumn: number } | null {
-  const sameLine = current.indexOf('-->', open + 4)
-  if (sameLine !== -1) return { endLine: index, endColumn: sameLine + 3 }
-  for (let next = index + 1; next < lines.length; next++) {
-    const close = lines[next].indexOf('-->')
-    if (close !== -1) return { endLine: next, endColumn: close + 3 }
-  }
-  return null
-}
-
-/** Start of the next backtick run exactly `length` long, or -1. */
-function findClosingRun(line: string, from: number, length: number): number {
-  let i = from
-  while (i < line.length) {
-    const start = line.indexOf('`', i)
-    if (start === -1) return -1
-    let end = start
-    while (line[end] === '`') end++
-    if (end - start === length) return start
-    i = end
-  }
-  return -1
+  return replaceMarkdownComments(markdown, (source, wholeLine) =>
+    isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source)
+  )
 }

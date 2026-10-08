@@ -30,11 +30,25 @@ export function blankMarkdownCode(markdown: string): string {
  * as text. A `%%` or `<!--` that never closes is text and stays.
  */
 export function stripMarkdownComments(markdown: string): string {
+  return replaceMarkdownComments(markdown, () => '')
+}
+
+/**
+ * Every closed HTML or `%% … %%` comment outside code replaced by
+ * `replace(source, wholeLine)`. `source` is the comment's exact text,
+ * delimiters and line breaks included. `wholeLine` is true when a one-line
+ * comment is alone on its line. Code and a comment that never closes stay as
+ * written.
+ */
+export function replaceMarkdownComments(
+  markdown: string,
+  replace: (source: string, wholeLine: boolean) => string
+): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
   return walkMarkdown(markdown, {
     fenceLine: (line) => line,
     codeSpan: (source) => source,
-    comment: (source, closed) => (closed ? '' : source)
+    comment: (source, closed, wholeLine) => (closed ? replace(source, wholeLine) : source)
   })
 }
 
@@ -56,9 +70,10 @@ interface Visitor {
   codeSpan(source: string): string
   /**
    * A whole comment, line breaks included when it spans lines. `closed` is
-   * false for an HTML comment still open at the end of the note.
+   * false for an HTML comment still open at the end of the note. `wholeLine`
+   * is true for a one-line comment with nothing else on its line.
    */
-  comment(source: string, closed: boolean): string
+  comment(source: string, closed: boolean, wholeLine: boolean): string
 }
 
 /**
@@ -76,18 +91,21 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
   for (let index = 0; index < lines.length; index++) {
     let line = lines[index]
     let result = ''
+    let closesComment = false
 
     if (pending) {
       if (pending.close?.line !== index) {
         pending.source += '\n' + line
         if (index === lines.length - 1)
-          out.push(pending.prefix + visit.comment(pending.source, false))
+          out.push(pending.prefix + visit.comment(pending.source, false, false))
         continue
       }
       const { end } = pending.close
-      result = pending.prefix + visit.comment(pending.source + '\n' + line.slice(0, end), true)
+      result =
+        pending.prefix + visit.comment(pending.source + '\n' + line.slice(0, end), true, false)
       pending = null
       line = line.slice(end)
+      closesComment = true
     } else if (fence.consume(withoutCr(line))) {
       out.push(visit.fenceLine(line))
       continue
@@ -104,7 +122,8 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
         const close = line.indexOf(form.close, at + form.open.length)
         if (close !== -1) {
           const end = close + form.close.length
-          result += line.slice(i, at) + visit.comment(line.slice(at, end), true)
+          const wholeLine = !closesComment && !line.slice(0, at).trim() && !line.slice(end).trim()
+          result += line.slice(i, at) + visit.comment(line.slice(at, end), true, wholeLine)
           i = end
           continue
         }
@@ -132,7 +151,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     }
     if (pending) {
       if (index === lines.length - 1)
-        out.push(pending.prefix + visit.comment(pending.source, false))
+        out.push(pending.prefix + visit.comment(pending.source, false, false))
       continue
     }
     result += line.slice(i)

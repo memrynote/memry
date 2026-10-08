@@ -13,7 +13,8 @@ import { getI18n } from 'react-i18next'
 import {
   createHtmlCommentMarkerDOM,
   createHtmlCommentSpec,
-  createHtmlCommentTokenDOM
+  createHtmlCommentTokenDOM,
+  isPercentComment
 } from '@memry/editor-schema/inline'
 
 export function renderHtmlComment(
@@ -23,9 +24,12 @@ export function renderHtmlComment(
   if (this?.renderType !== 'nodeView') {
     return { dom: createHtmlCommentTokenDOM(inlineContent.props.source) }
   }
+  const { source } = inlineContent.props
+  const t = getI18n().getFixedT(null, 'notes')
   return {
     dom: createHtmlCommentMarkerDOM(
-      getI18n().getFixedT(null, 'notes')('editor.content.htmlComment')
+      t(isPercentComment(source) ? 'editor.content.percentComment' : 'editor.content.htmlComment'),
+      source
     )
   }
 }
