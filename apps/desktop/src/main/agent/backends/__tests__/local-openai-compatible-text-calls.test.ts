@@ -10,8 +10,6 @@ import type { TurnWriteGrant } from '../../turn-grants'
 const MODEL = 'test-model'
 const FIXTURES = join(__dirname, 'fixtures', 'text-tool-calls')
 
-// Each fixture is one chat step in its server's wire format: the model answers with a
-// `<tool_call>` in its reply text although the probe saw it call the tool natively.
 const PRESETS: Array<{ preset: AgentLocalProviderPreset; fixture: string }> = [
   { preset: 'llama_cpp', fixture: 'llama_cpp.sse' },
   { preset: 'lm_studio', fixture: 'lm_studio.sse' },

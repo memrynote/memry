@@ -99,11 +99,7 @@ function parseTextToolCall(body: string, toolNames: ReadonlySet<string>): TextTo
   return { toolName: name, input: typeof input === 'string' ? input : JSON.stringify(input) }
 }
 
-/**
- * Replays a probed profile on the chat model. Reply text is always scanned for
- * `<tool_call>` blocks: a model that called the probe tool natively can still write a
- * chat-turn call as text.
- */
+/** Replays a probed profile on the chat model and runs `<tool_call>` blocks found in reply text. */
 export function toolCallProfileMiddleware(profile: ToolCallProfile): LanguageModelMiddleware {
   return {
     specificationVersion: 'v3',
