@@ -751,8 +751,9 @@ the call leaves them out, and a call deletes one only by passing it as `null`. A
 not change keeps its line in the file byte for byte and in its place, whatever order the call lists
 the keys in, so `created: 2024-03-05` stays exactly that. A value passed back as a read returned it
 is written as the file holds it, so a date stays a date. A new value for a key that holds a date and
-spells a date, such as `2026-10-09`, is written as a plain date, not a quoted string. The reply lists
-the stored `properties` and the names it `removed`, and spells a date as the file does
+spells a real calendar date, such as `2026-10-09`, is written as a plain date, not a quoted string
+(`2026-02-30` stays text). The reply lists the stored `properties` and the names it `removed`, and
+spells a date as the file does
 (`2026-10-07`, or the full timestamp when it has a time of day). Stored note and journal records in
 write replies spell dates the same way. The tag writers that edit a note's `tags` list
 (`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and `tags.removeTagFromNote`) keep the other
