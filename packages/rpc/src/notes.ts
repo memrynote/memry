@@ -21,7 +21,8 @@ import type {
   LinkVia,
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
-  NoteClustersResponse
+  NoteClustersResponse,
+  PlainChecklistsOption
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -297,7 +298,7 @@ export interface NoteUpdateInput {
   emoji?: string | null
 }
 
-export interface ApplyTemplateInput {
+export interface ApplyTemplateInput extends PlainChecklistsOption {
   noteId: string
   templateId: string
   mode: 'full' | 'body'
@@ -837,11 +838,15 @@ export const notesRpc = defineDomain({
       invokeArgs: ['{ folderPath, notePaths }']
     }),
     importFiles: defineMethod<
-      (sourcePaths: string[], targetFolder?: string) => Promise<ImportFilesResponse>
+      (
+        sourcePaths: string[],
+        targetFolder?: string,
+        options?: PlainChecklistsOption
+      ) => Promise<ImportFilesResponse>
     >({
       channel: NotesChannels.invoke.IMPORT_FILES,
-      params: ['sourcePaths', 'targetFolder'],
-      invokeArgs: ['{ sourcePaths, targetFolder }']
+      params: ['sourcePaths', 'targetFolder', 'options'],
+      invokeArgs: ['{ sourcePaths, targetFolder, options }']
     }),
     showImportDialog: defineMethod<() => Promise<ImportDialogResponse>>({
       channel: NotesChannels.invoke.SHOW_IMPORT_DIALOG

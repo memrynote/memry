@@ -277,6 +277,11 @@ export interface CreatedTasksReply {
   created_tasks?: Array<{ id: string; title: string }>
 }
 
+/** Present only when the call created folders: tool paths, shallowest first. */
+export interface CreatedFoldersReply {
+  created_folders?: string[]
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -291,7 +296,7 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string; body: WrittenBody } & CreatedTasksReply>
+    }): Promise<{ id: string; body: WrittenBody } & CreatedTasksReply & CreatedFoldersReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
@@ -310,7 +315,7 @@ export interface VaultServiceHandles {
       title: string
       html: string
     }): Promise<{ marker: string; url: string }>
-    moveToFolder(input: { id: string; folder_path: string }): Promise<void>
+    moveToFolder(input: { id: string; folder_path: string }): Promise<CreatedFoldersReply>
     /** Null when no markdown note reads back under `id`. */
     stored(id: string): Promise<StoredNote | null>
     /** What a read of note `id` returns once its armed write-back has run. */

@@ -1198,7 +1198,7 @@ Reply:
 
 #### vault_create_note
 
-Create a new note. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. Requires user approval.
+Create a new note. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. The reply lists the folders the call created in created_folders. Requires user approval.
 
 Write tool; needs approval.
 
@@ -4075,7 +4075,7 @@ Reply:
 
 #### vault_move_to_folder
 
-Move a note to a folder. Requires user approval.
+Move a note to a folder. The reply lists the folders the call created in created_folders. Requires user approval.
 
 Write tool; needs approval.
 
@@ -4429,7 +4429,7 @@ Reply:
 
 #### vault_desktop_write
 
-Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the operation; a call with more arguments than the operation takes is refused, so put options inside its input object. A write whose reply carries no record gets a `stored` field read back after the write. properties.set(entityId, properties) replaces the entity's whole property record: a property left out is deleted, except the legacy id, title, created and modified keys, which are kept unless the call names them (null deletes one). The reply lists the stored `properties` and the names it `removed`. Requires user approval. Replies follow the vault_desktop_read rules for filed files and replies over 100 KB. vault_desktop_describe returns each operation's argument schema; a call that does not match it is refused before approval.
+Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the operation; a call with more arguments than the operation takes is refused, so put options inside its input object. A write whose reply carries no record gets a `stored` field read back after the write. properties.set(entityId, properties) replaces the entity's whole property record: a property left out is deleted, except the legacy id, title, created and modified keys, which are kept unless the call names them (null deletes one). The reply lists the stored `properties` and the names it `removed`. Checkbox lines that a note, journal or template write, notes.applyTemplate, inbox.convertToNote or notes.importFiles adds are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents. Requires user approval. Replies follow the vault_desktop_read rules for filed files and replies over 100 KB. vault_desktop_describe returns each operation's argument schema; a call that does not match it is refused before approval.
 
 Write tool; needs approval.
 
@@ -11236,12 +11236,14 @@ Reply:
 
 Copy files from paths on this device into the vault as notes or files.
 
-`notes.importFiles(sourcePaths, targetFolder?)` through `vault_desktop_write`; needs approval.
+`notes.importFiles(sourcePaths, targetFolder?, options?)` through `vault_desktop_write`; needs approval.
 
-| Argument       | Type       | Required | Allowed values |
-| -------------- | ---------- | -------- | -------------- |
-| `sourcePaths`  | `string[]` | yes      |                |
-| `targetFolder` | `string`   | no       |                |
+| Argument                  | Type       | Required | Allowed values | Notes                                                                                                        |
+| ------------------------- | ---------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `sourcePaths`             | `string[]` | yes      |                |                                                                                                              |
+| `targetFolder`            | `string`   | no       |                |                                                                                                              |
+| `options`                 | `object`   | no       |                |                                                                                                              |
+| `options.plainChecklists` | `boolean`  | no       |                | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -11358,12 +11360,13 @@ Apply a template to an existing note.
 
 `notes.applyTemplate(input)` through `vault_desktop_write`; needs approval.
 
-| Argument           | Type               | Required | Allowed values     |
-| ------------------ | ------------------ | -------- | ------------------ |
-| `input`            | `object`           | yes      |                    |
-| `input.noteId`     | `string`           | yes      |                    |
-| `input.templateId` | `string`           | yes      |                    |
-| `input.mode`       | `"full" \| "body"` | yes      | `"full"`, `"body"` |
+| Argument                | Type               | Required | Allowed values     | Notes                                                                                                        |
+| ----------------------- | ------------------ | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `input`                 | `object`           | yes      |                    |                                                                                                              |
+| `input.noteId`          | `string`           | yes      |                    |                                                                                                              |
+| `input.templateId`      | `string`           | yes      |                    |                                                                                                              |
+| `input.mode`            | `"full" \| "body"` | yes      | `"full"`, `"body"` |                                                                                                              |
+| `input.plainChecklists` | `boolean`          | no       |                    | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -14160,11 +14163,13 @@ Reply:
 
 Turn an inbox item into a note.
 
-`inbox.convertToNote(itemId)` through `vault_desktop_write`; needs approval.
+`inbox.convertToNote(itemId, options?)` through `vault_desktop_write`; needs approval.
 
-| Argument | Type     | Required | Allowed values |
-| -------- | -------- | -------- | -------------- |
-| `itemId` | `string` | yes      |                |
+| Argument                  | Type      | Required | Allowed values | Notes                                                                                                        |
+| ------------------------- | --------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `itemId`                  | `string`  | yes      |                |                                                                                                              |
+| `options`                 | `object`  | no       |                |                                                                                                              |
+| `options.plainChecklists` | `boolean` | no       |                | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 

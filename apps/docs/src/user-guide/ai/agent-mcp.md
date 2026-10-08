@@ -523,8 +523,11 @@ A checkbox line an agent writes into a note or journal entry stays a plain check
 stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
 tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
 `vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
-`journal.createEntry` and `journal.updateEntry` operations of `vault_desktop_write`. A checkbox line
-that was already in the note before the write is left exactly as it was.
+`journal.createEntry`, `journal.updateEntry`, `templates.create` and `templates.update` operations of
+`vault_desktop_write`. It also covers the checkbox lines that `notes.applyTemplate`,
+`inbox.convertToNote` and `notes.importFiles` write when an agent calls them, whoever wrote the
+template, the inbox item or the imported file. A checkbox line that was already in the note before
+the write is left exactly as it was.
 
 To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
 in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
@@ -797,6 +800,8 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   with those two changes applied and compare. Any other difference means the stored body is not the
   one you sent.
 - A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
+- `vault_create_note` and `vault_move_to_folder` list the folders the call created in
+  `created_folders`, shallowest first, when the folder they wrote into did not exist yet.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.
