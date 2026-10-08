@@ -1,6 +1,57 @@
 import { describe, expect, it } from 'vitest'
 import { blankMarkdownCode, stripMarkdownComments } from './markdown-code'
 
+const strayThenFence = [
+  'Sale 50%% off [[Before]]',
+  '',
+  '```bat',
+  'for %%i in (*) do echo %%i',
+  '```',
+  '',
+  'After [[After]] and `[[Code]]`'
+].join('\n')
+
+const strayThenSpan = 'Sale 50%% off\nsee `%%d` format [[After]]'
+
+const twoPercents = 'A 50%% sale\n\nmiddle paragraph [[Mid]]\n\nB 20%% tax'
+
+const blockAroundFence = [
+  'A',
+  '%%',
+  '```',
+  'x %% y `z`',
+  '```',
+  'see `%%` [[Hidden]]',
+  '%%',
+  'B `[[Code]]`'
+].join('\n')
+
+describe('a %% on a later line inside code', () => {
+  it('does not pair with a stray %% before a fenced block', () => {
+    expect(blankMarkdownCode(strayThenFence)).toBe(
+      'Sale 50%% off [[Before]]\n\n\n\n\n\nAfter [[After]] and  '
+    )
+    expect(stripMarkdownComments(strayThenFence)).toBe(strayThenFence)
+  })
+
+  it('does not pair with a stray %% before a code span', () => {
+    expect(blankMarkdownCode(strayThenSpan)).toBe('Sale 50%% off\nsee   format [[After]]')
+    expect(stripMarkdownComments(strayThenSpan)).toBe(strayThenSpan)
+  })
+
+  it('does not close a block comment that holds code', () => {
+    expect(blankMarkdownCode(blockAroundFence)).toBe(
+      'A\n%%\n```\nx %% y `z`\n```\nsee `%%` [[Hidden]]\n%%\nB  '
+    )
+    expect(stripMarkdownComments(blockAroundFence)).toBe('A\n\nB `[[Code]]`')
+  })
+
+  it('leaves two prose %% a comment across paragraphs', () => {
+    expect(blankMarkdownCode(twoPercents)).toBe(twoPercents)
+    expect(stripMarkdownComments(twoPercents)).toBe('A 50 tax')
+  })
+})
+
 describe('blankMarkdownCode', () => {
   it('keeps a %% comment as written, a backtick inside it included', () => {
     const content = [
