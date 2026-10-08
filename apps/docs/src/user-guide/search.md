@@ -90,7 +90,10 @@ Memry reads the text inside the PDFs and images you file in the vault, and insid
 - A screenshot or PDF inside a note brings up that note. Removing it from the note removes its text from search, even though the file stays in the note's attachments folder.
 
 - A PDF page that already carries text (a document saved or exported as PDF) is read from that text.
-- A scanned page, a photo, or a screenshot goes through OCR. OCR runs on your device with English language data that ships with the app. Nothing is downloaded and nothing leaves the machine.
+- A scanned page, a photo, or a screenshot goes through OCR. OCR runs on your device, and no file leaves the machine.
+- OCR reads English and the app language by default. Choose more languages in **Settings > General > Text recognition**. English ships with the app and works offline. Every other language downloads once from Memry's server, a few MB each, and stays on this device. Memry uses a download only when it matches the file this app version expects.
+- Adding a language reads the text of scans and images again in the background. Their old text stays searchable until then. Removing a language deletes its data and reads nothing again.
+- When a download fails, OCR keeps reading with the languages already on the device. The setting shows why, and **Retry** tries again. Memry also tries again at the next start.
 - The work runs in the background after the vault opens, one file and one page at a time, at low priority. A long scan becomes searchable while it is read, and a restart continues with the pages it has not finished.
 - A file whose contents change is read again. Renaming or moving a filed file is not.
 - A file that could not be read, or a page in it that could not be read, is tried again after an app update, or a day later.
