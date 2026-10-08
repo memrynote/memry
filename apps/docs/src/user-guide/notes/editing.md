@@ -36,8 +36,9 @@ right-click menu — including when that folder is closed. All of them open the 
 When follow-up notes share a note's classification (a meeting note or a checklist under a project
 note), right-click the note in the sidebar or open its `⋯` menu and choose **New note from this
 note**. The new note lands in the same folder with the source note's icon, tags, and properties, an
-empty body, and the name field open. A toast confirms what came across, for example "Created with 2
-tags and 3 properties from Project X".
+empty body, and the name field open. The tags are the ones in the source note's tags row; a `#tag`
+written in its text is not copied, because the body is not. A toast confirms what came across, for
+example "Created with 2 tags and 3 properties from Project X".
 
 The copy happens once. Editing either note afterwards never changes the other. If the source note
 belongs to a [project](/user-guide/projects) through its `project` property, the new note joins that

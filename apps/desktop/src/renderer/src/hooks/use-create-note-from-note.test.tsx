@@ -28,11 +28,12 @@ const sourceNote = (overrides: Partial<Note> = {}): Note => ({
   id: 'source-1',
   path: 'Clients/A/Project X.md',
   title: 'Project X',
-  content: 'Kickoff notes that must not be copied',
+  content: 'Kickoff notes that must not be copied #kickoff',
   frontmatter: {},
   created: new Date('2026-01-01'),
   modified: new Date('2026-01-02'),
-  tags: ['client-a', '2026'],
+  // The body's #kickoff is indexed with the header tags, but only the header is copied.
+  tags: ['client-a', '2026', 'kickoff'],
   headerTags: ['client-a', '2026'],
   aliases: [],
   wordCount: 5,
@@ -102,6 +103,7 @@ describe('useCreateNoteFromNote', () => {
         path: 'Loose.md',
         title: 'Loose',
         tags: [],
+        headerTags: [],
         properties: { Status: 'Draft' },
         emoji: null
       })

@@ -27,8 +27,10 @@ beforeEach(() => {
   getNote.mockResolvedValue({
     id: 'n1',
     title: 'Weekly review',
-    content: '# Weekly review\n\nWhat went well?',
-    tags: ['review', 'review', 'weekly']
+    content: '# Weekly review\n\nWhat went well? #mood',
+    // The body's #mood stays in the template body; only the header becomes template tags.
+    tags: ['review', 'weekly', 'mood'],
+    headerTags: ['review', 'review', 'weekly']
   })
   getProperties.mockResolvedValue([
     { name: 'Stage', type: 'status', value: 'todo' },
@@ -67,7 +69,7 @@ describe('SaveNoteAsTemplateDialog', () => {
       name: 'Weekly review',
       tags: ['review', 'weekly'],
       properties: [{ name: 'Stage', type: 'select', value: 'todo' }],
-      content: '# Weekly review\n\nWhat went well?'
+      content: '# Weekly review\n\nWhat went well? #mood'
     })
     expect(toastSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
