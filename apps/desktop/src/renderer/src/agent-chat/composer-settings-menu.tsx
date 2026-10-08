@@ -210,7 +210,6 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
     setModelQuery('')
   }
 
-  // An option the selected backend cannot deliver stays saved but shows as off.
   const capabilities = AGENT_BACKEND_CAPABILITIES[props.selectedProvider]
   const accessMode = capabilities.computerAccess ? props.accessMode : 'vault_only'
   const unavailableReason = (

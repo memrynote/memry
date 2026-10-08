@@ -108,9 +108,6 @@ export interface AgentBackendCapabilities {
   webSearch: boolean
 }
 
-// The built-in backend runs the model behind memrynote's own vault tool set,
-// so it has no shell, file or web tool to grant. The CLIs map both permissions
-// onto their own tools.
 export const AGENT_BACKEND_CAPABILITIES: Record<AgentBackendId, AgentBackendCapabilities> = {
   claude_cli: { computerAccess: true, webSearch: true },
   codex_cli: { computerAccess: true, webSearch: true },

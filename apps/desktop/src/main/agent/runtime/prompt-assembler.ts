@@ -70,8 +70,6 @@ export interface AssembleInput {
   context?: PromptContext
 }
 
-// Backends whose tools differ from what the permission lines imply say so in
-// one line, so the model can tell the user why a capability is missing.
 const RUNTIME_LINES: Partial<Record<AgentBackendId, string>> = {
   local_openai_compatible: 'Runtime: built-in model connection. Tools: memrynote vault tools only.'
 }
