@@ -69,7 +69,14 @@ export async function restoreMarkdownSource(
   const merged = mergeMarkdownSource(source, base, ours)
   if (merged === null || merged === ours) return canonicalNow
   const proof = await canonicalize(merged)
-  return proof !== null && trimTrailingNewlines(proof) === ours ? merged : canonicalNow
+  if (proof === null) return canonicalNow
+  const proven = trimTrailingNewlines(proof)
+  if (proven === ours) return merged
+  // House style can fail its own re-parse: markdown drops the space or tab a
+  // paragraph ends in, so `ours` reads back without it. A merge that reads
+  // back exactly as house style would loses nothing house style keeps.
+  const oursProof = await canonicalize(canonicalNow)
+  return oursProof !== null && trimTrailingNewlines(oursProof) === proven ? merged : canonicalNow
 }
 
 function trimTrailingNewlines(text: string): string {
