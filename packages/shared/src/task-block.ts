@@ -45,6 +45,27 @@ export function serializeTaskBlock(props: TaskBlockProps): string {
 }
 
 /**
+ * A task block and every task block nested under it, one tight-list line each,
+ * each level two spaces deeper than its parent, so a re-parse nests them back.
+ * The top line keeps `serializeTaskBlock`'s own indent; a line one level down
+ * is byte-identical to what `serializeTaskBlock` writes for a subtask.
+ */
+export function serializeTaskBlockTree(block: TaskNormalizableBlock): string[] {
+  // SAFETY: a `taskBlock`'s props are `TaskBlockProps`; callers pass only those.
+  const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
+  const walk = (children: TaskNormalizableBlock[], depth: number): void => {
+    for (const child of children) {
+      if (child.type !== 'taskBlock') continue
+      const props = child.props as unknown as TaskBlockProps
+      lines.push('  '.repeat(depth) + serializeTaskBlock({ ...props, parentTaskId: '' }))
+      walk(child.children ?? [], depth + 1)
+    }
+  }
+  walk(block.children ?? [], 1)
+  return lines
+}
+
+/**
  * Where `{task:` opens and its `}` closes, as indexes into right-trimmed text.
  * The id between them may be empty; it never contains `}`.
  */
@@ -204,6 +225,70 @@ function scanTaskLineTitles(markdown: string): Map<string, string[]> {
   return titles
 }
 
+/**
+ * Each task line's nesting depth among the task lines above it, by indent.
+ * The first line for an id wins.
+ */
+function scanTaskLineDepths(markdown: string): Map<string, number> {
+  const depths = new Map<string, number>()
+  const fence = createFenceTracker()
+  const open: number[] = []
+  for (const line of markdown.split('\n')) {
+    if (fence.consume(line) || line.trim() === '') continue
+    const indent = line.length - line.trimStart().length
+    while (open.length > 0 && open[open.length - 1] >= indent) open.pop()
+    const checkbox = checkboxTextStart(line)
+    const parsed = checkbox ? parseTaskBlockSuffix(line.slice(checkbox.start)) : null
+    if (!parsed) {
+      if (indent === 0) open.length = 0
+      continue
+    }
+    if (!depths.has(parsed.taskId)) depths.set(parsed.taskId, open.length)
+    open.push(indent)
+  }
+  return depths
+}
+
+/**
+ * BlockNote's markdown parser strips a task item's sub-lines inconsistently:
+ * by one column below the content column, by the whole column at or past it.
+ * A third-level `- [ ]` line two spaces deeper per level then lands under the
+ * wrong parent. The parse keeps line order, so the tree is rebuilt from that
+ * order and each line's source depth. A tree holding anything but task blocks,
+ * or a task the source scan missed, is left as parsed.
+ */
+function renestTaskTree<T extends TaskNormalizableBlock>(root: T, depths: Map<string, number>): T {
+  const rootId = root.props?.taskId as string
+  const rootDepth = depths.get(rootId)
+  if (rootDepth === undefined) return root
+  const flat: T[] = []
+  const collect = (children: TaskNormalizableBlock[] | undefined): boolean =>
+    (children ?? []).every((child) => {
+      if (child.type !== 'taskBlock' || !depths.has(child.props?.taskId as string)) return false
+      flat.push(child as T)
+      return collect(child.children)
+    })
+  if (!collect(root.children)) return root
+
+  type Node = { block: T; depth: number; children: Node[] }
+  const top: Node = { block: root, depth: rootDepth, children: [] }
+  const stack = [top]
+  for (const block of flat) {
+    const depth = depths.get(block.props?.taskId as string)!
+    while (stack.length > 1 && stack[stack.length - 1].depth >= depth) stack.pop()
+    if (stack[stack.length - 1].depth >= depth) return root
+    const node: Node = { block, depth, children: [] }
+    stack[stack.length - 1].children.push(node)
+    stack.push(node)
+  }
+  const build = (node: Node, parentTaskId: string): T => ({
+    ...node.block,
+    props: { ...node.block.props, parentTaskId },
+    children: node.children.map((child) => build(child, node.block.props?.taskId as string))
+  })
+  return build(top, (root.props?.parentTaskId as string) ?? '')
+}
+
 function words(text: string): string[] {
   return text.match(/[\p{L}\p{N}]+/gu) ?? []
 }
@@ -247,6 +332,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
   }
 
   const sourceTitles = source === null ? null : scanTaskLineTitles(source)
+  const sourceDepths = source === null ? null : scanTaskLineDepths(source)
   let didChange = false
 
   function processBlocks(blockList: T[], parentTaskId: string): T[] {
@@ -278,7 +364,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       // (and some tests) pass `isChecked`. Honour both so a `- [x]` round-trips.
       const checked = block.props?.checked ?? block.props?.isChecked ?? false
 
-      return {
+      const taskBlock = {
         type: 'taskBlock',
         props: {
           taskId: parsed.taskId,
@@ -290,6 +376,9 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         children: processedChildren,
         id: block.id
       } as unknown as T
+      return parentTaskId === '' && sourceDepths
+        ? renestTaskTree(taskBlock, sourceDepths)
+        : taskBlock
     })
   }
 

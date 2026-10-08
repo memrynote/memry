@@ -382,6 +382,25 @@ describe('analyzeTaskIntents', () => {
       expect(result.demotedTaskBlocks).toEqual([])
     })
 
+    it('never re-parents or converts anything under a task two levels deep', () => {
+      // #given a tree a newer build wrote: c and its children sit below one level
+      const blocks = [
+        tb('tb-a', 'a', 'A', '', [
+          tb('tb-b', 'b', 'B', 'a', [
+            tb('tb-c', 'c', 'C', 'b', [tb('tb-d', 'd', 'D', 'c'), cl('cl-x', 'New under C')])
+          ])
+        ])
+      ]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then no DB parent changes, no subtask of a subtask, every task kept
+      expect(result.demotedTaskBlocks).toEqual([])
+      expect(result.subtaskCandidate).toBeNull()
+      expect([...result.currentTaskIds]).toEqual(['a', 'b', 'c', 'd'])
+    })
+
     it('should NOT mark a top-level taskBlock as demoted', () => {
       // #given
       const blocks = [tb('tb1', 'task-a', 'Top', '')]

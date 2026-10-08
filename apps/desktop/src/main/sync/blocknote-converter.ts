@@ -41,11 +41,7 @@ import {
   type WritingFrontmatter,
   type WritingSentinelMap
 } from '@memry/shared'
-import {
-  normalizeTaskBlocks,
-  serializeTaskBlock,
-  type TaskBlockProps
-} from '@memry/shared/task-block'
+import { normalizeTaskBlocks, serializeTaskBlockTree } from '@memry/shared/task-block'
 import { normalizePlainCheckboxes, withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import {
   type BlockColors,
@@ -1389,21 +1385,11 @@ async function blocksToMarkdownPreserving(
 
     if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
-      // `- [ ] … {task:id}` line ourselves. Subtasks are kept on the immediately
-      // following line (tight list) so a re-parse re-nests them under the parent.
+      // `- [ ] … {task:id}` line ourselves. Subtasks at every depth follow on the
+      // next lines (tight list) so a re-parse re-nests them under the parent.
       await flushContentGroup()
       flushGap()
-      // SAFETY: both casts are guarded by the `type === 'taskBlock'` checks
-      // that wrap them, and `TaskBlockProps` is that spec's own prop shape.
-      const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
-      for (const child of (block.children ?? []) as Block[]) {
-        if ((child.type as string) === 'taskBlock') {
-          // SAFETY: guarded by the `taskBlock` check above; `TaskBlockProps`
-          // is that spec's own prop shape.
-          lines.push(serializeTaskBlock(child.props as unknown as TaskBlockProps))
-        }
-      }
-      segments.push({ type: 'content', text: lines.join('\n') })
+      segments.push({ type: 'content', text: serializeTaskBlockTree(block).join('\n') })
     } else if ((block.type as string) === 'file') {
       // Emitted here rather than left to the block spec, which writes the marker
       // as a DOM comment node. That only reaches the vault because BlockNote's
