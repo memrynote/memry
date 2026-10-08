@@ -387,3 +387,9 @@ export async function placeDownloadedFile(
     return downloadedPath
   }
 }
+
+export async function placeLinkedDownloads(
+  _db: DrizzleDb,
+  _vaultPath: string,
+  _noteId: string
+): Promise<void> {}

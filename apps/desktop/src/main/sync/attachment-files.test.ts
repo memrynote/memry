@@ -10,7 +10,9 @@ import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
 import { listPendingUploads } from './attachment-outbox'
 import {
   placeDownloadedFile,
+  placeLinkedDownloads,
   recordAttachmentFile,
+  recordedFileOf,
   reusableAttachmentIds
 } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
@@ -136,6 +138,28 @@ describe('placeDownloadedFile', () => {
     const landed = download('note-a', 'x.txt')
 
     expect(await placeDownloadedFile(db, vaultPath, 'note-a', landed)).toBe(landed)
+  })
+
+  it('keeps a file the body also links where it landed', async () => {
+    addNote('note-a', '![x](../attachments/note-a/x.txt)\n![y](../sources/x.txt)\n')
+    const landed = download('note-a', 'x.txt')
+
+    expect(await placeDownloadedFile(db, vaultPath, 'note-a', landed)).toBe(landed)
+  })
+
+  it('places a download that landed before its body arrived, and moves its record', async () => {
+    const notePath = addNote('note-a', 'body\n')
+    const landed = download('note-a', 'x.txt')
+    recordAttachmentFile(db, vaultPath, 'note-a', landed, 'att-1')
+
+    fs.writeFileSync(notePath, '![x](../sources/x.txt)\n')
+    await placeLinkedDownloads(db, vaultPath, 'note-a')
+
+    const linked = path.join(vaultPath, 'sources', 'x.txt')
+    expect(fs.readFileSync(linked, 'utf8')).toBe('downloaded')
+    expect(fs.existsSync(landed)).toBe(false)
+    expect(recordedFileOf(db, vaultPath, 'note-a', 'att-1')).toBe(linked)
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
   })
 
   it("offers the note's attachments for a file outside its folder only", () => {
