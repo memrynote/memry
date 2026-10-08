@@ -448,6 +448,31 @@ export class AttachmentSyncService {
       const chunks = await readFileChunks(filePath)
       const totalChunks = chunks.length
 
+      const netOpts: { signal?: AbortSignal; isOnline?: () => boolean } = {}
+      if (options?.signal) netOpts.signal = options.signal
+      if (options?.isOnline) netOpts.isOnline = options.isOnline
+
+      const candidates = this.deps.getReusableAttachmentIds?.(noteId, filePath) ?? []
+      if (candidates.length > 0) {
+        const checksumState = sodium.crypto_hash_sha256_init()
+        for (const chunk of chunks) sodium.crypto_hash_sha256_update(checksumState, chunk)
+        const checksum = sodium.to_hex(sodium.crypto_hash_sha256_final(checksumState))
+        const uploaded = await this.findUploadedCopy(
+          token,
+          vaultKey,
+          candidates,
+          { checksum, size: fileStat.size },
+          netOpts
+        )
+        if (uploaded) {
+          log.info('file already on the server, reusing its attachment', {
+            attachmentId: uploaded.id,
+            noteId
+          })
+          return { attachmentId: uploaded.id, sessionId: '', manifest: uploaded }
+        }
+      }
+
       const wholeFileHashState = sodium.crypto_hash_sha256_init()
       const chunkRefs: ChunkRef[] = []
       const encryptedChunks: { data: Uint8Array; ref: ChunkRef }[] = []
@@ -504,10 +529,6 @@ export class AttachmentSyncService {
         chunkSize: CHUNK_SIZE,
         createdAt: Date.now()
       }
-
-      const netOpts: { signal?: AbortSignal; isOnline?: () => boolean } = {}
-      if (options?.signal) netOpts.signal = options.signal
-      if (options?.isOnline) netOpts.isOnline = options.isOnline
 
       // Every chunk goes on the wire as nonce || ciphertext, so the encrypted
       // total is larger than the plaintext. Declare it explicitly: the server
@@ -1152,6 +1173,37 @@ export class AttachmentSyncService {
       }
       throw err
     }
+  }
+
+  /**
+   * The first candidate attachment that holds exactly these bytes. A candidate
+   * the server no longer has, or one this device cannot verify or decrypt, is
+   * not a match. A transport failure throws, so the upload is retried rather
+   * than made a second time.
+   */
+  private async findUploadedCopy(
+    token: string,
+    vaultKey: Uint8Array,
+    candidates: string[],
+    content: { checksum: string; size: number },
+    netOpts: DownloadNetOptions
+  ): Promise<AttachmentManifest | null> {
+    for (const attachmentId of candidates) {
+      try {
+        const encrypted = await this.fetchManifest(token, attachmentId, netOpts)
+        const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
+        if (!signer) continue
+        const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
+        secureCleanup(fileKey)
+        if (manifest.size === content.size && manifest.checksum === content.checksum) {
+          return manifest
+        }
+      } catch (err) {
+        if (isResumableDownloadError(err)) throw err
+        log.debug('candidate attachment is not a match', { attachmentId, err })
+      }
+    }
+    return null
   }
 
   private async fetchManifest(

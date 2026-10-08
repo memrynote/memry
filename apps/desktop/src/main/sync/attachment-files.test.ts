@@ -8,7 +8,11 @@ import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
 import { listPendingUploads } from './attachment-outbox'
-import { placeDownloadedFile, recordAttachmentFile } from './attachment-files'
+import {
+  placeDownloadedFile,
+  recordAttachmentFile,
+  reusableAttachmentIds
+} from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('placeDownloadedFile', () => {
@@ -132,6 +136,22 @@ describe('placeDownloadedFile', () => {
     const landed = download('note-a', 'x.txt')
 
     expect(await placeDownloadedFile(db, vaultPath, 'note-a', landed)).toBe(landed)
+  })
+
+  it("offers the note's attachments for a file outside its folder only", () => {
+    addNote('note-a', '![x](../sources/x.txt)\n')
+
+    expect(
+      reusableAttachmentIds(db, vaultPath, 'note-a', path.join(vaultPath, 'sources', 'x.txt'))
+    ).toEqual(['att-1'])
+    expect(
+      reusableAttachmentIds(
+        db,
+        vaultPath,
+        'note-a',
+        path.join(vaultPath, 'attachments', 'note-a', 'pasted.png')
+      )
+    ).toEqual([])
   })
 
   it('a placed and recorded file is not uploaded again', async () => {

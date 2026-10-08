@@ -4,7 +4,12 @@ import { and, eq } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { attachmentFiles } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { getFileType } from '@memry/shared/file-types'
 import { STORED_PREFIX_RE } from '../vault/attachment-heal'
+import { resolveVaultFile } from '../lib/paths'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('AttachmentFiles')
 
 /**
  * Which note-attachment files this device knows the server has (#2651).
@@ -104,6 +109,22 @@ export function embeddedFilesOutsideNoteFolders(
 
 function ownFolderOf(vaultPath: string, noteId: string): string {
   return path.join(path.resolve(vaultPath), 'attachments', noteId)
+}
+
+/**
+ * The attachments of a note that may already hold a file's bytes (#2755). A
+ * file outside the note's own folder can be a copy of one of them: a download
+ * kept where it landed, or the same file a second device holds outside Memry.
+ * The note's own folder holds editor saves and downloads, so it gets none.
+ */
+export function reusableAttachmentIds(
+  db: DrizzleDb,
+  vaultPath: string,
+  noteId: string,
+  filePath: string
+): string[] {
+  if (path.resolve(filePath).startsWith(ownFolderOf(vaultPath, noteId) + path.sep)) return []
+  return getNoteMetadataById(db, noteId)?.attachmentReferences ?? []
 }
 
 /** The files in a note's own attachments folder. Dotfiles (and partial downloads) are not attachments. */
@@ -303,11 +324,66 @@ export function recordAttachmentFile(
   insertRecord(db, noteId, recordPath, attachmentId)
 }
 
+async function pathExists(file: string): Promise<boolean> {
+  return fs.promises.lstat(file).then(
+    () => true,
+    () => false
+  )
+}
+
+/** Nothing is at `target`, and the nearest folder of it that exists is really inside the vault. */
+async function isFreeInsideVault(vaultPath: string, target: string): Promise<boolean> {
+  if (await pathExists(target)) return false
+  let dir = path.dirname(target)
+  while (!(await pathExists(dir))) dir = path.dirname(dir)
+  const relative = path.relative(path.resolve(vaultPath), dir)
+  return (await resolveVaultFile(vaultPath, relative)).kind === 'inside'
+}
+
+/**
+ * Move a file an embed download put in the note's own folder to where the body
+ * links it (#2755). The manifest names the file by the basename it was uploaded
+ * from, so a body linking `sources/x.txt` got `attachments/<noteId>/x.txt` and a
+ * broken link. The file moves only when exactly one embed outside the note
+ * folders has its name and that path is free and inside the vault. A type the
+ * vault lists as a note of its own stays: it reaches that path through its own
+ * sync, and a copy there first would be listed as a second note. The body is
+ * never rewritten. Returns where the file is.
+ */
 export async function placeDownloadedFile(
-  _db: DrizzleDb,
-  _vaultPath: string,
-  _noteId: string,
+  db: DrizzleDb,
+  vaultPath: string,
+  noteId: string,
   downloadedPath: string
 ): Promise<string> {
-  return downloadedPath
+  const name = path.basename(downloadedPath)
+  if (getFileType(path.extname(name)) !== null) return downloadedPath
+  const note = getNoteMetadataById(db, noteId)
+  if (!note?.path.endsWith('.md')) return downloadedPath
+  try {
+    const markdown = await fs.promises.readFile(path.join(vaultPath, note.path), 'utf8')
+    const linked = embeddedFilesOutsideNoteFolders(
+      db,
+      markdown,
+      vaultPath,
+      note.path,
+      noteId
+    ).filter((file) => path.basename(file) === name)
+    if (linked.length !== 1) return downloadedPath
+    const target = linked[0]
+    if (!(await isFreeInsideVault(vaultPath, target))) return downloadedPath
+    await fs.promises.mkdir(path.dirname(target), { recursive: true })
+    // A link fails on a name that is taken, where a rename would replace it.
+    await fs.promises.link(downloadedPath, target)
+    try {
+      await fs.promises.unlink(downloadedPath)
+    } catch (error) {
+      await fs.promises.unlink(target)
+      throw error
+    }
+    return target
+  } catch (error) {
+    logger.warn('Could not move a downloaded attachment to its linked path', { noteId, error })
+    return downloadedPath
+  }
 }

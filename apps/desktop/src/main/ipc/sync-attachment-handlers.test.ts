@@ -182,9 +182,15 @@ vi.mock('../sync/note-attachment-metadata', () => ({
 
 const mockRecordAttachmentFile = vi.hoisted(() => vi.fn())
 const mockRecordedFileOf = vi.hoisted(() => vi.fn((): string | null => null))
+const mockPlaceDownloadedFile = vi.hoisted(() =>
+  vi.fn(async (_db: unknown, _vault: string, _noteId: string, file: string) => file)
+)
 vi.mock('../sync/attachment-files', () => ({
+  placeDownloadedFile: (...args: Parameters<typeof mockPlaceDownloadedFile>) =>
+    mockPlaceDownloadedFile(...args),
   recordAttachmentFile: (...args: unknown[]) => mockRecordAttachmentFile(...args),
-  recordedFileOf: (...args: unknown[]) => mockRecordedFileOf(...args)
+  recordedFileOf: (...args: unknown[]) => mockRecordedFileOf(...args),
+  reusableAttachmentIds: () => []
 }))
 
 vi.mock('../sync/runtime', () => ({
@@ -951,6 +957,8 @@ describe('sync-attachment-handlers', () => {
 
     const uploader = outboxUploaders.filter(Boolean).at(-1)!
     await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
+    mockPlaceDownloadedFile.mockResolvedValueOnce('/vault/sources/file.pdf')
+    mockApplyDownloadedAttachmentName.mockClear()
     const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
       noteId: string
       attachmentId: string
@@ -968,8 +976,17 @@ describe('sync-attachment-handlers', () => {
     expect(mockRecordAttachmentFile.mock.calls.map((call) => call.slice(1))).toEqual([
       ['/vault', 'note-1', '/vault/attachments/note-1/aaaaaa-saved.png', 'attachment-1'],
       ['/vault', 'note-1', '/vault/attachments/note-1/bbbbbb-drained.png', 'attachment-1'],
-      ['/vault', 'note-1', '/tmp/file.pdf', 'attachment-9']
+      ['/vault', 'note-1', '/vault/sources/file.pdf', 'attachment-9']
     ])
+    expect(mockPlaceDownloadedFile.mock.calls.at(-1)?.slice(1)).toEqual([
+      '/vault',
+      'note-1',
+      '/tmp/file.pdf'
+    ])
+    expect(mockApplyDownloadedAttachmentName).toHaveBeenCalledWith(
+      'note-1',
+      '/vault/sources/file.pdf'
+    )
   })
 
   it("records a file the download IPC puts in a note's folder", async () => {
