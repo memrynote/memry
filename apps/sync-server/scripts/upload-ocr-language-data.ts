@@ -14,7 +14,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -82,15 +82,22 @@ function wrangler(args: string[]): { ok: boolean; stdout: string; stderr: string
   return { ok: result.status === 0, stdout: result.stdout, stderr: result.stderr }
 }
 
-async function buildLanguage(lang: OcrLanguage): Promise<ManifestEntry> {
-  const file = join(dataDir, `${lang}.traineddata.gz`)
-  if (!existsSync(file)) {
-    const url = `https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/${TESSDATA_FAST_COMMIT}/${lang}.traineddata`
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`)
-    writeFileSync(file, gzipSync(Buffer.from(await response.arrayBuffer()), { level: 9 }))
+async function readOrDownload(file: string, lang: OcrLanguage): Promise<Buffer> {
+  try {
+    return readFileSync(file)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  const data = readFileSync(file)
+  const url = `https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/${TESSDATA_FAST_COMMIT}/${lang}.traineddata`
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`)
+  const data = gzipSync(Buffer.from(await response.arrayBuffer()), { level: 9 })
+  writeFileSync(file, data, { flag: 'wx' })
+  return data
+}
+
+async function buildLanguage(lang: OcrLanguage): Promise<ManifestEntry> {
+  const data = await readOrDownload(join(dataDir, `${lang}.traineddata.gz`), lang)
   return { lang, bytes: data.byteLength, sha256: createHash('sha256').update(data).digest('hex') }
 }
 
