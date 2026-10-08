@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copia i contenuti non salvati negli appunti",
     "addBookmark": "Aggiungi segnalibro",
     "removeBookmark": "Rimuovi segnalibro",
-    "deleteEntry": "Elimina pagina del diario"
+    "deleteEntry": "Elimina pagina del diario",
+    "lockEntry": "Blocca pagina del diario",
+    "unlockEntry": "Sblocca pagina del diario"
   },
   "editor": {
     "placeholder": {

@@ -31,7 +31,7 @@
 
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { parseTaskBlockSuffix } from '@memry/shared/task-block'
-import { hasPlainCheckboxMarker } from '@memry/shared/plain-checkbox'
+import { hasPlainCheckboxMarker, PLAIN_CHECKBOX_MARKER } from '@memry/shared/plain-checkbox'
 import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 import {
   buildObsidianTaskImport,
@@ -216,4 +216,60 @@ function planChecklistLine(input: ChecklistLineInput): ChecklistLineResult {
     obsidian
   })
   return { planIndex: input.planned.length - 1, existingTaskId: null }
+}
+
+/**
+ * The other answer to the same lines: each checkbox `planChecklistTasks` would
+ * look at gets the plain marker (`{check}`), so the editor keeps it a checkbox.
+ * Empty checkboxes are marked too, since one arriving in an open editor would
+ * show as a draft task. Lines the editor never converts come back unchanged,
+ * and so does every line `keepLine` names.
+ */
+export function markChecklistLinesPlain(
+  markdown: string,
+  keepLine: (lineIndex: number) => boolean
+): string {
+  const fence = createFenceTracker()
+  const lines = markdown.split('\n')
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex].replace(/\r$/, '')
+    if (fence.consume(line) || keepLine(lineIndex)) continue
+
+    const item = line.match(LIST_ITEM)
+    if (!item || !BULLET_MARKERS.has(item[2])) continue
+    const checkbox = item[3].match(CHECKBOX)
+    if (!checkbox) continue
+
+    const text = (checkbox[2] ?? '').trim()
+    if (parseTaskBlockSuffix(text) !== null || hasPlainCheckboxMarker(text)) continue
+    if (text !== '' && obsidianTaskImportBlocker(text) !== null) continue
+
+    const eol = lines[lineIndex].endsWith('\r') ? '\r' : ''
+    lines[lineIndex] = `${line.trimEnd()} ${PLAIN_CHECKBOX_MARKER}${eol}`
+  }
+  return lines.join('\n')
+}
+
+/** Line indexes of `markdown` whose text `previous` already holds, matched one for one. */
+export function linesAlreadyIn(markdown: string, previous: string): (lineIndex: number) => boolean {
+  const left = new Map<string, number>()
+  for (const line of previous.split('\n')) left.set(line, (left.get(line) ?? 0) + 1)
+
+  const kept = new Set<number>()
+  markdown.split('\n').forEach((line, lineIndex) => {
+    const count = left.get(line) ?? 0
+    if (count === 0) return
+    kept.add(lineIndex)
+    left.set(line, count - 1)
+  })
+  return (lineIndex) => kept.has(lineIndex)
+}
+
+/**
+ * `markChecklistLinesPlain` for a write that replaces `previous`: lines the
+ * body already held stay as they were, and only added checkbox lines get the
+ * marker.
+ */
+export function markAddedChecklistLinesPlain(markdown: string, previous = ''): string {
+  return markChecklistLinesPlain(markdown, linesAlreadyIn(markdown, previous))
 }

@@ -126,6 +126,11 @@ export interface TaskIntentOptions {
    * made in this editor continues a plain list.
    */
   openedBlockIds?: ReadonlySet<string>
+  /**
+   * The editor setting `convertChecklistsToTasks`, default true. False offers
+   * no checkbox outside a task block; one under a task still becomes its subtask.
+   */
+  convertChecklists?: boolean
 }
 
 export function analyzeTaskIntents(
@@ -133,6 +138,7 @@ export function analyzeTaskIntents(
   dismissedBlockIds: Set<string>,
   options: TaskIntentOptions = {}
 ): TaskIntents {
+  const convertChecklists = options.convertChecklists ?? true
   const intents: TaskIntents = {
     subtaskCandidate: null,
     standaloneCandidate: null,
@@ -227,13 +233,14 @@ export function analyzeTaskIntents(
               parentTaskId: parentTaskBlock.props.taskId
             }
           }
-        } else if (!intents.standaloneCandidate && !isImportBlocked(b)) {
+        } else if (convertChecklists && !intents.standaloneCandidate && !isImportBlocked(b)) {
           intents.standaloneCandidate = { blockId: b.id }
         }
       } else if (
         isCheckListItem(b) &&
         !isPlainCheckbox(b) &&
         !intents.emptyCheckbox &&
+        (convertChecklists || parentTaskBlock?.props?.taskId) &&
         !options.openedBlockIds?.has(b.id) &&
         !dismissedBlockIds.has(b.id) &&
         !hasTaskSuffix(b) &&

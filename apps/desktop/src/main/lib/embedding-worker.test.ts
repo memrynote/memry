@@ -5,7 +5,9 @@ import fs from 'fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 
-const mockPipeline = vi.hoisted(() => vi.fn())
+const mockModelLoad = vi.hoisted(() => vi.fn())
+const mockTokenizerLoad = vi.hoisted(() => vi.fn())
+const mockConfigLoad = vi.hoisted(() => vi.fn())
 const mockEnv = vi.hoisted(() => ({ cacheDir: '' }))
 
 class MockParentPort extends EventEmitter {
@@ -13,7 +15,9 @@ class MockParentPort extends EventEmitter {
 }
 
 vi.mock('@huggingface/transformers', () => ({
-  pipeline: mockPipeline,
+  AutoConfig: { from_pretrained: mockConfigLoad },
+  AutoModel: { from_pretrained: mockModelLoad },
+  AutoTokenizer: { from_pretrained: mockTokenizerLoad },
   env: mockEnv
 }))
 
@@ -32,7 +36,11 @@ describe('embedding worker', () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-embedding-worker-'))
     process.env.MEMRY_USER_DATA_PATH = tempDir
-    mockPipeline.mockReset()
+    mockModelLoad.mockReset()
+    mockTokenizerLoad.mockReset()
+    mockConfigLoad.mockReset()
+    mockConfigLoad.mockResolvedValue({ vision_config: {}, audio_config: {}, text_config: {} })
+    mockTokenizerLoad.mockResolvedValue(vi.fn().mockReturnValue({ input_ids: 'ids' }))
     mockEnv.cacheDir = ''
   })
 
@@ -57,7 +65,7 @@ describe('embedding worker', () => {
     expect(port.postMessage).toHaveBeenCalledWith({ type: 'ready' })
   })
 
-  it('loads the feature-extraction pipeline and returns a serializable embedding', async () => {
+  it('loads only the text model and returns a 256d re-normalized embedding', async () => {
     const port = new MockParentPort()
     Object.defineProperty(process, 'parentPort', {
       configurable: true,
@@ -65,13 +73,24 @@ describe('embedding worker', () => {
       value: port
     })
 
-    const mockExtractor = vi.fn().mockResolvedValue({
-      data: new Float32Array(EMBEDDING_DIMENSION)
+    // 768d output whose first 256 dims are all 2: truncation then
+    // re-normalization must give 1/sqrt(256) = 1/16 everywhere.
+    const full = new Float32Array(768).fill(0.5)
+    full.fill(2, 0, EMBEDDING_DIMENSION)
+    const model = Object.assign(vi.fn().mockResolvedValue({ sentence_embedding: { data: full } }), {
+      dispose: vi.fn()
     })
-    mockPipeline.mockImplementationOnce(async (_task, _model, options) => {
-      options?.progress_callback?.({ status: 'progress', progress: 42 })
+    const tokenizer = vi.fn().mockReturnValue({ input_ids: 'ids' })
+    mockTokenizerLoad.mockResolvedValue(tokenizer)
+    mockModelLoad.mockImplementationOnce(async (_model, options) => {
+      options?.progress_callback?.({
+        status: 'progress',
+        file: 'onnx/model_q4.onnx_data',
+        loaded: 42,
+        total: 100
+      })
       options?.progress_callback?.({ status: 'done' })
-      return mockExtractor
+      return model
     })
 
     await import('./embedding-worker')
@@ -80,7 +99,7 @@ describe('embedding worker', () => {
       data: {
         type: 'embed',
         requestId: 'req-1',
-        text: 'a'.repeat(2500)
+        text: 'a'.repeat(4500)
       }
     })
 
@@ -88,22 +107,23 @@ describe('embedding worker', () => {
       expect(port.postMessage).toHaveBeenCalledWith({
         type: 'embed-result',
         requestId: 'req-1',
-        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION).fill(1 / 16))
       })
     })
 
     expect(mockEnv.cacheDir).toBe(path.join(tempDir, 'models', 'transformers'))
-    expect(mockPipeline).toHaveBeenCalledWith(
-      'feature-extraction',
-      'Xenova/all-MiniLM-L6-v2',
-      expect.objectContaining({
-        dtype: 'fp32'
-      })
-    )
-    expect(mockExtractor).toHaveBeenCalledWith('a'.repeat(2000), {
-      pooling: 'mean',
-      normalize: true
+    expect(port.postMessage).toHaveBeenCalledWith({
+      type: 'progress',
+      phase: 'downloading',
+      progress: 42,
+      status: 'Downloading model: 42%'
     })
+    const [repo, options] = mockModelLoad.mock.calls[0]
+    expect(repo).toBe('onnx-community/embeddinggemma-2-ONNX')
+    expect(options).toMatchObject({ dtype: 'q4', device: 'cpu' })
+    // Text only: without these sections no vision/audio session is built or downloaded.
+    expect(options.config).toMatchObject({ vision_config: null, audio_config: null })
+    expect(tokenizer).toHaveBeenCalledWith(['a'.repeat(4000)], { padding: true, truncation: true })
   })
 
   describe('shutdown', () => {
@@ -116,11 +136,8 @@ describe('embedding worker', () => {
         writable: true,
         value: port
       })
-      const extractor = Object.assign(
-        vi.fn().mockResolvedValue({ data: new Float32Array(EMBEDDING_DIMENSION) }),
-        { dispose }
-      )
-      mockPipeline.mockResolvedValue(extractor)
+      const model = Object.assign(vi.fn(), { dispose })
+      mockModelLoad.mockResolvedValue(model)
 
       await import('./embedding-worker')
       port.emit('message', { data: { type: 'load-model', requestId: 'load-1' } })

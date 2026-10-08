@@ -113,6 +113,7 @@ impl VaultSync {
             cipher.clone(),
         )
         .with_vault(&self.vault_id)
+        .with_clock_device(&self.session.device_id()?)
         .with_note_bodies(cipher.clone())
         .run(MAX_PULL_PAGES)
         .await?;

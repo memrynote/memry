@@ -41,6 +41,7 @@ let tokenIssuedAt = 0
 let onTokenRefreshedCallback: (() => void) | null = null
 let refreshRejections = 0
 let refreshBlockedUntil = 0
+let credentialsMissing = false
 
 export function setOnTokenRefreshed(cb: (() => void) | null): void {
   onTokenRefreshedCallback = cb
@@ -102,7 +103,7 @@ export const cancelTokenRefresh = (): void => {
   }
 }
 
-export const emitSessionExpired = (reason: SessionExpiredReason = 'token_expired'): void => {
+export const emitSessionExpired = (reason: SessionExpiredReason): void => {
   cancelTokenRefresh()
   broadcastToAllWindows(SYNC_EVENTS.SESSION_EXPIRED, { reason })
 }
@@ -110,9 +111,19 @@ export const emitSessionExpired = (reason: SessionExpiredReason = 'token_expired
 const clearRefreshRejections = (): void => {
   refreshRejections = 0
   refreshBlockedUntil = 0
+  credentialsMissing = false
 }
 
 const isRefreshBlocked = (): boolean => Date.now() < refreshBlockedUntil
+
+/**
+ * True once refreshing can never succeed again without a new sign-in: the
+ * server rejected the refresh token for good, or the keychain lost it. A
+ * failed refresh for any other reason (offline, DNS down after a wake, 5xx)
+ * leaves the session alive, so callers must not sign the user out on it.
+ */
+export const hasSessionEnded = (): boolean =>
+  credentialsMissing || refreshBlockedUntil === Number.POSITIVE_INFINITY
 
 /**
  * The server rejected the refresh token. Never retried inline — the caller
@@ -151,13 +162,17 @@ const handleRefreshRejected = (error: SyncServerError): void => {
 
 const doRefreshAccessToken = async (): Promise<boolean> => {
   for (let attempt = 0; attempt < REFRESH_MAX_RETRIES; attempt++) {
-    const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-    if (!currentRefreshToken) {
-      emitSessionExpired()
-      return false
-    }
-
     try {
+      // A keychain read that throws (a wedged Windows Credential Manager) is
+      // retried like a network failure; only a token that is truly absent
+      // ends the session.
+      const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+      if (!currentRefreshToken) {
+        credentialsMissing = true
+        emitSessionExpired('credentials_missing')
+        return false
+      }
+
       const raw = await postToServer<unknown>('/auth/refresh', {
         refreshToken: currentRefreshToken
       })
@@ -167,6 +182,7 @@ const doRefreshAccessToken = async (): Promise<boolean> => {
       await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
       scheduleTokenRefresh(response.expiresIn)
       onTokenRefreshedCallback?.()
+      broadcastToAllWindows(SYNC_EVENTS.TOKEN_REFRESHED, {})
       return true
     } catch (error: unknown) {
       if (error instanceof SyncServerError && error.statusCode === 401) {
@@ -201,7 +217,10 @@ const doRefreshAccessToken = async (): Promise<boolean> => {
     }
   }
 
-  emitSessionExpired()
+  // The server never answered with a verdict on the refresh token, so the
+  // session is still good. The next caller that needs a token (sync pass,
+  // socket reconnect, the network coming back) tries again.
+  log.warn('Token refresh unavailable, session kept until the server can be reached')
   return false
 }
 

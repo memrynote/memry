@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 // Import and re-export channels from the contract-local surface.
 import { NotesChannels } from './ipc-channels'
+import { PropertyTypes } from './property-types'
 export { NotesChannels }
 
 // ============================================================================
@@ -173,6 +174,116 @@ export const NoteUpdateSchema = z.object({
   emoji: z.string().nullable().optional() // Emoji icon for visual identification
 })
 
+const PROPERTY_TYPE_ENUM = z.enum([
+  PropertyTypes.TEXT,
+  PropertyTypes.NUMBER,
+  PropertyTypes.CHECKBOX,
+  PropertyTypes.DATE,
+  PropertyTypes.URL,
+  PropertyTypes.STATUS,
+  PropertyTypes.SELECT,
+  PropertyTypes.MULTISELECT
+])
+
+const PROPERTY_OPTION = z.object({
+  value: z.string(),
+  color: z.string(),
+  default: z.boolean().optional()
+})
+
+export const CreatePropertyDefinitionSchema = z.object({
+  name: z.string().min(1),
+  type: PROPERTY_TYPE_ENUM,
+  options: z.array(PROPERTY_OPTION).optional(),
+  defaultValue: z.unknown().optional(),
+  color: z.string().optional()
+})
+
+export const UpdatePropertyDefinitionSchema = z.object({
+  name: z.string().min(1),
+  type: PROPERTY_TYPE_ENUM.optional(),
+  options: z.array(PROPERTY_OPTION).optional(),
+  defaultValue: z.unknown().optional(),
+  color: z.string().optional()
+})
+
+export const ExportNoteSchema = z.object({
+  noteId: z.string().min(1),
+  includeMetadata: z.boolean().default(true),
+  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
+  includeTaskMarkers: z.boolean().default(false),
+  // Headless export target — when provided, skip the save dialog (Agent MCP).
+  outputPath: z.string().min(1).optional()
+})
+
+/** The option `notes:add-property-option` and `notes:add-status-option` add. */
+export const PropertyOptionInputSchema = z.object({
+  value: z.string().min(1),
+  color: z.string().min(1)
+})
+
+/** `notes:ensure-property-definition` creates only these option-carrying types. */
+export const EnsurePropertyDefinitionSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(['status', 'select', 'multiselect'])
+})
+
+export const AddPropertyOptionSchema = z.object({
+  propertyName: z.string().min(1),
+  option: PropertyOptionInputSchema
+})
+
+export const AddStatusOptionSchema = z.object({
+  propertyName: z.string().min(1),
+  categoryKey: z.enum(['todo', 'in_progress', 'done']),
+  option: PropertyOptionInputSchema
+})
+
+export const RemovePropertyOptionSchema = z.object({
+  propertyName: z.string().min(1),
+  optionValue: z.string().min(1)
+})
+
+export const RenamePropertyOptionSchema = z.object({
+  propertyName: z.string().min(1),
+  oldValue: z.string().min(1),
+  newValue: z.string().min(1)
+})
+
+export const UpdateOptionColorSchema = z.object({
+  propertyName: z.string().min(1),
+  optionValue: z.string().min(1),
+  newColor: z.string().min(1)
+})
+
+export const DeletePropertyDefinitionSchema = z.object({ name: z.string().min(1) })
+
+export const SetCalendarPropertyVisibilitySchema = z.object({
+  name: z.string().min(1),
+  showOnCalendar: z.boolean()
+})
+
+/**
+ * `plainChecklists` marks each checkbox line a write adds with `{check}`, so the
+ * editor keeps it a checkbox. Main sets it on every agent call (#2759).
+ */
+const plainChecklists = z
+  .boolean()
+  .optional()
+  .describe(
+    "Set by memrynote on every agent call from the owner's agent checklist setting; " +
+      'a value you pass is replaced.'
+  )
+
+export const PlainChecklistsOptionSchema = z.object({ plainChecklists })
+export type PlainChecklistsOption = z.infer<typeof PlainChecklistsOptionSchema>
+
+export const ImportFilesSchema = z.object({
+  sourcePaths: z.array(z.string()),
+  targetFolder: z.string().optional(),
+  options: PlainChecklistsOptionSchema.optional()
+})
+
 export const NoteRenameSchema = z.object({
   id: z.string(),
   newTitle: z.string().min(1).max(200)
@@ -333,7 +444,8 @@ export const SetLocalOnlySchema = z.object({
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
-  mode: z.enum(['full', 'body'])
+  mode: z.enum(['full', 'body']),
+  plainChecklists
 })
 
 /**

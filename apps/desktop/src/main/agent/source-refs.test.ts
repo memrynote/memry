@@ -237,6 +237,7 @@ describe('Agent source refs', () => {
       extractAgentSourceRefs('vault_list_folder', {}, [
         { kind: 'folder', path: 'Areas/Work', name: 'Work' },
         { kind: 'note', id: 'note-1', name: 'Inbox Note', emoji: '📝' },
+        { kind: 'file', id: 'file-1', name: 'Screenshot', file_type: 'image' },
         { kind: 'asset', id: 'ignored', name: 'Ignored' }
       ])
     ).toEqual([
@@ -247,7 +248,8 @@ describe('Agent source refs', () => {
         title: 'Inbox Note',
         href: 'memry://note/note-1',
         icon: '📝'
-      }
+      },
+      { kind: 'note', id: 'file-1', title: 'Screenshot', href: 'memry://note/file-1' }
     ])
 
     expect(

@@ -88,6 +88,22 @@ describe('vault activity log', () => {
     expect(listActivity().map((entry) => entry.path)).toEqual(['notes/b.md', 'notes/a.md'])
   })
 
+  it('creates nothing where a vault that is away was, and writes its entries once it is back', async () => {
+    openActivityLog(vaultPath)
+    const away = `${vaultPath}-away`
+    fs.renameSync(vaultPath, away)
+    recordActivity({ kind: 'removed', source: 'watcher', path: 'notes/a.md' })
+    await flushActivityLog()
+    const recreated = fs.existsSync(vaultPath)
+    if (recreated) fs.rmSync(vaultPath, { recursive: true, force: true })
+    fs.renameSync(away, vaultPath)
+
+    expect(recreated).toBe(false)
+    recordActivity({ kind: 'added', source: 'watcher', path: 'notes/b.md' })
+    await flushActivityLog()
+    expect(readLogLines().map((line) => line.path)).toEqual(['notes/a.md', 'notes/b.md'])
+  })
+
   it('reloads the log when the vault is reopened', async () => {
     openActivityLog(vaultPath)
     recordActivity({ kind: 'added', source: 'scan', path: 'x.pdf' })

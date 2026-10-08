@@ -182,11 +182,24 @@ async function writeFileAtomic(filePath: string, content: string): Promise<void>
   }
 }
 
+/**
+ * Never `recursive`: a vault that is away (a drive unplugged, its folder
+ * renamed) would get its root recreated as a stray folder, which a remount or
+ * a rename back then collides with. Its entries stay buffered until it is back.
+ */
+async function ensureMemryDir(s: ActivityState): Promise<void> {
+  try {
+    await fsp.mkdir(path.dirname(s.logPath))
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+}
+
 function writePending(s: ActivityState): Promise<void> {
   s.writeChain = s.writeChain
     .then(async () => {
       if (!s.needsRewrite && s.pending.length === 0) return
-      await fsp.mkdir(path.dirname(s.logPath), { recursive: true })
+      await ensureMemryDir(s)
       if (s.needsRewrite) {
         s.needsRewrite = false
         s.pending = []
@@ -518,7 +531,7 @@ export async function prepareActivityLogFile(): Promise<string | null> {
   if (!s) return null
   await flushActivityLog()
   try {
-    await fsp.mkdir(path.dirname(s.logPath), { recursive: true })
+    await ensureMemryDir(s)
     await fsp.appendFile(s.logPath, '', { encoding: 'utf-8', mode: 0o600 })
   } catch (error) {
     logger.warn('Failed to create the vault activity log file', { error })
@@ -538,7 +551,7 @@ export async function setActivityRetentionDays(days: VaultActivityRetentionDays)
     scheduleWrite(s)
     notifyChanged()
   }
-  await fsp.mkdir(path.dirname(s.settingsPath), { recursive: true })
+  await ensureMemryDir(s)
   await writeFileAtomic(s.settingsPath, `${JSON.stringify({ retentionDays: days }, null, 2)}\n`)
 }
 

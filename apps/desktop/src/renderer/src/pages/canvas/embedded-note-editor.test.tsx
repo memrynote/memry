@@ -7,7 +7,8 @@ import type { Note } from '@memry/rpc/notes'
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
-  onMarkdownChange: null as ((markdown: string) => void) | null
+  onMarkdownChange: null as ((markdown: string) => void) | null,
+  isNoteLocked: false
 }))
 
 let currentNote: Note | null = null
@@ -18,20 +19,26 @@ vi.mock('@/hooks/use-notes-query', () => ({
 vi.mock('@/services/notes-service', () => ({
   notesService: { update: mocks.update }
 }))
+vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  useIsNoteLocked: () => mocks.isNoteLocked
+}))
 // Stub ContentArea (BlockNote → react-pdf needs DOMMatrix, absent in jsdom;
 // canvas-card-overlay.test.tsx uses the same stubbing strategy for the leaf
 // editor). Exposes a button that fires onMarkdownChange like a real edit.
 vi.mock('@/components/note/content-area', () => ({
   ContentArea: ({
     initialContent,
+    editable = true,
     onMarkdownChange
   }: {
     initialContent: string
+    editable?: boolean
     onMarkdownChange: (markdown: string) => void
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
     return (
-      <div>
+      <div data-testid="content-area" data-editable={String(editable)}>
         <span data-testid="initial-content">{initialContent}</span>
         <button data-testid="edit" onClick={() => onMarkdownChange('edited body')} />
         <button data-testid="edit-again" onClick={() => onMarkdownChange('edited again')} />
@@ -62,6 +69,7 @@ describe('EmbeddedNoteEditor', () => {
     mocks.update.mockReset()
     mocks.update.mockResolvedValue({ success: true })
     mocks.onMarkdownChange = null
+    mocks.isNoteLocked = false
     currentNote = null
   })
   afterEach(() => {
@@ -78,6 +86,22 @@ describe('EmbeddedNoteEditor', () => {
     currentNote = makeNote()
     render(<EmbeddedNoteEditor noteId="n1" />)
     expect(screen.getByTestId('initial-content')).toHaveTextContent('original body')
+  })
+
+  it('opens a locked note read-only with the lock notice (#2606)', () => {
+    currentNote = makeNote()
+    mocks.isNoteLocked = true
+    render(<EmbeddedNoteEditor noteId="n1" />)
+    expect(screen.getByTestId('content-area')).toHaveAttribute('data-editable', 'false')
+    // Outside the scroller: a small card scrolls its body, the notice stays in view.
+    expect(screen.getByTestId('note-locked-indicator').closest('.overflow-auto')).toBeNull()
+  })
+
+  it('keeps an unlocked note editable with no lock notice', () => {
+    currentNote = makeNote()
+    render(<EmbeddedNoteEditor noteId="n1" />)
+    expect(screen.getByTestId('content-area')).toHaveAttribute('data-editable', 'true')
+    expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
   })
 
   it('does not schedule a save when the markdown is unchanged', () => {

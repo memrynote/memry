@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Toolbar",
-      "spelling": "Spelling"
+      "spelling": "Spelling",
+      "checklists": "Checklists"
     },
     "width": {
       "label": "Editor Width",
@@ -446,7 +447,17 @@
     "v2": {
       "width": "Editor width",
       "toolbarMode": "Sticky formatting toolbar",
-      "spellCheck": "Check spelling"
+      "spellCheck": "Check spelling",
+      "convertChecklists": "Turn checklist items into tasks",
+      "convertAgentChecklists": "Turn checklist items in agent writes into tasks"
+    },
+    "convertChecklists": {
+      "description": "Each new checklist item becomes a task. Off keeps checklists as plain checkboxes; right-click one to make it a task.",
+      "error": "Failed to update checklist conversion"
+    },
+    "convertAgentChecklists": {
+      "description": "Off keeps every checkbox an agent writes a plain checkbox. Agents create tasks with the task tools.",
+      "error": "Failed to update agent checklist conversion"
     }
   },
   "templates": {
@@ -998,6 +1009,19 @@
       "activating": {
         "title": "Finishing your activation",
         "description": "Your plan is active. Sync starts as soon as we confirm it — refreshing usually does the trick."
+      },
+      "unsent": {
+        "title": "Notes with unsent changes",
+        "count": "{count, plural, one {# note} other {# notes}}",
+        "description": "This device has changes to these notes that the server has not stored yet.",
+        "waitingSince": "Waiting since {time}",
+        "more": "{count, plural, one {And # more note} other {And # more notes}}",
+        "reasons": {
+          "body": "Text",
+          "record": "Details",
+          "file_not_taken": "File not merged yet",
+          "rejected": "Refused by the server"
+        }
       }
     },
     "billing": {
@@ -1339,7 +1363,7 @@
     "embedding": {
       "loaded": "Loaded",
       "loading": "Loading",
-      "cacheHint": "~23MB · Cached locally · All on-device",
+      "cacheHint": "~210MB · Cached locally · All on-device",
       "dimensions": "Dimensions",
       "embeddings": "Embeddings",
       "downloadLoad": "Download & Load Model",
@@ -2218,7 +2242,7 @@
       },
       "confirm": {
         "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
+        "description": "Choose whether tool calls run automatically or wait for approval in chat. Locked notes and folders stay read-only in both modes.",
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
@@ -2272,6 +2296,17 @@
       "revoke": "Revoke",
       "revokeLabel": "Revoke the standing approval for {tool}",
       "ignoredInPageReview": "Ignored: note and journal edits always ask."
+    },
+    "memory": {
+      "group": "Memory",
+      "description": "Agents run in a folder kept for this vault, outside the vault, so what they save there carries over to the next conversation.",
+      "clear": "Clear agent memory",
+      "clearDescription": "Deletes what agents saved about this vault. Notes and chat history stay.",
+      "clearAction": "Clear",
+      "cleared": "Agent memory cleared.",
+      "failed": "Could not clear agent memory.",
+      "confirmTitle": "Clear agent memory?",
+      "confirmDescription": "Agents lose what they saved about this vault, including Claude Code's project memory for it. This cannot be undone. Notes and chat history stay."
     },
     "v2": {
       "permissions": {

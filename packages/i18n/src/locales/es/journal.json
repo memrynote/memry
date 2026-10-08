@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Copiar contenido no guardado al portapapeles",
     "addBookmark": "Añadir a marcadores",
     "removeBookmark": "Quitar de marcadores",
-    "deleteEntry": "Eliminar entrada"
+    "deleteEntry": "Eliminar entrada",
+    "lockEntry": "Bloquear entrada",
+    "unlockEntry": "Desbloquear entrada"
   },
   "editor": {
     "placeholder": {

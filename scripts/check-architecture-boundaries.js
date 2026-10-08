@@ -6,30 +6,21 @@ const { builtinModules } = require('module')
 const repoRoot = process.cwd()
 const packagesRoot = path.resolve(repoRoot, 'packages')
 const nodeBuiltins = new Set(builtinModules)
-const mobileSkippedDirs = new Set([
-  'node_modules',
-  'ios',
-  'android',
-  '.expo',
-  'assets',
-  'scripts',
-  'dist',
-  'generated'
-])
+const clientSkippedDirs = new Set(['node_modules', 'assets', 'scripts', 'dist', 'generated'])
 
 // Seeds for the non-Node reachability walk. Each root is a client that has no
 // `node:` runtime and no electron, so nothing it reaches — including
 // transitively through workspace packages — may import either.
 //
-// `packages/editor-web` is the load-bearing one: it is the WebView guest, it
-// survives the native rewrite (native iOS plan, decision 3), and it pulls in
-// contracts + editor-schema + shared, which is where a node builtin would
-// actually leak in from. `apps/mobile` is the frozen RN shell — it used to be
-// the only seed, and this rule must not die with it, which is why the walk is
-// seeded by list and each root is skipped when absent.
+// The browser extension and the landing site are the remaining seeds. The
+// extension pulls in packages/article-extract, which the iOS app also bundles
+// for JavaScriptCore (scripts/generate-ios-article-extract.mjs), so a node
+// builtin there breaks two clients. The rule has outlived two seeds already
+// (the React Native shell and the WebView editor bundle), which is why the walk
+// is seeded by list and each root is skipped when absent.
 const nonNodeClientRoots = [
-  { label: 'packages/editor-web', dir: path.resolve(packagesRoot, 'editor-web/src') },
-  { label: 'apps/mobile', dir: path.resolve(repoRoot, 'apps/mobile') }
+  { label: 'apps/extension', dir: path.resolve(repoRoot, 'apps/extension/src') },
+  { label: 'apps/landing', dir: path.resolve(repoRoot, 'apps/landing/src') }
 ]
 const desktopRoot = path.resolve(repoRoot, 'apps/desktop')
 const mainRoot = path.resolve(desktopRoot, 'src/main')
@@ -118,9 +109,8 @@ function isSourceFile(filePath) {
 // Test-only code, by either convention this repo uses: a `.test.`/`.spec.` suffix
 // or any file under a `__tests__` / `__mocks__` directory. Both are excluded from
 // every boundary walk below, because the rules are about what SHIPS. A shared
-// test harness under `__tests__` is not shipped, and `apps/mobile`'s notes
-// harness reaches for `node:sqlite` on purpose — running the shipping SQL against
-// real SQLite is the entire point of it.
+// test harness under `__tests__` is not shipped, and it may reach for a node
+// builtin such as `node:sqlite` on purpose.
 function isTestFile(filePath) {
   if (/\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)) return true
   return filePath
@@ -410,22 +400,22 @@ function resolveWorkspaceImport(specifier, workspacePackages) {
   return resolveSourceFile(path.resolve(packageInfo.dir, 'src', match[2]))
 }
 
-// Build-time configs (vitest, metro, babel, app.config) run under Node by
-// definition and never reach the RN bundle, so a node builtin there is tooling,
+// Build-time configs (vite, vitest, wxt) run under Node by definition and never
+// reach a client bundle, so a node builtin there is tooling,
 // not a reachability violation. Same reasoning that already skips `scripts`.
 function isToolingConfig(filePath) {
   return /\.config\.[cm]?[jt]s$/.test(path.basename(filePath))
 }
 
-async function walkMobileSources(dir) {
+async function walkClientSources(dir) {
   const files = []
   const entries = await fs.readdir(dir, { withFileTypes: true })
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      if (mobileSkippedDirs.has(entry.name) || entry.name.startsWith('.')) {
+      if (clientSkippedDirs.has(entry.name) || entry.name.startsWith('.')) {
         continue
       }
-      files.push(...(await walkMobileSources(path.join(dir, entry.name))))
+      files.push(...(await walkClientSources(path.join(dir, entry.name))))
       continue
     }
 
@@ -452,13 +442,13 @@ function enqueueReachable(filePath, specifier, resolved, queue, blockingViolatio
   )
 }
 
-// Non-Node reachability rule (spec 001-mobile-app T003 / Constitution I):
+// Non-Node reachability rule (first spec 001-mobile-app T003, Constitution I):
 // nothing reachable from a non-Node client — including transitively through
 // workspace packages — may import a node builtin or electron. Walks the real
 // import graph: the seed roots first, then every workspace package file they
 // reach. The seeds share one visited set, so a package reached from two
 // clients is walked once; the violation names the file, not the seed.
-async function checkMobileReachability(blockingViolations) {
+async function checkNonNodeReachability(blockingViolations) {
   const roots = nonNodeClientRoots.filter((root) => fsSync.existsSync(root.dir))
   if (roots.length === 0) {
     return
@@ -467,7 +457,7 @@ async function checkMobileReachability(blockingViolations) {
   const workspacePackages = await getWorkspacePackageDirs()
   const queue = []
   for (const root of roots) {
-    queue.push(...(await walkMobileSources(root.dir)))
+    queue.push(...(await walkClientSources(root.dir)))
   }
   const visited = new Set()
 
@@ -647,7 +637,7 @@ async function findIosTransportViolations() {
 async function main() {
   const blockingViolations = new Set()
 
-  await checkMobileReachability(blockingViolations)
+  await checkNonNodeReachability(blockingViolations)
 
   const rendererFiles = await getFilesForRoot(rendererRoot)
   for (const filePath of rendererFiles) {

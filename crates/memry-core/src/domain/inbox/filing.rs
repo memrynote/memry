@@ -3,12 +3,12 @@
 //!
 //! **One difference, and why.** Desktop builds the filed note as markdown
 //! (`generateNoteContent`) and writes the file; its editor turns the markdown
-//! into the note's document. This core parses no markdown (chapter 12 §12.1),
-//! and a phone note's body is its CRDT document, so the same structure is
-//! written as blocks: the link mention, the quoted description, the meta
-//! lines, the divider and the "Filed from Inbox on …" line are each the block
-//! desktop's markdown becomes. The note's `content` stays `""`, the phone's
-//! convention for every note it creates (`NotesWriter::create`).
+//! into the note's document. This core parses markdown only for an article
+//! (below, chapter 12 §12.1.0), and a phone note's body is its CRDT document,
+//! so the same structure is written as blocks: the link mention, the quoted
+//! description, the meta lines, the divider and the "Filed from Inbox on …"
+//! line are each the block desktop's markdown becomes. The note's `content`
+//! stays `""`, the phone's convention for every note it creates (`NotesWriter::create`).
 //!
 //! A link's extracted article is the exception: it is a whole page of
 //! markdown, so it goes through the markdown seed

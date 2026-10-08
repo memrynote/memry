@@ -37,7 +37,9 @@ export const NoteErrorCode = {
   DELETE_FAILED: 'NOTE_DELETE_FAILED',
   INVALID_PATH: 'NOTE_INVALID_PATH',
   /** The target is a binary file (PDF, image, audio, video), not a markdown note. */
-  NOT_MARKDOWN: 'NOTE_NOT_MARKDOWN'
+  NOT_MARKDOWN: 'NOTE_NOT_MARKDOWN',
+  /** The owner locked the note or its folder (vault-locks). */
+  READ_ONLY: 'NOTE_READ_ONLY'
 } as const
 
 export type NoteErrorCode = (typeof NoteErrorCode)[keyof typeof NoteErrorCode]

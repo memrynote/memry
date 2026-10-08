@@ -158,7 +158,8 @@
       "richTextAria": "Editor teks kaya",
       "headingPlaceholder": "Judul",
       "listPlaceholder": "Item daftar",
-      "todoPlaceholder": "Item tugas"
+      "todoPlaceholder": "Item tugas",
+      "htmlComment": "Komentar HTML tersembunyi"
     },
     "table": {
       "keyboardMenuAria": "Tindakan tabel untuk baris {row}, kolom {column}",
@@ -245,6 +246,25 @@
       "warning": "Peringatan",
       "error": "Kesalahan",
       "success": "Sukses"
+    },
+    "columns": {
+      "group": "Blok dasar",
+      "two": {
+        "title": "2 kolom",
+        "subtext": "Letakkan blok berdampingan dalam dua kolom"
+      },
+      "three": {
+        "title": "3 kolom",
+        "subtext": "Letakkan blok berdampingan dalam tiga kolom"
+      },
+      "four": {
+        "title": "4 kolom",
+        "subtext": "Letakkan blok berdampingan dalam empat kolom"
+      },
+      "five": {
+        "title": "5 kolom",
+        "subtext": "Letakkan blok berdampingan dalam lima kolom"
+      }
     },
     "diagram": {
       "title": "Diagram",

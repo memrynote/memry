@@ -39,7 +39,7 @@ export interface InboxCommandServices {
   getSuggestions(itemId: string): Promise<InboxFilingSuggestion[]>
   trackSuggestionFeedback(input: TrackSuggestionFeedbackInput): void
   fileToFolder(itemId: string, folderPath: string, tags?: string[]): Promise<InboxFileResponse>
-  convertToNote(itemId: string): Promise<InboxFileResponse>
+  convertToNote(itemId: string, options?: { plainChecklists?: boolean }): Promise<InboxFileResponse>
   convertToTask(
     itemId: string,
     input?: {
@@ -89,7 +89,7 @@ export interface InboxCommands {
   trackSuggestion(
     input: TrackSuggestionFeedbackInput
   ): Promise<{ success: boolean; error?: string }>
-  convertToNote(itemId: string): Promise<InboxFileResponse>
+  convertToNote(itemId: string, options?: { plainChecklists?: boolean }): Promise<InboxFileResponse>
   convertToTask(
     itemId: string,
     input?: {
@@ -292,7 +292,7 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
       }
     },
 
-    convertToNote: (itemId) => services.convertToNote(itemId),
+    convertToNote: (itemId, options) => services.convertToNote(itemId, options),
     convertToTask: (itemId, input) => services.convertToTask(itemId, input),
     convertToEvent: (itemId, input) => services.convertToEvent(itemId, input),
     convertToReminder: (itemId, input) => services.convertToReminder(itemId, input),

@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Rozloženie",
       "toolbar": "Panel nástrojov",
-      "spelling": "Pravopis"
+      "spelling": "Pravopis",
+      "checklists": "Kontrolné zoznamy"
     },
     "width": {
       "label": "Šírka editora",
@@ -446,7 +447,17 @@
     "v2": {
       "width": "Šírka editora",
       "toolbarMode": "Pripevnený panel formátovania",
-      "spellCheck": "Kontrola pravopisu"
+      "spellCheck": "Kontrola pravopisu",
+      "convertChecklists": "Meniť položky kontrolného zoznamu na úlohy",
+      "convertAgentChecklists": "Meniť položky kontrolného zoznamu od agenta na úlohy"
+    },
+    "convertChecklists": {
+      "description": "Každá nová položka kontrolného zoznamu sa stane úlohou. Keď je vypnuté, zoznamy zostanú obyčajnými začiarkavacími políčkami; úlohu z položky urobíte kliknutím pravým tlačidlom.",
+      "error": "Prevod kontrolných zoznamov sa nepodarilo aktualizovať"
+    },
+    "convertAgentChecklists": {
+      "description": "Vypnuté ponechá každé začiarkavacie políčko, ktoré agent zapíše, ako obyčajné políčko. Agenti vytvárajú úlohy nástrojmi pre úlohy.",
+      "error": "Prevod kontrolných zoznamov od agenta sa nepodarilo aktualizovať"
     }
   },
   "templates": {
@@ -1334,7 +1345,7 @@
     "embedding": {
       "loaded": "Načítané",
       "loading": "Načítava sa",
-      "cacheHint": "~23 MB · Uložené lokálne · Všetko v zariadení",
+      "cacheHint": "~210 MB · Uložené lokálne · Všetko v zariadení",
       "dimensions": "Dimenzie",
       "embeddings": "Vektorizácie",
       "downloadLoad": "Stiahnuť a načítať model",
@@ -2213,7 +2224,7 @@
       },
       "confirm": {
         "label": "Potvrdzovať akcie",
-        "description": "Zvoľte, či sa volania nástrojov spustia automaticky, alebo počkajú na schválenie v chate.",
+        "description": "Zvoľte, či sa volania nástrojov spustia automaticky, alebo počkajú na schválenie v chate. Zamknuté poznámky a priečinky zostávajú v oboch režimoch len na čítanie.",
         "alwaysAllow": "Vždy povoliť",
         "askBeforeChanges": "Pýtať sa pred zmenami"
       }

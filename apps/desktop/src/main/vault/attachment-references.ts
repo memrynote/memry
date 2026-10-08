@@ -46,11 +46,9 @@ import {
   isAllowedFileType
 } from './attachments'
 import { getVaultRoot } from './notes-io'
+import { STORED_PREFIX_RE } from './attachment-heal'
 
 const logger = createLogger('AttachmentReferences')
-
-/** The `{6-char nanoid}-` prefix `generateUniqueFilename` puts on every file. */
-const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
 
 /**
  * The name to show for a stored file: the nanoid prefix off, nothing else.

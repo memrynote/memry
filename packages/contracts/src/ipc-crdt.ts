@@ -35,8 +35,21 @@ export const CRDT_EVENTS = {
    * Payload: `{ vaultPath: string | null }`, the vault the provider was opened
    * for. Older mains sent no payload; treat a missing one as unknown.
    */
-  PROVIDER_READY: 'crdt:provider-ready'
+  PROVIDER_READY: 'crdt:provider-ready',
+  /**
+   * A write-back pass could not update a note's file, so the edit is held only
+   * by the doc. Sent once per run of failed passes for a note; a pass that
+   * lands ends the run. Payload: {@link CrdtWriteBackFailedEvent}. Older mains
+   * sent `{ noteId }` alone.
+   */
+  WRITE_BACK_FAILED: 'sync:write-back-failed'
 } as const
+
+export interface CrdtWriteBackFailedEvent {
+  noteId: string
+  /** The note's title, when main could read it. */
+  title?: string
+}
 
 /**
  * Whether this install has a durable CRDT store, and for how long it has not.
@@ -59,7 +72,15 @@ export interface CrdtHealth {
 
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
 
-export const CrdtOpenDocSchema = z.object({ noteId: z.string().min(1) })
+/**
+ * `vaultPath` names the vault workspace the editor belongs to. Main refuses the
+ * open when its provider serves a different vault, since note ids repeat across
+ * vaults. Optional: an editor outside a vault workspace sends none.
+ */
+export const CrdtOpenDocSchema = z.object({
+  noteId: z.string().min(1),
+  vaultPath: z.string().min(1).optional()
+})
 export const CrdtCloseDocSchema = z.object({ noteId: z.string().min(1) })
 
 /**

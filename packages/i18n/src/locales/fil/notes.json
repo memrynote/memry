@@ -158,7 +158,8 @@
       "richTextAria": "Editor ng rich text",
       "headingPlaceholder": "Heading",
       "listPlaceholder": "Item sa listahan",
-      "todoPlaceholder": "Gagawin"
+      "todoPlaceholder": "Gagawin",
+      "htmlComment": "Nakatagong HTML comment"
     },
     "table": {
       "keyboardMenuAria": "Mga aksyon sa table para sa row {row}, column {column}",
@@ -245,6 +246,25 @@
       "warning": "Babala",
       "error": "Error",
       "success": "Tagumpay"
+    },
+    "columns": {
+      "group": "Mga pangunahing block",
+      "two": {
+        "title": "2 column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa dalawang column"
+      },
+      "three": {
+        "title": "3 column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa tatlong column"
+      },
+      "four": {
+        "title": "4 column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa apat na column"
+      },
+      "five": {
+        "title": "5 column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa limang column"
+      }
     },
     "diagram": {
       "title": "Diagram",

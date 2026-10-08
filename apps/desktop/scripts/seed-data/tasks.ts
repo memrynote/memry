@@ -1,3 +1,4 @@
+import { customAlphabet } from 'nanoid'
 import { generateId } from '../../src/main/lib/id'
 import { NOTE_IDS } from './notes'
 import type {
@@ -1072,8 +1073,17 @@ const TASK_BUILDERS: TaskBuilder[] = [
   }
 ]
 
+// Seed notes embed these ids as `{task:<id>}`, and the iOS Parity Test note
+// must round-trip byte for byte. A nanoid can contain `_`, which the markdown
+// parse can read as emphasis inside the suffix and drop from the id, so seed
+// task ids stay alphanumeric: same length as `generateId`, never `_` or `-`.
+const generateSeedTaskId = customAlphabet(
+  '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+  21
+)
+
 // Resolve task IDs and parent links
-const taskIdByKey = new Map<string, string>(TASK_BUILDERS.map((b) => [b.key, generateId()]))
+const taskIdByKey = new Map<string, string>(TASK_BUILDERS.map((b) => [b.key, generateSeedTaskId()]))
 
 /** A seeded task's id, for notes that reference tasks by `{task:<id>}`. */
 export function taskIdForKey(key: string): string {

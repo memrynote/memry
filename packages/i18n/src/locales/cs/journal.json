@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopírovat neuložený obsah do schránky",
     "addBookmark": "Přidat záložku",
     "removeBookmark": "Odebrat záložku",
-    "deleteEntry": "Smazat zápis"
+    "deleteEntry": "Smazat zápis",
+    "lockEntry": "Zamknout zápis",
+    "unlockEntry": "Odemknout zápis"
   },
   "editor": {
     "placeholder": {

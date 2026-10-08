@@ -64,7 +64,8 @@ vi.mock('../notes/runtime-effects', () => ({
   syncNoteCreate: vi.fn(),
   syncNoteDelete: vi.fn(),
   syncNoteUpdate: vi.fn(),
-  unlinkTasksFromDeletedNote: vi.fn()
+  unlinkTasksFromDeletedNote: vi.fn(),
+  queueEmbeddedVaultFiles: vi.fn()
 }))
 
 // Both readers are spied through to the real implementation: the add path must
@@ -92,7 +93,10 @@ const crdtProvider = vi.hoisted(() => ({
   open: vi.fn<
     (noteId: string, windowId?: number, options?: { skipSeed?: boolean }) => Promise<unknown>
   >(async () => ({ getXmlFragment: () => ({ length: 0 }) })),
-  closeIfInactive: vi.fn(async () => true)
+  closeIfInactive: vi.fn(async () => true),
+  // A store: these tests read a persisted doc back.
+  hasPersistence: vi.fn(() => true),
+  isNoteLocalOnly: vi.fn(() => false)
 }))
 
 const replaceNoteBodyInCrdt = vi.hoisted(() => vi.fn(async () => true))
@@ -127,7 +131,11 @@ import {
   initializeJournalCrdt
 } from '../journal/runtime-effects'
 import { setJournalConfig } from './journal-config'
-import { syncNoteCreate, unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
+import {
+  queueEmbeddedVaultFiles,
+  syncNoteCreate,
+  unlinkTasksFromDeletedNote
+} from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
 import { followJournalFolder } from './journal-folder-follow'
@@ -146,6 +154,8 @@ describe('vault watcher', () => {
 
   beforeEach(() => {
     vault = createTestVault('watcher')
+    // The watcher queues deletes only while the vault's database is there.
+    fs.writeFileSync(path.join(vault.memryDir, 'data.db'), '')
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     indexDb.sqlite.pragma('foreign_keys = ON')
@@ -1073,6 +1083,37 @@ describe('vault watcher', () => {
         changes: expect.objectContaining({ wordCount: 3 })
       })
     )
+  })
+
+  // The watcher never sees the attachments folder, so the body that embeds a
+  // file is where it learns the file exists (#2651).
+  it('offers the files an external body embeds for upload when it indexes the note', async () => {
+    const notePath = createTestNote(vault, { title: 'embeds', content: 'plain' })
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/embeds.md'))
+      .get()!.id
+
+    const raw = fs.readFileSync(notePath, 'utf8')
+    const parsed = parseNote(raw, path.relative(vault.path, notePath))
+    fs.writeFileSync(
+      notePath,
+      serializeNote(parsed.frontmatter, '![shot](images/shot.png)'),
+      'utf8'
+    )
+    await watcher.handleFileChange(notePath)
+
+    expect(
+      vi.mocked(queueEmbeddedVaultFiles).mock.calls.map(([id, body]) => [id, body.trim()])
+    ).toEqual([
+      [noteId, 'plain'],
+      [noteId, '![shot](images/shot.png)']
+    ])
   })
 
   it('backfills the smallest file first', async () => {

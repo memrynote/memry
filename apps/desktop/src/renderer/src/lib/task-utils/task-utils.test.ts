@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { buildTaskNoteIndex } from '@/lib/task-note-index'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType, TaskFilters, TaskSort } from '@/data/tasks-data'
 import {
@@ -4476,6 +4477,50 @@ describe('Task Utils', () => {
 
         expect(result).toHaveLength(1)
         expect(result[0].id).toBe('t1')
+      })
+
+      it('should apply location filter by folder subtree and note', () => {
+        const noteIndex = buildTaskNoteIndex([
+          { id: 'roof', path: 'Infra/House/Stage 1/Roof.md', title: 'Roof' },
+          { id: 'brief', path: 'Infra/House/Brief.md', title: 'Brief' },
+          { id: 'house2', path: 'Infra/House2/Plan.md', title: 'Plan' },
+          { id: 'garden', path: 'Infra/Garden.md', title: 'Garden' }
+        ])
+        const tasks = [
+          createMockTask({ id: 'in-subfolder', sourceNoteId: 'roof' }),
+          createMockTask({ id: 'linked-only', linkedNoteIds: ['brief'] }),
+          createMockTask({ id: 'prefix-sibling', sourceNoteId: 'house2' }),
+          createMockTask({ id: 'garden', sourceNoteId: 'garden' }),
+          createMockTask({ id: 'unfiled' })
+        ]
+        const run = (location: Partial<TaskFilters>): string[] =>
+          applyFiltersAndSort(
+            tasks,
+            { ...createDefaultFilters(), ...location },
+            createDefaultSort(),
+            projects,
+            new Date(),
+            noteIndex
+          )
+            .map((t) => t.id)
+            .sort()
+
+        expect(run({ folderPaths: ['Infra/House'] })).toEqual(['in-subfolder', 'linked-only'])
+        expect(run({ noteIds: ['garden'] })).toEqual(['garden'])
+        expect(run({ folderPaths: ['Infra/House'], noteIds: ['garden'] })).toEqual([
+          'garden',
+          'in-subfolder',
+          'linked-only'
+        ])
+        // Without the index nothing can be placed, so nothing matches rather than everything.
+        expect(
+          applyFiltersAndSort(
+            tasks,
+            { ...createDefaultFilters(), folderPaths: ['Infra/House'] },
+            createDefaultSort(),
+            projects
+          )
+        ).toEqual([])
       })
 
       it('should apply priority filter', () => {

@@ -45,9 +45,19 @@ function getResourcesDir(context) {
   return join(context.appOutDir, 'resources')
 }
 
+// onnxruntime-node ships its prebuilds under bin/napi-v<N>/<platform>/<arch>;
+// N moved from 3 to 6 in 1.22, so every napi dir present is pruned.
 function pruneOnnxRuntime(nodeModulesDir, platformName, archName) {
-  const napiRoot = join(nodeModulesDir, 'onnxruntime-node', 'bin', 'napi-v3')
+  const binRoot = join(nodeModulesDir, 'onnxruntime-node', 'bin')
+  if (!existsSync(binRoot)) return
+  for (const entry of readdirSync(binRoot)) {
+    if (entry.startsWith('napi-v')) {
+      pruneOnnxNapiDir(join(binRoot, entry), platformName, archName)
+    }
+  }
+}
 
+function pruneOnnxNapiDir(napiRoot, platformName, archName) {
   for (const platform of ['darwin', 'linux', 'win32']) {
     if (platform !== platformName) {
       removePath(join(napiRoot, platform))
@@ -106,6 +116,35 @@ function pruneBetterSqliteBuildArtifacts(nodeModulesDir) {
   removePath(join(betterSqliteRoot, 'build', 'deps'))
   removePath(join(betterSqliteRoot, 'build', 'Release', 'obj'))
   removePath(join(betterSqliteRoot, 'build', 'Release', 'test_extension.node'))
+}
+
+// tesseract.js-core ships every build for browsers and Node, about 45 MB. Under
+// Node, tesseract.js 7.0.0 loads the full (legacy + LSTM) builds even for an
+// LSTM-only worker: its worker script hands getCore a boolean where getCore
+// expects an OEM number. So the kept set is tesseract-core.js, -simd.js and
+// -relaxedsimd.js with the .wasm next to each. check-packaged-runtime-deps.js
+// runs OCR through the packaged tree and fails if this set goes stale.
+const TESSERACT_CORE_KEPT = /^tesseract-core(-simd|-relaxedsimd)?\.(js|wasm)$/
+
+function pruneTesseractCore(nodeModulesDir) {
+  const roots = [join(nodeModulesDir, 'tesseract.js-core')]
+  const storeDir = join(nodeModulesDir, '.pnpm')
+  if (existsSync(storeDir)) {
+    for (const entry of readdirSync(storeDir)) {
+      if (entry.startsWith('tesseract.js-core@')) {
+        roots.push(join(storeDir, entry, 'node_modules', 'tesseract.js-core'))
+      }
+    }
+  }
+
+  for (const root of roots) {
+    if (!existsSync(root) || lstatSync(root).isSymbolicLink()) continue
+    for (const entry of readdirSync(root)) {
+      if (entry.startsWith('tesseract-core') && !TESSERACT_CORE_KEPT.test(entry)) {
+        removePath(join(root, entry))
+      }
+    }
+  }
 }
 
 function relativizeInternalSymlinks(rootPath) {
@@ -238,5 +277,6 @@ export default async function prunePackagedApp(context) {
     pruneOnnxRuntime(nodeModulesDir, context.electronPlatformName, archName)
     pruneVelopackNative(nodeModulesDir, context.electronPlatformName, archName)
     pruneBetterSqliteBuildArtifacts(nodeModulesDir)
+    pruneTesseractCore(nodeModulesDir)
   }
 }

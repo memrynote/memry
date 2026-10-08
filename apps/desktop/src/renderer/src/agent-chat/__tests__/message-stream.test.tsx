@@ -1090,6 +1090,9 @@ describe('MessageStream', () => {
       />
     )
 
+    // Always allow covers the tool, never a locked note or folder (#2607).
+    expect(screen.getByText(/locked notes and folders stay read-only/i)).toBeInTheDocument()
+
     // Radix opens its menu on pointerdown, not on a synthetic click.
     fireEvent.pointerDown(
       screen.getByRole('button', { name: /Always allow/i }),
@@ -1320,5 +1323,60 @@ describe('MessageStream', () => {
         }
       })
     })
+  })
+
+  it.each([
+    ['create', 'vault_create_note', 'The agent wants to create Planning note.'],
+    ['update', 'vault_update_note', 'The agent wants to update Planning note.'],
+    ['delete', 'vault_delete_note', 'The agent wants to delete Planning note.']
+  ] as const)('titles a %s approval card with its own verb', async (intent, tool, title) => {
+    mockPreviewDiff.mockResolvedValue({
+      title: 'Planning note',
+      current: '',
+      candidate: 'new',
+      preview: {
+        kind: intent === 'delete' ? 'loss' : 'body',
+        item: { type: 'note', id: null, title: 'Planning note', context: null },
+        intent,
+        fields: [],
+        body: intent === 'delete' ? null : { current: '', candidate: 'new' },
+        loss: [],
+        destructive: intent === 'delete'
+      }
+    })
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-1',
+            name: tool,
+            args: { title: 'Planning note' },
+            requiresDiff: true,
+            previewKind: intent === 'delete' ? 'loss' : 'body'
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: { tool, args: { title: 'Planning note' }, status: 'pending' }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(await screen.findByText(new RegExp(`^${title}`))).toBeInTheDocument()
   })
 })

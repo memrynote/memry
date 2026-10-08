@@ -151,7 +151,7 @@
       "deny": "Tolak",
       "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan.",
       "thisTool": "alat ini",
-      "alwaysAllowHint": "“Selalu izinkan” berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin.",
+      "alwaysAllowHint": "“Selalu izinkan” berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin. Catatan dan folder yang dikunci tetap hanya-baca.",
       "alwaysInChat": "Selalu izinkan di obrolan ini",
       "alwaysInChatHint": "Berakhir saat percakapan berakhir",
       "alwaysInVault": "Selalu izinkan di brankas ini",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Tidak dapat menampilkan pratinjau perubahan ini",
       "description": "Agen ingin memperbarui {title}. Tinjau perubahannya sebelum menerapkannya.",
+      "descriptionCreate": "Agen ingin membuat {title}. Tinjau perubahannya sebelum menerapkannya.",
+      "descriptionDelete": "Agen ingin menghapus {title}. Tinjau perubahannya sebelum menerapkannya.",
       "fallbackTitle": "item ini",
       "current": "Saat ini",
       "candidate": "Kandidat",
@@ -374,7 +376,8 @@
       "agent": "Agen",
       "pendingApproval": "{count, plural, one {# menunggu persetujuan} other {# menunggu persetujuan}}",
       "inProgress": "Giliran agen sedang berlangsung",
-      "close": "Tutup agen"
+      "close": "Tutup agen",
+      "moreActions": "Tindakan agen lainnya"
     },
     "errors": {
       "loadConversations": "Tidak dapat memuat percakapan agen",

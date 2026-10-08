@@ -151,7 +151,7 @@
       "deny": "Odbij",
       "invalidJson": "Unesite važeći JSON prije primjene izmjena.",
       "thisTool": "ovaj alat",
-      "alwaysAllowHint": "„Uvijek dopusti” odnosi se na {tool}. Svi ostali alati i dalje traže odobrenje, a brisanje ga uvijek traži.",
+      "alwaysAllowHint": "„Uvijek dopusti” odnosi se na {tool}. Svi ostali alati i dalje traže odobrenje, a brisanje ga uvijek traži. Zaključane bilješke i mape ostaju samo za čitanje.",
       "alwaysInChat": "Uvijek dopusti u ovom razgovoru",
       "alwaysInChatHint": "Vrijedi do kraja razgovora",
       "alwaysInVault": "Uvijek dopusti u ovom trezoru",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nije moguće prikazati pretpregled ove promjene",
       "description": "Agent želi ažurirati {title}. Pregledajte promjenu prije nego što je primijenite.",
+      "descriptionCreate": "Agent želi stvoriti {title}. Pregledajte promjenu prije nego što je primijenite.",
+      "descriptionDelete": "Agent želi izbrisati {title}. Pregledajte promjenu prije nego što je primijenite.",
       "fallbackTitle": "ovu stavku",
       "current": "Trenutno",
       "candidate": "Predloženo",
@@ -374,7 +376,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# odobrenje na čekanju} few {# odobrenja na čekanju} other {# odobrenja na čekanju}}",
       "inProgress": "Agent upravo odgovara",
-      "close": "Zatvori agenta"
+      "close": "Zatvori agenta",
+      "moreActions": "Više radnji agenta"
     },
     "errors": {
       "loadConversations": "Nije moguće učitati razgovore s agentom",

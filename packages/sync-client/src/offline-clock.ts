@@ -13,6 +13,7 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -301,6 +302,20 @@ export function incrementCustomIconClockOffline(db: DrizzleDb, iconId: string): 
     log.debug('Incremented offline custom icon clock', { iconId })
   } catch (err) {
     log.warn('Failed to increment offline custom icon clock', { iconId, error: err })
+  }
+}
+
+export function incrementVaultLockClockOffline(db: DrizzleDb, lockId: string): void {
+  try {
+    const lock = db.select().from(vaultLocks).where(eq(vaultLocks.id, lockId)).get()
+    if (!lock) return
+
+    const newClock = increment(lock.clock ?? {}, OFFLINE_DEVICE_KEY)
+    db.update(vaultLocks).set({ clock: newClock }).where(eq(vaultLocks.id, lockId)).run()
+
+    log.debug('Incremented offline vault lock clock', { lockId })
+  } catch (err) {
+    log.warn('Failed to increment offline vault lock clock', { lockId, error: err })
   }
 }
 

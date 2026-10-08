@@ -226,6 +226,46 @@ the next time you open it.
 Earlier builds could show such a page as plain, unclickable text until you typed into the
 note or reopened it a few times. Opening the note is now enough.
 
+## Link Syntax in Code
+
+Link syntax written inside inline code or a fenced code block is text, not a link. A note
+that documents the syntax, such as `` `[[Example]]` `` or a code block of sample markdown,
+adds no backlink, no outgoing link and no graph node for it. This holds for files saved with
+Windows line endings too.
+
+A link inside a comment still counts. See [Hidden Links](#hidden-links).
+
+Earlier builds counted link syntax in code as real links, which left unresolved nodes on the
+graph. The first time a vault opens after the update, memrynote refreshes the links of the
+notes that have link syntax inside code, once, in the background. The note files are not
+changed.
+
+## Hidden Links
+
+Three linked note titles in one paragraph read as random words to anyone outside memrynote.
+To link a note without showing the link, put the link in a comment. Two forms are
+supported:
+
+- An HTML comment: `<!-- [[Topic]] -->`, on its own line, inside a sentence, or across
+  several lines.
+- An Obsidian-style comment: `%% [[Topic]] %%`, inline, or as a block with `%%` on the lines
+  before and after it.
+
+A link in either comment works like a visible one. It shows in the target's backlinks, in
+the note's outgoing links and on the graph.
+
+Neither comment appears in a PDF or HTML export, and the links inside them are left out as
+well. Comment syntax written inside inline code or a code block is text, so it stays in the
+export as code.
+
+Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
+byte for byte. In the editor an HTML comment shows as a small muted marker, and a `%%`
+comment shows as its text.
+
+A `%%` with no closing `%%` later in the note is plain text, so `50%% off` hides nothing.
+
+Footnotes are not supported yet.
+
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a

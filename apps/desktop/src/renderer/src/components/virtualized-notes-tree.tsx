@@ -66,7 +66,9 @@ import {
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
@@ -596,6 +598,7 @@ function FolderRow({
           // Single item actions
           <>
             <OpenTargetMenuItems tab={folderTabData(item.folder.path, item.folder.icon)} />
+            <ShowTasksMenuItem location={{ folderPath: item.folder.path }} />
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
               <FilePlus className="me-2 h-4 w-4" />
@@ -639,6 +642,7 @@ function FolderRow({
             )}
             <ContextMenuSeparator />
             <BookmarkMenuItem itemType="folder" itemId={item.folder.path} />
+            <VaultLockMenuItem kind="folder" target={item.folder.path} />
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRevealFolderInFinder?.(item.folder.path)}>
               <FolderOpen className="me-2 h-4 w-4" />
@@ -1001,6 +1005,9 @@ function NoteRow({
           // Single item actions
           <>
             <OpenTargetMenuItems tab={noteTabData(item.note)} />
+            {(item.note.fileType ?? 'markdown') === 'markdown' && (
+              <ShowTasksMenuItem location={{ noteId: item.note.id }} />
+            )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
               <Pencil className="me-2 h-4 w-4" />
@@ -1027,6 +1034,7 @@ function NoteRow({
             {!item.note.journalDate && (
               <>
                 <BookmarkMenuItem itemType="note" itemId={item.note.id} />
+                <VaultLockMenuItem kind="note" target={item.note.id} />
                 <ContextMenuSeparator />
               </>
             )}

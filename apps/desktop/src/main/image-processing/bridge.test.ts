@@ -41,6 +41,7 @@ vi.mock('sharp', () => {
 
 import {
   generateThumbnailInImageProcess,
+  prepareViewImageInImageProcess,
   processInboxImageAttachment,
   resetImageProcessingForTests,
   stopImageProcessing
@@ -166,6 +167,39 @@ describe('image-processing bridge', () => {
       },
       thumbnailData: Buffer.from('thumb')
     })
+  })
+
+  it('prepares an image for an agent to view through the utility process', async () => {
+    const viewPromise = prepareViewImageInImageProcess({ kind: 'file', path: '/v/shot.png' }, 1568)
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const requestMessage = requestMessages()[0]!
+    expect(requestMessage).toEqual(
+      expect.objectContaining({
+        type: 'prepare-view-image',
+        source: { kind: 'file', path: '/v/shot.png' },
+        maxEdge: 1568
+      })
+    )
+
+    const result = {
+      data: new Uint8Array([1, 2]),
+      mimeType: 'image/png',
+      width: 1568,
+      height: 900,
+      sourceWidth: 3000,
+      sourceHeight: 1722
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'view-image-result',
+      requestId: requestMessage.requestId,
+      result
+    })
+
+    await expect(viewPromise).resolves.toEqual(result)
   })
 
   it('rejects image work when the utility process reports an error or exits', async () => {

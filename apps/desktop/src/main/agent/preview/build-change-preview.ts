@@ -229,9 +229,11 @@ const deleteFolder: Builder = async (args, handles) => {
   const path = str(args.path)
   const entries = await handles.folders.list({ path, recursive: true })
   const notes = entries.filter((entry) => entry.kind === 'note').length
+  const files = entries.filter((entry) => entry.kind === 'file').length
   const folders = entries.filter((entry) => entry.kind === 'folder').length
   const loss: string[] = []
   if (notes > 0) loss.push(`notes:${notes}`)
+  if (files > 0) loss.push(`files:${files}`)
   if (folders > 0) loss.push(`folders:${folders}`)
   return make({
     kind: 'loss',

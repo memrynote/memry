@@ -32,6 +32,7 @@ describe('CRDT channel constants', () => {
     expect(CRDT_EVENTS.STATE_CHANGED).toBe('crdt:state-changed')
     expect(CRDT_EVENTS.DOC_LOADED).toBe('crdt:doc-loaded')
     expect(CRDT_EVENTS.DOC_ERROR).toBe('crdt:doc-error')
+    expect(CRDT_EVENTS.WRITE_BACK_FAILED).toBe('sync:write-back-failed')
   })
 
   it('pins the Y.Doc fragment name', () => {
@@ -43,6 +44,14 @@ describe('CrdtOpenDocSchema / CrdtCloseDocSchema', () => {
   it('accepts a noteId', () => {
     expect(CrdtOpenDocSchema.safeParse({ noteId: 'note-1' }).success).toBe(true)
     expect(CrdtCloseDocSchema.safeParse({ noteId: 'note-1' }).success).toBe(true)
+  })
+
+  it('keeps the vault path an open names, and rejects an empty one', () => {
+    expect(CrdtOpenDocSchema.parse({ noteId: 'note-1', vaultPath: '/vaults/a' })).toEqual({
+      noteId: 'note-1',
+      vaultPath: '/vaults/a'
+    })
+    expect(CrdtOpenDocSchema.safeParse({ noteId: 'note-1', vaultPath: '' }).success).toBe(false)
   })
 
   it('rejects empty noteId', () => {

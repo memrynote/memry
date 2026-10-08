@@ -93,7 +93,15 @@ vi.mock('../notes/runtime-effects', () => ({
   syncNoteUpdate: vi.fn(),
   syncNoteDelete: vi.fn(),
   setNoteLocalOnlyState: vi.fn(),
-  cleanupProjectLinksForDeletedNote: vi.fn()
+  cleanupProjectLinksForDeletedNote: vi.fn(),
+  queueEmbeddedVaultFiles: vi.fn()
+}))
+
+// The note command hands a body edit to the note's CRDT doc (#2646); with no
+// doc in these tests that is only observable as the call.
+const mockFeedExternalEditToCrdt = vi.fn(async (..._args: unknown[]) => false)
+vi.mock('../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: (...args: unknown[]) => mockFeedExternalEditToCrdt(...args)
 }))
 
 const mockCreateNote = vi.fn()
@@ -163,6 +171,13 @@ vi.mock('../lib/reminders', () => ({
 
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { getStatus } from '../vault/index'
+import { deleteInboxAttachments } from './attachments'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 import {
   fileToFolder,
   convertToNote,
@@ -1014,6 +1029,34 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
+    it('keeps checkbox lines plain when asked (#2759)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk\n- [x] Call Ana'
+      })
+
+      await convertToNote(itemId, { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(
+        /^- \[ \] Buy milk \{check\}\n- \[x\] Call Ana \{check\}/
+      )
+    })
+
+    it('leaves checkbox lines bare for the editor without the option', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+
+      await convertToNote(itemId)
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk$/m)
+    })
+
     it('should fail when item does not exist', async () => {
       const result = await convertToNote('nonexistent')
       expect(result.success).toBe(false)
@@ -1311,6 +1354,29 @@ describe('Inbox Filing Operations', () => {
           content: expect.stringContaining('## Inbox Captures')
         })
       )
+    })
+
+    // `updateNote` moves the index hash with the appended bytes, so without the
+    // feed the next write-back puts the doc's older body back over them.
+    it("hands the appended capture to the target note's CRDT doc", async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Test Item',
+        content: 'Some content'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target-note',
+        content: '# Target Note',
+        path: 'notes/target.md'
+      })
+      mockFeedExternalEditToCrdt.mockClear()
+
+      await linkToNote(itemId, 'target-note')
+
+      const written = mockUpdateNote.mock.calls[0][0] as { id: string; content: string }
+      expect(written.content).toMatch(/^# Target Note\n\n## Inbox Captures\n\n/)
+      expect(mockFeedExternalEditToCrdt.mock.calls).toEqual([['target-note', written.content]])
     })
 
     it('should fail when target note does not exist', async () => {
@@ -2079,6 +2145,101 @@ describe('Inbox Filing Operations', () => {
         'filed_binary_sync_enqueue',
         expect.any(Error)
       )
+    })
+  })
+
+  describe('read-only locks (#2606)', () => {
+    const notePaths: Record<string, string> = {
+      'note-locked': 'projects/locked.md',
+      'note-free': 'projects/free.md'
+    }
+
+    beforeEach(() => {
+      installVaultLockSource({
+        dataDb: () => asClientDb(testDb.db),
+        notePathOf: (noteId) => notePaths[noteId] ?? null,
+        noteIdAtPath: (relativePath) =>
+          Object.keys(notePaths).find((id) => notePaths[id] === relativePath) ?? null
+      })
+      invalidateVaultLocks()
+    })
+
+    afterEach(() => {
+      installVaultLockSource({
+        dataDb: () => null,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+    })
+
+    function seedImage(id: string): string {
+      const itemId = seedInboxItem(testDb.db, { id, type: 'image', title: 'Screenshot' })
+      updateInboxItem(itemId, { attachmentPath: `attachments/inbox/${id}/screenshot.png` })
+      return itemId
+    }
+
+    it('filing a binary into a locked folder is refused before the file moves', async () => {
+      writeLockRow(asClientDb(testDb.db), 'folder', 'projects', true)
+      const itemId = seedImage('image-locked-folder')
+
+      const result = await fileToFolder(itemId, 'projects/sub')
+
+      expect(result).toEqual({
+        success: false,
+        filedTo: null,
+        error: VAULT_LOCKED_FOLDER_MESSAGE
+      })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(mockCopyFile).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockIndexBinaryFile).not.toHaveBeenCalled()
+    })
+
+    it('linking a binary to a locked note is refused before the file moves or the inbox copy goes', async () => {
+      writeLockRow(asClientDb(testDb.db), 'note', 'note-locked', true)
+      const itemId = seedImage('image-locked-note')
+      mockGetNoteById
+        .mockResolvedValueOnce({ id: 'note-free', content: '# Free', path: 'projects/free.md' })
+        .mockResolvedValueOnce({
+          id: 'note-locked',
+          content: '# Locked',
+          path: 'projects/locked.md'
+        })
+
+      const result = await linkToNotes(itemId, [
+        { kind: 'note', noteId: 'note-free' },
+        { kind: 'note', noteId: 'note-locked' }
+      ])
+
+      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_NOTE_MESSAGE })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(mockCopyFile).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockUpdateNote).not.toHaveBeenCalled()
+      expect(mockCreateNote).not.toHaveBeenCalled()
+      expect(mockIndexBinaryFile).not.toHaveBeenCalled()
+    })
+
+    it('linking a binary into a locked folder is refused before the file moves', async () => {
+      writeLockRow(asClientDb(testDb.db), 'folder', 'archive', true)
+      const itemId = seedImage('image-locked-dest')
+      mockGetNoteById.mockResolvedValueOnce({
+        id: 'note-free',
+        content: '# Free',
+        path: 'projects/free.md'
+      })
+
+      const result = await linkToNotes(
+        itemId,
+        [{ kind: 'note', noteId: 'note-free' }],
+        [],
+        'archive'
+      )
+
+      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_FOLDER_MESSAGE })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockUpdateNote).not.toHaveBeenCalled()
     })
   })
 })

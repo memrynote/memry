@@ -1,6 +1,10 @@
+import { defaultBlockSpecs } from '@blocknote/core'
 import { createMemrySchema, WikiLink } from '@memry/editor-schema'
+import { withImageWidthInAlt } from '@memry/editor-schema/blocks'
+import { withImageCornerHandles } from './image-corner-handles'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { createReactDiagramBlockSpec } from '@blocknote/diagram-block'
+import { ColumnBlock } from '@blocknote/xl-multi-column'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createMathBlock } from './math-block'
@@ -16,6 +20,7 @@ import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 import { InlineImage } from './inline-image'
 import { InlineCheckbox } from './inline-checkbox'
+import { HtmlComment } from './html-comment'
 
 // Built through the shared factory so the main process gets a schema with the
 // same node types. Main converts the shared Y.Doc through y-prosemirror, which
@@ -36,6 +41,9 @@ export const editorSchema = createMemrySchema({
   // the syntax-highlighting one the factory installs. Pass overrides only.
   blocks: {
     file: createFileBlock(),
+    // The factory's image (width carried in the alt) plus corner grips that
+    // drive BlockNote's side grips (#2696). Same node, same props.
+    image: withImageCornerHandles(withImageWidthInAlt(defaultBlockSpecs.image)),
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
@@ -57,7 +65,11 @@ export const editorSchema = createMemrySchema({
     // for those two, and the parity gate in `editor-schema.test.ts` compares
     // the two configs field by field, so an upstream prop added here and
     // missing there fails the suite instead of being stripped on write-back.
-    diagram: createReactDiagramBlockSpec()
+    diagram: createReactDiagramBlockSpec(),
+    // Upstream's column, for its resize handles and its drag-to-the-edge drop
+    // handler. Same node as the factory's headless one (blocks/column-specs.ts);
+    // `columnList` stays the factory's, which carries the MCM id and settings.
+    column: ColumnBlock
   },
   inline: {
     // The editor flavour of wikiLink: same node as main's, plus the `parse`
@@ -72,7 +84,10 @@ export const editorSchema = createMemrySchema({
     // A tickable checkbox inside a table cell — `checkListItem` is a block and
     // a cell holds inline content only. Same node as main's; only the click
     // handler that flips it is added here.
-    inlineCheckbox: InlineCheckbox
+    inlineCheckbox: InlineCheckbox,
+    // An HTML comment kept in the note (AF-015). Same node as main's; only the
+    // marker shown in its place is added here.
+    htmlComment: HtmlComment
   }
 })
 

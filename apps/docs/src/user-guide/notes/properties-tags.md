@@ -121,6 +121,13 @@ other desktop and your phone with its type and its option colors intact, so the 
 the same colored chip everywhere. A value that no longer matches any option — an option renamed on
 another device before this note synced — still renders, in gray, rather than disappearing.
 
+Every definition lives in `.memry/properties.md` inside the vault, whatever its type: text,
+number, checkbox, URL, date, select, multi-select and status. A definition that an agent or the
+desktop API creates or edits is in that file as soon as the call returns. Older versions kept
+non-select definitions only in the app's database; the first time a vault opens after the update,
+they are copied into the file once, and entries the file already has are left as they are.
+Saving a note that uses a property never clears that property's options, default or color.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.
@@ -218,6 +225,8 @@ lookups.
 In the vault's markdown files, a note's frontmatter contains only your own properties (plus `tags` and `aliases`). MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.
 
 Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all.
+
+When you or an agent do edit a property, tag, or alias, only the lines of that key change. Every other key keeps its line byte for byte, in its place, with its quoting, comments and line endings. A plain date such as `due: 2026-10-07` stays a plain date, also when you change it. A key you remove loses its lines, and a new key goes at the end of the block. The same holds for journal entries.
 
 ### A `#tag` in the body stays in the body
 

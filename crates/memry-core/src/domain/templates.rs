@@ -1,9 +1,9 @@
 //! Templates, and the note a template creates (T126, chapter 13 §13.7.6,
 //! chapter 12 §12.1.2 and §12.2, data-model §A.3).
 //!
-//! **A template body is not markdown-parsed here.** The core owns
-//! `extract_text` and nothing else (§12.1); markdown becomes a document only
-//! inside the editor bundle, through `doc-load.seedMarkdown`. So applying a
+//! **A template body is not markdown-parsed here.** The core parses markdown
+//! only in `markdown_seed`, for a journal day and a filed inbox article
+//! (§12.1.0); a note's markdown becomes a document on desktop. So applying a
 //! template is three verbatim copies and no parse:
 //!
 //! 1. the template's `content` into the new note's payload `content`, which is
@@ -11,7 +11,7 @@
 //!    vault file, because desktop writes a remote create's `content` as the
 //!    file body;
 //! 2. the same bytes into `note_bodies.seed_markdown`, which is the only copy
-//!    of what the user asked for until the editor seeds the document (§A.3);
+//!    of what the user asked for until desktop seeds the document (§A.3);
 //! 3. the template's `tags` onto the note.
 //!
 //! **Template `properties` are deliberately not applied.** §13.7.6 requires

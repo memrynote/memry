@@ -8,9 +8,12 @@
 import { applyTemplate, getTemplate } from '../vault/templates'
 import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
 import { updateNoteCommand } from './domain'
-import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from '../sync/crdt-feed'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
+import { assertNoteWritable } from '../vault-locks/registry'
+import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
 import type { Template } from '@memry/contracts/templates-api'
+import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
 
 /**
  * Build the NoteUpdateInput for applying a template to a note.
@@ -37,15 +40,14 @@ export function buildTemplateApplyUpdate(
   return update
 }
 
-export async function applyTemplateToNote(input: {
-  noteId: string
-  templateId: string
-  mode: 'full' | 'body'
-}): Promise<Note> {
+export async function applyTemplateToNote(
+  input: { noteId: string; templateId: string; mode: 'full' | 'body' } & PlainChecklistsOption
+): Promise<Note> {
   const note = await getNoteById(input.noteId)
   if (!note) {
     throw new NoteError(`Note not found: ${input.noteId}`, NoteErrorCode.NOT_FOUND, input.noteId)
   }
+  assertNoteWritable(note.id, note.path)
 
   const template = await getTemplate(input.templateId)
   if (!template) {
@@ -53,10 +55,11 @@ export async function applyTemplateToNote(input: {
   }
 
   const update = buildTemplateApplyUpdate(note, template, input.mode)
+  if (input.plainChecklists && update.content !== undefined) {
+    update.content = markAddedChecklistLinesPlain(update.content, note.content)
+  }
+  // Feeds the body to the note's Y.Doc, so an open editor shows it live.
   const updated = await updateNoteCommand(update)
-
-  // Update any open editor's Y.Doc so the replacement shows live.
-  await replaceNoteBodyInCrdt(input.noteId, update.content ?? '')
 
   if (input.mode === 'full' && update.tags) {
     replaceNoteTagsInCrdt(input.noteId, update.tags)

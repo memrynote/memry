@@ -27,11 +27,9 @@ import { renameSync, existsSync } from 'fs'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getNoteAttachmentsDir } from './attachments'
+import { STORED_PREFIX_RE } from './attachment-heal'
 
 const logger = createLogger('AttachmentRenameReconcile')
-
-/** The `{6-char nanoid}-` prefix `generateUniqueFilename` puts on every file. */
-const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
 
 export interface PlannedRename {
   from: string

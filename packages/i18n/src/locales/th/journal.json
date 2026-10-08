@@ -30,7 +30,9 @@
     "copyUnsavedContent": "คัดลอกเนื้อหาที่ยังไม่ได้บันทึกไปยังคลิปบอร์ด",
     "addBookmark": "เพิ่มบุ๊กมาร์ก",
     "removeBookmark": "ลบบุ๊กมาร์ก",
-    "deleteEntry": "ลบหน้าบันทึกประจำวัน"
+    "deleteEntry": "ลบหน้าบันทึกประจำวัน",
+    "lockEntry": "ล็อกหน้าบันทึกประจำวัน",
+    "unlockEntry": "ปลดล็อกหน้าบันทึกประจำวัน"
   },
   "editor": {
     "placeholder": {

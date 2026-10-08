@@ -26,7 +26,7 @@ import {
 } from './file-ops'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
-import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
@@ -42,6 +42,7 @@ import { updateNoteMetadata } from '@memry/storage-data'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'
 import type { Note } from './notes-crud'
+import { assertFolderWritable, assertNoteWritable } from '../vault-locks/registry'
 
 // ============================================================================
 // Rename
@@ -66,6 +67,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, existing.path)
 
   const cached = getNoteCacheById(db, id)
   const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
@@ -172,6 +174,8 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, existing.path)
+  assertFolderWritable(newFolder)
 
   const cached = getNoteCacheById(db, id)
   const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
@@ -253,7 +257,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       // undo the loss. The cache row already points at the new path, so the
       // embed resolution inside this call reads the note from where it now
       // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
-      await replaceNoteBodyInCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+      await feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
     }
   }
 

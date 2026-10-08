@@ -1,10 +1,11 @@
-# The built editor document is a checked-in artifact, ~1.19 MB of inlined
-# bundle. Marking it generated keeps it out of review diffs and out of merge
-# resolution; it is always rebuilt, never hand-merged.
-packages/editor-web/dist/** -diff -merge linguist-generated
-apps/mobile/src/editor/generated/** -diff -merge linguist-generated
 packages/swift/MemryCore/Sources/MemryCore/Generated/** -diff linguist-generated
 # The iOS article extractor, ~1.2 MB of minified bundle
 # (scripts/generate-ios-article-extract.mjs). Its template literals carry
 # trailing spaces that are code, not whitespace errors.
 apps/ios/Memry/Resources/article-extract.js -diff -merge -whitespace linguist-generated
+# Vendored KaTeX and mermaid for the iOS block renderer, copied byte for byte
+# by apps/ios/scripts/generate-block-render.mjs.
+apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace linguist-vendored
+# The iOS whiteboard editor, desktop's Excalidraw bundled with its fonts
+# (apps/ios/scripts/generate-whiteboard.mjs). Rebuilt, never hand-merged.
+apps/ios/Memry/Resources/Whiteboard.bundle/** -diff -merge -whitespace linguist-generated

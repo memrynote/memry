@@ -8,7 +8,12 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 
-import { agentReducer, initialAgentState, type AgentState } from '../agent-context.reducer'
+import {
+  agentReducer,
+  initialAgentState,
+  type AgentAction,
+  type AgentState
+} from '../agent-context.reducer'
 
 const claudeStatus: AgentBackendStatus = {
   backend: 'claude_cli',
@@ -781,5 +786,29 @@ describe('agentReducer', () => {
     })
 
     expect(next.inFlight[conversation.id]).toBeUndefined()
+  })
+
+  it('keeps a turn error out of the window error when the transcript already shows it', () => {
+    const failedReply = message({
+      id: 'assistant-1',
+      conversationId: conversation.id,
+      role: 'assistant',
+      text: 'model overloaded',
+      status: 'error'
+    })
+    const state: AgentState = {
+      ...initialAgentState,
+      inFlight: { [conversation.id]: true },
+      messagesByConversation: { [conversation.id]: [failedReply] }
+    }
+    const turnError = (message: string): AgentAction => ({
+      type: 'event',
+      event: { kind: 'turn_error', conversationId: conversation.id, turnId: 'turn-1', message }
+    })
+
+    expect(agentReducer(state, turnError('model overloaded')).error).toBeNull()
+    expect(agentReducer(state, turnError('claude CLI is missing')).error).toBe(
+      'claude CLI is missing'
+    )
   })
 })

@@ -158,7 +158,8 @@
       "richTextAria": "Rich-Text-Editor",
       "headingPlaceholder": "Überschrift",
       "listPlaceholder": "Listenelement",
-      "todoPlaceholder": "To-do"
+      "todoPlaceholder": "To-do",
+      "htmlComment": "Versteckter HTML-Kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabellenaktionen für Zeile {row}, Spalte {column}",
@@ -245,6 +246,25 @@
       "warning": "Warnung",
       "error": "Fehler",
       "success": "Erfolg"
+    },
+    "columns": {
+      "group": "Grundblöcke",
+      "two": {
+        "title": "2 Spalten",
+        "subtext": "Blöcke in zwei Spalten nebeneinander anordnen"
+      },
+      "three": {
+        "title": "3 Spalten",
+        "subtext": "Blöcke in drei Spalten nebeneinander anordnen"
+      },
+      "four": {
+        "title": "4 Spalten",
+        "subtext": "Blöcke in vier Spalten nebeneinander anordnen"
+      },
+      "five": {
+        "title": "5 Spalten",
+        "subtext": "Blöcke in fünf Spalten nebeneinander anordnen"
+      }
     },
     "diagram": {
       "title": "Diagramm",

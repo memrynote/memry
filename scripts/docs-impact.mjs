@@ -11,7 +11,7 @@ const docsRelevantPatterns = [
   /^apps\/desktop\/package\.json$/,
   /^apps\/sync-server\/(?:src|schema)\//,
   /^apps\/sync-server\/(?:package\.json|wrangler\.toml)$/,
-  /^packages\/(?:contracts|db-schema|rpc|shared|sync-core)\//
+  /^packages\/(?:contracts|db-schema|rpc|shared|sync-client|sync-core)\//
 ]
 
 const ignoredRelevantPatterns = [

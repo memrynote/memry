@@ -220,6 +220,22 @@ describe('buildChangePreview', () => {
     expect(preview.destructive).toBe(true)
   })
 
+  it('counts filed files in a folder delete', async () => {
+    const vault = handles({
+      folders: {
+        list: vi.fn(async () => [
+          { kind: 'note', id: 'n1', name: 'a', path: 'Work/a.md', file_type: 'markdown' },
+          { kind: 'file', id: 'p1', name: 'scan', path: 'Work/scan.pdf', file_type: 'pdf' },
+          { kind: 'file', id: 'i1', name: 'shot', path: 'Work/shot.png', file_type: 'image' }
+        ])
+      }
+    })
+
+    const preview = await buildChangePreview('vault_delete_folder', { path: 'Work' }, vault)
+
+    expect(preview.loss).toEqual(['notes:1', 'files:2'])
+  })
+
   it('reports project links, not just the task count, for a project delete', async () => {
     const preview = await buildChangePreview('vault_delete_project', { id: 'project-1' }, handles())
 

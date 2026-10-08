@@ -108,7 +108,7 @@ struct SlashMenuTests {
     }
 
     @Test func a_query_filters_and_lifts_the_best_match() {
-        let items = BlockCatalog.rows(picture: false)
+        let items = BlockCatalog.rows(attach: false)
         // "list" is in four titles, none at the start: catalog order stands.
         #expect(BlockCatalog.filter(items, query: "list").prefix(4).map(\.id) == ["bullet_list", "numbered_list", "check_list", "toggle_list"])
         // "quote" is a title prefix, ahead of every alias match.
@@ -117,8 +117,13 @@ struct SlashMenuTests {
         #expect(BlockCatalog.filter(items, query: "code").first?.id == "code_block")
         // "h2" matches only through an alias, which the toggle heading shares.
         #expect(BlockCatalog.filter(items, query: "h2").map(\.id) == ["heading_2", "toggle_heading_2"])
-        // "hr": the divider's alias, lifted above earlier weaker matches.
-        #expect(BlockCatalog.filter(items, query: "hr").first?.id == "divider")
+        // "hr" is inside the title "Three columns", which outranks the
+        // divider's alias prefix, as desktop's `scoreItem` ranks it.
+        #expect(BlockCatalog.filter(items, query: "hr").prefix(2).map(\.id) == ["three_columns", "divider"])
+        // The column rows answer desktop's aliases.
+        #expect(BlockCatalog.filter(items, query: "column").prefix(2).map(\.id) == ["two_columns", "three_columns"])
+        #expect(BlockCatalog.filter(items, query: "side by side").map(\.id) == ["two_columns", "three_columns"])
+        #expect(BlockCatalog.filter(items, query: "layout").map(\.id) == ["two_columns", "three_columns"])
         #expect(BlockCatalog.filter(items, query: "zzz").isEmpty)
     }
 }

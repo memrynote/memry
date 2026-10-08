@@ -14,12 +14,13 @@
  *  4. `notes:updated` with `source: 'external'` for the renderer,
  *  5. `await feedExternalEditToCrdt` for the note's CRDT body.
  *
- * Step 5 is not optional. `notes:update` and the MCP `vault_update_note` append
- * mode both skip it, and because `syncNoteToCache` refreshes `contentHash`
+ * Step 5 is not optional. Because `syncNoteToCache` refreshes `contentHash`
  * first, the watcher's dedupe (`vault/watcher.ts`) returns early and never
- * feeds the CRDT either — so when the target note IS open, its Y.Doc keeps the
+ * feeds the CRDT — so when the target note IS open, its Y.Doc keeps the
  * pre-append body and the next writeback overwrites the appended text. Awaiting
- * the feed here is what makes a move into an open note survive.
+ * the feed here is what makes a move into an open note survive. `notes:update`
+ * and the MCP `vault_update_note` take the same step inside
+ * `updateNoteCommand`.
  *
  * @module vault/append-blocks
  */

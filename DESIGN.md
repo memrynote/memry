@@ -81,8 +81,6 @@ For mobile work, also read:
 
 `docs/DESIGN_TOKENS.md` is the desktop implementation catalog. `base.css` remains the exact desktop code source. Mobile owns its exact values under `apps/ios/Memry/Design/`, but those values must implement the meanings in this file.
 
-`apps/mobile` is the frozen React Native shell. Read it for history if you must, never as the design source: it is superseded by `apps/ios` and takes no new product UI.
-
 Do not begin from `apps/landing/src/index.css`, `assets/brand/memry/DESIGN.md`, a generic shadcn example, or a new visual framework.
 
 ## Work in four passes
@@ -101,7 +99,7 @@ Choose the correct density. Use compact rows for scanning and data-heavy views. 
 
 ### Build with the shared system
 
-Use the platform's semantic tokens and shared components. Desktop uses Tailwind utilities and CSS variables. Mobile uses its theme modules and React Native components. Keep local styling for geometry or behavior unique to one feature.
+Use the platform's semantic tokens and shared components. Desktop uses Tailwind utilities and CSS variables. Mobile uses `Tokens` and the shared SwiftUI views in `apps/ios/Memry/Design/`. Keep local styling for geometry or behavior unique to one feature.
 
 ### Inspect the real states
 
@@ -145,7 +143,7 @@ Use semantic tokens, not these hex values, in components. Desktop exposes these 
 
 Use the Tailwind mappings such as `bg-background`, `text-foreground`, `bg-surface`, `text-text-tertiary`, and `border-border` where they exist.
 
-Mobile maps the same meanings through `canvas`, `text`, `line`, `ui`, `tint`, `dot`, and `pastel` groups. A platform may change representation, but not the meaning or hierarchy of a color role.
+Mobile maps the same meanings through the `Canvas`, `Text`, `Line`, `Interaction`, and `Tint` groups of `Tokens`, plus domain groups such as `Task`, `Inbox`, and `Palette`. A platform may change representation, but not the meaning or hierarchy of a color role.
 
 #### The user accent owns interaction
 
@@ -174,8 +172,6 @@ So:
 **Desktop is affected too and has not been fixed.** `--tint-ring` and `--tint-border` exist precisely to paint boundaries from the tint, and the active-tab underline at line 234 is a `2px` tint rule. On iOS this is resolved — `Tint.base` is fill-only and `Line.focus` is ink-derived — and the same split is owed to the desktop implementation.
 
 The product accent is not the landing brand token. `#ff671a` belongs to brand assets, splash screens, and marketing. Interactive product controls use the tint role; the default resolves to `#f97316`.
-
-Mobile currently defines `tint.base` as `#6366f1`. That value is known drift from the desktop reference, not a second approved accent. Mobile must converge on the global default tint or a synced user choice before release.
 
 #### Domain color carries domain meaning
 
@@ -213,10 +209,10 @@ Do not force a fixed font on ordinary controls. A user who selects Geist, Gelasi
 
 Mobile preserves the same roles instead of copying desktop pixels:
 
-- Working sans: mobile body, controls, navigation, and editor chrome. The current mapping uses Inter.
-- Structural display: note titles and important product headings. The current mapping uses Space Grotesk.
-- Editorial serif: journal, reflective copy, and selected content titles. The current mapping uses Crimson Pro.
-- Mono: code, recovery material, keyboard-like tokens, paths, and aligned technical values. The current mapping uses JetBrains Mono.
+- Working sans: mobile body, controls, navigation, and editor chrome. iOS uses SF.
+- Structural display: note titles and important product headings. iOS uses SF at a semibold weight.
+- Editorial serif: journal, reflective copy, and selected content titles. iOS uses New York.
+- Mono: code, recovery material, keyboard-like tokens, paths, and aligned technical values. iOS uses SF Mono.
 
 Mobile uses its named type ramp under `apps/ios/Memry/Design/`. Respect Dynamic Type and platform text metrics. Do not scale desktop sizes mechanically or invent screen-local font sizes.
 
@@ -278,7 +274,7 @@ Mobile does not reproduce the desktop sidebar, tab strip, hover states, or multi
 - Replace hover with pressed, selected, focus, and long-press states. Add haptics only when they confirm a real action.
 - Keep touch targets at least `44pt`. Density may reduce visual padding, but not the hit area.
 - Let platform controls remain native when they preserve Memry's semantic color, hierarchy, and copy.
-- Use `@expo/ui` for native controls when the installed Expo version supports the needed component. Use virtualized React Native lists for large data sets.
+- Use SwiftUI's native controls. Use `List` or a lazy stack for large data sets.
 - Account for top and bottom safe areas, the keyboard, larger text, and system gestures.
 
 A future watch app starts from the same semantics, not from a scaled-down phone screen. It keeps Memry's color roles, status meanings, typography character, copy, and restraint while reducing each view to glanceable information and one clear action.
@@ -287,7 +283,7 @@ A future watch app starts from the same semantics, not from a scaled-down phone 
 
 Memry uses a shared `4px` base and an `8px` grouping rhythm. Each platform exposes that rhythm through its own token API. Small controls may use established half steps.
 
-Desktop uses Tailwind spacing. Mobile uses the spacing scale in `apps/ios/Memry/Design/`. Do not copy Tailwind class values into React Native screens or scatter numeric equivalents outside the mobile theme.
+Desktop uses Tailwind spacing. Mobile uses `Tokens.Space`. Do not copy Tailwind class values into SwiftUI views or scatter numeric equivalents outside `Tokens`.
 
 `useDisplayDensity()` provides two density modes for supported list and page surfaces:
 
@@ -305,7 +301,7 @@ Desktop uses Tailwind spacing. Mobile uses the spacing scale in `apps/ios/Memry/
 
 Consume `DENSITY_CONFIG[density]` instead of recreating these values. Density is not a reason to shrink dialog actions, editor text, keyboard focus, or other controls that are not part of the density system.
 
-Mobile does not inherit desktop's compact row height. Mobile's `sizes` tokens own touch targets, rows, navigation bars, and tab bars. The visual density may match desktop's calm hierarchy, but touch geometry remains native and accessible.
+Mobile does not inherit desktop's compact row height. `Tokens.Size` owns mobile touch targets and control heights, and the system owns navigation and tab bar geometry. The visual density may match desktop's calm hierarchy, but touch geometry remains native and accessible.
 
 ### Surfaces, boundaries, and depth
 
@@ -335,7 +331,7 @@ Depth is restrained but not absent:
 - Home widgets have a deliberate low resting shadow and lift only while dragged or resized.
 - Dialogs and sheets use stronger depth because they sit above the workspace.
 
-Mobile maps these levels through its shadow tokens and native overlays. Do not copy desktop CSS shadow strings into React Native.
+Mobile takes depth from native sheets, menus, and overlays. Do not copy desktop CSS shadow strings into SwiftUI.
 
 Do not wrap each section, statistic, or row in a card. Avoid cards inside cards. If spacing and a divider communicate the group, stop there.
 
@@ -405,7 +401,7 @@ Mobile reuses the shared views in `apps/ios/Memry/Design/`. A mobile component f
 - Sizes come from mobile theme tokens. Interactive controls keep a `44pt` hit area.
 - Pressed feedback replaces hover. Disabled and loading states remain explicit.
 - Bottom sheets replace many desktop dialogs and popovers. Destructive confirmation still names the affected item and consequence.
-- Native switches, segmented controls, pickers, menus, and sheets are preferred when they fit the current Expo SDK.
+- Use native SwiftUI switches, segmented controls, pickers, menus, and sheets before building a custom control.
 - Callers may change layout without changing a component's visual identity.
 
 Do not wrap a native control only to make it look like desktop. Do not create a custom mobile control only because desktop has a custom web component.
@@ -466,11 +462,11 @@ Good motion confirms a capture, compresses a removed row, reveals an action, kee
 
 Every animation and programmatic smooth scroll must respect the platform's reduced-motion setting. Keep the final state and remove the movement. Desktop uses `prefers-reduced-motion`; mobile reads the system accessibility setting. Every blur treatment must also provide a solid reduced-transparency result where the platform exposes that preference.
 
-Mobile keeps the same fast, restrained character through native or Reanimated timing. It uses pressed feedback, direct-manipulation continuity, and optional haptics instead of desktop hover motion. Mobile timing lives in its theme when the same value has more than one consumer.
+Mobile keeps the same fast, restrained character through SwiftUI animation. It uses pressed feedback, direct-manipulation continuity, and optional haptics instead of desktop hover motion. Mobile timing lives in `Tokens.Motion` and `Tokens.Curve` when the same value has more than one consumer.
 
 ### Icons and media
 
-Desktop imports application icons through `@/lib/icons` or its feature-specific maps. Mobile uses the icon adapter in `apps/ios/Memry/Design/`. Future platforms add one platform icon adapter. Keep the semantic icon name and meaning stable even when the platform glyph differs.
+Desktop imports application icons through `@/lib/icons` or its feature-specific maps. Mobile uses SF Symbols. Future platforms add one platform icon adapter. Keep the semantic icon name and meaning stable even when the platform glyph differs.
 
 Desktop interface icons are normally `16px`; dense controls use `12px` to `14px`. Mobile icons use the sizes and stroke rules in its theme and component library. Keep one icon style within a control group.
 
@@ -599,12 +595,12 @@ Do not redeclare semantic variables inside a page. Add a token to `base.css` onl
 
 New mobile product UI uses:
 
-- `apps/ios/Memry/Design/` for semantic colors, spacing, radius, platform sizes and type roles.
-- `apps/ios/Memry/Design/` for shared component structure and states.
+- `Tokens` (`apps/ios/Memry/Design/Tokens.swift` and its extensions) for semantic colors, spacing, radius, platform sizes, motion, and type roles.
+- The shared views in `apps/ios/Memry/Design/` for component structure and states.
 
-Screens import the mobile theme and shared components. They do not introduce hex colors, repeated spacing values, or private button variants. The legacy `src/constants/theme.ts`, `use-theme.ts`, `themed-text.tsx`, and `themed-view.tsx` remain migration code only. Do not use them for new product screens.
+Screens use those tokens and views. They do not introduce hex colors, repeated spacing values, or private button variants.
 
-The mobile theme must keep the global semantic vocabulary even when React Native names differ from CSS. For example, `canvas.background`, `text.primary`, `line.border`, `ui.destructive`, and `tint.base` map directly to the meanings documented here.
+The tokens keep the global semantic vocabulary even where Swift names differ from CSS. For example, `Tokens.Canvas.background`, `Tokens.Text.primary`, `Tokens.Line.border`, `Tokens.Interaction.destructive`, and `Tokens.Tint.base` map directly to the meanings documented here.
 
 ## Accessibility, localization, and platform behavior
 
@@ -623,7 +619,7 @@ New layout code uses logical Tailwind properties:
 
 Mirror only direction-bearing icons with `.mirror-rtl`. Do not mirror media, logos, checkmarks, or neutral symbols.
 
-Mobile uses logical React Native properties such as `paddingStart`, `marginEnd`, `start`, `end`, and `textAlign: 'start'`. It accounts for safe areas and preserves native accessibility roles, labels, focus order, font scaling, and reduced-motion settings. Do not encode meaning in a gesture without a visible alternative.
+Mobile uses SwiftUI's logical `.leading` and `.trailing` edges and alignments, which flip under RTL. It accounts for safe areas and preserves native accessibility roles, labels, focus order, font scaling, and reduced-motion settings. Do not encode meaning in a gesture without a visible alternative.
 
 Pointer, keyboard, touch, voice, crown, and assistive input may need different mechanics. They must reach the same product action and expose the same consequence.
 
@@ -656,11 +652,8 @@ pnpm --filter @memry/desktop typecheck:web
 pnpm --filter @memry/desktop typecheck:test
 pnpm --filter @memry/desktop test:renderer
 pnpm --filter @memry/desktop i18n:check
-pnpm --filter @memry/mobile typecheck
-pnpm --filter @memry/mobile lint
-pnpm --filter @memry/mobile test
 npx -y react-doctor@latest .
 git diff --check
 ```
 
-Run only the platform checks that match the change. For a focused component change, run its nearest test first. For a mobile editor change, also run `pnpm --filter @memry/editor-web editor:check`. For shell, editor, IPC, or contract changes, also run the repository checks required by `CLAUDE.md` and the platform's `AGENTS.md`.
+Run only the platform checks that match the change. For a focused component change, run its nearest test first. For iOS, run the `xcodebuild` test plans in `apps/ios/AGENTS.md`. For shell, editor, IPC, or contract changes, also run the repository checks required by the root `AGENTS.md` and the platform's `AGENTS.md`.

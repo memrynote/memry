@@ -2,6 +2,7 @@ import { getFilteredTasks, getTasksInDueWindow } from '@/lib/task-utils/task-vie
 import { applyFiltersAndSort } from '@/lib/task-utils/task-filters'
 import { defaultSort, type Project, type SavedFilter } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
+import { hasLocationFilter, type TaskNoteIndex } from '@/lib/task-note-index'
 
 // Hardcoded views offered by the Tasks widget header pill. The date views mirror the Tasks page
 // tab bar; `nodue` is widget-only and surfaces open work that never got a date.
@@ -46,20 +47,39 @@ function selectTasksWithoutDueDate(tasks: Task[], projects: Project[]): Task[] {
  * widget body (sliced for display), the header pill label, and the header count (length).
  * Saved filter > projectId > view.
  */
+const findWidgetSavedFilter = (
+  savedFilters: SavedFilter[],
+  config: Record<string, unknown>
+): SavedFilter | null => {
+  const savedFilterId = typeof config.savedFilterId === 'string' ? config.savedFilterId : null
+  return savedFilterId ? (savedFilters.find((f) => f.id === savedFilterId) ?? null) : null
+}
+
+/** Whether the widget's saved filter has a location part, which needs the note index. */
+export function widgetNeedsNoteIndex(
+  savedFilters: SavedFilter[],
+  config: Record<string, unknown>
+): boolean {
+  const savedFilter = findWidgetSavedFilter(savedFilters, config)
+  return savedFilter !== null && hasLocationFilter(savedFilter.filters)
+}
+
 export function selectTasksForWidget(
   tasks: Task[],
   projects: Project[],
   savedFilters: SavedFilter[],
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  noteIndex?: TaskNoteIndex
 ): Task[] {
-  const savedFilterId = typeof config.savedFilterId === 'string' ? config.savedFilterId : null
-  const savedFilter = savedFilterId ? savedFilters.find((f) => f.id === savedFilterId) : null
+  const savedFilter = findWidgetSavedFilter(savedFilters, config)
   if (savedFilter) {
     return applyFiltersAndSort(
       tasks,
       savedFilter.filters,
       savedFilter.sort ?? defaultSort,
-      projects
+      projects,
+      new Date(),
+      noteIndex
     )
   }
 

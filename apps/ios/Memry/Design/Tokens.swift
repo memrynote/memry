@@ -180,7 +180,8 @@ struct TypeRole: Sendable, Equatable {
 }
 
 /// The tokens. Names follow `DESIGN.md` §"Mobile implementation API", which
-/// fixes the mobile vocabulary as `canvas`, `text`, `line`, `ui` and `tint`.
+/// fixes the mobile vocabulary as `Canvas`, `Text`, `Line`, `Interaction` and
+/// `Tint`.
 enum Tokens {
     // MARK: Canvas and surfaces
 

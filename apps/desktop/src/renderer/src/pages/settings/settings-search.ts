@@ -87,6 +87,10 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     ['editor.v2.toolbarMode']
   ]),
   ...group('editor', 'editor.groups.spelling', [['editor.v2.spellCheck']]),
+  ...group('editor', 'editor.groups.checklists', [
+    ['editor.v2.convertChecklists', ['editor.convertChecklists.description']],
+    ['editor.v2.convertAgentChecklists', ['editor.convertAgentChecklists.description']]
+  ]),
   ...group('journal', 'journal.v2.groups.defaultTemplate', [['journal.template.label']]),
   ...group('journal', 'journal.v2.groups.location', [
     ['journal.folder.label', ['journal.folder.description']],

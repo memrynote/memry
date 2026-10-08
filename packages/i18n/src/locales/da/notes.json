@@ -158,7 +158,8 @@
       "richTextAria": "Editor til formateret tekst",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
-      "todoPlaceholder": "Gøremål"
+      "todoPlaceholder": "Gøremål",
+      "htmlComment": "Skjult HTML-kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabelhandlinger for række {row}, kolonne {column}",
@@ -245,6 +246,25 @@
       "warning": "Advarsel",
       "error": "Fejl",
       "success": "Succes"
+    },
+    "columns": {
+      "group": "Grundlæggende blokke",
+      "two": {
+        "title": "2 kolonner",
+        "subtext": "Placer blokke side om side i to kolonner"
+      },
+      "three": {
+        "title": "3 kolonner",
+        "subtext": "Placer blokke side om side i tre kolonner"
+      },
+      "four": {
+        "title": "4 kolonner",
+        "subtext": "Placer blokke side om side i fire kolonner"
+      },
+      "five": {
+        "title": "5 kolonner",
+        "subtext": "Placer blokke side om side i fem kolonner"
+      }
     },
     "diagram": {
       "title": "Diagram",

@@ -25,6 +25,7 @@ allowBuilds:
   spawn-sync: false
   unrs-resolver: true
   react-native-libsodium: set this to true or false
+  tesseract.js: false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
@@ -54,11 +55,12 @@ overrides:
   vite: ^7.3.6
   markdown-it: '>=14.2.0'
   # BlockNote 0.54 pulls @tiptap/pm 3.31.3 (prosemirror-model 1.25.11,
-  # prosemirror-view 1.42.4) while prosemirror-state 1.4.4 — a direct dep of
-  # @memry/editor-web — keeps 1.25.4/1.41.6 alive. Two copies of
-  # prosemirror-model make structurally identical Node/Fragment/Mark types
-  # mutually unassignable, which is 41 of the 48 typecheck errors on the bump
-  # and nothing to do with any real API change. One copy each.
+  # prosemirror-view 1.42.4). Two copies of prosemirror-model make structurally
+  # identical Node/Fragment/Mark types mutually unassignable, which was 41 of the
+  # 48 typecheck errors on the bump and nothing to do with any real API change.
+  # The pins keep one copy each. The second copy came from the removed
+  # @memry/editor-web's direct prosemirror-state 1.4.4 dependency; run
+  # `pnpm why prosemirror-model` before dropping them.
   prosemirror-model: '1.25.11'
   prosemirror-view: '1.42.4'
   prosemirror-transform: '1.12.1'
@@ -108,3 +110,4 @@ minimumReleaseAgeExclude:
   - '@electron/rebuild@4.2.0'
   - node-abi@4.33.0
   - expo-image-picker@57.0.14
+  - '@huggingface/transformers@4.3.1'

@@ -31,7 +31,8 @@ const INLINE_SYNTAX: Record<string, RegExp> = {
   dateMention: /\(\(date:[A-Za-z0-9,;]+\)\)/,
   linkMention: /\(\(mention:[^)]+\)\)/,
   inlineCheckbox: /\| \[[ x]\] /,
-  inlineImage: /\| !\[[^\]]*\]\([^)]+\) \|/
+  inlineImage: /\| !\[[^\]]*\]\([^)]+\) \|/,
+  htmlComment: /<!-- [^>]*\[\[[^\]]+\]\] -->/
 }
 
 interface AnyBlock {
@@ -129,7 +130,11 @@ describe('iOS Parity Test seed note', () => {
     const taskIds = new Set(TASKS.map((task) => task.id))
     const refs = [...IOS_PARITY_BODY.matchAll(/\{task:([^}]+)\}/g)].map((match) => match[1])
     expect(refs).toHaveLength(3)
-    for (const id of refs) expect(taskIds).toContain(id)
+    for (const id of refs) {
+      expect(taskIds).toContain(id)
+      // No `_` or `-`: the byte-for-byte round trip must not hinge on the id.
+      expect(id).toMatch(/^[0-9A-Za-z]{21}$/)
+    }
 
     for (const name of IOS_PARITY_ATTACHMENTS) {
       expect(IOS_PARITY_BODY).toContain(`/${name}`)

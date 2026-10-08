@@ -11,15 +11,19 @@ vi.mock('./domain', () => ({
   updateNoteCommand: vi.fn()
 }))
 vi.mock('../sync/crdt-feed', () => ({
-  replaceNoteBodyInCrdt: vi.fn(),
   replaceNoteTagsInCrdt: vi.fn()
+}))
+vi.mock('../vault-locks/registry', () => ({
+  assertNoteWritable: vi.fn((noteId: string) => {
+    if (noteId === 'locked-note') throw new Error('The owner made this note read-only.')
+  })
 }))
 
 import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
 import { getNoteById } from '../vault/notes'
 import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'
-import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from '../sync/crdt-feed'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, VaultError } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
 
@@ -125,6 +129,17 @@ describe('applyTemplateToNote', () => {
     expect(updateNoteCommand).not.toHaveBeenCalled()
   })
 
+  it('refuses a locked note before touching the template, the file or the editor (#2606)', async () => {
+    vi.mocked(getNoteById).mockResolvedValue({ ...note, id: 'locked-note' })
+    vi.mocked(getTemplate).mockResolvedValue(template)
+
+    await expect(
+      applyTemplateToNote({ noteId: 'locked-note', templateId: 't1', mode: 'full' })
+    ).rejects.toThrow('The owner made this note read-only.')
+    expect(updateNoteCommand).not.toHaveBeenCalled()
+    expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
+  })
+
   it('throws VaultError when the template does not exist', async () => {
     vi.mocked(getNoteById).mockResolvedValue(note)
     vi.mocked(getTemplate).mockResolvedValue(null)
@@ -134,7 +149,7 @@ describe('applyTemplateToNote', () => {
     expect(updateNoteCommand).not.toHaveBeenCalled()
   })
 
-  it('full mode: persists the merged update and feeds both body and tags to the open editor', async () => {
+  it('full mode: persists the merged update and feeds the tags to the open editor', async () => {
     vi.mocked(getNoteById).mockResolvedValue(note)
     vi.mocked(getTemplate).mockResolvedValue(template)
     vi.mocked(updateNoteCommand).mockResolvedValue(note)
@@ -145,7 +160,6 @@ describe('applyTemplateToNote', () => {
     const update = vi.mocked(updateNoteCommand).mock.calls[0][0]
     expect(update.id).toBe('n1')
     expect(new Set(update.tags)).toEqual(new Set(['work', 'daily', 'meeting']))
-    expect(replaceNoteBodyInCrdt).toHaveBeenCalledWith('n1', update.content)
     expect(replaceNoteTagsInCrdt).toHaveBeenCalledWith('n1', update.tags)
   })
 
@@ -156,7 +170,31 @@ describe('applyTemplateToNote', () => {
 
     await applyTemplateToNote({ noteId: 'n1', templateId: 't1', mode: 'body' })
 
-    expect(replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(updateNoteCommand).mock.calls[0][0]).toEqual({
+      id: 'n1',
+      content: '# Standup\n\n## Notes\n'
+    })
     expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
+  })
+
+  it('keeps the checkbox lines a template adds plain when asked, leaving the note\u2019s own lines alone (#2759)', async () => {
+    vi.mocked(getNoteById).mockResolvedValue({ ...note, content: '- [ ] Owner item' })
+    vi.mocked(getTemplate).mockResolvedValue({
+      ...template,
+      content: '# {{title}}\n\n- [ ] Buy milk\n- [x] Call Ana\n- [ ] Owner item\n'
+    })
+    vi.mocked(updateNoteCommand).mockResolvedValue(note)
+
+    await applyTemplateToNote({
+      noteId: 'n1',
+      templateId: 't1',
+      mode: 'body',
+      plainChecklists: true
+    })
+
+    expect(vi.mocked(updateNoteCommand).mock.calls[0][0]).toEqual({
+      id: 'n1',
+      content: '# Standup\n\n- [ ] Buy milk {check}\n- [x] Call Ana {check}\n- [ ] Owner item\n'
+    })
   })
 })

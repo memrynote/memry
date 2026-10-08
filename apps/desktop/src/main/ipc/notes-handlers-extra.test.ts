@@ -65,16 +65,17 @@ const mocks = vi.hoisted(() => {
     syncFolderConfigRename: vi.fn(),
     syncFolderConfigDelete: vi.fn(),
     setNoteLocalOnlyCommand: vi.fn(),
-    createPropertyDefinitionRecord: vi.fn(),
-    updatePropertyDefinitionRecord: vi.fn(),
     deletePropertyDefinitionRecord: vi.fn(),
     countLocalOnlyNoteMetadata: vi.fn(),
+    getPropertyDefinition: vi.fn(),
     listPropertyDefinitions: vi.fn(),
     emitNoteAttachmentSaved: vi.fn(),
     getVaultStatus: vi.fn(() => ({ path: null }) as { path: string | null }),
     renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
+    getCustomIcon: vi.fn(),
     service: {
       get: vi.fn(),
+      find: vi.fn(),
       upsert: vi.fn(),
       addOption: vi.fn(),
       addStatusOption: vi.fn(),
@@ -174,8 +175,6 @@ vi.mock('../notes/folder-config-effects', () => ({
 }))
 
 vi.mock('../vault/property-definition-store', () => ({
-  createPropertyDefinitionRecord: mocks.createPropertyDefinitionRecord,
-  updatePropertyDefinitionRecord: mocks.updatePropertyDefinitionRecord,
   deletePropertyDefinitionRecord: mocks.deletePropertyDefinitionRecord
 }))
 
@@ -189,6 +188,8 @@ vi.mock('../vault/property-definitions', () => ({
     get: () => mocks.service
   }
 }))
+
+vi.mock('../icons/store', () => ({ getCustomIcon: mocks.getCustomIcon }))
 
 vi.mock('../lib/export-utils', () => ({
   renderNoteAsHtml: mocks.renderNoteAsHtml,
@@ -217,6 +218,7 @@ vi.mock('../telemetry/track', () => ({
 
 vi.mock('@memry/storage-data', () => ({
   countLocalOnlyNoteMetadata: mocks.countLocalOnlyNoteMetadata,
+  getPropertyDefinition: mocks.getPropertyDefinition,
   listPropertyDefinitions: mocks.listPropertyDefinitions
 }))
 
@@ -391,7 +393,7 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it('handles property definition and option mutation branches', async () => {
-    mocks.createPropertyDefinitionRecord.mockReturnValue({ name: 'Rating', type: 'number' })
+    mocks.getPropertyDefinition.mockReturnValueOnce({ name: 'Rating', type: 'number' })
 
     expect(
       successful(
@@ -403,15 +405,13 @@ describe('notes-handlers extra coverage', () => {
         })
       )
     ).toEqual({ success: true, definition: { name: 'Rating', type: 'number' } })
-    expect(mocks.createPropertyDefinitionRecord).toHaveBeenCalledWith({
+    expect(mocks.service.upsert).toHaveBeenCalledWith({
       name: 'Rating',
       type: PropertyTypes.NUMBER,
-      options: null,
-      defaultValue: '5',
-      color: 'blue'
+      options: undefined,
+      defaultValue: '5'
     })
 
-    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status' })
     await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
       name: 'Status',
       type: PropertyTypes.STATUS,
@@ -424,7 +424,7 @@ describe('notes-handlers extra coverage', () => {
       defaultValue: 'true'
     })
 
-    mocks.service.get.mockReturnValueOnce(null)
+    mocks.service.find.mockReturnValueOnce(undefined)
     expect(
       await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
         name: 'Missing',
@@ -436,7 +436,7 @@ describe('notes-handlers extra coverage', () => {
       error: 'system:error.definitionNotFound'
     })
 
-    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status', options: [] })
+    mocks.service.find.mockReturnValueOnce({ name: 'Status', type: 'status', options: [] })
     await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
       name: 'Status',
       type: PropertyTypes.STATUS,
@@ -663,6 +663,68 @@ describe('notes-handlers extra coverage', () => {
       '/tmp/Daily_note.html',
       `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`,
       'utf-8'
+    )
+  })
+
+  it('exports tasks without their ids unless the caller keeps them', async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '- [ ] Pack bags {task:t1}',
+      emoji: null,
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+    const exportedHtml = async (input: Record<string, unknown>): Promise<string> => {
+      mocks.fsWriteFile.mockClear()
+      await invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.html',
+        ...input
+      })
+      return mocks.fsWriteFile.mock.calls.at(-1)?.[1] as string
+    }
+
+    const plain = await exportedHtml({})
+    expect(plain).toContain('<li><input disabled="" type="checkbox"> Pack bags</li>')
+    expect(plain).not.toContain('{task:')
+
+    expect(await exportedHtml({ includeTaskMarkers: true })).toContain(
+      '<li><input disabled="" type="checkbox"> Pack bags {task:t1}</li>'
+    )
+  })
+
+  it("carries the note's uploaded icon into the export", async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getCustomIcon.mockReturnValue({ ext: 'png', data: PNG_BASE64 })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: 'custom:icon-1',
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+
+    await invoke(NotesChannels.invoke.EXPORT_HTML, {
+      noteId: 'note-a',
+      outputPath: '/tmp/Daily_note.html'
+    })
+
+    expect(mocks.getCustomIcon).toHaveBeenCalledWith({ id: 'data-db' }, 'icon-1')
+    expect(mocks.fsWriteFile.mock.calls.at(-1)?.[1]).toContain(
+      `<img class="note-emoji" src="data:image/png;base64,${PNG_BASE64}" alt="">`
     )
   })
 

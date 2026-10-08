@@ -71,6 +71,7 @@ function unifiedSidebar() {
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },
             { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
+            { text: 'Read-Only Locks', link: '/user-guide/notes/read-only-locks' },
             { text: 'Cover Image', link: '/user-guide/notes/cover-image' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
@@ -169,6 +170,7 @@ function unifiedSidebar() {
             { text: 'Inline AI Menu', link: '/user-guide/ai/inline-menu' },
             { text: 'Embeddings & Semantic Search', link: '/user-guide/ai/embeddings-search' },
             { text: 'Agent Chat & MCP Server', link: '/user-guide/ai/agent-mcp' },
+            { text: 'Agent API Reference', link: '/user-guide/ai/agent-api-reference' },
             { text: 'Voice Transcription', link: '/user-guide/ai/voice-transcription' },
             { text: 'Provider Setup', link: '/user-guide/ai/provider-setup' }
           ]
