@@ -38,6 +38,7 @@ describe('attachmentUploadRedriver', () => {
     rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-redriver-'))
     vaultPath = path.join(rootDir, 'vault')
     fs.mkdirSync(path.join(vaultPath, '.memry'), { recursive: true })
+    fs.writeFileSync(path.join(vaultPath, '.memry', 'data.db'), '')
     mocks.vaultPath = vaultPath
   })
 

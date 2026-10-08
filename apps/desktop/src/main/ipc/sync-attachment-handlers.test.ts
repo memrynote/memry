@@ -802,6 +802,32 @@ describe('sync-attachment-handlers', () => {
     ).toEqual([])
   })
 
+  // A vault on a drive that is away for a moment hides the file without it
+  // being deleted; the job must stay queued for the re-drive.
+  it('keeps the job of a saved file whose vault went away before its upload ran', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/unplugged-drive/vault' } as any)
+    attachmentMocks.queue.enqueue.mockImplementationOnce(async () => {
+      attachmentMocks.existsSync.mockReturnValue(false)
+      throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+    })
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/unplugged-drive/vault/sources/photo.png' })
+
+    await vi.waitFor(() =>
+      expect(vi.mocked(markUploadFailed).mock.calls.map((call) => call.slice(1))).toEqual([
+        ['note-1', '/unplugged-drive/vault/sources/photo.png', 'ENOENT: no such file']
+      ])
+    )
+    expect(clearUpload).not.toHaveBeenCalled()
+  })
+
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     attachmentMocks.service.getDownloadProgress.mockReturnValue({

@@ -275,6 +275,9 @@ describe('attachment outbox', () => {
     )
     const away = path.join(rootDir, 'vault-away')
     fs.renameSync(tempDir, away)
+    // The activity log recreates `.memry` at the vault path while it is away.
+    fs.mkdirSync(path.join(tempDir, '.memry'), { recursive: true })
+    fs.writeFileSync(path.join(tempDir, '.memry', 'activity.jsonl'), '{}\n')
     const upload = vi.fn(async () => ({ attachmentId: 'id' }))
 
     dropUploadsWithoutFile(tempDir)
@@ -286,6 +289,7 @@ describe('attachment outbox', () => {
     expect(upload).not.toHaveBeenCalled()
     expect(listPendingUploads(db)).toEqual([{ noteId: 'note-1', diskPath: file, attempts: 0 }])
 
+    fs.rmSync(tempDir, { recursive: true })
     fs.renameSync(away, tempDir)
     await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
       uploaded: 1,
