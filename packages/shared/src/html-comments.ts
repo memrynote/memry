@@ -19,18 +19,16 @@ import { replaceMarkdownComments } from './markdown-code.ts'
  * a multi-line comment holding blank lines, a fence or a list must never be
  * seen by the line splitters that run before the parse.
  *
- * The prefix ends in a word drawn once per process, so note text cannot hold a
- * token (BBF-30). That holds because a token never leaves the process that
+ * The prefix ends in a word drawn once per process, so note text does not hold
+ * a token (BBF-30). That holds because a token never leaves the process that
  * made it: the parse turns every one into a node, and the serializer's tokens
  * are decoded in the same process.
  */
 
-function processWord(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(12))
-  return String.fromCharCode(...Array.from(bytes, (byte) => 65 + (byte % 26)))
-}
-
-const TOKEN_PREFIX = `MEMRYCMT${processWord()}`
+const PROCESS_WORD = String.fromCharCode(
+  ...crypto.getRandomValues(new Uint8Array(12)).map((byte) => 65 + (byte % 26))
+)
+const TOKEN_PREFIX = `MEMRYCMT${PROCESS_WORD}`
 const TOKEN_REGEX = new RegExp(`${TOKEN_PREFIX}([0-9a-f]*)X`, 'g')
 
 const encoder = new TextEncoder()
