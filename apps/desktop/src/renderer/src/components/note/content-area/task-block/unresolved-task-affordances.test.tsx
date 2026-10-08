@@ -44,6 +44,9 @@ vi.mock('@/services/tasks-service', () => ({
     uncomplete: mocks.uncomplete,
     delete: mocks.deleteTask
   },
+  // The prefetch provider follows task parents for a listed task's depth.
+  onTaskCreated: () => vi.fn(),
+  onTaskMoved: () => vi.fn(),
   onTaskUpdated: mocks.onTaskUpdated,
   onTaskCompleted: mocks.onTaskCompleted,
   onTaskDeleted: mocks.onTaskDeleted,

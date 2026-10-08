@@ -6,7 +6,12 @@ import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { createLogger } from '@/lib/logger'
 import { hasSelectableTextAt, shouldStartMarquee } from '../marquee-hit-test'
-import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
+import {
+  classifyBlocks,
+  indentTaskBlock,
+  outdentTaskBlock,
+  type TaskParents
+} from './task-block-marquee-indent'
 
 const log = createLogger('Hook:Marquee')
 
@@ -43,6 +48,8 @@ interface UseBlockMarqueeSelectionOptions {
   enabled?: boolean
   /** The `tasks.nestedSubtasks` setting, which lets a task block indent below one level. */
   nestedSubtasks?: boolean
+  /** The note's task parents, for task rows listed below the first level. */
+  taskParents?: TaskParents
   onDeleteSelectedBlocks?: (ids: string[]) => boolean
 }
 
@@ -242,6 +249,7 @@ export function useBlockMarqueeSelection({
   triggerContainerEl,
   enabled = true,
   nestedSubtasks = false,
+  taskParents,
   onDeleteSelectedBlocks
 }: UseBlockMarqueeSelectionOptions): UseBlockMarqueeSelectionReturn {
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null)
@@ -340,7 +348,10 @@ export function useBlockMarqueeSelection({
       }
       for (const id of taskBlocks) {
         try {
-          const outcome = indentTaskBlock(editor, id, { nested: nestedSubtasks })
+          const outcome = indentTaskBlock(editor, id, {
+            nested: nestedSubtasks,
+            parents: taskParents
+          })
           if (outcome.kind === 'skipped') {
             log.debug('indentTaskBlock skipped', id, outcome.reason)
           }
@@ -351,7 +362,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
-  }, [editor, blockContainerRef, recomputeHighlightRects, nestedSubtasks])
+  }, [editor, blockContainerRef, recomputeHighlightRects, nestedSubtasks, taskParents])
 
   // Outdent every marquee-selected block by one level. Both the textblock
   // and taskBlock loops run in REVERSE order:
@@ -390,7 +401,7 @@ export function useBlockMarqueeSelection({
       for (let i = taskBlocks.length - 1; i >= 0; i -= 1) {
         const id = taskBlocks[i]
         try {
-          const outcome = outdentTaskBlock(editor, id)
+          const outcome = outdentTaskBlock(editor, id, { parents: taskParents })
           if (outcome.kind === 'skipped') {
             log.debug('outdentTaskBlock skipped', id, outcome.reason)
           }
@@ -401,7 +412,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
-  }, [editor, blockContainerRef, recomputeHighlightRects])
+  }, [editor, blockContainerRef, recomputeHighlightRects, taskParents])
 
   useEffect(() => {
     if (!enabled) return

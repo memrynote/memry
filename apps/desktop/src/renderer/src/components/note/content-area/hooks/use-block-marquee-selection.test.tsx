@@ -139,7 +139,10 @@ describe('useBlockMarqueeSelection', () => {
     })
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('a', 'start')
     expect(editor.nestBlock).toHaveBeenCalledTimes(1)
-    expect(marqueeIndentMocks.indentTaskBlock).toHaveBeenCalledWith(editor, 'b', { nested: true })
+    expect(marqueeIndentMocks.indentTaskBlock).toHaveBeenCalledWith(editor, 'b', {
+      nested: true,
+      parents: undefined
+    })
 
     act(() => {
       document.dispatchEvent(
@@ -147,7 +150,9 @@ describe('useBlockMarqueeSelection', () => {
       )
     })
     expect(editor.unnestBlock).toHaveBeenCalledTimes(1)
-    expect(marqueeIndentMocks.outdentTaskBlock).toHaveBeenCalledWith(editor, 'b')
+    expect(marqueeIndentMocks.outdentTaskBlock).toHaveBeenCalledWith(editor, 'b', {
+      parents: undefined
+    })
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))

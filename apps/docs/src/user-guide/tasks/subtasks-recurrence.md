@@ -23,7 +23,8 @@ The **+** opens a draft row under the task. Type a title and press <kbd>Enter</k
 A subtask can have subtasks of its own, as deep as you need. To keep subtasks one level deep, turn off **Settings → Modules → Tasks → Subtasks inside subtasks**.
 
 - In a draft row, <kbd>Tab</kbd> moves the draft under the row above it and <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it out one level.
-- In a note, a checkbox indented under a subtask becomes that subtask's subtask. <kbd>Tab</kbd> on a task in a note nests it under the task above, and <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it out one level.
+- In a note, a checkbox indented under a subtask becomes that subtask's subtask. <kbd>Tab</kbd> on a task in a note nests it under the task above, and <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it out one level. The note indents each task by its real depth.
+- The note's markdown file keeps one level: every task below a top-level task is written as a `- [ ]` line indented once under it, in order. The full tree lives with your tasks, so a note opened in another editor, or on a device that has not updated yet, lists the deeper tasks flat under their top-level task and loses nothing.
 - Importers keep nested checklists at every level.
 - Each level indents a step and draws a thin guide line. Past five levels the indent stops growing, so long titles keep their width.
 - Select a parent row and press <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to **zoom into** it: the list shows only that branch, with the parent as the page title. The path above the title walks back, and <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>↑</kbd> goes up one level.

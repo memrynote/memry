@@ -45,10 +45,59 @@ export function serializeTaskBlock(props: TaskBlockProps): string {
 }
 
 /**
- * A task block and every task block nested under it, one tight-list line each,
- * each level two spaces deeper than its parent, so a re-parse nests them back.
- * The top line keeps `serializeTaskBlock`'s own indent; a line one level down
- * is byte-identical to what `serializeTaskBlock` writes for a subtask.
+ * How many task levels a note body holds under a top-level task: the note's
+ * markdown and its block tree (the Y.Doc every device syncs). Compat contract:
+ * builds released before nested subtasks parse and write back only one level,
+ * and misplace or drop lines below it (#2877). A deeper task stays deep in the
+ * DB (`parentId`), which owns the hierarchy; the note lists it flat under its
+ * top-level ancestor. Lift this only together with the client version floor
+ * that retires those builds.
+ */
+export const MAX_NOTE_TASK_DEPTH = 1
+
+/**
+ * A top-level task block with every task block below `MAX_NOTE_TASK_DEPTH`
+ * lifted to that depth, in document order, each `parentTaskId` naming its new
+ * tree parent. Only the tree changes; the DB parents stay where they are.
+ * Returns `block` itself when nothing sits too deep.
+ */
+export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
+  const tooDeep = (children: TaskNormalizableBlock[] | undefined, depth: number): boolean =>
+    (children ?? []).some(
+      (child) =>
+        child.type === 'taskBlock' &&
+        (depth > MAX_NOTE_TASK_DEPTH || tooDeep(child.children, depth + 1))
+    )
+  if (!tooDeep(block.children, 1)) return block
+
+  const reparent = (children: T[], parentTaskId: string): T[] =>
+    children.map((child) =>
+      child.type === 'taskBlock' ? { ...child, props: { ...child.props, parentTaskId } } : child
+    )
+  // The node, then the task blocks lifted out from under it to its own level.
+  const cap = (node: T, depth: number): T[] => {
+    const kept: T[] = []
+    const lifted: T[] = []
+    for (const child of (node.children ?? []) as T[]) {
+      if (child.type !== 'taskBlock') {
+        kept.push(child)
+        continue
+      }
+      const [self, ...below] = cap(child, depth + 1)
+      if (depth < MAX_NOTE_TASK_DEPTH) kept.push(self, ...below)
+      else lifted.push(self, ...below)
+    }
+    const parentTaskId = node.props?.taskId as string
+    const own = depth < MAX_NOTE_TASK_DEPTH ? reparent(kept, parentTaskId) : kept
+    return [{ ...node, children: own }, ...lifted]
+  }
+  return cap(block, 0)[0]
+}
+
+/**
+ * A task block and the task blocks under it, one tight-list line each, capped
+ * at `MAX_NOTE_TASK_DEPTH`. With the cap at one level the output is
+ * byte-identical to what builds before nested subtasks wrote.
  */
 export function serializeTaskBlockTree(block: TaskNormalizableBlock): string[] {
   // SAFETY: a `taskBlock`'s props are `TaskBlockProps`; callers pass only those.
@@ -61,7 +110,7 @@ export function serializeTaskBlockTree(block: TaskNormalizableBlock): string[] {
       walk(child.children ?? [], depth + 1)
     }
   }
-  walk(block.children ?? [], 1)
+  walk(capTaskTreeDepth(block).children ?? [], 1)
   return lines
 }
 
@@ -376,9 +425,8 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         children: processedChildren,
         id: block.id
       } as unknown as T
-      return parentTaskId === '' && sourceDepths
-        ? renestTaskTree(taskBlock, sourceDepths)
-        : taskBlock
+      if (parentTaskId !== '') return taskBlock
+      return capTaskTreeDepth(sourceDepths ? renestTaskTree(taskBlock, sourceDepths) : taskBlock)
     })
   }
 

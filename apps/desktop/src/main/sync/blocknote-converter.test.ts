@@ -407,8 +407,8 @@ describe('blocknote-converter code block language', () => {
     expect(result?.trim()).toBe(md)
   })
 
-  it('keeps subtasks below one level through the full round-trip', async () => {
-    // #given a task tree three levels deep, as nested subtasks write it
+  it('writes subtasks below one level flat under their top-level task', async () => {
+    // #given a task tree three levels deep in the Y.Doc
     const md = [
       '- [ ] Parent {task:p1}',
       '  - [ ] Child {task:c1}',
@@ -424,8 +424,16 @@ describe('blocknote-converter code block language', () => {
     writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
-    // #then every line comes back at its own depth, none dropped
-    expect(result?.trim()).toBe(md)
+    // #then every line is kept, one level deep, in order: released builds read no deeper
+    expect(result?.trim()).toBe(
+      [
+        '- [ ] Parent {task:p1}',
+        '  - [ ] Child {task:c1}',
+        '  - [x] Grandchild {task:g1}',
+        '  - [ ] Great-grandchild {task:gg1}',
+        '  - [ ] Second child {task:c2}'
+      ].join('\n')
+    )
   })
 
   it('does not accumulate blank lines around inline task list items on reopen', async () => {

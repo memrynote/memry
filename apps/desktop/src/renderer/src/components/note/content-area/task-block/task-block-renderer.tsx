@@ -14,7 +14,11 @@ import { useTabActions } from '@/contexts/tabs'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { tasksService } from '@/services/tasks-service'
 import { markTaskRemovalsHandled } from '../task-removal'
-import { indentTaskBlock, outdentTaskBlock } from '../hooks/task-block-marquee-indent'
+import {
+  indentTaskBlock,
+  noteTaskDepth,
+  outdentTaskBlock
+} from '../hooks/task-block-marquee-indent'
 import { toTaskUpdateInput } from '@/features/tasks/task-update-input'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
@@ -161,8 +165,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     draftProjectId,
     noteId: hostNoteId,
     hasActiveReminder,
-    nestedSubtasks
+    nestedSubtasks,
+    taskParents
   } = useTaskPrefetch()
+  // A task below the first level is listed under its top-level task like a
+  // subtask (MAX_NOTE_TASK_DEPTH); its DB depth sets the indent. `ms-7` per level.
+  const listedDepth = parentTaskId ? noteTaskDepth(taskId, parentTaskId, taskParents) : 0
+  const deepIndent = listedDepth > 1 ? { marginInlineStart: `${1.75 * listedDepth}rem` } : undefined
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const openTaskDetail = useOpenTaskDetail()
@@ -471,8 +480,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         // the edit a second time.
         skipBlurRef.current = true
         const outcome = e.shiftKey
-          ? outdentTaskBlock(editor, block.id, { title })
-          : indentTaskBlock(editor, block.id, { nested: nestedSubtasks, title })
+          ? outdentTaskBlock(editor, block.id, { title, parents: taskParents })
+          : indentTaskBlock(editor, block.id, {
+              nested: nestedSubtasks,
+              title,
+              parents: taskParents
+            })
         if (outcome.kind === 'skipped') {
           skipBlurRef.current = false
           return
@@ -553,8 +566,21 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           setEditTitle(committed)
           void saveTitleToDb(committed)
           setIsEditingTitle(false)
+          // The next row is this one's sibling, under its DB parent when this
+          // row is listed deeper than the note's block tree holds.
+          const siblingParentId = listedDepth > 1 ? taskParents.get(taskId) : null
           editor.insertBlocks(
-            [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
+            [
+              {
+                type: 'taskBlock',
+                props: {
+                  taskId: '',
+                  title: '',
+                  checked: false,
+                  ...(siblingParentId ? { parentTaskId: siblingParentId } : {})
+                }
+              }
+            ],
             block,
             'after'
           )
@@ -595,6 +621,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       projects,
       applyUpdates,
       nestedSubtasks,
+      taskParents,
+      listedDepth,
       editTitle,
       saveTitleToDb,
       commitTitleEdit,
@@ -818,6 +846,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{task?.title ?? title}</span>
@@ -858,6 +887,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <Loader2 className="size-4 animate-spin" />
 
@@ -933,6 +963,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'focus:bg-surface-active/60',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <TaskRow
           task={rowTask}

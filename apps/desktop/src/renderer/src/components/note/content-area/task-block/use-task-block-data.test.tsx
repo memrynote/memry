@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/services/tasks-service', () => ({
   tasksService: { get: mocks.get, getLinkedTasks: mocks.getLinkedTasks },
+  // The prefetch provider follows task parents for a listed task's depth.
+  onTaskCreated: () => vi.fn(),
+  onTaskMoved: () => vi.fn(),
   onTaskUpdated: mocks.onTaskUpdated,
   onTaskCompleted: mocks.onTaskCompleted,
   onTaskDeleted: mocks.onTaskDeleted,
