@@ -17,6 +17,7 @@ import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 interface TaskRowProps {
@@ -212,151 +213,160 @@ const TaskRowComponent = ({
   })()
 
   return (
-    <div
-      ref={rowRef}
-      style={style}
-      role={isOverlay ? undefined : 'button'}
-      tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
-      onClick={isOverlay ? undefined : handleRowClick}
-      onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
-      {...(isOverlay ? {} : dragHandleAttributes)}
-      {...(isOverlay ? {} : dragHandleListeners)}
-      className={cn(
-        isOverlay
-          ? [
-              'flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
-              'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
-              '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
-            ]
-          : [
-              'group group/row group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
-              'rounded-md hover:bg-accent/60',
-              onClick && 'focus-visible:outline-none',
-
-              isDragging &&
-                'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
-              !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
-              isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-              isSelected &&
-                !isCheckedForSelection &&
-                'bg-primary/[0.08] ring-inset ring-primary/30',
-              isExiting && 'select-none',
-              sectionDragState === 'source-dimmed' && 'opacity-50',
-              sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
-              insertionIndicatorPosition === 'before' && 'pt-1',
-              insertionIndicatorPosition === 'after' && 'pb-1',
-              !isDragging && isJustDropped && 'animate-row-drop-flash'
-            ],
-        className
-      )}
-      data-section-drag-state={sectionDragState}
-      data-overlay-row-variant={isOverlay ? 'task' : undefined}
-      data-testid={dataTestId}
-      aria-hidden={isOverlay ? true : undefined}
-      aria-label={isOverlay ? undefined : `Task: ${task.title}${isCompleted ? ', completed' : ''}`}
-    >
-      {!isOverlay && insertionIndicatorPosition && (
-        <InsertionIndicator
-          position={insertionIndicatorPosition}
-          className="start-3 end-3"
-          dataTestId="list-drop-indicator"
-        />
-      )}
-
-      {!isOverlay && showSelection && (
-        <div className="flex shrink-0 items-center justify-center">
-          <SelectionCheckbox
-            state={isCheckedForSelection ? 'checked' : 'unchecked'}
-            onToggle={() => onToggleSelect?.(task.id)}
-            alwaysVisible={isSelectionMode}
-            label={`Select ${task.title}`}
-          />
-        </div>
-      )}
-
-      {isOverlay ? (
-        <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
-      ) : (
-        <InlineStatusPopover
-          statusId={task.statusId}
-          statuses={project.statuses}
-          isCompleted={isCompleted}
-          onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
-          onToggleComplete={() => {
-            setIsExiting(true)
-            setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
-          }}
-          disabled={isDragging}
-        />
-      )}
-
-      {isOverlay ? (
-        <PriorityBars priority={task.priority} />
-      ) : (
-        <InlinePriorityPopover
-          priority={task.priority}
-          onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
-          disabled={isDragging}
-        />
-      )}
-
-      <span
+    <TaskRowMenu task={task} enabled={!isOverlay}>
+      <div
+        ref={rowRef}
+        style={style}
+        role={isOverlay ? undefined : 'button'}
+        tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
+        onClick={isOverlay ? undefined : handleRowClick}
+        onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
+        {...(isOverlay ? {} : dragHandleAttributes)}
+        {...(isOverlay ? {} : dragHandleListeners)}
         className={cn(
-          'text-[13px] font-medium grow shrink min-w-0 truncate',
-          isExiting || isCompleted
-            ? isOverlay
-              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-              : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-            : isOverlay
-              ? 'text-foreground/90'
-              : 'text-foreground/90'
+          isOverlay
+            ? [
+                'flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
+                'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
+                '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
+              ]
+            : [
+                'group group/row group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+                'rounded-md hover:bg-accent/60',
+                onClick && 'focus-visible:outline-none',
+
+                isDragging &&
+                  'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+                !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
+                isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+                isSelected &&
+                  !isCheckedForSelection &&
+                  'bg-primary/[0.08] ring-inset ring-primary/30',
+                isExiting && 'select-none',
+                sectionDragState === 'source-dimmed' && 'opacity-50',
+                sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
+                insertionIndicatorPosition === 'before' && 'pt-1',
+                insertionIndicatorPosition === 'after' && 'pb-1',
+                !isDragging && isJustDropped && 'animate-row-drop-flash'
+              ],
+          className
         )}
+        data-section-drag-state={sectionDragState}
+        data-overlay-row-variant={isOverlay ? 'task' : undefined}
+        data-testid={dataTestId}
+        aria-hidden={isOverlay ? true : undefined}
+        aria-label={
+          isOverlay ? undefined : `Task: ${task.title}${isCompleted ? ', completed' : ''}`
+        }
       >
-        {task.title}
-      </span>
+        {!isOverlay && insertionIndicatorPosition && (
+          <InsertionIndicator
+            position={insertionIndicatorPosition}
+            className="start-3 end-3"
+            dataTestId="list-drop-indicator"
+          />
+        )}
 
-      {task.isRepeating && task.repeatConfig && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
-      )}
-
-      {showProjectBadge && (
-        <div className="flex items-center shrink-0 gap-[5px]">
-          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
-          <div
-            className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
-          >
-            {project.name}
+        {!isOverlay && showSelection && (
+          <div className="flex shrink-0 items-center justify-center">
+            <SelectionCheckbox
+              state={isCheckedForSelection ? 'checked' : 'unchecked'}
+              onToggle={() => onToggleSelect?.(task.id)}
+              alwaysVisible={isSelectionMode}
+              label={`Select ${task.title}`}
+            />
           </div>
-        </div>
-      )}
+        )}
 
-      {dueDateDisplay && (
-        <div
+        {isOverlay ? (
+          <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
+        ) : (
+          <InlineStatusPopover
+            statusId={task.statusId}
+            statuses={project.statuses}
+            isCompleted={isCompleted}
+            onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+            onToggleComplete={() => {
+              setIsExiting(true)
+              setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
+            }}
+            disabled={isDragging}
+          />
+        )}
+
+        {isOverlay ? (
+          <PriorityBars priority={task.priority} />
+        ) : (
+          <InlinePriorityPopover
+            priority={task.priority}
+            onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+            disabled={isDragging}
+          />
+        )}
+
+        <span
           className={cn(
-            'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
-            'colorClass' in dueDateDisplay
-              ? dueDateDisplay.colorClass
+            'text-[13px] font-medium grow shrink min-w-0 truncate',
+            isExiting || isCompleted
+              ? isOverlay
+                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
               : isOverlay
-                ? 'text-text-tertiary'
-                : null
+                ? 'text-foreground/90'
+                : 'text-foreground/90'
           )}
-          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
         >
-          {dueDateDisplay.text}
-        </div>
-      )}
+          {task.title}
+        </span>
 
-      {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+        {task.isRepeating && task.repeatConfig && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
+        )}
 
-      {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+        {showProjectBadge && (
+          <div className="flex items-center shrink-0 gap-[5px]">
+            <div
+              className="rounded-xs shrink-0 size-2"
+              style={{ backgroundColor: project.color }}
+            />
+            <div
+              className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
+            >
+              {project.name}
+            </div>
+          </div>
+        )}
 
-      {!isOverlay && droppedPriority && (
-        <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
-          {tPhaseF('phaseF.componentsTasksDragDropTaskRow.priority')}
-          {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
-        </div>
-      )}
-    </div>
+        {dueDateDisplay && (
+          <div
+            className={cn(
+              'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
+              'colorClass' in dueDateDisplay
+                ? dueDateDisplay.colorClass
+                : isOverlay
+                  ? 'text-text-tertiary'
+                  : null
+            )}
+            style={
+              'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+            }
+          >
+            {dueDateDisplay.text}
+          </div>
+        )}
+
+        {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+
+        {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+
+        {!isOverlay && droppedPriority && (
+          <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
+            {tPhaseF('phaseF.componentsTasksDragDropTaskRow.priority')}
+            {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
+          </div>
+        )}
+      </div>
+    </TaskRowMenu>
   )
 }
 

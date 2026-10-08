@@ -13,6 +13,9 @@ interface UseSubtaskTreeControllerOptions {
   createTask: (task: Task) => void
   updateTask: (taskId: string, updates: Partial<Task>) => void
   onZoom: (taskId: string) => void
+  openTask: (taskId: string) => void
+  toggleComplete: (taskId: string) => void
+  deleteTask: (taskId: string) => void
 }
 
 export interface SubtaskTreeController {
@@ -29,7 +32,10 @@ export function useSubtaskTreeController({
   contextIds,
   createTask,
   updateTask,
-  onZoom
+  onZoom,
+  openTask,
+  toggleComplete,
+  deleteTask
 }: UseSubtaskTreeControllerOptions): SubtaskTreeController {
   const [draftParentId, setDraftParentId] = useState<string | null>(null)
   const [moveUnderTaskId, setMoveUnderTaskId] = useState<string | null>(null)
@@ -88,7 +94,11 @@ export function useSubtaskTreeController({
       canMoveUnder,
       moveUnder,
       openMoveUnder: setMoveUnderTaskId,
-      zoomInto: onZoom
+      zoomInto: onZoom,
+      parentOf: (taskId: string) => tasks.find((t) => t.id === taskId)?.parentId ?? null,
+      openTask,
+      toggleComplete,
+      deleteTask
     }),
     [
       allowNested,
@@ -98,7 +108,11 @@ export function useSubtaskTreeController({
       addSubtask,
       canMoveUnder,
       moveUnder,
-      onZoom
+      onZoom,
+      tasks,
+      openTask,
+      toggleComplete,
+      deleteTask
     ]
   )
 

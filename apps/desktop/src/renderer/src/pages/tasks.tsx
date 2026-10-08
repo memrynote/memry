@@ -567,15 +567,6 @@ export const TasksPage = ({
     ? (projects.find((p) => p.id === zoomedTask.projectId) ?? null)
     : null
 
-  const subtaskTree = useSubtaskTreeController({
-    tasks,
-    allowNested: taskPrefs.nestedSubtasks,
-    contextIds,
-    createTask: (task) => void undoable.createTask(task),
-    updateTask: undoable.updateTaskWithUndo,
-    onZoom: setZoomedTaskId
-  })
-
   // Derived: tab counts for TasksTabBar (scoped by dropdown project).
   // Parents only — subtasks ride along in the lists but are not counted.
   // `getTaskTabCounts` is pinned for the iOS core by vectors (spec 004 D4).
@@ -1016,6 +1007,27 @@ export const TasksPage = ({
     },
     [pendingDeleteParentId, setDetailTaskId, undoable]
   )
+
+  const subtaskTree = useSubtaskTreeController({
+    tasks,
+    allowNested: taskPrefs.nestedSubtasks,
+    contextIds,
+    createTask: (task) => void undoable.createTask(task),
+    updateTask: undoable.updateTaskWithUndo,
+    onZoom: setZoomedTaskId,
+    openTask: handleTaskClick,
+    toggleComplete: (taskId) => {
+      const task = tasks.find((t) => t.id === taskId)
+      if (task?.parentId) handleToggleSubtaskComplete(taskId)
+      else handleToggleComplete(taskId)
+    },
+    // A task with subtasks asks first (E2); a plain one deletes with Undo.
+    deleteTask: (taskId) => {
+      const task = tasks.find((t) => t.id === taskId)
+      if (task && task.subtaskIds.length > 0) setPendingDeleteParentId(taskId)
+      else handleDeleteTaskFromDrawer(taskId)
+    }
+  })
 
   // ========== BULK ACTION HANDLERS ==========
 

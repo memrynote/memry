@@ -194,7 +194,7 @@ export const SortableSubtaskList = ({
         modifiers={tree ? [sidewaysStep] : [verticalOnly, restrictToParentElement]}
       >
         <SortableContext items={subtaskIds} strategy={verticalListSortingStrategy}>
-          {subtasks.map((subtask) => {
+          {subtasks.map((subtask, index) => {
             const children = getSubtasks(subtask.id, allTasks)
             const isExpanded = expandedIds?.has(subtask.id) ?? false
             const showChildren =
@@ -210,6 +210,7 @@ export const SortableSubtaskList = ({
                   isExpanded={isExpanded}
                   onToggleExpand={onToggleExpand}
                   projection={projection?.id === subtask.id ? projection.value : null}
+                  rowAbove={index > 0 ? subtasks[index - 1] : undefined}
                   onToggleComplete={onToggleComplete}
                   onClick={onClick}
                 />

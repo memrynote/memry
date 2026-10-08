@@ -26,6 +26,14 @@ export interface SubtaskTreeValue {
   openMoveUnder: (taskId: string) => void
   /** Scopes the list to `taskId`'s branch. */
   zoomInto: (taskId: string) => void
+  /** `taskId`'s parent as loaded, or null for a top-level task. */
+  parentOf: (taskId: string) => string | null
+  /** Opens the task in the detail drawer. */
+  openTask: (taskId: string) => void
+  /** Completes the task (with its branch) or reopens it. */
+  toggleComplete: (taskId: string) => void
+  /** Deletes the task; one with subtasks asks what happens to them first. */
+  deleteTask: (taskId: string) => void
 }
 
 export const SubtaskTreeContext = createContext<SubtaskTreeValue | null>(null)

@@ -21,6 +21,7 @@ import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 export interface ParentTaskRowProps {
@@ -205,191 +206,196 @@ export const ParentTaskRow = ({
 
   return (
     <div className={cn('group group/row relative', className)}>
-      <div
-        ref={rowRef}
-        style={isOverlay && overlayWidth ? { width: `${overlayWidth}px` } : undefined}
-        role={isOverlay ? undefined : 'button'}
-        tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
-        onClick={isOverlay ? undefined : handleRowClick}
-        onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
-        {...(isOverlay ? {} : dragHandleAttributes)}
-        {...(isOverlay ? {} : dragHandleListeners)}
-        className={cn(
-          isOverlay
-            ? [
-                'relative flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
-                'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
-                '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
-              ]
-            : [
-                'group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
-                'rounded-md hover:bg-muted',
-                onClick && 'focus-visible:outline-none',
+      <TaskRowMenu task={task} enabled={!isOverlay}>
+        <div
+          ref={rowRef}
+          style={isOverlay && overlayWidth ? { width: `${overlayWidth}px` } : undefined}
+          role={isOverlay ? undefined : 'button'}
+          tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
+          onClick={isOverlay ? undefined : handleRowClick}
+          onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
+          {...(isOverlay ? {} : dragHandleAttributes)}
+          {...(isOverlay ? {} : dragHandleListeners)}
+          className={cn(
+            isOverlay
+              ? [
+                  'relative flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
+                  'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
+                  '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
+                ]
+              : [
+                  'group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+                  'rounded-md hover:bg-muted',
+                  onClick && 'focus-visible:outline-none',
 
-                isDragging &&
-                  'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
-                !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
-                isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-                isSelected &&
-                  !isCheckedForSelection &&
-                  'bg-primary/10 ring-1 ring-inset ring-primary/30',
-                sectionDragState === 'source-dimmed' && 'opacity-50',
-                sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
-                insertionIndicatorPosition === 'before' && 'pt-1',
-                insertionIndicatorPosition === 'after' && 'pb-1',
-                !isDragging && isJustDropped && 'animate-row-drop-flash'
-              ]
-        )}
-        data-section-drag-state={sectionDragState}
-        data-overlay-row-variant={isOverlay ? 'parent' : undefined}
-        data-testid={dataTestId}
-        aria-hidden={isOverlay ? true : undefined}
-        aria-label={
-          isOverlay
-            ? undefined
-            : `Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`
-        }
-      >
-        {!isOverlay && insertionIndicatorPosition && (
-          <InsertionIndicator
-            position={insertionIndicatorPosition}
-            className="start-3 end-3"
-            dataTestId="list-drop-indicator"
-          />
-        )}
-
-        {!isOverlay && onToggleSelect && (
-          <div className="flex shrink-0 items-center justify-center">
-            <SelectionCheckbox
-              state={isCheckedForSelection ? 'checked' : 'unchecked'}
-              onToggle={() => onToggleSelect(task.id)}
-              alwaysVisible={isSelectionMode}
-              label={`Select ${task.title}`}
+                  isDragging &&
+                    'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+                  !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
+                  isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+                  isSelected &&
+                    !isCheckedForSelection &&
+                    'bg-primary/10 ring-1 ring-inset ring-primary/30',
+                  sectionDragState === 'source-dimmed' && 'opacity-50',
+                  sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
+                  insertionIndicatorPosition === 'before' && 'pt-1',
+                  insertionIndicatorPosition === 'after' && 'pb-1',
+                  !isDragging && isJustDropped && 'animate-row-drop-flash'
+                ]
+          )}
+          data-section-drag-state={sectionDragState}
+          data-overlay-row-variant={isOverlay ? 'parent' : undefined}
+          data-testid={dataTestId}
+          aria-hidden={isOverlay ? true : undefined}
+          aria-label={
+            isOverlay
+              ? undefined
+              : `Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`
+          }
+        >
+          {!isOverlay && insertionIndicatorPosition && (
+            <InsertionIndicator
+              position={insertionIndicatorPosition}
+              className="start-3 end-3"
+              dataTestId="list-drop-indicator"
             />
-          </div>
-        )}
+          )}
 
-        {isOverlay ? (
-          taskHasSubtasks ? (
-            <div
-              className="flex items-center justify-center shrink-0 text-text-tertiary"
-              aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
-            >
-              <ChevronDown
-                size={10}
-                className={cn(
-                  'transition-transform duration-200 ease-out',
-                  !isExpanded && '-rotate-90'
-                )}
+          {!isOverlay && onToggleSelect && (
+            <div className="flex shrink-0 items-center justify-center">
+              <SelectionCheckbox
+                state={isCheckedForSelection ? 'checked' : 'unchecked'}
+                onToggle={() => onToggleSelect(task.id)}
+                alwaysVisible={isSelectionMode}
+                label={`Select ${task.title}`}
               />
             </div>
-          ) : (
-            <div className="shrink-0 w-[10px] h-[10px]" aria-hidden="true" />
-          )
-        ) : (
-          <ExpandChevron
-            isExpanded={isExpanded}
-            hasSubtasks={taskHasSubtasks}
-            onClick={handleExpandToggle}
-            size="sm"
-          />
-        )}
-
-        {isOverlay ? (
-          <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
-        ) : (
-          <InlineStatusPopover
-            statusId={task.statusId}
-            statuses={project.statuses}
-            isCompleted={isCompleted}
-            onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
-            onToggleComplete={() => onToggleComplete(task.id)}
-            disabled={isDragging}
-          />
-        )}
-
-        {isOverlay ? (
-          <PriorityBars priority={task.priority} />
-        ) : (
-          <InlinePriorityPopover
-            priority={task.priority}
-            onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
-            disabled={isDragging}
-          />
-        )}
-
-        <span
-          className={cn(
-            'text-[13px] font-medium grow shrink min-w-0 truncate',
-            isCompleted
-              ? isOverlay
-                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-                : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-              : isOverlay
-                ? 'text-foreground/90'
-                : isContext
-                  ? 'text-text-tertiary'
-                  : 'text-foreground/90'
           )}
-        >
-          {task.title}
-        </span>
 
-        {taskHasSubtasks && (
-          <SubtaskProgressIndicator
-            completed={progress.completed}
-            total={progress.total}
-            accentColor={statusColor}
-          />
-        )}
-
-        {task.isRepeating && task.repeatConfig && (
-          <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
-        )}
-
-        {showProjectBadge && (
-          <div className="flex items-center shrink-0 gap-[5px]">
-            <div
-              className="rounded-xs shrink-0 size-2"
-              style={{ backgroundColor: project.color }}
+          {isOverlay ? (
+            taskHasSubtasks ? (
+              <div
+                className="flex items-center justify-center shrink-0 text-text-tertiary"
+                aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
+              >
+                <ChevronDown
+                  size={10}
+                  className={cn(
+                    'transition-transform duration-200 ease-out',
+                    !isExpanded && '-rotate-90'
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="shrink-0 w-[10px] h-[10px]" aria-hidden="true" />
+            )
+          ) : (
+            <ExpandChevron
+              isExpanded={isExpanded}
+              hasSubtasks={taskHasSubtasks}
+              onClick={handleExpandToggle}
+              size="sm"
             />
-            <div
-              className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
-            >
-              {project.name}
-            </div>
-          </div>
-        )}
+          )}
 
-        {dueDateDisplay && (
-          <div
+          {isOverlay ? (
+            <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
+          ) : (
+            <InlineStatusPopover
+              statusId={task.statusId}
+              statuses={project.statuses}
+              isCompleted={isCompleted}
+              onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+              onToggleComplete={() => onToggleComplete(task.id)}
+              disabled={isDragging}
+            />
+          )}
+
+          {isOverlay ? (
+            <PriorityBars priority={task.priority} />
+          ) : (
+            <InlinePriorityPopover
+              priority={task.priority}
+              onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+              disabled={isDragging}
+            />
+          )}
+
+          <span
             className={cn(
-              'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
-              'colorClass' in dueDateDisplay
-                ? dueDateDisplay.colorClass
+              'text-[13px] font-medium grow shrink min-w-0 truncate',
+              isCompleted
+                ? isOverlay
+                  ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                  : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
                 : isOverlay
-                  ? 'text-text-tertiary'
-                  : null
+                  ? 'text-foreground/90'
+                  : isContext
+                    ? 'text-text-tertiary'
+                    : 'text-foreground/90'
             )}
-            style={
-              'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
-            }
           >
-            {dueDateDisplay.text}
-          </div>
-        )}
+            {task.title}
+          </span>
 
-        {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+          {taskHasSubtasks && (
+            <SubtaskProgressIndicator
+              completed={progress.completed}
+              total={progress.total}
+              accentColor={statusColor}
+            />
+          )}
 
-        {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+          {task.isRepeating && task.repeatConfig && (
+            <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
+          )}
 
-        {!isOverlay && droppedPriority && (
-          <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
-            {tPhaseF('phaseF.componentsTasksParentTaskRow.priority')}
-            {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
-          </div>
-        )}
-      </div>
+          {showProjectBadge && (
+            <div className="flex items-center shrink-0 gap-[5px]">
+              <div
+                className="rounded-xs shrink-0 size-2"
+                style={{ backgroundColor: project.color }}
+              />
+              <div
+                className={cn(
+                  'text-[11px] leading-3.5 truncate max-w-[100px]',
+                  'text-text-tertiary'
+                )}
+              >
+                {project.name}
+              </div>
+            </div>
+          )}
+
+          {dueDateDisplay && (
+            <div
+              className={cn(
+                'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
+                'colorClass' in dueDateDisplay
+                  ? dueDateDisplay.colorClass
+                  : isOverlay
+                    ? 'text-text-tertiary'
+                    : null
+              )}
+              style={
+                'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+              }
+            >
+              {dueDateDisplay.text}
+            </div>
+          )}
+
+          {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+
+          {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+
+          {!isOverlay && droppedPriority && (
+            <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
+              {tPhaseF('phaseF.componentsTasksParentTaskRow.priority')}
+              {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
+            </div>
+          )}
+        </div>
+      </TaskRowMenu>
 
       {!isOverlay && (isExpanded || tree?.draftParentId === task.id) && (
         <SortableSubtaskList

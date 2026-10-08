@@ -29,6 +29,10 @@ With **Settings → Modules → Tasks → Subtasks inside subtasks** turned on, 
 
 Devices on older versions of memrynote show only the first level until they update.
 
+### Right-click Menu
+
+Right-click any task row or kanban card for every action on it, each listed with its shortcut: **Open**, **Complete** / **Reopen**, **Add subtask**, **Zoom into subtasks**, **Move under…**, **Move under _the task above_**, **Move out one level**, **Make top-level task**, and **Delete**. Only the actions that apply to that task are shown.
+
 ### Moving a Task Under Another
 
 Select a row and press <kbd>Shift</kbd>+<kbd>M</kbd> for **Move under…**. It lists the project as a tree; pick the new parent and press <kbd>Enter</kbd>, or <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to make the task top level. The task's own subtasks are greyed out, because a task cannot go inside its own branch. The whole branch moves with it.

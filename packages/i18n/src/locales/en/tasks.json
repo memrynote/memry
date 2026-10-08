@@ -1043,6 +1043,17 @@
       "cancel": "Cancel",
       "deleteAll": "Delete all",
       "keepSubtasks": "Keep subtasks"
+    },
+    "menu": {
+      "open": "Open",
+      "complete": "Complete",
+      "reopen": "Reopen",
+      "zoom": "Zoom into subtasks",
+      "moveUnder": "Move under…",
+      "indent": "Move under {title}",
+      "outdent": "Move out one level",
+      "topLevel": "Make top-level task",
+      "delete": "Delete"
     }
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
@@ -31,6 +31,13 @@ export const SubtaskDraftRow = ({
   const tree = useSubtaskTree()
   const expansion = useTaskExpansion()
   const [title, setTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  // A next frame, not autoFocus: a right-click menu that opened the draft takes
+  // focus with it as it closes, after this row has mounted.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => inputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [parent.id])
   if (!tree) return null
 
   const rowAbove = siblings[siblings.length - 1]
@@ -82,8 +89,7 @@ export const SubtaskDraftRow = ({
         aria-hidden="true"
       />
       <input
-        // The draft opens on a click or a key, so taking focus is the point.
-        autoFocus
+        ref={inputRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={handleKeyDown}

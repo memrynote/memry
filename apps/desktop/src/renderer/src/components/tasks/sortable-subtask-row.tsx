@@ -8,6 +8,7 @@ import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import type { SubtaskProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
@@ -25,6 +26,8 @@ interface SortableSubtaskRowProps {
   isExpanded: boolean
   onToggleExpand?: (taskId: string) => void
   projection?: SubtaskDropProjection
+  /** The sibling above, for the menu's "Indent". */
+  rowAbove?: Task
   onToggleComplete: (taskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
@@ -39,6 +42,7 @@ export const SortableSubtaskRow = ({
   isExpanded,
   onToggleExpand,
   projection = null,
+  rowAbove,
   onToggleComplete,
   onClick,
   className
@@ -98,78 +102,80 @@ export const SortableSubtaskRow = ({
 
   return (
     <div ref={setNodeRef} style={style} className={cn('group/subtask relative', className)}>
-      <div
-        {...attributes}
-        {...listeners}
-        role="button"
-        tabIndex={onClick ? 0 : -1}
-        onClick={() => onClick?.(subtask.id)}
-        onKeyDown={handleKeyDown}
-        data-testid="subtask-row"
-        data-task-id={subtask.id}
-        data-depth={depth}
-        className={cn(
-          'group/addable flex items-center gap-1 py-1.5 pe-3',
-          depth === 1 ? 'ps-6' : 'ps-1',
-          'hover:bg-muted rounded-e-sm',
-          'transition-colors duration-150',
-          onClick && 'focus-visible:outline-none focus-visible:bg-muted',
-          isDragging
-            ? 'cursor-grabbing opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
-            : ''
-        )}
-        aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
-      >
-        <span className="flex w-4 shrink-0 items-center justify-center">
-          <ExpandChevron
-            isExpanded={isExpanded}
-            hasSubtasks={hasChildren && !!onToggleExpand}
-            onClick={() => onToggleExpand?.(subtask.id)}
-            size="sm"
-          />
-        </span>
-
-        <span className="flex min-w-0 grow items-center gap-2">
-          <span onClick={(e) => e.stopPropagation()} className="flex shrink-0">
-            <InteractiveStatusIcon
-              type={statusType}
-              color={statusColor}
-              isCompleted={isCompleted}
-              onClick={() => onToggleComplete(subtask.id)}
+      <TaskRowMenu task={subtask} rowAbove={rowAbove}>
+        <div
+          {...attributes}
+          {...listeners}
+          role="button"
+          tabIndex={onClick ? 0 : -1}
+          onClick={() => onClick?.(subtask.id)}
+          onKeyDown={handleKeyDown}
+          data-testid="subtask-row"
+          data-task-id={subtask.id}
+          data-depth={depth}
+          className={cn(
+            'group/addable flex items-center gap-1 py-1.5 pe-3',
+            depth === 1 ? 'ps-6' : 'ps-1',
+            'hover:bg-muted rounded-e-sm',
+            'transition-colors duration-150',
+            onClick && 'focus-visible:outline-none focus-visible:bg-muted',
+            isDragging
+              ? 'cursor-grabbing opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
+              : ''
+          )}
+          aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
+        >
+          <span className="flex w-4 shrink-0 items-center justify-center">
+            <ExpandChevron
+              isExpanded={isExpanded}
+              hasSubtasks={hasChildren && !!onToggleExpand}
+              onClick={() => onToggleExpand?.(subtask.id)}
+              size="sm"
             />
           </span>
 
-          <span
-            className={cn(
-              'text-[13px] font-medium truncate',
-              isCompleted
-                ? 'line-through text-muted-foreground/60 decoration-1'
-                : isContext
-                  ? 'text-text-tertiary'
-                  : 'text-foreground/90'
-            )}
-          >
-            {subtask.title}
+          <span className="flex min-w-0 grow items-center gap-2">
+            <span onClick={(e) => e.stopPropagation()} className="flex shrink-0">
+              <InteractiveStatusIcon
+                type={statusType}
+                color={statusColor}
+                isCompleted={isCompleted}
+                onClick={() => onToggleComplete(subtask.id)}
+              />
+            </span>
+
+            <span
+              className={cn(
+                'text-[13px] font-medium truncate',
+                isCompleted
+                  ? 'line-through text-muted-foreground/60 decoration-1'
+                  : isContext
+                    ? 'text-text-tertiary'
+                    : 'text-foreground/90'
+              )}
+            >
+              {subtask.title}
+            </span>
           </span>
-        </span>
 
-        {projection && (
-          <span
-            className="shrink-0 rounded-sm bg-foreground px-1.5 py-0.5 text-[11px]/3.5 text-background"
-            data-testid="subtask-drop-projection"
-          >
-            {projection.kind === 'nest'
-              ? t('subtaskTree.dropInto', { title: projection.parentTitle })
-              : t('subtaskTree.dropOut')}
-          </span>
-        )}
+          {projection && (
+            <span
+              className="shrink-0 rounded-sm bg-foreground px-1.5 py-0.5 text-[11px]/3.5 text-background"
+              data-testid="subtask-drop-projection"
+            >
+              {projection.kind === 'nest'
+                ? t('subtaskTree.dropInto', { title: projection.parentTitle })
+                : t('subtaskTree.dropOut')}
+            </span>
+          )}
 
-        {hasChildren && (
-          <SubtaskProgressIndicator completed={progress.completed} total={progress.total} />
-        )}
+          {hasChildren && (
+            <SubtaskProgressIndicator completed={progress.completed} total={progress.total} />
+          )}
 
-        <AddSubtaskButton taskId={subtask.id} />
-      </div>
+          <AddSubtaskButton taskId={subtask.id} />
+        </div>
+      </TaskRowMenu>
     </div>
   )
 }

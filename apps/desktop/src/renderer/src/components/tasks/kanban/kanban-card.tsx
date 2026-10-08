@@ -11,6 +11,7 @@ import { priorityConfig, type Priority, type Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { formatDueDate } from '@/lib/task-utils'
 import { getSubtasks } from '@/lib/subtask-utils'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 
 interface KanbanCardProps {
   task: Task
@@ -268,14 +269,16 @@ export const SortableKanbanCard = (props: KanbanCardProps): React.JSX.Element =>
   }
 
   return (
-    <KanbanCardContent
-      {...props}
-      isDragging={isDragging}
-      style={style}
-      attributes={attributes}
-      listeners={listeners}
-      setNodeRef={setNodeRef}
-    />
+    <TaskRowMenu task={props.task} canDraft={false}>
+      <KanbanCardContent
+        {...props}
+        isDragging={isDragging}
+        style={style}
+        attributes={attributes}
+        listeners={listeners}
+        setNodeRef={setNodeRef}
+      />
+    </TaskRowMenu>
   )
 }
 
