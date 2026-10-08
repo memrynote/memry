@@ -115,6 +115,7 @@ final class EditorSession {
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
 
     init() {
         keyboardObserver = NotificationCenter.default.addObserver(
@@ -127,10 +128,34 @@ final class EditorSession {
                 if frame.height - accessory > 200 { self.keyboardHeight = frame.height - accessory }
             }
         }
+        // #2820: typing is committed when editing ends, and leaving the app
+        // does not end editing. A kill from the app switcher then dropped
+        // everything typed since the caret went in, so the focused block is
+        // committed as the app stops being active.
+        resignObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.commitBeforeLeaving() }
+        }
     }
 
     deinit {
         if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
+        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+    }
+
+    /// Commits the focused block's typing, and holds a background task until
+    /// the write lands, so suspension cannot cut it off.
+    private func commitBeforeLeaving() {
+        guard let field, field.dirty else { return }
+        commit(field)
+        let tail = tail
+        let app = UIApplication.shared
+        let background = app.beginBackgroundTask(withName: "editor-commit")
+        Task { @MainActor in
+            await tail?.value
+            if background != .invalid { app.endBackgroundTask(background) }
+        }
     }
 
     // MARK: Input views

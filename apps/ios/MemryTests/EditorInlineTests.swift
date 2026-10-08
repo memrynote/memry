@@ -227,6 +227,29 @@ struct EditorCommitBaseTests {
         #expect(editsAtSync == [[.setText(blockId: "a", text: "hello world")]])
     }
 
+    /// #2820: leaving the app does not end editing, so a kill from the app
+    /// switcher lost the focused block's typing. Resigning active commits it.
+    @Test(.timeLimit(.minutes(1))) func leaving_the_app_commits_the_focused_blocks_typing() async {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.text = "hello world"
+        field.dirty = true
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        }
+
+        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(!field.dirty)
+    }
+
     private func commit(_ session: EditorSession, _ field: BlockField) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             session.reload = { done.resume() }
