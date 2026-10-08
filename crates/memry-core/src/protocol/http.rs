@@ -510,7 +510,8 @@ fn retryable_transport(error: &TransportError) -> bool {
         | TransportError::Failed { .. } => true,
         TransportError::Tls { .. }
         | TransportError::Cancelled
-        | TransportError::SocketClosed { .. } => false,
+        | TransportError::SocketClosed { .. }
+        | TransportError::HandshakeRejected { .. } => false,
     }
 }
 

@@ -469,6 +469,9 @@ extension ErrorMapping {
         case .SocketClosed:
             copy("transport.socketClosed", "Memry's live connection closed.",
                  "It will reconnect on its own. Your changes are saved on this phone.", .retryLater)
+        case .HandshakeRejected:
+            copy("transport.handshakeRejected", "Memry's live connection was refused.",
+                 "Your changes are saved on this phone and sync on the next pass.", .retryLater)
         }
     }
 

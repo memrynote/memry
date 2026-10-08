@@ -28,10 +28,10 @@ running:
   backgrounded mobile app, so its socket cannot be serviced and every broadcast
   to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
-  (`crates/memry-core/src/sync/socket.rs:235`, `:274`) and observes no app
+  (`crates/memry-core/src/sync/socket.rs:247`, `:287`) and observes no app
   state itself. The shell starts `VaultRealtime::run` and calls
-  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:90`,
-  `:106`); iOS runs it until the scene goes to the background
+  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:92`,
+  `:108`); iOS runs it until the scene goes to the background
   (`apps/ios/Memry/Features/Tasks/TasksRootView.swift:173`, `:193`).
 - **A resident desktop process keeps the socket open for as long as the process
   runs and sync is started.** Closing the main window hides it to the tray and
@@ -260,7 +260,7 @@ updated (`apps/desktop/src/main/sync/websocket.ts:182-204`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
 latch on `VaultSync`, which outlives the per-foreground socket the shell mints
 and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:292`,
-`crates/memry-core/src/sync/socket_run.rs:118`).
+`crates/memry-core/src/sync/socket_run.rs:128`).
 
 ## 9.10 Reconnect and backoff — Q09.4
 
@@ -286,6 +286,15 @@ the client no longer wants a connection, the handshake was rejected `401`, the
 version was rejected, or transport pinning failed
 (`apps/desktop/src/main/sync/websocket.ts:338-339`). A reconnect MUST only fire
 when the device believes it is online (`:352`).
+
+The Rust core learns the handshake's status from the shell as
+`TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
+It latches `403` and `426` like their in-socket counterparts 4004 and 4009, and
+ends the run on `401` without latching, so the next foreground tries again
+(`crates/memry-core/src/sync/socket.rs:342`, `:360`). A handshake with neither
+an open nor an error after `HANDSHAKE_TIMEOUT_MS` (15 000) is dropped and
+retried along the ladder (`crates/memry-core/src/sync/socket_run.rs:39`,
+`:166`).
 
 ### 9.10.1 What a client does between a 4003 and a successful refresh
 

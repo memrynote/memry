@@ -365,3 +365,89 @@ async fn a_late_close_from_a_replaced_socket_is_ignored() {
     h.stop.stop();
     assert_eq!(h.running.await.unwrap(), RunEnd::Stopped);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_handshake_refused_403_or_426_latches_without_reconnecting() {
+    for (status, terminal) in [(403, "revoked"), (426, "version")] {
+        let latch = Arc::new(TerminalLatch::default());
+        let first = start_latched(Arc::clone(&latch));
+        settle().await;
+        first
+            .socket
+            .latest()
+            .on_error(TransportError::HandshakeRejected { status });
+        let end = tokio::time::timeout(Duration::from_secs(1), first.running)
+            .await
+            .expect("a refused handshake ends the run without a rung");
+        assert_eq!(end.unwrap(), RunEnd::Terminal, "{status} ({terminal})");
+        assert_eq!(first.socket.opened(), 1, "{status}: no reconnect");
+
+        let next = start_latched(latch);
+        assert_eq!(next.running.await.unwrap(), RunEnd::Terminal, "{status}");
+        assert_eq!(next.socket.opened(), 0, "{status}: latched for the session");
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_handshake_refused_401_ends_the_run_without_latching() {
+    let latch = Arc::new(TerminalLatch::default());
+    let first = start_latched(Arc::clone(&latch));
+    settle().await;
+    first
+        .socket
+        .latest()
+        .on_error(TransportError::HandshakeRejected { status: 401 });
+    let end = tokio::time::timeout(Duration::from_secs(1), first.running)
+        .await
+        .expect("a 401 is not reconnected into");
+    assert_eq!(end.unwrap(), RunEnd::Refused);
+    assert_eq!(first.socket.opened(), 1);
+
+    let next = start_latched(latch);
+    settle().await;
+    assert_eq!(next.socket.opened(), 1, "the next foreground tries again");
+    next.stop.stop();
+    assert_eq!(next.running.await.unwrap(), RunEnd::Stopped);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_handshake_refused_for_another_reason_takes_the_ladder() {
+    let h = start();
+    settle().await;
+    h.socket
+        .latest()
+        .on_error(TransportError::HandshakeRejected { status: 503 });
+    tokio::time::sleep(Duration::from_millis(1_600)).await;
+    assert_eq!(
+        h.socket.opened(),
+        2,
+        "a 503 is retried after the first rung"
+    );
+    h.stop.stop();
+    assert_eq!(h.running.await.unwrap(), RunEnd::Stopped);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_handshake_that_never_answers_is_dropped_and_retried() {
+    let h = start();
+    settle().await;
+    tokio::time::sleep(Duration::from_millis(14_900)).await;
+    assert_eq!(h.socket.closes.load(Ordering::SeqCst), 0, "still waiting");
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(
+        h.socket.closes.load(Ordering::SeqCst),
+        1,
+        "the unanswered handshake is dropped"
+    );
+    tokio::time::sleep(Duration::from_millis(1_600)).await;
+    assert_eq!(h.socket.opened(), 2, "and retried along the ladder");
+
+    // A late open from the dropped handshake must not count as the new one.
+    h.socket.listeners.lock().unwrap()[0].on_open();
+    settle().await;
+    assert_eq!(h.passes.count(), 0);
+
+    h.stop.stop();
+    assert_eq!(h.running.await.unwrap(), RunEnd::Stopped);
+}
