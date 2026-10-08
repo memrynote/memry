@@ -34,6 +34,8 @@ export type WikiLinkSuggestionItem = {
   insertMode?: WikiLinkInsertMode
   /** Heading rows only: indents the row so the note's outline is readable. */
   headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
+  /** Note rows whose title another note shares: the folder that tells them apart. */
+  folder?: string
   /** `headingEmpty` only: whether a heading filter is what emptied the list. */
   filtered?: boolean
 }
@@ -220,7 +222,12 @@ export function WikiLinkMenu({
                   <div className="text-xs text-muted-foreground">{item.target}</div>
                 </>
               ) : (
-                <div className="truncate font-medium">{item.title}</div>
+                <>
+                  <div className="truncate font-medium">{item.title}</div>
+                  {item.folder ? (
+                    <div className="truncate text-xs text-muted-foreground">{item.folder}</div>
+                  ) : null}
+                </>
               )}
             </div>
           </button>
