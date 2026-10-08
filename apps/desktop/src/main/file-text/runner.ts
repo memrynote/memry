@@ -10,7 +10,8 @@
  * `file_text_jobs`:
  *
  *   (no job) or signature moved -> pending -> done
- *                                          -> failed (unopenable, missing, or
+ *                                          -> failed (unopenable, missing, a link
+ *                                             outside the vault, or
  *                                             MAX_CONSECUTIVE_FAILURES pages in a row,
  *                                             or HTML over HTML_TEXT_MAX_BYTES)
  *   failed, or done with unreadable pages,
@@ -47,6 +48,7 @@ import {
 } from '../database/queries/extracted-text'
 import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
+import { normalizeRelativePath, resolveVaultFile } from '../lib/paths'
 import { readHtmlText } from './html-text'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
@@ -316,12 +318,22 @@ export class FileTextRunner {
 
   private async extract(file: TextFile, signature: string): Promise<void> {
     const db = this.deps.getDb()
-    const absolutePath = path.join(this.deps.vaultPath, file.path)
-    const current = await fileSignature(absolutePath)
-    if (!current) {
+    const resolved = await resolveVaultFile(this.deps.vaultPath, file.path)
+    if (resolved.kind === 'outside') {
+      finishFileTextJob(
+        db,
+        file,
+        'failed',
+        `${normalizeRelativePath(file.path)} points outside the vault`
+      )
+      return
+    }
+    const current = resolved.kind === 'inside' ? await fileSignature(resolved.realPath) : null
+    if (resolved.kind === 'missing' || !current) {
       finishFileTextJob(db, file, 'failed', 'File not found')
       return
     }
+    const absolutePath = resolved.realPath
     if (current.signature !== signature) {
       this.changed.add(file.noteId)
       // Still being written, most likely: let the copy settle before reading.

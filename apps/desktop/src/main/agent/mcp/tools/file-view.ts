@@ -10,6 +10,7 @@ import { getExtension, getFileType } from '@memry/shared/file-types'
 
 import type { PdfDocument } from '../../../file-text/pdf-host'
 import type { ViewImagePayload, ViewImageSource } from '../../../image-processing/protocol'
+import { resolveVaultFile } from '../../../lib/paths'
 import { AgentToolError } from '../errors'
 import { ImageToolResult } from '../tool-image'
 
@@ -113,17 +114,24 @@ function resolveTarget(row: FileViewRow, input: FileViewInput): ViewTarget {
   }
 }
 
-async function fileSize(vaultPath: string, target: ViewTarget): Promise<number> {
-  try {
-    const stats = await stat(path.join(vaultPath, target.file))
-    if (stats.isFile()) return stats.size
-  } catch {
-    // reported below
+async function locate(
+  vaultPath: string,
+  target: ViewTarget
+): Promise<{ absolutePath: string; size: number }> {
+  const details = { id: target.id, ...(target.attachment ? { attachment: target.attachment } : {}) }
+  const resolved = await resolveVaultFile(vaultPath, target.file)
+  if (resolved.kind === 'outside') {
+    throw new AgentToolError(
+      'PERMISSION_DENIED',
+      `${target.file} points outside the vault. vault_view_file reads only files inside the vault.`,
+      details
+    )
   }
-  throw new AgentToolError('NOT_FOUND', `${target.file} is not in the vault.`, {
-    id: target.id,
-    ...(target.attachment ? { attachment: target.attachment } : {})
-  })
+  if (resolved.kind === 'inside') {
+    const stats = await stat(resolved.realPath).catch(() => null)
+    if (stats?.isFile()) return { absolutePath: resolved.realPath, size: stats.size }
+  }
+  throw new AgentToolError('NOT_FOUND', `${target.file} is not in the vault.`, details)
 }
 
 function unreadable(target: ViewTarget, error: unknown): AgentToolError {
@@ -235,8 +243,7 @@ export async function viewVaultFile(
     })
   }
 
-  const size = await fileSize(deps.vaultPath, target)
-  const absolutePath = path.join(deps.vaultPath, target.file)
+  const { absolutePath, size } = await locate(deps.vaultPath, target)
   return target.fileType === 'image'
     ? viewImage(deps, target, absolutePath)
     : viewPdfPage(deps, target, absolutePath, size, input.page ?? 1)
