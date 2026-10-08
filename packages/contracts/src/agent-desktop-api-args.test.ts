@@ -30,9 +30,7 @@ describe('agent desktop API argument schemas', () => {
   })
 
   it('publish a schema that compiles under a strict draft 2020-12 validator for every operation', () => {
-    // strictTuples flags any tuple whose trailing items are optional (minItems below the
-    // prefixItems length); that is valid 2020-12 and how optional arguments are published.
-    const ajv = new Ajv2020({ strict: true, strictTuples: false, allErrors: true })
+    const ajv = new Ajv2020({ strict: true, allErrors: true })
     addFormats(ajv)
     const invalid: string[] = []
     for (const operation of AgentMcpDesktopOperations) {
@@ -48,6 +46,34 @@ describe('agent desktop API argument schemas', () => {
       }
     }
     expect(invalid).toEqual([])
+  })
+
+  it('publish optional trailing arguments as calls a validator accepts or refuses like the bridge', () => {
+    const ajv = new Ajv2020({ strict: true })
+    addFormats(ajv)
+    const calls: Array<[(typeof AgentMcpDesktopOperations)[number], unknown[]]> = [
+      ['notes.list', []],
+      ['notes.list', [null]],
+      ['notes.list', [{ folder: 'a' }]],
+      ['notes.list', [{ folder: 'a' }, 1]],
+      ['notes.list', ['a']],
+      ['inbox.linkToNote', ['i1']],
+      ['inbox.linkToNote', ['i1', 'n1']],
+      ['inbox.linkToNote', ['i1', 'n1', ['t']]],
+      ['inbox.linkToNote', ['i1', 'n1', 5]],
+      ['folderView.setView', [{ kind: 'folder', path: 'a' }, { name: 'v' }, 'old']],
+      ['folderView.setView', [{ kind: 'folder', path: 'a' }]],
+      ['notes.get', ['n1']],
+      ['notes.get', ['n1', 'n2']],
+      ['notes.getTags', []],
+      ['notes.getTags', ['x']]
+    ]
+    const disagreements = calls.filter(
+      ([operation, args]) =>
+        ajv.validate(desktopOperationJsonSchema(operation), args) !==
+        desktopOperationArgsSchema(operation).safeParse(args).success
+    )
+    expect(disagreements).toEqual([])
   })
 
   it('say an operation without parameters takes no arguments', () => {

@@ -34,7 +34,8 @@ import {
   AGENT_DESKTOP_OPERATION_PARAMS,
   desktopOperationJsonSchema,
   desktopOperationParamNames,
-  desktopOperationRequiredCount
+  desktopOperationRequiredCount,
+  readsNullPastPreload
 } from '@memry/contracts/agent-desktop-api-args'
 import { AgentToolError } from '../../errors'
 import { assertDesktopApiArgs } from '../desktop-api-params'
@@ -160,14 +161,6 @@ describe('desktop API parameter lists', () => {
       await fn(...args)
       return [...vi.mocked(ipcRenderer.invoke).mock.calls, ...generatedInvoke.mock.calls]
     }
-    // Null passes the preload unchanged here; the code after it reads it as left out.
-    const pastPreload = new Set([
-      // inbox-handlers passes input to filing.convertToTask, which reads input?.projectId etc.
-      'inbox.convertToTask:input',
-      // The responder builds the range from args[0] alone unless both are strings.
-      'calendar.getRange:end'
-    ])
-
     const mismatches: string[] = []
     const acceptsNull: string[] = []
     for (const operation of AgentMcpDesktopOperations) {
@@ -181,7 +174,7 @@ describe('desktop API parameter lists', () => {
         const id = `${operation}:${name}`
         const leading = params.slice(0, index).map(([param]) => `sentinel-${param}`)
         const readsNullAsAbsent =
-          pastPreload.has(id) ||
+          readsNullPastPreload(schema) ||
           isDeepStrictEqual(await sentToMain(fn, [...leading, null]), await sentToMain(fn, leading))
         const accepts = schema.safeParse(null).success
         if (accepts) acceptsNull.push(id)

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
 import { ImageToolResult } from '../tool-image'
+import { DESKTOP_API_REPLY_CAP } from '../tools/desktop-api-reply'
 import { TOOL_SCHEMAS } from '../tools/schemas'
 
 describe('Agent MCP HTTP server', () => {
@@ -525,45 +526,85 @@ describe('Agent MCP server shutdown', () => {
 })
 
 describe('Agent MCP server reply cap', () => {
-  it('cuts a desktop reply after source refs are added, so the agent gets at most 100 KB', async () => {
-    const events = Array.from({ length: 450 }, (_, i) => ({
+  const eventList = (length: number) =>
+    Array.from({ length }, (_, i) => ({
       id: `event-${i}`,
       title: `Synthetic event ${i}`,
       startAt: '2026-10-05T09:00:00.000Z',
       endAt: '2026-10-05T10:00:00.000Z',
       description: 'x'.repeat(40)
     }))
-    const handle = await startAgentMcpServer({
+  let reply: unknown
+  let handle: AgentMcpServerHandle
+
+  beforeEach(async () => {
+    handle = await startAgentMcpServer({
       toolRegistrations: [
         {
           name: 'vault_desktop_read',
           description: 'desktop read',
           inputSchema: z.object({ operation: z.string(), args: z.array(z.unknown()) }),
-          maxReplyBytes: 100 * 1024,
-          handler: async () => ({ events })
+          replyCap: DESKTOP_API_REPLY_CAP,
+          handler: async () => reply
         }
       ]
     })
+  })
 
-    try {
-      const r = await callTool(handle, 'vault_desktop_read', {
-        operation: 'calendar.listEvents',
-        args: [{}]
-      })
-      const body = await r.text()
-      const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
-      const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
-      const text = rpc.result.content[0].text as string
-      const reply = JSON.parse(text)
+  afterEach(async () => {
+    await handle.stop()
+  })
 
-      expect(Buffer.byteLength(text)).toBeLessThanOrEqual(102_400)
-      expect(reply.truncated).toBe(true)
-      expect(reply.totalBytes).toBeGreaterThan(200_000)
-      expect(reply.partial.startsWith('{"events":[{"id":"event-0"')).toBe(true)
-      expect(rpc.result.structuredContent).toEqual(reply)
-    } finally {
-      await handle.stop()
-    }
+  async function call(operation: string, args: unknown[]) {
+    const r = await callTool(handle, 'vault_desktop_read', { operation, args })
+    const body = await r.text()
+    const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
+    const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
+    const text = rpc.result.content[0].text as string
+    return { text, delivered: JSON.parse(text), structured: rpc.result.structuredContent }
+  }
+
+  it('cuts a desktop reply after source refs are added, so the agent gets at most 100 KB', async () => {
+    reply = { events: eventList(450) }
+    const { text, delivered, structured } = await call('calendar.listEvents', [{}])
+
+    expect(Buffer.byteLength(JSON.stringify(reply))).toBeLessThan(102_400)
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(102_400)
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.totalBytes).toBeGreaterThan(200_000)
+    expect(delivered.partial.startsWith('{"events":[{"id":"event-0"')).toBe(true)
+    expect(structured).toEqual(delivered)
+  })
+
+  it('points a cut calendar event list at a date range, since the list takes no limit', async () => {
+    reply = { events: eventList(450) }
+    const { delivered } = await call('calendar.listEvents', [{}])
+
+    expect(delivered.message).toMatch(
+      /calendar\.listEvents returns every event; call calendar\.getRange with a date range instead\.$/
+    )
+    expect(delivered.message).not.toMatch(/limit|vault_read_note/)
+  })
+
+  it('tells the agent to narrow the date range of a cut calendar range, which takes no limit', async () => {
+    reply = { events: eventList(1200) }
+    const { delivered } = await call('calendar.getRange', [
+      { startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-11-01T00:00:00.000Z' }
+    ])
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.message).toMatch(/Call calendar\.getRange again with a shorter date range\.$/)
+    expect(delivered.message).not.toMatch(/limit|vault_read_note/)
+  })
+
+  it('suggests a smaller limit or vault_read_note for other cut replies', async () => {
+    reply = { notes: [{ id: 'n1', content: 'x'.repeat(150_000) }] }
+    const { delivered } = await call('notes.list', [{}])
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.message).toMatch(
+      /Call an operation that returns less, such as a list with a smaller limit, or vault_read_note for a note body\.$/
+    )
   })
 })
 
