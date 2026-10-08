@@ -12,6 +12,7 @@ import {
   serializeJournalEntry,
   createJournalFrontmatter,
   readJournalEntry,
+  readJournalFile,
   writeJournalEntry,
   writeJournalEntryWithContent,
   buildJournalEntryWrite,
@@ -438,6 +439,24 @@ Today I worked on tests.`
       const entry = await readJournalEntry('2026-12-31')
 
       expect(entry).toBeNull()
+    })
+
+    it('refuses an entry file that links outside the vault and reads nothing', async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'journal-outside-'))
+      try {
+        fs.writeFileSync(path.join(outside, 'private.md'), 'Outside secret.')
+        fs.symlinkSync(
+          path.join(outside, 'private.md'),
+          path.join(tempVault.path, 'journal', '2026-01-15.md')
+        )
+        const refusal =
+          'journal/2026-01-15.md points outside the vault. Memry reads only files inside the vault.'
+
+        await expect(readJournalEntry('2026-01-15')).rejects.toThrow(refusal)
+        await expect(readJournalFile('2026-01-15')).rejects.toThrow(refusal)
+      } finally {
+        fs.rmSync(outside, { recursive: true, force: true })
+      }
     })
   })
 

@@ -127,6 +127,24 @@ describe('canvas store', () => {
     expect(fetched?.scene).toBe('')
   })
 
+  it('reports unreadable and reads nothing when the document links outside the vault', () => {
+    const created = createCanvas(db, vault, 'vault-1', { title: 'Plan', scene: SCENE })
+    const file = path.join(vault, db.select().from(schema.canvases).all()[0].filePath!)
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-canvas-outside-'))
+    try {
+      fs.writeFileSync(path.join(outside, 'private.excalidraw'), SCENE)
+      fs.rmSync(file)
+      fs.symlinkSync(path.join(outside, 'private.excalidraw'), file)
+
+      const fetched = getCanvas(db, vault, created.id)
+
+      expect(fetched?.unreadable).toBe(true)
+      expect(fetched?.scene).toBe('')
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   it('refuses to write over a row that has no document', () => {
     const created = createCanvas(db, vault, 'vault-1', { scene: SCENE })
     db.update(schema.canvases)

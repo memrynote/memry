@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -15,7 +15,9 @@ import {
   noteRelativeRef,
   toMemryFileUrl,
   fromMemryFileUrl,
-  resolveVaultFile
+  resolveVaultFile,
+  resolveVaultFileSync,
+  type VaultFileResolution
 } from './paths'
 
 describe('paths utils', () => {
@@ -159,5 +161,50 @@ describe('resolveVaultFile', () => {
     } finally {
       fs.rmSync(vault, { recursive: true, force: true })
     }
+  })
+
+  describe('a missing file', () => {
+    let vault: string
+    let outside: string
+
+    beforeEach(() => {
+      vault = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-paths-')))
+      outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-outside-')))
+      fs.mkdirSync(path.join(vault, 'attachments'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(vault, { recursive: true, force: true })
+      fs.rmSync(outside, { recursive: true, force: true })
+    })
+
+    function expectBoth(relative: string, expected: VaultFileResolution): Promise<void> {
+      expect(resolveVaultFileSync(vault, relative)).toEqual(expected)
+      return expect(resolveVaultFile(vault, relative)).resolves.toEqual(expected)
+    }
+
+    it('is outside under a folder that links outside the vault', async () => {
+      fs.symlinkSync(outside, path.join(vault, 'attachments/n1'))
+      fs.writeFileSync(path.join(outside, 'kept.png'), 'secret')
+
+      await expectBoth('attachments/n1/gone.png', { kind: 'outside' })
+      await expectBoth('attachments/n1/deeper/gone.png', { kind: 'outside' })
+      await expectBoth('attachments/n1/kept.png', { kind: 'outside' })
+    })
+
+    it('is outside under a folder link whose target is gone', async () => {
+      fs.symlinkSync(path.join(outside, 'deleted'), path.join(vault, 'attachments/n1'))
+
+      await expectBoth('attachments/n1/gone.png', { kind: 'outside' })
+    })
+
+    it('is missing under a real folder or a folder linked inside the vault', async () => {
+      fs.mkdirSync(path.join(vault, 'attachments/n2'))
+      fs.symlinkSync(path.join(vault, 'attachments/n2'), path.join(vault, 'attachments/n1'))
+
+      await expectBoth('attachments/n2/gone.png', { kind: 'missing' })
+      await expectBoth('attachments/n1/gone.png', { kind: 'missing' })
+      await expectBoth('nowhere/at/all.png', { kind: 'missing' })
+    })
   })
 })

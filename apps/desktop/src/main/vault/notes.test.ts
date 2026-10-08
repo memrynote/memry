@@ -443,6 +443,54 @@ describe('notes operations', () => {
       expect(retrieved!.id).toBe(created.id)
       expect(retrieved!.title).toBe('Duplicate B')
     })
+
+    describe('a note file swapped for a symlink', () => {
+      let outside: string
+
+      beforeEach(() => {
+        outside = fs.mkdtempSync(path.join(path.dirname(tempVault.path), 'notes-outside-'))
+      })
+
+      afterEach(() => {
+        fs.rmSync(outside, { recursive: true, force: true })
+      })
+
+      async function swapForLink(target: string): Promise<{ id: string; path: string }> {
+        const created = await notes.createNote({ title: 'Swapped', content: 'Vault body.' })
+        const file = path.join(tempVault.path, created.path)
+        fs.unlinkSync(file)
+        fs.symlinkSync(target, file)
+        return created
+      }
+
+      it('refuses a link that points outside the vault and reads nothing', async () => {
+        const secret = path.join(outside, 'private.md')
+        fs.writeFileSync(secret, 'Outside secret.')
+        const created = await swapForLink(secret)
+
+        await expect(notes.getNoteById(created.id)).rejects.toThrow(
+          `${created.path} points outside the vault. Memry reads only files inside the vault.`
+        )
+        await expect(notes.updateNote({ id: created.id, content: 'Overwrite' })).rejects.toThrow(
+          'points outside the vault'
+        )
+        expect(fs.readFileSync(secret, 'utf-8')).toBe('Outside secret.')
+      })
+
+      it('refuses a link whose target is gone', async () => {
+        const created = await swapForLink(path.join(outside, 'deleted.md'))
+
+        await expect(notes.getNoteById(created.id)).rejects.toThrow('points outside the vault')
+      })
+
+      it('reads a link that stays inside the vault', async () => {
+        const target = path.join(tempVault.path, 'notes', 'target.md')
+        fs.writeFileSync(target, 'Inside body.\n')
+        const created = await swapForLink(target)
+
+        expect((await notes.getNoteById(created.id))?.content).toBe('Inside body.\n')
+      })
+    })
   })
 
   describe('getNoteByPath', () => {
