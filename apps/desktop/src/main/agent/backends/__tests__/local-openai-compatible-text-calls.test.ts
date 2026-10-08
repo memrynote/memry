@@ -38,8 +38,19 @@ function json(value: unknown): Response {
 function finalAnswer(ollama: boolean): Response {
   if (ollama) {
     const lines = [
-      { model: MODEL, message: { role: 'assistant', content: 'You have no tags.' }, done: false },
-      { model: MODEL, message: { role: 'assistant', content: '' }, done_reason: 'stop', done: true }
+      {
+        model: MODEL,
+        created_at: '2026-10-09T00:00:00Z',
+        message: { role: 'assistant', content: 'You have no tags.' },
+        done: false
+      },
+      {
+        model: MODEL,
+        created_at: '2026-10-09T00:00:00Z',
+        message: { role: 'assistant', content: '' },
+        done_reason: 'stop',
+        done: true
+      }
     ]
     return new Response(lines.map((line) => JSON.stringify(line)).join('\n') + '\n', {
       headers: { 'content-type': 'application/x-ndjson' }
