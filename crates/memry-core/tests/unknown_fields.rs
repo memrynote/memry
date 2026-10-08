@@ -393,17 +393,17 @@ async fn a_newer_desktop_payload_survives_an_edit_cycle_with_its_unmodelled_keys
 /// dropped the item would satisfy "does not fail the page" and lose the item
 /// for ever, which is the `GET /sync/vaults` bug in another place.
 ///
-/// `canvas` is one of the twelve recognised types this client does not
+/// `canvas_folder` is one of the four recognised types this client does not
 /// subscribe to (chapter 13 §13.1), asserted below rather than assumed.
 #[tokio::test]
 async fn an_unsubscribed_type_is_recorded_against_its_id_rather_than_dropped_from_the_page() {
     assert!(
-        UNSUBSCRIBED_RECORD_ITEM_TYPES.contains(&"canvas"),
+        UNSUBSCRIBED_RECORD_ITEM_TYPES.contains(&"canvas_folder"),
         "this test is about a recognised type this client does not declare"
     );
     let db = scratch_db("unsubscribed-type");
 
-    let mut unsubscribed = pull_item("canvas1", "canvas");
+    let mut unsubscribed = pull_item("cvf_Work", "canvas_folder");
     unsubscribed["serverCursor"] = json!(4711);
     // §13.2.2: a newer server may add an envelope key, and a client MUST NOT
     // reject an item for carrying one.
@@ -414,7 +414,7 @@ async fn an_unsubscribed_type_is_recorded_against_its_id_rather_than_dropped_fro
         &db,
         &[
             (NOTE_ID, "note"),
-            ("canvas1", "canvas"),
+            ("cvf_Work", "canvas_folder"),
             ("def456abc123", "note"),
         ],
         vec![pull_item(NOTE_ID, "note"), unsubscribed, newer_envelope],
@@ -452,14 +452,14 @@ async fn an_unsubscribed_type_is_recorded_against_its_id_rather_than_dropped_fro
 
     // The unsubscribed item is **recorded**, which is what makes the cursor's
     // advance safe: the id, the type, the reason and the feed position are all
-    // on disk, so a build that later declares `canvas` can find it again.
-    let recorded = row(&db, "canvas", "canvas1").expect("a row for the unsubscribed item");
+    // on disk, so a build that later declares `canvas_folder` can find it again.
+    let recorded = row(&db, "canvas_folder", "cvf_Work").expect("a row for the unsubscribed item");
     let reason = recorded
         .corrupt_reason
         .as_deref()
         .expect("§5.3.1: recorded, not skipped");
     assert!(
-        reason.contains("undeclared item type") && reason.contains("canvas"),
+        reason.contains("undeclared item type") && reason.contains("canvas_folder"),
         "the reason names what happened: {reason}"
     );
     assert!(recorded.corrupt_at.is_some());
@@ -494,10 +494,13 @@ async fn an_unsubscribed_type_is_recorded_against_its_id_rather_than_dropped_fro
 async fn a_page_of_nothing_but_an_unsubscribed_type_refuses_the_run_and_still_advances() {
     let db = scratch_db("unsubscribed-only");
     let transport = FakeTransport::new(vec![
-        response(200, &changes_page(&[("canvas1", "canvas")], "88", true)),
         response(
             200,
-            &json!({ "items": [pull_item("canvas1", "canvas")] }).to_string(),
+            &changes_page(&[("cvf_Work", "canvas_folder")], "88", true),
+        ),
+        response(
+            200,
+            &json!({ "items": [pull_item("cvf_Work", "canvas_folder")] }).to_string(),
         ),
     ]);
     let cipher = ScriptedCipher::new(&[]);
@@ -525,7 +528,7 @@ async fn a_page_of_nothing_but_an_unsubscribed_type_refuses_the_run_and_still_ad
     );
 
     // Still recorded, even on the page that refused.
-    let recorded = row(&db, "canvas", "canvas1").expect("a row for the unsubscribed item");
+    let recorded = row(&db, "canvas_folder", "cvf_Work").expect("a row for the unsubscribed item");
     assert!(recorded.corrupt_reason.is_some());
 }
 

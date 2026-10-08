@@ -45,6 +45,9 @@ struct NoteBlockView: View {
     /// Where this block sits among its siblings, for the block menu's Move
     /// up and Move down. `nil` offers no block menu (a table cell's blocks).
     var siblings: BlockSiblings?
+    /// Indentation steps: the block's depth, or within a column the depth
+    /// counted from the column (`NoteColumns.layout`).
+    var indent: UInt32?
 
     /// Whether a wiki link's title names a note here, so a broken one can be
     /// drawn as broken. `nil` until the vault's notes are read, which draws
@@ -71,7 +74,7 @@ struct NoteBlockView: View {
             // Indentation carries nesting, exactly as it does in the browse
             // list: the block list is flat and depth is the only thing saying
             // a list item sits inside another.
-            .padding(.leading, CGFloat(block.depth) * Tokens.Space.inset)
+            .padding(.leading, CGFloat(indent ?? block.depth) * Tokens.Space.inset)
             .frame(maxWidth: .infinity, alignment: frameAlignment)
             // After the frame, so the handle sits in the page margin whatever
             // the block's depth or alignment.
@@ -90,11 +93,11 @@ struct NoteBlockView: View {
     /// cells, a task's menu, a checklist item's task menu, and code whose
     /// text is selectable. The block menu would shadow or fight them.
     private static let ownLongPressKinds: Set<String> = [
-        "table", "taskBlock", "checkListItem", "codeBlock", "diagram", "mathBlock",
+        "table", "taskBlock", "checkListItem", "codeBlock", "diagram",
     ]
 
     private var actionRunner: BlockActionRunner? {
-        guard let editing, let siblings, block.id != nil else { return nil }
+        guard let editing, let siblings, block.id != nil, !NoteColumns.isStructural(block.kind) else { return nil }
         if editableField(editing) == nil, Self.ownLongPressKinds.contains(block.kind) { return nil }
         return BlockActionRunner(
             session: editing.session, target: BlockActionTarget(block: block, siblings: siblings)
@@ -136,7 +139,7 @@ struct NoteBlockView: View {
     /// file, and editing under it moves the words out from under the
     /// comment), and a cell's inline images and checkboxes.
     private func editableField(_ editing: NoteEditingBridge) -> EditableBlockView? {
-        guard block.id != nil, Self.editableKinds.contains(block.kind),
+        guard block.id != nil, Self.editableKinds.contains(block.kind), !isAnsweredView,
               !block.inline.contains(where: { $0.marks.contains("inlineImage") || $0.marks.contains("inlineCheckbox") }),
               !reviewMarks.contains(where: { plainText.contains($0.visibleText) })
         else { return nil }
@@ -214,19 +217,39 @@ struct NoteBlockView: View {
             QuoteRow(text: inline)
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
+        case "codeBlock" where value("language") == ViewBlockFence.language:
+            let text = plainText
+            ViewBlockView(text: text, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editView(blockId: id, text: text) } }
+            })
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
-            // A Mermaid diagram's source. Desktop renders the picture with
-            // mermaid, which this build does not carry; the source is the
-            // whole of the block, so it is shown rather than a blank.
-            CodeRow(language: "mermaid", text: plainText)
+            // `content: plain`: the Mermaid source is the block's text.
+            let source = plainText
+            DiagramBlockView(source: source, edit: editing.flatMap { editing in
+                block.id.map { id in
+                    { editing.session.editSource(BlockSourceRequest(blockId: id, source: source, kind: .diagram)) }
+                }
+            })
+        case "whiteboard":
+            WhiteboardBlockView(
+                canvasId: value("canvasId") ?? "",
+                edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
+                revision: editing?.session.whiteboardRevision ?? 0
+            )
         case "mathBlock":
-            // `content: none`: the formula is the `latex` prop. Shown as its
-            // source for the same reason, since KaTeX is not in this build.
-            CodeRow(language: "LaTeX", text: value("latex") ?? "")
+            // `content: none`: the formula is the `latex` prop.
+            let latex = value("latex") ?? ""
+            MathBlockView(latex: latex, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editSource(BlockSourceRequest(blockId: id, source: latex)) } }
+            })
         case "divider":
             Divider().overlay(Tokens.Line.border.color)
+        case "columnList", "column":
+            // Layout only: `NoteColumns.layout` draws their blocks, and they
+            // have no words of their own.
+            EmptyView()
         case "toggleListItem":
             // The children already arrive as their own blocks one level
             // deeper, so this draws the summary and the state — it does not
@@ -243,6 +266,7 @@ struct NoteBlockView: View {
                 url: value("url"),
                 name: value("name"),
                 size: value("size"),
+                mimeType: value("mimeType"),
                 caption: value("caption"),
                 resolve: attachment,
                 remove: removeAttachment
@@ -316,6 +340,14 @@ struct NoteBlockView: View {
                     .multilineTextAlignment(alignment)
             }
         }
+    }
+
+    /// A view block this build draws as rows. It stays out of the text editor
+    /// so its fence is never rewritten here; one it cannot answer is edited as
+    /// the code it shows.
+    private var isAnsweredView: Bool {
+        block.kind == "codeBlock" && value("language") == ViewBlockFence.language
+            && ViewBlockFence(text: plainText) != .code
     }
 
     /// The block's runs as one attributed string, marks applied.

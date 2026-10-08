@@ -14,12 +14,12 @@ import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
-  serializeParsedNote,
+  serializeUpdatedNote,
   extractInlineTagsFromMarkdown,
   normalizePropertiesToRoot,
   replacePropertiesOnRoot,
   writePropertiesToRoot,
-  extractProperties,
+  propertiesToWrite,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -38,6 +38,7 @@ import {
 } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { recordDropCopyFailure } from './activity-log'
+import { copyImportedFile } from './import-copy'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -63,6 +64,7 @@ import {
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
+import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
@@ -71,6 +73,12 @@ import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-
 import { getStatus, getConfig } from './index'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
+import {
+  assertFolderTreeWritable,
+  assertFolderWritable,
+  assertNoteWritable,
+  assertParentFolderWritable
+} from '../vault-locks/registry'
 import {
   emitNoteEvent,
   getDefaultNoteDir,
@@ -223,6 +231,7 @@ export type {
 export interface ImportFilesInput {
   sourcePaths: string[]
   targetFolder?: string
+  options?: PlainChecklistsOption
 }
 
 export interface ImportedFileInfo {
@@ -244,6 +253,7 @@ export interface ImportFilesResult {
 // ============================================================================
 
 export async function createNote(input: NoteCreateInput): Promise<Note> {
+  assertFolderWritable(input.folder)
   // `input.folder` is vault-relative, so a note created inside a folder lands
   // in that folder. Only an unplaced note falls back to `defaultNoteFolder`.
   const notesDir = input.folder ? getVaultRoot() : getDefaultNoteDir()
@@ -623,6 +633,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${input.id}`, NoteErrorCode.NOT_FOUND, input.id)
   }
+  assertNoteWritable(input.id, existing.path)
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
@@ -678,7 +689,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   }
   let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
 
-  const newProperties = input.properties ?? extractProperties(newFrontmatter)
+  const newProperties = propertiesToWrite(input.properties, existing, newFrontmatter)
 
   if (input.properties !== undefined) {
     newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
@@ -710,7 +721,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   } else {
     const parsedCurrent = parseNote(currentRaw, existing.path)
     const nextBody = input.content === undefined ? parsedCurrent.content : newContent
-    fileContent = serializeParsedNote({ ...parsedCurrent, frontmatter: newFrontmatter }, nextBody, {
+    fileContent = serializeUpdatedNote(parsedCurrent, newFrontmatter, nextBody, {
       frontmatterEdited
     })
   }
@@ -730,6 +741,10 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     ? new Date().toISOString()
     : (cached?.modifiedAt ?? existing.modified.toISOString())
 
+  // The in-place edit can write a value differently from the record it was
+  // given (a timestamp string for a date key is written as the date), so the
+  // index reads what the file holds.
+  const writtenFrontmatter = parseNote(fileContent, existing.path).frontmatter
   const syncResult = changed
     ? syncNoteToCache(
         db,
@@ -737,7 +752,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
           id: input.id,
           path: existing.path,
           fileContent,
-          frontmatter: newFrontmatter,
+          frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,
           createdAt: cached?.createdAt ?? existing.created.toISOString(),
@@ -758,7 +773,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     path: existing.path,
     title: newTitle,
     content: newContent,
-    frontmatter: newFrontmatter,
+    frontmatter: writtenFrontmatter,
     created: existing.created,
     modified: new Date(newModified),
     tags: newTags,
@@ -812,6 +827,7 @@ export async function deleteNote(id: string): Promise<void> {
   if (!cached) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, cached.path)
 
   const absolutePath = toAbsolutePath(cached.path)
   await deleteFile(absolutePath)
@@ -863,6 +879,7 @@ export async function getFolders(): Promise<FolderInfo[]> {
 }
 
 export async function createFolder(folderPath: string): Promise<void> {
+  assertParentFolderWritable(folderPath)
   const notesDir = getVaultRoot()
   const absolutePath = path.join(notesDir, folderPath)
   await ensureDirectory(absolutePath)
@@ -871,6 +888,8 @@ export async function createFolder(folderPath: string): Promise<void> {
 }
 
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  assertFolderTreeWritable(oldPath)
+  assertParentFolderWritable(newPath)
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)
@@ -900,6 +919,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
 }
 
 export async function deleteFolder(folderPath: string): Promise<void> {
+  assertFolderTreeWritable(folderPath)
   const notesDir = getVaultRoot()
   const absPath = path.join(notesDir, folderPath)
 
@@ -967,6 +987,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
   // landed in a folder that did not exist, and the misplaced file's own
   // vault-relative path fed the next drop — one extra `notes/` per drop.
   const targetDir = targetFolder ? path.join(status.path, targetFolder) : getDefaultNoteDir()
+  assertFolderWritable(path.relative(status.path, targetDir))
 
   await ensureDirectory(targetDir)
 
@@ -998,7 +1019,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
         }
       }
 
-      await fs.copyFile(sourcePath, destPath)
+      await copyImportedFile(sourcePath, destPath, input.options?.plainChecklists === true)
       imported++
 
       const fileType = getFileType(getExtension(destPath)) ?? 'markdown'

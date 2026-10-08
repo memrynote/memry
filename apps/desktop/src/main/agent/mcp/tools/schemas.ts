@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  AgentMcpDesktopOperations,
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
 } from '@memry/contracts/agent-mcp-channels'
@@ -12,20 +13,14 @@ import {
 import { CalendarDateSchema } from '@memry/contracts/calendar-date'
 import type { ChangePreviewKind } from '@memry/contracts/ipc-agent'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
+import { strictDeep } from '@memry/contracts/strict-schema'
+
+import { CANVAS_ID_HINT, CHECKLIST_HINT, CREATED_FOLDERS_HINT } from './tool-hints'
 
 const idSchema = z.string().min(1)
 
 /** Cap on an agent-written HTML artifact ; well under the attachment size limit. */
 export const HTML_ARTIFACT_MAX_CHARS = 512 * 1024
-/**
- * Said on every canvas tool that takes a canvas id. Two canvases in different
- * folders may share a title, so a bare title is refused when it matches more
- * than one — the tools list the candidates rather than picking one, because
- * drawing on the wrong canvas destroys work silently.
- */
-const CANVAS_ID_HINT =
-  'Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; ' +
-  'a bare title matching more than one canvas is refused with the candidates listed.'
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -99,7 +94,7 @@ const desktopWriteSchema = z.object({
   args: z.array(z.unknown()).default([])
 })
 
-export const TOOL_SCHEMAS = {
+const LOOSE_TOOL_SCHEMAS = {
   vault_search_notes: {
     input: z.object({
       query: z.string().min(1),
@@ -110,14 +105,48 @@ export const TOOL_SCHEMAS = {
     description:
       'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
       'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
-      'a note — vault_read_note rejects those. Pass file_types to restrict the search, e.g. ' +
-      '["markdown"] for notes only; omitted returns every file type.'
+      'a note. PDFs and images match on the text read out of them on this device, and a note ' +
+      'matches on the visible text of the HTML blocks it embeds. Pass ' +
+      'file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns ' +
+      'every file type. Each hit carries sync, as vault_read_note describes.'
   },
   vault_read_note: {
-    input: z.object({ id: idSchema }),
+    input: z.object({
+      id: idSchema,
+      from_page: z.number().int().positive().optional()
+    }),
     description:
-      'Read a markdown note by id; returns full markdown content + metadata. Errors with ' +
-      'VALIDATION when the id belongs to a filed pdf/image/audio/video file.'
+      'Read a markdown note by id; returns full markdown content + metadata. For a filed pdf ' +
+      'or image, returns extracted_text instead: the text read on this device (the PDF text ' +
+      'layer, else OCR), one entry per page, with status "extracting" | "done" | "failed", ' +
+      'page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as ' +
+      'from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds ' +
+      'attachment_text, the text read from each ({ file, text }; the visible text for an ' +
+      'HTML block), about 100 KB at most. Errors with VALIDATION ' +
+      'for a filed audio or video file. To look at an image or a PDF page, use vault_view_file. ' +
+      'sync says whether the note\'s latest text reached the server: state "pending" (changes ' +
+      'waiting on this device, since waiting_since), "sent" (a push has no answer yet), ' +
+      '"confirmed" (the server stored the last body push, at body_confirmed_at), ' +
+      '"not_recorded" (nothing waiting, no confirmed push recorded yet), "rejected" (the ' +
+      'server refused the latest push), "local_only" or "not_syncing". After a write, read ' +
+      'again until state is "confirmed" and body_confirmed_at is later than the write.'
+  },
+  vault_view_file: {
+    input: z.object({
+      id: idSchema,
+      attachment: z.string().min(1).optional(),
+      page: z.number().int().positive().optional()
+    }),
+    description:
+      'Look at an image, or one page of a PDF, from the vault. Returns the picture as image ' +
+      'content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that ' +
+      'says what was sent: file, width and height, the source size for an image, and page and ' +
+      'page_count for a PDF. Pass the id of a filed image or PDF (file_type "image" or "pdf"); ' +
+      'page picks the PDF page, default 1, one page per call. For an image or PDF a markdown ' +
+      'note embeds, pass the note id and the file name as attachment: the name after ' +
+      'attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. ' +
+      'In Memry chat with a local or OpenAI-compatible provider, a model that cannot take ' +
+      'images gets a text notice instead of the picture.'
   },
   vault_list_folder: {
     input: z.object({
@@ -127,11 +156,15 @@ export const TOOL_SCHEMAS = {
     }),
     description:
       'List the sub-folders and notes in a folder, addressed by path (as returned in ' +
-      'folder_path/path fields); omit path for the vault root. recursive includes every ' +
-      'nested level instead of direct children only. Returns at most 1000 notes.'
+      'folder_path/path fields); omit path for the vault root. Paths are vault-relative ' +
+      'with no leading slash ("projects/active"); a leading slash is also accepted. A ' +
+      'folder that does not exist fails with NOT_FOUND. recursive includes every ' +
+      'nested level instead of direct children only. Returns at most 1000 notes. Each note ' +
+      'entry carries file_type; a filed pdf/image/audio/video file lists as kind "file", ' +
+      'not "note". Each note entry carries sync, as vault_read_note describes.'
   },
   vault_get_current_note: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'Return the note currently open in the originating renderer window, or null.'
   },
   vault_list_tasks: {
@@ -153,7 +186,7 @@ export const TOOL_SCHEMAS = {
     description: 'Read a task by id.'
   },
   vault_list_projects: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'List all projects with task counts and linked note/file/event counts.'
   },
   vault_get_project: {
@@ -166,14 +199,18 @@ export const TOOL_SCHEMAS = {
   },
   vault_get_journal_entry: {
     input: z.object({ date: isoDateSchema }),
-    description: 'Return the journal entry for an ISO date or null.'
+    description:
+      'Return the journal entry for an ISO date or null. It carries sync, as vault_read_note ' +
+      'describes.'
   },
   vault_list_journal_entries: {
     input: z.object({
       from: isoDateSchema,
       to: isoDateSchema
     }),
-    description: 'List journal entry summaries within a date range (inclusive).'
+    description:
+      'List journal entry summaries within a date range (inclusive). Each carries sync, as ' +
+      'vault_read_note describes.'
   },
   vault_list_inbox_items: {
     input: z.object({ unread_only: z.boolean().optional() }),
@@ -184,13 +221,13 @@ export const TOOL_SCHEMAS = {
     description: 'Read an inbox item by id.'
   },
   vault_get_tags: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List all tags with usage counts, color, icon, sort order, and the tag category they ' +
       'belong to (category_id and category_name, both null when uncategorized).'
   },
   vault_list_canvases: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List spatial canvases with how many notes/tasks/events sit on each. ' +
       'Canvases live in folders, so two can share a title — each entry carries its folder and ' +
@@ -218,8 +255,24 @@ export const TOOL_SCHEMAS = {
     input: desktopReadSchema,
     description:
       'Run an allowlisted read-only desktop API operation through the memrynote window. ' +
+      'A note in the reply that is a filed pdf/image/audio/video file comes back as its ' +
+      'metadata with contentOmitted: true and contentAccess naming how to read it. A reply ' +
+      'whose JSON is over 100 KB in UTF-8 bytes comes back as ' +
+      '{ truncated, totalBytes, message, partial }. `args` are the positional arguments; ' +
+      "vault_desktop_describe returns each operation's argument schema, and a call that does " +
+      'not match it is refused with the field, the expected type and the allowed values. ' +
       'Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args ' +
       '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
+  },
+  vault_desktop_describe: {
+    input: z.object({ operation: z.enum(AgentMcpDesktopOperations).optional() }),
+    description:
+      'Look up how to call a desktop API operation before calling it through ' +
+      'vault_desktop_read or vault_desktop_write. With operation, returns a summary of what it ' +
+      'does, its tool, whether it needs approval, its parameters in call order and args_schema: the JSON Schema (draft ' +
+      '2020-12) of the args array, with every type, required key, allowed value and default. ' +
+      'Without operation, lists every operation with its tool and call shape; a trailing ? ' +
+      'marks an optional argument.'
   },
   vault_create_note: {
     input: z.object({
@@ -228,7 +281,7 @@ export const TOOL_SCHEMAS = {
       folder_path: z.string().optional(),
       tags: z.array(z.string()).optional()
     }),
-    description: 'Create a new note. Requires user approval.'
+    description: `Create a new note. ${CHECKLIST_HINT} ${CREATED_FOLDERS_HINT} Requires user approval.`
   },
   vault_rename_note: {
     input: z.object({ id: idSchema, title: z.string().min(1).max(200) }),
@@ -360,7 +413,7 @@ export const TOOL_SCHEMAS = {
       date: isoDateSchema,
       content_markdown: z.string()
     }),
-    description: 'Create or return existing journal entry for date. Requires user approval.'
+    description: `Create or return existing journal entry for date. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_update_journal_entry: {
     input: z.object({
@@ -369,7 +422,7 @@ export const TOOL_SCHEMAS = {
       tags: z.array(z.string()).optional(),
       properties: unknownRecordSchema.optional()
     }),
-    description: 'Update or create a journal entry. Requires user approval.'
+    description: `Update or create a journal entry. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_delete_journal_entry: {
     input: z.object({ date: isoDateSchema }),
@@ -425,7 +478,11 @@ export const TOOL_SCHEMAS = {
       mode: z.enum(['append', 'prepend', 'replace']),
       content_markdown: z.string()
     }),
-    description: 'Update note body. Requires user approval with diff preview.'
+    description:
+      `Update note body. ${CHECKLIST_HINT} Replies with the note as stored: title, folder_path, ` +
+      'tags, properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends ' +
+      'with a newline), plus tags_added and tags_removed when inline #tags in the body changed ' +
+      'the tag set. Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {
     input: z.object({
@@ -471,7 +528,7 @@ export const TOOL_SCHEMAS = {
   },
   vault_move_to_folder: {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
-    description: 'Move a note to a folder. Requires user approval.'
+    description: `Move a note to a folder. ${CREATED_FOLDERS_HINT} Requires user approval.`
   },
   vault_add_canvas_item: {
     input: z.object({
@@ -539,15 +596,42 @@ export const TOOL_SCHEMAS = {
   },
   vault_desktop_write: {
     input: desktopWriteSchema,
-    description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
+    description:
+      'Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the ' +
+      'operation; a call with more arguments than the operation takes is refused, so put ' +
+      'options inside its input object. A write whose reply carries no record gets a ' +
+      '`stored` field read back after the write. properties.set(entityId, properties) ' +
+      "replaces the entity's whole property record: a property left out is deleted, except " +
+      'the legacy id, title, created and modified keys, which are kept unless the call names ' +
+      'them (null deletes one). The reply lists the stored `properties` and the names it ' +
+      '`removed`. Checkbox lines that a note, journal or template write, ' +
+      'notes.applyTemplate, inbox.convertToNote or notes.importFiles adds are stored as ' +
+      'plain checkboxes, marked {check}, unless the owner turned on task conversion for ' +
+      'agents. Requires user approval. Replies follow the vault_desktop_read rules for ' +
+      "filed files and replies over 100 KB. vault_desktop_describe returns each operation's " +
+      'argument schema; a call that does not match it is refused before approval.'
   }
 } as const
+
+/**
+ * Zod drops keys an object schema does not name, so an invented or misspelled
+ * argument would vanish and the call would succeed without it. The MCP server
+ * and the AI SDK both validate against these inputs, so strict objects make
+ * either refuse the call and name the key.
+ */
+export const TOOL_SCHEMAS = Object.fromEntries(
+  Object.entries(LOOSE_TOOL_SCHEMAS).map(([name, schema]) => [
+    name,
+    { ...schema, input: strictDeep(schema.input) }
+  ])
+) as unknown as typeof LOOSE_TOOL_SCHEMAS
 
 export type ToolName = keyof typeof TOOL_SCHEMAS
 
 export const READ_TOOL_NAMES = [
   'vault_search_notes',
   'vault_read_note',
+  'vault_view_file',
   'vault_list_folder',
   'vault_get_current_note',
   'vault_list_tasks',
@@ -563,7 +647,8 @@ export const READ_TOOL_NAMES = [
   'vault_list_canvases',
   'vault_read_canvas',
   'vault_read_canvas_elements',
-  'vault_desktop_read'
+  'vault_desktop_read',
+  'vault_desktop_describe'
 ] as const satisfies readonly ToolName[]
 
 export const WRITE_TOOL_NAMES = [

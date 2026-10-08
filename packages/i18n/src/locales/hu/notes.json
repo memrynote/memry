@@ -158,7 +158,8 @@
       "richTextAria": "Formázottszöveg-szerkesztő",
       "headingPlaceholder": "Címsor",
       "listPlaceholder": "Listaelem",
-      "todoPlaceholder": "Teendő"
+      "todoPlaceholder": "Teendő",
+      "htmlComment": "Rejtett HTML-megjegyzés"
     },
     "table": {
       "keyboardMenuAria": "Táblázatműveletek, sor: {row}, oszlop: {column}",
@@ -245,6 +246,25 @@
       "warning": "Figyelmeztetés",
       "error": "Hiba",
       "success": "Siker"
+    },
+    "columns": {
+      "group": "Alapblokkok",
+      "two": {
+        "title": "2 oszlop",
+        "subtext": "Blokkok egymás mellé két oszlopban"
+      },
+      "three": {
+        "title": "3 oszlop",
+        "subtext": "Blokkok egymás mellé három oszlopban"
+      },
+      "four": {
+        "title": "4 oszlop",
+        "subtext": "Blokkok egymás mellé négy oszlopban"
+      },
+      "five": {
+        "title": "5 oszlop",
+        "subtext": "Blokkok egymás mellé öt oszlopban"
+      }
     },
     "diagram": {
       "title": "Diagram",

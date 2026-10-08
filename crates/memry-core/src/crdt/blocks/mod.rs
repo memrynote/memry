@@ -264,13 +264,14 @@ const TEXT_DROPPED: [&str; 1] = ["divider"];
 /// `{ stringValue: "red" }`. Normalised away in [`flatten_mark_attrs`].
 const STRING_VALUE_ATTR: &str = "stringValue";
 /// Node names that are inline content rather than blocks.
-const INLINE_NODES: [&str; 6] = [
+const INLINE_NODES: [&str; 7] = [
     "wikiLink",
     "hashTag",
     "dateMention",
     "linkMention",
     "inlineImage",
     "inlineCheckbox",
+    "htmlComment",
 ];
 
 fn is_container(name: &str) -> bool {

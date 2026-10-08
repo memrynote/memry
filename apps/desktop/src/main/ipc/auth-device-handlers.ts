@@ -41,7 +41,7 @@ import {
   postToServer,
   SyncServerError
 } from '../sync/http-client'
-import { persistKeysAndRegisterDevice } from '../sync/device-registration'
+import { persistKeysAndRegisterDevice, signInKnownDevice } from '../sync/device-registration'
 import {
   approveDeviceLinking,
   completeLinkingQr,
@@ -326,11 +326,18 @@ export function registerAuthDeviceHandlers(): void {
         await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
       }
 
+      const needsSetup = serverResponse.needsSetup ?? false
+      const deviceId =
+        !needsSetup && serverResponse.knownDevice && serverResponse.setupToken
+          ? await signInKnownDevice(serverResponse.setupToken)
+          : null
+
       return {
         success: true,
         isNewUser: serverResponse.isNewUser ?? false,
-        needsSetup: serverResponse.needsSetup ?? false,
-        needsRecoveryInput: !(serverResponse.needsSetup ?? false)
+        needsSetup,
+        needsRecoveryInput: !needsSetup && !deviceId,
+        ...(deviceId && { deviceId })
       }
     },
     'errors:auth.verifyOtpFailed'
@@ -519,10 +526,11 @@ export function registerAuthDeviceHandlers(): void {
     const currentDeviceId = hasVaultDb
       ? rows.find((device) => device.isCurrentDevice)?.id
       : storedDeviceId
-    const accessToken = await getValidAccessToken()
-
-    if (accessToken) {
-      try {
+    // A keychain read that throws (locked keychain) falls back to the local
+    // cache like an unreachable server; rejecting would show a signed-out user.
+    try {
+      const accessToken = await getValidAccessToken()
+      if (accessToken) {
         const remoteResponse = await getFromServer<unknown>('/devices', accessToken)
         const remoteDevices = parseRemoteDevices(remoteResponse)
         if (remoteDevices) {
@@ -541,9 +549,9 @@ export function registerAuthDeviceHandlers(): void {
         }
 
         logger.warn('Invalid remote device list response; using local device cache')
-      } catch (err) {
-        logger.warn('Failed to refresh remote device list; using local device cache', err)
       }
+    } catch (err) {
+      logger.warn('Failed to refresh remote device list; using local device cache', err)
     }
 
     const devices = rows.map(mapLocalDevice)

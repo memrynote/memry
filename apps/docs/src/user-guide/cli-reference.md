@@ -295,20 +295,22 @@ Requires `--yes`.
 | `<note-id>`     | Note.             |
 | `<output-path>` | Destination file. |
 
-| Flag                              | Type    | Description                    |
-| --------------------------------- | ------- | ------------------------------ |
-| `--no-metadata`                   | boolean | Omit frontmatter.              |
-| `--include-metadata <true/false>` | boolean | Force include. Default `true`. |
+| Flag                              | Type    | Description                                          |
+| --------------------------------- | ------- | ---------------------------------------------------- |
+| `--no-metadata`                   | boolean | Omit frontmatter.                                    |
+| `--include-metadata <true/false>` | boolean | Force include. Default `true`.                       |
+| `--include-task-markers`          | boolean | Keep each task's `{task:<id>}`. Left out by default. |
 
 ### export-pdf
 
 Same positionals as `export-html` plus:
 
-| Flag                              | Type    | Description                    |
-| --------------------------------- | ------- | ------------------------------ |
-| `--no-metadata`                   | boolean | Omit frontmatter.              |
-| `--include-metadata <true/false>` | boolean | Force include. Default `true`. |
-| `--page-size <name>`              | string  | e.g. `A4`, `Letter`.           |
+| Flag                              | Type    | Description                                          |
+| --------------------------------- | ------- | ---------------------------------------------------- |
+| `--no-metadata`                   | boolean | Omit frontmatter.                                    |
+| `--include-metadata <true/false>` | boolean | Force include. Default `true`.                       |
+| `--include-task-markers`          | boolean | Keep each task's `{task:<id>}`. Left out by default. |
+| `--page-size <name>`              | string  | e.g. `A4`, `Letter`.                                 |
 
 ### export-markdown
 

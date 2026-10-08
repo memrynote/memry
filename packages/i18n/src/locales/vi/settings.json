@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Bố cục",
       "toolbar": "Thanh công cụ",
-      "spelling": "Chính tả"
+      "spelling": "Chính tả",
+      "checklists": "Danh sách kiểm tra"
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
@@ -446,7 +447,17 @@
     "v2": {
       "width": "Chiều rộng trình soạn thảo",
       "toolbarMode": "Thanh công cụ định dạng cố định",
-      "spellCheck": "Kiểm tra chính tả"
+      "spellCheck": "Kiểm tra chính tả",
+      "convertChecklists": "Chuyển mục danh sách kiểm tra thành công việc",
+      "convertAgentChecklists": "Chuyển mục danh sách kiểm tra do tác nhân viết thành công việc"
+    },
+    "convertChecklists": {
+      "description": "Mỗi mục danh sách kiểm tra mới sẽ thành một công việc. Khi tắt, danh sách giữ nguyên là ô đánh dấu thường; nhấp chuột phải vào một mục để biến nó thành công việc.",
+      "error": "Không thể cập nhật việc chuyển đổi danh sách kiểm tra"
+    },
+    "convertAgentChecklists": {
+      "description": "Khi tắt, mọi ô đánh dấu mà tác nhân viết vẫn là ô đánh dấu thường. Tác nhân tạo công việc bằng công cụ công việc.",
+      "error": "Không thể cập nhật việc chuyển đổi danh sách kiểm tra của tác nhân"
     }
   },
   "templates": {
@@ -1334,7 +1345,7 @@
     "embedding": {
       "loaded": "Đã tải",
       "loading": "Đang tải",
-      "cacheHint": "~23MB · Lưu đệm cục bộ · Hoàn toàn trên thiết bị",
+      "cacheHint": "~210MB · Lưu đệm cục bộ · Hoàn toàn trên thiết bị",
       "dimensions": "Số chiều",
       "embeddings": "Vector nhúng",
       "downloadLoad": "Tải xuống và tải mô hình",
@@ -2213,7 +2224,7 @@
       },
       "confirm": {
         "label": "Xác nhận hành động",
-        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện.",
+        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện. Ghi chú và thư mục đã khóa vẫn chỉ đọc ở cả hai chế độ.",
         "alwaysAllow": "Luôn cho phép",
         "askBeforeChanges": "Hỏi trước khi thay đổi"
       }

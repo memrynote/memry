@@ -1,9 +1,26 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { buildReadTools } from '../read-tools'
-import type { VaultServiceHandles } from '../handles'
+import type { NoteSyncReply, VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
+import { ImageToolResult } from '../../tool-image'
+import {
+  AgentMcpDesktopOperations,
+  AgentMcpDesktopReadOperations
+} from '@memry/contracts/agent-mcp-channels'
+import {
+  AGENT_DESKTOP_OPERATION_PARAMS,
+  desktopOperationRequiredCount
+} from '@memry/contracts/agent-desktop-api-args'
 
 let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
+let lastViewInput: Parameters<VaultServiceHandles['files']['view']>[0] | null = null
+let lastSyncIds: string[] | null = null
+let syncFails = false
+
+const SYNC_STATES: Record<string, NoteSyncReply> = {
+  n1: { state: 'confirmed', body_confirmed_at: '2026-10-07T10:00:00.000Z' },
+  j1: { state: 'pending', waiting_since: '2026-10-07T09:00:00.000Z' }
+}
 
 function fake(): VaultServiceHandles {
   return {
@@ -38,12 +55,30 @@ function fake(): VaultServiceHandles {
         if (id === 'f1') {
           return {
             id: 'f1',
+            title: 'Memo',
+            content_markdown: '',
+            tags: [],
+            folder_path: '/Inbox',
+            frontmatter: {},
+            file_type: 'audio'
+          }
+        }
+        if (id === 'p1') {
+          return {
+            id: 'p1',
             title: 'Scan',
             content_markdown: '',
             tags: [],
             folder_path: '/Inbox',
             frontmatter: {},
-            file_type: 'pdf'
+            file_type: 'pdf',
+            extracted_text: {
+              status: 'done',
+              page_count: 1,
+              pages_read: 1,
+              pages: [{ page: 1, text: 'Heron count' }],
+              next_page: null
+            }
           }
         }
         return null
@@ -228,10 +263,27 @@ function fake(): VaultServiceHandles {
     },
     desktop: {
       read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
+      prepareWrite: async (input) => input,
       write: async () => ({ ok: true })
     },
     windows: {
       snapshotCurrentNote: async () => null
+    },
+    sync: {
+      crdtStoreAvailable: async () => true,
+      noteStates: async (ids) => {
+        lastSyncIds = ids
+        if (syncFails) throw new Error('database closed')
+        return Object.fromEntries(
+          ids.filter((id) => id in SYNC_STATES).map((id) => [id, SYNC_STATES[id]])
+        )
+      }
+    },
+    files: {
+      view: async (input) => {
+        lastViewInput = input
+        return new ImageToolResult({ id: input.id }, { data: 'QQ==', mimeType: 'image/png' })
+      }
     }
   }
 }
@@ -244,6 +296,8 @@ describe('Read tools', () => {
     handles = fake()
     tools = buildReadTools(handles)
     lastSearchInput = null
+    lastSyncIds = null
+    syncFails = false
   })
 
   it('vault_search_notes returns hits tagged with their file type', async () => {
@@ -251,9 +305,17 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_search_notes')!
       .handler({ query: 'hit' }, { conversationId: null, windowId: null })
     expect(out).toEqual([
-      { id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox', file_type: 'markdown' },
+      {
+        id: 'n1',
+        title: 'Hit',
+        snippet: 'hit me',
+        folder_path: '/Inbox',
+        file_type: 'markdown',
+        sync: SYNC_STATES.n1
+      },
       { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
     ])
+    expect(lastSyncIds).toEqual(['n1', 'f1'])
   })
 
   it('vault_search_notes forwards file_types to the search handle', async () => {
@@ -270,12 +332,22 @@ describe('Read tools', () => {
     expect(lastSearchInput?.fileTypes).toBeUndefined()
   })
 
-  it('vault_read_note rejects a filed binary instead of returning it as markdown', async () => {
+  it('vault_read_note rejects a filed audio file instead of returning it as markdown', async () => {
     await expect(
       tools
         .find((t) => t.name === 'vault_read_note')!
         .handler({ id: 'f1' }, { conversationId: null, windowId: null })
-    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'pdf' } })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'audio' } })
+  })
+
+  it('vault_read_note returns the text extracted from a filed PDF', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'p1', from_page: 1 }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({
+      file_type: 'pdf',
+      extracted_text: { status: 'done', pages: [{ page: 1, text: 'Heron count' }] }
+    })
   })
 
   it('vault_read_note throws NOT_FOUND for missing note', async () => {
@@ -291,6 +363,68 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_read_note')!
       .handler({ id: 'n1' }, { conversationId: null, windowId: null })
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
+  })
+
+  // #2647: an agent can check that a write reached the server.
+  it('vault_read_note returns the note sync state', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'n1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'n1', sync: SYNC_STATES.n1 })
+  })
+
+  it('vault_read_note still answers when the sync state cannot be read', async () => {
+    syncFails = true
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'n1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'n1', content_markdown: '# Hit' })
+    expect(out).not.toHaveProperty('sync')
+  })
+
+  it('vault_list_folder adds the sync state to notes, not folders', async () => {
+    const out = (await tools
+      .find((t) => t.name === 'vault_list_folder')!
+      .handler({ path: '/' }, { conversationId: null, windowId: null })) as Array<
+      Record<string, unknown>
+    >
+    expect(out[0]).not.toHaveProperty('sync')
+    expect(out[1]).toMatchObject({ id: 'n1', sync: SYNC_STATES.n1 })
+    expect(lastSyncIds).toEqual(['n1'])
+  })
+
+  it('vault_list_journal_entries and vault_get_journal_entry return the sync state', async () => {
+    const list = (await tools
+      .find((t) => t.name === 'vault_list_journal_entries')!
+      .handler(
+        { from: '2026-05-01', to: '2026-05-31' },
+        { conversationId: null, windowId: null }
+      )) as unknown[]
+    expect(list[0]).toMatchObject({ id: 'j1', sync: SYNC_STATES.j1 })
+
+    const entry = await tools
+      .find((t) => t.name === 'vault_get_journal_entry')!
+      .handler({ date: '2026-05-10' }, { conversationId: null, windowId: null })
+    expect(entry).toMatchObject({ id: 'j1', sync: SYNC_STATES.j1 })
+  })
+
+  it('vault_view_file forwards id, attachment and page and returns the image result', async () => {
+    const view = tools.find((t) => t.name === 'vault_view_file')!
+    const out = await view.handler(
+      { id: 'n1', attachment: 'scan.pdf', page: 3 },
+      { writeGrant: null, windowId: null }
+    )
+
+    expect(lastViewInput).toEqual({ id: 'n1', attachment: 'scan.pdf', page: 3 })
+    expect(out).toBeInstanceOf(ImageToolResult)
+  })
+
+  it('vault_view_file refuses a page below 1', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_view_file')!
+        .handler({ id: 'p1', page: 0 }, { writeGrant: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
   it('vault_list_canvases returns canvases with their folder-qualified path and item counts', async () => {
@@ -438,6 +572,117 @@ describe('Read tools', () => {
         { conversationId: null, windowId: 'window-1' }
       )
     expect(out).toEqual({ operation: 'templates.list', args: [], windowId: 'window-1' })
+  })
+
+  it('vault_desktop_read forwards null for an optional argument read as left out, unchanged', async () => {
+    const calls = AgentMcpDesktopReadOperations.flatMap((operation) => {
+      const params = Object.entries(AGENT_DESKTOP_OPERATION_PARAMS[operation])
+      return params.flatMap(([, schema], index) =>
+        index >= desktopOperationRequiredCount(operation) && schema.safeParse(null).success
+          ? [{ operation, args: [...params.slice(0, index).map(() => 'x'), null] }]
+          : []
+      )
+    })
+    expect(calls.map(({ operation }) => operation)).toEqual(
+      expect.arrayContaining(['notes.list', 'tasks.getUpcoming', 'calendar.getRange'])
+    )
+    for (const { operation, args } of calls) {
+      await expect(
+        tools
+          .find((t) => t.name === 'vault_desktop_read')!
+          .handler({ operation, args }, { conversationId: null, windowId: 'window-1' }),
+        operation
+      ).resolves.toEqual({ operation, args, windowId: 'window-1' })
+    }
+  })
+
+  it('vault_desktop_read rejects more arguments than the operation takes', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_desktop_read')!
+        .handler(
+          { operation: 'templates.list', args: [{ limit: 5 }] },
+          { conversationId: null, windowId: 'window-1' }
+        )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: 'templates.list takes no arguments, but this call passed 1. Nothing was run.'
+    })
+  })
+
+  it('vault_desktop_read names the field, the allowed values and what was sent', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_desktop_read')!
+        .handler(
+          { operation: 'folderView.getViews', args: ['Projects'] },
+          { conversationId: null, windowId: 'window-1' }
+        )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: expect.stringContaining(
+        'scope: expected { kind: "folder", path: string } | ' +
+          '{ kind: "tag", tag: string, andTags?: string[] }, got "Projects"'
+      )
+    })
+  })
+
+  it("vault_desktop_describe returns the JSON Schema of an operation's arguments", async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler(
+        { operation: 'notes.ensurePropertyDefinition' },
+        { conversationId: null, windowId: null }
+      )
+    expect(out).toMatchObject({
+      operation: 'notes.ensurePropertyDefinition',
+      summary: 'Define a status, select or multiselect property if it does not exist yet.',
+      tool: 'vault_desktop_write',
+      requires_approval: true,
+      call: 'notes.ensurePropertyDefinition(name, type)',
+      params: [
+        { name: 'name', required: true },
+        { name: 'type', required: true }
+      ],
+      args_schema: {
+        type: 'array',
+        minItems: 2,
+        maxItems: 2,
+        prefixItems: [{ type: 'string' }, { enum: ['status', 'select', 'multiselect'] }]
+      }
+    })
+  })
+
+  it('vault_desktop_describe marks optional arguments and read operations', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler({ operation: 'notes.list' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({
+      tool: 'vault_desktop_read',
+      requires_approval: false,
+      call: 'notes.list(options?)',
+      params: [{ name: 'options', required: false }],
+      args_schema: { minItems: 0, maxItems: 1 }
+    })
+  })
+
+  it('vault_desktop_describe without an operation lists every operation and how to call it', async () => {
+    const out = (await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler({}, { conversationId: null, windowId: null })) as {
+      operations: Array<{ operation: string; tool: string; call: string }>
+    }
+    expect(out.operations).toHaveLength(AgentMcpDesktopOperations.length)
+    expect(out.operations).toContainEqual({
+      operation: 'folderView.setView',
+      tool: 'vault_desktop_write',
+      call: 'folderView.setView(scope, view, previousName?)'
+    })
+    expect(out.operations).toContainEqual({
+      operation: 'notes.get',
+      tool: 'vault_desktop_read',
+      call: 'notes.get(id)'
+    })
   })
 
   it('vault_get_current_note returns null when window header missing', async () => {

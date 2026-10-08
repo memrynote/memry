@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Salin konten yang belum disimpan ke papan klip",
     "addBookmark": "Tambahkan markah",
     "removeBookmark": "Hapus markah",
-    "deleteEntry": "Hapus entri"
+    "deleteEntry": "Hapus entri",
+    "lockEntry": "Kunci entri",
+    "unlockEntry": "Buka kunci entri"
   },
   "editor": {
     "placeholder": {

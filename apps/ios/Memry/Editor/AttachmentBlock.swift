@@ -14,11 +14,14 @@ import Foundation
 import UIKit
 import UniformTypeIdentifiers
 
-/// Where the paperclip menu takes its bytes from.
-enum EditorAttachmentSource: Equatable {
+/// Where an attachment's bytes come from: the paperclip menu and the
+/// catalog's media rows.
+enum EditorAttachmentSource: Equatable, Sendable {
     case photos
+    case videos
     case camera
     case files
+    case audio
     case scan
 }
 
@@ -51,6 +54,15 @@ struct AttachmentBlock: Equatable {
         return "attachments/\(noteId)/\(encoded)"
     }
 
+    /// `audio` or `video` for a block that plays in place: BlockNote's own
+    /// audio and video blocks, and a file block of an `audio/*` or `video/*`
+    /// type, which is what desktop writes for both (`file-block.tsx`).
+    static func media(kind: String, mimeType: String?) -> String? {
+        if kind == "audio" || kind == "video" { return kind }
+        guard kind == "file", let mimeType else { return nil }
+        return ["audio", "video"].first { mimeType.hasPrefix("\($0)/") }
+    }
+
     /// An image block `{url, caption, previewWidth}` for a picture desktop
     /// can draw, otherwise a file block `{url, name, size, mimeType}`.
     static func make(noteId: String, filename: String, mimeType: String, size: Int) -> AttachmentBlock {
@@ -76,6 +88,16 @@ struct AttachmentPayload: Equatable {
     let filename: String
     let mimeType: String
     let bytes: Data
+
+    /// A video from the photo library, named as a capture is. It becomes a
+    /// file block, which desktop plays in place for a `video/*` type.
+    static func video(_ bytes: Data, type: UTType?, at date: Date = .now) -> AttachmentPayload {
+        AttachmentPayload(
+            filename: NoteAttachmentComposer.capturedName("video", at: date, extension: type?.preferredFilenameExtension ?? "mov"),
+            mimeType: type?.preferredMIMEType ?? "video/quicktime",
+            bytes: bytes
+        )
+    }
 
     /// A picture desktop cannot draw as an image block (HEIC from the photo
     /// library, most of all) is re-encoded as JPEG, so it arrives as a picture
@@ -113,8 +135,7 @@ struct AttachmentPayload: Equatable {
                 page.draw(in: CGRect(origin: .zero, size: page.size))
             }
         }
-        let name = NoteAttachmentComposer.capturedName(at: date, extension: "pdf")
-            .replacingOccurrences(of: "photo-", with: "scan-")
+        let name = NoteAttachmentComposer.capturedName("scan", at: date, extension: "pdf")
         return AttachmentPayload(filename: name, mimeType: "application/pdf", bytes: data)
     }
 }

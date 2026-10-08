@@ -158,7 +158,8 @@
       "richTextAria": "리치 텍스트 편집기",
       "headingPlaceholder": "제목",
       "listPlaceholder": "목록 항목",
-      "todoPlaceholder": "할 일 항목"
+      "todoPlaceholder": "할 일 항목",
+      "htmlComment": "숨겨진 HTML 주석"
     },
     "table": {
       "keyboardMenuAria": "{row}행 {column}열 표 메뉴",
@@ -245,6 +246,25 @@
       "warning": "경고",
       "error": "오류",
       "success": "성공"
+    },
+    "columns": {
+      "group": "기본 블록",
+      "two": {
+        "title": "2열",
+        "subtext": "블록을 2열로 나란히 배치"
+      },
+      "three": {
+        "title": "3열",
+        "subtext": "블록을 3열로 나란히 배치"
+      },
+      "four": {
+        "title": "4열",
+        "subtext": "블록을 4열로 나란히 배치"
+      },
+      "five": {
+        "title": "5열",
+        "subtext": "블록을 5열로 나란히 배치"
+      }
     },
     "diagram": {
       "title": "다이어그램",

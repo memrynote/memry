@@ -158,7 +158,8 @@
       "richTextAria": "Redigerare för formaterad text",
       "headingPlaceholder": "Rubrik",
       "listPlaceholder": "Punkt i lista",
-      "todoPlaceholder": "Att göra-punkt"
+      "todoPlaceholder": "Att göra-punkt",
+      "htmlComment": "Dold HTML-kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabellåtgärder för rad {row}, kolumn {column}",
@@ -245,6 +246,25 @@
       "warning": "Varning",
       "error": "Fel",
       "success": "Lyckat"
+    },
+    "columns": {
+      "group": "Grundläggande block",
+      "two": {
+        "title": "2 kolumner",
+        "subtext": "Placera block sida vid sida i två kolumner"
+      },
+      "three": {
+        "title": "3 kolumner",
+        "subtext": "Placera block sida vid sida i tre kolumner"
+      },
+      "four": {
+        "title": "4 kolumner",
+        "subtext": "Placera block sida vid sida i fyra kolumner"
+      },
+      "five": {
+        "title": "5 kolumner",
+        "subtext": "Placera block sida vid sida i fem kolumner"
+      }
     },
     "diagram": {
       "title": "Diagram",

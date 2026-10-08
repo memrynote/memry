@@ -15,7 +15,9 @@ const EditorPreferencesSchema = z.object({
   width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
   toolbarMode: z.enum(['floating', 'sticky']),
   spellCheck: z.boolean(),
-  pdfAdaptToTheme: z.boolean()
+  pdfAdaptToTheme: z.boolean(),
+  convertChecklistsToTasks: z.boolean(),
+  convertAgentChecklistsToTasks: z.boolean()
 })
 
 export const VaultPreferencesSchema = z.object({
@@ -50,7 +52,9 @@ export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
   width: EDITOR_SETTINGS_DEFAULTS.width,
   toolbarMode: EDITOR_SETTINGS_DEFAULTS.toolbarMode,
   spellCheck: EDITOR_SETTINGS_DEFAULTS.spellCheck,
-  pdfAdaptToTheme: EDITOR_SETTINGS_DEFAULTS.pdfAdaptToTheme
+  pdfAdaptToTheme: EDITOR_SETTINGS_DEFAULTS.pdfAdaptToTheme,
+  convertChecklistsToTasks: EDITOR_SETTINGS_DEFAULTS.convertChecklistsToTasks,
+  convertAgentChecklistsToTasks: EDITOR_SETTINGS_DEFAULTS.convertAgentChecklistsToTasks
 }
 
 export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {

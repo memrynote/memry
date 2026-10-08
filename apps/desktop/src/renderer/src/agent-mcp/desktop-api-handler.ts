@@ -7,7 +7,7 @@ import {
 } from '@memry/contracts/agent-mcp-channels'
 
 import { createLogger } from '@/lib/logger'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, getVaultLockRefusal } from '@/lib/ipc-error'
 
 const log = createLogger('AgentMcpDesktopApi')
 const isoDateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
@@ -152,10 +152,9 @@ export function useAgentMcpDesktopApiResponder({
         const response: AgentMcpDesktopApiResponse = { ok: true, data }
         window.api.respondToMainInvoke(requestId, response)
       } catch (error) {
-        const message = extractErrorMessage(
-          error,
-          getI18n().getFixedT(null, 'errors')('generic.operationFailed')
-        )
+        const message =
+          getVaultLockRefusal(error) ??
+          extractErrorMessage(error, getI18n().getFixedT(null, 'errors')('generic.operationFailed'))
         log.error('Desktop API operation failed', error)
         const response: AgentMcpDesktopApiResponse = {
           ok: false,

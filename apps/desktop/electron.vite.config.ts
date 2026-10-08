@@ -56,9 +56,26 @@ function copyMigrations(): Plugin {
   }
 }
 
+// English OCR data for the OCR utility (see src/main/file-text/tessdata/README.md).
+// Copied under a fixed name because tesseract.js reads
+// `<langPath>/eng.traineddata.gz`, and unpacked from app.asar (electron-builder
+// asarUnpack) because Tesseract's own worker thread reads it with plain fs.
+function copyOcrLanguageData(): Plugin {
+  return {
+    name: 'copy-ocr-language-data',
+    writeBundle(options) {
+      const outDir = options.dir ?? resolve(appRoot, 'out/main')
+      cpSync(resolve(appRoot, 'src/main/file-text/tessdata'), resolve(outDir, 'tessdata'), {
+        recursive: true,
+        filter: (source) => !source.endsWith('.md')
+      })
+    }
+  }
+}
+
 export default defineConfig({
   main: {
-    plugins: [copyMigrations()],
+    plugins: [copyMigrations(), copyOcrLanguageData()],
     build: {
       // Dependency contract: package.json `dependencies` = native/unbundleable
       // modules only — electron-vite externalizes them by default and pnpm
@@ -85,7 +102,8 @@ export default defineConfig({
           'voice-transcription-worker': resolve(
             appRoot,
             'src/main/inbox/voice-transcription-worker.ts'
-          )
+          ),
+          'ocr-worker': resolve(appRoot, 'src/main/file-text/ocr-worker.ts')
         },
         // re2 is required inside a try/catch by @metascraper/helpers as an
         // optional speedup; the repo never builds it (allowBuilds: re2: false),
@@ -158,6 +176,12 @@ export default defineConfig({
     worker: { format: 'es' },
     build: {
       rollupOptions: {
+        input: {
+          index: resolve(appRoot, 'src/renderer/index.html'),
+          // Never shown: the main process renders PDF pages here
+          // (src/main/file-text/pdf-host.ts).
+          'pdf-host': resolve(appRoot, 'src/renderer/pdf-host.html')
+        },
         // No `manualChunks` here, unlike main above. The renderer emits 908 chunks and
         // exactly one is reachable from the entry without an `import()`, so chunking can
         // only move startup bytes around, never off the startup path. It can add to it:

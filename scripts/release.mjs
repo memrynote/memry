@@ -160,6 +160,7 @@ async function runCli() {
   writeState(workDir, state)
 
   dispatchHomebrewCask(metadata)
+  stampAgentApiReference(metadata)
 
   if (options.smoke) {
     dispatchSmokeTest({ metadata, releases })
@@ -962,6 +963,57 @@ function runGh(args, options = {}) {
   }
 
   return execFileSync('gh', args, { encoding: options.encoding ?? 'utf8' }).trim()
+}
+
+const AGENT_API_REFERENCE_FILES = [
+  'apps/docs/src/user-guide/ai/agent-api-reference.md',
+  'apps/docs/src/public/agent-api/memry-agent-api.schema.json'
+]
+
+/**
+ * Stamps the agent API reference with the version just published. Never fails the
+ * release: it commits and pushes only from a clean main that matches origin/main,
+ * and otherwise prints the command to run by hand.
+ */
+function stampAgentApiReference(metadata) {
+  const manual = `pnpm --filter @memry/desktop agent-api:generate --app-version ${metadata.appVersion}`
+  try {
+    const git = (...args) => capture('git', ['-C', repoRoot, ...args])
+    git('fetch', 'origin', 'main')
+    const branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim()
+    const head = git('rev-parse', 'HEAD').stdout.trim()
+    const remote = git('rev-parse', 'origin/main').stdout.trim()
+    const dirty = git('status', '--porcelain', '--', ...AGENT_API_REFERENCE_FILES).stdout.trim()
+    if (branch !== 'main' || head !== remote || dirty) {
+      console.log(
+        `Agent API reference not stamped (needs a clean main at origin/main). Run: ${manual}`
+      )
+      return
+    }
+    run('pnpm', [
+      '--dir',
+      repoRoot,
+      '--filter',
+      '@memry/desktop',
+      'agent-api:generate',
+      '--app-version',
+      metadata.appVersion
+    ])
+    if (!git('status', '--porcelain', '--', ...AGENT_API_REFERENCE_FILES).stdout.trim()) return
+    run('git', ['-C', repoRoot, 'add', '--', ...AGENT_API_REFERENCE_FILES])
+    run('git', [
+      '-C',
+      repoRoot,
+      'commit',
+      '-m',
+      `docs(docs): stamp agent API reference ${metadata.appVersion}`,
+      '--',
+      ...AGENT_API_REFERENCE_FILES
+    ])
+    run('git', ['-C', repoRoot, 'push', 'origin', 'HEAD:main'])
+  } catch (error) {
+    console.log(`Agent API reference not stamped: ${errorMessage(error)}. Run: ${manual}`)
+  }
 }
 
 function run(command, args) {

@@ -14,6 +14,7 @@ import { devices } from './routes/devices'
 import { diagnostics } from './routes/diagnostics'
 import { feedback } from './routes/feedback'
 import { linking } from './routes/linking'
+import { ocr } from './routes/ocr'
 import { sync } from './routes/sync'
 import { telemetry } from './routes/telemetry'
 import { webhooks } from './routes/webhooks'
@@ -237,6 +238,7 @@ app.route('/diagnostics', diagnostics)
 app.route('/feedback', feedback)
 app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
+app.route('/ocr', ocr)
 
 // GitHub release download counts are a once-a-day pull, so they ride their own
 // trigger rather than the 6-hourly cleanup sweep (see wrangler.toml [triggers]).

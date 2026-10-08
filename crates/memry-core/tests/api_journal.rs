@@ -381,3 +381,38 @@ fn deleting_a_day_tombstones_it_and_an_edit_revives_it() {
     assert!(edit.changed);
     assert!(journal.day(TODAY.into()).expect("day").is_some());
 }
+
+/// A tag view block lists a tagged day as desktop does: one row titled by
+/// its date, under its record id. Notes stay out of this read, and a deleted
+/// day drops out.
+#[test]
+fn a_tagged_day_is_listed_for_its_tag_and_a_deleted_one_is_not() {
+    let (_dir, vault, journal) = open("tagged");
+    journal
+        .set_tags(TODAY.into(), vec!["Fitness".into(), "daily".into()])
+        .expect("tags");
+    journal
+        .set_tags("2099-06-16".into(), vec!["other".into()])
+        .expect("tags");
+
+    let notes = vault.notes();
+    let found = notes.journals_tagged("fitness".into()).expect("days");
+    assert_eq!(found.len(), 1, "case-insensitive, one day: {found:?}");
+    assert_eq!(found[0].id, "j2099-06-15");
+    assert_eq!(found[0].title, TODAY);
+    assert_eq!(found[0].folder_path, None);
+    assert!(
+        notes
+            .notes_tagged("fitness".into())
+            .expect("notes")
+            .is_empty()
+    );
+
+    assert!(journal.delete_day(TODAY.into()).expect("delete"));
+    assert!(
+        notes
+            .journals_tagged("fitness".into())
+            .expect("days")
+            .is_empty()
+    );
+}

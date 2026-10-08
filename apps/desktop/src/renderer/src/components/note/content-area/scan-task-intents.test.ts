@@ -498,4 +498,31 @@ describe('analyzeTaskIntents', () => {
       expect(result.plainByContext).toEqual([])
     })
   })
+
+  describe('with conversion switched off', () => {
+    const off = { convertChecklists: false }
+
+    it('offers no top-level checkbox, typed or empty, but still offers one under a task', () => {
+      const blocks = [
+        cl('cl1', 'Buy milk'),
+        cl('cl2', ''),
+        tb('tb1', 'task-1', 'Parent', '', [cl('sub1', 'Pack'), cl('sub2', '')])
+      ]
+
+      const result = analyzeTaskIntents(blocks, new Set(), off)
+
+      expect(result.standaloneCandidate).toBeNull()
+      expect(result.emptyCheckbox).toEqual({ blockId: 'sub2', parentTaskId: 'task-1' })
+      expect(result.subtaskCandidate).toEqual({ blockId: 'sub1', parentTaskId: 'task-1' })
+      expect(analyzeTaskIntents(blocks, new Set()).standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+
+    it('still drafts a task block typed with a title', () => {
+      const draft = { ...tb('d1', ''), props: { taskId: '', title: 'Call Ana', parentTaskId: '' } }
+
+      const result = analyzeTaskIntents([draft], new Set(), off)
+
+      expect(result.draftTaskBlock).toEqual({ blockId: 'd1', title: 'Call Ana' })
+    })
+  })
 })

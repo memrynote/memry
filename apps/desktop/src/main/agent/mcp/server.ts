@@ -10,7 +10,9 @@ import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { getMainRedactOptions } from '../../telemetry/redact-options'
 import { decorateToolResultWithAgentSources } from '../source-refs'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
+import { capReply } from './reply-cap'
 import { createMcpSession } from './session'
+import { ImageToolResult } from './tool-image'
 
 const logger = createLogger('AgentMcpServer')
 
@@ -22,6 +24,8 @@ export interface ToolRegistration {
   name: string
   description: string
   inputSchema: ZodTypeAny
+  /** Caps the serialized reply the agent receives, source refs included. */
+  maxReplyBytes?: number
   handler: (
     input: unknown,
     ctx: { writeGrant: string | null; windowId: string | null }
@@ -68,10 +72,24 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
           const ctx = session.contextFromHeaders(reqHeaders)
           try {
             const result = await reg.handler(input, ctx)
-            const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
+            const image = result instanceof ImageToolResult ? result.image : null
+            const decorated = decorateToolResultWithAgentSources(
+              reg.name,
+              input,
+              result instanceof ImageToolResult ? result.reply : result
+            )
+            // A handler that returns nothing (vault.reindex) still owes the client a
+            // text part; JSON.stringify(undefined) has none and the SDK refuses it.
+            const capped = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
+            const delivered = capped === undefined ? null : capped
             return {
-              content: [{ type: 'text', text: JSON.stringify(decorated) }],
-              structuredContent: toStructuredContent(decorated)
+              content: [
+                { type: 'text', text: JSON.stringify(delivered) },
+                ...(image
+                  ? [{ type: 'image' as const, data: image.data, mimeType: image.mimeType }]
+                  : [])
+              ],
+              structuredContent: toStructuredContent(delivered)
             }
           } catch (err) {
             logger.error(`Tool ${reg.name} failed`, err)
@@ -152,7 +170,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
       const { mcp, release } = acquireMcpServer()
       try {
         await mcp.connect(transport)
-        const body = await readJson(req)
+        const body = withToolArguments(await readJson(req))
         await transport.handleRequest(req, res, body)
       } catch (err) {
         logger.error('MCP request failed', err)
@@ -238,6 +256,26 @@ async function readJson(req: http.IncomingMessage): Promise<unknown> {
   for await (const chunk of req) chunks.push(chunk as Buffer)
   if (chunks.length === 0) return undefined
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+}
+
+/**
+ * MCP lets a client omit `arguments` on a tools/call. The tool input schemas
+ * are plain strict objects, so that `tools/list` advertises
+ * `additionalProperties: false`; an omitted value becomes `{}` before the SDK
+ * validates it, the way the AI SDK treats an empty tool input.
+ */
+function withToolArguments(body: unknown): unknown {
+  if (Array.isArray(body)) return body.map(withToolArguments)
+  if (!body || typeof body !== 'object') return body
+  const message = body as { method?: unknown; params?: Record<string, unknown> }
+  if (
+    message.method !== 'tools/call' ||
+    !message.params ||
+    message.params.arguments !== undefined
+  ) {
+    return body
+  }
+  return { ...message, params: { ...message.params, arguments: {} } }
 }
 
 function toStructuredContent(result: unknown): Record<string, unknown> {

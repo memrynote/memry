@@ -7,6 +7,7 @@
 
 import matter from 'gray-matter'
 import path from 'path'
+import { isDeepStrictEqual } from 'util'
 import {
   splitFrontmatterBlock,
   serializeParsedMarkdownNote,
@@ -14,9 +15,10 @@ import {
   type Eol
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
+import { editFrontmatterBlock } from './frontmatter-edit'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
-import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import {
   isWritingFrontmatterValue,
   WRITING_FRONTMATTER_KEY
@@ -217,6 +219,50 @@ export function serializeParsedNote(
   return serializeParsedMarkdownNote(parsed, content, options)
 }
 
+/**
+ * serializeParsedNote for an update that may have edited the frontmatter. An
+ * edited block is changed in place, so the keys the update left alone keep
+ * their lines; a block the in-place edit cannot read is re-stringified.
+ */
+export function serializeUpdatedNote(
+  parsed: ParsedNote,
+  frontmatter: NoteFrontmatter,
+  content: string,
+  options: SerializeParsedNoteOptions
+): string {
+  const block =
+    options.frontmatterEdited && parsed.rawFrontmatterBlock !== null && !parsed.frontmatterError
+      ? editFrontmatterBlock(parsed.rawFrontmatterBlock, parsed.frontmatter, frontmatter)
+      : null
+  if (block === null) return serializeParsedNote({ ...parsed, frontmatter }, content, options)
+  return serializeParsedNote({ ...parsed, rawFrontmatterBlock: block }, content, {
+    frontmatterEdited: false
+  })
+}
+
+/**
+ * The property record an update writes. A value echoed back as the index holds
+ * it (the properties panel sends its whole record) is written as the file holds
+ * it: the index keeps a YAML date as JSON text, and writing that text would turn
+ * the date into a quoted string.
+ */
+export function propertiesToWrite(
+  properties: Record<string, unknown> | undefined,
+  existing: { properties: Record<string, unknown>; frontmatter: NoteFrontmatter },
+  nextFrontmatter: NoteFrontmatter
+): Record<string, unknown> {
+  if (properties === undefined) return extractProperties(nextFrontmatter)
+  const fileProperties = extractProperties(existing.frontmatter)
+  return Object.fromEntries(
+    Object.entries(properties).map(([name, value]) => [
+      name,
+      Object.hasOwn(fileProperties, name) && isDeepStrictEqual(value, existing.properties[name])
+        ? fileProperties[name]
+        : value
+    ])
+  )
+}
+
 // ============================================================================
 // Validation & Utilities
 // ============================================================================
@@ -229,42 +275,6 @@ export function serializeParsedNote(
  */
 export function validateNoteId(id: string): boolean {
   return isValidNoteId(id)
-}
-
-/**
- * Extract all wiki-style links from markdown content.
- * Matches [[Link Title]] and [[Link Title|Display Text]] patterns.
- *
- * `[[Note#Heading]]` yields `Note`: this table answers "which notes does this
- * note point at", and a heading link points at the note. Before that, the whole
- * string went in as a title, resolved to nothing, and the note it named never
- * listed the link as a backlink. The graph view has always read these targets
- * this way (`wikilinks` in @memry/app-core/graph), so this makes the two link
- * pipelines agree rather than introducing a second reading.
- *
- * The cost is the `Sprint #4` case: a note really called that is indexed here
- * under `Sprint`. Navigation and hover still reach it — they fall back to the
- * raw title against the database, which this function has no access to.
- *
- * Existing vaults keep their old rows until each note is next projected; no
- * reindex is forced for a backlink row.
- *
- * @param content - Markdown content
- * @returns Array of link targets
- */
-export function extractWikiLinks(content: string): string[] {
-  const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
-  const links = new Set<string>()
-  let match
-
-  while ((match = linkPattern.exec(content)) !== null) {
-    const { note, heading } = splitWikiTarget(match[1])
-    // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
-    if (heading !== null && !note) continue
-    links.add(heading !== null ? note : match[1].trim())
-  }
-
-  return Array.from(links)
 }
 
 /**

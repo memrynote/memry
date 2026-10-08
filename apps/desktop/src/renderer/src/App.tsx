@@ -42,6 +42,7 @@ import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { taskViews } from '@/data/tasks-data'
 import { ThemeProvider } from 'next-themes'
+import { useTitleBarSymbolColorSync } from '@/lib/window-controls-overlay'
 
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
@@ -79,6 +80,7 @@ import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
 import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
 import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
+import { useVaultLockRestoreNotice } from '@/hooks/use-vault-lock-restore-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { useMenuCommands } from '@/hooks/use-menu-commands'
@@ -347,6 +349,7 @@ const AppContent = (): React.JSX.Element => {
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useIndexRecoveryNotice() // Says so when Memry repaired its own search index
+  useVaultLockRestoreNotice() // Says so when a locked note's outside edit was undone
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
   useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
@@ -904,6 +907,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
 function App(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
+  useTitleBarSymbolColorSync()
 
   // Update state - show a dedicated "Installing update…" screen while quitting to
   // install, so vault teardown never surfaces as a broken picker / frozen window.

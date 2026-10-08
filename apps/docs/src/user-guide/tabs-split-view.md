@@ -16,6 +16,8 @@ Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
 
 Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. If your system is set to reduce motion (macOS **Reduce motion**, Windows **Animation effects** off, or the equivalent on Linux), the bar jumps straight to the active tab instead of sliding, and the chevrons and wheel scrolling stop animating too — the tab is still brought into view either way. Changing the setting takes effect on the next scroll; no restart needed. The **+** button stays pinned at the end of the bar while it scrolls.
 
+On Windows there is no separate system title bar: the minimize, maximize, and close buttons sit at the end of Memry's own top row, which follow your theme's colors. Drag any empty part of that row to move the window, and double-click it to maximize. Linux keeps its system title bar.
+
 There is no limit on how many tabs you can have open: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
 
 If a tab's content cannot render, its error state keeps the tab bar available and offers **Close**.

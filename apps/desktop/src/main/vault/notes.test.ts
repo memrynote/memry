@@ -15,6 +15,9 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
 import { readVaultConfig } from './init'
+import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -48,12 +51,7 @@ vi.mock('../inbox/suggestions', () => ({
 // serializes the stale refs straight back over the file the move just corrected
 // — and persists them.
 const crdtMocks = vi.hoisted(() => ({
-  replaceNoteBodyInCrdt: vi.fn(async () => false),
-  feedExternalEditToCrdt: vi.fn(async () => {})
-}))
-vi.mock('../sync/crdt-feed', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/crdt-feed')>()),
-  replaceNoteBodyInCrdt: crdtMocks.replaceNoteBodyInCrdt
+  feedExternalEditToCrdt: vi.fn(async () => false)
 }))
 vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: crdtMocks.feedExternalEditToCrdt
@@ -572,6 +570,167 @@ describe('notes operations', () => {
       expect(updated.properties).toEqual({ status: 'published', priority: 5 })
     })
 
+    describe('legacy id, title, created and modified keys on a properties write', () => {
+      const legacyLines = [
+        'id: legacy-note-1',
+        'title: Legacy Title',
+        'created: 2024-03-05',
+        'modified: 2024-03-06T10:00:00.000Z'
+      ]
+
+      async function writeLegacyNote(): Promise<{ id: string; filePath: string }> {
+        const filePath = path.join(tempVault.notesDir, 'Legacy.md')
+        fs.writeFileSync(
+          filePath,
+          ['---', ...legacyLines, 'status: draft', '---', '', 'Legacy body.', ''].join('\n')
+        )
+        const note = await notes.getNoteByPath('notes/Legacy.md')
+        await projections.flushProjectionEvents()
+        return { id: note!.id, filePath }
+      }
+
+      it('keeps their lines byte for byte when the properties panel echoes the index record', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, status: 'done' })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        for (const line of legacyLines) expect(raw).toContain(`\n${line}\n`)
+        expect(raw).toContain('\nstatus: done\n')
+      })
+
+      it('keeps their lines byte for byte when an update echoes the note properties', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({ id, properties: { ...before!.properties, status: 'done' } })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        for (const line of legacyLines) expect(raw).toContain(`\n${line}\n`)
+        expect(raw).toContain('\nstatus: done\n')
+      })
+
+      it('writes a legacy key the call changed', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({
+          id,
+          properties: { ...before!.properties, title: 'Renamed Title' }
+        })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        expect(raw).toContain('\ntitle: Renamed Title\n')
+        expect(raw).toContain('\ncreated: 2024-03-05\n')
+      })
+    })
+
+    describe('a properties write changes only the lines of the keys it changed', () => {
+      const lines = [
+        '---',
+        'owner: "Kaan"',
+        'status: draft',
+        '# review by Friday',
+        'due: 2026-10-07',
+        'tags:',
+        '  - work',
+        'rating: 3',
+        "reviewer: 'Ada'",
+        'started: 2026-09-01T08:30:00.000Z',
+        '---',
+        '',
+        'Body.',
+        ''
+      ]
+
+      async function writeNote(eol: '\n' | '\r\n'): Promise<{ id: string; filePath: string }> {
+        const filePath = path.join(tempVault.notesDir, 'Fidelity.md')
+        fs.writeFileSync(filePath, lines.join(eol))
+        const note = await notes.getNoteByPath('notes/Fidelity.md')
+        await projections.flushProjectionEvents()
+        return { id: note!.id, filePath }
+      }
+
+      function expected(eol: '\n' | '\r\n', changes: Record<string, string>): string {
+        return lines.map((line) => changes[line.slice(0, line.indexOf(':'))] ?? line).join(eol)
+      }
+
+      it('keeps key order, quoting, comments and dates when the record comes in another order', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const { owner, due, rating, reviewer, started } = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { started, reviewer, rating, due, status: 'done', owner })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { status: 'status: done' }))
+      })
+
+      it('keeps a date the agent sends back in the form the reply showed', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+
+        await setEntityProperties(id, {
+          owner: 'Kaan',
+          status: 'done',
+          due: '2026-10-07',
+          rating: 3,
+          reviewer: 'Ada',
+          started: '2026-09-01T08:30:00.000Z'
+        })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { status: 'status: done' }))
+      })
+
+      it('writes a changed plain date as a plain date', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({ id, properties: { ...before!.properties, due: '2026-10-09' } })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
+      })
+
+      it('indexes a date sent in timestamp form as the date the file holds', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, due: '2026-10-09T00:00:00.000Z' })
+        await projections.flushProjectionEvents()
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
+        expect(getNotePropertiesAsRecord(testDb.db, id).due).toBe('"2026-10-09T00:00:00.000Z"')
+      })
+
+      it('keeps CRLF and changes one line in a CRLF note', async () => {
+        const { id, filePath } = await writeNote('\r\n')
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, rating: 4 })
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\r\n', { rating: 'rating: 4' }))
+      })
+
+      it('removes the lines of a key the record leaves out and appends a new key', async () => {
+        const { id, filePath } = await writeNote('\n')
+        const before = await notes.getNoteById(id)
+        const { reviewer: _reviewer, ...rest } = before!.properties
+
+        await notes.updateNote({ id, properties: { ...rest, priority: 'high' } })
+
+        const after = lines.filter((line) => !line.startsWith('reviewer:'))
+        after.splice(after.lastIndexOf('---'), 0, 'priority: high')
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(after.join('\n'))
+      })
+    })
+
     it('T363: updates wordCount and modifiedAt', async () => {
       const created = await notes.createNote({
         title: 'Word Count Test',
@@ -846,6 +1005,34 @@ describe('notes operations', () => {
       expect(selfNote!.content.trimEnd()).toBe('I mention [[Self Renamed]] and [[Renamed Target]].')
     })
 
+    it('leaves a link inside an HTML block file as written when its target is renamed', async () => {
+      const target = await notes.createNote({ title: 'Block Target', content: 'Target body.' })
+      const source = await notes.createNote({ title: 'Block Source', content: 'Placeholder' })
+      const blockRef = `attachments/${source.id}/chart.html`
+      const blockHtml = '<p>Chart of [[Block Target]]</p>\n'
+      const blockPath = path.join(tempVault.path, blockRef)
+      fs.mkdirSync(path.dirname(blockPath), { recursive: true })
+      fs.writeFileSync(blockPath, blockHtml)
+      await notes.updateNote({ id: source.id, content: `![chart](${blockRef})` })
+      const sourceFile = path.join(tempVault.path, source.path)
+      const sourceRaw = fs.readFileSync(sourceFile, 'utf-8')
+      const { saveExtractedPart } = await import('@main/database/queries/extracted-text')
+      saveExtractedPart(
+        testDb.db,
+        { noteId: source.id, source: 'chart.html' },
+        1,
+        'html',
+        'Chart of [[Block Target]]'
+      )
+      await projections.flushProjectionEvents()
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.renameNote(target.id, 'Renamed Block Target')
+
+      expect(fs.readFileSync(blockPath, 'utf-8')).toBe(blockHtml)
+      expect(fs.readFileSync(sourceFile, 'utf-8')).toBe(sourceRaw)
+    })
+
     it('T364: generates unique path on collision', async () => {
       await notes.createNote({
         title: 'Existing Name',
@@ -1071,7 +1258,7 @@ describe('notes operations', () => {
     })
 
     it('hands the rewritten body to the note Y.Doc, not just to the file', async () => {
-      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      crdtMocks.feedExternalEditToCrdt.mockClear()
       const created = await notes.createNote({
         title: 'Crdt Push On Move',
         content: '![shot](../attachments/n1/shot.png)'
@@ -1079,15 +1266,15 @@ describe('notes operations', () => {
 
       await notes.moveNote(created.id, 'notes/archive/2026')
 
-      expect(crdtMocks.replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
-      const [noteId, body] = crdtMocks.replaceNoteBodyInCrdt.mock.calls[0]
+      expect(crdtMocks.feedExternalEditToCrdt).toHaveBeenCalledTimes(1)
+      const [noteId, body] = crdtMocks.feedExternalEditToCrdt.mock.calls[0]
       expect(noteId).toBe(created.id)
       // The corrected ref, not the one that was on disk before the move.
       expect(body).toContain('../../../attachments/n1/shot.png')
     })
 
     it('leaves the Y.Doc alone when the move rewrote nothing', async () => {
-      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      crdtMocks.feedExternalEditToCrdt.mockClear()
       const created = await notes.createNote({
         title: 'No Crdt Push On Move',
         content: '![shot](../attachments/n1/shot.png)'
@@ -1095,7 +1282,7 @@ describe('notes operations', () => {
 
       await notes.moveNote(created.id, 'sibling')
 
-      expect(crdtMocks.replaceNoteBodyInCrdt).not.toHaveBeenCalled()
+      expect(crdtMocks.feedExternalEditToCrdt).not.toHaveBeenCalled()
     })
 
     it('preserves binary content on move (no frontmatter injection)', async () => {
@@ -1911,6 +2098,41 @@ describe('notes operations', () => {
       expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
     })
 
+    it('keeps the checkbox lines of imported markdown plain when asked (#2759)', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      const proseBytes = Buffer.from('# Prose\r\n\r\nNo boxes here.\r\n', 'utf8')
+      const prosePath = path.join(tempVault.path, 'prose.md')
+      const latin1Bytes = Buffer.from('- [ ] Caf\xe9\n', 'latin1')
+      const latin1Path = path.join(tempVault.path, 'latin1.md')
+      fs.writeFileSync(listPath, '---\ntags: [shop]\n---\n- [ ] Buy milk\r\n- [x] Call Ana\r\n')
+      fs.writeFileSync(prosePath, proseBytes)
+      fs.writeFileSync(latin1Path, latin1Bytes)
+
+      const result = await notes.importFiles({
+        sourcePaths: [listPath, prosePath, latin1Path],
+        targetFolder: 'notes',
+        options: { plainChecklists: true }
+      })
+
+      const [list, prose, latin1] = result.importedFiles.map((file) =>
+        fs.readFileSync(file.destPath)
+      )
+      expect(list.toString('utf8')).toBe(
+        '---\ntags: [shop]\n---\n- [ ] Buy milk {check}\r\n- [x] Call Ana {check}\r\n'
+      )
+      expect(prose.equals(proseBytes)).toBe(true)
+      expect(latin1.equals(latin1Bytes)).toBe(true)
+    })
+
+    it('copies imported markdown byte for byte without the option', async () => {
+      const listPath = path.join(tempVault.path, 'list.md')
+      fs.writeFileSync(listPath, '- [ ] Buy milk\n')
+
+      const result = await notes.importFiles({ sourcePaths: [listPath], targetFolder: 'notes' })
+
+      expect(fs.readFileSync(result.importedFiles[0].destPath, 'utf8')).toBe('- [ ] Buy milk\n')
+    })
+
     it('resolves an imported file to its indexed id from the absolute destPath (#1998)', async () => {
       // #given — a PDF imported and then indexed the way the watcher keys it: vault-relative
       const sourcePath = path.join(tempVault.path, 'brief.pdf')
@@ -1933,6 +2155,33 @@ describe('notes operations', () => {
 
       // #then — the absolute path the import returned finds the vault-relative row
       expect(notes.getIndexedIdByImportedPath(destPath)).toBe('imported-pdf-1')
+    })
+
+    it('refuses an import into a locked folder and copies nothing (#2606)', async () => {
+      const lockedDir = path.join(tempVault.path, 'locked', 'inner')
+      fs.mkdirSync(lockedDir, { recursive: true })
+      const sourcePath = path.join(tempVault.path, 'drop.md')
+      fs.writeFileSync(sourcePath, '# dropped\n')
+      installVaultLockSource({
+        dataDb: () => dataDb.db,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+      writeLockRow(dataDb.db, 'folder', 'locked', true)
+      invalidateVaultLocks()
+
+      try {
+        await expect(
+          notes.importFiles({ sourcePaths: [sourcePath], targetFolder: 'locked/inner' })
+        ).rejects.toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+        expect(fs.readdirSync(lockedDir)).toEqual([])
+      } finally {
+        installVaultLockSource({
+          dataDb: () => null,
+          notePathOf: () => null,
+          noteIdAtPath: () => null
+        })
+      }
     })
 
     it('rejects imports when no vault is open', async () => {

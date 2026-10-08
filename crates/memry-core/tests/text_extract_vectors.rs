@@ -47,7 +47,7 @@ fn text_extract_meta_matches_the_crate_constants() {
         meta["fragmentName"].as_str(),
         Some(BODY_FRAGMENT),
         "the body fragment's name is chapter 12 §12.3's, shared with \
-         CRDT_FRAGMENT_NAME and BRIDGE_FRAGMENT_NAME"
+         CRDT_FRAGMENT_NAME"
     );
     assert_eq!(
         meta["caseCount"].as_u64(),

@@ -32,10 +32,12 @@
 //!   [`ApplyOutcome`] so the counters and the cursor cannot drift apart from
 //!   what actually happened (FR-032).
 //!
-//! **Nothing here enqueues.** §6.5.2's P3 — the merging device stores the
-//! union clock and does not re-push — is upheld by
-//! [`crate::domain::task_merge`], and a [`crate::sync::outbox::enqueue`]
-//! appearing anywhere on this path is that regression, not a convenience.
+//! **Nothing here re-pushes what it applied.** §6.5.2's P3 — the merging
+//! device stores the union clock and does not re-push — is upheld by
+//! [`crate::domain::task_merge`], and a [`crate::sync::outbox::enqueue`] of an
+//! applied item anywhere on this path is that regression, not a convenience.
+//! The one outbox row an apply writes is a canvas conflict copy
+//! ([`crate::domain::canvas::merge`]): a new item that exists nowhere else.
 
 use rusqlite::Connection;
 
@@ -44,7 +46,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{calendar_items, inbox, projects, settings, tasks};
+use crate::domain::{calendar_items, canvas, inbox, projects, settings, tasks};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
@@ -77,6 +79,17 @@ impl Pending {
             Pending::Record(record) => &record.item_id,
             Pending::Tombstone { item_id, .. } => item_id,
         }
+    }
+}
+
+/// §5.13's `PULL_APPLY_ORDER`. **Everything unlisted is rank 1.**
+pub fn apply_rank(item_type: &str) -> u8 {
+    match item_type {
+        "project" | "folder_config" | "tag_definition" | "filter" | "settings"
+        | "calendar_source" | "agent_conversation" => 0,
+        "task" | "agent_message" | "calendar_event" | "calendar_external_event" => 2,
+        "calendar_binding" => 3,
+        _ => 1,
     }
 }
 
@@ -116,11 +129,15 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 /// Applies one page's decoded items, in the order they were handed over, plus
 /// the ids §5.12.1 leaves with no type on the wire.
+///
+/// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
+/// conflict copy is clocked under.
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
     untyped: Vec<String>,
     now_ms: i64,
+    clock_device: Option<&str>,
 ) -> Result<ApplyTotals, StorageError> {
     let mut totals = ApplyTotals::default();
     for item in pending {
@@ -160,7 +177,7 @@ pub(crate) fn apply_page(
                     )?;
                     continue;
                 }
-                match apply_inbound(conn, &record, now_ms)? {
+                match apply_inbound_on(conn, &record, now_ms, clock_device)? {
                     ApplyOutcome::Applied => {
                         totals.applied += 1;
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
@@ -328,6 +345,15 @@ fn crdt_failed(error: CrdtError) -> StorageError {
     }
 }
 
+/// [`apply_inbound_on`] with no device clock id.
+pub fn apply_inbound(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<ApplyOutcome, StorageError> {
+    apply_inbound_on(conn, record, now_ms, None)
+}
+
 /// Chapter 06 §6.8's table, as the one `match` this core makes on it.
 ///
 /// Every one of the four rows is here, and the fourth is the one that cost a
@@ -345,11 +371,17 @@ fn crdt_failed(error: CrdtError) -> StorageError {
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything.
-pub fn apply_inbound(
+///   it pushed anything. `inbox`, the calendar types and `canvas` are named
+///   because each runs its desktop handler's rule instead.
+///
+/// `clock_device` is this device's clock id, which a diverged `canvas` needs
+/// for its conflict copy. Without one, that canvas is recorded corrupt rather
+/// than losing either drawing.
+pub fn apply_inbound_on(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
+    clock_device: Option<&str>,
 ) -> Result<ApplyOutcome, StorageError> {
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
@@ -361,6 +393,8 @@ pub fn apply_inbound(
         t if calendar_items::is_calendar_type(t) => {
             calendar_items::merge::apply_remote(conn, record, now_ms)
         }
+        // Whole-document LWW plus desktop's conflict copy (canvas-handler.ts).
+        canvas::ITEM_TYPE => canvas::merge::apply_remote(conn, record, now_ms, clock_device),
         _ => apply_document(conn, record, now_ms),
     };
     match merged {
@@ -450,6 +484,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_apply_order_ranks_the_four_tiers_and_defaults_to_one() {
+        assert_eq!(apply_rank("project"), 0);
+        assert_eq!(apply_rank("note"), 1);
+        assert_eq!(apply_rank("hologram"), 1);
+        assert_eq!(apply_rank("task"), 2);
+        assert_eq!(apply_rank("calendar_binding"), 3);
+    }
+
+    #[test]
     fn the_two_field_merged_types_are_the_two_chapter_06_names() {
         // §6.8 is an enumeration, not a heuristic. If either constant ever
         // drifts, the dispatch silently stops merging and the last writer
@@ -488,16 +531,16 @@ mod tests {
             journal::open_day(conn, "2026-04-16", "device-a", 1)?;
             let first = clock_of([("device-a", 1), ("device-b", 1)]);
             assert_eq!(
-                apply_page(conn, vec![delete(Some(first.clone()))], vec![], 2)?.deleted,
+                apply_page(conn, vec![delete(Some(first.clone()))], vec![], 2, None)?.deleted,
                 1
             );
             journal::open_day(conn, "2026-04-16", "device-a", 3)?;
 
-            let late = apply_page(conn, vec![delete(Some(first))], vec![], 4)?;
+            let late = apply_page(conn, vec![delete(Some(first))], vec![], 4, None)?;
             assert_eq!((late.deleted, late.skipped), (0, 1));
             assert!(live(conn));
 
-            let clockless = apply_page(conn, vec![delete(None)], vec![], 5)?;
+            let clockless = apply_page(conn, vec![delete(None)], vec![], 5, None)?;
             assert_eq!(clockless.deleted, 1);
             assert!(!live(conn));
             Ok(())

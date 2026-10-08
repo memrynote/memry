@@ -158,7 +158,8 @@
       "richTextAria": "リッチテキストエディター",
       "headingPlaceholder": "見出し",
       "listPlaceholder": "リスト項目",
-      "todoPlaceholder": "ToDo"
+      "todoPlaceholder": "ToDo",
+      "htmlComment": "非表示の HTML コメント"
     },
     "table": {
       "keyboardMenuAria": "{row} 行目、{column} 列目の表の操作",
@@ -245,6 +246,25 @@
       "warning": "警告",
       "error": "エラー",
       "success": "成功"
+    },
+    "columns": {
+      "group": "基本ブロック",
+      "two": {
+        "title": "2列",
+        "subtext": "ブロックを2列に並べて配置"
+      },
+      "three": {
+        "title": "3列",
+        "subtext": "ブロックを3列に並べて配置"
+      },
+      "four": {
+        "title": "4列",
+        "subtext": "ブロックを4列に並べて配置"
+      },
+      "five": {
+        "title": "5列",
+        "subtext": "ブロックを5列に並べて配置"
+      }
     },
     "diagram": {
       "title": "ダイアグラム",

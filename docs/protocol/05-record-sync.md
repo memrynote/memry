@@ -84,15 +84,15 @@ feed pull only, and records the declaration it restarts on without it, so
 declaring bodies does not re-read the record feed (chapter 07 §7.17.4, #2304).
 A server older than #2295 ignores the unrecognised entry.
 
-**Otherwise "recognised" means a member of the twenty-five record types**, being
-the twenty this feature subscribes to plus the five it does not, both
+**Otherwise "recognised" means a member of the twenty-six record types**, being
+the twenty-one this feature subscribes to plus the five it does not, both
 enumerated in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is
 **not** a record type (§13.8) and is therefore not recognised in this header:
 declaring it is indistinguishable from declaring a typo. Anything outside those
-twenty-five is dropped from the resolved set, silently and individually — an
+twenty-six is dropped from the resolved set, silently and individually — an
 unrecognised entry never fails the request and never invalidates the entries
 beside it. This only bites a client that declares something outside the fixed
-twenty; a conforming client's header is recognised in full by construction.
+twenty-one; a conforming client's header is recognised in full by construction.
 
 The empty-set rule is deliberate: falling back to legacy would hand a
 negotiating client 15 types it never asked for, which is the convergence loss
@@ -100,7 +100,7 @@ the feature exists to prevent
 (`apps/sync-server/src/lib/sync-types.ts:21-26`). Entries are trimmed and
 deduplicated because the header is unbounded client input (`:28-32`).
 
-This feature's client declares **twenty** types (chapter 13 §13.1); the
+This feature's client declares **twenty-one** types (chapter 13 §13.1); the
 shipped TypeScript client declares all 25
 (`packages/sync-client/src/pull/http.ts:74`).
 
@@ -183,7 +183,7 @@ reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
-sending** (`apps/mobile/src/sync/outbox.ts:582-597`, rationale at `:584-589`).
+sending** (`crates/memry-core/src/sync/outbox.rs:426-458`, rationale at `:295-297`).
 
 Rejection reasons a client MUST handle:
 
@@ -203,8 +203,8 @@ neither `accepted` nor `rejected`. **A client MUST treat an id it sent and got
 no verdict for as failed**, which is what retires such a row.
 
 A delete, being last, correctly wins over a preceding update when rows collapse,
-because the newest row carries the whole payload as it stood at enqueue time
-(`apps/mobile/src/sync/outbox.ts:584-589`).
+because collapse sends the newest row and the older rows ride its verdict
+(`crates/memry-core/src/sync/outbox.rs:426-427`, pinned at `:545-558`).
 
 ## 5.6 The push wave
 

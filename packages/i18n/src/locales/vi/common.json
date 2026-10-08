@@ -151,7 +151,7 @@
       "deny": "Từ chối",
       "invalidJson": "Nhập JSON hợp lệ trước khi áp dụng các chỉnh sửa.",
       "thisTool": "công cụ này",
-      "alwaysAllowHint": "“Luôn cho phép” chỉ áp dụng cho {tool}. Các công cụ khác vẫn sẽ hỏi, và thao tác xóa luôn hỏi trước.",
+      "alwaysAllowHint": "“Luôn cho phép” chỉ áp dụng cho {tool}. Các công cụ khác vẫn sẽ hỏi, và thao tác xóa luôn hỏi trước. Ghi chú và thư mục đã khóa vẫn chỉ đọc.",
       "alwaysInChat": "Luôn cho phép trong cuộc trò chuyện này",
       "alwaysInChatHint": "Hết hiệu lực khi cuộc trò chuyện kết thúc",
       "alwaysInVault": "Luôn cho phép trong kho này",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Không thể xem trước thay đổi này",
       "description": "Tác nhân muốn cập nhật {title}. Xem lại thay đổi trước khi áp dụng.",
+      "descriptionCreate": "Tác nhân muốn tạo {title}. Xem lại thay đổi trước khi áp dụng.",
+      "descriptionDelete": "Tác nhân muốn xóa {title}. Xem lại thay đổi trước khi áp dụng.",
       "fallbackTitle": "mục này",
       "current": "Hiện tại",
       "candidate": "Bản đề xuất",
@@ -374,7 +376,8 @@
       "agent": "Tác nhân",
       "pendingApproval": "{count, plural, other {# yêu cầu chờ phê duyệt}}",
       "inProgress": "Tác nhân đang xử lý lượt trò chuyện",
-      "close": "Đóng tác nhân"
+      "close": "Đóng tác nhân",
+      "moreActions": "Thêm thao tác của tác tử"
     },
     "errors": {
       "loadConversations": "Không thể tải các cuộc trò chuyện với tác nhân",

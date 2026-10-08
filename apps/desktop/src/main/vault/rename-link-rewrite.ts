@@ -45,6 +45,7 @@ import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
+import { isNoteLocked } from '../vault-locks/registry'
 import { emitNoteEvent, toAbsolutePath } from './notes-io'
 import { createLogger } from '../lib/logger'
 
@@ -132,6 +133,8 @@ async function rewriteSource(
   const cached = getNoteCacheById(db, sourceId)
   if (!cached) return
   if (cached.fileType && isBinaryFileType(cached.fileType)) return
+  // A locked note keeps its links as written, even to a renamed note.
+  if (sourceId !== noteId && isNoteLocked(sourceId, cached.path)) return
 
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.

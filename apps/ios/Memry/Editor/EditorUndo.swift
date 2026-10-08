@@ -29,6 +29,9 @@ struct EditorUndoStep: Sendable, Equatable {
     let backward: BlockEdit
     /// The operation that does it again.
     let forward: BlockEdit
+    /// Replayed after `forward`: the props an inserted block carries, which
+    /// `InsertBlock` alone cannot write.
+    var forwardProps: [BlockEdit] = []
 }
 
 /// This session's undo history.

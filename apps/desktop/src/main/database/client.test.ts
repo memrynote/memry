@@ -3,6 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import Database from 'better-sqlite3'
+import * as sqliteVec from 'sqlite-vec'
 
 const { loggerWarnMock } = vi.hoisted(() => ({
   loggerWarnMock: vi.fn()
@@ -31,6 +32,7 @@ import {
   SQLITE_DATA_CACHE_KIB,
   SQLITE_INDEX_CACHE_KIB
 } from './client'
+import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
 
 describe('database client', () => {
   let tempDir: string
@@ -267,5 +269,50 @@ describe('database client', () => {
     const expectation = expect(pending).rejects.toThrow('timed out')
     await vi.advanceTimersByTimeAsync(10)
     await expectation
+  })
+  describe('vec_notes', () => {
+    const vecSql = (): string =>
+      (
+        getRawIndexDatabase()
+          .prepare("SELECT sql FROM sqlite_master WHERE name = 'vec_notes'")
+          .get() as { sql: string }
+      ).sql
+
+    function seedLegacyVecTable(width: number): void {
+      const legacy = new Database(indexDbPath)
+      sqliteVec.load(legacy)
+      legacy.exec(
+        `CREATE VIRTUAL TABLE vec_notes USING vec0(note_id TEXT PRIMARY KEY, embedding float[${width}] distance_metric=cosine)`
+      )
+      legacy
+        .prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)')
+        .run('old-note', new Float32Array(width).fill(0.1))
+      legacy.close()
+    }
+
+    it('recreates a table left by an older model at the current dimension', () => {
+      seedLegacyVecTable(384)
+
+      initIndexDatabase(indexDbPath)
+      const raw = getRawIndexDatabase()
+
+      expect(vecSql()).toContain(`float[${EMBEDDING_DIMENSION}]`)
+      // The stale vectors are gone, so the projector's backfill re-embeds every note.
+      expect(raw.prepare('SELECT COUNT(*) AS count FROM vec_notes').get()).toEqual({ count: 0 })
+      raw
+        .prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)')
+        .run('new-note', new Float32Array(EMBEDDING_DIMENSION).fill(0.1))
+      expect(raw.prepare('SELECT COUNT(*) AS count FROM vec_notes').get()).toEqual({ count: 1 })
+    })
+
+    it('keeps a table that already has the current dimension, rows included', () => {
+      seedLegacyVecTable(EMBEDDING_DIMENSION)
+
+      initIndexDatabase(indexDbPath)
+
+      expect(getRawIndexDatabase().prepare('SELECT note_id FROM vec_notes').all()).toEqual([
+        { note_id: 'old-note' }
+      ])
+    })
   })
 })

@@ -78,6 +78,7 @@ const mocks = vi.hoisted(() => ({
   } as {
     activeInternalTab?: string
     activeTab?: string
+    showTasksLocation?: unknown
     activeView: string
     selectedProjectId?: string | null
     openTaskId: string | null
@@ -113,6 +114,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string, values?: Record<string, unknown>) => values?.name ?? key })
+}))
+
+vi.mock('@/hooks/use-task-note-index', () => ({
+  useTaskNoteIndex: () => undefined
 }))
 
 vi.mock('sonner', () => ({
@@ -932,6 +937,24 @@ describe('TasksPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Unstar filter' }))
     expect(mocks.toggleStarFilter).toHaveBeenCalledWith('saved-1')
+  })
+
+  it('applies a sidebar "Show tasks" request once, replacing the filters, and clears it', () => {
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeView: 'list',
+      openTaskId: null,
+      showTasksLocation: { folderPaths: ['Infra/House'], noteIds: [], requestedAt: 1 }
+    }
+    renderPage()
+
+    expect(mocks.updateFilters).toHaveBeenCalledTimes(1)
+    expect(mocks.updateFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ folderPaths: ['Infra/House'], noteIds: [], priorities: [] })
+    )
+    expect(mocks.saveTabState).toHaveBeenCalledWith('tasks-tab', {
+      viewState: { showTasksLocation: null }
+    })
   })
 
   it('keeps a fresh tab on its current view when a default project is chosen', async () => {

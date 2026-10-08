@@ -1,33 +1,29 @@
-# CLI Rules
+# CLI guide
 
-Command-line vault access (`@memry/cli`). Root `AGENTS.md` applies; this file adds CLI rules.
+This directory owns `@memry/cli`, the `memrynote` command-line client for a user's vault. It runs two ways. `bin/memrynote.mjs` runs `src/index.ts` under Node's type stripping, and the desktop app bundles `src/run.ts` and runs it for `--cli` arguments (`apps/desktop/src/main/cli/headless.ts`). A CLI change ships inside the next desktop release.
 
 ## Layout
 
-- `bin/` — executable entry.
-- `src/run.ts` — command dispatch.
-- `src/app-core/` — the vault operations: notes, folders, inbox, tasks, templates, sync, versions, bookmarks, reminders, properties.
+- `src/run.ts` parses and dispatches commands. `src/app-core/memry-app.ts` composes the services they call, from `src/app-core/` and from `packages/app-core`, which desktop shares.
+- `src/app-core/paths.ts` and `src/app-core/locale.ts` own vault path and locale resolution. Use them instead of deriving paths inline.
+- `src/app-core/database.ts` opens the vault's databases and runs desktop's migrations from `apps/desktop/src/main/database/`, so [desktop's migration rules](../desktop/AGENTS.md#databases) apply here too.
 
-`src/app-core` is the CLI's mirror of desktop behavior. When a desktop feature changes shape, this is where the CLI drifts. `scope-parity.test.ts` exists to catch that drift — read it before adding a command.
+## Parity with desktop
 
-## Commands
-
-```bash
-pnpm --filter @memry/cli typecheck
-pnpm --filter @memry/cli test
-```
-
-Tests live next to the code (`*.test.ts`). If you create or modify one, run it and iterate until it passes.
+`src/app-core` mirrors desktop behavior, and it drifts when a desktop feature changes shape. `src/app-core/scope-parity.test.ts` holds the CLI to desktop's behavior on shared operations. Read it before adding a command, and extend it when a desktop change reaches a command.
 
 ## Behavior
 
-- The CLI writes to a real user vault. Every destructive operation needs an explicit flag or confirmation; never destructive by default.
-- Non-zero exit code on failure. A command that fails silently is worse than one that crashes.
-- Errors go to stderr, results to stdout. Anything that might be piped stays machine-readable.
-- No interactive prompt in a code path that can run non-interactively. Check for a TTY before prompting.
-- Respect the vault path and locale resolution already in `paths.ts` and `locale.ts`. Do not re-derive paths inline.
+- The CLI writes to a real user vault. Every destructive operation needs an explicit flag or confirmation.
+- Exit non-zero on failure. Results go to stdout and errors to stderr, so piped output stays machine-readable.
+- Prompt only when stdin is a TTY. A code path that can run non-interactively never waits for input.
+- Read commands never rewrite vault files.
 
 ## Compatibility
 
-- The CLI reads vault files and databases written by desktop versions the user may not have updated. Tolerate older formats; never migrate a vault as a side effect of a read command.
-- Command names, flags, and output shape are a contract once shipped. Adding is fine; renaming or removing is not, unless the user asks.
+- Command names, flags, and output shape are a contract once shipped. Adding is fine. Renaming or removing one needs Kaan's request.
+- The CLI can open a vault last written by an older or newer desktop. Opening runs the bundled migrations, which is safe only because migrations are additive and an older desktop can still open the result.
+
+## Tests
+
+Tests use `node:test` under Node's type stripping, not Vitest, and live next to the code. Run `pnpm --filter @memry/cli test`, or `pnpm test:cli` to include `packages/app-core`. `pnpm --filter @memry/cli typecheck` is the type gate.

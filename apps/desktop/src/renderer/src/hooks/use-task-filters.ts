@@ -7,6 +7,7 @@ const log = createLogger('Hook:TaskFilters')
 import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
 import { applyFiltersAndSort, hasActiveFilters } from '@/lib/task-utils'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 import {
   savedFiltersService,
   onSavedFilterCreated,
@@ -258,6 +259,8 @@ interface UseFilteredTasksOptions {
   filters: TaskFilters
   sort: TaskSort
   projects: Project[]
+  /** Needed when the filters narrow by folder or note. */
+  noteIndex?: TaskNoteIndex
   searchDebounceMs?: number
 }
 
@@ -275,6 +278,7 @@ export const useFilteredAndSortedTasks = ({
   filters,
   sort,
   projects,
+  noteIndex,
   searchDebounceMs = 150
 }: UseFilteredTasksOptions): UseFilteredTasksReturn => {
   // Debounce search query
@@ -288,8 +292,9 @@ export const useFilteredAndSortedTasks = ({
 
   // Apply filters and sort
   const filteredTasks = useMemo(
-    () => applyFiltersAndSort(tasks, filtersWithDebouncedSearch, sort, projects),
-    [tasks, filtersWithDebouncedSearch, sort, projects]
+    () =>
+      applyFiltersAndSort(tasks, filtersWithDebouncedSearch, sort, projects, new Date(), noteIndex),
+    [tasks, filtersWithDebouncedSearch, sort, projects, noteIndex]
   )
 
   return {
@@ -343,7 +348,10 @@ export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
       statusIds: config.filters.statusIds,
       completion: config.filters.completion,
       repeatType: config.filters.repeatType,
-      hasTime: config.filters.hasTime
+      hasTime: config.filters.hasTime,
+      // Absent on rows written before the location filter existed.
+      folderPaths: config.filters.folderPaths ?? [],
+      noteIds: config.filters.noteIds ?? []
     },
     sort: config.sort
       ? {
@@ -378,7 +386,11 @@ export function frontendToDbConfig(
       statusIds: filters.statusIds,
       completion: filters.completion,
       repeatType: filters.repeatType,
-      hasTime: filters.hasTime
+      hasTime: filters.hasTime,
+      // Written even when empty so a cleared location is an explicit value, not a
+      // missing key that a merging reader (the iOS core) would fill from the old row.
+      folderPaths: filters.folderPaths ?? [],
+      noteIds: filters.noteIds ?? []
     },
     sort: sort
       ? {

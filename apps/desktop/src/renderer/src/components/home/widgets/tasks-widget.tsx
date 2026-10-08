@@ -1,7 +1,8 @@
 import type React from 'react'
 import { useMemo } from 'react'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
-import { selectTasksForWidget } from '@/lib/home/tasks-widget-filter'
+import { selectTasksForWidget, widgetNeedsNoteIndex } from '@/lib/home/tasks-widget-filter'
+import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { useSavedFilters } from '@/hooks/use-task-filters'
 import { useTabActions } from '@/contexts/tabs/context'
 import { TaskRow } from '@/components/tasks/task-row'
@@ -21,9 +22,12 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
   const { openTab } = useTabActions()
   const { savedFilters } = useSavedFilters()
 
+  const noteIndex = useTaskNoteIndex(widgetNeedsNoteIndex(savedFilters ?? [], config))
+
   const filtered = useMemo(
-    () => selectTasksForWidget(tasks, projects, savedFilters ?? [], config).slice(0, limit),
-    [tasks, projects, savedFilters, config, limit]
+    () =>
+      selectTasksForWidget(tasks, projects, savedFilters ?? [], config, noteIndex).slice(0, limit),
+    [tasks, projects, savedFilters, config, noteIndex, limit]
   )
 
   if (isLoading)

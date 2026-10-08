@@ -58,7 +58,9 @@ export function ConversationView({
       aria-label={t('agentChat.title')}
       tabIndex={-1}
       onKeyDown={(event) => {
-        if (!inFlight || event.key !== 'Escape') return
+        // The prompt stays editable during a turn, so an Escape that already
+        // closed the mention picker must not also stop the turn.
+        if (!inFlight || event.key !== 'Escape' || event.defaultPrevented) return
         event.preventDefault()
         cancelTurn()
       }}

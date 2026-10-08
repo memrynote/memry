@@ -32,7 +32,7 @@ import {
   signSetupToken,
   verifyRenewableSetupToken
 } from '../services/auth'
-import { listDeviceSigningKeys } from '../services/device'
+import { isActiveDeviceKey, listDeviceSigningKeys } from '../services/device'
 import { sendEmail } from '../services/email'
 import {
   generateOtp,
@@ -311,6 +311,8 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
     success: true,
     isNewUser,
     needsSetup: !user.kdf_salt,
+    knownDevice:
+      Boolean(user.kdf_salt) && (await isActiveDeviceKey(c.env.DB, user.id, devicePublicKey)),
     setupToken
   })
 })
@@ -424,6 +426,8 @@ auth.post('/oauth/:provider/callback', async (c) => {
     success: true,
     isNewUser,
     needsSetup: !user.kdf_salt,
+    knownDevice:
+      Boolean(user.kdf_salt) && (await isActiveDeviceKey(c.env.DB, user.id, devicePublicKey)),
     setupToken
   })
 })

@@ -1,15 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { sql } from 'drizzle-orm'
+import { createTestIndexDb } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
   listJournalEntriesInRange: vi.fn(),
   getNoteCacheById: vi.fn(),
+  getNotePropertiesAsRecord: vi.fn(),
   getInboxProject: vi.fn(),
   getProjectLinkCounts: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
+  readJournalFile: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
@@ -33,8 +40,15 @@ const mocks = vi.hoisted(() => ({
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
-  feedExternalEditToCrdt: vi.fn(),
-  replaceNoteTagsInCrdt: vi.fn()
+  replaceNoteTagsInCrdt: vi.fn(),
+  settleWriteback: vi.fn(),
+  isPersistent: vi.fn(),
+  getEditorSettings: vi.fn(),
+  listProjects: vi.fn(),
+  saveAttachment: vi.fn(),
+  emitNoteAttachmentSaved: vi.fn(),
+  getStatus: vi.fn(),
+  getTemplate: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -43,12 +57,26 @@ vi.mock('../../../database/queries/search', () => ({
 
 vi.mock('../../../database/queries/notes', () => ({
   listJournalEntriesInRange: mocks.listJournalEntriesInRange,
-  getNoteCacheById: mocks.getNoteCacheById
+  getNoteCacheById: mocks.getNoteCacheById,
+  getNotePropertiesAsRecord: mocks.getNotePropertiesAsRecord
 }))
 
 vi.mock('../../../database/queries/projects', () => ({
   getInboxProject: mocks.getInboxProject,
-  getProjectLinkCounts: mocks.getProjectLinkCounts
+  getProjectLinkCounts: mocks.getProjectLinkCounts,
+  listProjects: mocks.listProjects
+}))
+
+vi.mock('../../../database', () => ({
+  getDatabase: () => ({})
+}))
+
+vi.mock('../../../settings/editor-settings', () => ({
+  getEditorSettings: mocks.getEditorSettings
+}))
+
+vi.mock('../../../settings/task-settings', () => ({
+  getTaskSettings: () => ({ defaultProjectId: null })
 }))
 
 vi.mock('../../../inbox/domain', () => ({
@@ -59,6 +87,7 @@ vi.mock('../../../inbox/domain', () => ({
 vi.mock('../../../vault/journal', () => ({
   deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
+  readJournalFile: mocks.readJournalFile,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
@@ -94,7 +123,12 @@ vi.mock('../../../notes/folder-config-effects', () => ({
 }))
 
 vi.mock('../../../vault', () => ({
-  getConfig: mocks.getConfig
+  getConfig: mocks.getConfig,
+  getStatus: mocks.getStatus
+}))
+
+vi.mock('../../../vault/templates', () => ({
+  getTemplate: mocks.getTemplate
 }))
 
 vi.mock('../../../tags/store', () => ({
@@ -103,7 +137,8 @@ vi.mock('../../../tags/store', () => ({
 }))
 
 vi.mock('../../../lib/id', () => ({
-  generateId: mocks.generateId
+  generateId: mocks.generateId,
+  generateNoteId: () => 'note-1'
 }))
 
 vi.mock('./current-note', () => ({
@@ -114,22 +149,36 @@ vi.mock('./desktop-api', () => ({
   invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
 }))
 
-vi.mock('../../../sync/crdt-external-feed', () => ({
-  feedExternalEditToCrdt: mocks.feedExternalEditToCrdt
-}))
-
 vi.mock('../../../sync/crdt-feed', () => ({
   replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
 }))
 
+vi.mock('../../../sync/crdt-writeback', () => ({
+  settleWriteback: mocks.settleWriteback
+}))
+
+vi.mock('../../../sync/crdt-provider', () => ({
+  getCrdtProvider: () => ({ isPersistent: mocks.isPersistent })
+}))
+
+vi.mock('../../../vault/attachments', () => ({
+  saveAttachment: mocks.saveAttachment
+}))
+vi.mock('../../../notes/runtime-effects', () => ({
+  emitNoteAttachmentSaved: mocks.emitNoteAttachmentSaved
+}))
+
 import { createVaultServiceHandles } from './handles-adapter'
+import { buildWriteTools } from './write-tools'
 
 const deps = {
   dataDb: {} as never,
-  indexDb: {} as never
+  // Real tables, empty: reading a markdown note looks up its attachment text.
+  indexDb: createTestIndexDb().db as never
 }
 
 describe('createVaultServiceHandles', () => {
+  let vaultPath: string
   let taskDomain: {
     listTasks: ReturnType<typeof vi.fn>
     createTask: ReturnType<typeof vi.fn>
@@ -159,17 +208,26 @@ describe('createVaultServiceHandles', () => {
     reorderStatuses: ReturnType<typeof vi.fn>
   }
 
+  afterEach(() => {
+    fs.rmSync(vaultPath, { recursive: true, force: true })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-adapter-vault-'))
+    for (const folder of ['notes', 'work', 'archive']) fs.mkdirSync(path.join(vaultPath, folder))
+    mocks.getStatus.mockReturnValue({ isOpen: true, path: vaultPath })
+    mocks.isPersistent.mockResolvedValue(true)
+    mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: false })
+    mocks.listProjects.mockReturnValue([{ id: 'inbox-project', isInbox: true }])
     // Every note write returns the note the command produced; the adapter reads
     // its tags back to keep a live Y.Doc's tag array in step.
     mocks.updateNoteCommand.mockImplementation(async (input: { id: string; tags?: string[] }) => ({
       id: input.id,
       tags: input.tags ?? []
     }))
-    mocks.feedExternalEditToCrdt.mockResolvedValue(undefined)
     mocks.searchAll.mockReturnValue({ groups: [] })
     mocks.getFolders.mockResolvedValue([])
     mocks.listNotes.mockReturnValue({ notes: [] })
@@ -222,6 +280,27 @@ describe('createVaultServiceHandles', () => {
     mocks.createDesktopTasksDomain.mockReturnValue(taskDomain)
   })
 
+  // The file lands in the note's attachments folder, which the watcher never
+  // sees, so the save event is the only thing that uploads it (#2651).
+  it('announces a saved HTML artifact for upload', async () => {
+    mocks.getNoteCacheById.mockReturnValue({ fileType: 'markdown' })
+    mocks.saveAttachment.mockResolvedValue({
+      success: true,
+      path: 'attachments/note-1/page.html',
+      diskPath: '/vault/attachments/note-1/page.html',
+      name: 'page.html',
+      size: 7,
+      mimeType: 'text/html'
+    })
+    const handles = createVaultServiceHandles(deps)
+
+    await handles.notes.saveHtmlAttachment({ id: 'note-1', title: 'page', html: '<p>x</p>' })
+
+    expect(mocks.emitNoteAttachmentSaved.mock.calls).toEqual([
+      ['note-1', '/vault/attachments/note-1/page.html']
+    ])
+  })
+
   it('maps note search, read, create, update, tag, and move handles', async () => {
     const handles = createVaultServiceHandles(deps)
 
@@ -260,7 +339,7 @@ describe('createVaultServiceHandles', () => {
         id: 'note-1',
         title: 'Alpha',
         snippet: '',
-        folder_path: '/work',
+        folder_path: 'work',
         file_type: 'markdown',
         icon: '🎬'
       },
@@ -268,7 +347,7 @@ describe('createVaultServiceHandles', () => {
         id: 'file-1',
         title: 'Scan',
         snippet: 'scan snippet',
-        folder_path: '/work',
+        folder_path: 'work',
         file_type: 'pdf'
       },
       {
@@ -305,7 +384,7 @@ describe('createVaultServiceHandles', () => {
       title: 'Alpha',
       content_markdown: 'Current',
       tags: ['Team'],
-      folder_path: '/work',
+      folder_path: 'work',
       frontmatter: { owner: 'Kaan' },
       file_type: 'markdown',
       icon: '📚'
@@ -319,8 +398,9 @@ describe('createVaultServiceHandles', () => {
         folder_path: '/work',
         tags: ['focus']
       })
-    ).resolves.toEqual({ id: 'note-created' })
+    ).resolves.toMatchObject({ id: 'note-created' })
     expect(mocks.createNoteCommand).toHaveBeenCalledWith({
+      id: 'note-1',
       title: 'New',
       content: 'Body',
       folder: 'work',
@@ -416,18 +496,67 @@ describe('createVaultServiceHandles', () => {
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'file-1',
-      title: 'Scan',
-      path: 'work/scan.pdf',
-      fileType: 'pdf'
+      title: 'Memo',
+      path: 'work/memo.mp3',
+      fileType: 'audio'
     })
 
-    await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+    const note = await handles.notes.read('file-1')
+    expect(note).toMatchObject({
       id: 'file-1',
-      title: 'Scan',
-      folder_path: '/work',
-      file_type: 'pdf'
+      title: 'Memo',
+      folder_path: 'work',
+      file_type: 'audio'
     })
+    expect(note).not.toHaveProperty('extracted_text')
     expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('reads a filed PDF as the text extracted from it, from the page asked for', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+        VALUES ('file-1', 'work/scan.pdf', 'Scan', 'pdf',
+          '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO file_text_jobs (note_id, signature, status, page_count, app_version, updated_at)
+        VALUES ('file-1', '10:1', 'pending', 3, '1.0.0', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, part, method, text)
+        VALUES ('file-1', 1, 'pdf-text', 'Cover page'), ('file-1', 2, 'ocr', 'Heron count')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'file-1',
+        title: 'Scan',
+        path: 'work/scan.pdf',
+        fileType: 'pdf'
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+        file_type: 'pdf',
+        content_markdown: '',
+        extracted_text: {
+          status: 'extracting',
+          page_count: 3,
+          pages_read: 2,
+          pages: [
+            { page: 1, text: 'Cover page' },
+            { page: 2, text: 'Heron count' }
+          ],
+          next_page: null
+        }
+      })
+      await expect(handles.notes.read('file-1', { fromPage: 2 })).resolves.toMatchObject({
+        extracted_text: { pages: [{ page: 2, text: 'Heron count' }] }
+      })
+      expect(mocks.getNoteById).not.toHaveBeenCalled()
+    } finally {
+      index.close()
+    }
   })
 
   it('treats a note cache row with no file type as markdown', async () => {
@@ -456,6 +585,50 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  it('adds the text read from the attachments a markdown note embeds', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, created_at, modified_at)
+        VALUES ('note-1', 'trip.md', 'Trip', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, source, part, method, text) VALUES
+          ('note-1', 'ab12cd-ticket.png', 1, 'ocr', 'Ferry 7:40'),
+          ('note-1', 'ef34gh-map.pdf', 1, 'pdf-text', 'Estuary map'),
+          ('note-1', 'ef34gh-map.pdf', 2, 'ocr', 'Legend')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Trip',
+        path: 'trip.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Trip',
+        content: 'Packing list',
+        tags: [],
+        path: 'trip.md',
+        frontmatter: {},
+        emoji: null
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      const note = await handles.notes.read('note-1')
+      expect(note).toMatchObject({
+        content_markdown: 'Packing list',
+        attachment_text: [
+          { file: 'ab12cd-ticket.png', text: 'Ferry 7:40' },
+          { file: 'ef34gh-map.pdf', text: 'Estuary map\n\nLegend' }
+        ]
+      })
+      expect(note).not.toHaveProperty('attachment_text_truncated')
+    } finally {
+      index.close()
+    }
+  })
+
   it('refuses to overwrite a filed binary with markdown', async () => {
     const handles = createVaultServiceHandles(deps)
 
@@ -470,19 +643,14 @@ describe('createVaultServiceHandles', () => {
       handles.notes.update({ id: 'file-1', mode: 'replace', content_markdown: 'Body' })
     ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'file-1', file_type: 'pdf' } })
     expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
-    expect(mocks.feedExternalEditToCrdt).not.toHaveBeenCalled()
   })
 
   /**
-   * The file write alone is not the edit. `updateNote` refreshes the index
-   * row's content hash before the watcher reaches the file, so the watcher
-   * dedupes and never feeds the CRDT — an open note's Y.Doc would keep the old
-   * body and the next write-back would put it back on disk, which is exactly
-   * the "the agent said it wrote it and nothing changed" report.
+   * The file write alone is not the edit: the note command also feeds the body
+   * to the note's CRDT doc, so the adapter hands it the merged body.
    */
-  it('feeds the merged body into the CRDT after the note command, in that order', async () => {
+  it('hands the merged body to the note command', async () => {
     const handles = createVaultServiceHandles(deps)
-    const order: string[] = []
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
@@ -498,21 +666,46 @@ describe('createVaultServiceHandles', () => {
       path: 'work/alpha.md',
       frontmatter: {}
     })
-    mocks.updateNoteCommand.mockImplementation(async () => {
-      order.push('updateNoteCommand')
-      return { id: 'note-1', tags: ['team'] }
-    })
-    mocks.feedExternalEditToCrdt.mockImplementation(async () => {
-      order.push('feedExternalEditToCrdt')
-    })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team'] })
 
     await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
 
-    expect(order).toEqual(['updateNoteCommand', 'feedExternalEditToCrdt'])
-    expect(mocks.feedExternalEditToCrdt).toHaveBeenCalledWith('note-1', 'Current\n\nNext')
+    expect(mocks.updateNoteCommand.mock.calls).toEqual([
+      [{ id: 'note-1', content: 'Current\n\nNext' }]
+    ])
     // The tag set did not move, so the live tag array is left alone.
     expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['append', 'Current\n', 'Next\n', 'Current\n\nNext\n'],
+    ['append', 'Current\r\n\r\n', 'Next', 'Current\n\nNext'],
+    ['prepend', 'Current\n', 'Before\n', 'Before\n\nCurrent\n']
+  ] as const)(
+    'leaves one blank line between blocks on %s to %j',
+    async (mode, current, sent, stored) => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Alpha',
+        content: current,
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {}
+      })
+      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
+
+      await handles.notes.update({ id: 'note-1', mode, content_markdown: sent })
+
+      expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', content: stored })
+    }
+  )
 
   it('re-points the live tag array when the new body changes the tag set', async () => {
     const handles = createVaultServiceHandles(deps)
@@ -561,6 +754,545 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
   })
 
+  it('answers every note write with the note as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Stored café',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: { status: 'draft' },
+      properties: { status: 'draft' }
+    })
+    mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team'] })
+
+    const stored = {
+      id: 'note-1',
+      title: 'Alpha',
+      folder_path: 'work',
+      tags: ['team'],
+      properties: { status: 'draft' },
+      body_bytes: 12,
+      body_sha256: '58edf4ff6da83112bfbc527a1cd7eac61548c7a68670feffb2463e9f94f64b40'
+    }
+    const writes: [string, unknown][] = [
+      ['vault_create_note', { title: 'Alpha', content_markdown: 'Sent café' }],
+      ['vault_rename_note', { id: 'note-1', title: 'Alpha' }],
+      ['vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'Sent café' }],
+      ['vault_add_tag', { id: 'note-1', kind: 'note', tag: 'team' }],
+      ['vault_remove_tag', { id: 'note-1', kind: 'note', tag: 'other' }],
+      ['vault_move_to_folder', { id: 'note-1', folder_path: 'work' }]
+    ]
+    // 'Sent café' reads back as 'Stored café', so the body writes also say so (#2615).
+    const bodyWarning =
+      'The stored body is not the body this write sent. Sent 10 bytes, stored 12 bytes. ' +
+      'Read it back to see what was stored.'
+    for (const [name, input] of writes) {
+      const expected =
+        name === 'vault_update_note'
+          ? { ...stored, tags_added: [], tags_removed: [], warnings: [bodyWarning] }
+          : name === 'vault_create_note'
+            ? { ...stored, warnings: [bodyWarning] }
+            : stored
+      await expect(call(name, input), name).resolves.toEqual(expected)
+    }
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'work/scan.pdf',
+      fileType: 'pdf'
+    })
+    mocks.getNoteById.mockClear()
+    await expect(call('vault_rename_note', { id: 'file-1', title: 'Scan 2' })).resolves.toEqual({
+      id: 'file-1'
+    })
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('answers task, project, status, inbox and journal writes with the record as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    const storedTask = { id: 'task-1', title: 'Stored task', tags: ['work'], projectId: 'p1' }
+    taskDomain.getTask.mockReturnValue(storedTask)
+    taskDomain.createTask.mockResolvedValue({ success: true, task: { id: 'task-1' } })
+    const storedProject = { id: 'project-1', name: 'Stored project', statuses: [] }
+    taskDomain.getProject.mockReturnValue(storedProject)
+    taskDomain.createProject.mockResolvedValue({ success: true, project: { id: 'project-1' } })
+    const storedStatus = { id: 'status-1', projectId: 'project-1', name: 'Blocked', isDone: false }
+    taskDomain.createStatus.mockResolvedValue({ success: true, status: storedStatus })
+    taskDomain.updateStatus.mockResolvedValue({ success: true, status: storedStatus })
+    const storedItem = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.createDesktopInboxCrudHandlers.mockReturnValue({
+      handleGet: vi.fn().mockResolvedValue(storedItem),
+      handleUpdate: vi.fn().mockResolvedValue({ success: true }),
+      handleArchive: vi.fn().mockResolvedValue({ success: true }),
+      handleUnarchive: vi.fn().mockResolvedValue({ success: true }),
+      handleAddTag: vi.fn().mockResolvedValue({ success: true }),
+      handleRemoveTag: vi.fn().mockResolvedValue({ success: true })
+    })
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-1' } }),
+      snooze: vi.fn().mockResolvedValue({ success: true })
+    })
+
+    const taskWrites: [string, unknown][] = [
+      ['vault_create_task', { title: 'Stored task' }],
+      ['vault_update_task', { id: 'task-1', title: 'Stored task' }],
+      ['vault_complete_task', { id: 'task-1' }],
+      ['vault_uncomplete_task', { id: 'task-1' }],
+      ['vault_archive_task', { id: 'task-1' }],
+      ['vault_unarchive_task', { id: 'task-1' }],
+      ['vault_move_task', { task_id: 'task-1', target_project_id: 'p1', position: 0 }],
+      ['vault_convert_task_to_subtask', { task_id: 'task-1', parent_id: 'task-0' }],
+      ['vault_convert_subtask_to_task', { id: 'task-1' }],
+      ['vault_add_tag', { id: 'task-1', kind: 'task', tag: 'work' }],
+      ['vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'old' }]
+    ]
+    for (const [name, input] of taskWrites) {
+      await expect(call(name, input), name).resolves.toEqual(storedTask)
+    }
+    for (const [name, input] of [
+      ['vault_create_project', { name: 'Stored project' }],
+      ['vault_update_project', { id: 'project-1', name: 'Stored project' }],
+      ['vault_archive_project', { id: 'project-1' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedProject)
+    }
+    await expect(
+      call('vault_create_status', { project_id: 'project-1', name: 'Blocked' })
+    ).resolves.toEqual(storedStatus)
+    await expect(call('vault_update_status', { id: 'status-1', name: 'Blocked' })).resolves.toEqual(
+      storedStatus
+    )
+    for (const [name, input] of [
+      ['vault_add_to_inbox', { source: 'agent', title: 'Stored item', content: 'Body' }],
+      ['vault_update_inbox_item', { id: 'inbox-1', title: 'Stored item' }],
+      ['vault_snooze_inbox_item', { id: 'inbox-1', snooze_until: '2026-10-05T00:00:00.000Z' }],
+      ['vault_archive_inbox_item', { id: 'inbox-1' }],
+      ['vault_unarchive_inbox_item', { id: 'inbox-1' }],
+      ['vault_add_inbox_tag', { id: 'inbox-1', tag: 'later' }],
+      ['vault_remove_inbox_tag', { id: 'inbox-1', tag: 'old' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedItem)
+    }
+
+    const entry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      content: 'Stored caf\u00e9',
+      tags: ['daily'],
+      properties: { mood: 'calm' }
+    }
+    mocks.readJournalEntry.mockResolvedValue(entry)
+    mocks.readJournalFile
+      .mockResolvedValueOnce({
+        frontmatter: { date: '2026-10-04', emoji: 'sun', mood: 'calm' },
+        body: 'Old\n'
+      })
+      .mockResolvedValue({
+        frontmatter: { date: '2026-10-04', mood: 'calm' },
+        body: 'Stored caf\u00e9\n'
+      })
+    mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+    const storedEntry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      tags: ['daily'],
+      properties: { mood: 'calm' },
+      body_bytes: 13,
+      body_sha256: 'be59dd033a2ec17b8ab0bc7731223ff5b08d386f55aa34bd906fbbf0cbcafb75'
+    }
+    await expect(
+      call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual({
+      ...storedEntry,
+      frontmatter_removed: ['emoji'],
+      warnings: [
+        'The stored body is not the body this write sent. Sent 4 bytes, stored 12 bytes. ' +
+          'Read it back to see what was stored.'
+      ]
+    })
+    await expect(
+      call('vault_create_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual({ ...storedEntry, created: false })
+  })
+
+  it('says which tags an update body added or removed', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    const note = (tags: string[]) => ({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Body',
+      tags,
+      path: 'work/alpha.md',
+      frontmatter: {},
+      properties: {}
+    })
+    mocks.getNoteById
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'planning']))
+      .mockResolvedValueOnce(note(['team', 'planning']))
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team', 'planning'] })
+
+    await expect(
+      tools
+        .find((tool) => tool.name === 'vault_update_note')!
+        .handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '#team #planning' },
+          { writeGrant: 'g', windowId: null }
+        )
+    ).resolves.toMatchObject({
+      tags: ['team', 'planning'],
+      tags_added: ['planning'],
+      tags_removed: ['old']
+    })
+  })
+
+  it('keeps legacy id, title, created and modified keys an agent leaves out, and drops one it nulls', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.getNoteCacheById.mockReturnValue({ id: 'note-1', date: null, fileType: 'markdown' })
+    mocks.getNotePropertiesAsRecord.mockReturnValue({
+      id: 'legacy-id',
+      title: 'Legacy',
+      created: '"2025-01-01T00:00:00.000Z"',
+      status: 'draft'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      frontmatter: {
+        id: 'legacy-id',
+        title: 'Legacy',
+        created: new Date('2025-01-01T00:00:00.000Z'),
+        modified: new Date('2025-01-02T00:00:00.000Z'),
+        status: 'draft',
+        owner: 'kaan'
+      }
+    })
+    mocks.invokeDesktopApiFromWindow.mockResolvedValue({
+      success: true,
+      properties: {},
+      removed: ['owner']
+    })
+
+    await handles.desktop.write(
+      { operation: 'properties.set', args: ['note-1', { status: 'done', modified: null }] },
+      'w1'
+    )
+
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('w1', {
+      operation: 'properties.set',
+      args: [
+        'note-1',
+        {
+          status: 'done',
+          id: 'legacy-id',
+          title: 'Legacy',
+          created: new Date('2025-01-01T00:00:00.000Z')
+        }
+      ]
+    })
+  })
+
+  it('adds the stored record to a desktop write whose reply carries none', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const item = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce(item)
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({ success: true, stored: item })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('w1', {
+      operation: 'inbox.get',
+      args: ['inbox-1']
+    })
+  })
+
+  it('reads a tag or category back from the shapes the tag handlers return', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const tag = { name: 'work', color: 'red', icon: null, count: 2 }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ tags: [{ name: 'home', color: 'blue', count: 1 }, tag] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.updateTagColor', args: [{ tag: 'work', color: 'red' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: tag })
+
+    const category = { id: 'c1', name: 'Areas' }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: true, categories: [category] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.renameCategory', args: [{ id: 'c1', name: 'Areas' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: category })
+  })
+
+  it('keeps the reply of a landed desktop write when the read-back fails', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(new Error('Desktop API operation timed out or returned no result.'))
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({
+      success: true,
+      warnings: [
+        'The write landed, but reading it back failed (Desktop API operation timed out or ' +
+          'returned no result.). Read the record to see what was stored.'
+      ]
+    })
+  })
+
+  describe('the body a write reports (#2615)', () => {
+    let file: string
+
+    beforeEach(() => {
+      file = 'Current'
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockImplementation(async (id: string) => ({
+        id,
+        title: 'Alpha',
+        content: file,
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {},
+        properties: {}
+      }))
+      mocks.updateNoteCommand.mockImplementation(async (input: { id: string; content: string }) => {
+        file = input.content
+        return { id: input.id, tags: [] }
+      })
+      mocks.createNoteCommand.mockImplementation(async (input: { content: string }) => {
+        file = input.content
+        return { id: 'note-2' }
+      })
+      mocks.settleWriteback.mockImplementation(async () => {
+        file = file.replace('* One', '- One')
+      })
+    })
+
+    it('reads an updated note back once the write-back it armed has run', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: '* One' })
+      ).resolves.toEqual({ sent: 'Current\n\n* One', stored: 'Current\n\n- One' })
+    })
+
+    it('reads a created note back the same way', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.create({ title: 'New', content_markdown: '* One' })
+      ).resolves.toEqual({ id: 'note-2', body: { sent: '* One', stored: '- One' } })
+    })
+
+    it('reads a note back for a write the desktop API made', async () => {
+      const handles = createVaultServiceHandles(deps)
+      file = '* One'
+
+      await expect(handles.notes.storedBody('note-1', '* One')).resolves.toEqual({
+        sent: '* One',
+        stored: '- One'
+      })
+    })
+
+    it('reports no stored body instead of failing a landed write whose read-back throws', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }
+      mocks.getNoteById
+        .mockResolvedValueOnce({ ...note, content: 'Current' })
+        .mockRejectedValueOnce(new Error('EBUSY: resource busy or locked'))
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+      ).resolves.toEqual({ sent: 'Current\n\nNext', stored: null })
+      expect(mocks.updateNoteCommand).toHaveBeenCalledTimes(1)
+    })
+
+    describe('measured after the checkbox step (#2619)', () => {
+      const writeTool = (name: string) =>
+        buildWriteTools(createVaultServiceHandles(deps), async () => ({ approved: true })).find(
+          (tool) => tool.name === name
+        )!
+      const ctx = { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      const sentBody = '- [ ] Check the log {check}\nDone'
+
+      it('reports a CRLF respelling with the bytes of the body after the checkbox step', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {
+          file = file.replace(/\n/g, '\r\n')
+        })
+
+        const reply = await writeTool('vault_update_note').handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
+          ctx
+        )
+
+        expect(file).toBe('- [ ] Check the log {check}\r\nDone')
+        expect(reply).toMatchObject({
+          warnings: [
+            'The stored body is not the body this write sent. ' +
+              `Sent ${Buffer.byteLength(sentBody)} bytes, stored ${Buffer.byteLength(file)} bytes. ` +
+              'Read it back to see what was stored.'
+          ],
+          id: 'note-1',
+          body_bytes: Buffer.byteLength(file)
+        })
+      })
+
+      it('says nothing when the checkbox marker is the only change', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {})
+
+        const reply = await writeTool('vault_update_note').handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
+          ctx
+        )
+
+        expect(reply).toMatchObject({ id: 'note-1', body_bytes: Buffer.byteLength(sentBody) })
+        expect(reply).not.toHaveProperty('warnings')
+      })
+
+      it('says nothing for a desktop API note write whose only change is the marker', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {})
+        mocks.invokeDesktopApiFromWindow.mockImplementation(
+          async (_window: string, request: { args: Array<{ id: string; content: string }> }) => {
+            file = request.args[0].content
+            return { note: { id: 'note-1', content: file } }
+          }
+        )
+
+        await expect(
+          writeTool('vault_desktop_write').handler(
+            {
+              operation: 'notes.update',
+              args: [{ id: 'note-1', content: '- [ ] Check the log\nDone' }]
+            },
+            ctx
+          )
+        ).resolves.toEqual({ note: { id: 'note-1', content: sentBody } })
+      })
+    })
+
+    it('reads a journal entry back once its armed write-back has run', async () => {
+      const handles = createVaultServiceHandles(deps)
+      let journal: string | null = null
+      mocks.readJournalEntry.mockImplementation(async (date: string) =>
+        journal === null ? null : { id: `j${date}`, date, content: journal, tags: [] }
+      )
+      mocks.writeJournalEntry.mockImplementation(async (date: string, content: string) => {
+        journal = content
+        return { id: `j${date}` }
+      })
+      mocks.settleWriteback.mockImplementation(async (id: string) => {
+        if (id === 'j2026-05-11' && journal !== null) journal = journal.replace('* One', '- One')
+      })
+
+      await expect(
+        handles.journal.createIfMissing({ date: '2026-05-11', content_markdown: '* One' })
+      ).resolves.toEqual({
+        id: 'j2026-05-11',
+        created: true,
+        body: { sent: '* One', stored: '- One' }
+      })
+    })
+
+    it('reports no stored body for a note too large to read back', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }
+      mocks.getNoteById
+        .mockResolvedValueOnce({ ...note, content: 'Current' })
+        .mockResolvedValueOnce({ ...note, content: '', contentOmitted: true })
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'replace', content_markdown: 'Big' })
+      ).resolves.toEqual({ sent: 'Big', stored: null })
+    })
+
+    it('reads a written journal entry back', async () => {
+      const handles = createVaultServiceHandles(deps)
+      let journal: string | null = null
+      mocks.readJournalEntry.mockImplementation(async (date: string) =>
+        journal === null ? null : { id: `j${date}`, date, content: journal, tags: [] }
+      )
+      mocks.writeJournalEntry.mockImplementation(async (date: string, content: string) => {
+        journal = `${content.trimEnd()}\n`
+        return { id: `j${date}` }
+      })
+
+      await expect(
+        handles.journal.createIfMissing({ date: '2026-05-10', content_markdown: 'Hello' })
+      ).resolves.toEqual({
+        id: 'j2026-05-10',
+        created: true,
+        body: { sent: 'Hello', stored: 'Hello\n' }
+      })
+      await expect(
+        handles.journal.update({ date: '2026-05-10', content_markdown: 'Again  ' })
+      ).resolves.toEqual({ id: 'j2026-05-10', body: { sent: 'Again  ', stored: 'Again\n' } })
+      await expect(
+        handles.journal.update({ date: '2026-05-10', tags: ['daily'] })
+      ).resolves.toEqual({ id: 'j2026-05-10' })
+    })
+  })
+
+  it('says on a write reply that this launch runs without its CRDT store', async () => {
+    const createTask = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    })).find((tool) => tool.name === 'vault_create_task')!
+    const run = () =>
+      createTask.handler({ title: 'Task' }, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+
+    await expect(run()).resolves.toEqual({ id: 'task-created' })
+    mocks.isPersistent.mockResolvedValue(false)
+    await expect(run()).resolves.toEqual({
+      id: 'task-created',
+      warnings: [
+        'The CRDT store is unavailable on this device, so note edits sync without merge ' +
+          'history this session. Read changed notes back to check what was stored.'
+      ]
+    })
+  })
+
   it('returns null when the note cache has no row for the id', async () => {
     const handles = createVaultServiceHandles(deps)
 
@@ -586,10 +1318,22 @@ describe('createVaultServiceHandles', () => {
       ]
     })
 
-    await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual([
-      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' }
-    ])
+    const workChildren = [
+      { kind: 'folder', id: 'work/client', name: 'client', path: 'work/client' },
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Client',
+        path: 'work/client.md',
+        file_type: 'markdown',
+        icon: '💼'
+      }
+    ]
+    await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual(
+      workChildren
+    )
+    await expect(handles.folders.list({ path: 'work/' })).resolves.toEqual(workChildren)
+    await expect(handles.folders.list({ id: 'work' })).resolves.toEqual(workChildren)
     expect(mocks.listNotes).toHaveBeenCalledWith({
       folder: 'work',
       limit: 1000,
@@ -597,38 +1341,70 @@ describe('createVaultServiceHandles', () => {
     })
 
     await expect(handles.folders.list({ path: '/', recursive: true })).resolves.toEqual([
-      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
-      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
+      { kind: 'folder', id: 'work', name: 'work', path: 'work' },
+      { kind: 'folder', id: 'work/client', name: 'client', path: 'work/client' },
       {
         kind: 'folder',
-        id: '/work/client/archive',
+        id: 'work/client/archive',
         name: 'archive',
-        path: '/work/client/archive'
+        path: 'work/client/archive'
       },
-      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' },
-      { kind: 'note', id: 'note-2', name: 'Deep', path: '/work/client/deep.md' }
+      { kind: 'folder', id: 'personal', name: 'personal', path: 'personal' },
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Client',
+        path: 'work/client.md',
+        file_type: 'markdown',
+        icon: '💼'
+      },
+      {
+        kind: 'note',
+        id: 'note-2',
+        name: 'Deep',
+        path: 'work/client/deep.md',
+        file_type: 'markdown'
+      }
     ])
 
     await expect(handles.folders.list({ path: '/', recursive: false })).resolves.toEqual([
-      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
-      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' }
+      { kind: 'folder', id: 'work', name: 'work', path: 'work' },
+      { kind: 'folder', id: 'personal', name: 'personal', path: 'personal' }
     ])
 
-    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: '/planning' })
+    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: 'planning' })
     expect(mocks.createFolder).toHaveBeenCalledWith('planning')
 
     await expect(
       handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
-    ).resolves.toEqual({ path: '/archive/planning' })
+    ).resolves.toEqual({ path: 'archive/planning' })
     expect(mocks.renameFolderCommand).toHaveBeenCalledWith('planning', 'archive/planning')
     expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
 
     await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({
-      path: '/archive/planning'
+      path: 'archive/planning'
     })
     expect(mocks.deleteFolder).toHaveBeenCalledWith('archive/planning')
     expect(mocks.syncFolderConfigDelete).toHaveBeenCalledWith('archive/planning')
+  })
+
+  it('rejects a folder that does not exist and names its path, but lists an empty one', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getFolders.mockResolvedValue([{ path: 'projects' }, { path: 'projects/empty' }])
+    mocks.listNotes.mockReturnValue({ notes: [] })
+
+    await expect(handles.folders.list({ path: '/projects/old-name' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message:
+        'Folder not found: projects/old-name. List the vault root (omit path) to see the folders that exist.',
+      details: { path: 'projects/old-name' }
+    })
+    await expect(handles.folders.list({ id: 'archive' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      details: { path: 'archive' }
+    })
+    await expect(handles.folders.list({ path: 'projects/empty' })).resolves.toEqual([])
   })
 
   it('maps task and project handles through the task domain', async () => {
@@ -918,7 +1694,7 @@ describe('createVaultServiceHandles', () => {
     mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-created' })
     await expect(
       handles.journal.createIfMissing({ date: '2026-05-13', content_markdown: 'Tomorrow' })
-    ).resolves.toEqual({ id: 'journal-created', created: true })
+    ).resolves.toMatchObject({ id: 'journal-created', created: true })
 
     mocks.readJournalEntry.mockResolvedValueOnce({ id: 'journal-existing' })
     await expect(
@@ -1066,6 +1842,576 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
       operation: 'templates.create',
       args: [{ name: 'Template' }]
+    })
+  })
+
+  it('lists a filed file with its file type instead of as a note', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getFolders.mockResolvedValue([{ path: 'media' }])
+    mocks.listNotes.mockReturnValue({
+      notes: [
+        { id: 'note-1', title: 'Caption', path: 'media/caption.md', fileType: 'markdown' },
+        { id: 'file-1', title: 'Screenshot', path: 'media/screenshot.png', fileType: 'image' }
+      ]
+    })
+
+    await expect(handles.folders.list({ path: 'media' })).resolves.toEqual([
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Caption',
+        path: 'media/caption.md',
+        file_type: 'markdown'
+      },
+      {
+        kind: 'file',
+        id: 'file-1',
+        name: 'Screenshot',
+        path: 'media/screenshot.png',
+        file_type: 'image'
+      }
+    ])
+  })
+
+  describe('desktop API replies', () => {
+    const screenshotRow = {
+      id: 'file-1',
+      title: 'Screenshot',
+      path: 'media/screenshot.png',
+      fileType: 'image',
+      mimeType: 'image/png',
+      fileSize: 198189,
+      createdAt: '2026-10-01T08:00:00.000Z',
+      modifiedAt: '2026-10-01T09:00:00.000Z'
+    }
+    const screenshotMetadata = {
+      id: 'file-1',
+      path: 'media/screenshot.png',
+      title: 'Screenshot',
+      fileType: 'image',
+      mimeType: 'image/png',
+      fileSize: 198189,
+      created: '2026-10-01T08:00:00.000Z',
+      modified: '2026-10-01T09:00:00.000Z',
+      contentOmitted: true,
+      contentAccess:
+        'The desktop API returns metadata only for image files. vault_view_file with this id shows the image itself. vault_read_note with this id returns the text read from the image (OCR).'
+    }
+    const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockImplementation((_db: unknown, id: string) =>
+        id === 'file-1' ? screenshotRow : undefined
+      )
+    })
+
+    it('returns metadata only when notes.get reads a filed image', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({
+        id: 'file-1',
+        path: 'media/screenshot.png',
+        title: 'Screenshot',
+        content: decodedBytes,
+        frontmatter: {},
+        tags: []
+      })
+
+      await expect(
+        handles.desktop.read({ operation: 'notes.get', args: ['file-1'] }, 'window-1')
+      ).resolves.toEqual(screenshotMetadata)
+    })
+
+    it('returns metadata only for the note in a notes.rename reply on a filed image', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({
+        success: true,
+        note: { id: 'file-1', title: 'Screenshot', content: decodedBytes }
+      })
+
+      await expect(
+        handles.desktop.write(
+          { operation: 'notes.rename', args: [{ id: 'file-1', newTitle: 'Screenshot' }] },
+          'window-1'
+        )
+      ).resolves.toEqual({ success: true, note: screenshotMetadata })
+    })
+
+    it('names the content route for each filed file type: vault_view_file and vault_read_note for PDFs and images', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const routes: Record<string, string> = {}
+      for (const fileType of ['image', 'pdf', 'audio', 'video']) {
+        mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, fileType })
+        mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'file-1', content: 'x' })
+        const reply = (await handles.desktop.read(
+          { operation: 'notes.get', args: ['file-1'] },
+          'window-1'
+        )) as { contentAccess: string }
+        routes[fileType] = reply.contentAccess
+      }
+
+      expect(routes).toEqual({
+        image: screenshotMetadata.contentAccess,
+        pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page. vault_view_file with this id and a page number shows that page as an image.',
+        audio: 'The desktop API returns metadata only for audio files.',
+        video: 'The desktop API returns metadata only for video files.'
+      })
+    })
+
+    it('keeps a markdown note body in the reply', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, id: 'note-1', fileType: null })
+      const note = { id: 'note-1', title: 'Plan', content: '# Plan\n\nShip it.' }
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce(note)
+
+      await expect(
+        handles.desktop.read({ operation: 'notes.get', args: ['note-1'] }, 'window-1')
+      ).resolves.toEqual(note)
+    })
+  })
+
+  describe('checkbox lines an agent writes', () => {
+    const findings = '## Findings\n\n- [ ] Check the log\n- [x] Read the sync table\n- [ ]'
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Review',
+        path: 'review.md',
+        fileType: 'markdown'
+      })
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    })
+
+    it('stores a new note with every checkbox line kept a plain checkbox', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await handles.notes.create({ title: 'Review', content_markdown: findings })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(
+        '## Findings\n\n- [ ] Check the log {check}\n- [x] Read the sync table {check}\n- [ ] {check}'
+      )
+      expect(taskDomain.createTask).not.toHaveBeenCalled()
+    })
+
+    it('leaves task lines, plain lines and checkboxes in code fences alone', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const body = [
+        '- [ ] Ship it {task:task-1}',
+        '- [ ] Passport {check}',
+        '```',
+        '- [ ] example',
+        '```',
+        '1. [ ] numbered'
+      ].join('\n')
+
+      await handles.notes.create({ title: 'Review', content_markdown: body })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(body)
+    })
+
+    it('marks only the appended checkbox lines on an update', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+
+      await handles.notes.update({
+        id: 'note-1',
+        mode: 'append',
+        content_markdown: '- [ ] Agent item'
+      })
+
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [{ id: 'note-1', content: '- [ ] Owner item\n\n- [ ] Agent item {check}' }]
+      ])
+    })
+
+    it("keeps the owner's own checkbox lines byte for byte on a replace", async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item\n- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+
+      await handles.notes.update({
+        id: 'note-1',
+        mode: 'replace',
+        content_markdown: '- [ ] Owner item\n- [ ] Owner item\n- [ ] Owner item'
+      })
+
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [
+          {
+            id: 'note-1',
+            content: '- [ ] Owner item\n- [ ] Owner item\n- [ ] Owner item {check}'
+          }
+        ]
+      ])
+    })
+
+    it('keeps checkbox lines plain in journal writes', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.readJournalEntry.mockResolvedValueOnce(null)
+      mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+      await handles.journal.createIfMissing({ date: '2026-10-01', content_markdown: '- [ ] A' })
+
+      mocks.readJournalEntry.mockResolvedValueOnce({
+        id: 'journal-1',
+        content: '- [ ] Owner',
+        tags: [],
+        properties: {}
+      })
+      await handles.journal.update({ date: '2026-10-01', content_markdown: '- [ ] Owner\n- [ ] B' })
+
+      expect(mocks.writeJournalEntry.mock.calls.map((call) => call[1])).toEqual([
+        '- [ ] A {check}',
+        '- [ ] Owner\n- [ ] B {check}'
+      ])
+    })
+
+    it('rewrites the stored journal body as it was on a tags-only update', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.readJournalEntry.mockResolvedValueOnce({
+        id: 'journal-1',
+        content: '- [ ] Owner',
+        tags: [],
+        properties: {}
+      })
+      mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+
+      await expect(
+        handles.journal.update({ date: '2026-10-01', tags: ['review'] })
+      ).resolves.toEqual({ id: 'journal-1' })
+      expect(mocks.writeJournalEntry.mock.calls).toEqual([
+        ['2026-10-01', '- [ ] Owner', ['review'], {}]
+      ])
+    })
+
+    it('keeps checkbox lines plain in desktop API note and journal writes', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+      mocks.readJournalEntry.mockResolvedValue(null)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+
+      await handles.desktop.write(
+        { operation: 'notes.create', args: [{ title: 'Review', content: '- [ ] A' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.update', args: [{ id: 'note-1', content: '- [ ] Owner\n- [ ] B' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'journal.createEntry', args: [{ date: '2026-10-01', content: '- [ ] C' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'journal.updateEntry', args: [{ date: '2026-10-01', content: '- [ ] D' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.update', args: [{ id: 'note-1', title: 'Renamed' }] },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        { operation: 'notes.create', args: [{ title: 'Review', content: '- [ ] A {check}' }] },
+        {
+          operation: 'notes.update',
+          args: [{ id: 'note-1', content: '- [ ] Owner\n- [ ] B {check}' }]
+        },
+        {
+          operation: 'journal.createEntry',
+          args: [{ date: '2026-10-01', content: '- [ ] C {check}' }]
+        },
+        {
+          operation: 'journal.updateEntry',
+          args: [{ date: '2026-10-01', content: '- [ ] D {check}' }]
+        },
+        { operation: 'notes.update', args: [{ id: 'note-1', title: 'Renamed' }] }
+      ])
+    })
+  })
+
+  describe('checkbox lines in content an agent call creates (#2759)', () => {
+    beforeEach(() => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+    })
+
+    it('keeps checkbox lines plain in the templates an agent creates and updates', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getTemplate.mockResolvedValue({ id: 'template-1', content: '- [ ] Owner item' })
+
+      await handles.desktop.write(
+        { operation: 'templates.create', args: [{ name: 'Shop', content: '- [ ] Buy milk' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        {
+          operation: 'templates.update',
+          args: [{ id: 'template-1', content: '- [ ] Owner item\n- [ ] Buy bread' }]
+        },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        {
+          operation: 'templates.create',
+          args: [{ name: 'Shop', content: '- [ ] Buy milk {check}' }]
+        },
+        {
+          operation: 'templates.update',
+          args: [{ id: 'template-1', content: '- [ ] Owner item\n- [ ] Buy bread {check}' }]
+        }
+      ])
+      expect(mocks.getTemplate).toHaveBeenCalledWith('template-1')
+    })
+
+    it('asks for plain checkbox lines when an agent applies a template, converts an inbox item or imports files', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await handles.desktop.write(
+        {
+          operation: 'notes.applyTemplate',
+          args: [{ noteId: 'note-1', templateId: 'template-1', mode: 'body' }]
+        },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: false }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.importFiles', args: [['/tmp/list.md']] },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        {
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: true }
+          ]
+        },
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: true }] },
+        {
+          operation: 'notes.importFiles',
+          args: [['/tmp/list.md'], undefined, { plainChecklists: true }]
+        }
+      ])
+    })
+  })
+
+  describe('folders a note write creates (#2759)', () => {
+    beforeEach(() => {
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    })
+
+    it('lists the folders a new note created, shallowest first', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.create({
+          title: 'Plan',
+          content_markdown: 'Body',
+          folder_path: '/work/q3/plans'
+        })
+      ).resolves.toMatchObject({ created_folders: ['work/q3', 'work/q3/plans'] })
+    })
+
+    it('lists the default note folder when a folderless note created it', async () => {
+      const handles = createVaultServiceHandles(deps)
+      fs.rmSync(path.join(vaultPath, 'notes'), { recursive: true })
+
+      await expect(
+        handles.notes.create({ title: 'Plan', content_markdown: 'Body' })
+      ).resolves.toMatchObject({ created_folders: ['notes'] })
+    })
+
+    it('says nothing about folders that already existed', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      const reply = await handles.notes.create({
+        title: 'Plan',
+        content_markdown: 'Body',
+        folder_path: 'work'
+      })
+
+      expect(reply).not.toHaveProperty('created_folders')
+    })
+
+    it('lists the folders a move created in the move reply', async () => {
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Plan',
+        content: 'Body',
+        tags: [],
+        path: 'archive/2026/plan.md',
+        frontmatter: {}
+      })
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Plan',
+        path: 'archive/2026/plan.md',
+        fileType: 'markdown'
+      })
+      const tool = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+        approved: true
+      })).find((candidate) => candidate.name === 'vault_move_to_folder')!
+
+      const reply = await tool.handler(
+        { id: 'note-1', folder_path: 'archive/2026' },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
+
+      expect(reply).toMatchObject({ id: 'note-1', created_folders: ['archive/2026'] })
+      expect(mocks.moveNoteCommand).toHaveBeenCalledWith('note-1', 'archive/2026')
+    })
+  })
+
+  describe('checkbox lines an agent writes, with agent conversion on', () => {
+    beforeEach(() => {
+      mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: true })
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Review',
+        path: 'review.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+    })
+
+    it('turns the lines into tasks and names each task in the reply', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+
+      await expect(
+        handles.notes.create({ title: 'Review', content_markdown: '- [ ] Check the log' })
+      ).resolves.toMatchObject({
+        id: 'note-1',
+        body: { sent: '- [ ] Check the log {task:task-created}' },
+        created_tasks: [{ id: 'task-created', title: 'Check the log' }]
+      })
+      expect(taskDomain.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'inbox-project',
+          title: 'Check the log',
+          linkedNoteIds: ['note-1']
+        })
+      )
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(
+        '- [ ] Check the log {task:task-created}'
+      )
+    })
+
+    it("leaves the owner's own lines unconverted on a replace", async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.update({
+          id: 'note-1',
+          mode: 'replace',
+          content_markdown: '- [ ] Owner item\n- [ ] Agent item'
+        })
+      ).resolves.toMatchObject({
+        sent: '- [ ] Owner item\n- [ ] Agent item {task:task-created}',
+        created_tasks: [{ id: 'task-created', title: 'Agent item' }]
+      })
+      expect(taskDomain.createTask).toHaveBeenCalledTimes(1)
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [{ id: 'note-1', content: '- [ ] Owner item\n- [ ] Agent item {task:task-created}' }]
+      ])
+    })
+
+    it('deletes the tasks again when the note write fails', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.createNoteCommand.mockRejectedValue(new Error('disk full'))
+
+      await expect(
+        handles.notes.create({ title: 'Review', content_markdown: '- [ ] Check the log' })
+      ).rejects.toThrow('disk full')
+      expect(taskDomain.deleteTask.mock.calls).toEqual([['task-created']])
+    })
+
+    it('leaves desktop API bodies for the editor to convert', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+      const request = {
+        operation: 'notes.create' as const,
+        args: [{ title: 'Review', content: '- [ ] A' }]
+      }
+
+      await handles.desktop.write(request, 'window-1')
+
+      expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('window-1', request)
+      expect(taskDomain.createTask).not.toHaveBeenCalled()
+    })
+
+    it('leaves template, inbox and import lines for the editor, whatever the agent passed', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+      const template = {
+        operation: 'templates.create' as const,
+        args: [{ name: 'Shop', content: '- [ ] A' }]
+      }
+
+      await handles.desktop.write(template, 'window-1')
+      await handles.desktop.write(
+        {
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: true }
+          ]
+        },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: true }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.importFiles', args: [['/tmp/list.md']] },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        template,
+        {
+          operation: 'notes.applyTemplate',
+          args: [
+            { noteId: 'note-1', templateId: 'template-1', mode: 'body', plainChecklists: false }
+          ]
+        },
+        { operation: 'inbox.convertToNote', args: ['inbox-1', { plainChecklists: false }] },
+        {
+          operation: 'notes.importFiles',
+          args: [['/tmp/list.md'], undefined, { plainChecklists: false }]
+        }
+      ])
     })
   })
 

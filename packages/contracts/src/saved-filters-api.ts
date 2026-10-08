@@ -43,6 +43,14 @@ export interface TaskFilters {
   completion: 'active' | 'completed' | 'all' | 'archived'
   repeatType: 'all' | 'repeating' | 'one-time'
   hasTime: 'all' | 'with-time' | 'without-time'
+  /**
+   * Vault-relative folders whose notes' tasks match, subfolders included.
+   * Optional: rows written before it existed have no key, and builds that
+   * predate it ignore it and show the filter without the location part.
+   */
+  folderPaths?: string[]
+  /** Notes whose tasks match. Optional for the same reason as `folderPaths`. */
+  noteIds?: string[]
 }
 
 /**
@@ -121,7 +129,11 @@ export const TaskFiltersSchema = z.object({
   // carrying it degrades to the default on builds that predate it.
   completion: z.enum(['active', 'completed', 'all', 'archived']).default('active'),
   repeatType: z.enum(['all', 'repeating', 'one-time']).default('all'),
-  hasTime: z.enum(['all', 'with-time', 'without-time']).default('all')
+  hasTime: z.enum(['all', 'with-time', 'without-time']).default('all'),
+  // Additive and without a default, so a row that never had them is not
+  // rewritten with empty arrays.
+  folderPaths: z.array(z.string()).optional(),
+  noteIds: z.array(z.string()).optional()
 })
 
 const TaskSortSchema = z.object({

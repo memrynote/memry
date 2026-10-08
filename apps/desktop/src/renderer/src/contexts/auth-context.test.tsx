@@ -34,7 +34,9 @@ import { AuthProvider, useAuth } from './auth-context'
 
 type EventCallback<T = any> = (event: T) => void
 
-let sessionExpiredCallback: (() => void) | null = null
+let sessionExpiredCallback: EventCallback<{ reason: string }> | null = null
+let tokenRefreshedCallback: (() => void) | null = null
+let syncStatusCallback: EventCallback<{ status: string; lastSyncAt?: number }> | null = null
 let oauthErrorCallback: EventCallback<{ error?: string }> | null = null
 let linkingFinalizedCallback: EventCallback<{ deviceId?: string; error?: string }> | null = null
 let oauthCallback: EventCallback<{ code: string; state: string }> | null = null
@@ -45,9 +47,21 @@ function wrapper({ children }: { children: ReactNode }) {
 
 function installApiHandlers(): void {
   const api = window.api as any
-  api.onSessionExpired = vi.fn((cb: () => void) => {
+  api.onSessionExpired = vi.fn((cb: EventCallback<{ reason: string }>) => {
     sessionExpiredCallback = cb
     return vi.fn()
+  })
+  api.onTokenRefreshed = vi.fn((cb: () => void) => {
+    tokenRefreshedCallback = cb
+    return () => {
+      if (tokenRefreshedCallback === cb) tokenRefreshedCallback = null
+    }
+  })
+  api.onSyncStatusChanged = vi.fn((cb: EventCallback<{ status: string; lastSyncAt?: number }>) => {
+    syncStatusCallback = cb
+    return () => {
+      if (syncStatusCallback === cb) syncStatusCallback = null
+    }
   })
   api.onOAuthError = vi.fn((cb: EventCallback<{ error?: string }>) => {
     oauthErrorCallback = cb
@@ -70,6 +84,8 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionExpiredCallback = null
+    tokenRefreshedCallback = null
+    syncStatusCallback = null
     oauthErrorCallback = null
     linkingFinalizedCallback = null
     oauthCallback = null
@@ -157,7 +173,7 @@ describe('AuthProvider', () => {
     expect(result.current.state.email).toBe('kaan@example.com')
 
     act(() => {
-      sessionExpiredCallback?.()
+      sessionExpiredCallback?.({ reason: 'refresh_rejected' })
     })
     expect(result.current.state.status).toBe('unauthenticated')
 
@@ -180,6 +196,152 @@ describe('AuthProvider', () => {
     })
     expect(result.current.state.status).toBe('authenticated')
     expect(result.current.state.deviceId).toBe('linked-final')
+  })
+
+  describe('session survives network failures', () => {
+    const signedInDevices = {
+      email: 'kaan@example.com',
+      devices: [{ id: 'current-device', isCurrentDevice: true }]
+    }
+
+    it('stays signed in when an advisory session-expired arrives', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+
+      act(() => {
+        sessionExpiredCallback?.({ reason: 'token_expired' })
+      })
+
+      expect(result.current.state.status).toBe('authenticated')
+    })
+
+    it('signs out when the keychain no longer holds a refresh token', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+
+      act(() => {
+        sessionExpiredCallback?.({ reason: 'credentials_missing' })
+      })
+
+      expect(result.current.state.status).toBe('unauthenticated')
+    })
+
+    it('stays signed in when the first refresh fails on the network', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.refreshToken.mockResolvedValue({
+        success: false,
+        sessionEnded: false,
+        error: 'Token refresh failed'
+      })
+
+      const { result } = renderHook(() => useAuth(), { wrapper })
+
+      await waitFor(() => expect(serviceMocks.authService.refreshToken).toHaveBeenCalled())
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(result.current.state.status).toBe('authenticated')
+    })
+
+    it('signs out when the first refresh reports the session ended', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.refreshToken.mockResolvedValue({
+        success: false,
+        sessionEnded: true,
+        error: 'Token refresh failed'
+      })
+
+      const { result } = renderHook(() => useAuth(), { wrapper })
+
+      await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
+    })
+
+    it('leaves the signed-out state when main refreshes a token', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+      act(() => {
+        sessionExpiredCallback?.({ reason: 'refresh_rejected' })
+      })
+      expect(result.current.state.status).toBe('unauthenticated')
+
+      act(() => {
+        tokenRefreshedCallback?.()
+      })
+
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+      expect(result.current.state.deviceId).toBe('current-device')
+      expect(result.current.state.email).toBe('kaan@example.com')
+    })
+
+    it('stays signed out on a sync after the server ended the session', async () => {
+      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+      act(() => {
+        sessionExpiredCallback?.({ reason: 'refresh_rejected' })
+      })
+
+      act(() => {
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() })
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
+      expect(result.current.state.status).toBe('unauthenticated')
+    })
+
+    it('leaves the signed-out state when a sync succeeds', async () => {
+      serviceMocks.deviceService.getDevices
+        .mockRejectedValueOnce(new Error('device lookup failed'))
+        .mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
+
+      act(() => {
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() - 60_000 })
+      })
+      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
+      expect(result.current.state.status).toBe('unauthenticated')
+
+      act(() => {
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() })
+      })
+
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+    })
+  })
+
+  it('signs a known device back in from the email code alone (#2612)', async () => {
+    serviceMocks.authService.verifyOtp.mockResolvedValue({
+      success: true,
+      needsSetup: false,
+      needsRecoveryInput: false,
+      deviceId: 'current-device'
+    })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
+    await act(async () => {
+      await result.current.requestOtp('kaan@example.com')
+    })
+
+    let otpResult: unknown
+    await act(async () => {
+      otpResult = await result.current.verifyOtp('123456')
+    })
+
+    expect(otpResult).toEqual({
+      deviceId: 'current-device',
+      needsRecoverySetup: false,
+      needsRecoveryInput: false
+    })
+    expect(result.current.state.status).toBe('authenticated')
+    expect(result.current.state.deviceId).toBe('current-device')
+    expect(result.current.state.wizardStep).toBe('idle')
   })
 
   it('keeps existing devices in recovery setup when recovery confirmation is pending', async () => {

@@ -1,5 +1,6 @@
 import type { Task } from '@/data/task-model'
 import type { DueDateFilter, Project, TaskFilters, TaskSort } from '@/data/tasks-data'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 import { getWeekStartsOn } from '@/lib/week-start'
 import {
   applyFiltersAndSort as applyFiltersAndSortAt,
@@ -14,6 +15,7 @@ export {
   countActiveFilters,
   filterByCompletion,
   filterByHasTime,
+  filterByLocation,
   filterByPriorities,
   filterByProjects,
   filterByRepeatType,
@@ -40,5 +42,7 @@ export const applyFiltersAndSort = (
   filters: TaskFilters,
   sort: TaskSort,
   projects: Project[],
-  now: Date = new Date()
-): Task[] => applyFiltersAndSortAt(tasks, filters, sort, projects, now, getWeekStartsOn())
+  now: Date = new Date(),
+  noteIndex?: TaskNoteIndex
+): Task[] =>
+  applyFiltersAndSortAt(tasks, filters, sort, projects, now, getWeekStartsOn(), noteIndex)
