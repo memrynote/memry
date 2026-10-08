@@ -251,9 +251,11 @@ extension ViewBlockQuery {
         }
     }
 
-    /// Desktop asks the disk. This device knows a folder only as a configured
-    /// one or a note's path, as its own folder list does, so an empty folder
-    /// nobody configured reads as missing here. The vault root always exists.
+    /// Desktop asks the disk. This device knows a folder from its synced
+    /// folder record or a note's path, as its own folder list does. Desktop
+    /// syncs a record for every folder, including empty ones made outside the
+    /// app, so a folder reads as missing only until that record arrives. The
+    /// vault root always exists.
     static func folderExists(_ path: String, configured: [FolderSummary], notes: [NoteSummary]) -> Bool {
         path.isEmpty || configured.contains { $0.path == path } || notes.contains { isInFolder($0.folderPath, path) }
     }

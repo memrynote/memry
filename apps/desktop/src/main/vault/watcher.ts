@@ -76,6 +76,7 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
+import { syncFolderConfigDiscovered } from '../notes/folder-config-effects'
 import { normalizeRelativePath } from '../lib/paths'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
@@ -295,6 +296,7 @@ export class VaultWatcher {
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath) => this.debouncedChange?.(filePath))
       .on('unlink', (filePath) => void this.handleFileDelete(filePath))
+      .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('ready', () => {
         this.isReady = true
       })
@@ -483,6 +485,22 @@ export class VaultWatcher {
       // A file moved into a locked folder, a locked note renamed or a locked
       // file recreated from outside comes in writable.
       await protectLockedFile(absolutePath)
+    }
+  }
+
+  /**
+   * Sync ships rows, not directories, so a folder made outside the app needs
+   * its folder_config row now, not at the next sync start's backfill (#2841).
+   */
+  private handleDirAdd(absolutePath: string): void {
+    if (!this.vaultPath) return
+    const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
+    try {
+      syncFolderConfigDiscovered(relativePath)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      logger.error('Failed to record folder', { path: relativePath, error })
+      this.onError?.(error)
     }
   }
 

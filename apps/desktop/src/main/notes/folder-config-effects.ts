@@ -28,6 +28,19 @@ export function syncFolderConfigCreate(folderPath: string): void {
   syncFolderConfigSet(folderPath, null)
 }
 
+/**
+ * A folder made outside the app (Finder, a terminal, another tool) reaches the
+ * watcher, not createFolder. It gets the same row, but only if it has none: the
+ * app's own creates and remotely applied rows land here too, and must keep
+ * their icon and skip a redundant update.
+ */
+export function syncFolderConfigDiscovered(folderPath: string): void {
+  const db = getDatabase()
+  if (!db || !folderPath) return
+  if (db.select().from(folderConfigs).where(eq(folderConfigs.path, folderPath)).get()) return
+  syncFolderConfigSet(folderPath, null)
+}
+
 export function syncFolderConfigSet(folderPath: string, icon: string | null | undefined): void {
   const db = getDatabase()
   if (!db) return
