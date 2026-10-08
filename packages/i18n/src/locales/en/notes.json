@@ -168,7 +168,8 @@
       "headingPlaceholder": "Heading",
       "listPlaceholder": "List item",
       "todoPlaceholder": "To-do item",
-      "htmlComment": "Hidden HTML comment"
+      "htmlComment": "Hidden HTML comment",
+      "percentComment": "Hidden comment"
     },
     "table": {
       "keyboardMenuAria": "Table actions for row {row}, column {column}",

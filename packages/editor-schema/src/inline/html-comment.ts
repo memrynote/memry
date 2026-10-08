@@ -7,12 +7,12 @@
  * note without it. Notes keep hidden wiki links in comments, so the links went
  * with them.
  *
- * `source` is the comment's whole text, `<!--` and `-->` included, exactly as
- * the file holds it. It is inline rather than a block because a comment glued
- * to a line of text (directly under the line someone edits, say) has to stay
- * glued: a paragraph that holds only this node writes back as the comment's
- * own line, and one that holds text and the node writes back as both, on the
- * lines they were on.
+ * `source` is the comment's whole text, `<!--` and `-->` (or an Obsidian
+ * comment's `%%` pair, BBF-26) included, exactly as the file holds it. It is
+ * inline rather than a block because a comment glued to a line of text
+ * (directly under the line someone edits, say) has to stay glued: a paragraph
+ * that holds only this node writes back as the comment's own line, and one
+ * that holds text and the node writes back as both, on the lines they were on.
  *
  * On disk the node is its token (`@memry/shared/html-comments`), which
  * `normalizeSerializedMarkdown` turns back into `source`. The serializer never
@@ -46,18 +46,23 @@ export function createHtmlCommentTokenDOM(source: string): HTMLSpanElement {
   return dom
 }
 
+export function isPercentComment(source: string): boolean {
+  return source.startsWith('%%')
+}
+
 /**
- * What the editor shows: a small marker, not the comment's text. `label` is
- * the surface's own name for it, read by screen readers.
+ * What the editor shows: a small marker, not the comment's text. The marker is
+ * the comment's form left empty. `label` is the surface's own name for it,
+ * read by screen readers.
  */
-export function createHtmlCommentMarkerDOM(label: string): HTMLSpanElement {
+export function createHtmlCommentMarkerDOM(label: string, source: string): HTMLSpanElement {
   const dom = document.createElement('span')
   dom.className = 'html-comment-marker'
   dom.setAttribute('contenteditable', 'false')
   dom.setAttribute('role', 'img')
   dom.setAttribute('aria-label', label)
   dom.setAttribute('title', label)
-  dom.textContent = '<!---->'
+  dom.textContent = isPercentComment(source) ? '%%%%' : '<!---->'
   return dom
 }
 

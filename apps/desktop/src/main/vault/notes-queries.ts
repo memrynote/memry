@@ -8,6 +8,7 @@
 
 import { createSnippet } from './frontmatter'
 import { safeRead } from './file-ops'
+import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import {
   getNoteCacheById,
   listNotesFromCache,
@@ -216,7 +217,7 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
         const absolutePath = toAbsolutePath(sourceCache.path)
         const content = await safeRead(absolutePath)
         if (content) {
-          contexts = extractAllLinkContexts(content, targetTitle)
+          contexts = extractAllLinkContexts(stripMarkdownComments(content), targetTitle)
         }
       }
 

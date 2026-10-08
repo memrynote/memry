@@ -18,6 +18,7 @@ import { generateNoteId, isValidNoteId } from '../lib/id'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
+import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import {
   isWritingFrontmatterValue,
@@ -707,18 +708,7 @@ export function deserializePropertyValue(value: string | null, type: PropertyTyp
  * @returns Truncated content with ellipsis if needed
  */
 export function createSnippet(content: string, maxLength = 200): string {
-  // Remove HTML comment markers (memry block-nesting/colors/file annotations).
-  // Loop until stable: one pass can re-form `<!-- -->` from the text left on
-  // either side of a removed comment.
-  let cleaned = content
-  let previousCleaned: string
-  do {
-    previousCleaned = cleaned
-    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '')
-  } while (cleaned !== previousCleaned)
-
-  // Remove inline color/underline span tags, keeping their text
-  cleaned = stripInlineStyleSpanTags(cleaned)
+  let cleaned = stripInlineStyleSpanTags(stripMarkdownComments(content))
 
   // Remove markdown headers
   cleaned = cleaned.replace(/^#+\s+/gm, '')
