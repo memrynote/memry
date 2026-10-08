@@ -79,8 +79,10 @@ use crate::sync::pull::PullLoop;
 
 mod attachments_io;
 mod pass;
+mod realtime;
 
 pub use pass::SyncPassSummary;
+pub use realtime::{RealtimeListener, VaultRealtime};
 
 use attachments_io::*;
 

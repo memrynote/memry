@@ -50,4 +50,7 @@ extension VaultFilling {
     func syncNow() async throws -> SyncPassSummary {
         SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
     }
+
+    /// No socket: a fake has no server to hear from.
+    func realtime(onChanges: @escaping @MainActor @Sendable () -> Void) -> VaultRealtime? { nil }
 }

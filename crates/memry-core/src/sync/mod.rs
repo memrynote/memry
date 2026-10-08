@@ -57,5 +57,6 @@ pub mod push;
 pub mod settings_merge;
 pub mod socket;
 mod socket_frame;
+pub mod socket_run;
 pub mod state;
 pub mod store;

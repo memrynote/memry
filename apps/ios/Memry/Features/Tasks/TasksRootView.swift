@@ -165,6 +165,31 @@ struct VaultTasksScope<Content: View>: View {
                 }
             }
             .task(id: vault.id()) { make() }
+            // The realtime socket, foreground only (chapter 09 §9.1): without
+            // it a remote change waits for this device's next pass (#2798).
+            .task(id: RealtimeKey(vault: vault.id(), active: scenePhase == .active, store: store?.vaultId)) {
+                await holdRealtime()
+            }
+    }
+
+    private struct RealtimeKey: Equatable {
+        let vault: String
+        let active: Bool
+        let store: String?
+    }
+
+    /// Runs until the scene leaves `.active` or the store changes; SwiftUI
+    /// cancels the task, and the cancel stops the socket.
+    private func holdRealtime() async {
+        guard scenePhase == .active, let store,
+              let realtime = filler?.realtime(onChanges: { store.scheduleSync() })
+        else { return }
+        let terminal = await withTaskCancellationHandler {
+            await realtime.run()
+        } onCancel: {
+            realtime.stop()
+        }
+        if terminal { Log.sync.notice("realtime socket stopped for good") }
     }
 
     private var syncRequest: (@MainActor () -> Void)? {

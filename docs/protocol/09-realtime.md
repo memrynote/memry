@@ -28,9 +28,11 @@ running:
   backgrounded mobile app, so its socket cannot be serviced and every broadcast
   to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
-  (`crates/memry-core/src/sync/socket.rs:185`, `:215`) and observes no app
-  state itself. No mobile shell drives it yet
-  (`apps/ios/Memry/App/ShellState.swift:173-179`).
+  (`crates/memry-core/src/sync/socket.rs:235`, `:274`) and observes no app
+  state itself. The shell starts `VaultRealtime::run` and calls
+  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:86`,
+  `:101`); iOS runs it only while the scene is active
+  (`apps/ios/Memry/Features/Tasks/TasksRootView.swift:170`, `:190`).
 - **A resident desktop process keeps the socket open for as long as the process
   runs and sync is started.** Closing the main window hides it to the tray and
   leaves the process running

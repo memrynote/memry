@@ -7509,6 +7509,221 @@ public func FfiConverterTypeReachabilityObserver_lower(_ value: ReachabilityObse
 
 
 /**
+ * Where the socket's wake-ups go.
+ *
+ * **Synchronous by contract**, like `SyncProgressListener`: it is called on
+ * whichever thread delivered the frame, so hop and return.
+ */
+public protocol RealtimeListener: AnyObject, Sendable {
+    
+    /**
+     * Run a pass: the server holds changes this device may not have, or the
+     * socket just (re)connected and broadcasts sent before it are gone.
+     */
+    func changesAvailable() 
+    
+}
+/**
+ * Where the socket's wake-ups go.
+ *
+ * **Synchronous by contract**, like `SyncProgressListener`: it is called on
+ * whichever thread delivered the frame, so hop and return.
+ */
+open class RealtimeListenerImpl: RealtimeListener, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_realtimelistener(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_realtimelistener(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Run a pass: the server holds changes this device may not have, or the
+     * socket just (re)connected and broadcasts sent before it are gone.
+     */
+open func changesAvailable()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_realtimelistener_changes_available(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceRealtimeListener {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceRealtimeListener = UniffiVTableCallbackInterfaceRealtimeListener(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeRealtimeListener.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface RealtimeListener: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeRealtimeListener.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface RealtimeListener: handle missing in uniffiClone")
+            }
+        },
+        changesAvailable: { (
+            uniffiHandle: UInt64,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeRealtimeListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.changesAvailable(
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceRealtimeListener> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceRealtimeListener>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitRealtimeListener() {
+    uniffi_memry_core_fn_init_callback_vtable_realtimelistener(UniffiCallbackInterfaceRealtimeListener.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRealtimeListener: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<RealtimeListener>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = RealtimeListener
+
+    public static func lift(_ handle: UInt64) throws -> RealtimeListener {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return RealtimeListenerImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: RealtimeListener) -> UInt64 {
+         if let rustImpl = value as? RealtimeListenerImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RealtimeListener {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: RealtimeListener, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRealtimeListener_lift(_ handle: UInt64) throws -> RealtimeListener {
+    return try FfiConverterTypeRealtimeListener.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRealtimeListener_lower(_ value: RealtimeListener) -> UInt64 {
+    return FfiConverterTypeRealtimeListener.lower(value)
+}
+
+
+
+
+
+
+/**
  * The shell's handle on the runtime's lifecycle.
  *
  * The shell owns one and calls it from the platform's own lifecycle
@@ -12364,6 +12579,169 @@ public func FfiConverterTypeVaultCalendar_lower(_ value: VaultCalendar) -> UInt6
 
 
 /**
+ * One vault's realtime socket.
+ */
+public protocol VaultRealtimeProtocol: AnyObject, Sendable {
+    
+    /**
+     * Holds the socket open until [`Self::stop`], or until a close says
+     * reconnecting cannot help (§9.9). Answers `true` only for the second.
+     *
+     * One run per object: a stopped object stays stopped, so mint a new one
+     * on the next foreground.
+     */
+    func run() async  -> Bool
+    
+    /**
+     * Closes the socket and ends [`Self::run`]. Safe from any thread, and
+     * before `run` starts.
+     */
+    func stop() 
+    
+}
+/**
+ * One vault's realtime socket.
+ */
+open class VaultRealtime: VaultRealtimeProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_vaultrealtime(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_vaultrealtime(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Holds the socket open until [`Self::stop`], or until a close says
+     * reconnecting cannot help (§9.9). Answers `true` only for the second.
+     *
+     * One run per object: a stopped object stays stopped, so mint a new one
+     * on the next foreground.
+     */
+open func run()async  -> Bool  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultrealtime_run(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_i8,
+            completeFunc: ffi_memry_core_rust_future_complete_i8,
+            freeFunc: ffi_memry_core_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Closes the socket and ends [`Self::run`]. Safe from any thread, and
+     * before `run` starts.
+     */
+open func stop()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultrealtime_stop(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVaultRealtime: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = VaultRealtime
+
+    public static func lift(_ handle: UInt64) throws -> VaultRealtime {
+        return VaultRealtime(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: VaultRealtime) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VaultRealtime {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: VaultRealtime, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultRealtime_lift(_ handle: UInt64) throws -> VaultRealtime {
+    return try FfiConverterTypeVaultRealtime.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultRealtime_lower(_ value: VaultRealtime) -> UInt64 {
+    return FfiConverterTypeVaultRealtime.lower(value)
+}
+
+
+
+
+
+
+/**
  * The read-only sync over one opened vault.
  *
  * Built by [`crate::api::vault::Vault::sync`], which is the only way: a
@@ -12509,6 +12887,11 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * first and then runs its own pass.
      */
     func syncNow() async throws  -> SyncPassSummary
+    
+    /**
+     * The socket for this vault. Opens nothing until [`VaultRealtime::run`].
+     */
+    func realtime(listener: RealtimeListener)  -> VaultRealtime
     
 }
 /**
@@ -12805,6 +13188,19 @@ open func syncNow()async throws  -> SyncPassSummary  {
             liftFunc: FfiConverterTypeSyncPassSummary_lift,
             errorHandler: FfiConverterTypeSyncError_lift
         )
+}
+    
+    /**
+     * The socket for this vault. Opens nothing until [`VaultRealtime::run`].
+     */
+open func realtime(listener: RealtimeListener) -> VaultRealtime  {
+    return try!  FfiConverterTypeVaultRealtime_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultsync_realtime(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeRealtimeListener_lower(listener),uniffiCallStatus
+    )
+})
 }
     
 
@@ -32470,6 +32866,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_realtime() != 27087) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_realtimelistener_changes_available() != 17505) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultrealtime_run() != 25590) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultrealtime_stop() != 53929) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_tasks_add_property_option() != 2190) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32898,6 +33306,7 @@ private let initializationResult: InitializationResult = {
     uniffiCallbackInitNotifications()
     uniffiCallbackInitReachability()
     uniffiCallbackInitReachabilityObserver()
+    uniffiCallbackInitRealtimeListener()
     uniffiCallbackInitSecureStore()
     uniffiCallbackInitSocketHandle()
     uniffiCallbackInitSocketListener()
