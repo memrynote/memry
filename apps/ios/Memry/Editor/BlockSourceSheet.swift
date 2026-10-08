@@ -30,7 +30,6 @@ struct BlockSourceSheet: View {
     @State private var draft: String
     /// What the preview draws: the draft, a moment after typing stops.
     @State private var previewed: String
-    @FocusState private var focused: Bool
 
     init(request: BlockSourceRequest, save: @escaping (String) -> Void) {
         self.request = request
@@ -49,14 +48,11 @@ struct BlockSourceSheet: View {
                 .frame(minHeight: Tokens.Size.minimumHitArea * 2)
                 .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
                 .accessibilityLabel("Preview")
-                TextField(isDiagram ? "graph TD; A-->B" : "E = mc^2", text: $draft, axis: .vertical)
-                    .font(Tokens.Typography.recoveryMaterial.font)
-                    .lineLimit(3...12)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.asciiCapable)
-                    .focused($focused)
-                    .accessibilityLabel(isDiagram ? "Mermaid source" : "LaTeX source")
+                SourceTextView(
+                    text: $draft,
+                    placeholder: isDiagram ? "graph TD; A-->B" : "E = mc^2",
+                    label: isDiagram ? "Mermaid source" : "LaTeX source"
+                )
                 Spacer(minLength: 0)
             }
             .padding(Tokens.Space.screenInline)
@@ -76,7 +72,6 @@ struct BlockSourceSheet: View {
             try? await Task.sleep(for: .milliseconds(150))
             if !Task.isCancelled { previewed = draft }
         }
-        .onAppear { focused = true }
     }
 
     private var isDiagram: Bool { request.kind == .diagram }

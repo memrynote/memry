@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import Synchronization
+import SwiftUI
 import Testing
 import UIKit
 
@@ -75,6 +76,57 @@ struct BlockSourceSheetTests {
         #expect(session.sourceEdit == nil)
         #expect(!session.history.canUndo)
         #expect(syncs == 0)
+    }
+}
+
+/// #2672: Smart Punctuation turns a typed `--` into an em dash and `"` into
+/// a curly quote. Source text (a code block, the source sheet) turns it and
+/// autocorrect off; prose keeps the system's typing aids.
+@MainActor
+struct SourceTextInputTests {
+    private func field(_ kind: String) -> BlockField {
+        let model = NoteEditorViewModel(noteId: "n1", editor: RecordingSourceEditor())
+        let block = Block(id: "b", kind: kind, depth: 0, props: [], inline: [InlineRun(text: "a --> b", marks: [], markAttrs: [:], target: nil)])
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: block, session: model.session, style: style, alignment: .natural)
+        field.render()
+        return field
+    }
+
+    private func isSource(_ view: UITextView) -> Bool {
+        view.smartDashesType == .no && view.smartQuotesType == .no && view.smartInsertDeleteType == .no
+            && view.autocorrectionType == .no && view.spellCheckingType == .no && view.autocapitalizationType == .none
+    }
+
+    @Test func aCodeBlockTypesSourceAndAParagraphProse() {
+        #expect(isSource(field("codeBlock").textView))
+        let prose = field("paragraph").textView
+        #expect(prose.smartDashesType == .default && prose.smartQuotesType == .default && prose.autocorrectionType == .default)
+    }
+
+    @Test func aBlockTurnedIntoCodeTypesSource() {
+        let field = field("paragraph")
+        field.block = Block(id: "b", kind: "codeBlock", depth: 0, props: [], inline: field.block.inline)
+        field.render()
+        #expect(isSource(field.textView))
+    }
+
+    @Test func theSourceSheetFieldTypesSource() {
+        var text = ""
+        let source = SourceTextView(text: Binding(get: { text }, set: { text = $0 }), placeholder: "", label: "LaTeX source")
+        let controller = UIHostingController(rootView: source)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true }
+        controller.view.layoutIfNeeded()
+        let views = Self.textViews(in: controller.view)
+        #expect(views.count == 1)
+        #expect(views.allSatisfy(isSource))
+    }
+
+    private static func textViews(in view: UIView) -> [UITextView] {
+        (view as? UITextView).map { [$0] } ?? view.subviews.flatMap(textViews)
     }
 }
 

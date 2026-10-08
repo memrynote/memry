@@ -281,6 +281,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
         if block.kind != "codeBlock" { BlockText.markTags(in: text, colors: style.tagColors) }
+        textView.useSourceInput(block.kind == "codeBlock")
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
         text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
