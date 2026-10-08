@@ -432,6 +432,11 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
 `vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
 markdown.
 
+`vault_update_note` reads the note file before it writes, so it never overwrites text that changed
+since the agent read the note. When another program holds the file and that read fails, it reads
+once more a moment later. If the second read fails too, nothing is written and the error names the
+cause, for example `EBUSY`.
+
 ### Looking at images and PDF pages
 
 `vault_view_file` hands the model an image, or one page of a PDF, to look at. It works on files
@@ -763,10 +768,6 @@ option, a tag color, pinning a note to a tag, saving a folder view, creating a f
 - Bulk calls and conversions, which reply with counts or the new item's id: the `bulk*` operations,
   `inbox.fileAllStale`, `inbox.convertTo*`, `tasks.captureUrlToProject`,
   `tasks.importFilesToProject` and `notes.importFiles`.
-- `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
-  `tasks.listStatuses`.
-- `inbox.file`, which replies `{ success, filedTo, noteId }`; read the filed note with
-  `notes.get`.
 - `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
   store no record.
 
