@@ -17,6 +17,9 @@
  *   failed, or done with unreadable pages,
  *     under another app version or a day old -> pending again (unreadable pages only;
  *                                               never oversized HTML)
+ *   OCR pages read without a language chosen
+ *     since                                  -> pending again (OCR pages read again,
+ *                                               their old text kept until then)
  *   attachment file gone -> job and text deleted
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
@@ -31,18 +34,20 @@ import {
   deleteTextSource,
   finishFileTextJob,
   getFileTextJob,
-  hasUnreadableParts,
+  hasPartsReadAs,
   listAttachmentJobs,
   listFiledTextFiles,
   listMarkdownNotes,
   nextPendingTextJob,
   normalizeExtractedText,
   OWN_FILE,
+  requeueFileTextJob,
   retryFileTextJob,
   saveExtractedPart,
   setFileTextPageCount,
   startFileTextJob,
   storedExtractedParts,
+  type PendingTextJob,
   type TextFileKind,
   type TextSourceRef
 } from '../database/queries/extracted-text'
@@ -80,6 +85,8 @@ export interface FileTextDeps {
   appVersion: string
   getDb: () => IndexDb
   recognize: (source: OcrImageSource) => Promise<string>
+  /** The Tesseract languages `recognize` reads with now. */
+  ocrLanguages: () => readonly string[]
   openPdf: (absolutePath: string, size: number) => Promise<PdfDocument>
   /** Tear down the OCR process and PDF host so in-flight calls fail now. */
   release: () => void
@@ -95,6 +102,21 @@ interface TextFile extends TextSourceRef {
 interface PageText {
   method: ExtractedTextMethod
   text: string
+}
+
+type FinishJob = (status: 'done' | 'failed', error?: string) => void
+
+/**
+ * How a job saves a part. A part read again for a new OCR language keeps its
+ * old text when the new read fails, and the job then keeps its old languages so
+ * the next comparison queues it again.
+ */
+type SavePart = (part: number, result: PageText) => void
+
+/** OCR text read without one of `languages`. Null is a build that read English only. */
+function missesOcrLanguage(readWith: string | null, languages: readonly string[]): boolean {
+  const read = (readWith ?? 'eng').split('+')
+  return languages.some((language) => !read.includes(language))
 }
 
 /** Same bytes, same signature. A rename keeps it, so a moved file is not read again. */
@@ -153,6 +175,12 @@ export class FileTextRunner {
     this.wake?.()
   }
 
+  /** The OCR languages changed. Compare every file again. */
+  languagesChanged(): void {
+    this.rescanAll = true
+    this.wake?.()
+  }
+
   async stop(): Promise<void> {
     this.stopped = true
     this.wake?.()
@@ -166,7 +194,7 @@ export class FileTextRunner {
         await this.queueChangedFiles()
         const job = nextPendingTextJob(this.deps.getDb())
         if (job) {
-          await this.extract(this.fileOf(job), job.signature)
+          await this.extract(this.fileOf(job), job)
           continue
         }
         if (this.changed.size > 0 || this.stopped) continue
@@ -299,6 +327,7 @@ export class FileTextRunner {
       if (job?.signature === current.signature) {
         if (isOversizedHtml(file, current.size)) continue
         if (this.isDueForRetry(db, job, file)) retryFileTextJob(db, file, this.deps.appVersion)
+        else if (this.isMissingOcrLanguage(db, job, file)) requeueFileTextJob(db, file)
         continue
       }
       startFileTextJob(db, file, current.signature, this.deps.appVersion)
@@ -327,24 +356,47 @@ export class FileTextRunner {
     const due =
       job.appVersion !== this.deps.appVersion ||
       Date.now() - Date.parse(job.updatedAt) >= RETRY_FAILED_AFTER_MS
-    return due && (job.status === 'failed' || hasUnreadableParts(db, file))
+    return due && (job.status === 'failed' || hasPartsReadAs(db, file, 'unreadable'))
   }
 
-  private async extract(file: TextFile, signature: string): Promise<void> {
+  /** A finished job with OCR text read before a language was chosen. */
+  private isMissingOcrLanguage(db: IndexDb, job: FileTextJobRow, file: TextSourceRef): boolean {
+    return (
+      job.status !== 'pending' &&
+      missesOcrLanguage(job.ocrLanguages, this.deps.ocrLanguages()) &&
+      hasPartsReadAs(db, file, 'ocr')
+    )
+  }
+
+  private async extract(
+    file: TextFile,
+    job: Pick<PendingTextJob, 'signature' | 'ocrLanguages'>
+  ): Promise<void> {
+    const { signature } = job
     const db = this.deps.getDb()
+    const languages = this.deps.ocrLanguages()
+    const readAgain = missesOcrLanguage(job.ocrLanguages, languages)
+      ? storedExtractedParts(db, file, 'ocr')
+      : new Set<number>()
+    let keptOldText = false
+    const save: SavePart = (part, result) => {
+      if (result.method === 'unreadable' && readAgain.has(part)) keptOldText = true
+      else saveExtractedPart(db, file, part, result.method, result.text)
+    }
+    const finish: FinishJob = (status, error) =>
+      finishFileTextJob(db, file, {
+        status,
+        error,
+        ocrLanguages: keptOldText ? job.ocrLanguages : languages.join('+')
+      })
     const resolved = await resolveVaultFile(this.deps.vaultPath, file.path)
     if (resolved.kind === 'outside') {
-      finishFileTextJob(
-        db,
-        file,
-        'failed',
-        `${normalizeRelativePath(file.path)} points outside the vault`
-      )
+      finish('failed', `${normalizeRelativePath(file.path)} points outside the vault`)
       return
     }
     const current = resolved.kind === 'inside' ? await fileSignature(resolved.path) : null
     if (resolved.kind === 'missing' || !current) {
-      finishFileTextJob(db, file, 'failed', 'File not found')
+      finish('failed', 'File not found')
       return
     }
     const absolutePath = resolved.path
@@ -364,12 +416,7 @@ export class FileTextRunner {
       if (isOversizedHtml(file, current.size)) {
         setFileTextPageCount(db, file, 1)
         saveExtractedPart(db, file, 1, 'unreadable', '')
-        finishFileTextJob(
-          db,
-          file,
-          'failed',
-          `Too large to read (${current.size} bytes, limit ${HTML_TEXT_MAX_BYTES})`
-        )
+        finish('failed', `Too large to read (${current.size} bytes, limit ${HTML_TEXT_MAX_BYTES})`)
         this.deps.textChanged(file.noteId)
         return
       }
@@ -382,7 +429,7 @@ export class FileTextRunner {
       if (!this.owns(file, signature)) return
       setFileTextPageCount(db, file, 1)
       saveExtractedPart(db, file, 1, result.method, result.text)
-      finishFileTextJob(db, file, result.method === 'unreadable' ? 'failed' : 'done')
+      finish(result.method === 'unreadable' ? 'failed' : 'done')
       this.deps.textChanged(file.noteId)
       return
     }
@@ -391,20 +438,21 @@ export class FileTextRunner {
       const result = await this.readTwice(() => this.ocr({ kind: 'file', path: absolutePath }))
       if (!this.owns(file, signature)) return
       setFileTextPageCount(db, file, 1)
-      saveExtractedPart(db, file, 1, result.method, result.text)
-      finishFileTextJob(db, file, result.method === 'unreadable' ? 'failed' : 'done')
+      save(1, result)
+      finish(result.method === 'unreadable' ? 'failed' : 'done')
       this.deps.textChanged(file.noteId)
       return
     }
 
-    await this.extractPdf(file, signature, absolutePath, current.size)
+    await this.extractPdf(file, signature, absolutePath, current.size, { finish, save, readAgain })
   }
 
   private async extractPdf(
     file: TextFile,
     signature: string,
     absolutePath: string,
-    size: number
+    size: number,
+    { finish, save, readAgain }: { finish: FinishJob; save: SavePart; readAgain: Set<number> }
   ): Promise<void> {
     const db = this.deps.getDb()
     let pdf: PdfDocument
@@ -416,7 +464,7 @@ export class FileTextRunner {
         noteId: file.noteId,
         error: errorText(error)
       })
-      finishFileTextJob(db, file, 'failed', errorText(error))
+      finish('failed', errorText(error))
       return
     }
 
@@ -425,7 +473,7 @@ export class FileTextRunner {
       const stored = storedExtractedParts(db, file)
       let failuresInARow = 0
       for (let page = 1; page <= pdf.pageCount; page++) {
-        if (stored.has(page)) continue
+        if (stored.has(page) && !readAgain.has(page)) continue
         if (this.stopped || (await this.rewrittenSince(file, signature, absolutePath))) return
         const result = await this.readTwice(
           () => this.readPdfPage(pdf, page),
@@ -435,17 +483,17 @@ export class FileTextRunner {
           }
         )
         if (!this.owns(file, signature)) return
-        saveExtractedPart(db, file, page, result.method, result.text)
+        save(page, result)
 
         failuresInARow = result.method === 'unreadable' ? failuresInARow + 1 : 0
         if (failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
-          finishFileTextJob(db, file, 'failed', `Pages up to ${page} could not be read`)
+          finish('failed', `Pages up to ${page} could not be read`)
           this.deps.textChanged(file.noteId)
           return
         }
         if (isFlushPoint(page)) this.deps.textChanged(file.noteId)
       }
-      finishFileTextJob(db, file, 'done')
+      finish('done')
       this.deps.textChanged(file.noteId)
     } finally {
       await pdf.close().catch(() => {})

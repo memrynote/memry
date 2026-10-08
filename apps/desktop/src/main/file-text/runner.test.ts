@@ -47,6 +47,7 @@ function createHarness(index: TestDatabaseResult, vaultDir: string): Harness {
           if ('scanned' in page) return page.scanned
           throw new Error('OCR failed')
         },
+        ocrLanguages: () => ['eng'],
         openPdf: async () => openFakePdf(harness),
         release: () => {
           for (const fail of harness.inFlight) fail(new Error('released'))
@@ -466,7 +467,9 @@ describe('FileTextRunner', () => {
     const runner = start({
       ocrLanguages: () => languages,
       openPdf: async (absolutePath) => {
-        opened.push(path.basename(absolutePath))
+        const name = path.basename(absolutePath)
+        opened.push(name)
+        if (name === 'typed.pdf') return openFakePdf({ ...harness, pages: [{ layer: 'typed' }] })
         return openFakePdf(harness)
       },
       recognize: async (source) => {
@@ -509,6 +512,29 @@ describe('FileTextRunner', () => {
     await settled(harness.db, 'img-2', 'done')
     expect(opened).toEqual([])
     expect(jobOf(harness.db, 'pdf-1')?.status).toBe('done')
+  })
+
+  it('keeps the old OCR text when reading it again for a new language fails', async () => {
+    seedFile(harness, 'img-1', 'sign.png', 'image')
+    harness.imageText = 'GroBe'
+    const first = start()
+    await settled(harness.db, 'img-1', 'done')
+    await first.stop()
+
+    const failing = start({
+      ocrLanguages: () => ['eng', 'deu'],
+      recognize: async () => {
+        throw new Error('OCR worker exited (code 1)')
+      }
+    })
+    await vi.waitFor(() => expect(jobOf(harness.db, 'img-1')?.status).toBe('failed'))
+    expect(pagesOf(harness.db, 'img-1')).toEqual([{ part: 1, method: 'ocr', text: 'GroBe' }])
+    expect(jobOf(harness.db, 'img-1')?.ocrLanguages).toBe('eng')
+    await failing.stop()
+
+    harness.imageText = 'Größe'
+    start({ ocrLanguages: () => ['eng', 'deu'] })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('Größe'))
   })
 
   it('reads OCR text an older build stored again once a language beyond English is chosen', async () => {

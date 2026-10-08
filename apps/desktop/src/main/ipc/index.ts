@@ -51,6 +51,10 @@ import { registerImportHandlers, unregisterImportHandlers } from './import-handl
 import { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 import { registerCustomIconHandlers, unregisterCustomIconHandlers } from './custom-icon-handlers'
 import { registerVaultLockHandlers, unregisterVaultLockHandlers } from './vault-lock-handlers'
+import {
+  registerOcrLanguagesHandlers,
+  unregisterOcrLanguagesHandlers
+} from './ocr-languages-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import { installIpcChannelLabels } from './lib/ipc-channel-labels'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -199,6 +203,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   registerHomePageHandlers()
   registerCustomIconHandlers()
   registerVaultLockHandlers()
+  registerOcrLanguagesHandlers()
 
   handlersRegistered = true
 }
@@ -248,6 +253,7 @@ export function unregisterAllHandlers(): void {
   unregisterHomePageHandlers()
   unregisterCustomIconHandlers()
   unregisterVaultLockHandlers()
+  unregisterOcrLanguagesHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')

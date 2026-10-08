@@ -2,10 +2,13 @@ import { app } from 'electron'
 import { getIndexDatabase } from '../database'
 import { publishProjectionEvent } from '../projections'
 import { recognizeText, stopOcr } from './ocr-engine'
+import { ocrLanguageSet, onActiveOcrLanguagesChanged } from './ocr-languages'
 import { closePdfHost, openPdfDocument } from './pdf-host'
 import { FileTextRunner } from './runner'
 
 let runner: FileTextRunner | null = null
+
+onActiveOcrLanguagesChanged(() => runner?.languagesChanged())
 
 /**
  * Start reading text out of the vault's PDFs and images. Called once the
@@ -18,6 +21,7 @@ export function startFileTextExtraction(vaultPath: string): void {
     appVersion: app.getVersion(),
     getDb: getIndexDatabase,
     recognize: recognizeText,
+    ocrLanguages: () => ocrLanguageSet().codes,
     openPdf: openPdfDocument,
     release: () => {
       stopOcr()

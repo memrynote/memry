@@ -169,6 +169,13 @@
       "when": 1791100000000,
       "tag": "0023_extracted_text",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1792000000000,
+      "tag": "0024_file_text_ocr_languages",
+      "breakpoints": true
     }
   ]
 }

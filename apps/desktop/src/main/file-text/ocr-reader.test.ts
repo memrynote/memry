@@ -6,7 +6,11 @@ import { describe, expect, it } from 'vitest'
 import { createOcrReader, toOcrPng } from './ocr-reader'
 
 const FIXTURE = path.join(__dirname, 'ocr-reader.fixture.png')
-const ENGLISH = [{ code: 'eng', path: path.join(__dirname, 'tessdata', 'eng.traineddata.gz') }]
+const ENGLISH = {
+  codes: ['eng'],
+  bundledDir: path.join(__dirname, 'tessdata'),
+  downloadDir: path.join(os.tmpdir(), 'memry-ocr-no-downloads')
+}
 
 describe('OCR reader', () => {
   it('reads the text of an image file with the English data shipped in the app', async () => {

@@ -56,7 +56,7 @@ const serve = (bodies: Partial<Record<string, string>>) => (url: string) => {
     : Promise.resolve(new Response(body))
 }
 
-const codes = () => ocr.ocrLanguageFiles().map((file) => file.code)
+const codes = () => ocr.ocrLanguageSet().codes
 const dataFiles = () => fs.readdirSync(path.join(env.userData, 'ocr-languages')).sort()
 
 describe('OCR languages', () => {
@@ -97,7 +97,9 @@ describe('OCR languages', () => {
       statuses: { eng: { state: 'ready' }, deu: { state: 'ready' } }
     })
     expect(codes()).toEqual(['eng', 'deu'])
-    expect(fs.readFileSync(ocr.ocrLanguageFiles()[1].path, 'utf8')).toBe(DATA.deu)
+    expect(
+      fs.readFileSync(path.join(ocr.ocrLanguageSet().downloadDir, 'deu.traineddata'), 'utf8')
+    ).toBe(DATA.deu)
     expect(changed).toHaveBeenCalledTimes(1)
   })
 

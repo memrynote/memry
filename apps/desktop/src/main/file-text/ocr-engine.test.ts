@@ -54,11 +54,12 @@ vi.mock('fs', async (importOriginal) => {
 })
 
 const english = vi.hoisted(() => ({
-  code: 'eng',
-  path: `${__dirname}/tessdata/eng.traineddata.gz`
+  codes: ['eng'],
+  bundledDir: `${__dirname}/tessdata`,
+  downloadDir: '/data/ocr-languages'
 }))
-const languageFiles = vi.hoisted(() => ({ current: [english] }))
-vi.mock('./ocr-languages', () => ({ ocrLanguageFiles: () => languageFiles.current }))
+const languageSet = vi.hoisted(() => ({ current: english }))
+vi.mock('./ocr-languages', () => ({ ocrLanguageSet: () => languageSet.current }))
 
 import { recognizeText, stopOcr } from './ocr-engine'
 
@@ -82,21 +83,20 @@ describe('OCR engine', () => {
   })
 
   it('reads with English and every chosen language, and starts a new worker when they change', async () => {
-    const german = { code: 'deu', path: '/data/ocr-languages/deu.abc.traineddata.gz' }
+    const withGerman = { ...english, codes: ['eng', 'deu'] }
     try {
-      languageFiles.current = [english]
       await recognizeText(source)
-      languageFiles.current = [english, german]
+      languageSet.current = withGerman
       await recognizeText(source)
       await recognizeText(source)
     } finally {
-      languageFiles.current = [english]
+      languageSet.current = english
     }
 
     expect(workers).toHaveLength(2)
     expect(workers[0].killed).toBe(true)
-    expect(JSON.parse(forkOptions[0].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual([english])
-    expect(JSON.parse(forkOptions[1].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual([english, german])
+    expect(JSON.parse(forkOptions[0].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual(english)
+    expect(JSON.parse(forkOptions[1].env?.MEMRY_OCR_LANGUAGES ?? '')).toEqual(withGerman)
   })
 
   it('fails at once, and says so once, when the language data is missing', async () => {

@@ -19,10 +19,11 @@ const port = vi.hoisted(() => {
     rejectionListeners: process.listeners('unhandledRejection')
   }
   Object.assign(process, { parentPort: fake })
-  process.env.MEMRY_OCR_LANGUAGES = JSON.stringify([
-    { code: 'eng', path: '/app/tessdata/eng.traineddata.gz' },
-    { code: 'deu', path: '/data/ocr-languages/deu.abc.traineddata.gz' }
-  ])
+  process.env.MEMRY_OCR_LANGUAGES = JSON.stringify({
+    codes: ['eng', 'deu'],
+    bundledDir: '/app/tessdata',
+    downloadDir: '/data/ocr-languages'
+  })
   return fake
 })
 
@@ -72,10 +73,11 @@ describe('OCR worker', () => {
 
   it('says it is ready, with the language files it was started with', () => {
     expect(port.posted[0]).toEqual({ type: 'ready' })
-    expect(reads.languages).toEqual([
-      { code: 'eng', path: '/app/tessdata/eng.traineddata.gz' },
-      { code: 'deu', path: '/data/ocr-languages/deu.abc.traineddata.gz' }
-    ])
+    expect(reads.languages).toEqual({
+      codes: ['eng', 'deu'],
+      bundledDir: '/app/tessdata',
+      downloadDir: '/data/ocr-languages'
+    })
   })
 
   it('answers a request with the text read, or with the reason it failed', async () => {
