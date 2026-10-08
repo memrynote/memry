@@ -14,7 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
-- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
+- Typing `#tag` in the body of a note or journal entry shows the tag as a colored chip in the text. It does not add the tag to this row, which shows only the tags in the note's `tags:` list. The note still appears on the tag's page, in search, and in the graph. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
@@ -169,7 +169,7 @@ A note or journal entry joins a project through its **`project` property**, not 
 - **In a [folder view](/user-guide/folder-view) column**, each project shows as a pill with the project's color and icon; clicking one opens that project's page, the way clicking a tag opens its tag page. The cell is read-only there — a `project` value is a list of project _names_, so editing it as free text in a table would point the note at a project that doesn't exist. Add, remove, and rename projects from the note's property row or the project itself.
 
 ::: tip First open after upgrading
-Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. Those notes are saved in the same pass, so their frontmatter is normalised the way any memrynote save normalises it: tags written inline in the note body are lifted into the `tags:` list, and tag capitalisation follows what memrynote has indexed. Nothing is removed, and the note body is untouched.
+Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. That save adds the `project` property and leaves the note's `tags:` list as it is. Tags written inline in the note body stay in the body; they are not lifted into the `tags:` list. Nothing is removed, and the note body is untouched.
 :::
 
 Files and calendar events have no frontmatter, so they keep their own **Add to project** action instead of a property — see [Projects](/user-guide/projects#linking-notes-events-and-files).
@@ -235,8 +235,9 @@ search, and on the tag's own page — but **opening that note does not lift it i
 `tags:` frontmatter**. The file is left exactly as you wrote it, which matters if you keep
 your tags in the body the way an Obsidian vault often does.
 
-Adding or removing an inline tag while editing still updates the note's tags, as it always
-has. Only _opening_ a note is now a read.
+Typing or deleting an inline tag while you edit doesn't change the `tags:` list either. That
+list changes only through tag actions: the tags row, applying a template, and renaming,
+merging, or deleting a tag in the tag hub.
 
 Body tags hold up across devices too. A note's tags sync as its `tags:` frontmatter, so a tag
 that lives only in the body isn't part of what travels — each device reads it back out of the
