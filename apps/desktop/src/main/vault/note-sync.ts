@@ -29,9 +29,9 @@ import {
 import {
   getNoteMetadataByPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
-  updateNoteMetadata
+  updateNoteMetadata,
+  type NoteMetadataDb
 } from '@memry/storage-data'
-import type { NoteMetadataDb } from '@memry/storage-data/note-metadata-repository'
 import { publishProjectionEvent } from '../projections'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
 
@@ -58,10 +58,6 @@ function syncCanonicalMetadata(
 }
 
 /**
- * The type a note's property value resolves to, saved to the data DB when the
- * definition does not hold it yet. Local saves and pulled note updates both
- * come through here.
- *
  * A note only learns a type. Re-saving a known definition with bare fields
  * would null the options, default and color the user set.
  */

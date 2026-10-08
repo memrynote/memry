@@ -229,7 +229,6 @@ export class PropertyDefinitionsService {
         const kept = existing?.type === 'date' ? existing : { name, type: 'date' as const }
         this.cache.set(name, { ...kept, showOnCalendar: true })
       } else if (existing?.type === 'date' && !existing.color && !existing.defaultValue) {
-        // a date entry holding only the calendar flag is dropped when it goes off
         this.cache.delete(name)
       } else if (existing) {
         this.cache.set(name, { ...existing, showOnCalendar: false })
@@ -518,10 +517,7 @@ function definitionFromRow(row: {
   }
 }
 
-/**
- * The fields every definition type may carry, without empty ones: js-yaml
- * refuses to dump `undefined`, and the file must not grow `null` keys.
- */
+/** The fields every definition type may carry, minus empty ones the file must not hold. */
 function sharedFields(def: {
   defaultValue?: string | null
   color?: string | null
