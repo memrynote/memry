@@ -116,7 +116,16 @@ final class EditorSession {
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
     @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
-    @ObservationIgnored private var backgroundTask = UIBackgroundTaskIdentifier.invalid
+    /// Background tasks held until their resign's writes land. Each resign
+    /// ends only its own, so a later resign's write stays protected.
+    @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
+    /// Seam for tests; the app holds tasks from `UIApplication`.
+    @ObservationIgnored var beginBackgroundTask: (@escaping () -> Void) -> UIBackgroundTaskIdentifier = {
+        UIApplication.shared.beginBackgroundTask(withName: "editor-commit", expirationHandler: $0)
+    }
+    @ObservationIgnored var endBackgroundTask: (UIBackgroundTaskIdentifier) -> Void = {
+        UIApplication.shared.endBackgroundTask($0)
+    }
 
     init() {
         keyboardObserver = NotificationCenter.default.addObserver(
@@ -155,22 +164,22 @@ final class EditorSession {
         // waits for the next trigger.
         if let field, field.dirty, field.textView.markedTextRange == nil { commit(field) }
         guard let tail else { return }
-        endBackgroundTask()
-        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "editor-commit") {
-            MainActor.assumeIsolated { self.endBackgroundTask() }
+        var id = UIBackgroundTaskIdentifier.invalid
+        id = beginBackgroundTask {
+            MainActor.assumeIsolated { self.release(id) }
         }
+        guard id != .invalid else { return }
+        heldTasks.insert(id)
         Task { @MainActor in
             await tail.value
-            self.endBackgroundTask()
+            self.release(id)
         }
     }
 
-    /// Ends the held background task once, whichever of expiry or the
-    /// landed write gets here first.
-    private func endBackgroundTask() {
-        guard backgroundTask != .invalid else { return }
-        UIApplication.shared.endBackgroundTask(backgroundTask)
-        backgroundTask = .invalid
+    /// Ends `id` once, whichever of expiry or the landed write gets here first.
+    private func release(_ id: UIBackgroundTaskIdentifier) {
+        guard heldTasks.remove(id) != nil else { return }
+        endBackgroundTask(id)
     }
 
     // MARK: Input views

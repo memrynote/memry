@@ -152,6 +152,21 @@ private final class RecordingEditor: BlockEditing, @unchecked Sendable {
     var all: [BlockEdit] { edits.withLock { $0 } }
 }
 
+/// Records edits, holding every edit after the first until `release`.
+private final class GatedEditor: BlockEditing, @unchecked Sendable {
+    private let gate = AsyncStream<Void>.makeStream()
+    private let count = Mutex(0)
+
+    func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+        if count.withLock({ $0 += 1; return $0 }) > 1 {
+            for await _ in gate.stream { break }
+        }
+        return true
+    }
+
+    func release() { gate.continuation.yield() }
+}
+
 /// A block's typing is committed as the change from the text it started
 /// from, so a peer's edit that merged underneath survives the commit.
 @Suite("Editor commit from base")
@@ -248,6 +263,51 @@ struct EditorCommitBaseTests {
 
         #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
         #expect(!field.dirty)
+    }
+
+    /// #2820: a second resign while the first's write is in flight holds its
+    /// own background task, and the first write landing does not end it.
+    @Test(.timeLimit(.minutes(1))) func a_later_resigns_write_stays_protected_when_an_earlier_one_lands() async {
+        let editor = GatedEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        var next = 0
+        var ended: [UIBackgroundTaskIdentifier] = []
+        session.beginBackgroundTask = { _ in
+            next += 1
+            return UIBackgroundTaskIdentifier(rawValue: next)
+        }
+        session.endBackgroundTask = { ended.append($0) }
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        let first = UIBackgroundTaskIdentifier(rawValue: 1)
+        let second = UIBackgroundTaskIdentifier(rawValue: 2)
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            field.textView.text = "hello world"
+            field.dirty = true
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            field.textView.text = "hello world!"
+            field.dirty = true
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        }
+        for _ in 0..<50 { await Task.yield() }
+
+        // Other tests post the same notification, so only these two ids count.
+        #expect(ended.contains(first))
+        #expect(!ended.contains(second))
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            editor.release()
+        }
+        for _ in 0..<50 { await Task.yield() }
+
+        #expect(ended.contains(second))
     }
 
     private func commit(_ session: EditorSession, _ field: BlockField) async {
