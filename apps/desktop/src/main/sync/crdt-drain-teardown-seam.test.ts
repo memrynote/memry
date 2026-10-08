@@ -250,7 +250,10 @@ vi.mock('../crypto', () => ({
   secureCleanup: runtimeMocks.secureCleanup
 }))
 
-vi.mock('../store', () => ({ store: { get: runtimeMocks.storeGet } }))
+vi.mock('../store', () => ({
+  store: { get: runtimeMocks.storeGet },
+  getCurrentVaultPath: () => null
+}))
 
 vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: runtimeMocks.getOrCreateVaultUuid
