@@ -426,3 +426,74 @@ describe('attachment upload/download against the real sync-server', () => {
     expect(unprefixed.status).toBe(404)
   }, 120_000)
 })
+
+describe('an upload whose bytes the note already has on the server', () => {
+  const countInitiates = (deps: AttachmentSyncDeps): { count: number } => {
+    const seen = { count: 0 }
+    const realFetch = deps.fetchFn!
+    deps.fetchFn = async (input, init) => {
+      if (String(input).endsWith('/sync/attachments/upload/initiate')) seen.count++
+      return realFetch(input, init)
+    }
+    return seen
+  }
+
+  const storageUsed = async (userId: string): Promise<number> => {
+    const row = await (
+      await server.getD1()
+    )
+      .prepare('SELECT storage_used FROM users WHERE id = ?')
+      .bind(userId)
+      .first<{ storage_used: number }>()
+    return row!.storage_used
+  }
+
+  it('returns the existing attachment and uploads nothing', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const bytes = randomBytes(64 * 1024)
+    const deps = createDeps(user)
+    const first = await new AttachmentSyncService(deps).uploadAttachment(
+      'note-1',
+      await writeTempFile('x.txt', bytes)
+    )
+    const usedAfterFirst = await storageUsed(user.userId)
+
+    const initiates = countInitiates(deps)
+    deps.getReusableAttachmentIds = () => [first.attachmentId]
+    const copy = await writeTempFile('copy-of-x.txt', bytes)
+    const second = await new AttachmentSyncService(deps).uploadAttachment('note-1', copy)
+
+    expect(second.attachmentId).toBe(first.attachmentId)
+    expect(initiates.count).toBe(0)
+    expect(await storageUsed(user.userId)).toBe(usedAfterFirst)
+  }, 120_000)
+
+  it('uploads different bytes under a new id', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const first = await new AttachmentSyncService(deps).uploadAttachment(
+      'note-1',
+      await writeTempFile('x.txt', randomBytes(64 * 1024))
+    )
+
+    const initiates = countInitiates(deps)
+    deps.getReusableAttachmentIds = () => [first.attachmentId, 'gone-from-the-server']
+    const second = await new AttachmentSyncService(deps).uploadAttachment(
+      'note-1',
+      await writeTempFile('y.txt', randomBytes(64 * 1024))
+    )
+
+    expect(second.attachmentId).not.toBe(first.attachmentId)
+    expect(initiates.count).toBe(1)
+  }, 120_000)
+})

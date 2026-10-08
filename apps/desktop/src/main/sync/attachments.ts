@@ -205,6 +205,11 @@ export interface AttachmentSyncDeps {
    * billing fetch, so a cold cache must never block an upload.
    */
   getMaxFileSize?: () => number | null
+  /**
+   * Attachments already on the server that may hold this file's bytes. An
+   * upload whose content matches one of them returns it instead of a new id.
+   */
+  getReusableAttachmentIds?: (noteId: string, filePath: string) => string[]
   fetchFn?: FetchFn
 }
 

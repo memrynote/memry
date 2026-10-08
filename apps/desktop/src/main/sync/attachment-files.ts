@@ -302,3 +302,12 @@ export function recordAttachmentFile(
   }
   insertRecord(db, noteId, recordPath, attachmentId)
 }
+
+export async function placeDownloadedFile(
+  _db: DrizzleDb,
+  _vaultPath: string,
+  _noteId: string,
+  downloadedPath: string
+): Promise<string> {
+  return downloadedPath
+}
