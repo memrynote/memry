@@ -29,6 +29,9 @@ struct TaskRowView: View {
     let store: TasksStore
     var depth: Int = 0
     var context = TaskMeta.Context()
+    /// A subtask's path on a date window; tapping it opens the parent's
+    /// branch with this task pushed on top (artboard G1).
+    var path: [String]?
     /// Non-nil in select mode.
     var selection: TaskRowSelection?
 
@@ -68,6 +71,7 @@ struct TaskRowView: View {
         .accessibilityAction(named: task.isDone ? TasksCopy.rowReopen : TasksCopy.rowComplete) {
             toggleComplete()
         }
+        .modifier(TaskPathAction(label: pathLabel, open: openPath))
         .accessibilityAction(named: TasksCopy.rowRescheduleTomorrow) {
             let task = task
             Task { await store.rowReschedule(task, to: .tomorrow) }
@@ -120,6 +124,18 @@ struct TaskRowView: View {
                     .foregroundStyle(task.isDone ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
                     .multilineTextAlignment(.leading)
                     .lineLimit(typeSize.isAccessibilitySize ? 6 : 3)
+                if let pathLabel {
+                    Button(action: openPath) {
+                        Text(pathLabel)
+                            .font(Tokens.Typography.caption.font)
+                            .foregroundStyle(Tokens.Text.tertiary.color)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(selection != nil)
+                    .accessibilityIdentifier("tasks.row.path")
+                }
                 TaskMetaLine(meta: store.meta(task, context: rowContext))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,6 +143,16 @@ struct TaskRowView: View {
                 .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
         }
         .contentShape(.rect)
+    }
+
+    private var pathLabel: String? {
+        path.map { $0.joined(separator: TasksCopy.pathSeparator) }
+    }
+
+    private func openPath() {
+        guard let parentId = task.parentId else { return }
+        router?.open(.branch(parentId))
+        router?.open(.task(task.id))
     }
 
     private func toggleComplete() {
@@ -150,5 +176,19 @@ struct TaskSelectionMark: View {
                 Tokens.Tint.base.color
             )
             .accessibilityHidden(true)
+    }
+}
+
+/// VoiceOver's "Open <path>" action, only on a row that shows a path.
+private struct TaskPathAction: ViewModifier {
+    let label: String?
+    let open: () -> Void
+
+    func body(content: Content) -> some View {
+        if let label {
+            content.accessibilityAction(named: TasksCopy.rowOpenPath(label), open)
+        } else {
+            content
+        }
     }
 }
