@@ -13,6 +13,14 @@ export interface RepeatConfig {
   createdAt: string
 }
 
+/**
+ * One task field value: any JSON value, because a peer on a newer build may
+ * write a shape this one does not model. The tag that lists the field decides
+ * how a value reads.
+ */
+export type TaskFieldValue =
+  string | number | boolean | null | TaskFieldValue[] | { [key: string]: TaskFieldValue }
+
 export interface Task {
   id: string
   projectId: string
@@ -36,6 +44,8 @@ export interface Task {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
+  /** Field values by name. Versions and removals stay in storage. */
+  fields?: Record<string, TaskFieldValue>
   hasSubtasks?: boolean
   subtaskCount?: number
   completedSubtaskCount?: number

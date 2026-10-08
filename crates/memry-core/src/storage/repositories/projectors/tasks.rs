@@ -44,8 +44,8 @@ pub const TASK_ACTIVITY_RETENTION_DAYS: i64 = 90;
 const MS_PER_DAY: i64 = 86_400_000;
 
 /// The 15 entries of `TASK_SYNCABLE_FIELDS` in order (§6.7), then the fields
-/// outside the merge: `tags`, `linkedNoteIds`, `linkedCanvasIds`, `clock`,
-/// `fieldClocks`, `createdAt`, `modifiedAt` (§13.7.3).
+/// outside the merge: `tags`, `linkedNoteIds`, `linkedCanvasIds`, `fields`,
+/// `clock`, `fieldClocks`, `createdAt`, `modifiedAt` (§13.7.3).
 ///
 /// **Every entry is `opt_null`, and that is the same lesson
 /// `tag_definition.icon` cost 146 corrupt rows to learn.** §13.3's forward
@@ -79,6 +79,9 @@ const TASK_FIELDS: &[Field] = &[
     // No column at all, by design (see the module comment), so a null here
     // reaches nothing but the verbatim payload.
     Field::opt_null("linkedCanvasIds", Kind::TextArray),
+    // §13.7.3.1: versioned field values, carried verbatim and never merged
+    // here (chapter 06 §6.11); not one of the fifteen, and no column.
+    Field::opt_null("fields", Kind::Any),
     // `task_merge` already reads both as `None` when they are null (§6.7,
     // §6.10), so refusing the payload here contradicted the merge that was
     // about to consume it.

@@ -131,10 +131,22 @@ const SPECS: TypeSpec[] = [
       categoryId: 'cat-1',
       sortOrder: 3,
       views: [],
+      // `format` is a key a newer build put inside an array element: the opaque
+      // record keeps it where a declared element shape would strip it.
+      schema: {
+        t: 3,
+        fields: [
+          { name: 'Company', relation: { target: 'company', many: false, inverse: 'People' } },
+          { name: 'Phone', format: 'e164' }
+        ],
+        template: { id: 'tpl_8f2c', autofill: true },
+        extends: null,
+        preset: 'person'
+      },
       clock: CLOCK,
       createdAt: '2026-04-16T00:00:00.000Z'
     },
-    boundary: { name: 'protocol', color: '#4f46e5', views: null, clock: {} },
+    boundary: { name: 'protocol', color: '#4f46e5', views: null, schema: null, clock: {} },
     unknownKey: 'pinned',
     unknownValue: true
   },
@@ -209,6 +221,12 @@ const SPECS: TypeSpec[] = [
       tags: ['protocol'],
       linkedNoteIds: ['abc123def456'],
       linkedCanvasIds: [],
+      // `d` is a key a newer build put on one entry; `v: null` is a removal.
+      fields: {
+        'Waiting on': { v: ['memry://note/abc123def456'], t: 2 },
+        'Follow up': { v: '2026-05-14', t: 1, d: { source: 'agent' } },
+        Thread: { v: null, t: 3 }
+      },
       clock: CLOCK,
       fieldClocks: { title: CLOCK },
       createdAt: '2026-04-16T00:00:00.000Z',
@@ -219,6 +237,7 @@ const SPECS: TypeSpec[] = [
       description: null,
       tags: [],
       linkedNoteIds: [],
+      fields: {},
       clock: {},
       fieldClocks: {}
     },

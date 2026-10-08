@@ -13245,6 +13245,39 @@
     "tasks.create": {
       "$id": "tasks.create",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          ]
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -13453,6 +13486,17 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
+            },
+            "fields": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              }
             }
           },
           "required": ["projectId", "title"],
@@ -13519,6 +13563,39 @@
     "tasks.update": {
       "$id": "tasks.update",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          ]
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -13712,6 +13789,17 @@
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            },
+            "fields": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
               }
             }
           },

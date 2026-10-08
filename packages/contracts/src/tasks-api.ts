@@ -7,10 +7,11 @@
 
 import { z } from 'zod'
 import { CalendarDateSchema } from './calendar-date.ts'
-import type { ProjectWithStats, Task, TaskListItem } from '@memry/domain-tasks'
+import type { ProjectWithStats, Task, TaskFieldValue, TaskListItem } from '@memry/domain-tasks'
 export type {
   RepeatConfig,
   Task,
+  TaskFieldValue,
   TaskListItem,
   Project,
   ProjectContents,
@@ -47,6 +48,26 @@ export const RepeatConfigSchema = z.object({
   createdAt: z.string()
 })
 
+/**
+ * A task's field values by field name: any JSON value. The tag that lists the
+ * field decides a value's shape, not this schema, because a newer build may
+ * write a shape this one does not model and a next occurrence must still carry
+ * it. Main stamps the versions (`@memry/shared/versioned`); callers never see
+ * them.
+ */
+const TaskFieldValueSchema: z.ZodType<TaskFieldValue, TaskFieldValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(TaskFieldValueSchema),
+    z.record(z.string(), TaskFieldValueSchema)
+  ])
+)
+
+export const TaskFieldsSchema = z.record(z.string().min(1).max(200), TaskFieldValueSchema)
+
 export const TaskCreateSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1).max(500),
@@ -67,7 +88,9 @@ export const TaskCreateSchema = z.object({
   linkedNoteIds: z.array(z.string()).optional(),
   linkedCanvasIds: z.array(z.string()).optional(),
   sourceNoteId: z.string().nullish(),
-  position: z.number().int().optional()
+  position: z.number().int().optional(),
+  /** The whole map. A `null` value sets nothing. */
+  fields: TaskFieldsSchema.optional()
 })
 
 export const TaskUpdateSchema = z.object({
@@ -89,7 +112,9 @@ export const TaskUpdateSchema = z.object({
   repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
-  linkedCanvasIds: z.array(z.string()).optional()
+  linkedCanvasIds: z.array(z.string()).optional(),
+  /** A patch: only the listed fields change, and `null` removes a field. */
+  fields: TaskFieldsSchema.optional()
 })
 
 export const TaskCompleteSchema = z.object({
