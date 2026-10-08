@@ -151,6 +151,12 @@ struct AccountShell<Content: View>: View {
     /// The bar then stays off every other screen, where it sat over the
     /// content it was not about.
     @State private var hostedElsewhere = false
+    /// The bar is a bottom inset, so with the software keyboard up it rides
+    /// the keyboard into the middle of the form being typed into. On the
+    /// recovery-phrase screen it sat exactly where Unlock had been, and a tap
+    /// aimed at Unlock opened the sign-out dialog (#2818). While typing, the
+    /// way out steps aside; it is back the moment the keyboard is.
+    @State private var keyboardUp = false
 
     var body: some View {
         if let account {
@@ -162,7 +168,13 @@ struct AccountShell<Content: View>: View {
                     .environment(account)
                     .onPreferenceChange(SignOutHostedKey.self) { hostedElsewhere = $0 }
                     .safeAreaInset(edge: .bottom) {
-                        if !hostedElsewhere { SignOutBar(model: account) }
+                        if !hostedElsewhere && !keyboardUp { SignOutBar(model: account) }
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                        keyboardUp = true
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                        keyboardUp = false
                     }
             case .noticeOnly:
                 content().safeAreaInset(edge: .bottom) {
