@@ -57,7 +57,11 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
 import { syncNoteDelete } from '../notes/runtime-effects'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
-import { flushProjectionEvents, startProjectionRuntime, stopProjectionRuntime } from '../projections'
+import {
+  flushProjectionEvents,
+  startProjectionRuntime,
+  stopProjectionRuntime
+} from '../projections'
 import { clearIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { VaultWatcher } from './watcher'

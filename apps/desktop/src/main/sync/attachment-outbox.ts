@@ -5,6 +5,7 @@ import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
+import { isVaultReachable } from '../vault/init'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentOutbox')
@@ -167,19 +168,6 @@ export function isLocalOnlyNote(db: DrizzleDb, noteId: string): boolean {
 function isDirectory(dir: string): boolean {
   try {
     return fs.statSync(dir).isDirectory()
-  } catch {
-    return false
-  }
-}
-
-/**
- * The vault is mounted: the database file it holds is there. The `.memry`
- * folder alone proves nothing, since the activity log recreates it at the path
- * of a vault that is away.
- */
-export function isVaultReachable(vaultPath: string): boolean {
-  try {
-    return fs.statSync(path.join(vaultPath, '.memry', 'data.db')).isFile()
   } catch {
     return false
   }

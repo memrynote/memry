@@ -154,6 +154,8 @@ describe('vault watcher', () => {
 
   beforeEach(() => {
     vault = createTestVault('watcher')
+    // The watcher queues deletes only while the vault's database is there.
+    fs.writeFileSync(path.join(vault.memryDir, 'data.db'), '')
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     indexDb.sqlite.pragma('foreign_keys = ON')
