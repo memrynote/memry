@@ -483,6 +483,42 @@ describe('a CRLF note edited in the editor (#2615)', () => {
       raw.replace('Middle paragraph to edit.', 'Middle paragraph, edited.')
     )
   })
+
+  const SPACED = (tail: string): string =>
+    [
+      'Title',
+      '=====',
+      '',
+      'Some _em_ text.',
+      '',
+      '+ one',
+      '+ two',
+      '',
+      'Edit me.',
+      '',
+      `last word${tail}`,
+      ''
+    ].join('\n')
+
+  it.each([
+    ['LF', 'one space', '\n', ' '],
+    ['CRLF', 'one space', '\r\n', ' '],
+    ['LF', 'two spaces', '\n', '  '],
+    ['CRLF', 'two spaces', '\r\n', '  '],
+    ['LF', 'a tab', '\n', '\t'],
+    ['CRLF', 'a tab', '\r\n', '\t']
+  ])(
+    'keeps a %s note as written when a paragraph ends in %s (BBF-08)',
+    async (_eol, _tail, eol, tail) => {
+      const body = SPACED(tail).replace(/\n/g, eol)
+      const raw = `---${eol}id: x${eol}---${eol}${body}`
+      writtenElsewhere(NOTE, raw)
+
+      await pass(NOTE, await editedDoc(body, 'Edit me.', `Edited.${tail}`), 'local')
+
+      expect(h.files.get(NOTE_FILE)).toBe(raw.replace('Edit me.', `Edited.${tail}`))
+    }
+  )
 })
 
 describe('HTML comments through an editor edit (AF-015)', () => {
