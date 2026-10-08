@@ -539,6 +539,13 @@ describe('vault watcher', () => {
     trigger('addDir', path.join(vault.path, 'Finder'))
     trigger('addDir', path.join(vault.path, 'Finder', 'Empty'))
     trigger('addDir', path.join(vault.path, 'Styled'))
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, excludePatterns: ['ignored'] } as never)
+    trigger('addDir', vault.path)
+    trigger('addDir', path.join(vault.path, 'journal'))
+    trigger('addDir', path.join(vault.path, 'journal', '2026'))
+    trigger('addDir', path.join(vault.path, 'canvases'))
+    trigger('addDir', path.join(vault.path, 'canvases', 'Board'))
+    trigger('addDir', path.join(vault.path, 'ignored', 'deep'))
 
     const rows = dataDb.db.select().from(folderConfigs).all()
     expect(rows.map((r) => [r.path, r.icon]).sort()).toEqual([

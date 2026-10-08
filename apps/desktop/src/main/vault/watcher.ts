@@ -78,6 +78,7 @@ import {
 } from '../notes/runtime-effects'
 import { syncFolderConfigDiscovered } from '../notes/folder-config-effects'
 import { normalizeRelativePath } from '../lib/paths'
+import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
@@ -491,11 +492,14 @@ export class VaultWatcher {
   /**
    * Sync ships rows, not directories, so a folder made outside the app needs
    * its folder_config row now, not at the next sync start's backfill (#2841).
+   * Only folders getFolders lists get one, the same set the backfill records:
+   * the journal folder, canvases and excluded roots stay out of folder_config.
    */
   private handleDirAdd(absolutePath: string): void {
     if (!this.vaultPath) return
     const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
     try {
+      if (!createTreeFolderFilter(getConfig())(relativePath)) return
       syncFolderConfigDiscovered(relativePath)
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
