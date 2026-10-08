@@ -1005,6 +1005,34 @@ describe('notes operations', () => {
       expect(selfNote!.content.trimEnd()).toBe('I mention [[Self Renamed]] and [[Renamed Target]].')
     })
 
+    it('leaves a link inside an HTML block file as written when its target is renamed', async () => {
+      const target = await notes.createNote({ title: 'Block Target', content: 'Target body.' })
+      const source = await notes.createNote({ title: 'Block Source', content: 'Placeholder' })
+      const blockRef = `attachments/${source.id}/chart.html`
+      const blockHtml = '<p>Chart of [[Block Target]]</p>\n'
+      const blockPath = path.join(tempVault.path, blockRef)
+      fs.mkdirSync(path.dirname(blockPath), { recursive: true })
+      fs.writeFileSync(blockPath, blockHtml)
+      await notes.updateNote({ id: source.id, content: `![chart](${blockRef})` })
+      const sourceFile = path.join(tempVault.path, source.path)
+      const sourceRaw = fs.readFileSync(sourceFile, 'utf-8')
+      const { saveExtractedPart } = await import('@main/database/queries/extracted-text')
+      saveExtractedPart(
+        testDb.db,
+        { noteId: source.id, source: 'chart.html' },
+        1,
+        'html',
+        'Chart of [[Block Target]]'
+      )
+      await projections.flushProjectionEvents()
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.renameNote(target.id, 'Renamed Block Target')
+
+      expect(fs.readFileSync(blockPath, 'utf-8')).toBe(blockHtml)
+      expect(fs.readFileSync(sourceFile, 'utf-8')).toBe(sourceRaw)
+    })
+
     it('T364: generates unique path on collision', async () => {
       await notes.createNote({
         title: 'Existing Name',

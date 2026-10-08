@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult } from '@tests/utils/test-db'
 import { asClientDb, createTestDataDb, createTestIndexDb } from '@tests/utils/test-db'
 import { getOutgoingLinks, insertNoteCache, setNoteLinks } from '@main/database/queries/notes'
+import { saveExtractedPart } from '@main/database/queries/extracted-text'
 import { getSetting } from '@main/database/queries/settings'
 import { CODE_LINK_REINDEX_KEY, reindexCodeLinks } from './code-link-reindex'
 
@@ -81,6 +82,22 @@ describe('reindexCodeLinks', () => {
 
     expect(await run()).toBe(1)
     expect(linksOf('nte_docs')).toEqual([['Guide', 'nte_guide']])
+  })
+
+  it('keeps the links in the note HTML blocks when it rewrites a note', async () => {
+    saveExtractedPart(
+      index.db,
+      { noteId: 'nte_docs', source: 'chart.html' },
+      1,
+      'html',
+      'Read [[Guide]] and [[Harbor Log]]'
+    )
+
+    expect(await run()).toBe(1)
+    expect(linksOf('nte_docs')).toEqual([
+      ['Guide', 'nte_guide'],
+      ['Harbor Log', null]
+    ])
   })
 
   it('leaves the marker unset when stopped, so the next open resumes', async () => {

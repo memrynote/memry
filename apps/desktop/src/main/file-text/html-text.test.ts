@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { extractWikiLinks } from '../vault/frontmatter'
 import { readHtmlText } from './html-text'
 
 describe('readHtmlText', () => {
@@ -23,6 +24,20 @@ describe('readHtmlText', () => {
     )
 
     expect(text).toBe('First&one\n\nSecond\n\nCell a\n\nCell b\n\nLine one\nLine two')
+  })
+
+  it('keeps link syntax inside code, pre, kbd and samp searchable but out of the links', async () => {
+    const text = await readHtmlText(
+      '<p>Write <code>[[Inline Code]]</code> or <kbd>[[Typed Keys]]</kbd>, ' +
+        'see <samp>[[Sample Output]]</samp>.</p>' +
+        '<pre><code>let a = "`"\n[[Fenced Code]]\n```</code></pre>' +
+        '<p>Then [[Visible Link]].</p>'
+    )
+
+    for (const words of ['Inline Code', 'Typed Keys', 'Sample Output', 'Fenced Code']) {
+      expect(text).toContain(words)
+    }
+    expect(extractWikiLinks(text)).toEqual(['Visible Link'])
   })
 
   it('reads a fragment with no html or body element', async () => {
