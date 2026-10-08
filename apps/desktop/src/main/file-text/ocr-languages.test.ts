@@ -10,21 +10,28 @@ const env = vi.hoisted(() => ({
   userData: '',
   locale: 'en',
   stored: null as OcrLanguage[] | null,
-  answer: (_url: string): Promise<Response> => Promise.reject(new Error('offline'))
+  languageChanged: null as null | (() => void),
+  answer: (_url: string, _init?: RequestInit): Promise<Response> =>
+    Promise.reject(new Error('offline'))
 }))
 const fetches = vi.hoisted(() => [] as string[])
 
 vi.mock('electron', () => ({
   app: { getPath: () => env.userData },
   net: {
-    fetch: (url: string) => {
+    fetch: (url: string, init?: RequestInit) => {
       fetches.push(url)
-      return env.answer(url)
+      return env.answer(url, init)
     }
   }
 }))
 vi.mock('../lib/main-i18n', () => ({
-  getMainI18n: () => ({ language: env.locale, on: () => {} })
+  getMainI18n: () => ({
+    language: env.locale,
+    on: (_event: string, listener: () => void) => {
+      env.languageChanged = listener
+    }
+  })
 }))
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('@memry/sync-client/sync-server-url', () => ({
@@ -54,6 +61,26 @@ const serve = (bodies: Partial<Record<string, string>>) => (url: string) => {
   return body === undefined
     ? Promise.reject(new TypeError('net::ERR_CONNECTION_REFUSED'))
     : Promise.resolve(new Response(body))
+}
+
+/** A response whose body never arrives, and fails once the request is aborted, as fetch does. */
+function stalled(): {
+  answer: (url: string, init?: RequestInit) => Promise<Response>
+  started: Promise<void>
+} {
+  let started!: () => void
+  const begun = new Promise<void>((resolve) => (started = resolve))
+  return {
+    started: begun,
+    answer: (_url, init) => {
+      started()
+      const body = new ReadableStream({
+        start: (controller) =>
+          init?.signal?.addEventListener('abort', () => controller.error(init.signal?.reason))
+      })
+      return Promise.resolve(new Response(body))
+    }
+  }
 }
 
 const codes = () => ocr.ocrLanguageSet().codes
@@ -164,5 +191,60 @@ describe('OCR languages', () => {
 
     expect(codes()).toEqual(['eng', 'deu'])
     expect(fetches).toHaveLength(1)
+  })
+
+  it('downloads the new app language when the app language changes and nothing was chosen', async () => {
+    ocr.startOcrLanguages()
+    await ocr.syncOcrLanguages()
+    expect(fetches).toEqual([])
+
+    env.locale = 'fr'
+    env.languageChanged?.()
+    await ocr.syncOcrLanguages()
+
+    expect(codes()).toEqual(['eng', 'fra'])
+    expect(fetches).toEqual(['https://sync.memry.test/ocr/v1/fra.traineddata.gz'])
+  })
+
+  it('stops a download of a language removed while it runs and keeps nothing of it', async () => {
+    const slow = stalled()
+    env.answer = slow.answer
+
+    ocr.setOcrLanguages(['deu'])
+    await slow.started
+    ocr.setOcrLanguages([])
+    await ocr.syncOcrLanguages()
+
+    expect(ocr.getOcrLanguagesState()).toEqual({
+      selected: ['eng'],
+      statuses: { eng: { state: 'ready' } }
+    })
+    expect(dataFiles()).toEqual([])
+  })
+
+  it('downloads again over a file an earlier run left that no longer matches its pin', async () => {
+    fs.mkdirSync(path.join(env.userData, 'ocr-languages'))
+    fs.writeFileSync(path.join(env.userData, 'ocr-languages', 'deu.traineddata'), 'older model')
+    env.stored = ['eng', 'deu']
+
+    await ocr.syncOcrLanguages()
+
+    expect(codes()).toEqual(['eng', 'deu'])
+    expect(fetches).toHaveLength(1)
+    expect(
+      fs.readFileSync(path.join(env.userData, 'ocr-languages', 'deu.traineddata'), 'utf8')
+    ).toBe(DATA.deu)
+  })
+
+  it('says the server does not offer a language it answers 404 for', async () => {
+    env.answer = () => Promise.resolve(new Response('not found', { status: 404 }))
+
+    ocr.setOcrLanguages(['deu'])
+    await ocr.syncOcrLanguages()
+
+    expect(ocr.getOcrLanguagesState().statuses.deu).toEqual({
+      state: 'failed',
+      error: 'errors:ocrLanguages.unavailable'
+    })
   })
 })
