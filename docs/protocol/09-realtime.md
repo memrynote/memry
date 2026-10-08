@@ -28,9 +28,11 @@ running:
   backgrounded mobile app, so its socket cannot be serviced and every broadcast
   to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
-  (`crates/memry-core/src/sync/socket.rs:185`, `:215`) and observes no app
-  state itself. No mobile shell drives it yet
-  (`apps/ios/Memry/App/ShellState.swift:173-179`).
+  (`crates/memry-core/src/sync/socket.rs:235`, `:274`) and observes no app
+  state itself. The shell starts `VaultRealtime::run` and calls
+  `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:90`,
+  `:106`); iOS runs it until the scene goes to the background
+  (`apps/ios/Memry/Features/Tasks/TasksRootView.swift:173`, `:193`).
 - **A resident desktop process keeps the socket open for as long as the process
   runs and sync is started.** Closing the main window hides it to the tray and
   leaves the process running
@@ -255,7 +257,10 @@ access token (chapter 02 §2.10), rather than tearing the socket down.
 **4004 and 4009 are terminal.** A conforming client MUST latch reconnection off
 for both — for 4004 by signing the device out, for 4009 until the application is
 updated (`apps/desktop/src/main/sync/websocket.ts:182-204`, where 4004 clears
-`shouldBeConnected` and 4009 sets `versionRejected`).
+`shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
+latch on `VaultSync`, which outlives the per-foreground socket the shell mints
+and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:292`,
+`crates/memry-core/src/sync/socket_run.rs:118`).
 
 ## 9.10 Reconnect and backoff — Q09.4
 

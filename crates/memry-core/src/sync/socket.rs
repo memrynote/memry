@@ -35,8 +35,12 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::json;
+use tokio::sync::Notify;
+// Tokio's clock, so a paused test clock drives the staleness check too.
+use tokio::time::Instant;
 
 use crate::api::errors::TransportError;
 use crate::protocol::http::{AUTHORIZATION_HEADER, ClientIdentity, TokenProvider, VAULT_ID_HEADER};
@@ -53,6 +57,9 @@ pub const APP_VERSION_HEADER: &str = "x-app-version";
 
 /// §9.6, `PING_INTERVAL_MS`.
 pub const PING_INTERVAL_MS: u64 = 25_000;
+/// No frame for this long means the socket is half-open: a `ping` went out a
+/// beat ago and no `pong` came back. Desktop's `STALE_TIMEOUT_MS`.
+pub const STALE_AFTER_MS: u64 = 31_000;
 /// §9.6: the literal text frame, and no other.
 pub const KEEPALIVE_FRAME: &[u8] = b"ping";
 
@@ -122,6 +129,9 @@ pub struct RealtimeClient {
     tokens: Arc<dyn TokenProvider>,
     sink: Arc<dyn HintSink>,
     inner: Arc<Mutex<Inner>>,
+    /// Woken on every open, close and error, so a driver can wait on the
+    /// socket instead of polling it.
+    changed: Arc<Notify>,
 }
 
 #[derive(Default)]
@@ -135,6 +145,13 @@ struct Inner {
     /// The last close this client saw, for `note_closed`.
     last_close: Option<u16>,
     open: bool,
+    /// The current connection reported a close or an error.
+    ended: bool,
+    /// The last frame of any kind, including `pong`; set on open.
+    last_frame: Option<Instant>,
+    /// Bumped per `connect`, so a late report from a socket this client has
+    /// already let go of cannot end the one that replaced it.
+    generation: u64,
 }
 
 impl RealtimeClient {
@@ -157,6 +174,7 @@ impl RealtimeClient {
             tokens,
             sink,
             inner: Arc::new(Mutex::new(Inner::default())),
+            changed: Arc::new(Notify::new()),
         }
     }
 
@@ -179,6 +197,38 @@ impl RealtimeClient {
         self.lock().terminal
     }
 
+    /// Whether the connection `connect` opened has since closed or failed.
+    pub fn has_ended(&self) -> bool {
+        self.lock().ended
+    }
+
+    /// How long since the open socket last delivered a frame. `None` while
+    /// nothing is open.
+    pub fn quiet_for(&self) -> Option<Duration> {
+        let inner = self.lock();
+        if !inner.open {
+            return None;
+        }
+        inner.last_frame.map(|at| at.elapsed())
+    }
+
+    /// Resolves after the next open, close or error.
+    pub async fn changed(&self) {
+        self.changed.notified().await;
+    }
+
+    /// Drops a half-open socket and records it as an ordinary failure, so
+    /// `note_closed` answers with the backoff ladder rather than `Stopped`.
+    pub fn abandon(&self) {
+        self.close_handle();
+        let mut inner = self.lock();
+        inner.ended = true;
+        inner.last_close = None;
+        // The dropped socket's own close report arrives later and must not
+        // land on this record.
+        inner.generation = inner.generation.wrapping_add(1);
+    }
+
     /// Opens the one socket. §9.3: an existing one is closed first, because a
     /// second connection for the same device silently kills the first anyway
     /// and doing it here keeps the kill visible.
@@ -199,9 +249,18 @@ impl RealtimeClient {
             inner.last_close = None;
         }
 
+        let generation = {
+            let mut inner = self.lock();
+            inner.ended = false;
+            inner.last_frame = None;
+            inner.generation = inner.generation.wrapping_add(1);
+            inner.generation
+        };
         let listener: Arc<dyn SocketListener> = Arc::new(Bridge {
             inner: Arc::clone(&self.inner),
             sink: Arc::clone(&self.sink),
+            changed: Arc::clone(&self.changed),
+            generation,
         });
         let handle = self
             .transport
@@ -331,25 +390,51 @@ impl RealtimeClient {
 struct Bridge {
     inner: Arc<Mutex<Inner>>,
     sink: Arc<dyn HintSink>,
+    changed: Arc<Notify>,
+    generation: u64,
 }
 
 impl Bridge {
-    fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        self.inner
+    /// The shared state, or `None` when this bridge's socket was replaced.
+    fn current(&self) -> Option<std::sync::MutexGuard<'_, Inner>> {
+        let inner = self
+            .inner
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        (inner.generation == self.generation).then_some(inner)
+    }
+
+    fn end(&self, code: Option<u16>) {
+        let Some(mut inner) = self.current() else {
+            return;
+        };
+        inner.open = false;
+        inner.ended = true;
+        inner.last_close = code;
+        drop(inner);
+        self.changed.notify_one();
     }
 }
 
 impl SocketListener for Bridge {
     fn on_open(&self) {
-        let mut inner = self.lock();
+        let Some(mut inner) = self.current() else {
+            return;
+        };
         inner.open = true;
+        inner.last_frame = Some(Instant::now());
         // §9.10: reset to zero on a successful open.
         inner.attempt = 0;
+        drop(inner);
+        self.changed.notify_one();
     }
 
     fn on_message(&self, payload: Vec<u8>) {
+        let Some(mut inner) = self.current() else {
+            return;
+        };
+        inner.last_frame = Some(Instant::now());
+        drop(inner);
         // §9.12: `None` is the only case worth logging, and it is still not a
         // reason to reject the socket.
         if let Some(hint) = parse_frame(&payload) {
@@ -358,17 +443,13 @@ impl SocketListener for Bridge {
     }
 
     fn on_closed(&self, code: u16, _reason: String) {
-        let mut inner = self.lock();
-        inner.open = false;
-        inner.last_close = Some(code);
+        self.end(Some(code));
     }
 
     fn on_error(&self, _error: TransportError) {
-        let mut inner = self.lock();
-        inner.open = false;
         // No code: an error is not one of §9.9's closes, so it takes the
         // ordinary backoff branch rather than a latch.
-        inner.last_close = None;
+        self.end(None);
     }
 }
 

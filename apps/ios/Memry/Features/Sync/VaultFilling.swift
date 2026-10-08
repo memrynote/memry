@@ -120,6 +120,10 @@ protocol VaultFilling: Sendable {
 
     /// Outbox rows still waiting (spec 006 ST15).
     func pendingChanges() async throws -> UInt32
+
+    /// This vault's realtime socket (chapter 09, #2798), or `nil` where there
+    /// is none. Opens nothing until `run()`; `onChanges` asks for a pass.
+    func realtime(onChanges: @escaping @MainActor @Sendable () -> Void) -> VaultRealtime?
 }
 
 extension VaultFilling {
@@ -135,6 +139,11 @@ struct CoreVaultFiller: VaultFilling {
     func pendingChanges() async throws -> UInt32 {
         let sync = sync
         return try await executor.run { try sync.pendingChanges() }
+    }
+
+    /// No I/O: the socket opens in `run()`.
+    func realtime(onChanges: @escaping @MainActor @Sendable () -> Void) -> VaultRealtime? {
+        sync.realtime(listener: RealtimeRelay(receive: onChanges))
     }
 
     private let sync: VaultSync
@@ -222,6 +231,21 @@ final class SyncProgressRelay: SyncProgressListener, @unchecked Sendable {
     func progress(progress: SyncProgress) {
         let receive = receive
         DispatchQueue.main.async { MainActor.assumeIsolated { receive(progress) } }
+    }
+}
+
+/// Carries the socket's "run a pass" to the main actor without waiting, for
+/// the reason ``SyncProgressRelay`` gives: the core calls it on its own thread.
+final class RealtimeRelay: RealtimeListener, @unchecked Sendable {
+    private let receive: @MainActor @Sendable () -> Void
+
+    init(receive: @escaping @MainActor @Sendable () -> Void) {
+        self.receive = receive
+    }
+
+    func changesAvailable() {
+        let receive = receive
+        DispatchQueue.main.async { MainActor.assumeIsolated { receive() } }
     }
 }
 
