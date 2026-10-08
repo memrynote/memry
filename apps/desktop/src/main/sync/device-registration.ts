@@ -6,6 +6,8 @@ import { eq, inArray } from 'drizzle-orm'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
+import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
+import type { RepairDeviceKeysResult } from '@memry/contracts/ipc-sync-ops'
 import {
   DeviceRegisterResponseSchema,
   RecoveryDataResponseSchema,
@@ -32,13 +34,14 @@ import {
   markKeyMaterialActivity,
   persistAccountKeyVerifier
 } from './key-verification'
-import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime } from './runtime'
+import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime, stopSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { adoptAccountVaultIfAbsent } from './vault-adoption'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
+  getValidAccessToken,
   retrieveToken,
   scheduleTokenRefresh,
   storeToken
@@ -363,4 +366,58 @@ export const ensureDeviceRowForVault = async (
   } finally {
     secureCleanup(signingSecretKey)
   }
+}
+
+/**
+ * Repairs a session whose pushes abort for want of signing keys (#2866),
+ * without losing queued changes. When the keychain key is still on the
+ * account's device list, only the install's device id was lost: restore it and
+ * the vault's device row, and resume. Otherwise nothing local can sign again,
+ * so sign out the way an integrity failure does, which keeps the sync queue and
+ * the vault key, and the next sign-in registers new keys.
+ */
+export const repairDeviceKeys = async (): Promise<RepairDeviceKeysResult> => {
+  const db = isDatabaseInitialized() ? getDatabase() : null
+  const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
+  try {
+    const accessToken = db && signingSecretKey ? await getValidAccessToken() : null
+    if (db && signingSecretKey && accessToken) {
+      await sodium.ready
+      const publicKey = sodium.to_base64(
+        getDevicePublicKey(signingSecretKey),
+        sodium.base64_variants.ORIGINAL
+      )
+      const parsed = DeviceKeysResponseSchema.safeParse(
+        await getFromServer<unknown>('/auth/devices', accessToken)
+      )
+      const device = parsed.success
+        ? parsed.data.devices.find(
+            (entry) => entry.signingPublicKey === publicKey && entry.revokedAt === null
+          )
+        : undefined
+      if (device) {
+        setStoredDeviceId(device.id)
+        // Pulls cache every device as a peer row, this one included.
+        db.delete(syncDevices).where(eq(syncDevices.id, device.id)).run()
+        await ensureDeviceRowForVault(db)
+        // A restart, not activate(): without a device id, task and project
+        // edits were only stamped with offline clocks, never queued. The start's
+        // dirty sweep rebinds those clocks and queues them.
+        await stopSyncRuntime()
+        await startSyncRuntime()
+        logger.info('Restored the device row from the registered signing key', {
+          deviceId: device.id
+        })
+        return { status: 'repaired' }
+      }
+    }
+  } finally {
+    if (signingSecretKey) secureCleanup(signingSecretKey)
+  }
+
+  logger.warn('Device keys cannot be restored on this device, signing out to set up new ones')
+  // Dynamic: session-teardown imports the runtime, which imports this module.
+  const { teardownSession } = await import('./session-teardown')
+  await teardownSession('integrity')
+  return { status: 'sign-in-required' }
 }

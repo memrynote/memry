@@ -13,7 +13,10 @@ const sync = vi.hoisted(() => ({
 }))
 
 const status = vi.hoisted(() => ({ overrides: {} as Record<string, unknown> }))
-const auth = vi.hoisted(() => ({ logout: vi.fn(async () => {}) }))
+const auth = vi.hoisted(() => ({ resetAuthState: vi.fn() }))
+const repairDeviceKeys = vi.fn()
+
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => auth
@@ -109,6 +112,9 @@ describe('SyncStatus with device keys missing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sync.vaultBinding = { status: 'bound' }
+    ;(
+      window as unknown as { api: { syncOps: { repairDeviceKeys: typeof repairDeviceKeys } } }
+    ).api = { syncOps: { repairDeviceKeys } }
     status.overrides = {
       status: 'error',
       label: 'account.sync.statuses.deviceKeysMissing',
@@ -118,16 +124,32 @@ describe('SyncStatus with device keys missing', () => {
     }
   })
 
-  it('offers to sign in again instead of a retry that cannot succeed', async () => {
+  it('repairs in place and keeps the session when the keys are restored', async () => {
+    repairDeviceKeys.mockResolvedValue({ status: 'repaired' })
     const onOpenSettings = vi.fn()
     const user = await openPopover(onOpenSettings)
 
     expect(screen.getAllByText('account.sync.statuses.deviceKeysMissing').length).toBeGreaterThan(0)
     expect(screen.queryByText('Retry')).toBeNull()
     await user.click(
-      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.signInAgain' })
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
     )
-    expect(auth.logout).toHaveBeenCalled()
+
+    expect(repairDeviceKeys).toHaveBeenCalled()
+    expect(auth.resetAuthState).not.toHaveBeenCalled()
+    expect(onOpenSettings).not.toHaveBeenCalled()
+  })
+
+  it('sends the user to sign in when main signed the device out', async () => {
+    repairDeviceKeys.mockResolvedValue({ status: 'sign-in-required' })
+    const onOpenSettings = vi.fn()
+    const user = await openPopover(onOpenSettings)
+
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
+    )
+
+    expect(auth.resetAuthState).toHaveBeenCalled()
     expect(onOpenSettings).toHaveBeenCalled()
   })
 })

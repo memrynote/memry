@@ -2135,7 +2135,9 @@
       "items": "items",
       "willSyncWhenBackOnline": "Will sync when back online",
       "openSyncSettings": "Open sync settings",
-      "signInAgain": "Sign in again"
+      "repairDeviceKeys": "Repair",
+      "signInToRepair": "Sign in again to set up this device's keys. Your unsynced changes are kept. You may need your recovery phrase.",
+      "repairFailed": "Couldn't repair this device's keys. Try again."
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"

@@ -108,7 +108,11 @@ export class SyncStateManager {
       if (this.ctx.state === 'idle' || this.ctx.state === 'error') this.reportDeviceKeysMissing()
       return
     }
-    if (this.ctx.lastErrorInfo?.category === 'device_keys_missing') this.setState('idle')
+    // Only the error this flag raised: a key read inside a cycle must not end
+    // `syncing`, and must not clear an unrelated error.
+    if (this.ctx.state === 'error' && this.ctx.lastErrorInfo?.category === 'device_keys_missing') {
+      this.setState('idle')
+    }
   }
 
   private reportDeviceKeysMissing(): void {

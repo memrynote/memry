@@ -1,4 +1,5 @@
 import React from 'react'
+import { toast } from 'sonner'
 import { Cloud, CloudOff, RefreshCw, Settings } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -166,7 +167,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     clearError,
     clearConflicts
   } = useSyncStatus()
-  const { logout } = useAuth()
+  const { resetAuthState } = useAuth()
 
   const isSyncing = status === 'syncing'
   const isOffline = status === 'offline'
@@ -184,15 +185,20 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     }
   }
 
-  // Signing in again re-runs device key setup, the only fix for missing keys
-  // (#2866). Settings shows the sign-in once the session is gone.
-  const handleSignInAgain = async (): Promise<void> => {
+  // Main restores the device row when the keychain key is still registered,
+  // and otherwise signs out keeping queued changes (#2866). Never logout():
+  // that drops the sync queue and the vault key.
+  const handleRepairDeviceKeys = async (): Promise<void> => {
     try {
-      await logout()
+      const { status: outcome } = await window.api.syncOps.repairDeviceKeys()
+      if (outcome === 'repaired') return
+      resetAuthState()
+      toast.info(tPhaseF('phaseF.componentsSyncSyncStatus.signInToRepair'), { duration: 10000 })
+      onOpenSettings()
     } catch (err) {
-      log.error('Sign-out before signing in again failed', err)
+      log.error('Device key repair failed', err)
+      toast.error(tPhaseF('phaseF.componentsSyncSyncStatus.repairFailed'))
     }
-    onOpenSettings()
   }
 
   const handlePauseResume = async (): Promise<void> => {
@@ -346,10 +352,10 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => void handleSignInAgain()}
+                onClick={() => void handleRepairDeviceKeys()}
                 className="h-7 text-xs"
               >
-                {tPhaseF('phaseF.componentsSyncSyncStatus.signInAgain')}
+                {tPhaseF('phaseF.componentsSyncSyncStatus.repairDeviceKeys')}
               </Button>
             ) : (
               <Button

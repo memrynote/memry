@@ -850,6 +850,19 @@ describe('SyncEngine', () => {
         errorCategory: 'device_keys_missing'
       })
       await engine.stop({ skipFinalPush: true })
+      // Sign-out stops the engine before deleting the keys: its last status
+      // must not be the missing-keys error.
+      expect(engine.getStatus().status).toBe('idle')
+    })
+
+    it('#then an emergency wipe ends idle, not on the error', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      ;(deps.getSigningKeys as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+
+      await engine.performEmergencyWipe()
+
+      expect(engine.getStatus().status).toBe('idle')
     })
   })
 

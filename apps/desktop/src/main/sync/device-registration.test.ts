@@ -48,7 +48,14 @@ const mocks = vi.hoisted(() => ({
   dbRun: vi.fn(),
   dbInsert: vi.fn(),
   dbValues: vi.fn(),
-  currentDeviceRow: vi.fn((): { id: string } | undefined => undefined)
+  currentDeviceRow: vi.fn((): { id: string } | undefined => undefined),
+  getValidAccessToken: vi.fn(),
+  stopSyncRuntime: vi.fn(),
+  teardownSession: vi.fn()
+}))
+
+vi.mock('./session-teardown', () => ({
+  teardownSession: (...args: unknown[]) => mocks.teardownSession(...args)
 }))
 
 vi.mock('electron', () => ({
@@ -126,7 +133,8 @@ vi.mock('./http-client', () => ({
 vi.mock('./runtime', () => ({
   getSyncEngine: (...args: unknown[]) => mocks.getSyncEngine(...args),
   getNoteBodyOutbox: (...args: unknown[]) => mocks.getNoteBodyOutbox(...args),
-  startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args)
+  startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args),
+  stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
 }))
 
 vi.mock('./key-verification', () => ({
@@ -143,6 +151,7 @@ vi.mock('../calendar/google/sync-service', () => ({
 vi.mock('./token-manager', () => ({
   ACCESS_TOKEN_EXPIRY_SECONDS: 3600,
   extractJtiFromToken: (...args: unknown[]) => mocks.extractJtiFromToken(...args),
+  getValidAccessToken: (...args: unknown[]) => mocks.getValidAccessToken(...args),
   retrieveToken: (...args: unknown[]) => mocks.retrieveToken(...args),
   scheduleTokenRefresh: (...args: unknown[]) => mocks.scheduleTokenRefresh(...args),
   storeToken: (...args: unknown[]) => mocks.storeToken(...args)
@@ -178,6 +187,7 @@ function setupDb() {
   const db = {
     transaction: vi.fn((fn: (txArg: typeof tx) => void) => fn(tx)),
     insert: mocks.dbInsert,
+    delete: mocks.dbDelete,
     // The vault's current-device row, read by ensureDeviceRowForVault.
     select: vi.fn(() => ({
       from: () => ({ where: () => ({ get: () => mocks.currentDeviceRow() }) })
@@ -546,6 +556,75 @@ describe('device registration', () => {
 
       expect(mocks.deleteKey).not.toHaveBeenCalled()
       expect(mocks.deleteFromServer).not.toHaveBeenCalled()
+    })
+  })
+  // #2866: the repair keeps the sync queue. It never calls the sign-out that
+  // drops queued task and project edits.
+  describe('repairDeviceKeys', () => {
+    beforeEach(() => {
+      mocks.retrieveKey.mockResolvedValue(new Uint8Array([6]))
+      mocks.getValidAccessToken.mockResolvedValue('access')
+      mocks.getStoredDeviceId.mockImplementation(
+        () => mocks.setStoredDeviceId.mock.calls.at(-1)?.[0]
+      )
+      mocks.currentDeviceRow.mockReturnValue(undefined)
+    })
+
+    it('restores the device row when the keychain key is still registered', async () => {
+      mocks.getFromServer.mockResolvedValue({
+        devices: [
+          {
+            id: 'other',
+            name: 'Phone',
+            platform: 'ios',
+            signingPublicKey: 'b64-9',
+            revokedAt: null
+          },
+          {
+            id: 'device-7',
+            name: 'Mac',
+            platform: 'macos',
+            signingPublicKey: 'b64-1-2-3',
+            revokedAt: null
+          }
+        ]
+      })
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({ status: 'repaired' })
+
+      expect(mocks.setStoredDeviceId).toHaveBeenCalledWith('device-7')
+      expect(mocks.dbValues).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'device-7', isCurrentDevice: true })
+      )
+      // Restarted so the dirty sweep queues edits made with offline clocks.
+      expect(mocks.stopSyncRuntime).toHaveBeenCalled()
+      expect(mocks.startSyncRuntime).toHaveBeenCalled()
+      expect(mocks.dbInsert.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.startSyncRuntime.mock.invocationCallOrder[0]
+      )
+      expect(mocks.teardownSession).not.toHaveBeenCalled()
+    })
+
+    it('signs out keeping the queue when the key is not on the account', async () => {
+      mocks.getFromServer.mockResolvedValue({ devices: [] })
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({ status: 'sign-in-required' })
+
+      expect(mocks.teardownSession).toHaveBeenCalledWith('integrity')
+      expect(mocks.teardownSession).not.toHaveBeenCalledWith('logout')
+      expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+    })
+
+    it('signs out keeping the queue when the keychain has no signing key', async () => {
+      mocks.retrieveKey.mockResolvedValue(null)
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({ status: 'sign-in-required' })
+
+      expect(mocks.getFromServer).not.toHaveBeenCalled()
+      expect(mocks.teardownSession).toHaveBeenCalledWith('integrity')
     })
   })
 })
