@@ -23,10 +23,12 @@ import { folderExists } from '../vault/folders'
 import { generateContentHash } from '../vault/frontmatter'
 import { getStatus } from '../vault/index'
 import { createSnapshot } from '../vault/notes-versions'
-import { getNoteAttachmentsDir } from '../vault/attachments'
-import { releaseLockedFile, setFileReadOnly } from './files'
+import { getAttachmentsRoot, getNoteAttachmentsDir } from '../vault/attachments'
+import { watchLockedAttachments } from './attachment-watch'
+import { protectFileAsFound, releaseLockedFile } from './files'
 import {
   getVaultLockState,
+  hasAnyVaultLock,
   invalidateVaultLocks,
   isNoteLocked,
   isVaultPathLocked,
@@ -91,9 +93,9 @@ async function protectNoteFile(noteId: string, relativePath: string, root: strin
       writeBaseline(getDatabase(), noteId, content, generateContentHash(content))
     }
   }
-  await setFileReadOnly(absolutePath, true)
+  await protectFileAsFound(absolutePath)
   for (const attachment of await listFilesUnder(getNoteAttachmentsDir(root, noteId))) {
-    await setFileReadOnly(attachment, true)
+    await protectFileAsFound(attachment)
   }
 }
 
@@ -112,6 +114,8 @@ async function releaseNoteFile(
  * writable again with its baseline dropped. Every file a lock made read-only
  * and no lock covers any more gets its recorded mode back. A folder that was
  * just unlocked is passed in so files an older build locked are freed too.
+ * While any lock exists, the attachments folder is watched for files added
+ * from outside.
  */
 export async function reconcileLockedFiles(unlockedFolder?: string): Promise<void> {
   const root = vaultPath()
@@ -129,7 +133,7 @@ export async function reconcileLockedFiles(unlockedFolder?: string): Promise<voi
       const relative = path.relative(root, absolutePath).replace(/\\/g, '/')
       const noteId = getNoteIdByPath(relative)
       if (noteId) await protectNoteFile(noteId, relative, root)
-      else await setFileReadOnly(absolutePath, true)
+      else await protectFileAsFound(absolutePath)
     }
   }
 
@@ -151,6 +155,8 @@ export async function reconcileLockedFiles(unlockedFolder?: string): Promise<voi
   for (const relative of listFileModePaths(db)) {
     if (!isVaultPathLocked(relative)) await releaseLockedFile(path.join(root, relative))
   }
+
+  await watchLockedAttachments(hasAnyVaultLock() ? getAttachmentsRoot(root) : null)
 }
 
 let reconcileTimer: ReturnType<typeof setTimeout> | null = null

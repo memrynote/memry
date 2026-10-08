@@ -67,9 +67,11 @@ path and no longer covers the renamed folder. Lock the folder again under its ne
 
 Memry also marks the file of every locked note read-only on disk, together with the files in its
 attachments folder, so most editors and command-line tools refuse to save over them. A file moved
-into a locked folder, a locked note renamed, and a locked file replaced from outside Memry are
-read-only again as soon as Memry sees the change. Unlocking gives each file back the permissions
-it had before the lock.
+into a locked folder, a locked note renamed, a locked file replaced from outside Memry, and a file
+added to a locked note's attachments folder from outside Memry or by sync are read-only again as
+soon as Memry sees the change. Unlocking gives each file back the permissions it had before the
+lock. A file replaced from outside while locked gets the permissions of the new file, never those
+of the file it replaced.
 
 If a locked markdown note is changed or deleted anyway, Memry keeps the changed text as a version
 in the note's [version history](./version-history), writes the locked text back, and tells you which

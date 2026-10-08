@@ -97,9 +97,11 @@ export function getFileMode(db: DataDb, path: string): number | undefined {
     .get()?.mode
 }
 
-/** Keeps the first mode recorded for a path: later locks see the bits the lock itself set. */
 export function recordFileMode(db: DataDb, path: string, mode: number): void {
-  db.insert(vaultLockFileModes).values({ path, mode }).onConflictDoNothing().run()
+  db.insert(vaultLockFileModes)
+    .values({ path, mode })
+    .onConflictDoUpdate({ target: vaultLockFileModes.path, set: { mode } })
+    .run()
 }
 
 export function forgetFileMode(db: DataDb, path: string): void {

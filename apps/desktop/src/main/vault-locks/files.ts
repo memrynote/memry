@@ -59,27 +59,45 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 
 /**
  * The mode a lock change leaves the file in, or null when it already has it.
- * Locking records the file's permission bits once, then clears every write
- * bit; lifting the lock gives the recorded bits back. A file with no record
- * (no data DB yet, or locked by an older build) only gets the owner write bit.
+ * Locking records the file's permission bits, then clears every write bit;
+ * lifting the lock gives the recorded bits back. A file with no record (no
+ * data DB yet, or locked by an older build) only gets the owner write bit.
+ *
+ * The app's own writes to a locked file keep the record. A file found
+ * writable that the app did not just write was added or replaced from
+ * outside, so its bits replace the record: unlocking must never give it
+ * more than it had.
  */
-function nextMode(absolutePath: string, current: number, readOnly: boolean): number | null {
+function nextMode(
+  absolutePath: string,
+  current: number,
+  readOnly: boolean,
+  asFound: boolean
+): number | null {
   const relative = isDatabaseInitialized() ? lockableRelativePath(absolutePath) : null
   let recorded = relative === null ? undefined : getFileMode(getDatabase(), relative)
-  if (readOnly && recorded === undefined && relative !== null && current & 0o222) {
-    recorded = current & 0o777
+  const found = current & 0o777
+  if (
+    readOnly &&
+    relative !== null &&
+    current & 0o222 &&
+    (recorded === undefined || (asFound && recorded !== found))
+  ) {
+    recorded = found
     recordFileMode(getDatabase(), relative, recorded)
   }
-  const next = readOnly
-    ? (recorded ?? current & 0o777) & ~0o222
-    : (recorded ?? (current | 0o200) & 0o777)
-  return next === (current & 0o777) ? null : (current & 0o7000) | next
+  const next = readOnly ? (recorded ?? found) & ~0o222 : (recorded ?? (current | 0o200) & 0o777)
+  return next === found ? null : (current & 0o7000) | next
 }
 
-export async function setFileReadOnly(absolutePath: string, readOnly: boolean): Promise<void> {
+async function changeMode(
+  absolutePath: string,
+  readOnly: boolean,
+  asFound: boolean
+): Promise<void> {
   try {
     const { mode } = await fs.promises.stat(absolutePath)
-    const next = nextMode(absolutePath, mode, readOnly)
+    const next = nextMode(absolutePath, mode, readOnly, asFound)
     if (next !== null) await fs.promises.chmod(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
@@ -87,10 +105,19 @@ export async function setFileReadOnly(absolutePath: string, readOnly: boolean): 
   }
 }
 
+export async function setFileReadOnly(absolutePath: string, readOnly: boolean): Promise<void> {
+  await changeMode(absolutePath, readOnly, false)
+}
+
+/** Read-only, for a locked file the app did not just write: see `nextMode`. */
+export async function protectFileAsFound(absolutePath: string): Promise<void> {
+  await changeMode(absolutePath, true, true)
+}
+
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
   try {
     const { mode } = fs.statSync(absolutePath)
-    const next = nextMode(absolutePath, mode, readOnly)
+    const next = nextMode(absolutePath, mode, readOnly, false)
     if (next !== null) fs.chmodSync(absolutePath, next)
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
@@ -125,7 +152,7 @@ function forgetRecordedMode(absolutePath: string): void {
  */
 export async function protectLockedFile(absolutePath: string): Promise<void> {
   try {
-    if (isLockedFile(absolutePath) !== null) await setFileReadOnly(absolutePath, true)
+    if (isLockedFile(absolutePath) !== null) await protectFileAsFound(absolutePath)
   } catch (err) {
     log.warn('Could not protect a locked file changed outside the app', { error: err })
   }
