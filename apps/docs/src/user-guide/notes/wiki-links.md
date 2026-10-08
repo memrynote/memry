@@ -273,7 +273,33 @@ later `B 20%% tax` hide everything between them. A `%%` in a code block, or in i
 a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
 A `%%` with no partner is plain text.
 
-Footnotes are not supported yet.
+### Footnotes
+
+A footnote is another way to cite a note without a link in the sentence. Write a reference
+such as `[^1]` or `[^source]` in the text, and its definition on its own line, usually at the
+end of the note:
+
+```markdown
+The figure comes from last year's review[^source].
+
+[^source]: See [[Annual Review]], page 4.
+```
+
+The file keeps both lines exactly as written, so other Markdown apps and older memrynote
+versions read the same text. In the editor a reference shows as a small superscript number.
+Hover it to read the definition, and move the cursor into it to edit the raw `[^label]`. A
+definition line stays where you wrote it, in a muted style. Notes are numbered in the order
+they are first referenced, whatever their labels. A reference with no definition stays plain
+text.
+
+A link inside a definition works like any other link: it shows in the target's backlinks and
+on the graph.
+
+A PDF or HTML export prints each reference as a numbered superscript and lists the notes under
+**Notes** at the end, each with a link back to its reference. The definition lines are not
+printed where they stand, and a definition nothing references is left out.
+
+Inline footnotes such as `^[text]` are not supported and stay plain text.
 
 ## Backlinks Panel
 
