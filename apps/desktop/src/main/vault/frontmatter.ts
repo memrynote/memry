@@ -747,9 +747,12 @@ const TRUNCATED_SPAN_TAG_REGEX = /\s*<\/?(?:span|spa|sp|s)?(?:\s[^<>]*)?(?=\.\.\
 
 /**
  * Clean a snippet read from `note_cache`. Snippets cached before #2574 kept
- * raw `<span style="…">` tags, and a cached snippet is only recomputed when
- * the note's content changes, so unedited notes still carry them.
+ * raw `<span style="…">` tags, and those cached before BBF-26 kept `%%`
+ * comments. A cached snippet is only recomputed when the note's content
+ * changes, so unedited notes still carry them.
  */
 export function cleanCachedSnippet(snippet: string): string {
-  return stripInlineStyleSpanTags(snippet).replace(TRUNCATED_SPAN_TAG_REGEX, '')
+  return stripInlineStyleSpanTags(stripMarkdownComments(snippet))
+    .replace(TRUNCATED_SPAN_TAG_REGEX, '')
+    .replace(/\s{2,}/g, ' ')
 }
