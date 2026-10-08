@@ -4,12 +4,7 @@ import { createHash } from 'node:crypto'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
 import { markWritebackIgnored } from './crdt-writeback'
-import {
-  afterLockedFileWriteSync,
-  unprotectForRemoteWriteSync,
-  writeThroughLock,
-  writeThroughLockSync
-} from '../vault-locks/files'
+import { writeThroughLock, writeThroughLockSync } from '../vault-locks/files'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import type Database from 'better-sqlite3'
@@ -124,17 +119,11 @@ function writeNoteFileNow(absolutePath: string, content: string): void {
   markWritebackIgnored(absolutePath)
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
-  // Inline rather than through writeThroughLockSync: keeps these three lines
-  // as they are on main, which code scanning keys a known alert on.
-  const locked = unprotectForRemoteWriteSync(absolutePath)
-  try {
-    fs.writeFileSync(tmpPath, content, 'utf-8')
+  writeThroughLockSync(absolutePath, () => {
+    fs.writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
     fs.renameSync(tmpPath, absolutePath)
-    if (locked !== null) afterLockedFileWriteSync(absolutePath, locked, content)
-  } catch (err) {
-    if (locked !== null) afterLockedFileWriteSync(absolutePath, locked, null)
-    throw err
-  }
+    return content
+  })
 }
 
 async function writeNoteFileNowAsync(absolutePath: string, content: string): Promise<void> {
@@ -142,7 +131,7 @@ async function writeNoteFileNowAsync(absolutePath: string, content: string): Pro
   await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
   await writeThroughLock(absolutePath, async () => {
-    await fs.promises.writeFile(tmpPath, content, 'utf-8')
+    await fs.promises.writeFile(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
     await fs.promises.rename(tmpPath, absolutePath)
     return content
   })

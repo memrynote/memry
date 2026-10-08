@@ -199,29 +199,17 @@ export async function afterLockedFileWrite(
  * file, which become the locked baseline, or null.
  */
 export function writeThroughLockSync(absolutePath: string, write: () => string | null): void {
-  const relative = unprotectForRemoteWriteSync(absolutePath)
+  const relative = isLockedFile(absolutePath)
+  if (relative !== null) setFileReadOnlySync(absolutePath, false)
   let written: string | null = null
   try {
     written = write()
   } finally {
-    if (relative !== null) afterLockedFileWriteSync(absolutePath, relative, written)
+    if (relative !== null) {
+      setFileReadOnlySync(absolutePath, true)
+      if (written !== null) recordLockedBytes(relative, written)
+    }
   }
-}
-
-/** The two halves of {@link writeThroughLockSync}, for a writer that needs them inline. */
-export function unprotectForRemoteWriteSync(absolutePath: string): string | null {
-  const relative = isLockedFile(absolutePath)
-  if (relative !== null) setFileReadOnlySync(absolutePath, false)
-  return relative
-}
-
-export function afterLockedFileWriteSync(
-  absolutePath: string,
-  relative: string,
-  content: string | null
-): void {
-  setFileReadOnlySync(absolutePath, true)
-  if (content !== null) recordLockedBytes(relative, content)
 }
 
 export async function writeThroughLock(
