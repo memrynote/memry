@@ -27,8 +27,13 @@
  * note past the sync ceiling (measured in `blocknote-converter.ts`), and it
  * would be wrong the moment the serializer changed between builds: every
  * re-spelling the newer serializer does would read as an edit and push the
- * file to house style. Derived by the same code that produces `ours`, the
- * base can only ever differ from `ours` by real edits.
+ * file to house style. Derived by the parse that built the document, the
+ * base can only ever differ from `ours` by real edits. A parser that reads
+ * more than the one that built the document breaks that: builds before #2741
+ * dropped HTML comments, so their documents hold none, and this build's base
+ * holds each one, which reads as the document deleting them. The record says
+ * which parse it was read with, and the caller's `canonicalize` reads the
+ * source the same way.
  *
  * A line-level splice of two markdown texts is not guaranteed to parse to
  * either input, so the merge is never trusted on its own: the caller re-parses
@@ -151,6 +156,17 @@ export const MARKDOWN_SOURCE_MAP = 'markdownSource'
 // One key, one value, so a second seed replaces the record whole.
 const RECORD_KEY = 'record'
 
+/**
+ * `htmlComments` is set when the document was read from `source` with HTML
+ * comments kept as nodes (AF-015). A record without it was written by a build
+ * before #2741, whose parse dropped every comment. Older builds read only
+ * `source`.
+ */
+export interface MarkdownSourceRecord {
+  source: string
+  htmlComments: boolean
+}
+
 interface YMapLike {
   get(key: string): unknown
   set(key: string, value: unknown): void
@@ -169,18 +185,23 @@ export function writeMarkdownSourceToYDoc(doc: YDocLike, source: string | null):
     if (map.has(RECORD_KEY)) map.delete(RECORD_KEY)
     return
   }
-  if (readSource(map.get(RECORD_KEY)) === source) return
-  map.set(RECORD_KEY, { source })
+  const current = readRecord(map.get(RECORD_KEY))
+  if (current?.source === source && current.htmlComments) return
+  map.set(RECORD_KEY, { source, htmlComments: true })
 }
 
 export function readMarkdownSourceFromYDoc(doc: YDocLike): string | null {
-  return readSource(doc.getMap(MARKDOWN_SOURCE_MAP).get(RECORD_KEY))
+  return readMarkdownSourceRecordFromYDoc(doc)?.source ?? null
 }
 
-function readSource(value: unknown): string | null {
+export function readMarkdownSourceRecordFromYDoc(doc: YDocLike): MarkdownSourceRecord | null {
+  return readRecord(doc.getMap(MARKDOWN_SOURCE_MAP).get(RECORD_KEY))
+}
+
+function readRecord(value: unknown): MarkdownSourceRecord | null {
   if (!value || typeof value !== 'object') return null
-  const source = (value as Record<string, unknown>).source
-  return typeof source === 'string' ? source : null
+  const { source, htmlComments } = value as Record<string, unknown>
+  return typeof source === 'string' ? { source, htmlComments: htmlComments === true } : null
 }
 
 // ---------------------------------------------------------------------------

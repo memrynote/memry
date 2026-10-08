@@ -3,6 +3,7 @@ import {
   diffLines,
   mergeMarkdownSource,
   readMarkdownSourceFromYDoc,
+  readMarkdownSourceRecordFromYDoc,
   restoreMarkdownSource,
   writeMarkdownSourceToYDoc,
   MAX_EDIT_DISTANCE
@@ -300,6 +301,20 @@ describe('shared-doc channel', () => {
     const set = vi.spyOn(map, 'set')
     writeMarkdownSourceToYDoc(doc, '* One')
     expect(set).not.toHaveBeenCalled()
+  })
+
+  it('marks a record as read with HTML comments kept, and one an older build wrote as not (BBF-29)', () => {
+    const doc = fakeDoc()
+    doc.getMap('markdownSource').set('record', { source: '* One' })
+    expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual({ source: '* One', htmlComments: false })
+
+    writeMarkdownSourceToYDoc(doc, '* One')
+
+    expect(doc.getMap('markdownSource').get('record')).toEqual({
+      source: '* One',
+      htmlComments: true
+    })
+    expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual({ source: '* One', htmlComments: true })
   })
 
   it('reads a malformed record as absent', () => {
