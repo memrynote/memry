@@ -127,6 +127,26 @@ describe('property definitions reach .memry/properties.md', () => {
     expect(PropertyDefinitionsService.get().listCalendarEnabledNames()).toEqual(['Due'])
   })
 
+  it('keeps a date definition color across calendar toggles', async () => {
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
+      name: 'Due',
+      type: 'date',
+      color: 'rose'
+    })
+    await invoke(NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY, {
+      name: 'Due',
+      showOnCalendar: true
+    })
+    await invoke(NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY, {
+      name: 'Due',
+      showOnCalendar: false
+    })
+
+    expect(fileProperties()).toEqual({
+      Due: { type: 'date', showOnCalendar: false, color: 'rose' }
+    })
+  })
+
   it('keeps stored fields that a create on an existing name does not send', async () => {
     const options = [{ value: 'Draft', color: 'gray' }]
     await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {

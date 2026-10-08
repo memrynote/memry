@@ -226,9 +226,10 @@ export class PropertyDefinitionsService {
     await this.enqueueWrite(async () => {
       const existing = this.cache.get(name)
       if (show) {
-        this.cache.set(name, { name, type: 'date', showOnCalendar: true })
-      } else if (existing?.type === 'date') {
-        // date entries only carry the calendar flag → drop the entry when off
+        const kept = existing?.type === 'date' ? existing : { name, type: 'date' as const }
+        this.cache.set(name, { ...kept, showOnCalendar: true })
+      } else if (existing?.type === 'date' && !existing.color && !existing.defaultValue) {
+        // a date entry holding only the calendar flag is dropped when it goes off
         this.cache.delete(name)
       } else if (existing) {
         this.cache.set(name, { ...existing, showOnCalendar: false })
@@ -357,14 +358,15 @@ export class PropertyDefinitionsService {
   private applyParsedData(data: PropertyDefinitionsFileData): void {
     this.cache.clear()
     for (const [name, def] of Object.entries(data.properties)) {
+      const shared = sharedFields(def)
       if (def.type === 'status') {
-        this.cache.set(name, { name, type: 'status', categories: def.categories })
+        this.cache.set(name, { name, type: 'status', categories: def.categories, ...shared })
       } else if (def.type === 'date') {
-        this.cache.set(name, { name, type: 'date', showOnCalendar: def.showOnCalendar })
+        this.cache.set(name, { name, type: 'date', showOnCalendar: def.showOnCalendar, ...shared })
       } else if (def.type === 'project') {
-        this.cache.set(name, { name, type: 'project' })
+        this.cache.set(name, { name, type: 'project', ...shared })
       } else {
-        this.cache.set(name, { name, type: def.type, options: def.options })
+        this.cache.set(name, { name, type: def.type, options: def.options, ...shared })
       }
     }
   }
@@ -381,17 +383,19 @@ export class PropertyDefinitionsService {
       if (!isPersistableDefinitionType(def.type)) continue
       // js-yaml refuses to dump `undefined`, and one such value fails the write
       // for every property in the file, not just its own.
+      const shared = sharedFields(def)
       if (def.type === 'status') {
         properties[name] = {
           type: 'status',
-          categories: def.categories ?? DEFAULT_STATUS_CATEGORIES
+          categories: def.categories ?? DEFAULT_STATUS_CATEGORIES,
+          ...shared
         }
       } else if (def.type === 'date') {
-        properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar ?? false }
+        properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar ?? false, ...shared }
       } else if (def.type === 'project') {
-        properties[name] = { type: 'project' }
+        properties[name] = { type: 'project', ...shared }
       } else {
-        properties[name] = { type: def.type, options: def.options ?? [] }
+        properties[name] = { type: def.type, options: def.options ?? [], ...shared }
       }
     }
 
@@ -437,7 +441,7 @@ export class PropertyDefinitionsService {
           type: def.type,
           options,
           defaultValue: def.defaultValue ?? null,
-          color: null,
+          color: def.color ?? null,
           clock: carried.get(def.name)?.clock ?? null,
           syncedAt: carried.get(def.name)?.syncedAt ?? null
         })
@@ -485,6 +489,7 @@ function definitionFromRow(row: {
   type: string
   options: string | null
   defaultValue: string | null
+  color: string | null
 }): PropertyDefinition | null {
   const type = row.type as PropertyDefinition['type']
   if (!isPersistableDefinitionType(type)) return null
@@ -497,18 +502,33 @@ function definitionFromRow(row: {
     }
   }
 
+  const shared = sharedFields(row)
   if (type === 'status') {
     const categories = (parsed as { categories?: StatusCategories } | null)?.categories
-    return { name: row.name, type, categories: categories ?? DEFAULT_STATUS_CATEGORIES }
+    return { name: row.name, type, categories: categories ?? DEFAULT_STATUS_CATEGORIES, ...shared }
   }
-  if (type === 'date') return { name: row.name, type, showOnCalendar: false }
-  if (type === 'project') return { name: row.name, type }
+  if (type === 'date') return { name: row.name, type, showOnCalendar: false, ...shared }
+  if (type === 'project') return { name: row.name, type, ...shared }
 
   return {
     name: row.name,
     type,
     options: Array.isArray(parsed) ? (parsed as SelectOption[]) : [],
-    ...(row.defaultValue ? { defaultValue: row.defaultValue } : {})
+    ...shared
+  }
+}
+
+/**
+ * The fields every definition type may carry, without empty ones: js-yaml
+ * refuses to dump `undefined`, and the file must not grow `null` keys.
+ */
+function sharedFields(def: {
+  defaultValue?: string | null
+  color?: string | null
+}): Pick<PropertyDefinition, 'defaultValue' | 'color'> {
+  return {
+    ...(def.defaultValue ? { defaultValue: def.defaultValue } : {}),
+    ...(def.color ? { color: def.color } : {})
   }
 }
 

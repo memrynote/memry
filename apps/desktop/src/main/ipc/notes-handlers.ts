@@ -587,12 +587,22 @@ export function registerNotesHandlers(): void {
     CreatePropertyDefinitionSchema,
     async (input) => {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-      await PropertyDefinitionsService.get().upsert({
+      const service = PropertyDefinitionsService.get()
+      // Create on an existing name merges: a field the caller did not send keeps
+      // its stored value, so a repeated create cannot reset the calendar flag.
+      // Type-specific fields carry over only when the type stays the same.
+      const existing = service.find(input.name)
+      const sameType = existing?.type === input.type ? existing : undefined
+      await service.upsert({
+        ...sameType,
         name: input.name,
         type: input.type,
-        options: input.type !== 'status' ? input.options : undefined,
+        options: input.type !== 'status' ? (input.options ?? sameType?.options) : undefined,
         defaultValue:
-          input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
+          input.defaultValue != null
+            ? stringifyDefaultValue(input.defaultValue)
+            : existing?.defaultValue,
+        color: input.color ?? existing?.color
       })
       return {
         success: true as const,
@@ -624,7 +634,8 @@ export function registerNotesHandlers(): void {
         defaultValue:
           input.defaultValue != null
             ? stringifyDefaultValue(input.defaultValue)
-            : existing.defaultValue
+            : existing.defaultValue,
+        color: input.color ?? existing.color
       })
       return {
         success: true as const,
