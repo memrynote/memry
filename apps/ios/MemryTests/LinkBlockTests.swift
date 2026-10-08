@@ -98,7 +98,7 @@ struct LinkBlockInsertTests {
         session.requestLink(.youtube)
         #expect(session.linkRequest == LinkBlockRequest(kind: .youtube, after: nil))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.insertLink(block)
         }
         #expect(session.linkRequest == nil)
@@ -138,13 +138,13 @@ struct LinkBlockInsertTests {
         }
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.undo()
         }
         #expect(editor.all.last == .delete(blockId: newId))
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.redo()
         }
         #expect(Array(editor.all.suffix(3)) == inserted)

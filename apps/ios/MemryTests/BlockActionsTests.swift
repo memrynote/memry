@@ -136,7 +136,7 @@ struct BlockActionRunnerTests {
         let session = model.session
         session.model = model
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             action(BlockActionRunner(session: session, target: target))
         }
         return (editor, session)
@@ -162,7 +162,7 @@ struct BlockActionRunnerTests {
         let runner = try #require(session.focusedRunner)
         #expect(runner.target.siblings == BlockSiblings(previous: "a", next: "c"))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             runner.moveDown()
         }
         #expect(editor.all == [.moveBlock(blockId: "b", afterBlockId: "c")])

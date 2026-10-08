@@ -153,7 +153,7 @@ struct AttachmentBlockTests {
         let session = model.session
         session.model = model
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.jpg", mimeType: "image/jpeg", size: 1))
         }
         let edits = editor.all
@@ -174,7 +174,7 @@ struct AttachmentBlockTests {
         let session = model.session
         session.model = model
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.pdf", mimeType: "application/pdf", size: 3))
         }
         guard case let .insertBlock(_, _, _, newId) = editor.all.first else {
@@ -183,12 +183,12 @@ struct AttachmentBlockTests {
         }
         let inserted = editor.all
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.undo()
         }
         #expect(editor.all.last == .delete(blockId: newId))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.redo()
         }
         #expect(Array(editor.all.suffix(5)) == inserted)
@@ -224,7 +224,7 @@ struct AttachmentBlockTests {
         session.selectionChanged(in: field)
         #expect(session.selectionMarks.contains("bold"))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.toggleMark("bold")
         }
         #expect(editor.all.last == .removeMark(blockId: "a", start: 0, end: 2, mark: "bold"))
@@ -476,7 +476,7 @@ struct InsertGridTests {
         let field = focused(target, in: [target], session: session)
         var seen = 0
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = {
+            session.reload = {
                 seen += 1
                 if seen == changes { done.resume() }
             }
@@ -513,7 +513,7 @@ struct InsertGridTests {
         let row = try #require(BlockCatalog.rows.first { $0.id == "two_columns" })
         let field = focused(block("a"), in: [block("a")], session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -548,7 +548,7 @@ struct InsertGridTests {
         let row = try #require(BlockCatalog.rows.first { $0.id == "whiteboard" })
         let field = focused(block("a"), in: [block("a")], session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -577,7 +577,7 @@ struct InsertGridTests {
         let row = try #require(BlockCatalog.rows.first { $0.id == "whiteboard" })
         let field = focused(block("a"), in: [block("a")], session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -614,7 +614,7 @@ struct InsertGridTests {
         ]
         let field = focused(inColumn, in: blocks, session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -642,7 +642,7 @@ struct InsertGridTests {
         let row = try #require(BlockCatalog.rows.first { $0.id == "math" })
         let field = focused(block("a"), in: [block("a")], session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -658,7 +658,7 @@ struct InsertGridTests {
         let row = try #require(BlockCatalog.rows.first { $0.id == "diagram" })
         let field = focused(block("a"), in: [block("a")], session: session)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
@@ -723,7 +723,7 @@ struct MoveBlockToNoteTests {
         session.requestMoveToNote()
         #expect(session.moveRequest == BlockMoveRequest(blockId: "a"))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.moveToNote("n2")
         }
         return (editor, session, relinked)

@@ -26,7 +26,7 @@ struct BlockSourceSheetTests {
         session.model = model
         session.editSource(BlockSourceRequest(blockId: "m", source: ""))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.saveSource("x^2")
         }
         #expect(editor.all == [.setProp(blockId: "m", name: "latex", value: "x^2")])
@@ -43,7 +43,7 @@ struct BlockSourceSheetTests {
         session.requestSync = { editsAtSync.append(editor.all) }
         session.editSource(BlockSourceRequest(blockId: "m", source: ""))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.saveSource("x^2")
         }
         #expect(editsAtSync == [[.setProp(blockId: "m", name: "latex", value: "x^2")]])
@@ -56,7 +56,7 @@ struct BlockSourceSheetTests {
         session.model = model
         session.editSource(BlockSourceRequest(blockId: "d", source: "graph TD; A-->B", kind: .diagram))
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.saveSource("graph TD; A-->C")
         }
         #expect(editor.all == [.replaceText(blockId: "d", text: "graph TD; A-->C", base: nil)])
