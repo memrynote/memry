@@ -25,6 +25,20 @@ export function blankMarkdownCode(markdown: string): string {
 }
 
 /**
+ * `blankMarkdownCode` with every offset kept: fenced lines and code spans become
+ * spaces of the same length, so a match in the result is a match at the same
+ * offset in the source.
+ */
+export function maskMarkdownCode(markdown: string): string {
+  if (!markdown.includes('`') && !markdown.includes('~~~')) return markdown
+  return walkMarkdown(markdown, {
+    fenceLine: (line) => ' '.repeat(line.length),
+    codeSpan: (source) => ' '.repeat(source.length),
+    comment: (source) => source
+  })
+}
+
+/**
  * Markdown with every HTML comment and `%% … %%` comment outside code removed,
  * for output a reader sees (PDF and HTML export). Code keeps its comment syntax
  * as text. A `%%` or `<!--` that never closes is text and stays.

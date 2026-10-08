@@ -62,7 +62,7 @@ describe('export-utils', () => {
       '<li id="fn-1">From <span class="wiki-link">Source Note</span>, <em>really</em>. <a href="#fnref-1" class="footnote-backref" aria-label="Back to reference 1">↩</a></li>'
     )
     expect(notes.indexOf('id="fn-1"')).toBeLessThan(notes.indexOf('id="fn-2"'))
-    expect(html).not.toContain('[^')
+    expect(html.replace('<code>[^src]</code>', '')).not.toContain('[^')
     expect(html).not.toContain('Never referenced')
   })
 

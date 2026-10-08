@@ -10,6 +10,7 @@ import { marked } from 'marked'
 import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
+import { scanFootnotes } from '@memry/shared/footnotes'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import { sanitizeSvgBytes } from '../icons/sanitize-svg'
 
@@ -69,8 +70,53 @@ export function markdownToHtml(markdown: string): string {
     stripMarkdownComments(markdown),
     (label) => `<span class="wiki-link">${label}</span>`
   )
+  const { body, notes } = renderFootnotes(processedMarkdown)
 
-  return marked.parse(processedMarkdown) as string
+  return (marked.parse(body) as string) + notes
+}
+
+/**
+ * Footnotes as numbered superscripts and a Notes list at the end with
+ * back-links (BBF-24). Every definition line leaves the body, referenced or
+ * not: printed in place it is raw syntax, and `marked` would read it as a link
+ * reference definition and link `[^label]` to its first word.
+ */
+function renderFootnotes(markdown: string): { body: string; notes: string } {
+  const { references, definitions } = scanFootnotes(markdown)
+  if (definitions.length === 0) return { body: markdown, notes: '' }
+
+  const uses = new Map<number, number>()
+  const edits = [
+    ...references.map(({ number, start, end }) => {
+      const use = (uses.get(number) ?? 0) + 1
+      uses.set(number, use)
+      const id = use === 1 ? `fnref-${number}` : `fnref-${number}-${use}`
+      return {
+        start,
+        end,
+        text: `<sup class="footnote-ref"><a href="#fn-${number}" id="${id}">${number}</a></sup>`
+      }
+    }),
+    ...definitions.map(({ start, end }) => ({ start, end, text: '' }))
+  ].sort((a, b) => b.start - a.start)
+
+  let body = markdown
+  for (const { start, end, text } of edits) body = body.slice(0, start) + text + body.slice(end)
+
+  const items = definitions
+    .filter((definition): definition is typeof definition & { number: number } =>
+      Boolean(definition.number)
+    )
+    .sort((a, b) => a.number - b.number)
+    .map(
+      ({ number, text }) =>
+        `<li id="fn-${number}">${marked.parseInline(text) as string} <a href="#fnref-${number}" class="footnote-backref" aria-label="Back to reference ${number}">\u21a9</a></li>`
+    )
+  const notes =
+    items.length === 0
+      ? ''
+      : `<section class="footnotes">\n<h2>Notes</h2>\n<ol>\n${items.join('\n')}\n</ol>\n</section>\n`
+  return { body, notes }
 }
 
 /**
@@ -265,6 +311,28 @@ export function getEmbeddedStyles(): string {
       background: #f0f7ff;
       padding: 1px 4px;
       border-radius: 3px;
+    }
+
+    /* Footnotes */
+    .footnote-ref {
+      font-size: 0.75em;
+      line-height: 0;
+    }
+
+    .footnotes {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e5e5;
+      font-size: 14px;
+      color: #444;
+    }
+
+    .footnotes h2 {
+      font-size: 16px;
+    }
+
+    .footnote-backref {
+      text-decoration: none;
     }
 
     /* Lists */
