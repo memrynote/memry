@@ -32,4 +32,23 @@ describe('date filters compare date-only values as calendar days', () => {
     expect(evaluateFilter(note('2026-10-07'), `due after "${picked(6)}"`)).toBe(true)
     expect(evaluateFilter(note('2026-10-07'), `due before "${picked(8)}"`)).toBe(true)
   })
+
+  it('falls back when a side is not a date', () => {
+    expect(evaluateFilter(note('2026-10-07'), 'due == "soon"')).toBe(false)
+    expect(evaluateFilter(note('soon'), 'due == "2026-10-07"')).toBe(false)
+    expect(evaluateFilter(note('2026-10-07'), 'due after "soon"')).toBe(false)
+  })
+
+  it('compares a stored Date or timestamp with a date-only value by local day', () => {
+    expect(evaluateFilter(note(new Date(2026, 9, 7, 15)), 'due == "2026-10-07"')).toBe(true)
+    expect(evaluateFilter(note(new Date(2026, 9, 8, 1).getTime()), 'due after "2026-10-07"')).toBe(
+      true
+    )
+  })
+
+  it('keeps instant comparison when neither side is date-only', () => {
+    expect(evaluateFilter(note('2026-10-07T10:00:00Z'), 'due after "2026-10-07T09:00:00Z"')).toBe(
+      true
+    )
+  })
 })
