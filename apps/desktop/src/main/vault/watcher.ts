@@ -86,6 +86,7 @@ import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
+import { ATTACHMENTS_DIR } from './attachments'
 
 const logger = createLogger('Watcher')
 
@@ -237,14 +238,13 @@ export class VaultWatcher {
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
     // (.memry, .obsidian, .git) and excluded dirs; the attachments folder is added
     // to the exclude set so binaries are not watched/indexed as notes.
-    const config = getConfig()
     const watchPaths = [vaultPath]
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
 
     // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = [...this.excludePatterns, config.attachmentsFolder].filter(Boolean)
+    const userExcludePatterns = [...this.excludePatterns, ATTACHMENTS_DIR]
 
     // Create watcher with chokidar
     this.watcher = chokidar.watch(watchPaths, {
@@ -425,7 +425,7 @@ export class VaultWatcher {
 
     const added: string[] = []
     const changed: string[] = []
-    const excludes = [...this.excludePatterns, getConfig().attachmentsFolder].filter(Boolean)
+    const excludes = [...this.excludePatterns, ATTACHMENTS_DIR]
     for (const relativePath of await findVaultFiles(vaultPath, vaultPath, excludes)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, relativePath)
