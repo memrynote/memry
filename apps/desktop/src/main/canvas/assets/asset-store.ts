@@ -10,23 +10,58 @@ import { and, eq, gt, inArray, isNull, ne, or } from 'drizzle-orm'
 import {
   canvasAssets,
   canvases,
+  deletedAssetReleases,
   type CanvasAssetRow,
   type NewCanvasAssetRow
 } from '@memry/db-schema'
 import type { DataDb } from '../../database'
 
-/** Vault-scoped dedup lookup: has any canvas already externalized this contentHash? */
+/**
+ * Vault-scoped dedup lookup: a row whose server chunks are still held, so a
+ * new canvas can point at them without uploading.
+ *
+ * A dedup hit adds no server ref, so the source row must belong to a canvas
+ * whose chunks no release can have freed (#3015):
+ * - a live canvas, or
+ * - a canvas THIS device deleted whose release is still pending inside the
+ *   grace period. The release runs here, after this upload's row exists, and
+ *   keeps every hash a live canvas holds.
+ * A row of any other deleted canvas is never a source. On a peer the delete
+ * left no release record and `canvases.deletedAt` is the apply time, not the
+ * deleter's, so the deleting device may already have freed those chunks.
+ * Rows of a canvas whose release ran are skipped too: only the kept ones
+ * survive, and they stay only as restore links (see `releaseCanvas`).
+ */
 export function findAssetByContentHash(
   db: DataDb,
   vaultId: string,
-  contentHash: string
+  contentHash: string,
+  now = Date.now()
 ): CanvasAssetRow | undefined {
-  return db
-    .select()
+  const row = db
+    .select({ asset: canvasAssets })
     .from(canvasAssets)
-    .where(and(eq(canvasAssets.vaultId, vaultId), eq(canvasAssets.contentHash, contentHash)))
+    .innerJoin(canvases, eq(canvases.id, canvasAssets.canvasId))
+    .leftJoin(
+      deletedAssetReleases,
+      and(
+        eq(deletedAssetReleases.itemType, 'canvas'),
+        eq(deletedAssetReleases.itemId, canvasAssets.canvasId)
+      )
+    )
+    .where(
+      and(
+        eq(canvasAssets.vaultId, vaultId),
+        eq(canvasAssets.contentHash, contentHash),
+        or(
+          isNull(canvases.deletedAt),
+          gt(deletedAssetReleases.deletedAt, now - ASSET_RELEASE_GRACE_MS)
+        )
+      )
+    )
     .limit(1)
     .get()
+  return row?.asset
 }
 
 /** Record a (canvas, asset) reference row. Upsert on the (canvasId, contentHash) PK. */

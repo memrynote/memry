@@ -71,4 +71,33 @@ describe('deleted-asset release runner', () => {
     await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
     await engine.stop({ skipFinalPush: true })
   })
+
+  it('stops counting as caught up once a later full sync fails', async () => {
+    const http = await import('./http-client')
+    const get = vi
+      .spyOn(http, 'getFromServer')
+      .mockResolvedValue({ items: [], deleted: [], hasMore: false, nextCursor: 0 })
+    const testDb = getDb()
+    ctx.db = testDb.db
+    ctx.dereference.mockClear()
+    testDb.db
+      .insert(deletedAssetReleases)
+      .values({ itemType: 'note', itemId: 'gone', deletedAt: 0, attachmentIds: ['a-1'] })
+      .run()
+
+    const engine = new SyncEngine(createMockDeps(testDb, { network: createMockNetwork(true) }))
+    await engine.start()
+    await engine.fullSync()
+    expect(engine.isCaughtUpWithServer()).toBe(true)
+
+    // Sync breaks afterwards, still online and not paused.
+    get.mockRejectedValue(new http.SyncServerError('Bad request', 400, 'VALIDATION_ERROR'))
+    await engine.fullSync().catch(() => {})
+
+    deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(ctx.dereference).not.toHaveBeenCalled()
+    expect(testDb.db.select().from(deletedAssetReleases).all()).toHaveLength(1)
+    await engine.stop({ skipFinalPush: true })
+  })
 })

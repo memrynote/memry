@@ -101,12 +101,15 @@ export function recordLocalItemDelete(itemType: 'note' | 'canvas', itemId: strin
 interface References {
   contentHashes: Set<string>
   attachmentIds: Set<string>
+  /** A live canvas whose scene on disk shows the image, by content hash. */
+  liveSceneOwner: Map<string, string>
 }
 
 /** Every asset an item this device can see, or can still restore, references. */
 function stillReferenced(db: DataDb, vaultPath: string, graceStart: number): References {
   const contentHashes = new Set<string>()
   const attachmentIds = new Set<string>()
+  const liveSceneOwner = new Map<string, string>()
 
   for (const note of db
     .select({ refs: noteMetadata.attachmentReferences, own: noteMetadata.attachmentId })
@@ -140,7 +143,9 @@ function stillReferenced(db: DataDb, vaultPath: string, graceStart: number): Ref
     }
     for (const { ref } of extractSceneFileRefs(scene)) {
       const hash = contentHashFromRef(ref)
-      if (hash) contentHashes.add(hash)
+      if (!hash) continue
+      contentHashes.add(hash)
+      if (!liveSceneOwner.has(hash)) liveSceneOwner.set(hash, canvas.id)
     }
   }
 
@@ -173,7 +178,7 @@ function stillReferenced(db: DataDb, vaultPath: string, graceStart: number): Ref
     }
   }
 
-  return { contentHashes, attachmentIds }
+  return { contentHashes, attachmentIds, liveSceneOwner }
 }
 
 /** Free one canvas's assets. Returns false when the server could not be reached. */
@@ -199,21 +204,31 @@ async function releaseCanvas(
   const chunkHashes = freed.flatMap((row) => row.chunkHashes)
   if (chunkHashes.length > 0 && !(await deps.dereference(chunkHashes)).ok) return false
 
-  // A kept row stays while no other canvas has a row for its hash: it is then
-  // the one local hash-to-chunks link for an image a live scene still shows (a
-  // canvas restored under a new id has no rows of its own), and a later upload
-  // of that image reuses the chunks instead of leaking them.
+  // A kept row whose hash no other canvas has a row for is the one local
+  // hash-to-chunks link for chunks this device still holds a ref on. A canvas
+  // restored from the OS trash comes back under a new id with no rows of its
+  // own, so the row moves to the live canvas whose scene shows the image: that
+  // canvas then dedups a re-upload onto those chunks, and its reconcile frees
+  // them when the image is dropped. A row left on the deleted canvas would be
+  // dead weight: dedup never reuses rows of a canvas past its grace period
+  // (`findAssetByContentHash`). A row kept only by a note reference stays put.
   for (const row of rows) {
-    const keep =
-      !freed.includes(row) &&
-      !db
+    if (!freed.includes(row)) {
+      const elsewhere = db
         .select({ id: canvasAssets.canvasId })
         .from(canvasAssets)
         .where(
           and(eq(canvasAssets.contentHash, row.contentHash), ne(canvasAssets.canvasId, canvasId))
         )
         .get()
-    if (keep) continue
+      if (!elsewhere) {
+        const owner = kept.liveSceneOwner.get(row.contentHash)
+        if (!owner) continue
+        db.insert(canvasAssets)
+          .values({ ...row, canvasId: owner })
+          .run()
+      }
+    }
     db.delete(canvasAssets)
       .where(
         and(eq(canvasAssets.canvasId, canvasId), eq(canvasAssets.contentHash, row.contentHash))

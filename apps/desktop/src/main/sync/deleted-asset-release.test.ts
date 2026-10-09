@@ -193,8 +193,8 @@ describe('deleted canvas assets', () => {
     expect(await release()).toBe(1)
     expect(dereferenced).toEqual([])
 
-    // The restored canvas uploads the image again: it reuses the stored chunks,
-    // so dropping it later frees them instead of leaking them.
+    // The link moved to the restored canvas, so uploading the image again reuses
+    // the stored chunks, and dropping it later frees them instead of leaking them.
     await uploadCanvasAsset(
       assetCtx(),
       restored.id,
@@ -253,10 +253,12 @@ describe('deleted canvas assets', () => {
     await reconcileCanvasAssets(assetCtx(), live.id, emptyScene)
     expect(dereferenced).toEqual([])
 
+    // The peer frees chunk-1 once its grace period ends, so the deleted
+    // canvas's row is no dedup source here: the image uploads fresh.
     const later = await canvasWithImage('Later', 'shared')
     advance(21)
     await reconcileCanvasAssets(assetCtx(), later.id, emptyScene)
-    expect(dereferenced).toEqual([['chunk-1']])
+    expect(dereferenced).toEqual([['chunk-2']])
   })
 })
 
