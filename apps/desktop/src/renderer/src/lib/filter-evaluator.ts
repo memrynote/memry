@@ -10,7 +10,7 @@
 import type { NoteWithProperties, FilterExpression } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
-import { compareDates } from '@/lib/filter-date-compare'
+import { compareCalendarDays, compareDates } from '@/lib/filter-date-compare'
 
 const log = createLogger('Evaluator:Filter')
 
@@ -411,6 +411,8 @@ function evaluateOperator(actual: unknown, operator: string, expected: unknown):
  * Check equality, handling strings case-insensitively.
  */
 function isEqual(actual: unknown, expected: unknown): boolean {
+  const days = compareCalendarDays(actual, expected)
+  if (days !== null) return days === 0
   if (typeof actual === 'string' && typeof expected === 'string') {
     return actual.toLowerCase() === expected.toLowerCase()
   }
