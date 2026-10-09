@@ -59,6 +59,11 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
     return 'number'
   }
 
+  // An unquoted YAML date (`due: 2026-10-07`) parses as a Date
+  if (value instanceof Date) {
+    return 'date'
+  }
+
   // Array of memry:// URIs -> relation (must precede the array->text fallback)
   if (isRelationValue(value)) {
     return 'relation'
@@ -105,7 +110,12 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
  *      the vault file — dropping the `property_refs` rows, the graph edge and
  *      the backlink with it. Deriving from the value is idempotent and
  *      self-heals notes already damaged that way.
- *   3. **Stored definition**, when there is one.
+ *   3. **Stored definition**, when there is one. An unquoted YAML date is the
+ *      exception to a `text` definition: builds before BBF-43 inferred `text`
+ *      for one and stored that row, and a learned row cannot be told apart
+ *      from one the user chose once it has synced or reached
+ *      `.memry/properties.md`. As text the value only ever showed as the JSON
+ *      of a Date, so no choice of the user's is lost.
  *   4. **Inference** from the value.
  *
  * Callers pass in whatever stored definition type they already looked up
@@ -135,6 +145,10 @@ export function resolvePropertyType(
 
   if (isRelationValue(value)) {
     return 'relation'
+  }
+
+  if (definitionType === 'text' && value instanceof Date) {
+    return 'date'
   }
 
   if (definitionType) {

@@ -771,7 +771,7 @@ describe('notes operations', () => {
         await projections.flushProjectionEvents()
 
         expect(fs.readFileSync(filePath, 'utf-8')).toBe(expected('\n', { due: 'due: 2026-10-09' }))
-        expect(getNotePropertiesAsRecord(testDb.db, id).due).toBe('"2026-10-09T00:00:00.000Z"')
+        expect(getNotePropertiesAsRecord(testDb.db, id).due).toBe('2026-10-09')
       })
 
       it('keeps CRLF and changes one line in a CRLF note', async () => {
