@@ -133,6 +133,33 @@ describe('createInboxCommands', () => {
     expect(services.linkToNotes).not.toHaveBeenCalled()
   })
 
+  test('fileItem hands plainChecklists to every destination that writes a note (#2796)', async () => {
+    const services = createServices()
+    const commands = createInboxCommands(services)
+    const option = { plainChecklists: true }
+
+    await commands.fileItem({ itemId: 'a', destination: { type: 'folder', path: 'x' }, ...option })
+    await commands.fileItem({ itemId: 'b', destination: { type: 'new-note' }, ...option })
+    await commands.fileItem({
+      itemId: 'c',
+      destination: { type: 'note', noteId: 'n1' },
+      ...option
+    })
+    await commands.linkToNote('d', 'n1', [], option)
+
+    expect(services.fileToFolder).toHaveBeenCalledWith('a', 'x', undefined, option)
+    expect(services.convertToNote).toHaveBeenCalledWith('b', option)
+    expect(services.linkToNotes).toHaveBeenCalledWith(
+      'c',
+      [{ kind: 'note', noteId: 'n1' }],
+      undefined,
+      undefined,
+      undefined,
+      option
+    )
+    expect(services.linkToNote).toHaveBeenCalledWith('d', 'n1', [], option)
+  })
+
   test('retryMetadata validates link state before scheduling a metadata job', async () => {
     const services = createServices({
       getItem: vi.fn(() =>
