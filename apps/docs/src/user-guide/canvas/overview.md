@@ -83,7 +83,13 @@ is an index of it, so copying that folder to another machine brings the boards
 along, and dropping an `.excalidraw` file into `canvases/` adds it as a canvas
 the next time memrynote opens the vault. Renaming a file outside the app doesn't
 create a duplicate either — the same board picks up the new filename on the next
-open, though its title in the sidebar stays as it was.
+open, though its title in the sidebar stays as it was. Deleting a file from
+`canvases/` while memrynote is open deletes that canvas, and the delete syncs to
+your other devices like one made in the app, except that the board's images
+stay in your vault so the file can bring them back if you restore it. Moving a file out of `canvases/`
+counts as deleting it, because memrynote only reads canvases from that folder.
+A file deleted while memrynote is closed, or while the vault's drive is
+disconnected, is not deleted from memrynote yet.
 
 Because your vault is the only store, the drawing engine's own **Open** and
 **Save to...** actions are hidden for _boards_: they would write a copy outside
