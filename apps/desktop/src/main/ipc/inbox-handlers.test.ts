@@ -571,6 +571,18 @@ describe('inbox-handlers', () => {
       })
     })
 
+    it('hands the plain checklist option of a link to the filing owner (#2796)', async () => {
+      ;(filingModule.linkToNote as Mock).mockResolvedValue({ success: true })
+
+      await invokeHandler(InboxChannels.invoke.LINK_TO_NOTE, 'item1', 'note1', ['tag'], {
+        plainChecklists: true
+      })
+
+      expect(filingModule.linkToNote).toHaveBeenCalledWith('item1', 'note1', ['tag'], undefined, {
+        plainChecklists: true
+      })
+    })
+
     it('should link to existing note', async () => {
       ;(filingModule.linkToNotes as Mock).mockResolvedValue({
         success: true

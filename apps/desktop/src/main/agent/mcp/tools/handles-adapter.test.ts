@@ -2354,6 +2354,38 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  it('marks inbox links to X as twitter and other social posts as social', async () => {
+    const item = (id: string, type: string, sourceUrl: string | null) => ({
+      id,
+      type,
+      sourceUrl,
+      captureSource: null,
+      title: id,
+      content: null,
+      transcription: null,
+      excerpt: null,
+      viewedAt: null,
+      createdAt: new Date('2026-05-12T00:00:00Z')
+    })
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      list: vi.fn().mockResolvedValue({
+        items: [
+          item('x-link', 'link', 'https://mobile.twitter.com/memry/status/1'),
+          item('bad-url', 'social', 'not a url'),
+          item('other-link', 'link', 'https://example.com/post')
+        ]
+      })
+    })
+
+    const listed = await createVaultServiceHandles(deps).inbox.list({})
+
+    expect(listed.map((entry) => [entry.id, entry.visual_type])).toEqual([
+      ['x-link', 'twitter'],
+      ['bad-url', 'social'],
+      ['other-link', undefined]
+    ])
+  })
+
   describe('checkbox lines from inbox filing, project import and templates (#2796)', () => {
     beforeEach(() => {
       mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
