@@ -1138,7 +1138,7 @@ describe('vault watcher', () => {
       { alternatives: {}, overflow: [] }
     )
     // …and the doc is handed back, since no editor asked for it
-    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id, { deferSnapshot: true })
   })
 
   it('leaves a note that has no persisted doc to its markdown seed', async () => {
@@ -1166,7 +1166,7 @@ describe('vault watcher', () => {
     await feedExternalEdit(cached!.id, notePath, 'Old body\n\n- [[Somewhere]]')
 
     expect(replaceNoteBodyInCrdt).not.toHaveBeenCalled()
-    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id, { deferSnapshot: true })
   })
 
   // ==========================================================================
