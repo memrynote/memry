@@ -67,6 +67,15 @@ describe('blankMarkdownCode', () => {
     expect(out).toContain('[[Block]] with a ` tick')
   })
 
+  it('closes a %% comment on a later %% on its opening line, inside inline code too', () => {
+    const line = 'Sale 50%% off, format `%%d` [[X]] `[[Code]]`'
+    expect(stripMarkdownComments(line)).toBe('Sale 50d` [[X]] `[[Code]]`')
+    const out = blankMarkdownCode(line)
+    expect(out).toContain('%% off, format `%%')
+    expect(out).not.toContain('[[X]]')
+    expect(out).toContain('[[Code]]')
+  })
+
   it('reads an unclosed %% as text', () => {
     expect(blankMarkdownCode('50%% off `[[Code]]`')).not.toContain('[[Code]]')
   })
