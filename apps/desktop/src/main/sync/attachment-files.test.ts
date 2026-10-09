@@ -178,6 +178,38 @@ describe('placeDownloadedFile', () => {
     ).toEqual([])
   })
 
+  it('queues no upload for an embed that is a file note of its own', () => {
+    upsertNoteMetadata(db, {
+      id: 'trip',
+      path: 'notes/trip.md',
+      title: 'trip',
+      createdAt: '2026-10-08T00:00:00.000Z',
+      modifiedAt: '2026-10-08T00:00:00.000Z'
+    })
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.writeFileSync(
+      path.join(vaultPath, 'notes', 'trip.md'),
+      '![p](../sources/photo.png)\n![d](../sources/data.txt)\n'
+    )
+    fs.mkdirSync(path.join(vaultPath, 'sources'), { recursive: true })
+    fs.writeFileSync(path.join(vaultPath, 'sources', 'photo.png'), 'png')
+    fs.writeFileSync(path.join(vaultPath, 'sources', 'data.txt'), 'txt')
+    upsertNoteMetadata(db, {
+      id: 'photo',
+      path: 'sources/photo.png',
+      title: 'photo',
+      fileType: 'image',
+      createdAt: '2026-10-08T00:00:00.000Z',
+      modifiedAt: '2026-10-08T00:00:00.000Z'
+    })
+
+    backfillUnsyncedAttachmentsWith({ db, vaultPath })
+
+    expect(listPendingUploads(db).map((row) => [row.noteId, row.diskPath])).toEqual([
+      ['trip', path.join(vaultPath, 'sources', 'data.txt')]
+    ])
+  })
+
   it('a placed and recorded file is not uploaded again', async () => {
     addNote('note-a', '![x](../sources/x.txt)\n')
     const landed = download('note-a', 'x.txt')
