@@ -1,5 +1,5 @@
 import type { AgentSourceRef, Message } from '@memry/contracts/ipc-agent'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -386,6 +386,76 @@ describe('AssistantMessage', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  describe('reasoning that grows after the answer started', () => {
+    const turn = (text: string, reasoning: string): Message => ({
+      ...assistantMessage(text),
+      status: 'streaming',
+      content: { role: 'assistant', data: { text, reasoning } }
+    })
+    const toggle = (): HTMLElement => screen.getByRole('button', { name: 'Show or hide reasoning' })
+
+    // jsdom has no layout; give the viewport a fixed box the test can scroll.
+    function stubViewport(container: HTMLElement): { el: HTMLElement; grow: (h: number) => void } {
+      const el = container.querySelector<HTMLElement>('.aicss-tr-viewport')
+      if (!el) throw new Error('no reasoning viewport')
+      let height = 500
+      Object.defineProperty(el, 'clientHeight', { configurable: true, get: () => 180 })
+      Object.defineProperty(el, 'scrollHeight', { configurable: true, get: () => height })
+      Object.defineProperty(el, 'scrollTop', { configurable: true, writable: true, value: 0 })
+      return { el, grow: (h) => (height = h) }
+    }
+
+    it('puts the header back into its live state without unfolding the block', () => {
+      const { rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
+      rerender(<AssistantMessage message={turn('Let me read the note.', 'Step one.')} />)
+      expect(toggle()).toHaveTextContent('Thought')
+
+      rerender(<AssistantMessage message={turn('Let me read the note.', 'Step one. Step two.')} />)
+      expect(toggle()).toHaveTextContent('Thinking…')
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+
+      rerender(
+        <AssistantMessage message={turn('Let me read the note. Done.', 'Step one. Step two.')} />
+      )
+      expect(toggle()).not.toHaveTextContent('Thinking…')
+    })
+
+    it('keeps the newest line of an opened block in view as reasoning grows', async () => {
+      const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
+      rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
+      const { el, grow } = stubViewport(container)
+      await userEvent.click(toggle())
+
+      grow(700)
+      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two.')} />)
+      expect(el.scrollTop).toBe(700)
+    })
+
+    it('leaves a reader who scrolled up where they are, and follows again at the bottom', async () => {
+      const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
+      rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
+      const { el, grow } = stubViewport(container)
+      await userEvent.click(toggle())
+
+      el.scrollTop = 200
+      fireEvent.scroll(el)
+      grow(700)
+      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two.')} />)
+      expect(el.scrollTop).toBe(200)
+
+      el.scrollTop = 700 - 180
+      fireEvent.scroll(el)
+      grow(900)
+      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two. Three.')} />)
+      expect(el.scrollTop).toBe(900)
+    })
+
+    it('lets the reader scroll while the model is still thinking', () => {
+      const { container } = render(<AssistantMessage message={turn('', 'Step one.')} />)
+      expect(container.querySelector('.aicss-tr-viewport')).toHaveClass('is-scroll')
+    })
   })
 
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
