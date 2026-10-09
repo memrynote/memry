@@ -4,6 +4,7 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import { initAllFieldClocks } from '@memry/sync-client/field-merge'
+import { hasOfflineClockData, rebindOfflineClockData } from '@memry/sync-client/offline-clock'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../calendar/field-merge-calendar'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 
@@ -68,6 +69,20 @@ export class CalendarEventSyncService {
           .run()
 
         return { ...local, clock: nextClock, fieldClocks: updatedFieldClocks }
+      },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) => {
+        const row = deps.db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
+        if (!row || !hasOfflineClockData(row.clock, row.fieldClocks)) return null
+        const rebound = rebindOfflineClockData(
+          row.clock,
+          row.fieldClocks,
+          deviceId,
+          CALENDAR_EVENT_SYNCABLE_FIELDS
+        )
+        deps.db.update(calendarEvents).set(rebound).where(eq(calendarEvents.id, itemId)).run()
+        return { ...row, ...rebound } as Record<string, unknown>
       },
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {

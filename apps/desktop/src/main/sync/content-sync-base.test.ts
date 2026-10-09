@@ -291,17 +291,16 @@ describe('ContentSyncService', () => {
       })
     })
 
-    it('#then the delete enqueue is dropped WITHOUT any warning', () => {
-      // Asymmetry in the shared controller: enqueueDelete returns before
-      // handleMissingDevice, so a delete issued while the device id is
-      // momentarily unavailable disappears with no trace in the log. Recorded
-      // here as current behaviour, not endorsed.
+    it('#then the delete is queued under _offline for the push to rebind (#2897)', () => {
+      // The row is usually gone by now, so the queue is the only place the
+      // delete can survive until a device id exists.
       const { service, queue } = makeService(null)
 
       service.enqueueDelete('note-1')
 
-      expect(queue.items).toEqual([])
-      expect(mocks.log.warn).not.toHaveBeenCalled()
+      expect(queue.items).toHaveLength(1)
+      expect(queue.items[0]).toMatchObject({ operation: 'delete' })
+      expect(JSON.parse(queue.items[0].payload).clock).toMatchObject({ _offline: 1 })
     })
 
     it('#then the device id is read per enqueue, so sync recovers once it appears', () => {

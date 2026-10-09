@@ -4,7 +4,7 @@ import { canvases } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-
+import { recoverOfflineDocClock } from './offline-clock'
 
 interface CanvasSyncDeps {
   queue: SyncQueueManager
@@ -49,14 +49,22 @@ export class CanvasSyncService {
       // tombstone row to build its delete payload.
       load: (id) =>
         deps.db.select().from(canvases).where(eq(canvases.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+          Record<string, unknown> | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
         deps.db.update(canvases).set({ clock: newClock }).where(eq(canvases.id, itemId)).run()
         return { ...local, clock: newClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db.select().from(canvases).where(eq(canvases.id, itemId)).get() as
+            Record<string, unknown> | undefined,
+          deviceId,
+          (clock) => deps.db.update(canvases).set({ clock }).where(eq(canvases.id, itemId)).run()
+        ),
       serialize: (local) => ({
         id: local.id,
         vaultId: local.vaultId,

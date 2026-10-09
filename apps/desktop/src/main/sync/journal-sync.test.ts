@@ -296,12 +296,14 @@ describe('JournalSyncService deletes', () => {
     expect(rows[0].operation).toBe('delete')
   })
 
-  it('does not enqueue a delete without a device id', () => {
+  it('queues a delete under _offline without a device id (#2897)', () => {
     seedJournalNote()
 
     makeService(null).enqueueDelete(JOURNAL_ID, DATE)
 
-    expect(queueRows()).toEqual([])
+    const rows = queueRows()
+    expect(rows.map((row) => row.operation)).toEqual(['delete'])
+    expect(JSON.parse(rows[0].payload).clock).toMatchObject({ _offline: 1 })
   })
 })
 

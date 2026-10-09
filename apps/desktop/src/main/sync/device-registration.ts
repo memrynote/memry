@@ -424,10 +424,9 @@ const performDeviceKeysRepair = async (): Promise<RepairDeviceKeysResult> => {
         // Pulls cache every device as a peer row, this one included.
         db.delete(syncDevices).where(eq(syncDevices.id, device.id)).run()
         await ensureDeviceRowForVault(db)
-        // A restart, not activate(): without a device id, record edits were
-        // not queued. The start's dirty sweep queues tasks, projects and the
-        // other swept types, rebinding their offline clocks. Types exempt from
-        // the sweep (dirty-recovery.ts DIRTY_RECOVERY) are not recovered.
+        // A restart, not activate(): edits made without a device id carry
+        // `_offline` clocks. The start's dirty recovery queues the swept types
+        // and rebinds the queued edits of the rest (#2897).
         await stopSyncRuntime()
         const engine = await startSyncRuntime()
         logger.info('Restored the device row from the registered signing key', {

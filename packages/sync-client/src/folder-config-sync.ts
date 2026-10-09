@@ -4,6 +4,7 @@ import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
@@ -57,6 +58,16 @@ export class FolderConfigSyncService {
 
         return { ...local, clock: newClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
+            Record<string, unknown> | undefined,
+          deviceId,
+          (clock) =>
+            deps.db.update(folderConfigs).set({ clock }).where(eq(folderConfigs.path, itemId)).run()
+        ),
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
