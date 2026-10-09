@@ -535,17 +535,20 @@ paths keep the note's link rows, their ids and their `pinned`/`position`.
 ### Dirty recovery
 
 Outside the sync-intent path, a local edit writes the row, the clock and the outbox row in three
-transactions. A crash between the last two, or an `increment*ClockOffline` fallback while the runtime
-is down, leaves a clocked row with no queue row. `recoverDirtyItems` runs at every sync runtime start
-and re-enqueues those rows, driven
-by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select the rows with
-`syncedAt IS NULL` or a modification time past `syncedAt`, then hand each to the type's local sync
-service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
-`seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
-stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
-device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
-configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
-wait for its per-type rollout (#2301); agent chat has no local push path.
+transactions. A crash between the last two, or an `increment*ClockOffline` fallback while the
+runtime is down, leaves a clocked row with no queue row. `recoverDirtyItems` runs at every sync
+runtime start and re-enqueues those rows, driven by `DIRTY_RECOVERY`: one entry per record sync item
+type, either a sweep (select the rows with `syncedAt IS NULL` or a modification time past
+`syncedAt`, then hand each to the type's local sync service) or an exemption naming why the type has
+no usable dirty marker. Clock-less rows are left to `seedUnclocked`. A never-synced row goes out as
+a create; a modified one as a recovered update at its stored clock. Both rebind `_offline` ticks
+first through `recoverPendingChange`, so the placeholder device id never reaches the wire. A queued
+`_offline` create or update whose service queues nothing fresh at rebind (the row is gone or no
+longer syncs) is dropped and logged, so the queue drains; queued deletes are always rebound, never
+dropped. Only a `clock` or `fieldClocks` entry counts as `_offline`; a task activity row's
+`deviceId` field may read `_offline` and is pushed as is. Exempt types (settings, tag definitions
+and categories, folder configs, property definitions, the calendar types, canvases) are not on the
+sync-intent path yet and wait for its per-type rollout (#2301); agent chat has no local push path.
 
 Three `sync_run_completed` events carry the P4.2 gate signal, with numeric metrics only:
 

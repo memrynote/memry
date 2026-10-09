@@ -53,7 +53,7 @@ describe('note sync state (#2647)', () => {
   }
   const record = (
     noteId: string,
-    event: 'sent' | 'confirmed' | 'failed' | 'rejected',
+    event: 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected',
     at: number
   ) => recordNoteBodyPush(noteId, event, at, dbs.data)
   const state = (noteId: string, syncEligible = true) =>
@@ -151,6 +151,23 @@ describe('note sync state (#2647)', () => {
     expect(state('n1')).toMatchObject({ state: 'rejected', lastRejectedAt: T0 + 2000 })
   })
 
+  it('stays rejected after a later accepted update until a snapshot is stored', () => {
+    addNote('n1')
+    record('n1', 'rejected', T0)
+    record('n1', 'sent', T0 + 1000)
+    record('n1', 'confirmed', T0 + 2000)
+
+    expect(state('n1')).toMatchObject({ state: 'rejected', bodyConfirmedAt: T0 + 2000 })
+    expect(listUnsentNotes({ dbs, syncEligible: true }).notes).toMatchObject([
+      { id: 'n1', state: 'rejected', reasons: ['rejected'] }
+    ])
+
+    record('n1', 'snapshot', T0 + 3000)
+
+    expect(state('n1')).toMatchObject({ state: 'confirmed', bodyConfirmedAt: T0 + 3000 })
+    expect(listUnsentNotes({ dbs, syncEligible: true }).total).toBe(0)
+  })
+
   it('counts a queued record change and a file the doc has not taken as waiting', () => {
     addNote('n1')
     addNote('n2')
@@ -190,7 +207,7 @@ describe('note sync state (#2647)', () => {
     record('d', 'rejected', T0 + 9000)
     record('e', 'confirmed', T0)
     record('f', 'rejected', T0)
-    record('f', 'confirmed', T0 + 1)
+    record('f', 'snapshot', T0 + 1)
     queueRow('local', 'note_body', T0)
     queueRow('ghost', 'note_body', T0)
 
@@ -229,6 +246,7 @@ describe('note sync state (#2647)', () => {
         lastConfirmedAt: T0 + 1,
         lastFailedAt: null,
         lastRejectedAt: null,
+        lastSnapshotAt: null,
         updatedAt: T0 + 1
       }
     ])

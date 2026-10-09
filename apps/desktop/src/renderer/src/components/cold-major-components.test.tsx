@@ -513,7 +513,8 @@ vi.mock('@/components/tasks/repeat-indicator', () => ({
 vi.mock('@/components/tasks/sortable-subtask-list', () => ({
   SortableSubtaskList: ({ subtasks }: any) => (
     <div>{subtasks.map((task: Task) => `sub ${task.title}`).join(',')}</div>
-  )
+  ),
+  nestedListClass: () => ''
 }))
 
 vi.mock('@/components/tasks/subtask-progress-indicator', () => ({

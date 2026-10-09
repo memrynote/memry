@@ -132,6 +132,7 @@ vi.mock('./local-mutations', () => ({
 // Real path math and real snapshots would need the vault singleton and the
 // index DB; the note's absolute path is the only thing write-back needs here.
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => mocks.vaultRoot,
   getDefaultNoteDir: () => path.join(mocks.vaultRoot, 'notes'),
   toRelativePath: (absolute: string) => path.relative(mocks.vaultRoot, absolute),
   toAbsolutePath: (relative: string) => path.join(mocks.vaultRoot, relative),

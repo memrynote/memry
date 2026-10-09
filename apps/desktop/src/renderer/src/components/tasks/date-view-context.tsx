@@ -52,6 +52,18 @@ export const useDateViewValue = (
     return { tasks, pathOf, openPath }
   }, [allTasks, projects, openPath])
 
+/**
+ * The tasks a date view's rows nest: `tasks` with the listed rows dropped from
+ * every `subtaskIds`, so a task that is its own row never shows again inside a
+ * parent's branch, at any depth.
+ */
+export const nestUnlisted = (tasks: Task[], rowIds: ReadonlySet<string>): Task[] =>
+  tasks.map((task) =>
+    task.subtaskIds.some((id) => rowIds.has(id))
+      ? { ...task, subtaskIds: task.subtaskIds.filter((id) => !rowIds.has(id)) }
+      : task
+  )
+
 /** A subtask's path in the date view it is listed in; null anywhere else. */
 export const useTaskPath = (task: Task): string[] | null => useDateView()?.pathOf(task) ?? null
 

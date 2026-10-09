@@ -75,6 +75,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
           .where(eq(propertyDefinitions.name, itemId))
           .run()
 
+        writePulledDefinitionToFile(tx, itemId)
         ctx.emit(PropertiesChannels.events.DEFINITION_CHANGED, { name: itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -92,6 +93,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
         })
         .run()
 
+      writePulledDefinitionToFile(tx, itemId)
       ctx.emit(PropertiesChannels.events.DEFINITION_CHANGED, { name: itemId })
       return 'applied'
     })
@@ -183,6 +185,17 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
     }
     return items.length
   }
+}
+
+/**
+ * `.memry/properties.md` wins over the row in the post-pull reload, so the
+ * applied row has to reach the file first or the reload reverts it (#2896).
+ * The write joins the page's crash journal (#2284).
+ */
+function writePulledDefinitionToFile(db: DrizzleDb, name: string): void {
+  const row = db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, name)).get()
+  const fileWrite = row && PropertyDefinitionsService.tryGet()?.applyRemoteUpsert(row)
+  if (fileWrite) writeSyncedVaultFile(fileWrite.filePath, fileWrite.content)
 }
 
 export const propertyDefinitionHandler = new PropertyDefinitionHandler()

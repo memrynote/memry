@@ -105,6 +105,37 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #2922: the note page menu's Rename dialog opened empty, so typing
+    /// replaced the title instead of editing it.
+    func testRenameFromTheNotePageMenuStartsFromTheCurrentTitle() throws {
+        try openNotes()
+        let title = "[agent] \(run) rename"
+        app.buttons["notes.addButton"].tap()
+        let titleField = app.textFields["Title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 10))
+        titleField.typeText(title)
+        app.buttons["BackButton"].tap()
+        // Relaunched for the stored title, as the test above does.
+        app.terminate()
+        try openNotes()
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+
+        app.buttons["More actions for this note"].firstMatch.tap()
+        app.buttons["Rename"].firstMatch.tap()
+        let alert = app.alerts["Rename this note"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 10))
+        XCTAssertEqual(alert.textFields.firstMatch.value as? String, title)
+        alert.buttons["Cancel"].tap()
+
+        app.buttons["BackButton"].tap()
+        row.press(forDuration: 1)
+        app.buttons["Delete note"].tap()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
     private func openNotes() throws {
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"

@@ -67,6 +67,15 @@ describe('blankMarkdownCode', () => {
     expect(out).toContain('[[Block]] with a ` tick')
   })
 
+  it('closes a %% comment on a later %% on its opening line, inside inline code too', () => {
+    const line = 'Sale 50%% off, format `%%d` [[X]] `[[Code]]`'
+    expect(stripMarkdownComments(line)).toBe('Sale 50d` [[X]] `[[Code]]`')
+    const out = blankMarkdownCode(line)
+    expect(out).toContain('%% off, format `%%')
+    expect(out).not.toContain('[[X]]')
+    expect(out).toContain('[[Code]]')
+  })
+
   it('reads an unclosed %% as text', () => {
     expect(blankMarkdownCode('50%% off `[[Code]]`')).not.toContain('[[Code]]')
   })
@@ -111,7 +120,35 @@ describe('stripMarkdownComments', () => {
     expect(stripMarkdownComments('a <!-- b')).toBe('a <!-- b')
   })
 
+  it('never lets a comment in a table row cross a cell pipe (BBF-51)', () => {
+    const percent = '| a | b |\n| --- | --- |\n| 50%% | 20%% |'
+    const html = '| a | b |\n| --- | --- |\n| 1 <!-- x | y --> | z |'
+    expect(stripMarkdownComments(percent)).toBe(percent)
+    expect(stripMarkdownComments(html)).toBe(html)
+  })
+
+  it('reads a comment inside one table cell as a comment, wikilink alias included', () => {
+    expect(stripMarkdownComments('| a %% [[A|alias]] %% | b |')).toBe('| a  | b |')
+    expect(stripMarkdownComments('| a <!-- [[A|alias]] --> | b |')).toBe('| a  | b |')
+  })
+
   it('works on CRLF notes', () => {
     expect(stripMarkdownComments('A\r\n%%\r\n[[X]]\r\n%%\r\nB')).toBe('A\r\n\r\nB')
+  })
+})
+
+describe('an inline <!-- before a fenced block', () => {
+  const inlineThenFence = ['a <!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
+
+  it('does not close on a --> inside the fence', () => {
+    expect(blankMarkdownCode(inlineThenFence)).toBe(
+      ['a <!--', '', '', '', 'After [[After]]'].join('\n')
+    )
+    expect(stripMarkdownComments(inlineThenFence)).toBe(inlineThenFence)
+  })
+
+  it('still lets an HTML-block comment run through a fence to its -->', () => {
+    const block = ['<!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
+    expect(stripMarkdownComments(block)).toBe(' y\n```\nAfter [[After]]')
   })
 })

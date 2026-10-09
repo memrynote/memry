@@ -25,7 +25,7 @@ import { getStatus } from '../vault/index'
 import { createSnapshot } from '../vault/notes-versions'
 import { getAttachmentsRoot, getNoteAttachmentsDir } from '../vault/attachments'
 import { watchLockedAttachments } from './attachment-watch'
-import { protectFileAsFound, releaseLockedFile } from './files'
+import { adoptCopiedVaultIdentities, protectFileAsFound, releaseLockedFile } from './files'
 import {
   getVaultLockState,
   hasAnyVaultLock,
@@ -156,7 +156,9 @@ export async function reconcileLockedFiles(unlockedFolder?: string): Promise<voi
     if (!isVaultPathLocked(relative)) await releaseLockedFile(path.join(root, relative))
   }
 
-  await watchLockedAttachments(hasAnyVaultLock() ? getAttachmentsRoot(root) : null)
+  // The vault may have closed while this ran; its close already stopped the watch.
+  const watchRoot = vaultPath() === root && hasAnyVaultLock() ? getAttachmentsRoot(root) : null
+  await watchLockedAttachments(watchRoot)
 }
 
 let reconcileTimer: ReturnType<typeof setTimeout> | null = null
@@ -264,6 +266,7 @@ export async function restoreLockedNoteFile(
 export async function checkLockedFilesAtOpen(): Promise<void> {
   const root = vaultPath()
   if (!root || !isDatabaseInitialized()) return
+  await adoptCopiedVaultIdentities(root)
   for (const noteId of listBaselineNoteIds(getDatabase())) {
     const relative = notePath(noteId)
     if (relative === null || !isNoteLocked(noteId, relative)) continue

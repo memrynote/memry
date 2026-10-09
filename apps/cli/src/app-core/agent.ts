@@ -165,7 +165,9 @@ export function createAgentService(settings: SettingsService): AgentService {
       baseUrl: typeof local.baseUrl === 'string' ? local.baseUrl : defaults.baseUrl,
       model: typeof local.model === 'string' ? local.model : defaults.model,
       apiKeyConfigured: false,
-      allowNonLoopback: typeof local.allowNonLoopback === 'boolean' ? local.allowNonLoopback : false
+      allowNonLoopback:
+        typeof local.allowNonLoopback === 'boolean' ? local.allowNonLoopback : false,
+      thinking: local.thinking === 'off' ? 'off' : 'default'
     }
   }
 
@@ -207,7 +209,8 @@ export function createAgentService(settings: SettingsService): AgentService {
         preset: nextPreset,
         baseUrl: input.baseUrl ?? (presetChanged ? defaults.baseUrl : current.baseUrl),
         model: input.model ?? (presetChanged ? defaults.model : current.model),
-        allowNonLoopback: input.allowNonLoopback ?? current.allowNonLoopback
+        allowNonLoopback: input.allowNonLoopback ?? current.allowNonLoopback,
+        thinking: current.thinking
       }
 
       if (!isLoopbackBaseUrl(next.baseUrl) && !next.allowNonLoopback) {

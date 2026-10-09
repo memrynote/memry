@@ -1,4 +1,7 @@
 import * as Y from 'yjs'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 
@@ -160,6 +163,9 @@ import {
 } from './crdt-writeback'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
+
 function makeDoc(title = 'Synced title', tags: string[] = []): Y.Doc {
   const doc = new Y.Doc()
   doc.getMap('meta').set('title', title)
@@ -221,7 +227,7 @@ describe('crdt writeback', () => {
     // captured — the behaviour every case below except the reopen ones wants.
     mocks.getDoc.mockReturnValue(undefined)
     mocks.maybeCreateSignificantSnapshot.mockReturnValue({ id: 'snap-1' })
-    mocks.getVaultRoot.mockReturnValue('/vault')
+    mocks.getVaultRoot.mockReturnValue(VAULT_ROOT)
     mocks.reconcileRenamedAttachments.mockReset().mockReturnValue([])
   })
 
@@ -755,6 +761,62 @@ describe('crdt writeback', () => {
     })
   })
 
+  describe('a file swapped for a link outside the vault', () => {
+    let outside: string
+    let secret: string
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-outside-'))
+      secret = path.join(outside, 'private.md')
+      fs.writeFileSync(secret, 'Outside secret.')
+      mocks.toAbsolutePath.mockImplementation((relative: string) => path.join(VAULT_ROOT, relative))
+      mocks.safeRead.mockImplementation(async (file: string) => fs.readFileSync(file, 'utf-8'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true })
+      fs.rmSync(path.join(VAULT_ROOT, 'notes'), { recursive: true, force: true })
+      fs.rmSync(path.join(VAULT_ROOT, 'journal'), { recursive: true, force: true })
+    })
+
+    function swap(relative: string): void {
+      fs.mkdirSync(path.dirname(path.join(VAULT_ROOT, relative)), { recursive: true })
+      fs.symlinkSync(secret, path.join(VAULT_ROOT, relative))
+    }
+
+    it('neither reads nor writes a note', async () => {
+      swap('notes/Existing.md')
+      scheduleWriteback('note-1', makeDoc('Existing'), 'local')
+
+      await settleWriteback('note-1')
+
+      expect(mocks.safeRead).not.toHaveBeenCalled()
+      expect(mocks.atomicWrite).not.toHaveBeenCalled()
+      expect(getWritebackDebugState('note-1')?.lastError).toContain('points outside the vault')
+      expect(fs.readFileSync(secret, 'utf-8')).toBe('Outside secret.')
+    })
+
+    it('neither reads nor writes a journal entry', async () => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'j2026-01-03',
+        path: 'journal/2026-01-03.md',
+        title: '2026-01-03',
+        contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
+      })
+      mocks.getJournalPath.mockImplementation((date: string) =>
+        path.join(VAULT_ROOT, 'journal', `${date}.md`)
+      )
+      swap('journal/2026-01-03.md')
+      scheduleWriteback('j2026-01-03', makeDoc('Journal'), 'local')
+
+      await settleWriteback('j2026-01-03')
+
+      expect(mocks.safeRead).not.toHaveBeenCalled()
+      expect(mocks.atomicWrite).not.toHaveBeenCalled()
+      expect(fs.readFileSync(secret, 'utf-8')).toBe('Outside secret.')
+    })
+  })
+
   it('tells the user once while passes keep failing, and again after one lands', async () => {
     const failed = (): number =>
       mocks.sent.filter((s) => s.channel === 'sync:write-back-failed').length
@@ -1048,7 +1110,7 @@ describe('crdt writeback', () => {
       'note-1',
       expect.stringContaining('k3f9x2-scan.pdf'),
       expect.stringContaining('k3f9x2-invoice.pdf'),
-      '/vault'
+      VAULT_ROOT
     )
   })
 

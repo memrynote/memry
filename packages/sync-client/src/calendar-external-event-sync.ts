@@ -6,6 +6,7 @@ import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
@@ -93,6 +94,23 @@ export class CalendarExternalEventSyncService {
 
         return { ...local, clock: nextClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db
+            .select()
+            .from(calendarExternalEvents)
+            .where(eq(calendarExternalEvents.id, itemId))
+            .get() as Record<string, unknown> | undefined,
+          deviceId,
+          (clock) =>
+            deps.db
+              .update(calendarExternalEvents)
+              .set({ clock })
+              .where(eq(calendarExternalEvents.id, itemId))
+              .run()
+        ),
       serialize: (local) => local,
       shouldSkip: (local) => isDeviceLocalMirror(sourceIdOf(local)),
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {

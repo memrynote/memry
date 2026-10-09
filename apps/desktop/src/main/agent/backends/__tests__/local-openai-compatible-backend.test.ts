@@ -97,11 +97,11 @@ describe('LocalOpenAICompatibleBackend', () => {
     expect(mocks.createOllama).toHaveBeenCalledWith(
       expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
     )
-    expect(mocks.stepCountIs).toHaveBeenCalledWith(8)
+    expect(mocks.stepCountIs).toHaveBeenCalledWith(24)
     expect(mocks.streamText).toHaveBeenCalledWith(
       expect.objectContaining({
         prompt: 'User: create a task',
-        stopWhen: { type: 'step-count', count: 8 },
+        stopWhen: { type: 'step-count', count: 24 },
         tools: expect.objectContaining({
           vault_create_task: expect.any(Object)
         })
@@ -411,7 +411,7 @@ describe('LocalOpenAICompatibleBackend', () => {
         tools: expect.anything()
       })
     )
-    expect(mocks.streamText.mock.calls[0][0].system).toMatch(/^No tools are available/)
+    expect(mocks.streamText.mock.calls[0][0].system).toBeUndefined()
   })
 
   it('retries the tool probe without tool_choice when the named choice is rejected', async () => {
@@ -436,7 +436,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     })
   })
 
-  it('ollama preset uses the native /api endpoint with num_ctx 8192', async () => {
+  it('ollama preset uses the native /api endpoint with num_ctx 8192 and no reasoning fields', async () => {
     mocks.streamText.mockReturnValueOnce({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'ok' }
@@ -449,7 +449,8 @@ describe('LocalOpenAICompatibleBackend', () => {
         baseUrl: 'http://localhost:11434/v1',
         model: 'gemma4',
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'off'
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never,
@@ -461,7 +462,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       conversationId: 'c1',
       writeGrant: TEST_GRANT,
       windowId: 'window-1',
-      options: { backend: 'local_openai_compatible' }
+      options: { backend: 'local_openai_compatible', reasoningEffort: 'max' }
     })
 
     expect(mocks.createOllama).toHaveBeenCalledWith(

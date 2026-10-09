@@ -23,7 +23,7 @@ import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { TaskExpansionContext } from '@/components/tasks/subtask-tree/task-expansion-context'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
-import { useDateView } from '@/components/tasks/date-view-context'
+import { nestUnlisted, useDateView } from '@/components/tasks/date-view-context'
 import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { useDragContext } from '@/contexts/drag-context'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
@@ -306,11 +306,17 @@ export const VirtualizedAllTasksView = ({
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
   // A date view's rows leave their undated subtasks out, so a row's subtasks
-  // come from the whole task list there.
+  // come from the whole task list there, minus the tasks listed as rows.
   const dateView = useDateView()
   const everyTaskIsARow = dateView !== null
   const listedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
-  const combinedTasks = dateView?.tasks ?? listedTasks
+  const combinedTasks = useMemo(
+    () =>
+      dateView
+        ? nestUnlisted(dateView.tasks, new Set(listedTasks.map((task) => task.id)))
+        : listedTasks,
+    [dateView, listedTasks]
+  )
 
   const noteIndex = useTaskNoteIndex(sortField === 'folder' || sortField === 'note')
 

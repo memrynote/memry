@@ -111,6 +111,13 @@ export const estimateItemHeight = (
 const rowTasks = (tasks: Task[], everyTaskIsARow: boolean): Task[] =>
   everyTaskIsARow ? tasks : getTopLevelTasks(tasks)
 
+/**
+ * A date view's subtasks that are rows themselves are left out of `allTasks`,
+ * so a row there is a parent only while it still nests something.
+ */
+const isParentRow = (task: Task, subtasks: Task[], everyTaskIsARow: boolean): boolean =>
+  everyTaskIsARow ? subtasks.length > 0 : hasSubtasks(task)
+
 export const flattenTasksFlat = (
   tasks: Task[],
   projects: Project[],
@@ -127,8 +134,8 @@ export const flattenTasksFlat = (
     const project = projectMap.get(task.projectId)
     if (!project) return
 
-    if (hasSubtasks(task)) {
-      const subtasks = getSubtasks(task.id, allTasks)
+    const subtasks = getSubtasks(task.id, allTasks)
+    if (isParentRow(task, subtasks, everyTaskIsARow)) {
       items.push({
         id: `parent-task-${task.id}`,
         type: 'parent-task',
@@ -257,8 +264,8 @@ export const flattenTasksGrouped = (
       const project = projectMap.get(task.projectId)
       if (!project) return
 
-      if (hasSubtasks(task)) {
-        const subtasks = getSubtasks(task.id, allTasks)
+      const subtasks = getSubtasks(task.id, allTasks)
+      if (isParentRow(task, subtasks, everyTaskIsARow)) {
         items.push({
           id: `parent-task-${task.id}`,
           type: 'parent-task',

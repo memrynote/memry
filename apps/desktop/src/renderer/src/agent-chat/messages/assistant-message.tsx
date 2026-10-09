@@ -1,6 +1,6 @@
 import type { Message } from '@memry/contracts/ipc-agent'
 import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
-import { WrenchIcon } from 'lucide-react'
+import { OctagonPauseIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
@@ -11,10 +11,11 @@ import {
 } from '@/components/ai-elements/message'
 import { ThinkingReasoning } from '@/components/ai-elements/thinking-reasoning'
 import { useStreamingText } from '@/components/ai-elements/use-streaming-text'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AssistantActions } from './assistant-actions'
 import { AgentSourceRefsProvider, CitedMemryLink } from './memry-links'
-import { ThinkingIndicator } from './thinking-indicator'
+import { ThinkingIndicator, useSilentSince } from './thinking-indicator'
 
 /** Stable identity: a new `components` object would defeat the renderer's own memoisation. */
 const markdownComponents = { a: CitedMemryLink }
@@ -26,19 +27,36 @@ const TOOLS_OFF_KEYS = {
   streaming_unsupported: 'agentChat.toolsOff.streamingUnsupported'
 } as const satisfies Record<AgentToolsOffReason, string>
 
+// Tool-call syntax a model writes as text when it was sent no tool schemas: generic
+// XML-style calls, Anthropic-style invoke blocks, and DeepSeek's DSML markers.
+const TOOL_CALL_MARKUP = /<tool_calls?\b|<function_calls\b|<invoke name=|\uff5cDSML\uff5c/
+
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>
 }
 
-export function AssistantMessage({ message }: { message: Message }): React.JSX.Element | null {
+interface AssistantMessageProps {
+  message: Message
+  /** Offered on a turn that stopped at the step limit; sends a new "Continue" turn. */
+  onContinue?: () => void
+}
+
+export function AssistantMessage({
+  message,
+  onContinue
+}: AssistantMessageProps): React.JSX.Element | null {
   if (message.content.role !== 'assistant') return null
-  return <AssistantMessageContent message={message as AssistantMessageModel} />
+  return (
+    <AssistantMessageContent message={message as AssistantMessageModel} onContinue={onContinue} />
+  )
 }
 
 function AssistantMessageContent({
-  message
+  message,
+  onContinue
 }: {
   message: AssistantMessageModel
+  onContinue?: () => void
 }): React.JSX.Element {
   const { t } = useT('common')
   const sourceRefs = 'sources' in message.content.data ? message.content.data.sources : undefined
@@ -48,8 +66,15 @@ function AssistantMessageContent({
   const answerStarted = message.content.data.text.trim().length > 0
   const reasoning = message.content.data.reasoning ?? ''
   const hasReasoning = reasoning.trim().length > 0
+  const wroteToolCall = TOOL_CALL_MARKUP.test(message.content.data.text)
   const toolsUnavailable = message.content.data.toolsUnavailable
-  const toolsNotice = toolsUnavailable && <ToolsOffNotice notice={toolsUnavailable} />
+  const toolsNotice = toolsUnavailable && (
+    <ToolsOffNotice notice={toolsUnavailable} wroteToolCall={wroteToolCall} />
+  )
+  const silentSince = useSilentSince(
+    `${message.content.data.text.length}:${reasoning.length}`,
+    streaming && answerStarted
+  )
 
   if (streaming && !answerStarted && !hasReasoning) {
     return (
@@ -111,6 +136,14 @@ function AssistantMessageContent({
             </AgentSourceRefsProvider>
           )
         )}
+        {silentSince !== null && !typing && (
+          <div role="status" aria-label={t('agentChat.thinking')} className="mt-2">
+            <ThinkingIndicator label={t('agentChat.thinking')} since={silentSince} />
+          </div>
+        )}
+        {message.content.data.stepLimitReached && !streaming && message.status !== 'error' && (
+          <StepLimitNotice wroteToolCall={wroteToolCall} onContinue={onContinue} />
+        )}
         {!streaming && !typing && message.status !== 'error' && (
           <AssistantActions text={message.content.data.text} sources={sources} />
         )}
@@ -120,9 +153,11 @@ function AssistantMessageContent({
 }
 
 function ToolsOffNotice({
-  notice
+  notice,
+  wroteToolCall
 }: {
   notice: NonNullable<AssistantMessageModel['content']['data']['toolsUnavailable']>
+  wroteToolCall: boolean
 }): React.JSX.Element {
   const { t } = useT('common')
   const { reason, detail } = notice
@@ -137,8 +172,33 @@ function ToolsOffNotice({
       <span>
         {sentence}
         {reason && detail && ` ${t('agentChat.toolsOff.providerSaid', { detail })}`}
+        {wroteToolCall && ` ${t('agentChat.toolsOff.wroteToolCall')}`}
       </span>
     </p>
+  )
+}
+
+function StepLimitNotice({
+  wroteToolCall,
+  onContinue
+}: {
+  wroteToolCall: boolean
+  onContinue?: () => void
+}): React.JSX.Element {
+  const { t } = useT('common')
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <OctagonPauseIcon aria-hidden className="size-3 shrink-0" />
+      <span>
+        {t('agentChat.stepLimit.notice')}
+        {wroteToolCall && ` ${t('agentChat.toolsOff.wroteToolCall')}`}
+      </span>
+      {onContinue && (
+        <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={onContinue}>
+          {t('agentChat.stepLimit.continue')}
+        </Button>
+      )}
+    </div>
   )
 }
 

@@ -41,6 +41,10 @@ final class NoteRemindersViewModel {
     /// is hidden while the note has no reminder).
     var adding = false
 
+    /// The vault's debounced sync request, asked after every write that
+    /// lands. Set by `NotePageSync`.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+
     private let noteId: String
     private let reader: any NotesReading
     private let writer: (any NotesWriting)?
@@ -67,6 +71,11 @@ final class NoteRemindersViewModel {
         }
     }
 
+    private func wrote() async {
+        requestSync?()
+        await load()
+    }
+
     func add(at date: Date, title: String?) async {
         guard let writer else { return }
         do {
@@ -75,7 +84,7 @@ final class NoteRemindersViewModel {
                 remindAt: NoteInstants.string(from: date),
                 title: title
             )
-            await load()
+            await wrote()
         } catch {
             failure = ErrorMapping.userFacing(error)
         }
@@ -85,7 +94,7 @@ final class NoteRemindersViewModel {
         guard let writer else { return }
         do {
             try await writer.dismissReminder(id: id)
-            await load()
+            await wrote()
         } catch {
             failure = ErrorMapping.userFacing(error)
         }
@@ -98,7 +107,7 @@ final class NoteRemindersViewModel {
                 id: id,
                 until: NoteInstants.string(from: date)
             )
-            await load()
+            await wrote()
         } catch {
             failure = ErrorMapping.userFacing(error)
         }

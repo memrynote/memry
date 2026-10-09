@@ -234,6 +234,19 @@ describe('agent IPC schemas', () => {
         allowNonLoopback: true
       }).success
     ).toBe(true)
+    const deepseek = {
+      preset: 'custom',
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      apiKeyConfigured: true,
+      allowNonLoopback: true
+    }
+    expect(
+      AgentLocalProviderSettingsSchema.safeParse({ ...deepseek, thinking: 'off' }).success
+    ).toBe(true)
+    expect(
+      AgentLocalProviderSettingsSchema.safeParse({ ...deepseek, thinking: 'low' }).success
+    ).toBe(false)
     expect(
       AgentLocalProviderProbeResultSchema.safeParse({
         connected: true,

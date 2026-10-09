@@ -631,6 +631,14 @@ The flush on close or switch includes whatever you typed just before it, and it 
 
 You can flush manually with <kbd>⌘</kbd>+<kbd>S</kbd>. Auto-save delay is configurable in [Settings → Editor](/user-guide/settings#editor).
 
+Memry reads only files inside the vault. A note or journal file replaced by a symlink to a file
+outside the vault does not open. The error names the file. Memry does not save over it, search does
+not index it, and sync sends none of its text. Moving blocks into it or restoring one of its
+versions fails with the same error. Renaming another note does not rewrite the links in it, a tag
+rename, merge or delete skips it, its backlink excerpts stay empty, and attachments it might
+reference are kept. The link stays as you made it. A symlink to another file inside the vault works
+as usual.
+
 ## Word Count
 
 If enabled in [Settings → Editor](/user-guide/settings#editor), word count appears in the editor footer.
@@ -894,6 +902,11 @@ memrynote will not write over a file it has never read at all. Pointing memrynot
 existing vault lists every note straight away, from the filename and timestamps alone. Until a
 note is opened, its file is left exactly as its author wrote it — a background sync round that
 touches that note skips the save rather than replacing bytes nobody here has looked at.
+
+A note whose file is still there but cannot be read, for example after `chmod 000` or while
+antivirus holds it, is not treated as deleted. The note stays in the list and on your other
+devices, a save names the note in a notice, and your edit stays open. Once the file can be read
+again, memrynote picks it up and your next edit saves as usual.
 
 ## Opening a Note Written Somewhere Else
 

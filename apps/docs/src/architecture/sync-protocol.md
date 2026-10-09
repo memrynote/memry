@@ -316,7 +316,7 @@ Protocol 05 §5.11.2 has the full rules.
 
 Each pulled page applies inside one SQLite transaction. Handlers run synchronously inside it; the
 files they produce (a note or journal markdown file, a rewritten `.memry/properties.md` after a
-remote property-definition delete) are recorded in a crash journal just before the commit and
+remote property-definition upsert or delete) are recorded in a crash journal just before the commit and
 written after it. A crash between the commit and the file writes is healed at the start of the next
 pull. A handler that wrote its rows from an unawaited promise could land them after the page
 committed, or inside the next page's transaction, with no crash-journal record for its file. Synced
@@ -653,8 +653,9 @@ row is what replicates. Two consequences worth knowing before touching either:
   look unclocked and `seedUnclocked` would re-push the whole set on the next sync.
 - A pulled definition exists only as a row until the file is written, so `reload()` unions the
   clocked rows into the cache and persists when the union gained something — including on a device
-  that has no file yet. A remote delete reconciles the file too, or the next reload reads the
-  definition straight back in.
+  that has no file yet. A remote upsert or delete reconciles the file too: `reload()` lets the file
+  win for every name it already holds, so a stale file would revert a pulled edit, or read a
+  deleted definition straight back in.
 - A `relation` definition never reaches the file. The file schema has no member for it, and one
   such entry fails the parse for the whole file. The union skips a synced `relation` row, the
   writer skips one in the cache, and `reload()` drops and rewrites a `relation` entry an older

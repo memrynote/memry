@@ -38,6 +38,14 @@ vi.mock('../database', () => ({
   requireDatabase: vi.fn()
 }))
 
+const importFiles = vi.hoisted(() =>
+  vi.fn(async () => ({ importedFiles: [], errors: [] as string[] }))
+)
+vi.mock('../vault/notes-crud', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../vault/notes-crud')>()),
+  importFiles
+}))
+
 // Mock ID generation
 vi.mock('../lib/id', () => ({
   generateId: vi.fn(() => 'generated-id-123')
@@ -1078,6 +1086,21 @@ describe('tasks-handlers', () => {
         expect(incrementTaskClocksOffline).toHaveBeenCalledTimes(2)
         expect(incrementTaskClocksOffline).toHaveBeenCalledWith(mockDb, 'task-x', ['position'])
         expect(incrementTaskClocksOffline).toHaveBeenCalledWith(mockDb, 'task-y', ['position'])
+      })
+    })
+
+    describe('PROJECT_IMPORT_FILES handler', () => {
+      it('hands plainChecklists to the import (#2796)', async () => {
+        await invokeHandler(TasksChannels.invoke.PROJECT_IMPORT_FILES, {
+          projectId: 'project1',
+          sourcePaths: ['/tmp/list.md'],
+          plainChecklists: true
+        })
+
+        expect(importFiles).toHaveBeenCalledWith({
+          sourcePaths: ['/tmp/list.md'],
+          options: { plainChecklists: true }
+        })
       })
     })
 

@@ -20,6 +20,7 @@ struct NoteReadToolbar: ViewModifier {
     let composer: NoteAttachmentComposer
     let history: EditorUndoStack
     @Binding var renaming: Bool
+    @Binding var renameDraft: String
     @Binding var moving: Bool
     @Binding var confirmingDelete: Bool
     @Binding var choosingCover: Bool
@@ -36,7 +37,6 @@ struct NoteReadToolbar: ViewModifier {
     /// Pushes a note: a backlink, or the copy Duplicate made.
     let open: ((NoteRoute) -> Void)?
 
-    @Environment(\.requestVaultSync) private var requestVaultSync
     @State private var showingBacklinks = false
     @State private var choosingIcon = false
 
@@ -84,7 +84,11 @@ struct NoteReadToolbar: ViewModifier {
         items.addReminder = addReminder
         if actions.canWrite {
             items.toggleFavorite = toggleFavorite
-            items.rename = { renaming = true }
+            items.rename = {
+                // The dialog edits the current title, as the notes list's does.
+                renameDraft = model.title
+                renaming = true
+            }
             items.duplicate = duplicate
             items.move = { moving = true }
             items.delete = { confirmingDelete = true }
@@ -102,7 +106,6 @@ struct NoteReadToolbar: ViewModifier {
     private func toggleFavorite() {
         Task {
             await actions.toggleFavorite()
-            requestVaultSync?()
         }
     }
 
@@ -112,7 +115,6 @@ struct NoteReadToolbar: ViewModifier {
         let title = model.displayTitle.isEmpty ? "Untitled" : model.displayTitle
         Task {
             if let id = await actions.duplicate(title: "\(title) copy") {
-                requestVaultSync?()
                 open?(NoteRoute(id: id))
             }
         }

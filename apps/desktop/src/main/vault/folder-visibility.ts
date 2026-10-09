@@ -6,6 +6,7 @@
 
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { CANVAS_DIR } from '../canvas/scene-file'
+import { ATTACHMENTS_DIR } from './attachments'
 
 /**
  * A predicate over vault-relative folder paths for `getFolders`.
@@ -20,7 +21,7 @@ import { CANVAS_DIR } from '../canvas/scene-file'
  */
 export function createTreeFolderFilter(config: VaultConfig): (folderPath: string) => boolean {
   const hiddenRoots = new Set(
-    [config.attachmentsFolder, CANVAS_DIR, ...config.excludePatterns]
+    [ATTACHMENTS_DIR, CANVAS_DIR, ...config.excludePatterns]
       .filter(Boolean)
       .map((p) => p.replace(/\/+$/, '').split('/')[0])
   )

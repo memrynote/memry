@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use http_fakes::FakeSecureStore;
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::task_tree::TaskTreeEntry;
-use memry_core::api::tasks::Tasks;
+use memry_core::api::tasks::{TaskViewQuery, Tasks};
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
@@ -172,4 +172,31 @@ fn move_under_lists_the_project_tree_with_the_own_branch_locked() {
         [true, false, false, false],
         "only top level, never its own row"
     );
+}
+
+#[test]
+fn kanban_cards_are_the_tree_roots_only() {
+    let vault = vault();
+    let tasks = tasks(&vault);
+    let work = project(&tasks, "Agent Test Board");
+    let root = tasks.create(input("root", &work)).expect("root").created[0].clone();
+    let first = child(&tasks, "first", &work, &root);
+    child(&tasks, "deep", &work, &first);
+    let lone = tasks.create(input("lone", &work)).expect("lone").created[0].clone();
+
+    let page = tasks
+        .view(TaskViewQuery {
+            tab: "all".to_string(),
+            project_id: Some(work),
+            filters_json: None,
+            sort_json: None,
+            now: "2026-05-01T09:00:00".to_string(),
+            week_starts_on: 1,
+        })
+        .expect("view");
+    let mut cards = page.card_ids.clone();
+    cards.sort();
+    let mut expected = vec![root, lone];
+    expected.sort();
+    assert_eq!(cards, expected, "subtasks ride on their parent's card");
 }

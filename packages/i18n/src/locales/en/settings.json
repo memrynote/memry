@@ -2146,6 +2146,7 @@
       "repairFailed": "Couldn't repair this device's keys. Try again.",
       "syncNotStarted": {
         "vault-binding": "This device's keys are restored, but this vault isn't set to sync with your account yet. Choose how to sync it from the sync menu.",
+        "vault-foreign": "This device's keys are restored, but this vault belongs to another account. It stays local on this device.",
         "entitlement": "This device's keys are restored, but sync needs an active Sync plan.",
         "unavailable": "This device's keys are restored, but sync couldn't start. It will retry; restart Memry if it doesn't."
       }
@@ -2294,6 +2295,12 @@
       "model": {
         "label": "Model",
         "description": "Pick a returned model or enter one manually."
+      },
+      "thinking": {
+        "label": "Thinking",
+        "description": "Off asks DeepSeek-style models to skip thinking for faster, cheaper answers.",
+        "default": "Default",
+        "off": "Off"
       },
       "apiKey": {
         "label": "API key",

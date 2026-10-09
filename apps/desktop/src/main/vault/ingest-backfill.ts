@@ -36,6 +36,7 @@ import { queueEmbeddedVaultFiles, syncNoteCreate } from '../notes/runtime-effect
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { createSnippet, extractProperties, extractTags, parseNote } from './frontmatter'
 import { safeRead } from './file-ops'
+import { refuseOutsideVault } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
 import { syncLargeFileBodyToCache, syncNoteToCache } from './note-sync'
 
@@ -57,6 +58,7 @@ const LARGE_FILE_INDEX_CHARS = 256 * 1024
 
 export interface IngestBackfillEntry {
   noteId: string
+  vaultPath: string
   absolutePath: string
   relativePath: string
   /** From `stat` at ingest. Only used to order the queue. */
@@ -142,6 +144,8 @@ async function backfillOne(entry: IngestBackfillEntry): Promise<void> {
   // now. Either way this entry is stale and writing it back would resurrect a
   // path that no longer exists.
   if (!cached || cached.path !== entry.relativePath) return
+  // A file linked outside the vault is listed but never read (#2804).
+  await refuseOutsideVault(entry.vaultPath, entry.relativePath)
 
   const stats = await fs.stat(entry.absolutePath).catch(() => null)
   if (!stats) return

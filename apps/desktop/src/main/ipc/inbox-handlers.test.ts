@@ -549,7 +549,9 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
-      expect(filingModule.fileToFolder).toHaveBeenCalledWith('item1', 'projects', undefined)
+      expect(filingModule.fileToFolder).toHaveBeenCalledWith('item1', 'projects', undefined, {
+        plainChecklists: undefined
+      })
     })
 
     it('should convert to new note', async () => {
@@ -564,7 +566,21 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
-      expect(filingModule.convertToNote).toHaveBeenCalledWith('item1')
+      expect(filingModule.convertToNote).toHaveBeenCalledWith('item1', {
+        plainChecklists: undefined
+      })
+    })
+
+    it('hands the plain checklist option of a link to the filing owner (#2796)', async () => {
+      ;(filingModule.linkToNote as Mock).mockResolvedValue({ success: true })
+
+      await invokeHandler(InboxChannels.invoke.LINK_TO_NOTE, 'item1', 'note1', ['tag'], {
+        plainChecklists: true
+      })
+
+      expect(filingModule.linkToNote).toHaveBeenCalledWith('item1', 'note1', ['tag'], undefined, {
+        plainChecklists: true
+      })
     })
 
     it('should link to existing note', async () => {

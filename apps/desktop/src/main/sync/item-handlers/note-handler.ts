@@ -30,6 +30,7 @@ import {
 import { getIndexDatabase } from '../../database/client'
 import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
+import { refuseOutsideVaultSync } from '../../lib/paths'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/index'
 import {
@@ -117,6 +118,7 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
  */
 function withLocalBodyTags(remoteTags: string[], relPath: string): NoteTagSet {
   try {
+    refuseOutsideVaultSync(getVaultRoot(), relPath)
     const parsed = parseNote(fs.readFileSync(toAbsolutePath(relPath), 'utf-8'))
     return { header: remoteTags, inline: extractInlineTagsFromMarkdown(parsed.content) }
   } catch {
@@ -395,6 +397,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
           if ((tagsChanged && remoteTags) || propertiesPresent || coverPresent) {
             // Content actually changed — rewrite user keys only
+            refuseOutsideVaultSync(notesDir, existing.path)
             const raw = fs.readFileSync(oldAbsPath, 'utf-8')
             const parsed = parseNote(raw)
             if (tagsChanged && remoteTags) {
@@ -457,6 +460,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const absPath = toAbsolutePath(existing.path)
         try {
+          refuseOutsideVaultSync(getVaultRoot(), existing.path)
           const raw = fs.readFileSync(absPath, 'utf-8')
           const parsed = parseNote(raw)
           if (tagsChanged && remoteTags) {

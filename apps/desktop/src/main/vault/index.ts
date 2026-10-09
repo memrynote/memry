@@ -1142,7 +1142,6 @@ async function closeOpenVault(): Promise<void> {
 
   // Stop file watcher
   await stopWatcher()
-  await watchLockedAttachments(null)
   timer.mark('watcher')
 
   await stopProjectionRuntime({ drain: true })
@@ -1173,6 +1172,8 @@ async function closeOpenVault(): Promise<void> {
     indexTotal: undefined,
     error: null
   })
+  // After the status drops the path, so a lock reconcile still running cannot start it again.
+  await watchLockedAttachments(null)
 }
 
 async function startVaultAgentServices(): Promise<void> {
@@ -1341,6 +1342,22 @@ export async function reindex(): Promise<void> {
     updateStatus({ isIndexing: false, error: message })
     throw error
   }
+}
+
+/**
+ * The vault a main window created now will show: the open vault (a macOS dock
+ * reopen), or else the one autoOpenLastVault is about to open. It mirrors
+ * autoOpenLastVault's choice, so change the two together.
+ */
+export function getLaunchVaultPath(): string | null {
+  if (currentStatus.isOpen) return currentStatus.path
+
+  const testVaultPath = process.env.TEST_VAULT_PATH
+  if (testVaultPath && process.env.NODE_ENV === 'test') return testVaultPath
+  if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return null
+
+  const lastVault = getCurrentVaultPath()
+  return lastVault && isVaultInitialized(lastVault) ? lastVault : null
 }
 
 /**

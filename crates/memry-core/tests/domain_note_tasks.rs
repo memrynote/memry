@@ -154,6 +154,7 @@ fn seed_note(conn: &Connection, specs: &[Spec]) {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         },
         DEVICE,
         NOW,

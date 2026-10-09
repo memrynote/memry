@@ -166,8 +166,8 @@ export function registerInboxHandlers(): void {
     trackInboxFiled('reminder', Boolean(result?.success))
     return result
   })
-  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, async (_, itemId, noteId, tags) => {
-    const result = await inboxDomain.linkToNote(itemId, noteId, tags || [])
+  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, async (_, itemId, noteId, tags, options) => {
+    const result = await inboxDomain.linkToNote(itemId, noteId, tags || [], options)
     trackInboxFiled('linked', Boolean(result?.success))
     return result
   })

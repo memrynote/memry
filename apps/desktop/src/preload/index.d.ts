@@ -549,6 +549,8 @@ export interface VaultClientAPI {
   getDefaultParent(): Promise<string>
   getAll(): Promise<GetVaultsResponse>
   getStatus(): Promise<VaultStatus>
+  /** The vault this window was created for, read synchronously. Null when it opened on the picker. */
+  getStartupPath(): string | null
   getConfig(): Promise<VaultConfig>
   updateConfig(config: Partial<VaultConfig>): Promise<VaultConfig>
   close(): Promise<void>

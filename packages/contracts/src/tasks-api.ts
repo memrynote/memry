@@ -7,6 +7,7 @@
 
 import { z } from 'zod'
 import { CalendarDateSchema } from './calendar-date.ts'
+import { PlainChecklistsOptionSchema } from './plain-checklists.ts'
 import type { ProjectWithStats, Task, TaskFieldValue, TaskListItem } from '@memry/domain-tasks'
 export type {
   RepeatConfig,
@@ -271,7 +272,8 @@ export const ProjectCaptureUrlSchema = z.object({
 
 export const ProjectImportFilesSchema = z.object({
   projectId: z.string(),
-  sourcePaths: z.array(z.string())
+  sourcePaths: z.array(z.string()),
+  ...PlainChecklistsOptionSchema.shape
 })
 
 export const ProjectListForItemSchema = z.object({

@@ -25,6 +25,20 @@ export function blankMarkdownCode(markdown: string): string {
 }
 
 /**
+ * `blankMarkdownCode` with every offset kept: fenced lines and code spans become
+ * spaces of the same length, so a match in the result is a match at the same
+ * offset in the source.
+ */
+export function maskMarkdownCode(markdown: string): string {
+  if (!markdown.includes('`') && !markdown.includes('~~~')) return markdown
+  return walkMarkdown(markdown, {
+    fenceLine: (line) => ' '.repeat(line.length),
+    codeSpan: (source) => ' '.repeat(source.length),
+    comment: (source) => source
+  })
+}
+
+/**
  * Markdown with every HTML comment and `%% … %%` comment outside code removed,
  * for output a reader sees (PDF and HTML export). Code keeps its comment syntax
  * as text. A `%%` or `<!--` that never closes is text and stays.
@@ -54,7 +68,9 @@ export function replaceMarkdownComments(
 
 /**
  * `<!--` is CommonMark raw HTML: it ends at the first `-->`, code or not, and
- * runs to the end of the note when none follows. `%%` is Obsidian prose
+ * runs to the end of the note when none follows. An inline `<!--`, with text
+ * before it on its line, sits in a paragraph that a fence interrupts, so when
+ * a fence comes before its `-->` it is text (BBF-46). `%%` is Obsidian prose
  * syntax: on a later line only a `%%` outside code closes it, and with no
  * such partner it is text.
  */
@@ -111,6 +127,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       continue
     }
 
+    const tableRow = TABLE_ROW_LINE.test(line)
     let i = 0
     while (i < line.length) {
       const tick = line.indexOf('`', i)
@@ -120,6 +137,13 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       if (opened && (tick === -1 || opened.at < tick)) {
         const { form, at } = opened
         const close = line.indexOf(form.close, at + form.open.length)
+        // GFM splits a row into cells before it reads inline syntax, so a
+        // comment in a cell ends in that cell or is text (BBF-51).
+        if (tableRow && (close === -1 || close > cellPipe(line, at))) {
+          result += line.slice(i, at + form.open.length)
+          i = at + form.open.length
+          continue
+        }
         if (close !== -1) {
           const end = close + form.close.length
           const wholeLine = !closesComment && !line.slice(0, at).trim() && !line.slice(end).trim()
@@ -127,8 +151,9 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           i = end
           continue
         }
-        const later = findLaterClose(lines, index, form)
-        if (form.proseOnly && !later) {
+        const inline = !closesComment && line.slice(0, at).trim() !== ''
+        const later = findLaterClose(lines, index, form, inline)
+        if (later === 'text' || (form.proseOnly && !later)) {
           result += line.slice(i, at + form.open.length)
           i = at + form.open.length
           continue
@@ -169,6 +194,31 @@ function nextCommentOpen(line: string, from: number): { form: CommentForm; at: n
   return best
 }
 
+/** Same row test as `escapeWikiLinkPipesInTableRows`: both ends are pipes. */
+const TABLE_ROW_LINE = /^\s*\|.*\|\s*$/
+
+/**
+ * The next unescaped `|` after `from` that ends a cell, or the line's length.
+ * A pipe inside `[[target|alias]]` is part of the link.
+ */
+function cellPipe(line: string, from: number): number {
+  let depth = 0
+  for (let i = from; i < line.length; i++) {
+    if (line[i] === '\\') {
+      i++
+    } else if (line.startsWith('[[', i)) {
+      depth++
+      i++
+    } else if (depth > 0 && line.startsWith(']]', i)) {
+      depth--
+      i++
+    } else if (line[i] === '|' && depth === 0) {
+      return i
+    }
+  }
+  return line.length
+}
+
 interface CommentClose {
   line: number
   end: number
@@ -177,17 +227,22 @@ interface CommentClose {
 /**
  * The close of a comment left open at the end of line `index`. A `%%` comment
  * skips fenced blocks and code spans, so a fence inside it is read whole and
- * the fence state after it is the state before it.
+ * the fence state after it is the state before it. An `inline` `<!--` is
+ * `'text'` when a fence opens before its close.
  */
 function findLaterClose(
   lines: readonly string[],
   index: number,
-  form: CommentForm
-): CommentClose | null {
+  form: CommentForm,
+  inline: boolean
+): CommentClose | 'text' | null {
   const fence = createFenceTracker()
   for (let next = index + 1; next < lines.length; next++) {
     const line = lines[next]
-    if (form.proseOnly && fence.consume(withoutCr(line))) continue
+    if (fence.consume(withoutCr(line))) {
+      if (form.proseOnly) continue
+      if (inline) return 'text'
+    }
     const at = form.proseOnly ? indexOutsideCodeSpans(line, form.close) : line.indexOf(form.close)
     if (at !== -1) return { line: next, end: at + form.close.length }
   }

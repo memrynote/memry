@@ -38,7 +38,8 @@ import { getNoteCacheById, getNoteTags } from '../notes/store'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../database'
 import { extractProperties, parseNote } from './frontmatter'
 import { safeRead } from './file-ops'
-import { toAbsolutePath } from './notes-io'
+import { getVaultRoot, toAbsolutePath } from './notes-io'
+import { refuseOutsideVault } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import type { DataDb } from '../database'
@@ -99,6 +100,7 @@ async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   const cached = getNoteCacheById(getIndexDatabase(), noteId)
   if (!cached) return { kind: 'missing' }
 
+  await refuseOutsideVault(getVaultRoot(), cached.path)
   const raw = await safeRead(toAbsolutePath(cached.path))
   if (raw === null) {
     // File unreadable — fall back to the cached record. The write that follows

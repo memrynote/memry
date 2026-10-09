@@ -294,17 +294,18 @@ struct InboxFileSheet: View {
         folder = folder ?? store.recentFolders.first ?? ""
         tags = single?.tags ?? []
         guard let notes = store.notes else { return }
-        let loaded = try? await store.executorRun { (try notes.folders(), try notes.tags()) }
-        folders = loaded?.0.map(\.path).sorted() ?? []
+        let destinations = await store.fileDestinations()
+        let loaded = try? await store.executorRun { try notes.tags() }
+        folders = destinations.map(\.path)
         folderIcons = Dictionary(
-            (loaded?.0 ?? []).compactMap { f in f.icon.map { (f.path, $0) } },
+            destinations.compactMap { f in f.icon.map { (f.path, $0) } },
             uniquingKeysWith: { first, _ in first }
         )
         tagColors = Dictionary(
-            (loaded?.1 ?? []).compactMap { t in t.color.map { (t.name.lowercased(), $0) } },
+            (loaded ?? []).compactMap { t in t.color.map { (t.name.lowercased(), $0) } },
             uniquingKeysWith: { first, _ in first }
         )
-        tagSuggestions = loaded?.1.sorted { $0.noteCount > $1.noteCount }.map(\.name) ?? []
+        tagSuggestions = loaded?.sorted { $0.noteCount > $1.noteCount }.map(\.name) ?? []
     }
 
     private func searchNotes() async {

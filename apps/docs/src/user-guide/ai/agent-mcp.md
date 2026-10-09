@@ -69,6 +69,12 @@ reopen. The reasoning is stored encrypted with the reply and is only displayed: 
 back to the model in later turns or in conversation summaries. Antigravity does not report its
 reasoning, so its replies show the plain thinking indicator.
 
+If a reply has started and then nothing new arrives for 3 seconds, the thinking indicator comes
+back under the partial answer with a timer counting from the last thing received. It goes away as
+soon as more text or reasoning arrives, and when the turn ends. With reduced motion the timer still
+counts but does not animate. If you are reading at the bottom of the chat, the chat scrolls to keep
+the indicator in view; if you have scrolled up, it leaves your position alone.
+
 Unlike the other two CLIs, Antigravity has no per-run configuration flag: it reads MCP servers from
 `~/.gemini/config/mcp_config.json` and tool permissions from a project file, both at process start.
 So the first Antigravity turn registers one app-managed entry named `memry` in that file (every
@@ -250,7 +256,9 @@ reasoning effort. The microphone dictates a prompt by voice, and the arrow sends
 
 The provider is pinned per conversation; changing it after messages exist updates the conversation
 and records the switch in the chat history. Claude and Codex expose prompt-time reasoning effort
-settings, with provider-specific settings shown only for the active provider. The permissions menu
+settings, with provider-specific settings shown only for the active provider. The built-in model
+connection offers **Default**, **High**, and **Max** depth for any preset except Ollama; see
+[Provider Setup](/user-guide/ai/provider-setup#agent-chat-built-in-model). The permissions menu
 starts from your default Agent Permissions setting, then lets you send a single turn as **Vault
 only** or **Computer access**, and optionally allow web search for that turn.
 
@@ -264,7 +272,7 @@ tools only: no shell, no files outside the vault, and no web search. With that b
 this model", and the turn runs vault-only with web search off. Your saved default does not change,
 so switching back to Claude, Codex, or Antigravity picks it up again. The prompt tells the model the
 same thing in its permissions section: "Runtime: built-in model connection. Tools: memrynote vault
-tools only."
+tools only." [Agent Backends](/user-guide/ai/agent-backends) lists what each backend can reach.
 
 Claude and Codex conversations also have a per-conversation model selector. memrynote starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
@@ -278,7 +286,9 @@ the probe fails, local chat can still answer from attached context, but vault to
 disabled. The reply then starts with a note that vault tools are off for this model and why, in plain
 words: the provider refused requests with tools, the model answered without calling the test tool, the
 model failed after getting the tool result back, or the provider did not stream. When the provider sent
-its own error message, the note quotes it. The model is told not to write tool calls as text.
+its own error message, the note quotes it. The model gets instructions without any tool sections or
+tool names, and is told that tools are off and not to write tool calls as text. If it writes one
+anyway, the note adds that the model wrote a tool call as text and nothing ran.
 
 Models call tools in different ways, and memrynote adapts to each provider configuration instead of
 asking you to. Hosted OpenAI-compatible APIs work through the Custom preset. The probe records what
@@ -299,6 +309,14 @@ never remembered: start your local server and the next message picks it up. A te
 error during the tool check (network failure, timeout, rate limit, or a 5xx server error) does not
 turn tools off. That message keeps its tools, and the next message checks again. If you swap the
 model behind an unchanged configuration, press **Probe Tools** in Settings to force a fresh check.
+
+A turn with tools on the built-in backend can make up to 24 model calls, and each tool round uses
+one. The model is told this budget at the start of the turn. The 24th call runs without tools and asks
+the model for a short handoff: what is done, what is left, and what to send to continue. The reply
+then ends with **Stopped at the step limit** and a **Continue** button. Continue sends "Continue" as
+a normal message in the same conversation with your current model and settings, so the agent picks up
+from the handoff in a new turn. Claude Code, Codex, and Antigravity turns have no step limit set by
+memrynote.
 
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
@@ -473,8 +491,9 @@ files, and drops text an earlier version read through such a symlink.
 
 Notes and journal entries follow the same rule. A note or journal file replaced by a symlink to a
 file outside the vault fails every tool that reads or edits it with the same `PERMISSION_DENIED`
-error. A canvas file replaced that way reads as not found. So `vault_read_note` never returns text
-read from outside the vault.
+error, `notes.get` through `vault_desktop_read` and `notes.update` or `properties.set` through
+`vault_desktop_write` included. A canvas file replaced that way reads as not found. So
+`vault_read_note` never returns text read from outside the vault.
 
 Claude Code, Codex, and Antigravity receive the image from the MCP server as it is. For a local or
 OpenAI-compatible provider, Memry checks once whether the model takes images, by sending it a
@@ -546,9 +565,11 @@ tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_n
 `vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
 `journal.createEntry`, `journal.updateEntry`, `templates.create` and `templates.update` operations of
 `vault_desktop_write`. It also covers the checkbox lines that `notes.applyTemplate`,
-`inbox.convertToNote` and `notes.importFiles` write when an agent calls them, whoever wrote the
-template, the inbox item or the imported file. A checkbox line that was already in the note before
-the write is left exactly as it was.
+`inbox.convertToNote`, `inbox.convertToReminder`, `inbox.file`, `inbox.bulkFile`,
+`inbox.linkToNote`, `notes.importFiles` and `tasks.importFilesToProject` write when an agent calls them, and the template body a note created
+by an agent starts from (a `template` it names, or its folder's template when the body is empty),
+whoever wrote the template, the inbox item or the imported file. A checkbox line that was already
+in the note before the write is left exactly as it was.
 
 To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
 in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
@@ -824,7 +845,9 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   one you sent.
 - A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
 - `vault_create_note` and `vault_move_to_folder` list the folders the call created in
-  `created_folders`, shallowest first, when the folder they wrote into did not exist yet.
+  `created_folders`, shallowest first, when the folder they wrote into did not exist yet. So do the
+  `vault_desktop_write` operations `notes.create`, `notes.importFiles`, `notes.move` and
+  `inbox.file` with a destination `path`. The field is absent when every folder already existed.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.

@@ -431,6 +431,7 @@ pub fn create_filed_note(
             content: "",
             tags: &merged,
             properties: properties.as_ref(),
+            emoji: None,
         },
         device_id,
         now_ms,

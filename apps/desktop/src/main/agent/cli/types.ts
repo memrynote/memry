@@ -19,6 +19,8 @@ export type BackendEvent =
   | { kind: 'error'; message: string }
   /** The provider failed the tool probe, so this turn runs without tool schemas. */
   | { kind: 'tools_unavailable'; reason: AgentToolsOffReason; detail: string | null }
+  /** The turn used its last allowed model call; that call ran without tools. */
+  | { kind: 'step_limit' }
   | { kind: 'message_stop' }
   | { kind: 'noop' }
   | { kind: 'unknown'; raw: unknown }

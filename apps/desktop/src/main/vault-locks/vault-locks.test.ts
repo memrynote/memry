@@ -74,6 +74,7 @@ import {
 import { getBaseline, writeBaseline, writeLockRow } from './store'
 import { atomicWrite, deleteFile } from '../vault/file-ops'
 import { getAttachmentPath } from '../vault/attachments'
+import { watchLockedAttachments } from './attachment-watch'
 
 const isWindows = process.platform === 'win32'
 
@@ -504,6 +505,51 @@ describe('vault read-only locks (#2606)', () => {
   )
 
   it.skipIf(isWindows)(
+    'an attachment added after the attachments folder is first created is read-only',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+
+      const added = path.join(vault, 'attachments/note-a/late.png')
+      fs.mkdirSync(path.dirname(added), { recursive: true })
+      fs.writeFileSync(added, 'bytes')
+      fs.chmodSync(added, 0o644)
+
+      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
+    }
+  )
+
+  it('watching the attachments of a vault folder that went away does not recreate it', async () => {
+    const gone = path.join(vault, 'gone-vault')
+
+    await watchLockedAttachments(path.join(gone, 'attachments'))
+    await watchLockedAttachments(null)
+
+    expect(fs.existsSync(gone)).toBe(false)
+  })
+
+  it.skipIf(isWindows)(
+    'a reconcile still running when the vault closes does not watch attachments again',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      await watchLockedAttachments(null)
+
+      const running = reconcileLockedFiles()
+      state.vaultPath = ''
+      await running
+      state.vaultPath = vault
+      const added = path.join(vault, 'attachments/note-a/after-close.png')
+      fs.mkdirSync(path.dirname(added), { recursive: true })
+      fs.writeFileSync(added, 'bytes')
+      fs.chmodSync(added, 0o644)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      expect(modeOf(added)).toBe(0o644)
+    }
+  )
+
+  it.skipIf(isWindows)(
     'unlocking a file replaced while locked gives it its own mode, not the replaced one',
     async () => {
       const seenLive = path.join(vault, 'shared/live.pdf')
@@ -557,6 +603,32 @@ describe('vault read-only locks (#2606)', () => {
       await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
 
       expect(Object.keys(recreated).map(modeOf)).toEqual([0o400, 0o444, 0o400])
+    }
+  )
+
+  it.skipIf(isWindows)(
+    'a vault copied with its data DB gets every locked file its own mode back on unlock',
+    async () => {
+      const note = addNote('note-a', 'notes/a.md', 'a\n')
+      const folderFile = path.join(vault, 'shared/doc.pdf')
+      fs.mkdirSync(path.dirname(folderFile), { recursive: true })
+      fs.writeFileSync(folderFile, 'doc')
+      for (const file of [note, folderFile]) fs.chmodSync(file, 0o664)
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: true })
+
+      for (const file of [note, folderFile]) {
+        const copy = `${file}.copy`
+        fs.copyFileSync(file, copy)
+        fs.rmSync(file, { force: true })
+        fs.renameSync(copy, file)
+      }
+      expect([note, folderFile].map(modeOf)).toEqual([0o444, 0o444])
+      await checkLockedFilesAtOpen()
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
+
+      expect([note, folderFile].map(modeOf)).toEqual([0o664, 0o664])
     }
   )
 

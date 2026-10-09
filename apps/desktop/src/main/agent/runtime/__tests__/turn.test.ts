@@ -22,6 +22,7 @@ import type {
 import { broadcastAgentEvent } from '../event-bus'
 import { trackMainEvent } from '../../../telemetry/track'
 import { runTurn } from '../turn'
+import { SYSTEM_PROMPT_HEADER } from '../prompt-assembler'
 
 describe('runTurn against a stub backend', () => {
   it('persists user and assistant messages from stream-json output', async () => {
@@ -144,6 +145,39 @@ describe('runTurn against a stub backend', () => {
     )
     expect(input.prompt).not.toContain('Computer access requested')
     expect(input.prompt).not.toContain('Web search requested')
+  })
+
+  it('leaves tool instructions out of the prompt when the backend says the turn has no tools', async () => {
+    const run = async (hasTools: boolean): Promise<string> => {
+      const backend = {
+        ...createFakeBackend({ id: 'local_openai_compatible', turn: [{ kind: 'message_stop' }] }),
+        turnHasTools: vi.fn(async () => hasTools)
+      }
+      await runTurn(
+        {
+          conversations: createFakeConversationStore({ title: 'Existing conversation' }),
+          messages: createFakeMessageStore(),
+          backends: createFakeRegistry(backend)
+        },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'find my notes about X',
+          attachments: [],
+          backendOptions: { backend: 'local_openai_compatible', model: 'deepseek-chat' }
+        }
+      )
+      expect(backend.turnHasTools).toHaveBeenCalledTimes(1)
+      return vi.mocked(backend.runTurn).mock.calls[0][0].prompt
+    }
+
+    const off = await run(false)
+    expect(off).not.toContain('# Tool Use')
+    expect(off).not.toContain('# Workflows')
+    expect(off).not.toMatch(/vault_\w+/)
+    expect(off).toContain('Tools are off for this turn.')
+
+    expect(await run(true)).toContain(SYSTEM_PROMPT_HEADER)
   })
 
   it('marks the assistant message as errored when the subprocess exits non-zero', async () => {
@@ -844,6 +878,36 @@ describe('runTurn against a stub backend', () => {
       'assistant_text_delta',
       'message_upserted'
     ])
+  })
+
+  it('persists that the turn stopped at the step limit', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'assistant_delta', text: 'Done: A. Left: B.' },
+        { kind: 'step_limit' },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        backendOptions: { backend: 'local_openai_compatible', model: 'deepseek-chat' }
+      }
+    )
+
+    const assistant = messages.listByConversation('conversation-1')[1]
+    expect(assistant.status).toBe('completed')
+    expect(assistant.content).toEqual({
+      role: 'assistant',
+      data: { text: 'Done: A. Left: B.', stepLimitReached: true }
+    })
   })
 
   it('broadcasts failed tool results and ignores unknown backend events', async () => {

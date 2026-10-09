@@ -202,6 +202,34 @@ struct NoteMetadataViewModelTests {
         #expect(model.status == .idle)
     }
 
+    /// A metadata write sits in the outbox until a pass pushes it. A title
+    /// edit that asked for none waited for the next foreground (#2910).
+    @Test func every_landed_write_asks_for_a_sync_pass() async {
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: ScriptedMetadataWriter())
+        var requests = 0
+        model.requestSync = { requests += 1 }
+
+        await model.rename(to: "New", current: "Old")
+        await model.setIcon("🌱")
+        await model.setTags(["a"])
+        await model.setCover(url: "u", offsetY: 0.5)
+        await model.setProperty("Status", input: "x", kind: .text)
+        await model.clearProperty("Status")
+        _ = await model.addProperty(named: "Due", kind: .date, existing: [])
+        #expect(requests == 7)
+
+        await model.rename(to: "Same", current: "Same")
+        #expect(requests == 7, "nothing written, nothing to push")
+
+        let failing = NoteMetadataViewModel(
+            noteId: "note-1",
+            writer: ScriptedMetadataWriter(failure: StorageError.Failed(what: "x"))
+        )
+        failing.requestSync = { requests += 1 }
+        await failing.rename(to: "New", current: "Old")
+        #expect(requests == 7, "a write that did not land has nothing to push")
+    }
+
     /// An unchanged title writes nothing: every write is a payload merge and
     /// an outbox row, so tapping in and out must not enqueue a push.
     @Test func renaming_to_the_same_title_writes_nothing() async {

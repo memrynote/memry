@@ -128,3 +128,10 @@ describe('maskHtmlComments with %% comments (BBF-26)', () => {
     expect(maskHtmlComments(markdown)).toBe(markdown)
   })
 })
+
+describe('maskHtmlComments with a fence after an inline <!-- (BBF-46)', () => {
+  it('leaves the <!-- as text and the fence as code', () => {
+    const note = ['a <!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
+    expect(maskHtmlComments(note)).toBe(note)
+  })
+})

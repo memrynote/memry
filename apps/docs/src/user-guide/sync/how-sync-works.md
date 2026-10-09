@@ -243,7 +243,7 @@ list** to forget a folder you deleted on purpose.
 The same holds while a vault is open. If its drive is unplugged or its folder is renamed for a
 moment, every note looks removed to memrynote, but none of them is deleted, here or on your other
 devices. Once the folder is back, memrynote checks it again and picks up what changed while it was
-away: notes you edited elsewhere update, and notes you really deleted are deleted.
+away: notes you edited elsewhere update, notes you renamed keep their history under the new name, and notes you really deleted are deleted.
 
 ## See Also
 

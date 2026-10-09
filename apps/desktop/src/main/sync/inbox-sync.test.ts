@@ -102,7 +102,7 @@ describe('InboxSyncService', () => {
   })
 
   describe('#given no device ID #when enqueue called', () => {
-    it('#then skips silently', () => {
+    it('#then queues it under _offline for the push to rebind (#2897)', () => {
       const noDeviceService = new InboxSyncService({
         queue,
         db: asSyncDb(testDb.db),
@@ -112,7 +112,8 @@ describe('InboxSyncService', () => {
 
       noDeviceService.enqueueCreate('inbox-1')
 
-      expect(queue.getPendingCount()).toBe(0)
+      const [item] = queue.dequeue(1)
+      expect(JSON.parse(item.payload).clock).toMatchObject({ _offline: 1 })
     })
   })
 

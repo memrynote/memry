@@ -9,7 +9,7 @@ import {
   syncState
 } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
-import { getMemryDir, type VaultConfig } from './paths.ts'
+import { ATTACHMENTS_DIR, getMemryDir, type VaultConfig } from './paths.ts'
 
 const maxAttempts = 5
 const quarantineMaxAttempts = 3
@@ -310,7 +310,7 @@ export function createSyncService({
     async storageBreakdown() {
       const notes = await directorySize(path.join(vaultPath, config.defaultNoteFolder))
       const journal = await directorySize(path.join(vaultPath, config.journalFolder))
-      const attachments = await directorySize(path.join(vaultPath, config.attachmentsFolder))
+      const attachments = await directorySize(path.join(vaultPath, ATTACHMENTS_DIR))
       const crdt = await directorySize(path.join(getMemryDir(vaultPath), 'crdt'))
       const memry = await directorySize(getMemryDir(vaultPath))
       const other = Math.max(0, memry - crdt)

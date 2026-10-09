@@ -77,7 +77,6 @@ import {
   EnsurePropertyDefinitionSchema,
   ExportNoteSchema,
   ImportFilesSchema,
-  PlainChecklistsOptionSchema,
   NoteCreateSchema,
   NoteGetPositionsSchema,
   NoteListSchema,
@@ -92,6 +91,7 @@ import {
   UpdateOptionColorSchema,
   UpdatePropertyDefinitionSchema
 } from './notes-api'
+import { PlainChecklistsOptionSchema } from './plain-checklists'
 import { GetPropertiesSchema, RenamePropertySchema, SetPropertiesSchema } from './properties-api'
 import {
   BulkDismissSchema,
@@ -513,8 +513,16 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
       location: z.string().nullable().optional()
     })
   },
-  'inbox.convertToReminder': { itemId: text, input: z.object({ remindAt: z.string() }) },
-  'inbox.linkToNote': { itemId: text, noteId: text, tags: nullAsAbsent(z.array(z.string())) },
+  'inbox.convertToReminder': {
+    itemId: text,
+    input: z.object({ remindAt: z.string(), ...PlainChecklistsOptionSchema.shape })
+  },
+  'inbox.linkToNote': {
+    itemId: text,
+    noteId: text,
+    tags: nullAsAbsent(z.array(z.string())),
+    options: PlainChecklistsOptionSchema.optional()
+  },
   'inbox.addTag': { itemId: text, tag: text },
   'inbox.removeTag': { itemId: text, tag: text },
   'inbox.snooze': { input: SnoozeSchema },

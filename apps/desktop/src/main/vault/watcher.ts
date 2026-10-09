@@ -81,11 +81,12 @@ import {
   syncFolderConfigDelete,
   syncFolderConfigDiscovered
 } from '../notes/folder-config-effects'
-import { normalizeRelativePath } from '../lib/paths'
+import { normalizeRelativePath, refuseOutsideVault } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
+import { ATTACHMENTS_DIR } from './attachments'
 
 const logger = createLogger('Watcher')
 
@@ -237,14 +238,13 @@ export class VaultWatcher {
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
     // (.memry, .obsidian, .git) and excluded dirs; the attachments folder is added
     // to the exclude set so binaries are not watched/indexed as notes.
-    const config = getConfig()
     const watchPaths = [vaultPath]
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
 
     // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = [...this.excludePatterns, config.attachmentsFolder].filter(Boolean)
+    const userExcludePatterns = [...this.excludePatterns, ATTACHMENTS_DIR]
 
     // Create watcher with chokidar
     this.watcher = chokidar.watch(watchPaths, {
@@ -406,7 +406,9 @@ export class VaultWatcher {
   /**
    * Replay what changed while the vault was away through the handlers chokidar
    * would have called. Removals go first, so a file renamed meanwhile matches
-   * its pending delete by content hash when its new path is added.
+   * its pending delete by content hash when its new path is added. Both lists
+   * are gathered before any delete starts its rename window: walking a large
+   * vault outlasts the window (#2797).
    */
   private async rescan(generation: number): Promise<void> {
     const vaultPath = this.vaultPath
@@ -414,22 +416,36 @@ export class VaultWatcher {
     const isCurrent = (): boolean => this.generation === generation
     const db = getIndexDatabase()
 
+    const missing: string[] = []
     for (const row of getAllNoteRefRows(db)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, row.path)
-      if (await isFileMissing(absolutePath)) this.handleFileDelete(absolutePath)
+      if (await isFileMissing(absolutePath)) missing.push(absolutePath)
     }
 
-    const excludes = [...this.excludePatterns, getConfig().attachmentsFolder].filter(Boolean)
+    const added: string[] = []
+    const changed: string[] = []
+    const excludes = [...this.excludePatterns, ATTACHMENTS_DIR]
     for (const relativePath of await findVaultFiles(vaultPath, vaultPath, excludes)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, relativePath)
       const cached = getNoteCacheByPath(db, relativePath)
       if (!cached) {
-        await this.handleFileAdd(absolutePath)
+        added.push(absolutePath)
       } else if (await isModifiedSince(absolutePath, cached.indexedAt)) {
-        await this.handleFileChange(absolutePath)
+        changed.push(absolutePath)
       }
+    }
+
+    if (!isCurrent()) return
+    for (const absolutePath of missing) this.handleFileDelete(absolutePath)
+    for (const absolutePath of added) {
+      if (!isCurrent()) return
+      await this.handleFileAdd(absolutePath)
+    }
+    for (const absolutePath of changed) {
+      if (!isCurrent()) return
+      await this.handleFileChange(absolutePath)
     }
   }
 
@@ -462,6 +478,10 @@ export class VaultWatcher {
 
       const existing = getNoteCacheByPath(db, relativePath)
       if (existing) {
+        // A note file that turns readable again arrives as an add (#2764).
+        if (fileType === 'markdown') {
+          await this.handleMarkdownFileChange(absolutePath, relativePath, existing, db)
+        }
         return
       }
 
@@ -569,6 +589,8 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     claimed: { id: string; createdAt: string } | null
   ): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) {
       return
@@ -642,7 +664,13 @@ export class VaultWatcher {
       source: 'external'
     })
 
-    enqueueIngestBackfill({ noteId, absolutePath, relativePath, fileBytes: stats.size })
+    enqueueIngestBackfill({
+      noteId,
+      vaultPath,
+      absolutePath,
+      relativePath,
+      fileBytes: stats.size
+    })
 
     if (claimed === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
@@ -737,6 +765,7 @@ export class VaultWatcher {
     if (this.vaultPath) {
       enqueueIngestBackfill({
         noteId: id,
+        vaultPath: this.vaultPath,
         absolutePath: path.join(this.vaultPath, relativePath),
         relativePath,
         fileBytes: stats.size
@@ -863,6 +892,7 @@ export class VaultWatcher {
       if (getFileType(getExtension(absolutePath)) !== 'markdown') return
       const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
       if (!cached || !isNoteLocked(cached.id, relativePath)) return
+      await refuseOutsideVault(this.vaultPath, relativePath)
       const content = await safeRead(absolutePath)
       if (content !== null) await restoreLockedNoteFile(cached.id, content)
     } catch (err) {
@@ -879,6 +909,8 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    await refuseOutsideVault(this.vaultPath, relativePath)
     const content = await safeRead(absolutePath)
     if (!content) {
       return
@@ -1075,6 +1107,12 @@ export class VaultWatcher {
           // recursive delete takes the files before the database.
           if (!isVaultReachable(vaultPath)) {
             this.waitForVaultReturn()
+            return
+          }
+          // chokidar reports a file it cannot open (chmod 000, an antivirus
+          // lock) as unlinked. It is still there, so its note stays (#2764).
+          if (!(await isFileMissing(absolutePath))) {
+            logger.warn('Note file cannot be read; keeping the note', { path: relativePath })
             return
           }
           // A locked note removed outside the app gets its locked text back

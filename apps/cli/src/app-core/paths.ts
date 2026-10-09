@@ -9,6 +9,12 @@ export interface VaultConfig {
   attachmentsFolder: string
 }
 
+/**
+ * Where every note's attachments live, as on desktop (`getAttachmentsRoot`).
+ * Fixed: a config's `attachmentsFolder` is kept for older builds and ignored.
+ */
+export const ATTACHMENTS_DIR = 'attachments'
+
 export const defaultVaultConfig: VaultConfig = {
   excludePatterns: ['.git', 'node_modules', '.trash', '.obsidian', '.memry'],
   defaultNoteFolder: '',
@@ -69,9 +75,9 @@ export async function writeVaultConfig(vaultPath: string, config: VaultConfig): 
   await fs.writeFile(getConfigPath(vaultPath), `${JSON.stringify(config, null, 2)}\n`, 'utf-8')
   await fs.mkdir(path.join(vaultPath, config.defaultNoteFolder), { recursive: true })
   await fs.mkdir(path.join(vaultPath, config.journalFolder), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, config.attachmentsFolder), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, config.attachmentsFolder, 'images'), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, config.attachmentsFolder, 'files'), { recursive: true })
+  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR), { recursive: true })
+  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'images'), { recursive: true })
+  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'files'), { recursive: true })
 }
 
 export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig> {

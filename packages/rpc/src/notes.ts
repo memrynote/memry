@@ -22,11 +22,11 @@ import type {
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
   NoteClustersResponse,
-  PlainChecklistsOption,
   HeaderTagEdit,
   NoteTagTemplateOutcome,
   UndoTagTemplateResponse
 } from '../../contracts/src/notes-api.ts'
+import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
 import {
   defineDomain,
   defineEvent,
@@ -285,7 +285,7 @@ export interface RestoreVersionResponse {
   error?: string
 }
 
-export interface NoteCreateInput {
+export interface NoteCreateInput extends PlainChecklistsOption {
   title: string
   content?: string
   folder?: string

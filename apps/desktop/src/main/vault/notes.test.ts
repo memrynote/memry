@@ -301,6 +301,25 @@ describe('notes operations', () => {
       })
     })
 
+    it('keeps the checkbox lines of the template or the given body plain when asked (#2796)', async () => {
+      const fromTemplate = await notes.createNote({
+        title: 'Weekly Sync',
+        template: 'meeting-notes',
+        plainChecklists: true
+      })
+      const fromBody = await notes.createNote({
+        title: 'Shopping',
+        content: '- [ ] Buy milk',
+        template: 'meeting-notes',
+        plainChecklists: true
+      })
+      const asIs = await notes.createNote({ title: 'Owner', template: 'meeting-notes' })
+
+      expect(fromTemplate.content).toMatch(/^- \[ \] \{check\}$/m)
+      expect(fromBody.content).toMatch(/^- \[ \] Buy milk \{check\}$/m)
+      expect(asIs.content).toMatch(/^- \[ \]$/m)
+    })
+
     it('adopts the template icon so the note is identifiable in a list', async () => {
       const result = await notes.createNote({
         title: 'Weekly Sync',

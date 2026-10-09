@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { act, renderHook } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
+import type * as DriverModule from 'driver.js'
 
 const driveSpy = vi.fn()
 const destroySpy = vi.fn()
@@ -246,6 +247,61 @@ describe('useFirstRunTour', () => {
 
       expect(driveSpy).not.toHaveBeenCalled()
       expect(localStorage.getItem(TOUR_KEY)).toBeNull()
+    })
+  })
+
+  describe('when the tour chunk loads late or not at all', () => {
+    let fakeDriver: typeof DriverModule
+
+    /**
+     * Swaps the driver.js chunk for one gated by `load`. `vi.doMock` only reaches
+     * imports made after `vi.resetModules()`, so the hook is imported fresh, with
+     * the React it renders through.
+     */
+    const withDriverChunk = async (load: () => Promise<void>) => {
+      fakeDriver = await import('driver.js')
+      vi.resetModules()
+      vi.doMock('driver.js', async () => {
+        await load()
+        return fakeDriver
+      })
+      const [{ renderHook: render }, { useFirstRunTour: hook }] = await Promise.all([
+        import('@testing-library/react'),
+        import('./use-first-run-tour')
+      ])
+      return { render, hook }
+    }
+
+    afterEach(() => {
+      vi.doMock('driver.js', () => fakeDriver)
+    })
+
+    it('shows no tour and still offers it next launch when the chunk fails to load', async () => {
+      const { render, hook } = await withDriverChunk(async () => {
+        throw new Error('chunk load failed')
+      })
+
+      render(() => hook())
+      await settle()
+
+      expect(driveSpy).not.toHaveBeenCalled()
+      expect(localStorage.getItem(TOUR_KEY)).toBeNull()
+      expect(vault.onboardingCompleted).toBe(false)
+    })
+
+    it('never starts the tour when unmounted while the chunk is still loading', async () => {
+      let finishLoad = (): void => {}
+      const { render, hook } = await withDriverChunk(
+        () => new Promise<void>((resolve) => (finishLoad = resolve))
+      )
+
+      const { unmount } = render(() => hook())
+      await settle()
+      unmount()
+      finishLoad()
+      await settle()
+
+      expect(driveSpy).not.toHaveBeenCalled()
     })
   })
 

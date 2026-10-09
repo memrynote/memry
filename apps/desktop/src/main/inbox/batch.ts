@@ -93,7 +93,7 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
 
   async function handleBulkFile(input: unknown): Promise<BulkResponse> {
     const parsed = BulkFileSchema.parse(input)
-    const { itemIds, destination, tags } = parsed
+    const { itemIds, destination, tags, plainChecklists } = parsed
 
     if (destination.type !== 'folder') {
       return {
@@ -103,7 +103,7 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
       }
     }
 
-    return bulkFileToFolder(itemIds, destination.path || '', tags)
+    return bulkFileToFolder(itemIds, destination.path || '', tags, { plainChecklists })
   }
 
   async function handleBulkTag(input: unknown): Promise<BulkResponse> {

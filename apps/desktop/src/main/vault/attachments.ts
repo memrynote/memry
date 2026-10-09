@@ -265,12 +265,14 @@ export function formatFileSize(bytes: number): string {
 // ============================================================================
 
 /**
- * The folder that holds every note's attachments folder. Fixed, whatever the
- * vault config's `attachmentsFolder` says: that setting only names a folder
- * the watcher and indexer skip.
+ * The vault folder that holds every note's attachments folder. Fixed, whatever
+ * the vault config's `attachmentsFolder` says: older configs may carry another
+ * value, and desktop and the CLI ignore it.
  */
+export const ATTACHMENTS_DIR = 'attachments'
+
 export function getAttachmentsRoot(vaultPath: string): string {
-  return path.join(vaultPath, 'attachments')
+  return path.join(vaultPath, ATTACHMENTS_DIR)
 }
 
 /**

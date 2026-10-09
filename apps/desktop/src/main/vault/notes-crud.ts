@@ -41,6 +41,7 @@ import {
 import { moveDirectory } from './move-directory'
 import { recordDropCopyFailure } from './activity-log'
 import { copyImportedFile } from './import-copy'
+import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -59,7 +60,7 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
-import { resolveVaultFile } from '../lib/paths'
+import { refuseOutsideVault, resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -68,7 +69,7 @@ import {
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
-import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
+import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
@@ -175,7 +176,7 @@ export interface FileMetadata {
   transcriptionStatus?: 'pending' | 'processing' | 'complete' | 'failed' | null
 }
 
-export interface NoteCreateInput {
+export interface NoteCreateInput extends PlainChecklistsOption {
   /** Preset note id (importers that save attachments under the id before the
    *  note exists, to avoid a create-then-update round trip). Defaults to a new id. */
   id?: string
@@ -337,7 +338,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     Object.assign(frontmatter, writePropertiesToRoot(frontmatter, properties))
   }
 
-  const content = input.content && input.content.trim() ? input.content : templateContent
+  const body = input.content && input.content.trim() ? input.content : templateContent
+  const content = input.plainChecklists ? markAddedChecklistLinesPlain(body) : body
   // Icon is Memry sidecar state (index DB), never frontmatter — same as updateNote.
   const emoji = input.emoji === undefined ? templateIcon : input.emoji
   const fileContent = serializeNote(frontmatter, content)
@@ -603,6 +605,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return getNoteById(cached.id)
   }
 
+  await refuseOutsideVault(getVaultRoot(), notePath)
   const absolutePath = toAbsolutePath(notePath)
   const fileContent = await safeRead(absolutePath)
 

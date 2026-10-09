@@ -43,15 +43,15 @@ running:
   system `suspend` counts as offline,
   `apps/desktop/src/main/sync/network.ts:92-95`), the device is revoked
   (`apps/desktop/src/main/sync/engine/error-recovery-handler.ts:72`), or a
-  close is terminal (`apps/desktop/src/main/sync/websocket.ts:184-205`, §9.9).
+  close is terminal (`apps/desktop/src/main/sync/websocket.ts:181-203`, §9.9).
 
 An idle desktop socket costs the server nothing. The Durable Object accepts it
 through the hibernation API
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:190`) and answers the
 client's `ping` with the registered `pong` auto-response without waking
 (`:69`, §9.6). The client pings every 25 s and terminates the socket after 31 s
-without a frame (`apps/desktop/src/main/sync/websocket.ts:12`, `:16`,
-`:307-329`), so a half-open connection reports disconnected instead of being
+without a frame (`apps/desktop/src/main/sync/websocket.ts:11`, `:15`,
+`:311-334`), so a half-open connection reports disconnected instead of being
 trusted.
 
 **On any surface, a client that returns to the foreground or regains a socket
@@ -145,7 +145,7 @@ and where it is produced:
 narrows them to `{ kind: 'calendar_changes_available', sourceId }`,
 `{ kind: 'linking_request', sessionId, newDeviceName, newDevicePlatform }` and
 `{ kind: 'linking_approved', sessionId }` (`:180-191`). Desktop parses every
-frame through that helper (`apps/desktop/src/main/sync/websocket.ts:158-170`).
+frame through that helper (`apps/desktop/src/main/sync/websocket.ts:157-169`).
 Until #2291 the contract had no schema for them and desktop read their payloads
 directly; a frame missing a required field was forwarded to the renderer as-is.
 It is now `ignored`.
@@ -186,7 +186,7 @@ share of notifications, so a client MUST keep polling the calendar provider.
 has no payload schema, and **has no producer anywhere in
 `apps/sync-server/src`**. `parseSyncSocketFrame` collapses it to `ignored`
 (`packages/contracts/src/sync-socket.ts:200-201`), which desktop drops with a
-debug log (`apps/desktop/src/main/sync/websocket.ts:165-168`).
+debug log (`apps/desktop/src/main/sync/websocket.ts:164-167`).
 
 **Normative — `heartbeat` is dead. There is no server-initiated keepalive.** The
 keepalive is client-initiated and is §9.6. A client MUST ignore a `heartbeat`
@@ -209,8 +209,8 @@ costs a wake on every beat and consumes rate-limit budget**
 
 Reference cadence: send `ping` every **25 s**
 (`apps/desktop/src/main/sync/websocket.ts:15`, `PING_INTERVAL_MS = 25_000`,
-started at `:305-311`), and terminate the socket if no frame arrives within the
-heartbeat timeout (`apps/desktop/src/main/sync/websocket.ts:321-327`).
+started at `:311-318`), and terminate the socket if no frame arrives within the
+heartbeat timeout (`apps/desktop/src/main/sync/websocket.ts:327-334`).
 
 ## 9.7 Inbound rate limit
 
@@ -256,7 +256,7 @@ access token (chapter 02 §2.10), rather than tearing the socket down.
 
 **4004 and 4009 are terminal.** A conforming client MUST latch reconnection off
 for both — for 4004 by signing the device out, for 4009 until the application is
-updated (`apps/desktop/src/main/sync/websocket.ts:182-204`, where 4004 clears
+updated (`apps/desktop/src/main/sync/websocket.ts:181-203`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
 latch on `VaultSync`, which outlives the per-foreground socket the shell mints
 and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:292`,
@@ -265,7 +265,7 @@ and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:292`,
 ## 9.10 Reconnect and backoff — Q09.4
 
 **Normative.** A reconnect policy exists in the reference implementation
-(`apps/desktop/src/main/sync/websocket.ts:12-15`, `:337-352`) and this chapter
+(`apps/desktop/src/main/sync/websocket.ts:12-14`, `:343-364`) and this chapter
 adopts it:
 
 | Constant                  | Value  | Line  |
@@ -278,21 +278,17 @@ adopts it:
 delay = min(BASE * 2^attempt + random()*JITTER, MAX)
 ```
 
-(`apps/desktop/src/main/sync/websocket.ts:340-344`), with `attempt` incremented
-per scheduled reconnect (`:346`) and **reset to zero on a successful open**.
+(`apps/desktop/src/main/sync/websocket.ts:348-352`), with `attempt` incremented
+per scheduled reconnect (`:354`) and **reset to zero on a successful open**.
 
 A reconnect MUST NOT be scheduled when any of these latches is set:
 the client no longer wants a connection, the handshake was rejected `401` or
 `403`, the version was rejected (a `426` handshake or a 4009 close), or
-transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:336-337`).
+transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:344`; the handshake
+statuses set their latches at `:211-238`).
 A `403` handshake is §9.9's 4004 met before the upgrade: an unknown or revoked
 device (§9.2), which reconnecting cannot fix. A reconnect MUST only fire when
-the device believes it is online (`:350`).
-
-**Known gap.** Desktop does not yet latch a `403` handshake: its
-`unexpected-response` handler sets latches only for `401` and `426`
-(`apps/desktop/src/main/sync/websocket.ts:210-230`), so a handshake refused `403`
-falls through to `close` and reconnects along the ladder.
+the device believes it is online (`:358`).
 
 The Rust core learns the handshake's status from the shell as
 `TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
@@ -517,7 +513,7 @@ socket's `changes_available` payload:
   device through the pull. Both sources emit one sample per changed row.
 
 **Desktop.** `WebSocketManager` sends both headers with the types its HTTP
-requests declare (`apps/desktop/src/main/sync/websocket.ts:125-126`). On a frame
+requests declare (`apps/desktop/src/main/sync/websocket.ts:124-125`). On a frame
 with items the engine fires the socket applier and schedules the wake pull
 unconditionally (`apps/desktop/src/main/sync/engine.ts:964-965`). The applier
 (`apps/desktop/src/main/sync/engine/socket-apply.ts:105`) runs frames one at a

@@ -33,6 +33,9 @@ export const noteBodySync = sqliteTable('note_body_sync', {
   /** Epoch milliseconds the server last refused a body push for good; its changes were dropped. */
   lastRejectedAt: integer('last_rejected_at'),
 
+  /** Epoch milliseconds the server last stored this note's whole doc state. */
+  lastSnapshotAt: integer('last_snapshot_at'),
+
   /** Epoch milliseconds of the latest write to this row. */
   updatedAt: integer('updated_at').notNull()
 })
