@@ -7,12 +7,7 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { getIndexDatabase } from '../../database/client'
-import {
-  deleteNoteMetadata,
-  getNoteMetadataById,
-  getNoteMetadataByPath,
-  updateNoteMetadata
-} from '@memry/storage-data'
+import { getNoteMetadataById, getNoteMetadataByPath, updateNoteMetadata } from '@memry/storage-data'
 import { planJournalDayApply } from '@memry/domain-notes/journal'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
@@ -38,7 +33,8 @@ import {
   journalTombstonedPast,
   markOwedJournalDayMergeDeleted,
   oweJournalDayMerge,
-  readDayBody
+  readDayBody,
+  removeJournalRow
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
 
@@ -94,10 +90,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null
       })
     }
-    if (plan.removeHolder && holder) {
-      deleteNoteMetadata(ctx.db, holder.id)
-      deleteNoteFromCache(indexDb, holder.id)
-    }
+    if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
     if (!plan.applyIncoming) {
       log.info('Foreign journal id for a day; merging it into the day', { itemId, date })
       return 'skipped'

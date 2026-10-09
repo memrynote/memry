@@ -2878,7 +2878,7 @@
       "name": "deleted, body held here",
       "state": {
         "deleted": true,
-        "bodyPulled": false,
+        "bodyPulled": true,
         "hasBody": true,
         "dayDeleted": false,
         "clocked": true
@@ -2892,7 +2892,7 @@
       "name": "deleted, nothing held here",
       "state": {
         "deleted": true,
-        "bodyPulled": false,
+        "bodyPulled": true,
         "hasBody": false,
         "dayDeleted": false,
         "clocked": true
@@ -2906,7 +2906,7 @@
       "name": "deleted, day deleted here",
       "state": {
         "deleted": true,
-        "bodyPulled": false,
+        "bodyPulled": true,
         "hasBody": true,
         "dayDeleted": true,
         "clocked": true

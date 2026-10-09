@@ -60,14 +60,14 @@ const DAY_MERGE_CASES: ReadonlyArray<{
     name: 'live, no body and no text, day deleted here',
     state: { ...LIVE, hasBody: false, dayDeleted: true }
   },
-  { name: 'deleted, body held here', state: { ...LIVE, deleted: true, bodyPulled: false } },
+  { name: 'deleted, body held here', state: { ...LIVE, deleted: true } },
   {
     name: 'deleted, nothing held here',
-    state: { ...LIVE, deleted: true, bodyPulled: false, hasBody: false }
+    state: { ...LIVE, deleted: true, hasBody: false }
   },
   {
     name: 'deleted, day deleted here',
-    state: { ...LIVE, deleted: true, bodyPulled: false, dayDeleted: true }
+    state: { ...LIVE, deleted: true, dayDeleted: true }
   }
 ]
 const DAY_IDENTITY_CASES: ReadonlyArray<{

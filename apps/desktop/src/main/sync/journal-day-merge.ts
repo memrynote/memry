@@ -27,6 +27,7 @@ import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { deleteNoteMetadata, getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
+import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
@@ -162,6 +163,8 @@ export interface JournalDayMergeDeps {
     fallbackMarkdown: string | null
   ) => Promise<boolean>
   purgeDoc: (id: string) => Promise<void>
+  /** Removes `id`'s local row, if any, from both databases. */
+  removeRow: (id: string) => void
   enqueueDelete: (id: string, payload: string) => void
 }
 
@@ -224,6 +227,11 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     }
   }
 
+  // A forgotten id goes from this device, as in the core: a row a pre-fix
+  // build left would keep the day, and typing would land in a dead id. Before
+  // the owed merge drops, so a restart in between forgets it again.
+  if (step.action === 'forget') deps.removeRow(merge.foreignId)
+
   // The tombstone and dropping the owed merge commit together, before the
   // purge: a restart in between leaves either both or neither (#2985).
   deps.db.transaction(() => {
@@ -268,20 +276,34 @@ export function readDayBody(date: string): string | null {
   }
 }
 
+/**
+ * Removes a journal row from the index DB, then the data DB. The two are
+ * separate databases, and the projection's own removal runs later: a kill in
+ * between leaves at most an index row, which `ensureJournalDay` treats as the
+ * holder and removes again.
+ */
+export function removeJournalRow(db: DrizzleDb, id: string): void {
+  const indexDb = getIndexDatabase()
+  deleteNoteCache(indexDb, id)
+  deleteNoteMetadata(db, id)
+  deleteNoteFromCache(indexDb, id)
+}
+
 /** `ensureDay` against the real vault and databases. */
 export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<void> {
   const targetId = generateJournalId(date)
-  const holder = getNoteMetadataByPath(db, getJournalRelativePath(date))
+  const path = getJournalRelativePath(date)
+  const row = getNoteMetadataByPath(db, path)
+  const holder = row ?? getNoteCacheByPath(getIndexDatabase(), path)
   if (holder?.id === targetId) return
   if (holder) {
     oweJournalDayMerge(db, {
       foreignId: holder.id,
       date,
-      clock: holder.clock ?? null,
+      clock: row?.clock ?? null,
       fallbackMarkdown: readDayBody(date)
     })
-    deleteNoteMetadata(db, holder.id)
-    deleteNoteFromCache(getIndexDatabase(), holder.id)
+    removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {
     throw new Error('The day file has text but no row; left for the indexer')
   }
@@ -315,6 +337,7 @@ export async function runJournalDayMerges(
         fallbackClientId(foreignId, deviceId)
       ),
     purgeDoc: (id) => provider.purge(id),
+    removeRow: (id) => removeJournalRow(db, id),
     enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)
   })
 }

@@ -106,10 +106,17 @@ vi.mock('../vault/index', () => ({
 }))
 
 import { deleteNoteMetadata } from '@memry/storage-data'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { getNoteCacheByPath } from '../database/queries/notes'
+import { resolveJournalEntryId } from '../journal/create-entry'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { _resetBulkApplyForTests } from './bulk-apply'
 import { journalHandler } from './item-handlers/journal-handler'
-import { listOwedJournalDayMerges, runJournalDayMerges } from './journal-day-merge'
+import {
+  listOwedJournalDayMerges,
+  oweJournalDayMerge,
+  runJournalDayMerges
+} from './journal-day-merge'
 import { listPendingDeletes } from './pending-deletes'
 
 const DATE = '2026-06-09'
@@ -133,22 +140,30 @@ describe('runJournalDayMerges', () => {
     provider.docs.set(id, doc)
   }
   /** What a pre-fix build left: a foreign row holding the day, and its file. */
-  const foreignRow = (clock: Record<string, number> | null): void => {
-    fs.writeFileSync(path.join(vaultPath, DAY_PATH), 'minted here\n')
+  const foreignRow = (
+    clock: Record<string, number> | null,
+    { body = 'minted here\n', indexed = false } = {}
+  ): void => {
+    fs.writeFileSync(path.join(vaultPath, DAY_PATH), body)
+    const row = {
+      id: FOREIGN,
+      path: DAY_PATH,
+      title: DATE,
+      fileType: 'markdown' as const,
+      createdAt: '2026-06-09T08:00:00.000Z',
+      modifiedAt: '2026-06-09T08:00:00.000Z'
+    }
     data.db
       .insert(noteMetadata)
-      .values({
-        id: FOREIGN,
-        path: DAY_PATH,
-        title: DATE,
-        fileType: 'markdown',
-        journalDate: DATE,
-        clock,
-        createdAt: '2026-06-09T08:00:00.000Z',
-        modifiedAt: '2026-06-09T08:00:00.000Z'
-      })
+      .values({ ...row, journalDate: DATE, clock })
       .run()
+    if (indexed)
+      index.db
+        .insert(noteCache)
+        .values({ ...row, date: DATE })
+        .run()
   }
+  const indexedAtDay = (): string | undefined => getNoteCacheByPath(index.db, DAY_PATH)?.id
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -300,6 +315,40 @@ describe('runJournalDayMerges', () => {
     expect(textOf(DAY)).toBe('typed here, never pushed')
     expect(pullBody).not.toHaveBeenCalled()
     expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('forgets a blank foreign holder deleted elsewhere: its rows go and the day opens as the day id', async () => {
+    foreignRow({ minter: 2 }, { body: '', indexed: true })
+
+    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
+    await drain()
+
+    expect(rows()).toEqual([])
+    expect(indexedAtDay()).toBeUndefined()
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
+    // What opening the day to type resolves: not the forgotten id.
+    expect(resolveJournalEntryId(DATE)).toBe(DAY)
+  })
+
+  it('converges from a holder removed from the data DB but not yet from the index DB', async () => {
+    foreignRow({ minter: 2 }, { indexed: true })
+    // A kill inside the removal: the text is owed, the data row is gone, the
+    // index row still names the foreign id at the day's path.
+    oweJournalDayMerge(ctx.db, {
+      foreignId: FOREIGN,
+      date: DATE,
+      clock: { minter: 2 },
+      fallbackMarkdown: 'minted here'
+    })
+    deleteNoteMetadata(ctx.db, FOREIGN)
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(indexedAtDay()).toBeUndefined()
+    expect(textOf(DAY)).toBe('minted here')
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 

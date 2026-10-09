@@ -39,6 +39,7 @@ vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheByPath: vi.fn(() => undefined),
+  deleteNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),
   setNoteTags: vi.fn(),
   setNoteProperties: vi.fn()
