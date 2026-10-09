@@ -395,6 +395,7 @@ const reasonSyncDidNotStart = async (): Promise<SyncNotStartedReason> => {
   ])
   // 'unknown' means the account was unreachable, not a vault choice to make.
   const binding = getVaultBindingState().status
+  if (binding === 'foreign') return 'vault-foreign'
   if (binding !== 'bound' && binding !== 'unknown') return 'vault-binding'
   if (getCachedEntitlement()?.isPaid === false) return 'entitlement'
   return 'unavailable'
