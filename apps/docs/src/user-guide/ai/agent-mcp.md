@@ -111,6 +111,11 @@ that output is written to the local log, the conversation falls back to a title 
 first message, and the turn continues with its history uncompacted — your message and the
 conversation are never lost.
 
+Each compaction folds the previous summary into the new one, so a long conversation keeps its
+start (your goal, the decisions made, and the notes and tasks the agent created) however many
+times it compacts. Conversations that an older version compacted more than once get back the
+earlier summary and the messages between the two summaries on their next message.
+
 Conversation history is stored encrypted, so every message you send has to decrypt the transcript
 before the agent can see it. memrynote reads and decrypts that history once per message and reuses it
 for the rest of the turn, so sending a message into a long conversation costs the same single pass
