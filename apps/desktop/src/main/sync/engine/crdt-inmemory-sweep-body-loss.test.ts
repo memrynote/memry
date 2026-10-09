@@ -1161,6 +1161,34 @@ describe('CrdtProvider with no store (#2536)', () => {
     })
   })
 
+  it('an edit to a closed note returns while the server keeps refusing snapshots (#2763)', async () => {
+    const store = fakeStore() as { storeUpdate: (id: string, u: Uint8Array) => Promise<void> }
+    h.persistence = store
+    putNoteInVault(ORIGINAL)
+    const persisted = new Y.Doc()
+    await markdownToYFragment(ORIGINAL, persisted.getXmlFragment(CRDT_FRAGMENT_NAME), NOTE_PATH)
+    await store.storeUpdate(NOTE, Y.encodeStateAsUpdate(persisted))
+    const queued: Uint8Array[] = []
+    const outbox = {
+      enqueue: (_noteId: string, update: Uint8Array) => queued.push(update),
+      enqueueFullState: () => {},
+      dropNote: () => {}
+    } as unknown as NoteBodyOutbox
+    const provider = getCrdtProvider()
+    await provider.init(outbox, () => new Promise<void>(() => {}))
+    const deferred: string[] = []
+    provider.setSnapshotDeferral((noteId) => deferred.push(noteId))
+
+    const fed = await feedExternalEditToCrdt(NOTE, EXPECTED_BODY)
+
+    for (const update of queued) Y.applyUpdate(persisted, update)
+    expect({
+      fed,
+      deferred,
+      queuedBody: await yDocToMarkdown(persisted, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })
+    }).toEqual({ fed: true, deferred: [NOTE], queuedBody: EXPECTED_BODY })
+  })
+
   it('an empty note open in the editor takes an agent edit live', async () => {
     h.server = { snapshot: null, updates: [] }
     putNoteInVault('')
