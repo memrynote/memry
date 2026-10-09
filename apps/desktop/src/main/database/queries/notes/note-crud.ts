@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, gt, like, inArray, sql, count, type SQL } from 'drizzle-orm'
+import { eq, desc, asc, and, like, inArray, sql, count, type SQL } from 'drizzle-orm'
 import {
   noteCache,
   noteTags,
@@ -210,35 +210,6 @@ export function listNotesFromCache(
     .all()
 }
 
-export interface NoteCacheFileRow {
-  id: string
-  path: string
-  indexedAt: string
-}
-
-/**
- * Cursor-paged `id`/`path` scan over the same rows `listNotesFromCache` walks
- * (journal entries carry a date and stay out of it).
- *
- * Keyset on the primary key instead of LIMIT/OFFSET: the reconcile pass deletes
- * rows while it walks, and an offset window silently skips a row for every one
- * removed behind it. `indexedAt` rides along so a caller that leaves the pass to
- * do async work can tell whether the row it read was rewritten in the meantime.
- */
-export function listNoteCacheFilesAfter(
-  db: IndexDb,
-  afterId: string,
-  limit: number
-): NoteCacheFileRow[] {
-  return db
-    .select({ id: noteCache.id, path: noteCache.path, indexedAt: noteCache.indexedAt })
-    .from(noteCache)
-    .where(and(sql`${noteCache.date} IS NULL`, gt(noteCache.id, afterId)))
-    .orderBy(asc(noteCache.id))
-    .limit(limit)
-    .all()
-}
-
 /**
  * Every cached file under `folder`, at any depth, journals included.
  *
@@ -304,8 +275,7 @@ export interface NoteCacheRefRow {
 /**
  * Every note in the index as `id`/`path`/`title`, journals included.
  *
- * Deliberately unfiltered, unlike {@link listNoteCacheFilesAfter} (which drops
- * dated journal rows) and {@link listNotesFromCache} (which pages): the one
+ * Deliberately unfiltered, unlike {@link listNotesFromCache} (which pages): the one
  * caller walks the whole vault looking for notes that reference a given
  * attachment, and a journal that embeds a PDF has to count as a reference or
  * deleting the file would take the journal's embed with it.

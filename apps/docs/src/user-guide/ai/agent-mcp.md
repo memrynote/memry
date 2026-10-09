@@ -111,6 +111,11 @@ that output is written to the local log, the conversation falls back to a title 
 first message, and the turn continues with its history uncompacted — your message and the
 conversation are never lost.
 
+Each compaction folds the previous summary into the new one, so a long conversation keeps its
+start (your goal, the decisions made, and the notes and tasks the agent created) however many
+times it compacts. Conversations that an older version compacted more than once get back the
+earlier summary and the messages between the two summaries on their next message.
+
 Conversation history is stored encrypted, so every message you send has to decrypt the transcript
 before the agent can see it. memrynote reads and decrypts that history once per message and reuses it
 for the rest of the turn, so sending a message into a long conversation costs the same single pass
@@ -850,8 +855,9 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   `created_folders`, shallowest first, when the folder they wrote into did not exist yet. So do the
   `vault_desktop_write` operations `notes.create`, `notes.importFiles`, `notes.move` and
   `inbox.file` with a destination `path`. They list only folders that exist once the write lands,
-  so a `new-note` destination, which ignores `path`, lists none. The field is absent when every
-  folder already existed.
+  so a `new-note` destination, which ignores `path`, lists none. A `path` of `root` is an ordinary
+  folder called `root`; an empty `path` files to the notes root, the vault root unless a default
+  note folder is set. The field is absent when every folder already existed.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.

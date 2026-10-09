@@ -28,7 +28,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{DocumentRegistry, markdown_seed, update_log};
+use crate::crdt::{epoch, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::sync::outbox;
@@ -171,12 +171,7 @@ pub(crate) fn author_with(
                 .push(bytes.to_vec())
         })
     };
-    let document = DocumentRegistry::new(device_id, sink).get_or_open(doc_id)?;
-    for blob in update_log::load_plan(conn, doc_id)?.blobs() {
-        // Durable, so the replay does not reach the sink and this edit's
-        // update is the only thing in it.
-        document.apply_durable_update(blob)?;
-    }
+    let document = epoch::open_for_write(conn, device_id, doc_id, sink)?;
 
     write(&document)?;
 
@@ -231,12 +226,7 @@ pub(crate) fn seed_empty_body_in(
                 .push(bytes.to_vec());
         })
     };
-    let document = DocumentRegistry::new(device_id, sink)
-        .get_or_open(id)
-        .map_err(seed_failed)?;
-    for blob in update_log::load_plan(tx, id).map_err(seed_failed)?.blobs() {
-        document.apply_durable_update(blob).map_err(seed_failed)?;
-    }
+    let document = epoch::open_for_write(tx, device_id, id, sink).map_err(seed_failed)?;
     if !markdown_seed::body_is_empty(&document).map_err(seed_failed)? {
         return Ok(());
     }
@@ -260,5 +250,47 @@ fn seed_failed(error: CrdtError) -> StorageError {
         other => StorageError::Failed {
             what: other.to_string(),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crdt::{DocumentRegistry, body_edit};
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    const DAY: &str = "j2026-04-16";
+
+    fn appended(conn: &Connection, markdown: &str) -> Vec<u8> {
+        author_with(conn, DAY, "device-a", |document| {
+            document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
+        })
+        .expect("author")
+        .expect("authored an update")
+    }
+
+    /// #2986: a day deleted and written again on this device is a new
+    /// document under the same id. A peer that missed the delete still holds
+    /// the old one, and the re-created day's writes must still reach it.
+    #[test]
+    fn a_write_over_a_purged_document_reaches_a_peer_holding_the_old_one() {
+        let dir = temp_dir("body-write-recreate");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        let (old, new) = db
+            .call_blocking(|conn| {
+                let old = appended(conn, "old day");
+                update_log::append_local_update(conn, DAY, &old, 1).unwrap();
+                update_log::purge(conn, DAY).unwrap();
+                Ok((old, appended(conn, "new day")))
+            })
+            .expect("write");
+
+        let peer = DocumentRegistry::new("device-b", Arc::new(|_, _| {}))
+            .get_or_open(DAY)
+            .unwrap();
+        peer.apply_durable_update(&old).unwrap();
+        peer.apply_durable_update(&new).unwrap();
+
+        assert_eq!(body_edit::top_level_block_ids(&peer).unwrap().len(), 2);
     }
 }

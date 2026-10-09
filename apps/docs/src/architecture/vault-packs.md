@@ -25,8 +25,9 @@ The server never decrypts anything it packs. Payload bytes are copied verbatim f
 R2 objects: for `crdt_snapshot`, the exact encrypted body a snapshot push stored. The server can
 concatenate ciphertext and hash it; it cannot read a byte of it.
 
-Replaced and deleted items are simply dead bytes inside old packs forever. Nothing garbage-collects
-them, because a pack is written once and never modified.
+Replaced and deleted items are simply dead bytes inside old packs. A pack is written once and
+never modified. The one exception is deleting a note or journal: the server then drops the whole
+set of `crdt_snapshot` packs for the vault and rebuilds it (see below).
 
 ## `MPAK` v1 Layout
 
@@ -112,13 +113,26 @@ remains as a documented guard so the target cannot be raised back into isolate-u
 without confronting it.
 
 Selection leaves out the snapshot of a note id whose `note` and `journal` rows in `sync_items` are
-all tombstones. Deleting a note keeps its `crdt_snapshots` row, and a fresh device applies packs
+all tombstones. A delete purges the note's `crdt_snapshots` row (#2986), but tombstones from before
+that purge, and pushes whose purge failed, keep the row until the cleanup sweep. A fresh device applies packs
 before the pull that delivers the tombstone, so a packed body of a deleted note reaches the device
 as if it were live. A note id with any live `note` or `journal` row still packs, and so does one
 with no row yet, because a snapshot can land before its record. Dead rows stay in the scan and are
 skipped like oversized rows, so the watermark moves past a tail of them. If the filter ran in SQL,
 such a vault would scan nothing, stay first in the oldest-first backfill list, and spend each
-tick's budget. The filter only covers packs built after the delete. A pack built earlier is immutable and still carries the body.
+tick's budget. The filter only covers packs built after the delete.
+
+A pack built before the delete is immutable and still carries the body. A deleted id can come back:
+a journal day is always `j<date>`. If that pack survived, a fresh device would apply the deleted
+body to the re-created day. So when the server purges a deleted note's body
+(`services/document-body-purge.ts`, protocol chapter 07 §7.15), it deletes every `crdt_snapshot`
+`pack_index` row and pack object of the vault and resets that kind's watermark. It drops all of
+them because the note's older revisions can sit in any pack built before its last snapshot write.
+Compaction rebuilds the set without the dead note. Until the rebuild finishes, a fresh device
+fetches those bodies item by item. A compaction run that selected the old snapshot before the
+purge cannot publish it: it inserts the `pack_index` row and advances the watermark in one batch,
+guarded on every packed snapshot row still existing with the packed blob and its note not dead.
+If the guard fails, it deletes the pack object and the next run reselects.
 
 Rows larger than `MAX_PACKED_ITEM_BYTES` = 8 MB are excluded from packs permanently and stay on the
 item-granular tail. The largest legal record payload is roughly 7 MB of JSON text (a 5 MB decoded

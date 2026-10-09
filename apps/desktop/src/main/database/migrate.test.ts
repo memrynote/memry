@@ -1500,7 +1500,7 @@ describe('0071_note_body_sync_snapshot migration', () => {
   })
 })
 
-describe('0072_tag_schema_task_fields migration', () => {
+describe('0073_tag_schema_task_fields migration', () => {
   let tempDir: string
   const migrationsDir = path.join(__dirname, 'drizzle-data')
 
@@ -1512,14 +1512,14 @@ describe('0072_tag_schema_task_fields migration', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  function migrationsBefore0072(): string {
-    const copy = path.join(tempDir, 'migrations-before-0072')
+  function migrationsBefore0073(): string {
+    const copy = path.join(tempDir, 'migrations-before-0073')
     fs.cpSync(migrationsDir, copy, { recursive: true })
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    const cutoff = journal.entries.findIndex((e) => e.tag === '0072_tag_schema_task_fields')
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0073_tag_schema_task_fields')
     expect(cutoff).toBeGreaterThanOrEqual(0)
     for (const entry of journal.entries.splice(cutoff)) {
       fs.rmSync(path.join(copy, `${entry.tag}.sql`))
@@ -1538,7 +1538,7 @@ describe('0072_tag_schema_task_fields migration', () => {
   function upgradeWithCaptures(): Database.Database {
     const sqlite = new Database(path.join(tempDir, 'data.db'))
     const db = drizzle(sqlite)
-    migrate(db, { migrationsFolder: migrationsBefore0072() })
+    migrate(db, { migrationsFolder: migrationsBefore0073() })
     const tag = sqlite.prepare("INSERT INTO tag_definitions (name, color) VALUES (?, '#111')")
     for (const name of [
       'person',
@@ -1623,7 +1623,7 @@ describe('0072_tag_schema_task_fields migration', () => {
     sqlite.prepare(`UPDATE tasks SET fields = '{}' WHERE id = 't1'`).run()
 
     const fill = fs
-      .readFileSync(path.join(migrationsDir, '0072_tag_schema_task_fields.sql'), 'utf8')
+      .readFileSync(path.join(migrationsDir, '0073_tag_schema_task_fields.sql'), 'utf8')
       .split('--> statement-breakpoint')
       .filter((statement) => statement.includes('UPDATE `'))
     expect(fill).toHaveLength(2)
@@ -1647,7 +1647,7 @@ describe('0072_tag_schema_task_fields migration', () => {
       .run()
 
     expect(() =>
-      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0072() })
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0073() })
     ).not.toThrow()
 
     expect(sqlite.prepare('SELECT schema FROM tag_definitions').get()).toEqual({

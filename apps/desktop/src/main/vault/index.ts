@@ -482,8 +482,8 @@ interface BackgroundIndexBuildInput {
   recoveredReason: IndexHealth | 'migration_failed' | null
   /**
    * Settles once locked files changed or removed while the app was closed are
-   * restored. The missing-file reconcile drops the index row of a removed
-   * file, which would hide a locked note from that restore (#2606).
+   * restored. Awaited before `replayMissedRemovals`, so a removed locked note
+   * is back on disk before the scan could take it for a delete (#2606).
    */
   lockedFilesChecked: Promise<void>
 }
@@ -511,6 +511,20 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   // it only after awaiting this promise, and a vault switch closes first.
   const isStale = (): boolean =>
     backgroundIndexBuildCancelled || isShuttingDown || currentStatus.path !== vaultPath
+
+  await lockedFilesChecked
+  if (isStale()) return
+
+  // Before the walk: a file renamed or moved while closed pairs with its
+  // missing old path here and keeps its id. The walk would index the new path
+  // under a fresh id, and the old id's delete would sync (#3013).
+  try {
+    await getWatcher().replayMissedRemovals()
+  } catch (error) {
+    logger.error('Replaying removals made while the app was closed failed:', error)
+    trackMainError('vault', 'replay_missed_removals', error)
+  }
+  if (isStale()) return
 
   try {
     // Indexes every new/missing note; skips files already in cache, so this is
@@ -607,9 +621,6 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   // After the walk, so reading PDFs and images never competes with it.
   startFileTextExtraction(vaultPath)
-
-  await lockedFilesChecked
-  if (isStale()) return
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))

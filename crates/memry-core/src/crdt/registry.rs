@@ -273,8 +273,14 @@ pub struct DocumentRegistry {
 impl DocumentRegistry {
     /// `device_id` is `meta`'s `device.id` (data-model §A.2).
     pub fn new(device_id: &str, sink: UpdateSink) -> Self {
+        Self::with_client_id(client_id_from_device_id(device_id), sink)
+    }
+
+    /// A registry writing under `client_id`: a writer's, from
+    /// [`super::epoch::client_id`].
+    pub(crate) fn with_client_id(client_id: u64, sink: UpdateSink) -> Self {
         Self {
-            client_id: client_id_from_device_id(device_id),
+            client_id,
             sink,
             open: Mutex::new(HashMap::new()),
         }

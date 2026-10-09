@@ -268,6 +268,13 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   return attachmentService
 }
 
+/** The server chunk hashes of an attachment, through the shared service (#3015). */
+export async function getAttachmentChunkHashes(attachmentId: string): Promise<string[]> {
+  const service = getOrCreateAttachmentService()
+  if (!service) throw new Error('Sync not initialized')
+  return service.chunkHashesOf(attachmentId)
+}
+
 /**
  * Bound upload/download IO over the SHARED attachment singletons, for the
  * canvas asset service to reuse (no second queue/service). Uploads go through

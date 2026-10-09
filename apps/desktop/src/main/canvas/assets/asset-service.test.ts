@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { eq } from 'drizzle-orm'
 
 import * as schema from '@memry/db-schema/data-schema'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
@@ -30,7 +31,8 @@ const MIGRATION_FILES = [
   '0048_canvas_folders.sql',
   '0057_sync_unknown_fields.sql',
   '0058_canvas_owner_note.sql',
-  '0063_canvas_entity_edges.sql'
+  '0063_canvas_entity_edges.sql',
+  '0072_deleted_asset_releases.sql'
 ]
 
 function freshDb() {
@@ -174,6 +176,38 @@ describe('canvas asset service', () => {
         'canvas_asset_dedup_hit',
         expect.objectContaining({ metrics: { byteCount: bytes.length } })
       )
+    })
+
+    it('uploads fresh instead of reusing a peer-deleted canvas row whose chunks may be freed (#3015)', async () => {
+      const bytes = Buffer.from('image-x')
+      await uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
+      // A peer deleted canvas-a 40 days ago and may have freed its chunks. This
+      // device applied the delete, so it keeps the row and has no release record.
+      db.update(schema.canvases)
+        .set({ deletedAt: Date.now() - 40 * 24 * 60 * 60 * 1000 })
+        .where(eq(schema.canvases.id, 'canvas-a'))
+        .run()
+
+      const second = await uploadCanvasAsset(ctx, 'canvas-b', 'file-2', 'image/png', bytes)
+
+      expect(second.deduped).toBe(false)
+      expect(uploadAttachment).toHaveBeenCalledTimes(2)
+      expect(second.descriptor.chunkHashes).toEqual(['enc-2-0', 'enc-2-1'])
+    })
+
+    it('reuses the row of a canvas this device deleted while its release is still pending', async () => {
+      const bytes = Buffer.from('image-y')
+      await uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
+      const deletedAt = Date.now() - 24 * 60 * 60 * 1000
+      db.update(schema.canvases).set({ deletedAt }).where(eq(schema.canvases.id, 'canvas-a')).run()
+      db.insert(schema.deletedAssetReleases)
+        .values({ itemType: 'canvas', itemId: 'canvas-a', deletedAt, attachmentIds: null })
+        .run()
+
+      const second = await uploadCanvasAsset(ctx, 'canvas-b', 'file-2', 'image/png', bytes)
+
+      expect(second.deduped).toBe(true)
+      expect(uploadAttachment).toHaveBeenCalledTimes(1)
     })
 
     it('dedup hit: resolves ref/path/filename from the RECORDED filename, not the locally-computed one', async () => {

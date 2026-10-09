@@ -1,5 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
+import { purgeDeletedDocumentBodies } from './document-body-purge'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { adjustStorageUsed } from './quota'
 import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
@@ -279,6 +280,59 @@ export const cleanupExpiredTombstones = async (
   }
 
   return shed
+}
+
+// Deleted documents purged per tick. Each vault costs one or two db.batch
+// calls and one bulk R2 delete.
+const DELETED_BODY_LIMIT = 100
+
+/**
+ * Purges the server body of deleted notes and journals that still have one
+ * (#2986): tombstones written before push purged bodies, and pushes whose purge
+ * failed. Push does the same work for every new delete.
+ */
+export const cleanupDeletedDocumentBodies = async (
+  db: D1Database,
+  storage: R2Bucket
+): Promise<number> => {
+  const rows = await db
+    .prepare(
+      `SELECT DISTINCT si.user_id, si.vault_id, si.item_id
+       FROM sync_items si
+       WHERE si.item_type IN ('note', 'journal') AND si.deleted_at IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM sync_items live
+                WHERE live.user_id = si.user_id AND live.vault_id = si.vault_id
+                  AND live.item_type IN ('note', 'journal') AND live.item_id = si.item_id
+                  AND live.deleted_at IS NULL)
+         AND (EXISTS (SELECT 1 FROM crdt_snapshots s
+                WHERE s.user_id = si.user_id AND s.vault_id = si.vault_id AND s.note_id = si.item_id)
+           OR EXISTS (SELECT 1 FROM crdt_updates u
+                WHERE u.user_id = si.user_id AND u.vault_id = si.vault_id AND u.note_id = si.item_id))
+       LIMIT ${DELETED_BODY_LIMIT}`
+    )
+    .all<{ user_id: string; vault_id: string; item_id: string }>()
+
+  const byVault = new Map<string, { userId: string; vaultId: string; noteIds: string[] }>()
+  for (const row of rows.results ?? []) {
+    const key = `${row.user_id}\u0000${row.vault_id}`
+    const group = byVault.get(key)
+    if (group) group.noteIds.push(row.item_id)
+    else byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
+  }
+
+  let purged = 0
+  for (const { userId, vaultId, noteIds } of byVault.values()) {
+    try {
+      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
+      purged += noteIds.length
+    } catch (error) {
+      logger.warn('Deleted document body purge failed, retried next tick', {
+        documents: noteIds.length,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+  return purged
 }
 
 export const cleanupOrphanedBlobChunks = async (

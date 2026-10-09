@@ -733,7 +733,7 @@ export async function deleteCanvasFolder(
       })
     }
   }
-  releaseRemovedCanvasPaths(db, vaultPath, deletedCanvasIds)
+  await releaseRemovedCanvasPaths(db, vaultPath, deletedCanvasIds)
 
   return deletedCanvasIds
 }

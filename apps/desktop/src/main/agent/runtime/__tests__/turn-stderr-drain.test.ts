@@ -190,7 +190,8 @@ describe('agent turns against a CLI that floods stderr', () => {
         payload: {
           summary: 'Earlier in this conversation: shipped the drain fix',
           summarizedThroughId: 'old-1',
-          summarizedAt: expect.any(Number)
+          summarizedAt: expect.any(Number),
+          summarizedFromStart: true
         }
       }
     })

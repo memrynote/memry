@@ -440,6 +440,14 @@ describe('cleanCachedSnippet (issue #2554)', () => {
     expect(cleanCachedSnippet('Sale 50%% off, cut mid...')).toBe('Sale 50%% off, cut mid...')
   })
 
+  it('keeps table cells when a comment marker sits next to a cell pipe (BBF-59)', () => {
+    const snippet = createSnippet(
+      'Pipes\n\n| a | b |\n| --- | --- |\n| 50%% | 20%% |\n| 1 <!-- x | y --> | z |'
+    )
+    expect(snippet).toBe('Pipes | a | b | | --- | --- | | 50%% | 20%% | | 1 <!-- x | y --> | z |')
+    expect(cleanCachedSnippet(snippet)).toBe(snippet)
+  })
+
   it('leaves a clean snippet untouched', () => {
     expect(cleanCachedSnippet('a < b and c > d...')).toBe('a < b and c > d...')
     expect(cleanCachedSnippet(createSnippet('plain **text**'))).toBe('plain text')

@@ -35,7 +35,9 @@ const { dbs, provider, journalSync, logger } = vi.hoisted(() => {
     provider: {
       docs,
       absorbed: [] as Array<{ targetId: string; foreignId: string; fallback: string | null }>,
-      purgeFails: false
+      purgeFails: false,
+      /** Runs inside `hasDocState`: a write landing during the drain's await. */
+      duringHasBody: null as (() => void) | null
     }
   }
 })
@@ -71,7 +73,12 @@ vi.mock('../tasks/publisher', () => ({ createTasksPublisher: () => ({}) }))
 vi.mock('./journal-sync', () => ({ getJournalSyncService: () => journalSync }))
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
-    hasDocState: async (id: string) => (provider.docs.get(id)?.getText('t').length ?? 0) > 0,
+    hasDocState: async (id: string) => {
+      const has = (provider.docs.get(id)?.getText('t').length ?? 0) > 0
+      provider.duringHasBody?.()
+      return has
+    },
+    getDoc: (id: string) => provider.docs.get(id),
     absorbForeignDoc: async (
       targetId: string,
       foreignId: string,
@@ -171,6 +178,7 @@ describe('runJournalDayMerges', () => {
     provider.docs.clear()
     provider.absorbed.length = 0
     provider.purgeFails = false
+    provider.duringHasBody = null
     fs.rmSync(vaultPath, { recursive: true, force: true })
     fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
     data = createTestDataDb()
@@ -330,6 +338,44 @@ describe('runJournalDayMerges', () => {
     expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
     // What opening the day to type resolves: not the forgotten id.
     expect(resolveJournalEntryId(DATE)).toBe(DAY)
+  })
+
+  it('does not forget a blank holder the user types into during the drain; the next drain merges it', async () => {
+    foreignRow({ minter: 2 }, { body: '', indexed: true })
+    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
+    // Typing into the open blank day, still only in its live doc (#3008).
+    provider.duringHasBody = () => typed(FOREIGN, 'typed mid-drain')
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: FOREIGN, path: DAY_PATH }])
+    expect(textOf(FOREIGN)).toBe('typed mid-drain')
+    expect(listOwedJournalDayMerges(ctx.db)).toHaveLength(1)
+
+    provider.duringHasBody = null
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(textOf(DAY)).toBe('typed mid-drain')
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('does not forget a blank holder whose day file gains text during the drain', async () => {
+    foreignRow({ minter: 2 }, { body: '', indexed: true })
+    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
+    provider.duringHasBody = () =>
+      fs.writeFileSync(path.join(vaultPath, DAY_PATH), 'saved mid-drain\n')
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: FOREIGN, path: DAY_PATH }])
+    expect(listOwedJournalDayMerges(ctx.db)).toHaveLength(1)
+
+    provider.duringHasBody = null
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(textOf(DAY)).toBe('saved mid-drain')
   })
 
   it('converges from a holder removed from the data DB but not yet from the index DB', async () => {

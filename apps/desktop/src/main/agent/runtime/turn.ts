@@ -172,7 +172,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     }
   } catch (error) {
     // A failed or empty summarization must not become a 'compacted' marker —
-    // compactedHistory replaces all prior history with the summary, so a bad
+    // the prompt replaces the covered history with the summary, so a bad
     // one would permanently destroy conversation context. Skip compaction for
     // this turn and run with the uncompacted prompt instead.
     logger.warn('Conversation compaction failed; skipping compaction for this turn', error)

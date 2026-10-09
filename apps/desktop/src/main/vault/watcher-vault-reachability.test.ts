@@ -31,6 +31,7 @@ vi.mock('../database', () => ({
   isDatabaseInitialized: () => true,
   updateFtsContent: vi.fn()
 }))
+vi.mock('../sync/bulk-apply', () => ({ hasBulkApplyJournal: () => false }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),

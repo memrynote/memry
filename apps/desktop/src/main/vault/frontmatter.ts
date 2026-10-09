@@ -630,9 +630,14 @@ const TRUNCATED_SPAN_TAG_REGEX = /\s*<\/?(?:span|spa|sp|s)?(?:\s[^<>]*)?(?=\.\.\
  * raw `<span style="…">` tags, and those cached before BBF-26 kept `%%`
  * comments. A cached snippet is only recomputed when the note's content
  * changes, so unedited notes still carry them.
+ *
+ * A snippet is the note collapsed onto one line, so a table's rows are no
+ * longer lines `stripMarkdownComments` can tell apart. Wrapped in pipes it
+ * reads as one table row, where a comment never crosses a cell pipe (BBF-59).
  */
 export function cleanCachedSnippet(snippet: string): string {
-  return stripInlineStyleSpanTags(stripMarkdownComments(snippet))
+  const uncommented = stripMarkdownComments(`|${snippet}|`).slice(1, -1)
+  return stripInlineStyleSpanTags(uncommented)
     .replace(TRUNCATED_SPAN_TAG_REGEX, '')
     .replace(/\s{2,}/g, ' ')
 }

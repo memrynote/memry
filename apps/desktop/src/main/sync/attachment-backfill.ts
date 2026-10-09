@@ -71,8 +71,9 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   }
   const counted = notesWithRecords(deps.db)
 
-  let scanned = 0
-  let queued = 0
+  // First: the body scan skips an embed whose file note has a row.
+  let queued = queueUnsentFileNotes(deps, notes)
+  let scanned = queued
   for (const note of notes) {
     // A local-only note is deliberately not on the server; uploading its
     // attachments would leak exactly what the flag exists to hold back.
@@ -113,6 +114,28 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
     log.info('Queued attachments that never reached the server', { notes: scanned, files: queued })
   }
   return { scanned, queued }
+}
+
+/**
+ * File notes whose bytes never reached the server. The watcher queues a file
+ * added while the app runs; one indexed at startup it never sees (#2965).
+ */
+function queueUnsentFileNotes(
+  deps: AttachmentBackfillDeps,
+  notes: Array<typeof noteMetadata.$inferSelect>
+): number {
+  let queued = 0
+  for (const note of notes) {
+    if (note.fileType === 'markdown' || note.attachmentId || note.localOnly) continue
+    const file = path.join(deps.vaultPath, note.path)
+    if (existingFiles([file]).length === 0) continue
+    try {
+      if (queueUploadIfAbsent(deps.db, note.id, file)) queued++
+    } catch (error) {
+      log.warn('Failed to queue a file note', { noteId: note.id, error })
+    }
+  }
+  return queued
 }
 
 /**

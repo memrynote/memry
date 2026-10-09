@@ -98,7 +98,7 @@ function findLiveCanvasIdAtPath(db: DataDb, relativePath: string): string | null
   )
 }
 
-function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | null }> {
+export function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | null }> {
   return db
     .select({ id: canvases.id, filePath: canvases.filePath })
     .from(canvases)
@@ -112,11 +112,14 @@ function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | nul
  * vault-open reconcile re-points the row to it. Only files no live row owns
  * are read, since a moved document sits at a path nobody owns yet; that is
  * usually zero or one read. A file that cannot be read or parsed counts as
- * this canvas: only a positive absence of the id deletes it.
+ * this canvas: only a positive absence of the id deletes it. The canvas's own
+ * row owns nothing here: a case-only rename on a case-sensitive volume leaves
+ * the document at a path that still matches the row's old one.
  */
 function mayStillHoldCanvas(db: DataDb, vaultPath: string, id: string): boolean {
   const owned = new Set(
     liveCanvasPaths(db)
+      .filter((row) => row.id !== id)
       .map((row) => row.filePath)
       .filter((filePath): filePath is string => Boolean(filePath))
       .map(canvasPathKey)

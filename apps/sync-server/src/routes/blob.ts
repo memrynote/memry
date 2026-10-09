@@ -651,6 +651,13 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
 // Decrements ref_count for each hash by 1. Decrement-only, on purpose: unlike
 // the cancel-session path above, this never eager-deletes R2 — the
 // `cleanupOrphanedBlobChunks` cron reaps rows once ref_count <= 0.
+//
+// The decrement floors at zero, so a replayed request (a client that crashed
+// after the server answered, or two devices freeing the same deleted item) is a
+// no-op instead of driving the count negative (#3015). The decrement that takes
+// a chunk to zero refunds its bytes: an upload charges `storage_used` for every
+// chunk it stores, and the reaper does not refund, so without this a freed
+// image kept counting against the plan's storage quota.
 blob.post('/attachments/dereference', dereferenceLimit, async (c) => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
@@ -668,16 +675,20 @@ blob.post('/attachments/dereference', dereferenceLimit, async (c) => {
   let dereferenced = 0
   for (const hash of new Set(parsed.data.chunkHashes)) {
     const chunk = await c.env.DB.prepare(
-      'SELECT id, ref_count FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+      'SELECT id, ref_count, size_bytes FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
     )
       .bind(userId, vaultId, hash)
-      .first<{ id: string; ref_count: number }>()
+      .first<{ id: string; ref_count: number; size_bytes: number }>()
     if (!chunk) continue
 
-    await c.env.DB.prepare('UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ?')
+    const after = await c.env.DB.prepare(
+      'UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ? AND ref_count > 0 RETURNING ref_count'
+    )
       .bind(chunk.id)
-      .run()
+      .first<{ ref_count: number }>()
+    if (!after) continue
     dereferenced++
+    if (after.ref_count === 0) await adjustStorageUsed(c.env.DB, userId, -chunk.size_bytes)
   }
 
   return c.json({ dereferenced }, 200)

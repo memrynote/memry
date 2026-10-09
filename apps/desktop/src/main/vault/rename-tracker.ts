@@ -46,8 +46,11 @@ interface PendingDelete {
   path: string
   /** Timestamp when delete was detected */
   timestamp: number
-  /** Timeout handle for processing real delete */
-  timeout: NodeJS.Timeout
+  /**
+   * Timeout handle for processing real delete. Null for a deferred delete,
+   * which waits for `settleDeferredDeletes` instead of a clock.
+   */
+  timeout: NodeJS.Timeout | null
   /** Callback to execute if this is a real delete (not a rename) */
   onRealDelete: () => Promise<void>
 }
@@ -151,13 +154,17 @@ function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDel
  * @param onRealDelete - Callback to execute if this is a real delete
  * @param statKey - Size + mtime of the deleted file, for a row that has no
  *   cached content hash yet. Ignored when a hash is available.
+ * @param deferred - Arm no window. A caller that knows every add up front (a
+ *   rescan) adds them all, then settles the unmatched with
+ *   `settleDeferredDeletes`, so a slow batch of adds cannot outlast a clock.
  */
 export function trackPendingDelete(
   id: string,
   contentHash: string,
   relativePath: string,
   onRealDelete: () => Promise<void>,
-  statKey?: string | null
+  statKey?: string | null,
+  deferred = false
 ): void {
   // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
@@ -170,12 +177,14 @@ export function trackPendingDelete(
     statKey: statKey ?? null,
     path: relativePath,
     timestamp: Date.now(),
-    timeout: setTimeout(() => {
-      // No matching 'add' event arrived - this is a real delete
-      logger.debug(`No rename detected for ${id}, processing as delete`)
-      removePending(entry)
-      void entry.onRealDelete()
-    }, RENAME_WINDOW_MS),
+    timeout: deferred
+      ? null
+      : setTimeout(() => {
+          // No matching 'add' event arrived - this is a real delete
+          logger.debug(`No rename detected for ${id}, processing as delete`)
+          removePending(entry)
+          void entry.onRealDelete()
+        }, RENAME_WINDOW_MS),
     onRealDelete
   }
 
@@ -214,7 +223,7 @@ export function checkForRename(
   }
 
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
-  clearTimeout(pending.timeout)
+  if (pending.timeout) clearTimeout(pending.timeout)
 
   return { id: pending.id, oldPath: pending.path, onRealDelete: pending.onRealDelete }
 }
@@ -228,7 +237,7 @@ export function clearPendingDelete(id: string): void {
   for (const bucket of pendingDeletes.values()) {
     const entry = bucket.find((p) => p.id === id)
     if (entry) {
-      clearTimeout(entry.timeout)
+      if (entry.timeout) clearTimeout(entry.timeout)
       removePending(entry)
       logger.debug(`Cleared pending delete for ${id}`)
       return
@@ -242,12 +251,28 @@ export function clearPendingDelete(id: string): void {
 export function clearAllPendingDeletes(): void {
   for (const bucket of pendingDeletes.values()) {
     for (const pending of bucket) {
-      clearTimeout(pending.timeout)
+      if (pending.timeout) clearTimeout(pending.timeout)
       logger.debug(`Cleared pending delete for ${pending.id} (shutdown)`)
     }
   }
   pendingDeletes.clear()
   pendingDeletesByStat.clear()
+}
+
+/**
+ * Process every deferred delete no add has claimed as a real delete, in the
+ * order they were tracked.
+ */
+export async function settleDeferredDeletes(): Promise<void> {
+  const unmatched = new Set<PendingDelete>()
+  for (const bucket of pendingDeletes.values()) {
+    for (const pending of bucket) if (pending.timeout === null) unmatched.add(pending)
+  }
+  for (const pending of unmatched) {
+    removePending(pending)
+    logger.debug(`No rename detected for ${pending.id}, processing as delete`)
+    await pending.onRealDelete()
+  }
 }
 
 /**

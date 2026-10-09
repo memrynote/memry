@@ -263,7 +263,8 @@ describe('placeDownloadedFile', () => {
       })
     }
     // Uploaded already, on its way, and indexed at startup with no upload of
-    // its own: only the last still needs the embed to carry its bytes.
+    // its own: the backfill queues the last under its own id (#2965), so no
+    // embed carries any of them.
     fileNote('photo', 'photo.png', 'att-photo')
     fileNote('scan', 'scan.pdf', null)
     enqueueUpload(db, 'scan', source('scan.pdf'))
@@ -275,7 +276,7 @@ describe('placeDownloadedFile', () => {
       listPendingUploads(db)
         .map((row) => `${row.noteId} ${path.basename(row.diskPath)}`)
         .sort()
-    ).toEqual(['scan scan.pdf', 'trip data.txt', 'trip old.png'])
+    ).toEqual(['old old.png', 'scan scan.pdf', 'trip data.txt'])
   })
 
   it('a placed and recorded file is not uploaded again', async () => {

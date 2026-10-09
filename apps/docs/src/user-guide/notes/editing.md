@@ -637,7 +637,8 @@ not index it, and sync sends none of its text. Moving blocks into it or restorin
 versions fails with the same error. Renaming another note does not rewrite the links in it, a tag
 rename, merge or delete skips it, its backlink excerpts stay empty, and attachments it might
 reference are kept. Deleting a task that came from it leaves the file alone, quitting keeps no
-version of it, and a lock on it keeps no copy of its text and does not change the file's permissions. Semantic search and its outgoing links do
+version of it, and a lock on it keeps no copy of its text and does not change the file's permissions. Deleting it, or the
+folder it is in, does not offer to delete tasks listed in the outside file. Semantic search and its outgoing links do
 not read it either. The link stays as you made it. A symlink to another file inside the vault works
 as usual.
 
@@ -909,6 +910,19 @@ A note whose file is still there but cannot be read, for example after `chmod 00
 antivirus holds it, is not treated as deleted. The note stays in the list and on your other
 devices, a save names the note in a notice, and your edit stays open. Once the file can be read
 again, memrynote picks it up and your next edit saves as usual.
+
+Deleting a note's file outside memrynote deletes the note, and the delete syncs to your other
+devices. That holds for a file deleted while memrynote is closed too: the delete happens the
+next time it opens the vault. A file iCloud offloaded to save space (on macOS 12 and 13 it leaves
+a hidden `.icloud` file in its place) is not deleted, nor is an attachment this device has not
+downloaded yet; once the offloaded file is deleted as well, so is the note. A note file put back
+from the trash or a backup comes back as a new note.
+
+A note renamed or moved while memrynote is closed, alone or with its whole folder, keeps its
+history, tasks and links. When more than 20 files, and more than a quarter of the vault, are
+missing at once (a vault still being copied or restored, say), memrynote deletes none of them and
+checks again the next time it opens the vault. Twenty or fewer missing files are always deleted,
+so in a small vault even all of its notes going missing at once syncs their deletes.
 
 ## Opening a Note Written Somewhere Else
 

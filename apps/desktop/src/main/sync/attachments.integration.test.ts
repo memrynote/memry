@@ -35,6 +35,11 @@ import {
   AttachmentTooLargeError,
   type AttachmentSyncDeps
 } from './attachments'
+import { eq } from 'drizzle-orm'
+import { noteMetadata } from '@memry/db-schema'
+import { createTestDataDb } from '../../test/helpers/test-data-db'
+import { dereferenceChunks } from '../canvas/assets/attachment-dereference'
+import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-asset-release'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -495,5 +500,96 @@ describe('an upload whose bytes the note already has on the server', () => {
 
     expect(second.attachmentId).not.toBe(first.attachmentId)
     expect(initiates.count).toBe(1)
+  }, 120_000)
+})
+
+// #3015: a deleted note's attachment is freed on the real server 30 days after
+// the delete: its chunks drop to zero references, the quota gets their bytes
+// back, and a replayed release frees nothing twice.
+describe('deleted note attachment release against the real sync-server', () => {
+  it('frees the chunks and refunds the quota once the grace period has passed', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const svc = new AttachmentSyncService(createDeps(user))
+    const d1 = await server.getD1()
+    const storageUsed = async (): Promise<number> =>
+      (await d1
+        .prepare('SELECT storage_used FROM users WHERE id = ?')
+        .bind(user.userId)
+        .first<number>('storage_used')) ?? -1
+    const refCounts = async (): Promise<number[]> =>
+      (
+        await d1
+          .prepare('SELECT ref_count FROM blob_chunks WHERE user_id = ? ORDER BY hash')
+          .bind(user.userId)
+          .all<{ ref_count: number }>()
+      ).results.map((row) => row.ref_count)
+
+    const before = await storageUsed()
+    const src = await writeTempFile('note-image.bin', randomBytes(64 * 1024))
+    const { attachmentId, manifest } = await svc.uploadAttachment('note-gone', src)
+    const chunkBytes = manifest.chunks.reduce((sum, c) => sum + c.size + CHUNK_CRYPTO_OVERHEAD, 0)
+    expect(await refCounts()).toEqual([1])
+    const charged = await storageUsed()
+
+    const db = createTestDataDb()
+    let now = Date.UTC(2026, 0, 1)
+    const iso = new Date(now).toISOString()
+    db.insert(noteMetadata)
+      .values({
+        id: 'note-gone',
+        path: 'note-gone.md',
+        title: 'Gone',
+        attachmentReferences: [attachmentId],
+        createdAt: iso,
+        modifiedAt: iso
+      })
+      .run()
+    recordDeletedItemAssets(db, 'note', 'note-gone', now)
+    db.delete(noteMetadata).where(eq(noteMetadata.id, 'note-gone')).run()
+
+    const release = () =>
+      releaseExpiredDeletedAssets({
+        db,
+        vaultPath: tmpDir,
+        now: () => now,
+        chunkHashesOf: (id) => svc.chunkHashesOf(id),
+        dereference: (chunkHashes) =>
+          dereferenceChunks(chunkHashes, {
+            getAccessToken: async () => user.token,
+            getSyncServerUrl: () => baseUrl,
+            getVaultId: () => 'default',
+            fetchFn: (input, init) => fetch(input as RequestInfo, init as RequestInit)
+          }),
+        markWritebackIgnored: () => {}
+      })
+
+    now += 29 * 24 * 60 * 60 * 1000
+    expect(await release()).toBe(0)
+    expect(await refCounts()).toEqual([1])
+
+    now += 2 * 24 * 60 * 60 * 1000
+    expect(await release()).toBe(1)
+    expect(await refCounts()).toEqual([0])
+    expect(await storageUsed()).toBe(charged - chunkBytes)
+    expect(charged - chunkBytes).toBeGreaterThanOrEqual(before)
+
+    // A crash after the server answered replays the same request.
+    const replay = await dereferenceChunks(
+      manifest.chunks.map((c) => c.encryptedHash),
+      {
+        getAccessToken: async () => user.token,
+        getSyncServerUrl: () => baseUrl,
+        getVaultId: () => 'default',
+        fetchFn: (input, init) => fetch(input as RequestInfo, init as RequestInit)
+      }
+    )
+    expect(replay.ok).toBe(true)
+    expect(await refCounts()).toEqual([0])
+    expect(await storageUsed()).toBe(charged - chunkBytes)
   }, 120_000)
 })
