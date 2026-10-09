@@ -263,6 +263,10 @@ final class NotePageActions {
     /// rather than showing a note that no longer exists.
     private(set) var deleted = false
 
+    /// The vault's debounced sync request, asked after every action that
+    /// lands. Set by `NotePageSync`.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+
     init(noteId: String, writer: (any NotesWriting)?) {
         self.noteId = noteId
         self.writer = writer
@@ -319,9 +323,32 @@ final class NotePageActions {
         do {
             try await work()
             status = .idle
+            requestSync?()
         } catch {
             Log.storage.error("a note page action did not land")
             status = .failed(ErrorMapping.userFacing(error))
+        }
+    }
+}
+
+/// Hands the vault's sync request to every model that writes from the note
+/// page, so each write asks for a pass where it lands rather than in every
+/// button that starts one. A write is only in the outbox until a pass pushes
+/// it; one that asked for none waited for the next foreground (#2910).
+///
+/// `initial: true` because the action can arrive after the first render.
+struct NotePageSync: ViewModifier {
+    let actions: NotePageActions
+    let metadata: NoteMetadataViewModel
+    let reminders: NoteRemindersViewModel
+
+    @Environment(\.requestVaultSync) private var requestVaultSync
+
+    func body(content: Content) -> some View {
+        content.onChange(of: requestVaultSync == nil, initial: true) {
+            actions.requestSync = requestVaultSync
+            metadata.requestSync = requestVaultSync
+            reminders.requestSync = requestVaultSync
         }
     }
 }

@@ -36,7 +36,6 @@ struct NoteReadToolbar: ViewModifier {
     /// Pushes a note: a backlink, or the copy Duplicate made.
     let open: ((NoteRoute) -> Void)?
 
-    @Environment(\.requestVaultSync) private var requestVaultSync
     @State private var showingBacklinks = false
     @State private var choosingIcon = false
 
@@ -102,7 +101,6 @@ struct NoteReadToolbar: ViewModifier {
     private func toggleFavorite() {
         Task {
             await actions.toggleFavorite()
-            requestVaultSync?()
         }
     }
 
@@ -112,7 +110,6 @@ struct NoteReadToolbar: ViewModifier {
         let title = model.displayTitle.isEmpty ? "Untitled" : model.displayTitle
         Task {
             if let id = await actions.duplicate(title: "\(title) copy") {
-                requestVaultSync?()
                 open?(NoteRoute(id: id))
             }
         }

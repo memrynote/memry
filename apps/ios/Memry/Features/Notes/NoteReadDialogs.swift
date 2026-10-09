@@ -17,7 +17,6 @@ struct NoteReadDialogs: ViewModifier {
     @Binding var brokenLink: String?
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.requestVaultSync) private var requestVaultSync
 
     func body(content: Content) -> some View {
         content
@@ -40,9 +39,8 @@ struct NoteReadDialogs: ViewModifier {
                     Task {
                         await actions.delete()
                         // The note is gone: leave its page rather than keep
-                        // showing it, and send the tombstone to other devices.
+                        // showing it.
                         guard actions.deleted else { return }
-                        requestVaultSync?()
                         dismiss()
                     }
                 }
