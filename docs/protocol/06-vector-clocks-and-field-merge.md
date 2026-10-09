@@ -363,6 +363,23 @@ no-op when the tick is `<= 0` (`:41`, `:51`).
 **A clock containing `_offline` MUST never reach the server**, and rebinding MUST
 happen before the first push.
 
+A session whose sync runtime is up but has no device id (device keys missing,
+#2866) also ticks `_offline`, and it queues the change instead of dropping it
+(#2897): `RecordSyncController` falls back to `OFFLINE_CLOCK_DEVICE_ID` for a
+create or update of a type with no `handleMissingDevice`, and for every delete
+(`packages/sync-core/src/record-sync.ts`); settings tick the field the same way
+(`packages/sync-client/src/settings-sync.ts`, `updateField`). The first push
+that can sign under a registered device rebinds them before it dequeues
+(`apps/desktop/src/main/sync/engine/offline-queue-rebind.ts`, called from
+`push-coordinator.ts`): a queued create or update goes back through its
+service, whose `recoverPendingChange` rebinds the stored clock first; a queued
+delete has no row left, so its payload is rebound in place
+(`rebindOfflinePayloadClocks` in `packages/sync-client/src/offline-clock.ts`);
+settings rebind their field clocks (`recoverOfflineClocks`). The stored clock
+and the pushed clock must agree: a push that rebound only the payload would
+leave `_offline` in the row, and the pulled echo would read as a concurrent
+edit on every cycle.
+
 ### 6.6.1 Fixed — `_offline` no longer rides the record create path (#2179)
 
 Desktop used to violate the rule above. `recoverDirtyItems` routes
@@ -385,12 +402,15 @@ with nothing offline about it returns `null` and is untouched. Pinned by
 `apps/desktop/src/main/sync/dirty-recovery.test.ts`.
 
 **Residual, still open.** The fix reaches the types that implement
-`recoverPendingChange`: tasks and projects (field clocks), and since #2286 the
+`recoverPendingChange`: tasks and projects (field clocks), since #2286 the
 doc-clock types inbox, saved filters, templates, home pages, custom icons,
-bookmarks, reminders, canvas folders and task activity, through
-`recoverOfflineDocClock` (`packages/sync-client/src/offline-clock.ts`). Canvases
-still mint `_offline` through `local-mutations.ts` with no rebinding hook, so
-their `_offline` still reaches the wire. Notes and journals are unaffected:
+bookmarks, reminders, canvas folders and task activity, and since #2897 tag
+definitions, tag categories, property definitions, folder configs, canvases and
+the calendar types, through `recoverOfflineDocClock`
+(`packages/sync-client/src/offline-clock.ts`; calendar events through
+`rebindOfflineClockData`). Canvases still mint `_offline` through
+`local-mutations.ts` while the runtime is down and are not swept, so their tick
+is rebound only when the canvas is next edited. Notes and journals are unaffected:
 `incrementNoteClockOffline` ticks the real device id and skips the bump when
 none is registered (`packages/sync-client/src/offline-clock.ts`). **The server
 filters nothing**: there is no reference to `_offline` anywhere under

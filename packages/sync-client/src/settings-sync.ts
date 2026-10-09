@@ -11,6 +11,8 @@ import { increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
 import { mergeSettingsPayloads, setSettingsPath } from './settings-merge'
 import { createLogger } from './logging'
+import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
+import { hasOfflineClockData, rebindOfflineClockData } from './offline-clock'
 import {
   SETTINGS_SYNC_CLOCKS_KEY,
   SETTINGS_SYNC_SETTINGS_KEY
@@ -66,18 +68,15 @@ export class SettingsSyncManager {
   }
 
   /**
-   * Returns false, writing nothing, when no device is registered (#2287). The
-   * clock needs a real device id: every device used to tick the shared key
-   * `local`, so concurrent edits compared equal and one was silently dropped.
-   * A stored `local` component is left in place — it already reached peers,
-   * so unlike `_offline` it is shared causal history, not this device's.
+   * With no device registered the field ticks `_offline` and still queues
+   * (#2897); `recoverOfflineClocks` and the push rebind it to the real id
+   * (chapter 06 §6.6). It never ticks a shared key: every device used to tick
+   * `local`, so concurrent edits compared equal and one was silently dropped
+   * (#2287). A stored `local` component is left in place, since it already
+   * reached peers and is shared causal history.
    */
-  updateField(fieldPath: string, value: unknown): boolean {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No current device, skipping synced settings write', { fieldPath })
-      return false
-    }
+  updateField(fieldPath: string, value: unknown): void {
+    const deviceId = this.getDeviceId() ?? OFFLINE_CLOCK_DEVICE_ID
 
     const current = this.loadSettings()
     const clocks = this.loadClocks()
@@ -89,7 +88,19 @@ export class SettingsSyncManager {
     this.saveSettings(current)
     this.saveClocks(clocks)
     this.enqueueCurrentState()
-    return true
+  }
+
+  /**
+   * Moves `_offline` field ticks onto the registered device and re-queues the
+   * settings, so the stored clocks match what the push sends. Runs at sync
+   * start.
+   */
+  recoverOfflineClocks(): void {
+    const deviceId = this.getDeviceId()
+    const clocks = this.loadClocks()
+    if (!deviceId || !hasOfflineClockData(null, clocks)) return
+    this.saveClocks(rebindOfflineClockData(null, clocks, deviceId, []).fieldClocks)
+    this.enqueueCurrentState()
   }
 
   /**

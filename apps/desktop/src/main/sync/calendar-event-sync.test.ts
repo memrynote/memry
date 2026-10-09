@@ -223,7 +223,7 @@ describe('CalendarEventSyncService', () => {
   })
 
   describe('#given no device id #when enqueueCreate called', () => {
-    it('#then skips silently', () => {
+    it('#then queues it under _offline for the push to rebind (#2897)', () => {
       const noDevice = new CalendarEventSyncService({
         queue,
         db: asSyncDb(testDb.db),
@@ -233,7 +233,8 @@ describe('CalendarEventSyncService', () => {
 
       noDevice.enqueueCreate('evt-1')
 
-      expect(queue.getPendingCount()).toBe(0)
+      const [item] = queue.dequeue(1)
+      expect(JSON.parse(item.payload).clock).toMatchObject({ _offline: 1 })
     })
   })
 

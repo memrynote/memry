@@ -138,7 +138,7 @@ describe('CanvasSyncService push', () => {
     expect(queueRows()).toEqual([])
   })
 
-  it('skips every mutation while there is no device id', () => {
+  it('queues every mutation under _offline while there is no device id (#2897)', () => {
     seedCanvas()
     const service = makeService(null)
 
@@ -146,8 +146,8 @@ describe('CanvasSyncService push', () => {
     service.enqueueUpdate('canvas-1')
     service.enqueueDelete('canvas-1')
 
-    expect(queueRows()).toEqual([])
-    expect(storedClock()).toEqual({})
+    expect(queueRows().map((row) => row.operation)).toEqual(['delete'])
+    expect(storedClock()).toMatchObject({ _offline: expect.any(Number) })
   })
 
   it('exposes the device id it was constructed with', () => {

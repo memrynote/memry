@@ -106,6 +106,57 @@ describe('RecordSyncController', () => {
     expect(queue.enqueue).not.toHaveBeenCalled()
   })
 
+  it('queues a missing-device change under _offline when there is no offline handler (#2897)', () => {
+    const queue = { enqueue: vi.fn() }
+    const applyLocalChange = vi.fn(({ local, deviceId }) => ({
+      ...local,
+      clock: { [deviceId]: 1 }
+    }))
+
+    const controller = new RecordSyncController({
+      type: 'tag_definition',
+      queue,
+      getDeviceId: () => null,
+      load: () => ({ id: 'work' }),
+      applyLocalChange,
+      serialize: (local) => local
+    })
+
+    controller.enqueueUpdate('work')
+
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'update',
+        payload: JSON.stringify({ id: 'work', clock: { _offline: 1 } })
+      })
+    )
+  })
+
+  it('queues a missing-device delete under _offline (#2897)', () => {
+    const queue = { enqueue: vi.fn() }
+
+    const controller = new RecordSyncController({
+      type: 'task',
+      queue,
+      getDeviceId: () => null,
+      load: (): Record<string, unknown> | undefined => undefined,
+      applyLocalChange: ({ local }) => local,
+      serialize: (local) => local,
+      handleMissingDevice: vi.fn(),
+      buildDeletePayload: ({ itemId, deviceId }) =>
+        JSON.stringify({ id: itemId, clock: { [deviceId]: 1 } })
+    })
+
+    controller.enqueueDelete('task-1')
+
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'task-1', clock: { _offline: 1 } })
+      })
+    )
+  })
+
   it('does not tombstone a row shouldSkip rejects', () => {
     const queue = { enqueue: vi.fn() }
 

@@ -4,6 +4,7 @@ import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { recoverOfflineDocClock } from './offline-clock'
 import { nextLocalClock } from './tombstone-clocks'
 
 interface PropertyDefinitionSyncDeps {
@@ -67,6 +68,23 @@ export class PropertyDefinitionSyncService {
 
         return { ...local, clock: newClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db
+            .select()
+            .from(propertyDefinitions)
+            .where(eq(propertyDefinitions.name, itemId))
+            .get() as Record<string, unknown> | undefined,
+          deviceId,
+          (clock) =>
+            deps.db
+              .update(propertyDefinitions)
+              .set({ clock })
+              .where(eq(propertyDefinitions.name, itemId))
+              .run()
+        ),
       serialize: (local) => local,
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })

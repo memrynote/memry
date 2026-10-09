@@ -1,3 +1,4 @@
+import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
 import type { QueueLike } from './adapter.ts'
 
@@ -52,8 +53,11 @@ export class RecordSyncController<
   }
 
   enqueueDelete(itemId: string, ...extra: TDeleteArgs): void {
-    const deviceId = this.deps.getDeviceId()
-    if (!deviceId || !this.deps.buildDeletePayload) return
+    if (!this.deps.buildDeletePayload) return
+    // #2897: with no device id the delete still queues, ticked under `_offline`.
+    // The row is usually gone already, so nothing else could replay it; the
+    // push rebinds the tick to the real id (chapter 06 §6.6).
+    const deviceId = this.deps.getDeviceId() ?? OFFLINE_CLOCK_DEVICE_ID
 
     // `shouldSkip` is the "this row never leaves the device" switch, and it has
     // to hold on delete too. A tombstone carries no body, but the item's id and
@@ -144,11 +148,14 @@ export class RecordSyncController<
   }
 
   private enqueueMutation(itemId: string, operation: 'create' | 'update', extra: TArgs): void {
-    const deviceId = this.deps.getDeviceId()
-    if (!deviceId) {
-      this.deps.handleMissingDevice?.(itemId, operation, extra)
+    const registeredDeviceId = this.deps.getDeviceId()
+    if (!registeredDeviceId && this.deps.handleMissingDevice) {
+      this.deps.handleMissingDevice(itemId, operation, extra)
       return
     }
+    // #2897: a type with no offline fallback queues the edit under `_offline`
+    // instead of dropping it; the push rebinds the tick (chapter 06 §6.6).
+    const deviceId = registeredDeviceId ?? OFFLINE_CLOCK_DEVICE_ID
 
     const local = this.deps.load(itemId)
     if (!local) return
@@ -164,7 +171,9 @@ export class RecordSyncController<
     // into its device id. `recoverPendingChange` rebinds and persists; it
     // returns null when there is nothing offline about the row, which is the
     // common case and costs one read.
-    const rebound = this.deps.recoverPendingChange?.(itemId, deviceId) ?? null
+    const rebound = registeredDeviceId
+      ? (this.deps.recoverPendingChange?.(itemId, registeredDeviceId) ?? null)
+      : null
     const base = rebound === null ? local : (this.deps.load(itemId) ?? local)
 
     const next = this.deps.applyLocalChange({

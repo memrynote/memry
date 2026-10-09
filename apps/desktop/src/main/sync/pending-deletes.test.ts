@@ -173,18 +173,19 @@ describe('local delete tombstones', () => {
   })
 
   it('keeps a task delete raised before this device is registered', () => {
-    // #given — a live service but no current device row. The service is still
-    // called, and RecordSyncController.enqueueDelete returns silently in that
-    // state; delete is the one mutation with no offline-clock fallback to catch
-    // it, so only the tombstone survives the call.
+    // #given — a live service but no current device row (#2897)
     db.delete(syncDevices).run()
     initTaskSyncService({ queue, db, getDeviceId: () => null })
 
     // #when
     enqueueLocalSyncDelete('task', 'task-nodev', JSON.stringify({ id: 'task-nodev', clock: {} }))
 
-    // #then — nothing reached the queue, but the delete is not lost
-    expect(queue.getPendingCount()).toBe(0)
+    // #then — the delete is queued under `_offline`, which the push rebinds,
+    // and the tombstone is kept as well
+    const queued = queue.peek(10)
+    expect(queued).toHaveLength(1)
+    expect(queued[0]?.operation).toBe('delete')
+    expect(JSON.parse(queued[0]?.payload ?? '{}')).toMatchObject({ clock: { _offline: 1 } })
     const pending = db.select().from(syncPendingDeletes).all()
     expect(pending).toHaveLength(1)
     expect(pending[0]?.itemId).toBe('task-nodev')

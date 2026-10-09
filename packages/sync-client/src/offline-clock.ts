@@ -85,6 +85,48 @@ export function recoverOfflineDocClock(
   return { ...row, clock: rebound }
 }
 
+/**
+ * Rebinds the `_offline` ticks of a queued payload's `clock` and `fieldClocks`
+ * onto `deviceId` (chapter 06 §6.6). For a delete queued with no device id
+ * (#2897), whose row is gone so only the payload carries the tick. A payload
+ * with nothing offline about it, or one that is not a JSON object, is returned
+ * unchanged.
+ */
+export function rebindOfflinePayloadClocks(payload: string, deviceId: string): string {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(payload)
+  } catch {
+    return payload
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return payload
+
+  const record = parsed as { clock?: unknown; fieldClocks?: unknown }
+  const clock = isClock(record.clock) ? record.clock : null
+  const fieldClocks = isFieldClocks(record.fieldClocks) ? record.fieldClocks : null
+  if (!hasOfflineClockData(clock, fieldClocks)) return payload
+
+  const next: Record<string, unknown> = { ...record }
+  if (clock) next.clock = rebindClockDevice(clock, deviceId)
+  if (fieldClocks) {
+    next.fieldClocks = Object.fromEntries(
+      Object.entries(fieldClocks).map(([field, fc]) => [
+        field,
+        rebindFieldClockDevice(fc, deviceId)
+      ])
+    )
+  }
+  return JSON.stringify(next)
+}
+
+function isClock(value: unknown): value is VectorClock {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isFieldClocks(value: unknown): value is Record<string, VectorClock> {
+  return isClock(value) && Object.values(value).every(isClock)
+}
+
 export function rebindOfflineClockData(
   clock: VectorClock | null | undefined,
   fieldClocks: FieldClocks | null | undefined,

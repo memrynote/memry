@@ -8,6 +8,8 @@ import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
 import { mergeUnknownPayloadFields } from '../unknown-fields'
 import { coalesceSyncOperations } from '@memry/sync-client/queue'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import { rebindQueuedOfflineEdits } from './offline-queue-rebind'
 import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError, SyncServerError } from '../http-client'
@@ -176,6 +178,22 @@ export class PushCoordinator {
       if (!vaultKey) {
         log.debug('Push aborted: no vault key')
         return
+      }
+
+      // #2897: the services must already read this id, or re-running an edit
+      // would tick `_offline` again.
+      if (getCurrentDeviceId(this.ctx.deps.db) === signingKeys.deviceId) {
+        try {
+          const rebound = rebindQueuedOfflineEdits(
+            this.ctx.deps.db,
+            this.ctx.deps.queue,
+            this.ctx.deps.adapters,
+            signingKeys.deviceId
+          )
+          if (rebound > 0) log.info('Push: rebound edits queued without a device id', { rebound })
+        } catch (err) {
+          log.warn('Push: failed to rebind edits queued without a device id', { error: err })
+        }
       }
 
       // Rows the server rejected during THIS call. They keep their remaining

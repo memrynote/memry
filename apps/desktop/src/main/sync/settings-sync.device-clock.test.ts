@@ -229,16 +229,38 @@ describe('settings field clocks — legacy "local" key (#2287)', () => {
   })
 })
 
-describe('settings field clocks — no device id (#2287)', () => {
-  it('#given no registered device #when a setting is written #then nothing is stored, clocked or queued', () => {
-    // #2287: there is no id to tick. Ticking 'local' again would bring the bug
-    // back, and settings have no `_offline` rebind hook.
+describe('settings field clocks — no device id (#2287, #2897)', () => {
+  it('#given no registered device #when a setting is written #then it ticks _offline and queues', () => {
+    // #2287: ticking the shared `local` key would bring the bug back. #2897:
+    // dropping the write lost it, so it ticks `_offline` and queues.
     const device = createDevice(null)
 
-    const written = device.manager.updateField('general.theme', 'dark')
+    device.manager.updateField('general.theme', 'dark')
 
-    expect(written).toBe(false)
-    expect(device.manager.getPayload()).toEqual({ settings: {}, fieldClocks: {} })
-    expect(device.queue.getSize()).toBe(0)
+    expect(device.manager.getPayload()).toEqual({
+      settings: { general: { theme: 'dark' } },
+      fieldClocks: { 'general.theme': { _offline: 1 } }
+    })
+    expect(device.queue.getSize()).toBe(1)
+  })
+
+  it('#given a write made with no device #when the device registers #then sync start rebinds it', () => {
+    const testDb = createTestDataDb()
+    openDbs.push(testDb)
+    const queue = new SyncQueueManager(asClientDb(testDb.db))
+    let deviceId: string | null = null
+    const manager = new SettingsSyncManager({
+      db: asSyncDb(testDb.db),
+      queue,
+      getDeviceId: () => deviceId
+    })
+    manager.updateField('general.theme', 'dark')
+
+    deviceId = 'dev-a'
+    manager.recoverOfflineClocks()
+
+    expect(manager.getPayload().fieldClocks).toEqual({ 'general.theme': { 'dev-a': 1 } })
+    const [row] = queue.dequeue(1)
+    expect(JSON.parse(row!.payload).fieldClocks).toEqual({ 'general.theme': { 'dev-a': 1 } })
   })
 })

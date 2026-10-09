@@ -111,7 +111,7 @@ describe('FolderConfigSyncService push', () => {
     expect(queueRows()).toEqual([])
   })
 
-  it('skips every mutation while there is no device id', () => {
+  it('queues every mutation under _offline while there is no device id (#2897)', () => {
     seedFolder()
     const service = makeService(null)
 
@@ -119,8 +119,8 @@ describe('FolderConfigSyncService push', () => {
     service.enqueueUpdate('Work')
     service.enqueueDelete('Work')
 
-    expect(queueRows()).toEqual([])
-    expect(storedClock()).toEqual({})
+    expect(queueRows().map((row) => row.operation)).toEqual(['delete'])
+    expect(storedClock()).toMatchObject({ _offline: expect.any(Number) })
   })
 })
 
