@@ -1508,6 +1508,22 @@ describe('Composer', () => {
     expect(screen.queryByText('app.log')).not.toBeInTheDocument()
   })
 
+  it('sends only the files left after removing a chip', async () => {
+    renderComposer('conversation-1')
+
+    await userEvent.upload(screen.getByTestId('agent-file-input'), [
+      new File(['one'], 'a.txt', { type: 'text/plain' }),
+      new File(['two'], 'b.txt', { type: 'text/plain' })
+    ])
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove a.txt' }))
+    await setPromptText('compare')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'compare\n\n```memry-file name="b.txt" bytes=3\ntwo\n```' })
+    )
+  })
+
   it('accepts a text file dropped onto the composer', async () => {
     renderComposer('conversation-1')
 

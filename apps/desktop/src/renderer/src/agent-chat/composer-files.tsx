@@ -23,11 +23,13 @@ interface Refusal {
   reason: PromptFileRefusal
 }
 
+type ComposerFile = PromptFile & { id: string }
+
 export interface ComposerFiles {
-  files: PromptFile[]
+  files: ComposerFile[]
   refusal: Refusal | null
   add: (incoming: Iterable<File>) => Promise<void>
-  remove: (index: number) => void
+  remove: (id: string) => void
   clear: () => void
   dropHandlers: {
     onDragOver: (event: DragEvent) => void
@@ -39,11 +41,11 @@ const hasFiles = (event: DragEvent): boolean =>
   event.dataTransfer?.types?.includes('Files') ?? false
 
 export function useComposerFiles(disabled: boolean): ComposerFiles {
-  const [files, setFiles] = useState<PromptFile[]>([])
+  const [files, setFiles] = useState<ComposerFile[]>([])
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   // `add` awaits file reads, so it measures the running total from here, not a stale render.
-  const filesRef = useRef<PromptFile[]>([])
-  const replaceFiles = (next: PromptFile[]): void => {
+  const filesRef = useRef<ComposerFile[]>([])
+  const replaceFiles = (next: ComposerFile[]): void => {
     filesRef.current = next
     setFiles(next)
   }
@@ -54,7 +56,7 @@ export function useComposerFiles(disabled: boolean): ComposerFiles {
     for (const file of incoming) {
       const used = accepted.reduce((total, current) => total + current.bytes, 0)
       const result = await readPromptFile(file, used)
-      if (result.ok) accepted.push(result.file)
+      if (result.ok) accepted.push({ ...result.file, id: crypto.randomUUID() })
       else lastRefusal = { name: file.name, reason: result.reason }
     }
     replaceFiles(accepted)
@@ -65,8 +67,8 @@ export function useComposerFiles(disabled: boolean): ComposerFiles {
     files,
     refusal,
     add,
-    remove: (index) => {
-      replaceFiles(filesRef.current.filter((_, position) => position !== index))
+    remove: (id) => {
+      replaceFiles(filesRef.current.filter((file) => file.id !== id))
       setRefusal(null)
     },
     clear: () => {
@@ -132,7 +134,7 @@ export function ComposerFileChips({
   refusal,
   onRemove
 }: Pick<ComposerFiles, 'files' | 'refusal'> & {
-  onRemove: (index: number) => void
+  onRemove: (id: string) => void
 }): React.JSX.Element | null {
   const { t } = useT('common')
   if (files.length === 0 && !refusal) return null
@@ -140,9 +142,9 @@ export function ComposerFileChips({
     <div className="flex flex-col gap-1.5">
       {files.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
-          {files.map((file, index) => (
+          {files.map((file) => (
             <li
-              key={`${file.name}-${index}`}
+              key={file.id}
               className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/50 py-0.5 ps-1.5 pe-0.5 text-xs"
             >
               <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -153,7 +155,7 @@ export function ComposerFileChips({
               <button
                 type="button"
                 aria-label={t('agentChat.composer.removeAttachment', { label: file.name })}
-                onClick={() => onRemove(index)}
+                onClick={() => onRemove(file.id)}
                 className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <X className="size-3" aria-hidden="true" />
