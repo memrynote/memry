@@ -20,7 +20,6 @@ import {
   type CanvasLibrarySaveResponse,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
-  type CanvasDeletedEvent,
   type CanvasTooLargeEvent,
   type CanvasUploadAssetResponse,
   type CanvasCanUploadAssetResponse,
@@ -33,7 +32,6 @@ import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
 import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
 import {
   createCanvas,
-  deleteCanvas,
   duplicateCanvas,
   getCanvas,
   getCanvasFilePath,
@@ -41,8 +39,9 @@ import {
   updateCanvas
 } from '../canvas/store'
 import { resolveCanvasFile } from '../canvas/scene-file'
+import { removeCanvas } from '../canvas/delete'
 import { readCanvasLibrary, writeCanvasLibrary } from '../canvas/library-file'
-import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
+import { syncCanvasCreate, syncCanvasUpdate } from '../canvas/sync-bridge'
 import {
   getCanvasAssetRef,
   injectSceneAssetSidecar,
@@ -61,7 +60,7 @@ const log = createLogger('CanvasIPC')
 
 function emitCanvasEvent(
   channel: string,
-  data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasDeletedEvent | CanvasTooLargeEvent
+  data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasTooLargeEvent
 ): void {
   broadcastToAllWindows(channel, data)
 }
@@ -173,20 +172,10 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.DELETE,
     createStringHandler(async (id) => {
-      const { db, vaultPath } = getCanvasContext()
-
-      // GC this canvas's assets before the row is tombstoned (the other-canvas
-      // union keeps assets shared with surviving canvases). Reads the
-      // canvas_assets rows, so it must run before soft-delete/sync-delete.
-      const assetCtx = buildAssetServiceContext()
-      if (assetCtx) {
-        await reconcileCanvasAssets(assetCtx, id, '')
-      }
-
       // The document goes to the OS trash, not straight to /dev/null: a canvas
       // is a real file in the user's vault, and a mis-click must be recoverable
       // from Finder/Explorer the way deleting the file by hand would be.
-      const success = await deleteCanvas(db, vaultPath, id, (abs) => shell.trashItem(abs))
+      const success = await removeCanvas(id, (abs) => shell.trashItem(abs))
       if (success) {
         trackMainEvent('canvas_deleted', {
           surface: 'canvas',
@@ -194,8 +183,6 @@ export function registerCanvasHandlers(): void {
           objectType: 'canvas',
           result: 'success'
         })
-        syncCanvasDelete(id)
-        emitCanvasEvent(CanvasChannels.events.DELETED, { id })
       }
       return { success }
     })

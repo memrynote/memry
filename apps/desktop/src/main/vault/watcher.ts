@@ -86,6 +86,8 @@ import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
+import { canvasDocumentExists, findLiveCanvasIdAtPath, removeCanvas } from '../canvas/delete'
+import { isCanvasFilePath } from '../canvas/scene-file'
 
 const logger = createLogger('Watcher')
 
@@ -267,7 +269,11 @@ export class VaultWatcher {
 
         // For files, only watch supported file types (md, pdf, images, audio, video)
         if (stats?.isFile()) {
-          const supported = isSupportedPath(filePath)
+          // Canvas documents are watched only so a removal outside the app
+          // becomes a canvas delete (#2938); the note index never takes them.
+          const supported =
+            isSupportedPath(filePath) ||
+            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -1072,6 +1078,11 @@ export class VaultWatcher {
     try {
       const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
 
+      if (isCanvasFilePath(relativePath)) {
+        this.handleCanvasFileDelete(vaultPath, absolutePath, relativePath)
+        return
+      }
+
       const db = getIndexDatabase()
 
       // Get cached entry to get the UUID
@@ -1102,18 +1113,7 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
-          // The vault can leave inside the rename window: an unmount or a
-          // recursive delete takes the files before the database.
-          if (!isVaultReachable(vaultPath)) {
-            this.waitForVaultReturn()
-            return
-          }
-          // chokidar reports a file it cannot open (chmod 000, an antivirus
-          // lock) as unlinked. It is still there, so its note stays (#2764).
-          if (!(await isFileMissing(absolutePath))) {
-            logger.warn('Note file cannot be read; keeping the note', { path: relativePath })
-            return
-          }
+          if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
           // A locked note removed outside the app gets its locked text back
           // instead of a delete that would reach every device (#2606).
           if (
@@ -1159,6 +1159,58 @@ export class VaultWatcher {
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
+  }
+
+  /**
+   * Whether an unlinked file is really gone once its rename window closes.
+   * Note and canvas removals both pass through here.
+   */
+  private async isGoneFromVault(
+    vaultPath: string,
+    absolutePath: string,
+    relativePath: string
+  ): Promise<boolean> {
+    // The vault can leave inside the rename window: an unmount or a
+    // recursive delete takes the files before the database.
+    if (!isVaultReachable(vaultPath)) {
+      this.waitForVaultReturn()
+      return false
+    }
+    // chokidar reports a file it cannot open (chmod 000, an antivirus
+    // lock) as unlinked. It is still there, so it stays (#2764).
+    if (!(await isFileMissing(absolutePath))) {
+      logger.warn('File cannot be read; keeping it', { path: relativePath })
+      return false
+    }
+    return true
+  }
+
+  /**
+   * A canvas document removed outside the app is a canvas delete, after the
+   * same rename window and checks a note's removal gets (#2938).
+   */
+  private handleCanvasFileDelete(
+    vaultPath: string,
+    absolutePath: string,
+    relativePath: string
+  ): void {
+    const id = findLiveCanvasIdAtPath(getDatabase(), relativePath)
+    if (!id) return
+    // No content hash: a canvas move never reaches `checkForRename`, so the
+    // window only lets the move's `add` land before the checks below run.
+    trackPendingDelete(id, '', relativePath, async () => {
+      if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
+      // The app or a sync apply moved it meanwhile and re-pointed the row.
+      if (findLiveCanvasIdAtPath(getDatabase(), relativePath) !== id) return
+      // Moved or renamed outside the app: still the same canvas.
+      if (canvasDocumentExists(vaultPath, id)) return
+      // The document is already gone, so there is nothing to trash.
+      try {
+        await removeCanvas(id, async () => {})
+      } catch (error) {
+        this.onError?.(error instanceof Error ? error : new Error(String(error)))
+      }
+    })
   }
 }
 

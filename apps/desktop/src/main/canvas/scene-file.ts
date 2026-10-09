@@ -55,6 +55,13 @@ const log = createLogger('CanvasSceneFile')
 /** Vault-relative directory holding canvas documents. */
 export const CANVAS_DIR = 'canvases'
 export const CANVAS_FILE_EXT = '.excalidraw'
+/** Whether a vault-relative path is a canvas document, at any folder depth. */
+export function isCanvasFilePath(relativePath: string): boolean {
+  return (
+    relativePath.startsWith(`${CANVAS_DIR}/`) &&
+    relativePath.toLowerCase().endsWith(CANVAS_FILE_EXT)
+  )
+}
 /** Excalidraw's own library format, so the file opens in excalidraw.com too. */
 export const CANVAS_LIBRARY_FILE = 'library.excalidrawlib'
 

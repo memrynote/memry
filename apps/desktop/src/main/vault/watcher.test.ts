@@ -48,6 +48,7 @@ vi.mock('chokidar', () => ({
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
   getDatabase: vi.fn(),
+  requireDatabase: vi.fn(),
   updateFtsContent: vi.fn()
 }))
 
@@ -112,7 +113,8 @@ vi.mock('../sync/crdt-feed', () => ({
 }))
 
 vi.mock('./index', () => ({
-  getConfig: vi.fn(() => baseConfig)
+  getConfig: vi.fn(() => baseConfig),
+  getStatus: vi.fn(() => ({ path: null }))
 }))
 
 vi.mock('./journal-folder-follow', async (importOriginal) => ({
@@ -133,7 +135,7 @@ vi.mock('../telemetry/diagnostics', () => ({
   trackMainLog: vi.fn()
 }))
 
-import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
+import { getIndexDatabase, getDatabase, requireDatabase, updateFtsContent } from '../database'
 import {
   enqueueJournalCreate,
   enqueueJournalDelete,
@@ -146,7 +148,7 @@ import {
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
-import { getConfig } from './index'
+import { getConfig, getStatus } from './index'
 import { followJournalFolder } from './journal-folder-follow'
 import { safeRead } from './file-ops'
 import { scanMarkdownFile } from './file-scan'
@@ -155,6 +157,11 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 import { syncFolderConfigRename, withAppFolderChange } from '../notes/folder-config-effects'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
+import { CanvasChannels } from '@memry/contracts/canvas-api'
+import { canvases } from '@memry/db-schema/data-schema'
+import { createCanvas } from '../canvas/store'
+import { resolveCanvasFile } from '../canvas/scene-file'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -1715,6 +1722,83 @@ describe('vault watcher', () => {
 
       expect(followJournalFolder).not.toHaveBeenCalled()
       expect(enqueueJournalDelete).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('a canvas document removed outside the app (#2938)', () => {
+    async function startWatching(): Promise<(event: string, ...args: unknown[]) => void> {
+      const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+      const trigger = (event: string, ...args: unknown[]) => {
+        for (const handler of listeners.get(event) ?? []) handler(...args)
+      }
+      const mockWatcher = {
+        on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler])
+          return mockWatcher
+        }),
+        once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler])
+          return mockWatcher
+        }),
+        close: vi.fn().mockResolvedValue(undefined)
+      }
+      mockWatch.mockReturnValue(mockWatcher)
+      const startPromise = startWatcher(vault.path)
+      trigger('ready')
+      await startPromise
+      return trigger
+    }
+
+    function makeCanvas(title: string) {
+      vi.mocked(requireDatabase).mockReturnValue(asClientDb(dataDb.db) as never)
+      vi.mocked(getStatus).mockReturnValue({ path: vault.path } as never)
+      const canvas = createCanvas(
+        asClientDb(dataDb.db),
+        vault.path,
+        getOrCreateVaultUuid(asClientDb(dataDb.db)),
+        {
+          title
+        }
+      )
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, canvas.id)).get()
+      return { id: canvas.id, absolutePath: resolveCanvasFile(vault.path, row!.filePath!) }
+    }
+
+    afterEach(async () => {
+      await stopWatcher()
+    })
+
+    it('is watched, then tombstoned and queued as a canvas delete', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Board')
+
+      const ignored = mockWatch.mock.calls[0][1].ignored as (
+        filePath: string,
+        stats?: { isFile: () => boolean }
+      ) => boolean
+      expect(ignored(absolutePath, { isFile: () => true })).toBe(false)
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
+      expect(row?.deletedAt).not.toBeNull()
+      expect(window.webContents.send).toHaveBeenCalledWith(CanvasChannels.events.DELETED, { id })
+    })
+
+    it('stays when the document only moved inside canvases/', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Moved')
+
+      const movedPath = path.join(path.dirname(absolutePath), 'Elsewhere.excalidraw')
+      fs.renameSync(absolutePath, movedPath)
+      trigger('unlink', absolutePath)
+      await new Promise((resolve) => setTimeout(resolve, 700))
+
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
+      expect(row?.deletedAt).toBeNull()
     })
   })
 })
