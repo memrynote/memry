@@ -1855,6 +1855,17 @@ describe('vault watcher', () => {
       expect(isLive(id)).toBe(true)
     })
 
+    it('is deleted when the document moved out of canvases/', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Moved out')
+
+      fs.renameSync(absolutePath, path.join(vault.path, 'Moved out.excalidraw'))
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      expect(isLive(id)).toBe(false)
+    })
+
     it('stays when a moved document cannot be parsed', async () => {
       const trigger = await startWatching()
       const { id, absolutePath } = makeCanvas('Garbled')
