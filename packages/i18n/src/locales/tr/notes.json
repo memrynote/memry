@@ -1595,6 +1595,18 @@
       "later": "Sonra",
       "newObject": "Yeni {tag}",
       "saveFailed": "Alanlar kaydedilemedi"
+    },
+    "table": {
+      "untitled": "Yeni {tag}",
+      "newInGroup": "{group} içinde yeni {tag}",
+      "new": "Yeni {tag}",
+      "includes": "{field} şunu içerir",
+      "removeFilter": "Filtreyi kaldır",
+      "shown": "{shown} / {total}",
+      "saveView": "Görünümü kaydet",
+      "mentionedMeta": "{count, plural, one {Metninde #{tag} geçen # not} other {Metninde #{tag} geçen # not}}",
+      "saveFailed": "Alan kaydedilemedi",
+      "created": "{title} oluşturuldu"
     }
   }
 }

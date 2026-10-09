@@ -19,6 +19,7 @@
  * - Shift+click range selection works across virtualized rows
  */
 
+import { FieldPropertyCell } from './field-property-cell'
 import { useMemo, useCallback, useState, useRef } from 'react'
 import {
   useReactTable,
@@ -84,7 +85,6 @@ import {
   TagsCell,
   DateCell,
   WordCountCell,
-  EditablePropertyCell,
   CheckboxCell,
   NumberCell,
   TextCell,
@@ -526,17 +526,13 @@ export function FolderTableView({
         const value = info.getValue()
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return (
-          <EditablePropertyCell
+          <FieldPropertyCell
+            note={note}
+            columnId={columnId}
             value={value}
             type={type}
             highlightQuery={highlightQuery}
-            onSave={
-              onPropertyUpdate && isMetadataEditableRow(note)
-                ? (nextValue) => {
-                    onPropertyUpdate(note.id, columnId, nextValue)
-                  }
-                : undefined
-            }
+            onPropertyUpdate={onPropertyUpdate}
           />
         )
       }

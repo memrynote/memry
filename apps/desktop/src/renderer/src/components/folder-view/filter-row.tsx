@@ -5,6 +5,7 @@
  * Used within FilterBuilder to create filter expressions.
  */
 
+import { RelationPickerCell, useTagTable } from '@/features/tag-fields/tag-table'
 import { useCallback, useMemo } from 'react'
 import { X, type AppIcon } from '@/lib/icons'
 import { getColumnIcon } from './column-icons'
@@ -132,6 +133,8 @@ export function FilterRow({
   const currentProperty = useMemo(() => {
     return allProperties.find((p) => p.id === condition.property) || allProperties[0]
   }, [allProperties, condition.property])
+  // On a tag with fields' table, a relation field's value is one of its target's objects.
+  const relationTarget = useTagTable()?.relationTargetOf(currentProperty?.id ?? '') ?? null
 
   // Get operators for current property type
   const operators = useMemo(() => {
@@ -267,6 +270,7 @@ export function FilterRow({
           // Only the built-in `tags` column takes vault tags as its value; a
           // custom multiselect has its own options, which these are not.
           tagSuggestions={currentProperty?.id === 'tags' ? tagSuggestions : undefined}
+          relationTarget={relationTarget}
         />
       )}
 
@@ -296,10 +300,29 @@ interface ValueInputProps {
   onChange: (value: unknown) => void
   /** Vault tags to suggest; only set for the built-in `tags` property. */
   tagSuggestions?: readonly TagSuggestion[]
+  /** A relation field's target tag: the value is picked from its objects. */
+  relationTarget?: string | null
 }
 
-function ValueInput({ type, value, onChange, tagSuggestions }: ValueInputProps): React.JSX.Element {
+function ValueInput({
+  type,
+  value,
+  onChange,
+  tagSuggestions,
+  relationTarget
+}: ValueInputProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+
+  if (relationTarget) {
+    return (
+      <RelationPickerCell
+        value={typeof value === 'string' && value ? [value] : []}
+        target={relationTarget}
+        many={false}
+        onSave={(next) => onChange(next?.[0] ?? '')}
+      />
+    )
+  }
 
   if (tagSuggestions && tagSuggestions.length > 0) {
     return (

@@ -1799,6 +1799,18 @@
       "later": "Later",
       "newObject": "New {tag}",
       "saveFailed": "Could not save the fields"
+    },
+    "table": {
+      "untitled": "New {tag}",
+      "newInGroup": "New {tag} in {group}",
+      "new": "New {tag}",
+      "includes": "{field} includes",
+      "removeFilter": "Remove filter",
+      "shown": "{shown} of {total}",
+      "saveView": "Save view",
+      "mentionedMeta": "{count, plural, one {# note with #{tag} in its text} other {# notes with #{tag} in their text}}",
+      "saveFailed": "Could not save the field",
+      "created": "Created {title}"
     }
   }
 }

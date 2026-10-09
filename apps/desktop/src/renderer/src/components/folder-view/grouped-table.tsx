@@ -12,6 +12,9 @@
  * - T114: Per-group summaries (when showSummary is enabled)
  */
 
+import { FieldPropertyCell } from './field-property-cell'
+import { isRelationValue } from '@memry/contracts/relation-uri'
+import { GroupValueTitle, NewInGroupButton } from '@/features/tag-fields/tag-table'
 import { useMemo, useCallback, useState, useRef, memo } from 'react'
 import {
   useReactTable,
@@ -91,7 +94,6 @@ import {
   TagsCell,
   DateCell,
   WordCountCell,
-  EditablePropertyCell,
   CheckboxCell,
   NumberCell,
   TextCell,
@@ -534,17 +536,13 @@ export function GroupedTable({
         const value = info.getValue()
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return (
-          <EditablePropertyCell
+          <FieldPropertyCell
+            note={note}
+            columnId={columnId}
             value={value}
             type={type}
             highlightQuery={highlightQuery}
-            onSave={
-              onPropertyUpdate && isMetadataEditableRow(note)
-                ? (nextValue) => {
-                    onPropertyUpdate(note.id, columnId, nextValue)
-                  }
-                : undefined
-            }
+            onPropertyUpdate={onPropertyUpdate}
           />
         )
       }
@@ -1464,7 +1462,11 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
           {getColumnLabel(groupByProperty)}:
         </span>
-        <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
+        {isRelationValue(groupValue) && groupValue.length > 0 ? (
+          <GroupValueTitle value={groupValue} />
+        ) : (
+          <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
+        )}
 
         {/* Count badge */}
         <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
@@ -1494,6 +1496,9 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
             )}
           </div>
         )}
+
+        {/* Tag with fields: "+ New meeting in Acme", the group's value prefilled (F1). */}
+        <NewInGroupButton property={groupByProperty} value={groupValue} />
       </td>
     </tr>
   )

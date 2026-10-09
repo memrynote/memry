@@ -18,7 +18,7 @@ const log = createLogger('Evaluator:Filter')
 // ============================================================================
 
 export type PropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating'
+  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'relation'
 
 export interface Operator {
   value: string
@@ -119,7 +119,9 @@ export function getOperatorsForType(type: PropertyType): Operator[] {
       return CHECKBOX_OPERATORS
     case 'select':
       return SELECT_OPERATORS
+    // A relation value is a list of memry:// URIs: contains / does not contain one.
     case 'multiselect':
+    case 'relation':
       return MULTISELECT_OPERATORS
     case 'url':
       return URL_OPERATORS

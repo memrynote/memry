@@ -125,6 +125,12 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+// No tag here has fields: the tag table extras (F1) stay off.
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useResolvedTag: () => null,
+  useObjectIdentityLookup: () => () => null
+}))
+
 vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({ getDefinition: () => undefined })
 }))
