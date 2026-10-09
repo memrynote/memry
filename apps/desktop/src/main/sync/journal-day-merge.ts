@@ -14,6 +14,7 @@
  */
 import { createHash } from 'crypto'
 import { eq, like } from 'drizzle-orm'
+import * as Y from 'yjs'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -145,6 +146,12 @@ export interface JournalDayMergeDeps {
   /** Whether `id`'s local doc holds any Yjs state. */
   hasBody: (id: string) => Promise<boolean>
   /**
+   * Whether `id` holds anything right now: its day file text, when it holds
+   * `date`, or its open doc's state. Synchronous, so no typing lands between
+   * this check and a forget's row removal (#3008).
+   */
+  holdsTextNow: (id: string, date: string) => boolean
+  /**
    * Makes `j<date>` hold the day: a foreign local row gives it up (its file
    * text is kept in its owed merge first), then `j<date>` is created empty.
    * Never writes over a day file that no row holds.
@@ -195,7 +202,9 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   // A deleted id's server body is already in the day, merged by the device
   // that deleted it; only what this device holds is left to fold in.
   const bodyPulled = merge.deleted === true || (await deps.pullBody(merge.foreignId))
-  let fallback = merge.fallbackMarkdown ?? null
+  // A blank snapshot keeps nothing: the day file is read again, since the
+  // user may have typed into it since (#3008).
+  let fallback = merge.fallbackMarkdown?.trim() ? merge.fallbackMarkdown : null
   if (bodyPulled && fallback === null) {
     fallback = deps.localHolderText(merge.foreignId, merge.date)
     // Kept before `ensureDay` writes the day file over.
@@ -229,8 +238,16 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
   // build left would keep the day, and typing would land in a dead id. Before
-  // the owed merge drops, so a restart in between forgets it again.
-  if (step.action === 'forget') deps.removeRow(merge.foreignId)
+  // the owed merge drops, so a restart in between forgets it again. Typing
+  // into the open blank day during the awaits above would be lost with the
+  // purge, so the forget waits; the next drain merges it (#3008).
+  if (step.action === 'forget') {
+    if (deps.holdsTextNow(merge.foreignId, merge.date)) {
+      log.info('Blank foreign journal gained text; the forget waits', describe(merge))
+      return false
+    }
+    deps.removeRow(merge.foreignId)
+  }
 
   // The tombstone and dropping the owed merge commit together, before the
   // purge: a restart in between leaves either both or neither (#2985).
@@ -327,6 +344,13 @@ export async function runJournalDayMerges(
     localHolderText: (id, date) =>
       getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === id ? readDayBody(date) : null,
     hasBody: (id) => provider.hasDocState(id),
+    holdsTextNow: (id, date) => {
+      const doc = provider.getDoc(id)
+      if (doc && Y.encodeStateAsUpdate(doc).length > 4) return true
+      return getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === id
+        ? readDayBody(date)?.trim() !== ''
+        : false
+    },
     ensureDay: (date) => ensureJournalDay(db, date),
     relinkTasks: relinkTasksToMergedNote,
     absorbBody: (targetId, foreignId, fallbackMarkdown) =>
