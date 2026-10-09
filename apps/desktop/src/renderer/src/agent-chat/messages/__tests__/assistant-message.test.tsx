@@ -283,6 +283,44 @@ describe('AssistantMessage', () => {
     expect(screen.getByText(notice)).toBeInTheDocument()
   })
 
+  it.each([
+    'I will search.\n<\uff5c\uff5cDSML\uff5c\uff5c calls>\n<\uff5c\uff5cDSML\uff5c\uff5c invoke name="vault_search_notes">',
+    '<tool_calls><vault_search_notes query="X" /></tool_calls>',
+    '<tool_call>{"name":"vault_search_notes"}</tool_call>',
+    '<function_calls><invoke name="vault_search_notes"></invoke></function_calls>'
+  ])('says nothing ran when a tools-off answer writes a tool call as text: %s', (text) => {
+    const nothingRan = /wrote a tool call as text, and nothing ran/
+    const message = (toolsUnavailable?: { reason: 'no_tool_call'; detail: null }): Message => ({
+      ...assistantMessage(text),
+      content: { role: 'assistant', data: { text, ...(toolsUnavailable && { toolsUnavailable }) } }
+    })
+    const { rerender } = render(
+      <AssistantMessage message={message({ reason: 'no_tool_call', detail: null })} />
+    )
+    expect(screen.getByText(nothingRan)).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={message()} />)
+    expect(screen.queryByText(nothingRan)).not.toBeInTheDocument()
+  })
+
+  it('adds no nothing-ran sentence to a plain tools-off answer', () => {
+    render(
+      <AssistantMessage
+        message={{
+          ...assistantMessage('Plain answer'),
+          content: {
+            role: 'assistant',
+            data: {
+              text: 'Plain answer',
+              toolsUnavailable: { reason: 'no_tool_call', detail: null }
+            }
+          }
+        }}
+      />
+    )
+    expect(screen.queryByText(/nothing ran/)).not.toBeInTheDocument()
+  })
+
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
     const streaming = (text: string): Message => ({
       ...assistantMessage(text),
