@@ -419,3 +419,49 @@ test('folder lists hide the canvases folder, as the desktop notes tree does', as
     app.close()
   }
 })
+
+async function listFolderPaths(journal: { folder: string; showInSidebar: boolean }) {
+  const vaultPath = await makeVault()
+  await fs.mkdir(path.join(vaultPath, '.memry'), { recursive: true })
+  await fs.writeFile(
+    path.join(vaultPath, '.memry', 'config.json'),
+    JSON.stringify({
+      defaultNoteFolder: '',
+      journalFolder: journal.folder,
+      journalShowInSidebar: journal.showInSidebar
+    })
+  )
+  const app = await createMemryApp({ vaultPath })
+  try {
+    await fs.mkdir(path.join(vaultPath, journal.folder, '2026'), { recursive: true })
+    await app.folders.create('Notes/Ideas')
+    const note = await app.notes.create({ title: 'Loose', content: 'x' })
+    const listed = (await app.folders.list()).map((folder) => folder.path)
+    const suggested = (await app.folderView.getFolderSuggestions(note.id)).suggestions.map(
+      (s) => s.path
+    )
+    return { listed, suggested }
+  } finally {
+    app.close()
+  }
+}
+
+test('folder lists show the journal folder when journalShowInSidebar is on, as desktop does', async () => {
+  const { listed, suggested } = await listFolderPaths({ folder: 'journal', showInSidebar: true })
+  for (const paths of [listed, suggested]) {
+    assert.ok(paths.includes('journal'))
+    assert.ok(paths.includes('journal/2026'))
+  }
+})
+
+test('folder lists hide only a nested journal folder subtree, not its parent', async () => {
+  const { listed, suggested } = await listFolderPaths({
+    folder: 'Notes/Daily',
+    showInSidebar: false
+  })
+  for (const paths of [listed, suggested]) {
+    assert.ok(paths.includes('Notes'))
+    assert.ok(paths.includes('Notes/Ideas'))
+    assert.ok(!paths.some((p) => p === 'Notes/Daily' || p.startsWith('Notes/Daily/')))
+  }
+})
