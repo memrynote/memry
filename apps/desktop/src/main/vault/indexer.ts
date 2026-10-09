@@ -22,6 +22,7 @@ import {
   closeIndexDatabase
 } from '../database'
 import { parseNote } from './frontmatter'
+import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
@@ -382,7 +383,7 @@ export async function indexVault(
   // Scan the entire vault root. findVaultFiles skips dotfolders (.memry,
   // .obsidian, .git) and excludePatterns; also exclude the attachments folder so
   // binaries are not indexed as notes.
-  const scanExcludes = [...excludePatterns, config.attachmentsFolder].filter(Boolean)
+  const scanExcludes = [...excludePatterns, ATTACHMENTS_DIR]
   const foldersToScan = [vaultPath]
 
   // Find all supported files (respecting exclude patterns)

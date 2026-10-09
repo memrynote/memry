@@ -14289,11 +14289,12 @@ Turn an inbox item into a reminder.
 
 `inbox.convertToReminder(itemId, input)` through `vault_desktop_write`; needs approval.
 
-| Argument         | Type     | Required | Allowed values |
-| ---------------- | -------- | -------- | -------------- |
-| `itemId`         | `string` | yes      |                |
-| `input`          | `object` | yes      |                |
-| `input.remindAt` | `string` | yes      |                |
+| Argument                | Type      | Required | Allowed values | Notes                                                                                                        |
+| ----------------------- | --------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `itemId`                | `string`  | yes      |                |                                                                                                              |
+| `input`                 | `object`  | yes      |                |                                                                                                              |
+| `input.remindAt`        | `string`  | yes      |                |                                                                                                              |
+| `input.plainChecklists` | `boolean` | no       |                | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -14755,15 +14756,16 @@ File several inbox items into one place.
 
 `inbox.bulkFile(input)` through `vault_desktop_write`; needs approval.
 
-| Argument                   | Type                               | Required | Allowed values                     |
-| -------------------------- | ---------------------------------- | -------- | ---------------------------------- |
-| `input`                    | `object`                           | yes      |                                    |
-| `input.itemIds`            | `string[]`                         | yes      | min items `1`; max items `100`     |
-| `input.destination`        | `object`                           | yes      |                                    |
-| `input.destination.type`   | `"folder" \| "note" \| "new-note"` | yes      | `"folder"`, `"note"`, `"new-note"` |
-| `input.destination.path`   | `string`                           | no       |                                    |
-| `input.destination.noteId` | `string`                           | no       |                                    |
-| `input.tags`               | `string[]`                         | no       | max items `20`                     |
+| Argument                   | Type                               | Required | Allowed values                     | Notes                                                                                                        |
+| -------------------------- | ---------------------------------- | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `input`                    | `object`                           | yes      |                                    |                                                                                                              |
+| `input.itemIds`            | `string[]`                         | yes      | min items `1`; max items `100`     |                                                                                                              |
+| `input.destination`        | `object`                           | yes      |                                    |                                                                                                              |
+| `input.destination.type`   | `"folder" \| "note" \| "new-note"` | yes      | `"folder"`, `"note"`, `"new-note"` |                                                                                                              |
+| `input.destination.path`   | `string`                           | no       |                                    |                                                                                                              |
+| `input.destination.noteId` | `string`                           | no       |                                    |                                                                                                              |
+| `input.tags`               | `string[]`                         | no       | max items `20`                     |                                                                                                              |
+| `input.plainChecklists`    | `boolean`                          | no       |                                    | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 

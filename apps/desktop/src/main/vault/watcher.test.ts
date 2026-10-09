@@ -735,6 +735,34 @@ describe('vault watcher', () => {
     await watcher.stop()
   })
 
+  it('skips attachments/ and watches the folder a non-default attachmentsFolder names', async () => {
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' } as never)
+    const mockWatcher = {
+      on: vi.fn(() => mockWatcher),
+      once: vi.fn((event: string, handler: () => void) => {
+        if (event === 'ready') handler()
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+
+    const watcher = new VaultWatcher()
+    await watcher.start({ vaultPath: vault.path })
+    const ignored = mockWatch.mock.calls[0][1].ignored as (
+      filePath: string,
+      stats?: { isFile: () => boolean }
+    ) => boolean
+    const file = { isFile: () => true }
+    const dir = { isFile: () => false }
+
+    expect(ignored(path.join(vault.path, 'attachments'), dir)).toBe(true)
+    expect(ignored(path.join(vault.path, 'attachments', 'n1', 'a.md'), file)).toBe(true)
+    expect(ignored(path.join(vault.path, 'files'), dir)).toBe(false)
+    expect(ignored(path.join(vault.path, 'files', 'note.md'), file)).toBe(false)
+    await watcher.stop()
+  })
+
   it('logs an unsupported file dropped in after the initial walk, once', async () => {
     const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
     const mockWatcher = {

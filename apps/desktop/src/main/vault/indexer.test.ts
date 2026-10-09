@@ -259,6 +259,28 @@ describe('indexer', () => {
       expect(result.indexed).toBe(1)
     })
 
+    it('skips attachments/ and indexes the folder a non-default attachmentsFolder names', async () => {
+      vi.mocked(vaultIndex.getConfig).mockReturnValue({
+        excludePatterns: ['.git', 'node_modules'],
+        defaultNoteFolder: 'notes',
+        journalFolder: 'journal',
+        journalDateFormat: 'YYYY-MM-DD',
+        attachmentsFolder: 'files'
+      })
+      createTestNote(tempVault, { title: 'Visible', content: 'Content' })
+      createTestNote(tempVault, { title: 'Filed', content: 'Content', folder: 'files' })
+      createTestNote(tempVault, { title: 'Attached', content: 'Content', folder: 'attachments/n1' })
+
+      await indexer.indexVault(tempVault.path)
+
+      const titles = testDb.db
+        .select()
+        .from(noteCache)
+        .all()
+        .map((row) => row.title)
+      expect(titles.sort()).toEqual(['Filed', 'Visible'])
+    })
+
     it('T374: handles nested subfolders', async () => {
       createTestNote(tempVault, { title: 'Root Note', content: 'In root' })
       createTestNote(tempVault, { title: 'Nested 1', content: 'Level 1', folder: 'level1' })

@@ -795,7 +795,7 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func requestEmailCode(email: String) async throws  -> AuthState
     
     /**
-     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
      */
     func resendEmailCode() async throws 
@@ -1311,7 +1311,7 @@ open func requestEmailCode(email: String)async throws  -> AuthState  {
 }
     
     /**
-     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
      */
 open func resendEmailCode()async throws   {
@@ -24609,6 +24609,14 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case DeviceRevoked(message: String
     )
     /**
+     * 409 `AUTH_DEVICE_LIMIT_REACHED` on `POST /auth/devices` (chapter 02
+     * §2.3.3): the account already holds its maximum of active devices. The
+     * user frees a slot by revoking a device from one that is signed in;
+     * retrying or updating changes nothing (#2944).
+     */
+    case DeviceLimitReached(message: String
+    )
+    /**
      * A 429, where `retry_after_s` is the lowercase `retry-after` header the
      * server sent, when it sent one (chapter 00 §0.6).
      */
@@ -24693,28 +24701,31 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
         case 4: return .DeviceRevoked(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 5: return .RateLimited(
+        case 5: return .DeviceLimitReached(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 6: return .RateLimited(
             retryAfterS: try FfiConverterOptionUInt64.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 6: return .WritesDisabled(
+        case 7: return .WritesDisabled(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .UpgradeRequired(
+        case 8: return .UpgradeRequired(
             minVersion: try FfiConverterOptionString.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .BootstrapUnavailable
-        case 9: return .Status(
+        case 9: return .BootstrapUnavailable
+        case 10: return .Status(
             status: try FfiConverterUInt16.read(from: &buf), 
             code: try FfiConverterOptionString.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .MalformedResponse(
+        case 11: return .MalformedResponse(
             path: try FfiConverterString.read(from: &buf), 
             what: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .InvalidClientIdentity(
+        case 12: return .InvalidClientIdentity(
             what: try FfiConverterString.read(from: &buf)
             )
 
@@ -24750,42 +24761,47 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
             FfiConverterString.write(message, into: &buf)
             
         
-        case let .RateLimited(retryAfterS,message):
+        case let .DeviceLimitReached(message):
             writeInt(&buf, Int32(5))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .RateLimited(retryAfterS,message):
+            writeInt(&buf, Int32(6))
             FfiConverterOptionUInt64.write(retryAfterS, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .WritesDisabled(message):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterString.write(message, into: &buf)
             
         
         case let .UpgradeRequired(minVersion,message):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
             FfiConverterOptionString.write(minVersion, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case .BootstrapUnavailable:
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
         
         
         case let .Status(status,code,message):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(10))
             FfiConverterUInt16.write(status, into: &buf)
             FfiConverterOptionString.write(code, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .MalformedResponse(path,what):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterString.write(path, into: &buf)
             FfiConverterString.write(what, into: &buf)
             
         
         case let .InvalidClientIdentity(what):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterString.write(what, into: &buf)
             
         }
@@ -32712,7 +32728,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 19227) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 30425) {
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 4495) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_sign_out() != 30253) {

@@ -14,8 +14,7 @@ vi.mock('../services/otp', () => ({
   generateOtp: vi.fn().mockReturnValue('123456'),
   storeOtp: vi.fn().mockResolvedValue(undefined),
   verifyOtp: vi.fn().mockResolvedValue(undefined),
-  checkEmailRateLimit: vi.fn().mockResolvedValue(undefined),
-  hasPendingOtp: vi.fn().mockResolvedValue(true)
+  checkEmailRateLimit: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/user', () => ({
@@ -148,7 +147,8 @@ vi.mock('jose', () => ({
 
 import { auth } from './auth'
 import { captureServerError } from '../services/analytics'
-import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
+import { checkEmailRateLimit, storeOtp } from '../services/otp'
+import { sendEmail } from '../services/email'
 import { getUserByEmail, getUserById, updateUserEmail } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { SYNC_PLAN_LIMITS } from '../services/entitlements'
@@ -323,9 +323,9 @@ describe('auth routes', () => {
       expect(res.status).toBe(400)
     })
 
-    it('should not send a new email when no OTP is pending', async () => {
-      vi.mocked(hasPendingOtp).mockResolvedValueOnce(false)
-
+    // #2940: resend used to answer success without sending once the pending
+    // code had expired, so "Send a new code" on a stale code screen did nothing.
+    it('stores and emails a fresh code whatever the state of the previous one', async () => {
       const res = await app.request(
         '/auth/otp/resend',
         jsonPost('/auth/otp/resend', { email: 'test@example.com' }),
@@ -334,7 +334,25 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true, expiresIn: 600 })
-      expect(checkEmailRateLimit).not.toHaveBeenCalled()
+      expect(checkEmailRateLimit).toHaveBeenCalledWith(env.DB, 'test@example.com')
+      expect(storeOtp).toHaveBeenCalledWith(env.DB, 'test@example.com', '123456', env.OTP_HMAC_KEY)
+      expect(sendEmail).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(sendEmail).mock.calls[0]?.[0]).toBe('test@example.com')
+    })
+
+    it('keeps the per-address email rate limit', async () => {
+      vi.mocked(checkEmailRateLimit).mockRejectedValueOnce(
+        new AppError(ErrorCodes.AUTH_RATE_LIMITED, 'Too many requests', 429)
+      )
+
+      const res = await app.request(
+        '/auth/otp/resend',
+        jsonPost('/auth/otp/resend', { email: 'test@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(429)
+      expect(sendEmail).not.toHaveBeenCalled()
     })
   })
 
@@ -1298,9 +1316,11 @@ describe('auth routes', () => {
         env
       )
 
+      // #2944: a code of its own, so a client can ask the user to revoke a
+      // device instead of reading a generic refusal.
       expect(res.status).toBe(409)
       const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(json.error.code).toBe(ErrorCodes.AUTH_DEVICE_LIMIT_REACHED)
     })
 
     it('should reject device metadata that becomes empty after sanitization', async () => {

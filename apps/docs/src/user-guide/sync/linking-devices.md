@@ -160,7 +160,9 @@ Click a device's name in the list to rename. The name is local convenience — i
 
 ## Limits
 
-There's no fixed device limit, but very large numbers of linked devices increase the time to seal the vault key during rotation. Practically: keep your active devices and revoke the rest.
+An account can have up to 50 active devices. Setting up a 51st is refused until you revoke one: on a device that is signed in, open the Devices list and click **Revoke** on one you no longer use, then start setting up the new device again.
+
+Large numbers of linked devices also increase the time to seal the vault key during rotation. Practically: keep your active devices and revoke the rest.
 
 ## See Also
 

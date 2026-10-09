@@ -13,6 +13,7 @@ import { getSetting, setSetting } from '../database/queries/settings'
 import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
 import { getMemryDir } from './init'
+import { refuseOutsideVaultSync } from '../lib/paths'
 import { BUILT_IN_IDS } from './built-in-templates'
 
 const log = createLogger('TemplatesMigration')
@@ -96,6 +97,7 @@ export function migrateTemplateFilesToDb(db: DataDb, vaultPath: string): number 
       // gets held back for a retry.
       let raw: string
       try {
+        refuseOutsideVaultSync(vaultPath, path.relative(vaultPath, filePath))
         raw = fs.readFileSync(filePath, 'utf-8')
       } catch (err) {
         failed++

@@ -45,6 +45,14 @@ here. Every field is JSON; `?` marks optional, meaning **absent**, never `null`.
 Request: `email` (string, an email address).
 Response: `success` (bool), `expiresIn?` (number, seconds), `message?` (string).
 
+**Normative.** The two routes share one handler
+(`apps/sync-server/src/routes/auth.ts:99-124`, `:231-241`): each mints, stores,
+and emails a fresh code under the same per-address limit, whether or not an
+earlier code is still pending, and answers every address alike. A resend after
+the earlier code expired is how a user gets a working code back on the code
+screen. Servers before this rule answered `/resend` with success and sent
+nothing once no unexpired code was pending.
+
 **`POST /auth/otp/verify`**
 
 Request: `email` (string), `code` (string, exactly six digits, `/^\d{6}$/`),
@@ -216,8 +224,13 @@ was already spent and the answer is `401 AUTH_INVALID_TOKEN`
 seconds after consumption (`:573`).
 
 A user may hold at most **50** active (non-revoked) devices; the 51st
-registration is `409 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:586-593`).
+registration is `409 AUTH_DEVICE_LIMIT_REACHED`
+(`apps/sync-server/src/routes/auth.ts:593-599`). The cap is checked after the
+token's `jti` is consumed (`:577-585`), so the refused request has spent its
+setup token and a replay answers `401 AUTH_INVALID_TOKEN`. The refusal holds
+until the user revokes a device from one that is signed in; a client says that,
+offers no retry, and the way back is a fresh sign-in. Servers before #2944 sent `409 VALIDATION_ERROR` for the same
+refusal; a client reads that as a generic refusal, as before.
 
 The server-assigned device id is a `crypto.randomUUID()`
 (`apps/sync-server/src/routes/auth.ts:626`). Registration is idempotent on
@@ -431,7 +444,7 @@ retryable there, and the replay here is not an attempt there.
 | `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:231` |
 | `ROTATION_GRACE_SECONDS`             | 10          | `apps/sync-server/src/services/auth.ts:79`  |
 | `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:80`  |
-| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:586`   |
+| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:593`   |
 | `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:171`   |
 
 OTP codes are stored as a hex HMAC-SHA256 under `OTP_HMAC_KEY` and compared with
@@ -559,3 +572,13 @@ was opened, so a late callback carrying a spent nonce cannot be honoured.
 Note the general lesson, which is why this is written out rather than left
 implied: a transition that names several causes on one line is a transition
 nobody checks has several call sites.
+
+### 2.14.2 A rate-limited verify is not a rejected code
+
+**Normative.** `POST /auth/otp/verify` sits behind the per-IP OTP limiter
+(`apps/sync-server/src/routes/auth.ts:73-77`, `:244`), which answers `429`
+before the code is looked at. That answer judged nothing: the pending code is
+still the one in the user's inbox. A client **MUST NOT** take the failure edge
+out of the awaiting-OTP state on a `429`; it stays there, keeps the entered
+code, and shows the wait from `Retry-After`. Every other verify failure still
+takes the failure edge (`crates/memry-core/src/api/auth.rs:420-427`).

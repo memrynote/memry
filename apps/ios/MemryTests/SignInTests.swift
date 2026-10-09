@@ -331,6 +331,22 @@ struct SignInViewModelTests {
         #expect(model.error?.title == "Memry could not finish setting up this phone.")
     }
 
+    /// #2940: the core keeps `AwaitingOtp` on a 429, so the code screen, the
+    /// code, and the wait all stay where the user can act on them.
+    @Test("a rate-limited verify keeps the code screen, the code, and the wait")
+    func rateLimitedVerifyKeepsTheCode() async {
+        let (model, _) = makeModel(from: .awaitingOtp(email: "kaan@example.com"), [
+            .fails(ApiError.RateLimited(retryAfterS: 600, message: "slow"), leaving: .awaitingOtp(email: "kaan@example.com"))
+        ])
+        model.code = "123456"
+        await model.run(.verify)
+
+        #expect(model.step.field == .code)
+        #expect(model.code == "123456")
+        #expect(model.error?.code == ErrorCode("api.rateLimited"))
+        #expect(model.error?.recourse == .retryLater)
+    }
+
     @Test("a rejected code is cleared from the field and the core says where the user is")
     func rejectedCodeIsCleared() async {
         let (model, _) = makeModel(from: .awaitingOtp(email: "kaan@example.com"), [
