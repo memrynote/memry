@@ -422,6 +422,13 @@ describe('AssistantMessage', () => {
       expect(toggle()).not.toHaveTextContent('Thinking…')
     })
 
+    it('keeps reasoning that first arrives after the answer folded', () => {
+      const { rerender } = render(<AssistantMessage message={turn('Let me read the note.', '')} />)
+      rerender(<AssistantMessage message={turn('Let me read the note.', 'Step two.')} />)
+      expect(toggle()).toHaveTextContent('Thinking…')
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+    })
+
     it('keeps the newest line of an opened block in view as reasoning grows', async () => {
       const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
       rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
