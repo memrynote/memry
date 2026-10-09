@@ -335,6 +335,13 @@ pub enum ApiError {
     #[error("this device has been revoked: {message}")]
     DeviceRevoked { message: String },
 
+    /// 409 `AUTH_DEVICE_LIMIT_REACHED` on `POST /auth/devices` (chapter 02
+    /// §2.3.3): the account already holds its maximum of active devices. The
+    /// user frees a slot by revoking a device from one that is signed in;
+    /// retrying or updating changes nothing (#2944).
+    #[error("this account has reached its device limit: {message}")]
+    DeviceLimitReached { message: String },
+
     /// A 429, where `retry_after_s` is the lowercase `retry-after` header the
     /// server sent, when it sent one (chapter 00 §0.6).
     #[error("rate limited: {message}")]

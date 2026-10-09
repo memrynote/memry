@@ -593,7 +593,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const MAX_DEVICES_PER_USER = 50
   if (activeDeviceCount && activeDeviceCount.cnt >= MAX_DEVICES_PER_USER) {
     throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
+      ErrorCodes.AUTH_DEVICE_LIMIT_REACHED,
       'Maximum device limit reached. Revoke an existing device first.',
       409
     )

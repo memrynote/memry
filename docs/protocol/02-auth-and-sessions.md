@@ -216,8 +216,11 @@ was already spent and the answer is `401 AUTH_INVALID_TOKEN`
 seconds after consumption (`:573`).
 
 A user may hold at most **50** active (non-revoked) devices; the 51st
-registration is `409 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:586-593`).
+registration is `409 AUTH_DEVICE_LIMIT_REACHED`
+(`apps/sync-server/src/routes/auth.ts:593-599`). The refusal is permanent until
+the user revokes a device from one that is signed in, so a client says that and
+offers no retry. Servers before #2944 sent `409 VALIDATION_ERROR` for the same
+refusal; a client reads that as a generic refusal, as before.
 
 The server-assigned device id is a `crypto.randomUUID()`
 (`apps/sync-server/src/routes/auth.ts:626`). Registration is idempotent on

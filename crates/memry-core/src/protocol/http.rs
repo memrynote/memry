@@ -433,6 +433,9 @@ impl HttpClient {
 
         match (status, code.as_str()) {
             (_, "AUTH_DEVICE_REVOKED") => Outcome::Fatal(ApiError::DeviceRevoked { message }),
+            (409, "AUTH_DEVICE_LIMIT_REACHED") => {
+                Outcome::Fatal(ApiError::DeviceLimitReached { message })
+            }
             (403, "PLATFORM_WRITES_DISABLED") => {
                 Outcome::Fatal(ApiError::WritesDisabled { message })
             }

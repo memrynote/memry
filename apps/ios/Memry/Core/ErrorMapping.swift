@@ -287,6 +287,12 @@ enum ErrorMapping {
         case .DeviceRevoked:
             copy("api.deviceRevoked", "This phone's access to your account was revoked.",
                  "Its copy of your vault has been removed. Sign in again to use Memry here.")
+        // #2944. Neither retrying nor updating frees a slot: the user revokes a
+        // device from one that is signed in. Only desktop lists devices with a
+        // Revoke button, so the sentence names a computer.
+        case .DeviceLimitReached:
+            copy("api.deviceLimitReached", "Your account is signed in on too many devices.",
+                 "On a computer signed in to Memry, open Settings, then Account, and revoke a device you no longer use. Then finish setting up this phone.")
         // spec-defect 111. The old second sentence promised that "syncing will
         // resume on its own", and the screen this error is met on most often is
         // the sign-in screen, where there is no sync to resume and nothing

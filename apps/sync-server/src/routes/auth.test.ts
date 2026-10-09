@@ -1298,9 +1298,11 @@ describe('auth routes', () => {
         env
       )
 
+      // #2944: a code of its own, so a client can ask the user to revoke a
+      // device instead of reading a generic refusal.
       expect(res.status).toBe(409)
       const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(json.error.code).toBe('AUTH_DEVICE_LIMIT_REACHED')
     })
 
     it('should reject device metadata that becomes empty after sanitization', async () => {
