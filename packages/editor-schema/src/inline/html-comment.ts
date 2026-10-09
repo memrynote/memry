@@ -68,13 +68,15 @@ function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): Inline
  * neither opens before nor closes after whitespace. Without such an edge the
  * runs read back the same whether the comment sat inside or between them
  * (`**a**<!-- b -->**c**`), and the serializer already writes valid emphasis.
+ * A hard break is not such an edge: the run before it holds the `\n` even when
+ * the emphasis closed before the break (`**a**  \n<!-- b --> c`).
  * Never `code`: a comment inside a code span would come back as code text.
  */
 function enclosingMarks(left: InlineItem | undefined, right: InlineItem | undefined): Styles {
   const marks: Styles = {}
   for (const [side, open] of [
-    [left, /\s$/.test(left?.text ?? '')],
-    [right, /^\s/.test(right?.text ?? '')]
+    [left, /[^\S\n]$/.test(left?.text ?? '')],
+    [right, /^[^\S\n]/.test(right?.text ?? '')]
   ] as const) {
     if (!open) continue
     for (const [name, on] of Object.entries(side?.styles ?? {})) {
