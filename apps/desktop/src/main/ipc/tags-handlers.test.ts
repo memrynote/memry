@@ -56,7 +56,12 @@ vi.mock('@main/database/queries/notes', () => ({
   updateTagColor: vi.fn(),
   updateTagIcon: vi.fn(),
   getNoteTags: vi.fn(),
-  getNoteCacheById: vi.fn()
+  getNoteCacheById: vi.fn(),
+  // Read through the db mock the way the real queries do.
+  noteIdsWithTag: vi.fn((db: { select: () => any }) =>
+    (db?.select().from().where().all() ?? []).map((row: { noteId: string }) => row.noteId)
+  ),
+  findTagDefinition: vi.fn((db: { select: () => any }) => db?.select().from().where().get())
 }))
 
 vi.mock('@main/database/queries/tags', () => ({
@@ -342,7 +347,7 @@ describe('tags-handlers', () => {
       id: 'note-1',
       headerTags: { remove: [' old '] }
     })
-    expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith('old', {
+    expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith({
       name: 'old',
       color: 'red'
     })
@@ -389,7 +394,7 @@ describe('tags-handlers', () => {
       id: 'note-1',
       headerTags: { rename: [{ from: ' source ', to: 'target' }] }
     })
-    expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('source', 'target', {
+    expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('target', {
       name: 'source',
       color: 'blue'
     })
@@ -531,7 +536,8 @@ describe('tag category handlers', () => {
     expect(tagCategoryQueries.reorderCategories).toHaveBeenCalledWith(expect.any(Object), [
       { id: 'cat-1', sortOrder: 0 }
     ])
-    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('meetings')
+    // The sync id is resolved from the stored row, so the typed spelling goes through.
+    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('Meetings')
     expect(fileMocks.syncTagCategoryUpdate).toHaveBeenCalledWith('cat-1')
     expect(mockSend).toHaveBeenCalledWith(TagsChannels.events.CATEGORIES_CHANGED, expect.anything())
   })

@@ -59,8 +59,10 @@ counts the notes as it goes; if Memry quits
 partway, it finishes the rename the next time the vault opens, and it doesn't start another
 rename until then. If a note can't be updated, Memry tells you how many were skipped.
 
-Tag names match ignoring the case of the letters A to Z only: `Work` and `work` are one tag,
-but `Ünal` and `ünal` are two.
+Tag names match ignoring letter case in every language: `Work` and `work` are one tag, and so
+are `Ünal` and `ünal`, or `İş` and `iş`. The dotless `ı` stays its own letter, so `ışık` and
+`işik` are two tags. If an older version left two tags that now count as one, Memry merges
+them the next time you open the vault and keeps the colors, icons and fields.
 
 Renaming a tag renames its child tags too: `person` to `people` also turns `person/vip` into
 `people/vip`, with their colors, icons, views and fields. If the new name, or a child's new

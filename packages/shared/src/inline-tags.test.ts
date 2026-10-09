@@ -8,7 +8,6 @@ import {
   rewriteInlineTagsInMarkdown
 } from './inline-tags'
 import { INLINE_TAG_RENAME_CASES } from './inline-tag-rename-cases'
-import { foldTag } from './tag-fold'
 
 describe('extractInlineTagsFromMarkdown', () => {
   it('extracts a single tag', () => {
@@ -113,25 +112,18 @@ describe('rewriteInlineTagsInMarkdown shared cases', () => {
   }
 })
 
-describe('foldTag', () => {
-  it('lowercases ASCII only, as SQLite NOCASE and the Rust core do', () => {
-    expect(foldTag('WorK/Deep')).toBe('work/deep')
-    expect(foldTag('İş')).toBe('İş')
-    expect(foldTag('Ünal')).toBe('Ünal')
-    expect(foldTag('ŞEHİR')).toBe('Şehİr')
-    expect(foldTag('Şehir/ALT')).toBe('Şehir/alt')
-  })
-})
-
 describe('renamedTag', () => {
   it('keeps a non-ASCII child suffix whole', () => {
     expect(renamedTag('İş/alt', [{ from: 'İş', to: 'Work' }])).toBe('Work/alt')
     expect(renamedTag('ÜNAL/Ekip', [{ from: 'ÜNAL', to: 'team' }])).toBe('team/Ekip')
   })
 
-  it('treats spellings that differ beyond ASCII case as different tags', () => {
-    expect(renamedTag('ünal', [{ from: 'Ünal', to: 'x' }])).toBeNull()
-    expect(renamedTag('iş/alt', [{ from: 'İş', to: 'x' }])).toBeNull()
+  it('renames every case spelling of a non-ASCII tag, whatever its length', () => {
+    expect(renamedTag('ünal', [{ from: 'Ünal', to: 'x' }])).toBe('x')
+    expect(renamedTag('iş/alt', [{ from: 'İş', to: 'x' }])).toBe('x/alt')
+    // `i` + U+0307 is two characters and folds like the one-character `İ`.
+    expect(renamedTag('i\u0307ş/Alt', [{ from: 'iş', to: 'x' }])).toBe('x/Alt')
+    expect(renamedTag('ışık', [{ from: 'işik', to: 'x' }])).toBeNull()
   })
 })
 
