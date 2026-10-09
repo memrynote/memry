@@ -1714,6 +1714,40 @@
         "color": "Renk değiştirilemedi.",
         "category": "Kategori değiştirilemedi."
       }
+    },
+    "fill": {
+      "action": "Nottan doldur",
+      "reading": "Not okunuyor…",
+      "disclosure": "Ajan modelin ({model}) değer önermek için bu notu okur. Yalnızca bu not gönderilir. Sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureLocal": "Yerel modelin ({model}) değer önermek için bu notu bu cihazda okur. Hiçbir şey cihazdan çıkmaz ve sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureMany": "Ajan modelin ({model}) değer önermek için bu notları tek tek okur. Yalnızca bu notlar gönderilir. Sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureLocalMany": "Yerel modelin ({model}) değer önermek için bu notları bu cihazda okur. Hiçbir şey cihazdan çıkmaz ve sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "suggest": "Değer öner",
+      "notNow": "Şimdi değil",
+      "countOne": "· {count} öneri",
+      "count": "· {count} öneri",
+      "dismiss": "Vazgeç",
+      "acceptAll": "Tümünü kabul et",
+      "accept": "{field} değerini kabul et",
+      "reject": "{field} değerini reddet",
+      "notInNote": "Notta yok",
+      "createHint": "Kabul edilince yeni bir #{tag} oluşturur",
+      "nothingFound": "Bu notta boş alanları dolduracak bir şey yok",
+      "failed": "Değer önerilemedi. {message}",
+      "saveFailed": "Kabul edilen değerler kaydedilemedi",
+      "bulkAction": "Boş alanları doldur",
+      "bulkTitle": "Boş alanları doldur",
+      "bulkReading": "{total} nottan {done} · notlar okunuyor…",
+      "bulkRead": "{total} nottan {done} okundu",
+      "stop": "Durdur",
+      "name": "Ad",
+      "nothingInRow": "Bulunamadı",
+      "found": "{count} bulundu",
+      "reviewOneByOne": "Tek tek incele",
+      "acceptRow": "{title} için değerleri kabul et",
+      "rejectRow": "{title} atla",
+      "bulkSavedOne": "{notes} notta {count} alan dolduruldu",
+      "bulkSaved": "{notes} notta {count} alan dolduruldu"
     }
   }
 }

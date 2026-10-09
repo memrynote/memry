@@ -4,6 +4,7 @@ import type {
   TagSchemaCommand,
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
+import type { FillFieldsInput } from '@memry/contracts/tag-fill-api'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const tagsApi = {
@@ -41,6 +42,8 @@ export const tagsApi = {
   getSchemaSnapshot: () => invoke(TagSchemaChannels.invoke.GET_SCHEMA_SNAPSHOT),
   editSchema: (command: TagSchemaCommand) => invoke(TagSchemaChannels.invoke.EDIT_SCHEMA, command),
   previewImpact: (query: ImpactQuery) => invoke(TagSchemaChannels.invoke.PREVIEW_IMPACT, query),
+  getFillStatus: () => invoke(TagSchemaChannels.invoke.FILL_STATUS),
+  fillFields: (input: FillFieldsInput) => invoke(TagSchemaChannels.invoke.FILL_FIELDS, input),
   searchObjects: (input: { query: string; tag?: string; limit?: number }) =>
     invoke(TagsChannels.invoke.SEARCH_OBJECTS, input),
   getLinkedHere: (input: { noteId: string; limitPerGroup?: number }) =>

@@ -150,6 +150,12 @@ export const tagsService: TagsService = {
   /** Count what a schema change would touch, before it runs. */
   previewImpact: (query) => window.api.tags.previewImpact(query),
 
+  /** Whether agent fill is on, and the model its disclosure names. */
+  getFillStatus: () => window.api.tags.getFillStatus(),
+
+  /** The inline-AI model proposes values for a note's empty fields; writes nothing. */
+  fillFields: (input) => window.api.tags.fillFields(input),
+
   /**
    * Objects of tags with fields matching a query (@ menu, relation picker).
    */

@@ -55,6 +55,7 @@ import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
 import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
 import { TagSettingsSheet } from '@/features/tag-fields/settings/TagSettingsSheet'
 import { useResolvedTag } from '@/features/tag-fields/use-tag-schemas'
+import { BulkFieldFill } from '@/features/tag-fields/agent-fill/BulkFieldFill'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
@@ -1264,6 +1265,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             onSetViewAsDefault={handleSetViewAsDefault}
             onDeleteView={handleDeleteView}
           />
+
+          {scope.kind === 'tag' && resolvedTag?.hasFields && (
+            <BulkFieldFill tag={resolvedTag} notes={notes} />
+          )}
 
           {scope.kind === 'tag' && (
             <Button

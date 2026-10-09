@@ -13,6 +13,11 @@ import type {
   TagSchemaSnapshot,
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
+import type {
+  FieldFillStatus,
+  FillFieldsInput,
+  FillFieldsResult
+} from '@memry/contracts/tag-fill-api'
 import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
@@ -931,6 +936,8 @@ export interface TagsClientAPI {
   getSchemaSnapshot(): Promise<TagSchemaSnapshot>
   editSchema(command: TagSchemaCommand): Promise<TagSchemaCommandResult>
   previewImpact(query: ImpactQuery): Promise<ImpactResult>
+  getFillStatus(): Promise<FieldFillStatus>
+  fillFields(input: FillFieldsInput): Promise<FillFieldsResult>
   searchObjects(input: {
     query: string
     tag?: string
