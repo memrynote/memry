@@ -14,7 +14,11 @@ export interface JournalDayApplyPlan {
   applyIncoming: boolean
   /** Foreign ids whose body is owed to the canonical day, then a tombstone. */
   oweMerge: string[]
-  /** The local row holding the day is foreign and leaves before anything is written. */
+  /**
+   * The local row holding the day is foreign and gives the path to the incoming
+   * canonical item. Only when the incoming item is applied: a foreign row stays
+   * until the drain sweeps it, so no day file is left without a row (#2985).
+   */
   removeHolder: boolean
 }
 
@@ -33,5 +37,48 @@ export function planJournalDayApply(
   const oweMerge: string[] = []
   if (incomingId !== canonical) oweMerge.push(incomingId)
   if (holderForeign && holderId !== incomingId) oweMerge.push(holderId)
-  return { applyIncoming: incomingId === canonical, oweMerge, removeHolder: holderForeign }
+  const applyIncoming = incomingId === canonical
+  return { applyIncoming, oweMerge, removeHolder: holderForeign && applyIncoming }
+}
+
+/** What the drain does next with one owed merge `F -> D` (§1.9.1). */
+export type JournalDayMergeAction =
+  /** Stays owed: the body has not fully arrived, or a live `F` has none. */
+  | 'wait'
+  /** Settles without folding or tombstoning: `F` is deleted and holds nothing here. */
+  | 'forget'
+  /** `j<D>` is deleted on this device: it is not re-created, `F` is dropped. */
+  | 'drop'
+  /** Ensure `j<D>`, relink tasks, fold `F` into it. */
+  | 'merge'
+
+export interface JournalDayMergeStep {
+  action: JournalDayMergeAction
+  /** Queue `F`'s tombstone at `increment(F.clock, self)`. */
+  tombstone: boolean
+}
+
+export interface JournalDayMergeState {
+  /** `F`'s tombstone arrived: another device merged it. */
+  deleted: boolean
+  /** `F`'s server body is fully merged locally. Not pulled, and true, when `deleted`. */
+  bodyPulled: boolean
+  /** `F` has a body to fold: Yjs state, or desktop's local-holder file text. */
+  hasBody: boolean
+  /** `j<D>` has no live row and a recorded tombstone on this device. */
+  dayDeleted: boolean
+  /** `F`'s clock is non-empty, so the server has seen `F`. */
+  clocked: boolean
+}
+
+/**
+ * The drain's decision for one owed merge, shared by desktop and the core and
+ * pinned by the `dayMerge` vectors. Order: body pulled, body present, day
+ * deleted, then merge. A tombstone is owed only for a live, clocked `F`.
+ */
+export function planJournalDayMerge(state: JournalDayMergeState): JournalDayMergeStep {
+  const tombstone = !state.deleted && state.clocked
+  if (!state.deleted && !state.bodyPulled) return { action: 'wait', tombstone: false }
+  if (!state.hasBody) return { action: state.deleted ? 'forget' : 'wait', tombstone: false }
+  return { action: state.dayDeleted ? 'drop' : 'merge', tombstone }
 }

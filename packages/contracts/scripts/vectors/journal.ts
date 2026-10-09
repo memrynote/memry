@@ -22,6 +22,7 @@ import {
   monthDays,
   orderedWeekdays,
   planJournalDayApply,
+  planJournalDayMerge,
   resolveJournalTemplateId,
   weekdayOf,
   yearMonthStats
@@ -45,6 +46,27 @@ import {
 import { meta } from './shared'
 
 const D = '2026-06-09'
+const LIVE = { deleted: false, bodyPulled: true, hasBody: true, dayDeleted: false, clocked: true }
+const DAY_MERGE_CASES: ReadonlyArray<{
+  name: string
+  state: Parameters<typeof planJournalDayMerge>[0]
+}> = [
+  { name: 'live, body merged', state: LIVE },
+  { name: 'live, body not fully pulled', state: { ...LIVE, bodyPulled: false } },
+  { name: 'live, no body', state: { ...LIVE, hasBody: false } },
+  { name: 'live, never synced (empty clock)', state: { ...LIVE, clocked: false } },
+  { name: 'live, day deleted here', state: { ...LIVE, dayDeleted: true } },
+  { name: 'live, no body, day deleted here', state: { ...LIVE, hasBody: false, dayDeleted: true } },
+  { name: 'deleted, body held here', state: { ...LIVE, deleted: true, bodyPulled: false } },
+  {
+    name: 'deleted, nothing held here',
+    state: { ...LIVE, deleted: true, bodyPulled: false, hasBody: false }
+  },
+  {
+    name: 'deleted, day deleted here',
+    state: { ...LIVE, deleted: true, bodyPulled: false, dayDeleted: true }
+  }
+]
 const DAY_IDENTITY_CASES: ReadonlyArray<{
   name: string
   incomingId: string
@@ -133,6 +155,11 @@ export function buildJournal(): Record<string, unknown> {
         averageLevel: averageActivityLevel(rows.map((row) => row.characterCount))
       }
     }),
+    dayMerge: DAY_MERGE_CASES.map((c) => ({
+      name: c.name,
+      state: c.state,
+      expected: planJournalDayMerge(c.state)
+    })),
     dayIdentity: DAY_IDENTITY_CASES.map((c) => ({
       name: c.name,
       incomingId: c.incomingId,

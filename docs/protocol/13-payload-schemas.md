@@ -276,7 +276,7 @@ create or update without it is rejected by **an explicit guard in the handler,
 not by the schema**. Deletes never reach any parser at all: the applier
 short-circuits `operation === 'delete'` before decoding the body.
 
-**A `journal` whose id is not `j<date>` is never projected** (§1.9.1). Its
+**An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.
 
 ### 13.7.3 `task` — `:25-48`

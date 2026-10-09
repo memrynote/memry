@@ -519,59 +519,156 @@ async fn pull_tombstones(db: &Db, ids: &[&str]) {
 }
 
 #[tokio::test]
-async fn a_foreign_id_another_device_already_deleted_is_merged_or_settled_without_a_tombstone() {
+async fn a_foreign_id_another_device_already_deleted_is_not_pulled_and_settles_without_a_tombstone()
+{
     let db = scratch_db("already-deleted");
     db.call_blocking(|conn| {
-        for id in [FOREIGN, OTHER_FOREIGN] {
-            let foreign = record(id, &journal_payload(json!({"device-b": 1})));
-            assert_eq!(
-                apply_inbound_on(conn, &foreign, 1, Some("device-a"))?,
-                ApplyOutcome::Skipped
-            );
-        }
-        Ok(())
-    })
-    .unwrap();
-    pull_tombstones(&db, &[FOREIGN, OTHER_FOREIGN]).await;
-    db.call_blocking(|conn| {
-        assert!(
-            journal_day_merge::owed(conn)?
-                .iter()
-                .all(|owed| owed.deleted)
+        let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
+        assert_eq!(
+            apply_inbound_on(conn, &foreign, 1, Some("device-a"))?,
+            ApplyOutcome::Skipped
         );
         Ok(())
     })
     .unwrap();
+    pull_tombstones(&db, &[FOREIGN]).await;
 
-    // FOREIGN still has a body on the server; OTHER_FOREIGN has none.
-    let body = text_update(9, "kept");
-    let bodies = bodies_for(&db, &[Some(&body), None]);
-    let report = journal_day_merge::drain(&db, &bodies, "device-a")
+    // The deleting device merged the server body: nothing is fetched (an
+    // empty script fails any request), and nothing held here is left.
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
         .await
         .unwrap();
-    assert_eq!(
-        report.settled,
-        vec![FOREIGN.to_owned(), OTHER_FOREIGN.to_owned()]
-    );
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
 
     db.call_blocking(|conn| {
         assert!(journal_day_merge::owed(conn)?.is_empty());
-        assert_eq!(text_of(conn, CANONICAL), "kept");
+        assert!(outbox(conn).is_empty(), "no day created, no tombstone");
+        assert_eq!(day_holder(conn), None);
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_merge() {
+    let db = scratch_db("tombstone-first");
+    // A pre-fix row holding the day, with an edit this device never pushed.
+    db.call_blocking(|conn| {
+        let held = record(FOREIGN, &journal_payload(json!({"device-b": 2})));
+        assert_eq!(
+            sync_items::apply_remote(conn, &held, 1)?,
+            ApplyOutcome::Applied
+        );
+        update_log::append_local_update(conn, FOREIGN, &text_update(7, "unpushed"), 1).map_err(
+            |e| StorageError::Failed {
+                what: e.to_string(),
+            },
+        )?;
+        Ok(())
+    })
+    .unwrap();
+
+    // Another device merged FOREIGN and deleted it before this device did.
+    pull_tombstones(&db, &[FOREIGN]).await;
+    db.call_blocking(|conn| {
+        assert_eq!(text_of(conn, FOREIGN), "unpushed", "not purged");
+        assert_eq!(
+            journal_day_merge::owed(conn)?
+                .iter()
+                .map(|owed| owed.deleted)
+                .collect::<Vec<_>>(),
+            vec![true]
+        );
+        Ok(())
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn).as_deref(), Some(CANONICAL));
+        assert_eq!(text_of(conn, CANONICAL), "unpushed");
         assert!(update_log::load_plan(conn, FOREIGN).unwrap().is_empty());
         assert!(
-            update_log::load_plan(conn, OTHER_FOREIGN)
-                .unwrap()
-                .is_empty()
+            outbox(conn).iter().all(|row| row.1 != "delete"),
+            "the tombstone already exists"
         );
-        let queued = outbox(conn);
-        assert!(
-            queued.iter().all(|row| row.1 != "delete"),
-            "no tombstone for a deleted id"
-        );
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_deleted_day_is_not_recreated_and_the_foreign_id_is_dropped() {
+    let db = scratch_db("day-deleted");
+    db.call_blocking(|conn| {
+        let day = record(CANONICAL, &journal_payload(json!({"device-c": 1})));
         assert_eq!(
-            queued.iter().filter(|row| row.1 == "crdt-update").count(),
-            1
+            apply_inbound_on(conn, &day, 1, Some("device-a"))?,
+            ApplyOutcome::Applied
         );
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones(&db, &[CANONICAL]).await;
+    db.call_blocking(|conn| {
+        let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
+        assert_eq!(
+            apply_inbound_on(conn, &foreign, 1, Some("device-a"))?,
+            ApplyOutcome::Skipped
+        );
+        Ok(())
+    })
+    .unwrap();
+
+    let bodies = body_pull(&db, &text_update(9, "late"));
+    let report = journal_day_merge::drain(&db, &bodies, "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn), None, "the day stays deleted");
+        assert_eq!(text_of(conn, CANONICAL), "");
+        let queued = outbox(conn);
+        assert_eq!(
+            queued
+                .iter()
+                .map(|row| (row.0.as_str(), row.1.as_str()))
+                .collect::<Vec<_>>(),
+            vec![(FOREIGN, "delete")]
+        );
+        let tombstone = sync_items::load(conn, "journal", FOREIGN)?.expect("the tombstone row");
+        assert_eq!(
+            tombstone.payload.as_deref(),
+            Some(r#"{"clock":{"device-a":1,"device-b":1}}"#)
+        );
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_foreign_record_this_device_already_tombstoned_is_not_owed_again() {
+    let db = scratch_db("redelivered");
+    db.call_blocking(|conn| {
+        let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
+        apply_inbound_on(conn, &foreign, 1, Some("device-a"))?;
+        Ok(())
+    })
+    .unwrap();
+    let bodies = body_pull(&db, &text_update(9, "once"));
+    journal_day_merge::drain(&db, &bodies, "device-a")
+        .await
+        .unwrap();
+    db.call_blocking(|conn| {
+        let again = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
+        assert_eq!(
+            apply_inbound_on(conn, &again, 1, Some("device-a"))?,
+            ApplyOutcome::Skipped
+        );
+        assert!(journal_day_merge::owed(conn)?.is_empty());
         Ok(())
     })
     .unwrap();

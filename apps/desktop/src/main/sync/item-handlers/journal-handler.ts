@@ -34,7 +34,13 @@ import { belongsToOtherType } from './note-row-type'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
-import { markOwedJournalDayMergeDeleted, oweJournalDayMerge } from '../journal-day-merge'
+import {
+  journalTombstonedPast,
+  markOwedJournalDayMergeDeleted,
+  oweJournalDayMerge,
+  readDayBody
+} from '../journal-day-merge'
+import { generateJournalId } from '@memry/contracts/journal-api'
 
 const log = createLogger('JournalHandler')
 
@@ -63,23 +69,23 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const now = utcNow()
     const indexDb = getIndexDatabase()
 
-    // One item per day (#2939): a foreign id is never projected, and a foreign
-    // local row gives the day up to `j<date>`. Both bodies are merged after the
-    // pull by `drainJournalDayMerges`; the local row's doc is kept for that.
+    // One item per day (#2939): a foreign id is never projected. A foreign
+    // local row keeps the day until `j<date>` arrives or the drain sweeps it;
+    // both keep its file text first. `drainJournalDayMerges` merges the bodies.
     const holder = getNoteMetadataByPath(ctx.db, getJournalRelativePath(date))
     const plan = planJournalDayApply(itemId, date, holder?.id ?? null)
     for (const foreignId of plan.oweMerge) {
       if (foreignId === itemId) {
+        if (journalTombstonedPast(ctx.db, itemId, remoteClock)) continue
         oweJournalDayMerge(ctx.db, { foreignId, date, clock: remoteClock })
         continue
       }
-      // The day's file is about to be written over. Its text is kept for the
-      // drain in case the holder's doc never got a body (#2939).
       oweJournalDayMerge(ctx.db, {
         foreignId,
         date,
         clock: holder?.clock ?? null,
-        fallbackMarkdown: this.readDayBody(date)
+        // The day's file is about to be written over.
+        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null
       })
     }
     if (plan.removeHolder && holder) {
@@ -161,15 +167,6 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     return result
   }
 
-  private readDayBody(date: string): string | null {
-    try {
-      return parseJournalEntry(readJournalTextSync(date), date).content
-    } catch (error) {
-      log.warn('Could not read the day file of a foreign journal row', { date, error })
-      return null
-    }
-  }
-
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     markOwedJournalDayMergeDeleted(ctx.db, itemId)
@@ -182,6 +179,19 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         log.info('Skipping remote journal delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
+    }
+
+    // A foreign row a pre-fix build left: another device merged it into the
+    // day. Its row, doc and file stay for the drain, which folds them, unpushed
+    // edits included, into `j<date>` (#2984); a purge here would lose them.
+    if (existing.journalDate && existing.id !== generateJournalId(existing.journalDate)) {
+      oweJournalDayMerge(ctx.db, {
+        foreignId: itemId,
+        date: existing.journalDate,
+        clock: existing.clock ?? null,
+        deleted: true
+      })
+      return 'applied'
     }
 
     // Floated for the same reason as `noteHandler.applyDelete`: this runs per

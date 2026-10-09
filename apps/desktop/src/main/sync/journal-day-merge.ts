@@ -11,17 +11,24 @@
  * Owed merges live in `sync_state`, so no migration is needed and an older
  * build ignores the keys.
  */
+import { createHash } from 'crypto'
 import { eq, like } from 'drizzle-orm'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { incrementClock } from '@memry/sync-core'
+import { planJournalDayMerge } from '@memry/domain-notes/journal'
+import { readTombstoneClock, recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
+import { compare as compareClocks, merge as mergeClocks } from '@memry/sync-client/vector-clock'
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
-import { getNoteMetadataById } from '@memry/storage-data'
+import { deleteNoteMetadata, getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
+import { getIndexDatabase } from '../database/client'
 import { createJournalEntry } from '../journal/create-entry'
+import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
+import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { getCrdtProvider } from './crdt-provider'
 import { getJournalSyncService } from './journal-sync'
@@ -47,14 +54,26 @@ export interface OwedJournalDayMerge {
 }
 
 /**
- * Record that `foreignId`'s body belongs to `date`'s entry. Declining the ref
+ * Record that `foreignId`'s body belongs to `date`'s entry. Idempotent: a
+ * second sighting widens the clock, so the tombstone dominates every version
+ * seen, and keeps the fallback text and the deleted mark. Declining the ref
  * keeps the manifest from counting the unprojected id as server-only, which
  * would reset the cursor on every check.
  */
 export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): void {
   const kept = listOwedJournalDayMerges(db).find((owed) => owed.foreignId === merge.foreignId)
+  const clock =
+    kept?.clock && merge.clock
+      ? mergeClocks(kept.clock, merge.clock)
+      : (merge.clock ?? kept?.clock ?? null)
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
-  const value = JSON.stringify(fallbackMarkdown ? { ...merge, fallbackMarkdown } : merge)
+  const deleted = merge.deleted || kept?.deleted
+  const value = JSON.stringify({
+    ...merge,
+    clock,
+    ...(fallbackMarkdown ? { fallbackMarkdown } : {}),
+    ...(deleted ? { deleted: true } : {})
+  })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
     .onConflictDoUpdate({ target: syncState.key, set: { value, updatedAt: new Date() } })
@@ -92,13 +111,38 @@ export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
     })
 }
 
+/**
+ * Whether this device already tombstoned `foreignId` at or after `clock`: a
+ * redelivered record of a merged foreign id owes nothing again.
+ */
+export function journalTombstonedPast(
+  db: DrizzleDb,
+  foreignId: string,
+  clock: VectorClock
+): boolean {
+  const tombstone = readTombstoneClock(db, 'journal', foreignId)
+  if (!tombstone) return false
+  const order = compareClocks(tombstone, clock)
+  return order === 'after' || order === 'equal'
+}
+
 export interface JournalDayMergeDeps {
   db: DrizzleDb
   deviceId: string
-  /** Creates the day's entry, empty, when no row holds it. */
-  ensureDay: (date: string) => Promise<void>
   /** Merges the server's body for `id` into its local doc. False when it is not fully merged. */
   pullBody: (id: string) => Promise<boolean>
+  /** The day file's body when `id` is the local row holding `date`, else null. */
+  localHolderText: (id: string, date: string) => string | null
+  /** Whether `id`'s local doc holds any Yjs state. */
+  hasBody: (id: string) => Promise<boolean>
+  /**
+   * Makes `j<date>` hold the day: a foreign local row gives it up (its file
+   * text is kept in its owed merge first), then `j<date>` is created empty.
+   * Never writes over a day file that no row holds.
+   */
+  ensureDay: (date: string) => Promise<void>
+  /** Points the foreign id's task links at the day. */
+  relinkTasks: (fromId: string, toId: string) => Promise<void>
   /**
    * Folds `foreignId`'s doc into `targetId`'s as a local edit, building the
    * foreign doc from `fallbackMarkdown` when it is empty. False when there is
@@ -109,8 +153,6 @@ export interface JournalDayMergeDeps {
     foreignId: string,
     fallbackMarkdown: string | null
   ) => Promise<boolean>
-  /** Points the foreign id's task links at the day. */
-  relinkTasks: (fromId: string, toId: string) => Promise<void>
   purgeDoc: (id: string) => Promise<void>
   enqueueDelete: (id: string, payload: string) => void
 }
@@ -132,37 +174,107 @@ export async function drainJournalDayMerges(deps: JournalDayMergeDeps): Promise<
   return settled
 }
 
+/** `j<date>` has no row here and this device recorded its tombstone. */
+function dayDeleted(db: DrizzleDb, targetId: string): boolean {
+  return !getNoteMetadataById(db, targetId) && readTombstoneClock(db, 'journal', targetId) !== null
+}
+
 async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): Promise<boolean> {
   const targetId = generateJournalId(merge.date)
-  await deps.ensureDay(merge.date)
   // A deleted id's server body is already in the day, merged by the device
   // that deleted it; only what this device holds is left to fold in.
-  if (!merge.deleted && !(await deps.pullBody(merge.foreignId))) {
-    log.info('Foreign journal body not fully pulled; merge stays owed', describe(merge))
+  const bodyPulled = merge.deleted === true || (await deps.pullBody(merge.foreignId))
+  let fallback = merge.fallbackMarkdown ?? null
+  if (bodyPulled && fallback === null) {
+    fallback = deps.localHolderText(merge.foreignId, merge.date)
+    // Kept before `ensureDay` writes the day file over.
+    if (fallback !== null) oweJournalDayMerge(deps.db, { ...merge, fallbackMarkdown: fallback })
+  }
+  const hasBody = bodyPulled && (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)))
+  const step = planJournalDayMerge({
+    deleted: merge.deleted === true,
+    bodyPulled,
+    hasBody,
+    dayDeleted: dayDeleted(deps.db, targetId),
+    clocked: Object.keys(merge.clock ?? {}).length > 0
+  })
+  if (step.action === 'wait') {
+    // No body yet, or none to merge. Its text cannot be carried without
+    // minting new items, which two devices would each do, so a live id stays
+    // owed and `j<date>` is not created for it.
+    log.info('Foreign journal merge waits for its body', describe(merge))
     return false
   }
-  // No Yjs body to merge. Its text cannot be carried without minting new
-  // items, which two devices would each do, so a live id stays owed and
-  // visible in the log rather than being tombstoned with its text.
-  const absorbed = await deps.absorbBody(targetId, merge.foreignId, merge.fallbackMarkdown ?? null)
-  if (!absorbed && !merge.deleted) {
-    log.warn('Foreign journal has no body to merge; leaving it owed', describe(merge))
-    return false
+  if (step.action === 'merge') {
+    await deps.ensureDay(merge.date)
+    await deps.relinkTasks(merge.foreignId, targetId)
+    if (!(await deps.absorbBody(targetId, merge.foreignId, fallback))) {
+      log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
+      return false
+    }
   }
-  await deps.relinkTasks(merge.foreignId, targetId)
 
-  if (merge.clock && !merge.deleted) {
-    const payload = JSON.stringify({ clock: incrementClock(merge.clock, deps.deviceId) })
-    recordPendingDelete(deps.db, 'journal', merge.foreignId, payload)
-    deps.enqueueDelete(merge.foreignId, payload)
-  }
+  // The tombstone and dropping the owed merge commit together, before the
+  // purge: a restart in between leaves either both or neither (#2985).
+  deps.db.transaction(() => {
+    if (step.tombstone && merge.clock) {
+      const clock = incrementClock(merge.clock, deps.deviceId)
+      const payload = JSON.stringify({ clock })
+      recordPendingDelete(deps.db, 'journal', merge.foreignId, payload)
+      recordTombstoneClock(deps.db, 'journal', merge.foreignId, clock)
+      deps.enqueueDelete(merge.foreignId, payload)
+    }
+    deps.db
+      .delete(syncState)
+      .where(eq(syncState.key, KEY_PREFIX + merge.foreignId))
+      .run()
+  })
   await deps.purgeDoc(merge.foreignId)
-  deps.db
-    .delete(syncState)
-    .where(eq(syncState.key, KEY_PREFIX + merge.foreignId))
-    .run()
-  log.info('Merged a foreign journal into its day', { ...describe(merge), targetId })
+  log.info('Settled a foreign journal for its day', {
+    ...describe(merge),
+    targetId,
+    action: step.action
+  })
   return true
+}
+
+/**
+ * The client id a local foreign doc is built under from its file text. Fixed
+ * per (foreign id, device), so a rebuild after a crash mints the same Yjs
+ * items and the fold adds nothing twice; per device, so two devices that
+ * each build their own copy never share item ids for different content.
+ */
+export function fallbackClientId(foreignId: string, deviceId: string): number {
+  return createHash('sha256').update(`${foreignId}\0${deviceId}`).digest().readUInt32BE(0)
+}
+
+export function readDayBody(date: string): string | null {
+  try {
+    return parseJournalEntry(readJournalTextSync(date), date).content
+  } catch (error) {
+    log.warn('Could not read a journal day file', { date, error })
+    return null
+  }
+}
+
+/** `ensureDay` against the real vault and databases. */
+export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<void> {
+  const targetId = generateJournalId(date)
+  const holder = getNoteMetadataByPath(db, getJournalRelativePath(date))
+  if (holder?.id === targetId) return
+  if (holder) {
+    oweJournalDayMerge(db, {
+      foreignId: holder.id,
+      date,
+      clock: holder.clock ?? null,
+      fallbackMarkdown: readDayBody(date)
+    })
+    deleteNoteMetadata(db, holder.id)
+    deleteNoteFromCache(getIndexDatabase(), holder.id)
+  } else if (readDayBody(date)?.trim()) {
+    throw new Error('The day file has text but no row; left for the indexer')
+  }
+  await createJournalEntry({ date, content: '' })
 }
 
 /** The pull's drain: `pullBody` is the run's single-document body pull. */
@@ -178,14 +290,19 @@ export async function runJournalDayMerges(
   await drainJournalDayMerges({
     db,
     deviceId,
-    ensureDay: async (date) => {
-      if (getNoteMetadataById(db, generateJournalId(date))) return
-      await createJournalEntry({ date, content: '' })
-    },
     pullBody,
-    absorbBody: (targetId, foreignId, fallbackMarkdown) =>
-      provider.absorbForeignDoc(targetId, foreignId, fallbackMarkdown),
+    localHolderText: (id, date) =>
+      getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === id ? readDayBody(date) : null,
+    hasBody: (id) => provider.hasDocState(id),
+    ensureDay: (date) => ensureJournalDay(db, date),
     relinkTasks: relinkTasksToMergedNote,
+    absorbBody: (targetId, foreignId, fallbackMarkdown) =>
+      provider.absorbForeignDoc(
+        targetId,
+        foreignId,
+        fallbackMarkdown,
+        fallbackClientId(foreignId, deviceId)
+      ),
     purgeDoc: (id) => provider.purge(id),
     enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)
   })

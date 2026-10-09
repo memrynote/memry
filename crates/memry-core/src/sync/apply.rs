@@ -251,6 +251,12 @@ fn apply_tombstone(
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
     if item_type == journal::ITEM_TYPE {
         journal_day_merge::mark_deleted(&txn, item_id)?;
+        // A live foreign row keeps its row and body for the drain (#2984).
+        if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
+            txn.commit().map_err(sqlite_failed)?;
+            totals.deleted += 1;
+            return Ok(());
+        }
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
@@ -315,6 +321,11 @@ fn apply_untyped_tombstone(
     let item_types = store::item_types_for(&txn, item_id)?;
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;
+    if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
+        txn.commit().map_err(sqlite_failed)?;
+        totals.deleted += 1;
+        return Ok(());
+    }
     for item_type in &item_types {
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }

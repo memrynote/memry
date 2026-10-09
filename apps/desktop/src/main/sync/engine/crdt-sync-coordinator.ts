@@ -451,6 +451,16 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     return { since: baselineSequence, verified: true }
   }
 
+  /** The pull's last body step: settles foreign journals owed to their day (#2939). */
+  async mergeForeignJournalDays(
+    credentials: { accessJwt: string; vaultKey: Uint8Array },
+    signal: AbortSignal
+  ): Promise<void> {
+    await runJournalDayMerges(this.ctx.deps.db, (id) =>
+      this.applyCrdtIncrementals(id, credentials.accessJwt, credentials.vaultKey, signal)
+    )
+  }
+
   /**
    * Returns whether this note's server state was fully merged into the local
    * doc. Every caller before the pending-note replay ignored it — a failure is
@@ -482,16 +492,6 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * purpose; it costs nothing while the note cannot push, and if the toggle is
    * ever turned off it is the conservative answer for that note's first push.
    */
-  /** The pull's last body step: settles foreign journals owed to their day (#2939). */
-  async mergeForeignJournalDays(
-    credentials: { accessJwt: string; vaultKey: Uint8Array },
-    signal: AbortSignal
-  ): Promise<void> {
-    await runJournalDayMerges(this.ctx.deps.db, (id) =>
-      this.applyCrdtIncrementals(id, credentials.accessJwt, credentials.vaultKey, signal)
-    )
-  }
-
   async applyCrdtIncrementals(
     noteId: string,
     token: string,

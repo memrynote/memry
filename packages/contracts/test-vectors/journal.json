@@ -2789,6 +2789,134 @@
       "averageLevel": 2
     }
   ],
+  "dayMerge": [
+    {
+      "name": "live, body merged",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": true
+      }
+    },
+    {
+      "name": "live, body not fully pulled",
+      "state": {
+        "deleted": false,
+        "bodyPulled": false,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "wait",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, no body",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": false,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "wait",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, never synced (empty clock)",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": false
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, day deleted here",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "drop",
+        "tombstone": true
+      }
+    },
+    {
+      "name": "live, no body, day deleted here",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": false,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "wait",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, body held here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": false,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, nothing held here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": false,
+        "hasBody": false,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "forget",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, day deleted here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": false,
+        "hasBody": true,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "drop",
+        "tombstone": false
+      }
+    }
+  ],
   "dayIdentity": [
     {
       "name": "canonical, day empty",
@@ -2861,7 +2989,7 @@
         "oweMerge": [
           "vcpzueguep8y"
         ],
-        "removeHolder": true
+        "removeHolder": false
       }
     },
     {
@@ -2875,7 +3003,7 @@
           "vcpzueguep8y",
           "wxudm2oo4rci"
         ],
-        "removeHolder": true
+        "removeHolder": false
       }
     },
     {
