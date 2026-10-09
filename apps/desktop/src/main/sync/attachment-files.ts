@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { and, eq } from 'drizzle-orm'
-import { getNoteMetadataById } from '@memry/storage-data'
+import { getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
 import { attachmentFiles } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getFileType } from '@memry/shared/file-types'
@@ -90,7 +90,8 @@ export function referencedVaultFiles(
  * folder scan owns this note's own folder, and a file in another note's folder
  * is that note's attachment already: queuing it here would upload a second copy
  * under a second id. Folders under `attachments/` that are not named for a note
- * hold ordinary vault files and stay in.
+ * hold ordinary vault files and stay in. A file the vault indexes as a note of
+ * its own syncs its bytes with that note (#2812), so it stays out too.
  */
 export function embeddedFilesOutsideNoteFolders(
   db: DrizzleDb,
@@ -101,7 +102,10 @@ export function embeddedFilesOutsideNoteFolders(
 ): string[] {
   const attachmentsRoot = path.join(path.resolve(vaultPath), 'attachments') + path.sep
   return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter((file) => {
-    if (!file.startsWith(attachmentsRoot)) return true
+    if (!file.startsWith(attachmentsRoot)) {
+      const recordPath = recordPathOf(vaultPath, file)
+      return recordPath === null || !getNoteMetadataByPath(db, recordPath)
+    }
     const folder = file.slice(attachmentsRoot.length).split(path.sep)[0]
     return folder !== noteId && !getNoteMetadataById(db, folder)
   })
