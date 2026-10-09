@@ -406,7 +406,9 @@ export class VaultWatcher {
   /**
    * Replay what changed while the vault was away through the handlers chokidar
    * would have called. Removals go first, so a file renamed meanwhile matches
-   * its pending delete by content hash when its new path is added.
+   * its pending delete by content hash when its new path is added. Both lists
+   * are gathered before any delete starts its rename window: walking a large
+   * vault outlasts the window (#2797).
    */
   private async rescan(generation: number): Promise<void> {
     const vaultPath = this.vaultPath
@@ -414,22 +416,36 @@ export class VaultWatcher {
     const isCurrent = (): boolean => this.generation === generation
     const db = getIndexDatabase()
 
+    const missing: string[] = []
     for (const row of getAllNoteRefRows(db)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, row.path)
-      if (await isFileMissing(absolutePath)) this.handleFileDelete(absolutePath)
+      if (await isFileMissing(absolutePath)) missing.push(absolutePath)
     }
 
+    const added: string[] = []
+    const changed: string[] = []
     const excludes = [...this.excludePatterns, getConfig().attachmentsFolder].filter(Boolean)
     for (const relativePath of await findVaultFiles(vaultPath, vaultPath, excludes)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, relativePath)
       const cached = getNoteCacheByPath(db, relativePath)
       if (!cached) {
-        await this.handleFileAdd(absolutePath)
+        added.push(absolutePath)
       } else if (await isModifiedSince(absolutePath, cached.indexedAt)) {
-        await this.handleFileChange(absolutePath)
+        changed.push(absolutePath)
       }
+    }
+
+    if (!isCurrent()) return
+    for (const absolutePath of missing) this.handleFileDelete(absolutePath)
+    for (const absolutePath of added) {
+      if (!isCurrent()) return
+      await this.handleFileAdd(absolutePath)
+    }
+    for (const absolutePath of changed) {
+      if (!isCurrent()) return
+      await this.handleFileChange(absolutePath)
     }
   }
 

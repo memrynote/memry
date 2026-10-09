@@ -273,7 +273,9 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.renameSync(path.join(away, 'notes/kept.md'), path.join(away, 'notes/kept-2026.md'))
     fs.rmSync(path.join(away, 'notes/gone.md'))
     // A large vault: walking the tree takes longer than the rename window.
-    mocks.beforeWalkReturns = () => vi.advanceTimersByTimeAsync(600)
+    mocks.beforeWalkReturns = async () => {
+      await vi.advanceTimersByTimeAsync(600)
+    }
     fs.renameSync(away, vault.path)
 
     await vi.waitFor(
