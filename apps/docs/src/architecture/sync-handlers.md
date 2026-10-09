@@ -543,7 +543,9 @@ by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select
 service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
 `seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
 stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
-device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
+device id never reaches the wire. A queued `_offline` create or update whose service queues nothing
+fresh at rebind (the row is gone or no longer syncs) is dropped and logged, so the queue drains;
+queued deletes are always rebound, never dropped. Exempt types (settings, tag definitions and categories, folder
 configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
 wait for its per-type rollout (#2301); agent chat has no local push path.
 
