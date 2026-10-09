@@ -139,7 +139,16 @@ export const tagsService: TagsService = {
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse> => {
     return window.api.tags.reorder(payload)
-  }
+  },
+
+  /** Resolved tag schemas, ready-made tag offers and object identities. */
+  getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
+
+  /** Apply one tag schema command; resolves to a fresh snapshot. */
+  editSchema: (command) => window.api.tags.editSchema(command),
+
+  /** Count what a schema change would touch, before it runs. */
+  previewImpact: (query) => window.api.tags.previewImpact(query)
 }
 
 // ============================================================================

@@ -1,4 +1,4 @@
-import { count, eq, isNotNull, like } from 'drizzle-orm'
+import { count, eq, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../../lib/logger'
@@ -100,6 +100,7 @@ export function getAllTagDefinitions(db: DataDb): {
   icon: string | null
   categoryId: string | null
   sortOrder: number
+  schema: string | null
 }[] {
   return db
     .select({
@@ -108,7 +109,8 @@ export function getAllTagDefinitions(db: DataDb): {
       colorAuthored: tagDefinitions.colorAuthored,
       icon: tagDefinitions.icon,
       categoryId: tagDefinitions.categoryId,
-      sortOrder: tagDefinitions.sortOrder
+      sortOrder: tagDefinitions.sortOrder,
+      schema: tagDefinitions.schema
     })
     .from(tagDefinitions)
     .all()
@@ -244,12 +246,31 @@ export function ensureTagDefinitions(
   return normalized.map((tag) => getOrCreateTag(db, tag))
 }
 
-/** The raw `schema` blob of every definition that has one. */
-export function listTagSchemas(db: DataDb): { name: string; schema: string }[] {
+/** Every definition row with its raw `schema` column, for schema resolution. */
+export function listTagDefinitionRows(
+  db: DataDb
+): { name: string; color: string; icon: string | null; schema: string | null }[] {
   return db
-    .select({ name: tagDefinitions.name, schema: tagDefinitions.schema })
+    .select({
+      name: tagDefinitions.name,
+      color: tagDefinitions.color,
+      icon: tagDefinitions.icon,
+      schema: tagDefinitions.schema
+    })
     .from(tagDefinitions)
-    .where(isNotNull(tagDefinitions.schema))
     .all()
-    .flatMap((row) => (row.schema === null ? [] : [{ name: row.name, schema: row.schema }]))
+}
+
+export function readTagSchemaColumn(db: DrizzleDb, tag: string): string | null {
+  return (
+    db
+      .select({ schema: tagDefinitions.schema })
+      .from(tagDefinitions)
+      .where(eq(tagDefinitions.name, tag))
+      .get()?.schema ?? null
+  )
+}
+
+export function writeTagSchemaColumn(db: DrizzleDb, tag: string, schema: string): void {
+  db.update(tagDefinitions).set({ schema }).where(eq(tagDefinitions.name, tag)).run()
 }

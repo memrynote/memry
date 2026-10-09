@@ -17,13 +17,21 @@ type DataDb = Parameters<typeof getAllTaskTags>[0]
  * category assignment are between them every deliberate mark a user can leave
  * on a tag. A tag created in the hub carries an authored colour from the
  * moment it exists, which is what keeps it alive before any note uses it.
+ * A schema (fields, template, parent, preset) is a decision too, so a tag with
+ * fields that no note carries yet stays.
  */
 function isAuthored(definition: {
   colorAuthored: boolean
   icon: string | null
   categoryId: string | null
+  schema: string | null
 }): boolean {
-  return definition.colorAuthored || definition.icon !== null || definition.categoryId !== null
+  return (
+    definition.colorAuthored ||
+    definition.icon !== null ||
+    definition.categoryId !== null ||
+    definition.schema !== null
+  )
 }
 
 export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithCount[] {

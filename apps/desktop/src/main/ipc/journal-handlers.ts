@@ -51,7 +51,7 @@ import {
   calculateActivityLevel as calculateActivityLevelFromCharCount
 } from '../journal/store'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
-import { applyInlineTagEdit } from '../tags/field-tags'
+import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'

@@ -1,4 +1,9 @@
-import { TagsChannels } from '@memry/contracts/ipc-channels'
+import { TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
+import type {
+  ImpactQuery,
+  TagSchemaCommand,
+  TagsProgressEvent
+} from '@memry/contracts/tag-schema-api'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const tagsApi = {
@@ -32,7 +37,10 @@ export const tagsApi = {
   reorder: (input: {
     tags?: { tag: string; categoryId: string | null; sortOrder: number }[]
     categories?: { id: string; sortOrder: number }[]
-  }) => invoke(TagsChannels.invoke.REORDER, input)
+  }) => invoke(TagsChannels.invoke.REORDER, input),
+  getSchemaSnapshot: () => invoke(TagSchemaChannels.invoke.GET_SCHEMA_SNAPSHOT),
+  editSchema: (command: TagSchemaCommand) => invoke(TagSchemaChannels.invoke.EDIT_SCHEMA, command),
+  previewImpact: (query: ImpactQuery) => invoke(TagSchemaChannels.invoke.PREVIEW_IMPACT, query)
 }
 
 export const tagEvents = {
@@ -64,5 +72,8 @@ export const tagEvents = {
     }>(TagsChannels.events.NOTES_CHANGED, callback),
 
   onTagCategoriesChanged: (callback: () => void): (() => void) =>
-    subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback)
+    subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback),
+
+  onTagsProgress: (callback: (event: TagsProgressEvent) => void): (() => void) =>
+    subscribe<TagsProgressEvent>(TagSchemaChannels.events.PROGRESS, callback)
 }

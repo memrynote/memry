@@ -105,6 +105,7 @@ import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
 import { backfillHeaderTagFlags } from './header-tag-backfill'
+import { resumeFieldRename } from '../tags/schema/field-rename'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -561,6 +562,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   if (isStale()) return
 
   await backfillHeaderTagFlags({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  // After the walk, so `setEntityProperties` resolves every note it renames.
+  try {
+    await resumeFieldRename(dataDb)
+  } catch (error) {
+    logger.error('Resuming a field rename failed:', error)
+    trackMainError('vault', 'field_rename_resume', error)
+  }
 
   if (isStale()) return
 

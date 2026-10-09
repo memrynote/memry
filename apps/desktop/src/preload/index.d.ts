@@ -5,6 +5,14 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type {
+  ImpactQuery,
+  ImpactResult,
+  TagSchemaCommand,
+  TagSchemaCommandResult,
+  TagSchemaSnapshot,
+  TagsProgressEvent
+} from '@memry/contracts/tag-schema-api'
 import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
@@ -919,6 +927,9 @@ export interface TagsClientAPI {
     tags?: TagAssignment[]
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse>
+  getSchemaSnapshot(): Promise<TagSchemaSnapshot>
+  editSchema(command: TagSchemaCommand): Promise<TagSchemaCommandResult>
+  previewImpact(query: ImpactQuery): Promise<ImpactResult>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType
@@ -2042,6 +2053,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagCategoriesChanged: (callback: () => void) => () => void
+  onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void

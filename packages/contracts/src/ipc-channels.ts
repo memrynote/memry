@@ -138,6 +138,22 @@ export const TagsChannels = {
   }
 } as const
 
+/** Tag schemas (fields, template, extends, preset): payloads in tag-schema-api.ts. */
+export const TagSchemaChannels = {
+  invoke: {
+    /** Resolved tag schemas, ready-made tag offers and object identities */
+    GET_SCHEMA_SNAPSHOT: 'tags:get-schema-snapshot',
+    /** Apply one tag schema command and return a fresh snapshot */
+    EDIT_SCHEMA: 'tags:edit-schema',
+    /** Count what a schema change would touch, before it runs */
+    PREVIEW_IMPACT: 'tags:preview-impact'
+  },
+  events: {
+    /** Progress of a long schema command (field rename): TagsProgressEvent */
+    PROGRESS: 'tags:progress'
+  }
+} as const
+
 export type TagsInvokeChannel = (typeof TagsChannels.invoke)[keyof typeof TagsChannels.invoke]
 export type TagsEventChannel = (typeof TagsChannels.events)[keyof typeof TagsChannels.events]
 

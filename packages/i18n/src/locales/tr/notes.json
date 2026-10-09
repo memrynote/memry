@@ -1451,5 +1451,78 @@
     "cancel": "İptal",
     "save": "Kaydet",
     "addToFilterHint": "Filtreye eklemek için bir etikete Ctrl/Cmd ile tıklayın"
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Kişi",
+        "fields": {
+          "company": "Şirket",
+          "role": "Rol",
+          "email": "E-posta",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Kişiler"
+        },
+        "template": {
+          "name": "Kişi",
+          "context": "Bağlam",
+          "contextHint": "Nasıl tanıştık, neleri önemsiyor",
+          "notes": "Notlar"
+        }
+      },
+      "company": {
+        "name": "Şirket",
+        "fields": {
+          "website": "Web sitesi",
+          "industry": "Sektör",
+          "location": "Konum"
+        },
+        "template": {
+          "name": "Şirket",
+          "overview": "Genel bakış",
+          "overviewHint": "Ne yapıyorlar, orada kimi tanıyoruz",
+          "notes": "Notlar"
+        }
+      },
+      "meeting": {
+        "name": "Toplantı",
+        "fields": {
+          "date": "Tarih",
+          "attendees": "Katılımcılar",
+          "company": "Şirket"
+        },
+        "inverse": {
+          "attendees": "Toplantılar",
+          "company": "Toplantılar"
+        },
+        "template": {
+          "name": "Toplantı",
+          "agenda": "Gündem",
+          "notes": "Notlar",
+          "actionItems": "Yapılacaklar"
+        }
+      },
+      "book": {
+        "name": "Kitap",
+        "fields": {
+          "author": "Yazar",
+          "shelf": "Raf",
+          "rating": "Puan",
+          "finished": "Bitiş"
+        },
+        "shelf": {
+          "toRead": "Okunacak",
+          "reading": "Okunuyor",
+          "read": "Okundu"
+        },
+        "template": {
+          "name": "Kitap",
+          "highlights": "Öne çıkanlar",
+          "thoughts": "Düşünceler"
+        }
+      }
+    }
   }
 }

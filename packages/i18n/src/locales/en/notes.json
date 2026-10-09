@@ -1655,5 +1655,78 @@
     "readOnlyIndicator": "Locked. Read-only for you and for agents.",
     "externalEditRestored": "“{title}” is locked, so its outside edit was undone",
     "externalEditRestoredHint": "The edited text is saved in the note's version history."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Person",
+        "fields": {
+          "company": "Company",
+          "role": "Role",
+          "email": "Email",
+          "phone": "Phone"
+        },
+        "inverse": {
+          "company": "People"
+        },
+        "template": {
+          "name": "Person",
+          "context": "Context",
+          "contextHint": "How we met, what they care about",
+          "notes": "Notes"
+        }
+      },
+      "company": {
+        "name": "Company",
+        "fields": {
+          "website": "Website",
+          "industry": "Industry",
+          "location": "Location"
+        },
+        "template": {
+          "name": "Company",
+          "overview": "Overview",
+          "overviewHint": "What they do, who we know there",
+          "notes": "Notes"
+        }
+      },
+      "meeting": {
+        "name": "Meeting",
+        "fields": {
+          "date": "Date",
+          "attendees": "Attendees",
+          "company": "Company"
+        },
+        "inverse": {
+          "attendees": "Meetings",
+          "company": "Meetings"
+        },
+        "template": {
+          "name": "Meeting",
+          "agenda": "Agenda",
+          "notes": "Notes",
+          "actionItems": "Action items"
+        }
+      },
+      "book": {
+        "name": "Book",
+        "fields": {
+          "author": "Author",
+          "shelf": "Shelf",
+          "rating": "Rating",
+          "finished": "Finished"
+        },
+        "shelf": {
+          "toRead": "To read",
+          "reading": "Reading",
+          "read": "Read"
+        },
+        "template": {
+          "name": "Book",
+          "highlights": "Highlights",
+          "thoughts": "Thoughts"
+        }
+      }
+    }
   }
 }
