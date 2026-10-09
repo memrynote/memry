@@ -75,8 +75,8 @@ two setups.
 
 ### Read through the MCP server
 
-memrynote starts a local MCP server the first time you open Agent Chat or the AI Assistant
-settings after a vault opens. Copy its URL and bearer token from [Settings → AI Assistant → Agent MCP](/user-guide/settings#agent-mcp), then
+memrynote starts a local MCP server the first time you open Agent Chat, or the **Agents** or
+**Connect** tab of the AI Assistant settings, after a vault opens. Copy its URL and bearer token from [Settings → AI Assistant → Agent MCP](/user-guide/settings#agent-mcp), then
 add them to your agent as an HTTP MCP server. For example, with Claude Code:
 
 ```bash
