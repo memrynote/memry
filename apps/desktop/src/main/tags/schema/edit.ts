@@ -22,11 +22,11 @@ import {
   canonicalFieldName,
   parseSchemaColumn,
   serializeSchema,
-  tagKey,
   type SchemaBodyEdit,
   type SchemaEditError,
   type SchemaEditResult
 } from '../tag-schema'
+import { tagKey } from '@memry/shared/tag-fold'
 import { loadResolvedTags } from './read'
 
 const ERROR_KEYS: Record<SchemaEditError['code'], string> = {

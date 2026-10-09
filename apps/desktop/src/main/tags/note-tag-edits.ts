@@ -1,6 +1,7 @@
 import { eq, inArray, like, or } from 'drizzle-orm'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
+import { foldTag } from '@memry/shared/tag-fold'
 import type { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
@@ -19,7 +20,7 @@ type IndexDb = ReturnType<typeof getIndexDatabase>
  */
 export function keepLockedNoteTags(indexDb: IndexDb, tag: string): () => void {
   if (!hasAnyVaultLock()) return () => {}
-  const normalized = tag.toLowerCase().trim()
+  const normalized = foldTag(tag.trim())
   const lockedIds = indexDb
     .selectDistinct({ noteId: noteTags.noteId })
     .from(noteTags)

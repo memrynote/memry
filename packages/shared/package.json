@@ -24,6 +24,7 @@
     "./markdown-fences": "./src/markdown-fences.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./inline-tags": "./src/inline-tags.ts",
+    "./tag-fold": "./src/tag-fold.ts",
     "./footnotes": "./src/footnotes.ts",
     "./html-comments": "./src/html-comments.ts",
     "./wiki-target": "./src/wiki-target.ts",

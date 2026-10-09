@@ -399,6 +399,22 @@ neither list is a wire constraint on the other.
   an object is joined by chapter 06 §6.11 on every apply path rather than by the
   document gate** (§13.7.7.1).
 
+- **A tag name has two keys.** Which spellings are one tag on an item is
+  decided by an ASCII-only case fold: `A`-`Z` lowercased, every other character
+  kept, as SQLite `COLLATE NOCASE` compares the tag columns
+  (`packages/shared/src/tag-fold.ts:17-19`,
+  `crates/memry-core/src/domain/tags.rs:57-64`,
+  `packages/db-schema/src/schema/notes-cache.ts:59`). `Ünal` and `ünal` are two
+  tags, and `İş/alt` is a child of `İş`. A definition's `name`, its sync id and
+  the names in `schema` (§13.7.7.2) are the trimmed name lowercased in full, as
+  shipped (`packages/shared/src/tag-fold.ts:21-23`,
+  `apps/desktop/src/main/database/queries/tag-definitions.ts:48`,
+  `crates/memry-core/src/domain/tag_admin.rs:63-65`). The fold never changes a
+  name's length, so a rename cuts a child's suffix from its own spelling at the
+  parent's length (`packages/shared/src/inline-tags.ts:79-88`); a full
+  lowercase can (`İ` becomes two UTF-16 units), so a client MUST NOT cut a
+  carrier's spelling at the length of a definition key.
+
 #### 13.7.7.1 `schema`
 
 One versioned object holding the tag's fields, template, parent and preset

@@ -1,9 +1,7 @@
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { renamedTag, type TagRename } from '@memry/shared/inline-tags'
+import { findInlineTags, renamedTag, type TagRename } from '@memry/shared/inline-tags'
 import { ORIGIN_LOCAL } from '../sync/crdt-provider'
-
-const INLINE_TAG_PATTERN = /#([a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
 
 /**
  * Renames the body `#tags` of an open note inside its live doc, so the editor
@@ -40,33 +38,44 @@ export function renameTagsInDoc(doc: Y.Doc, renames: readonly TagRename[]): bool
 
 type TextOp = { insert?: unknown; attributes?: Record<string, unknown> }
 
+/**
+ * Reads the text's runs the way `rewriteInlineTagsInMarkdown` reads markdown:
+ * the plain (non-code) runs joined into one string, so a tag split across a
+ * bold and a plain run is one tag, and a `#` right after code sees what came
+ * before the code. Each joined character maps back to its doc offset; a match
+ * whose characters are not contiguous in the doc (code inside it) is skipped.
+ */
 function renameTagsInText(text: Y.XmlText, renames: readonly TagRename[]): boolean {
-  const edits: Array<{ at: number; length: number; next: string; attributes: object }> = []
+  let joined = ''
+  const at: number[] = []
+  const attrsAt: Array<Record<string, unknown>> = []
   let offset = 0
-  let before = ''
   for (const op of text.toDelta() as TextOp[]) {
     if (typeof op.insert !== 'string') {
+      // An embed is not whitespace: a `#` right after it starts no tag.
+      joined += '\uFFFC'
+      at.push(offset)
+      attrsAt.push({})
       offset += 1
-      before = '\u0000'
       continue
     }
-    const run = op.insert
     if (!op.attributes?.code) {
-      for (const match of run.matchAll(INLINE_TAG_PATTERN)) {
-        const preceding = match.index > 0 ? run[match.index - 1] : before
-        if (preceding && !/\s/.test(preceding)) continue
-        const next = renamedTag(match[1], renames)
-        if (next === null || next === match[1]) continue
-        edits.push({
-          at: offset + match.index + 1,
-          length: match[1].length,
-          next,
-          attributes: op.attributes ?? {}
-        })
+      for (let i = 0; i < op.insert.length; i += 1) {
+        at.push(offset + i)
+        attrsAt.push(op.attributes ?? {})
       }
+      joined += op.insert
     }
-    offset += run.length
-    if (run) before = run[run.length - 1]
+    offset += op.insert.length
+  }
+  const edits: Array<{ at: number; length: number; next: string; attributes: object }> = []
+  for (const { index, tag } of findInlineTags(joined)) {
+    const next = renamedTag(tag, renames)
+    if (next === null || next === tag) continue
+    const first = index + 1
+    const last = first + tag.length - 1
+    if (at[last] - at[first] !== tag.length - 1) continue
+    edits.push({ at: at[first], length: tag.length, next, attributes: attrsAt[first] })
   }
   for (const edit of edits.reverse()) {
     text.delete(edit.at, edit.length)

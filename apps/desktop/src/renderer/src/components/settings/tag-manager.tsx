@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select'
 import { Search, MoreHorizontal, Pencil, Merge, Trash2, Palette, Tag } from '@/lib/icons'
 import { toast } from 'sonner'
+import { toastTagRenamed } from '@/features/tag-fields/rename-toasts'
 import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -77,7 +78,7 @@ export function TagManager() {
     try {
       const result = await renameTag(editingTag, newName)
       if (result.success) {
-        toast.success(t('tags.toasts.renamed', { oldName: editingTag, newName }))
+        toastTagRenamed(result, editingTag, newName)
       } else {
         trackRendererError('tag_rename', result.error ?? 'rename failed')
         toast.error(result.error ?? t('tags.toasts.renameFailed'))

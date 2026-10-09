@@ -7,6 +7,7 @@
 import { isDeepStrictEqual } from 'util'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
+import { foldTag } from '@memry/shared/tag-fold'
 import type { DataDb } from '../database/types'
 import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/inline-tags'
 import {
@@ -37,7 +38,7 @@ export function queueNoteWrite<T>(noteId: string, write: () => Promise<T>): Prom
   return run
 }
 
-const key = (tag: string): string => tag.toLowerCase()
+const key = foldTag
 
 /**
  * A full `tags` list from the agent API as an edit of the header. The list may

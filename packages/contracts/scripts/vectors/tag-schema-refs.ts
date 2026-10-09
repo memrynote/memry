@@ -112,6 +112,47 @@ const SPECS: CaseSpec[] = [
     }
   },
   {
+    name: 'definition-id-dotted-i',
+    pins: 'references are definition ids, lowercased in full: İş and its full lowercase match; to is lowercased in full',
+    input: {
+      schema: {
+        t: 1,
+        extends: 'İş',
+        fields: [
+          { name: 'A', relation: { target: 'iş' } },
+          { name: 'B', relation: { target: ' İş ' } },
+          { name: 'C', relation: { target: 'i\u0307ş' } }
+        ]
+      },
+      from: 'İş',
+      to: 'Work'
+    }
+  },
+  {
+    name: 'definition-id-umlaut',
+    pins: 'ÜNAL, Ünal and ünal name one definition',
+    input: {
+      schema: { t: 0, extends: 'ünal', fields: [{ name: 'A', relation: { target: 'ÜNAL' } }] },
+      from: 'Ünal',
+      to: 'Şirket'
+    }
+  },
+  {
+    name: 'definition-id-mixed-case',
+    pins: 'ŞEHİR matches Şehİr in full lowercase; plain şehir is another definition; to MY-City lands as my-city',
+    input: {
+      schema: {
+        t: 2,
+        fields: [
+          { name: 'A', relation: { target: 'Şehİr' } },
+          { name: 'B', relation: { target: 'şehir' } }
+        ]
+      },
+      from: 'ŞEHİR',
+      to: 'MY-City'
+    }
+  },
+  {
     name: 'fields-not-array',
     pins: 'a non-array fields is kept as is',
     input: {

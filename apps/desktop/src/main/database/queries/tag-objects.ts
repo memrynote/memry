@@ -13,6 +13,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { noteCache, noteLinks, noteTags, propertyRefs } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
+import { foldTag } from '@memry/shared/tag-fold'
 import type { VersionedMap } from '@memry/shared/versioned'
 import type { FileType } from '@memry/shared/file-types'
 import type { DataDb, IndexDb } from '../types'
@@ -163,7 +164,8 @@ export function listTaskFieldsForTags(
   tags: readonly string[]
 ): Array<{ id: string; tag: string; fields: VersionedMap | null }> {
   if (tags.length === 0) return []
-  const lowered = tags.map((tag) => tag.toLowerCase())
+  // SQLite `lower()` folds ASCII only, as `foldTag` does.
+  const lowered = tags.map(foldTag)
   return db
     .select({ id: tasks.id, tag: taskTags.tag, fields: tasks.fields })
     .from(taskTags)

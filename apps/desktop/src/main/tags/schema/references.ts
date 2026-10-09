@@ -3,7 +3,7 @@ import { listTagDefinitionRows, writeTagSchemaColumn } from '@main/database/quer
 import type { DataDb } from '../../database/types'
 import { createLogger } from '../../lib/logger'
 import { syncTagDefinitionUpdate } from '../runtime-effects'
-import { tagKey } from '../tag-schema'
+import { tagKey } from '@memry/shared/tag-fold'
 
 const log = createLogger('TagSchemaReferences')
 

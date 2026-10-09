@@ -93,7 +93,14 @@ import {
 } from '@main/database/queries/tag-definitions'
 import { getTaskTags, insertTask, setTaskTags } from '@main/database/queries/tasks'
 import { createJournalEntry } from '../journal/create-entry'
-import { renameTagEverywhere } from './rename-tag'
+import { getSetting, setSetting } from '@main/database/queries/settings'
+import {
+  TAG_RENAME_JOB_SETTING,
+  TagRenameInProgressError,
+  renameTagEverywhere,
+  resumeTagRename,
+  type TagRenameResult
+} from './rename-tag'
 
 describe('renameTagEverywhere', () => {
   let vault: TestVaultResult
@@ -139,12 +146,14 @@ describe('renameTagEverywhere', () => {
   const read = (notePath: string) =>
     parseNote(fs.readFileSync(path.join(vault.path, notePath), 'utf-8'))
 
-  const rename = async (from: string, to: string): Promise<number> => {
-    const touched = await renameTagEverywhere(index.db, dataDb, from, to)
+  const renameFull = async (from: string, to: string): Promise<TagRenameResult> => {
+    const result = await renameTagEverywhere(index.db, dataDb, { from, to, runId: 'run' })
     await flushPendingWritebacks()
     await flushProjectionEvents()
-    return touched
+    return result
   }
+  const rename = async (from: string, to: string): Promise<number> =>
+    (await renameFull(from, to)).notesWritten
 
   const tag = (name: string, color: string): void => {
     getOrCreateTag(dataDb, name)
@@ -282,5 +291,117 @@ describe('renameTagEverywhere', () => {
         .map((t) => t.toLowerCase())
         .sort()
     ).toEqual(['people', 'people/vip'])
+  })
+
+  it('keeps a non-ASCII child suffix whole and leaves other non-ASCII spellings alone', async () => {
+    const note = await createNote({
+      title: 'Turkish',
+      content: 'Plain body',
+      tags: ['İş', 'İş/alt', 'iş']
+    })
+    tag('İş', 'rose')
+    tag('İş/alt', 'amber')
+    await flushProjectionEvents()
+
+    await rename('İş', 'Work')
+
+    expect(read(note.path).frontmatter.tags).toEqual(['Work', 'Work/alt', 'iş'])
+    expect(
+      getNoteTags(index.db, note.id)
+        .map((t) => t.toLowerCase())
+        .sort()
+    ).toEqual(['iş', 'work', 'work/alt'])
+    expect(definition('work')).toMatchObject({ color: 'rose' })
+    expect(definition('work/alt')).toMatchObject({ color: 'amber' })
+  })
+
+  it('keeps body tags when the new name cannot be written inline, and says so', async () => {
+    const note = await createNote({
+      title: 'Spaced',
+      content: 'Met #person today',
+      tags: ['person']
+    })
+    await flushProjectionEvents()
+
+    const result = await renameFull('person', 'my project')
+
+    expect(result).toMatchObject({ notesWritten: 1, failedNoteIds: [], bodySkipped: true })
+    const file = read(note.path)
+    expect(file.frontmatter.tags).toEqual(['my project'])
+    expect(file.content).toContain('Met #person today')
+    expect(file.content).not.toContain('#my project')
+  })
+
+  it('reports progress and clears its job when done', async () => {
+    await createNote({ title: 'A', content: 'x', tags: ['person'] })
+    await createNote({ title: 'B', content: 'y', tags: ['person'] })
+    await flushProjectionEvents()
+    const events: Array<{ done: number; total: number }> = []
+
+    await renameTagEverywhere(index.db, dataDb, { from: 'person', to: 'people', runId: 'r' }, (e) =>
+      events.push(e)
+    )
+
+    expect(events.at(-1)).toEqual({ runId: 'r', done: 2, total: 2 })
+    expect(getSetting(dataDb, TAG_RENAME_JOB_SETTING)).toBeNull()
+  })
+
+  it('refuses another rename while one is recorded, and vault open resumes it', async () => {
+    const note = await createNote({ title: 'Crashed', content: 'Met #person', tags: ['person'] })
+    tag('person', 'rose')
+    await flushProjectionEvents()
+    // An app quit after the job was recorded and before any step ran.
+    setSetting(
+      dataDb,
+      TAG_RENAME_JOB_SETTING,
+      JSON.stringify({ from: 'person', to: 'people', runId: 'old' })
+    )
+
+    await expect(
+      renameTagEverywhere(index.db, dataDb, { from: 'work', to: 'job', runId: 'x' })
+    ).rejects.toBeInstanceOf(TagRenameInProgressError)
+
+    const resumed = await resumeTagRename(index.db, dataDb)
+    await flushPendingWritebacks()
+    await flushProjectionEvents()
+
+    expect(resumed).toMatchObject({ notesWritten: 1, failedNoteIds: [] })
+    const file = read(note.path)
+    expect(file.frontmatter.tags).toEqual(['people'])
+    expect(file.content).toContain('Met #people')
+    expect(definition('people')).toMatchObject({ color: 'rose' })
+    expect(getSetting(dataDb, TAG_RENAME_JOB_SETTING)).toBeNull()
+  })
+
+  it('resumes a rename an app quit interrupted between two notes', async () => {
+    const a = await createNote({ title: 'A', content: 'Met #person', tags: ['person'] })
+    const b = await createNote({ title: 'B', content: 'Met #person', tags: ['person'] })
+    tag('person', 'rose')
+    await flushProjectionEvents()
+
+    // The first note's progress event is the last thing the quit app did.
+    await expect(
+      renameTagEverywhere(index.db, dataDb, { from: 'person', to: 'people', runId: 'a' }, () => {
+        throw new Error('quit')
+      })
+    ).rejects.toThrow('quit')
+    await flushProjectionEvents()
+    const written = [a, b].filter((n) => read(n.path).frontmatter.tags?.[0] === 'people')
+    expect(written).toHaveLength(1)
+    expect(getSetting(dataDb, TAG_RENAME_JOB_SETTING)).not.toBeNull()
+
+    const resumed = await resumeTagRename(index.db, dataDb)
+    await flushPendingWritebacks()
+    await flushProjectionEvents()
+
+    expect(resumed).toMatchObject({ notesWritten: 1, failedNoteIds: [] })
+    for (const note of [a, b]) {
+      const file = read(note.path)
+      expect(file.frontmatter.tags).toEqual(['people'])
+      expect(file.content).toContain('Met #people')
+    }
+    expect(definition('people')).toMatchObject({ color: 'rose' })
+    expect(definition('person')).toBeUndefined()
+    expect(getSetting(dataDb, TAG_RENAME_JOB_SETTING)).toBeNull()
   })
 })

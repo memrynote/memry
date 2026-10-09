@@ -19,6 +19,7 @@ import {
 } from '@memry/contracts/tag-schema'
 import type { PropertyType, SelectOption } from '@memry/contracts/property-types'
 import { canonicalJson, stampVersionedValue, type VersionedObject } from '@memry/shared/versioned'
+import { tagKey } from '@memry/shared/tag-fold'
 
 export type ParsedSchemaColumn =
   | { kind: 'none' }
@@ -59,7 +60,6 @@ export interface PropertyTypeLookup {
   ): { type: PropertyType; options?: SelectOption[]; showOnCalendar?: boolean } | undefined
 }
 
-export const tagKey = (name: string): string => name.trim().toLowerCase()
 const fold = (name: string): string => name.trim().toLowerCase()
 
 function relationOf(field: TagFieldStored): RelationConfig | null {
