@@ -88,10 +88,17 @@ export function NoteIconDisplay({
     )
   }
   // `font-emoji` pins the glyph to a color emoji font (see emoji-font.css) so
-  // the icon matches what the picker showed, whatever the UI font is.
+  // the icon matches what the picker showed, whatever the UI font is. A color
+  // emoji glyph is wider than 1em, so the box is pinned to 1em like the other
+  // kinds and the glyph centres in it; otherwise the label beside an emoji
+  // starts further along than beside a library icon or an image.
   return (
     <span
-      className={cn('inline-flex items-center justify-center font-emoji leading-none', className)}
+      className={cn(
+        'inline-flex items-center justify-center font-emoji leading-none',
+        TEXT_SIZED_ICON_CLASS,
+        className
+      )}
     >
       {value}
     </span>

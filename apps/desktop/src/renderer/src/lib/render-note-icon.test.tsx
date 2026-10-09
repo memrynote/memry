@@ -112,4 +112,11 @@ describe('NoteIconDisplay emoji', () => {
     expect(span?.className).toContain('font-emoji')
     expect(span?.className).toContain('text-sm')
   })
+  // A color emoji glyph is wider than 1em. Unboxed, the label beside an emoji
+  // starts a few pixels further along than beside a library icon or an image.
+  it('boxes an emoji at 1em, the same box as library and custom icons', () => {
+    const { container } = render(<NoteIconDisplay value="🚀" className="text-base" />)
+
+    expect(container.querySelector('span')?.className).toContain('h-[1em] w-[1em]')
+  })
 })
