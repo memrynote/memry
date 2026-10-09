@@ -16,6 +16,14 @@ describe('export-utils', () => {
     expect(html).toContain('<span class="wiki-link">Display</span>')
   })
 
+  it('markdownToHtml keeps link syntax in code as written (BBF-47)', () => {
+    const html = markdownToHtml('After [[After]] and `[[Code]]`\n\n```\n[[Fenced]]\n```\n')
+    expect(html).toContain('<span class="wiki-link">After</span>')
+    expect(html).toContain('<code>[[Code]]</code>')
+    expect(html).toContain('[[Fenced]]\n</code>')
+    expect(html).not.toContain('wiki-link&quot;')
+  })
+
   it('markdownToHtml leaves HTML and %% comments out, links inside them included', () => {
     const markdown = [
       '<!-- hidden [[Alpha]] -->',

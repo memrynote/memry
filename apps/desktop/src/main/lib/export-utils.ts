@@ -9,7 +9,7 @@
 import { marked } from 'marked'
 import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
-import { stripMarkdownComments } from '@memry/shared/markdown-code'
+import { maskMarkdownCode, stripMarkdownComments } from '@memry/shared/markdown-code'
 import { scanFootnotes } from '@memry/shared/footnotes'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import { sanitizeSvgBytes } from '../icons/sanitize-svg'
@@ -64,15 +64,29 @@ marked.setOptions({
  *
  * HTML and `%% … %%` comments are left out first, Memry's own markers and the
  * links hidden in them included (FB-011): a reader of the export sees neither.
+ * Link syntax in code stays as written (BBF-47).
  */
 export function markdownToHtml(markdown: string): string {
-  const processedMarkdown = replaceWikiLinks(
-    stripMarkdownComments(markdown),
-    (label) => `<span class="wiki-link">${label}</span>`
-  )
-  const { body, notes } = renderFootnotes(processedMarkdown)
+  const { body, notes } = renderFootnotes(replaceProseWikiLinks(stripMarkdownComments(markdown)))
 
   return (marked.parse(body) as string) + notes
+}
+
+/**
+ * Wiki links outside code as spans. `maskMarkdownCode` keeps offsets and turns
+ * code into spaces, so every run where mask and source agree is prose; inside
+ * code those runs hold only spaces and cannot contain a link.
+ */
+function replaceProseWikiLinks(markdown: string): string {
+  const masked = maskMarkdownCode(markdown)
+  let out = ''
+  for (let start = 0, end = 0; start < markdown.length; start = end) {
+    const prose = masked[start] === markdown[start]
+    while (end < markdown.length && (masked[end] === markdown[end]) === prose) end++
+    const run = markdown.slice(start, end)
+    out += prose ? replaceWikiLinks(run, (label) => `<span class="wiki-link">${label}</span>`) : run
+  }
+  return out
 }
 
 /**

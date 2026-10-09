@@ -257,7 +257,7 @@ note or reopened it a few times. Opening the note is now enough.
 Link syntax written inside inline code or a fenced code block is text, not a link. A note
 that documents the syntax, such as `` `[[Example]]` `` or a code block of sample markdown,
 adds no backlink, no outgoing link and no graph node for it. This holds for files saved with
-Windows line endings too.
+Windows line endings too. A PDF or HTML export prints it as written, brackets included.
 
 A link inside a comment still counts. See [Hidden Links](#hidden-links).
 

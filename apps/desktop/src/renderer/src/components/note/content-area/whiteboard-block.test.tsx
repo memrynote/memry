@@ -65,7 +65,10 @@ vi.mock('@/pages/canvas/canvas-editor', () => ({
     ref?: React.Ref<{ flush: () => Promise<void> }>
   }) => {
     React.useImperativeHandle(ref, () => ({ flush: () => mocks.flush() }), [])
-    React.useEffect(() => {
+    // A layout effect runs inside the commit that puts the editor in the DOM,
+    // so the count is current the moment a DOM query sees the new editor. A
+    // passive effect can still be pending then (#2987).
+    React.useLayoutEffect(() => {
       mocks.mounts += 1
     }, [])
     return (
