@@ -482,14 +482,18 @@ describe('NoteBodyOutbox push record', () => {
   let queue: SyncQueueManager
   let push: ReturnType<typeof vi.fn<NoteBodyPushFn>>
   let recordPush: ReturnType<typeof vi.fn<NoteBodyPushRecorder>>
+  let requestSnapshot: ReturnType<typeof vi.fn<(noteId: string) => void>>
   let outbox: NoteBodyOutbox
 
-  const start = (readFullState: (noteId: string) => Promise<Uint8Array | null> = async () => null) => {
-    outbox = new NoteBodyOutbox({ queue, push, recordPush })
+  const start = (
+    readFullState: (noteId: string) => Promise<Uint8Array | null> = async () => null
+  ) => {
+    outbox = new NoteBodyOutbox({ queue, push, recordPush, requestSnapshot })
     outbox.enableFullStateFlush(readFullState)
     outbox.start()
   }
-  const events = (): string[] => recordPush.mock.calls.map(([noteId, event]) => `${noteId}:${event}`)
+  const events = (): string[] =>
+    recordPush.mock.calls.map(([noteId, event]) => `${noteId}:${event}`)
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -498,6 +502,7 @@ describe('NoteBodyOutbox push record', () => {
     queue = new SyncQueueManager(testDb.db as unknown as DrizzleDb)
     push = vi.fn<NoteBodyPushFn>(async () => undefined)
     recordPush = vi.fn<NoteBodyPushRecorder>()
+    requestSnapshot = vi.fn<(noteId: string) => void>()
   })
 
   afterEach(() => {
@@ -535,6 +540,32 @@ describe('NoteBodyOutbox push record', () => {
     expect(events()).toEqual(['note-a:sent', 'note-a:rejected'])
   })
 
+  it('requests a snapshot for a refused push and records a later update as confirmed only', async () => {
+    const { updates } = recordEdits(['a', 'b'])
+    push.mockRejectedValueOnce(new SyncServerError('bad update', 400))
+    start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+
+    expect(requestSnapshot).toHaveBeenCalledWith('note-a')
+
+    await vi.advanceTimersByTimeAsync(1100)
+    outbox.enqueue('note-a', updates[1])
+    await flushPromises()
+
+    expect(events()).toEqual(['note-a:sent', 'note-a:rejected', 'note-a:sent', 'note-a:confirmed'])
+  })
+
+  it('does not request a snapshot for a retryable failure', async () => {
+    const { updates } = recordEdits(['a'])
+    push.mockRejectedValueOnce(new SyncServerError('unavailable', 503))
+    start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+
+    expect(requestSnapshot).not.toHaveBeenCalled()
+  })
+
   it('does not confirm a full-state row dropped because the note no longer syncs', async () => {
     queue.enqueueNoteBody('note-a', NOTE_BODY_FULL_STATE_PAYLOAD)
     start(async () => null)
@@ -544,12 +575,12 @@ describe('NoteBodyOutbox push record', () => {
     expect(events()).not.toContain('note-a:confirmed')
   })
 
-  it('confirms a full-state row once its state is pushed', async () => {
+  it('records a pushed full-state row as a whole-doc snapshot', async () => {
     queue.enqueueNoteBody('note-a', NOTE_BODY_FULL_STATE_PAYLOAD)
     start(async () => new Uint8Array([0, 0]))
     await flushPromises()
 
     expect(push).toHaveBeenCalledTimes(1)
-    expect(events()).toEqual(['note-a:sent', 'note-a:confirmed'])
+    expect(events()).toEqual(['note-a:sent', 'note-a:snapshot'])
   })
 })

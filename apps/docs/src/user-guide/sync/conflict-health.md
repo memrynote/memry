@@ -102,7 +102,9 @@ rail; hover the small dot in its place instead. The panel shows from the medium 
 | **Local only** / **Not syncing**       | The note is marked local-only, or this device does not sync                                                               |
 
 Only the server's answer to a text push counts as **On the server**. A push the server reports as
-already seen does not.
+already seen does not. After a refused push, the note keeps saying so even when later edits go
+through, because those edits carry only themselves. Memry sends the note's whole text on its own
+within two minutes. Once the server stores that copy, the line says **On the server** again.
 
 **Settings → Account → Sync → Notes with unsent changes** lists every note in the vault with
 changes the server has not stored: queued text (**Text**), queued title, tag, or property changes

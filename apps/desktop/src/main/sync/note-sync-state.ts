@@ -13,7 +13,9 @@
  * - whether this install syncs at all, and whether the note is local-only.
  *
  * Only a 2xx from a CRDT body route (an update push, or a snapshot of the whole
- * doc) sets the confirmed time. A record push the
+ * doc) sets the confirmed time. Only a stored whole-doc state clears a refused
+ * push (#2778): the outbox drops refused rows, so a later update carries only
+ * its own change. A record push the
  * server answers with `SYNC_REPLAY_DETECTED` touches none of this.
  *
  * Reads and writes never throw: a database that cannot be used reads as "no
@@ -74,6 +76,7 @@ export function deriveNoteSyncState(facts: NoteFacts, syncEligible: boolean): No
   const failed = pushes?.lastFailedAt ?? null
   const rejected = pushes?.lastRejectedAt ?? null
   const sent = pushes?.lastSentAt ?? null
+  const snapshot = pushes?.lastSnapshotAt ?? null
 
   let state: NoteSyncStateValue
   if (!syncEligible) state = 'not_syncing'
@@ -84,7 +87,7 @@ export function deriveNoteSyncState(facts: NoteFacts, syncEligible: boolean): No
     const retrying = failed !== null && failed > (confirmed ?? -1)
     const answered = Math.max(confirmed ?? -1, rejected ?? -1)
     state = !retrying && sent !== null && sent > answered ? 'sent' : 'pending'
-  } else if (rejected !== null && rejected > (confirmed ?? -1)) state = 'rejected'
+  } else if (rejected !== null && rejected > (snapshot ?? -1)) state = 'rejected'
   else state = confirmed === null ? 'not_recorded' : 'confirmed'
 
   return {
@@ -270,11 +273,8 @@ export function listUnsentNotes(
       .from(noteBodySync)
       .where(
         or(
-          and(
-            sql`${noteBodySync.lastRejectedAt} IS NOT NULL`,
-            isNull(noteBodySync.lastConfirmedAt)
-          ),
-          gt(noteBodySync.lastRejectedAt, noteBodySync.lastConfirmedAt)
+          and(sql`${noteBodySync.lastRejectedAt} IS NOT NULL`, isNull(noteBodySync.lastSnapshotAt)),
+          gt(noteBodySync.lastRejectedAt, noteBodySync.lastSnapshotAt)
         )
       )
       .all()) {
