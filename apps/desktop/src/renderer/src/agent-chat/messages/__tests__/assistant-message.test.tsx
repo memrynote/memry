@@ -1,7 +1,7 @@
 import type { AgentSourceRef, Message } from '@memry/contracts/ipc-agent'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AssistantMessage } from '../assistant-message'
 
@@ -396,15 +396,54 @@ describe('AssistantMessage', () => {
     })
     const toggle = (): HTMLElement => screen.getByRole('button', { name: 'Show or hide reasoning' })
 
-    // jsdom has no layout; give the viewport a fixed box the test can scroll.
-    function stubViewport(container: HTMLElement): { el: HTMLElement; grow: (h: number) => void } {
+    // A browser-like viewport: a 180 px box whose scrollTop clamps, and whose
+    // content height changes reach the component only through ResizeObserver,
+    // the way Streamdown commits new lines in a transition after render.
+    const observers: ResizeObserverCallback[] = []
+    beforeEach(() => {
+      observers.length = 0
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: ResizeObserverCallback) {
+            observers.push(callback)
+          }
+          observe(): void {}
+          unobserve(): void {}
+          disconnect(): void {}
+        }
+      )
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function stubViewport(container: HTMLElement): {
+      el: HTMLElement
+      setHeight: (h: number) => void
+      grow: (h: number) => void
+    } {
       const el = container.querySelector<HTMLElement>('.aicss-tr-viewport')
       if (!el) throw new Error('no reasoning viewport')
       let height = 500
+      let top = 0
       Object.defineProperty(el, 'clientHeight', { configurable: true, get: () => 180 })
       Object.defineProperty(el, 'scrollHeight', { configurable: true, get: () => height })
-      Object.defineProperty(el, 'scrollTop', { configurable: true, writable: true, value: 0 })
-      return { el, grow: (h) => (height = h) }
+      Object.defineProperty(el, 'scrollTop', {
+        configurable: true,
+        get: () => top,
+        set: (v: number) => (top = Math.max(0, Math.min(v, height - 180)))
+      })
+      const setHeight = (h: number): void => {
+        height = h
+      }
+      const grow = (h: number): void => {
+        setHeight(h)
+        act(() => {
+          for (const callback of observers) callback([], {} as ResizeObserver)
+        })
+      }
+      return { el, setHeight, grow }
     }
 
     it('puts the header back into its live state without unfolding the block', () => {
@@ -432,12 +471,18 @@ describe('AssistantMessage', () => {
     it('keeps the newest line of an opened block in view as reasoning grows', async () => {
       const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
       rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
-      const { el, grow } = stubViewport(container)
+      const { el, setHeight, grow } = stubViewport(container)
       await userEvent.click(toggle())
+      expect(el.scrollTop).toBe(320)
 
-      grow(700)
-      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two.')} />)
-      expect(el.scrollTop).toBe(700)
+      // The echo of that scroll arrives after the next lines already landed.
+      setHeight(548)
+      fireEvent.scroll(el)
+      grow(548)
+      expect(el.scrollTop).toBe(368)
+
+      grow(900)
+      expect(el.scrollTop).toBe(720)
     })
 
     it('leaves a reader who scrolled up where they are, and follows again at the bottom', async () => {
@@ -446,17 +491,15 @@ describe('AssistantMessage', () => {
       const { el, grow } = stubViewport(container)
       await userEvent.click(toggle())
 
-      el.scrollTop = 200
-      fireEvent.scroll(el)
-      grow(700)
-      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two.')} />)
-      expect(el.scrollTop).toBe(200)
-
-      el.scrollTop = 700 - 180
+      el.scrollTop = 100
       fireEvent.scroll(el)
       grow(900)
-      rerender(<AssistantMessage message={turn('Answer', 'Step one. Step two. Three.')} />)
-      expect(el.scrollTop).toBe(900)
+      expect(el.scrollTop).toBe(100)
+
+      el.scrollTop = 720
+      fireEvent.scroll(el)
+      grow(1000)
+      expect(el.scrollTop).toBe(820)
     })
 
     it('lets the reader scroll while the model is still thinking', () => {
