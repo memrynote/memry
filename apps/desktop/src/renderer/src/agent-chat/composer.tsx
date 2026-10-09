@@ -29,6 +29,8 @@ import {
   type ReasoningValue
 } from './composer-settings-menu'
 import { VoiceDictationButton } from './voice-dictation-button'
+import { AttachFileButton, ComposerFileChips, useComposerFiles } from './composer-files'
+import { appendMemryFileBlocks } from './memry-file-block'
 import {
   AgentPromptEditor,
   type AgentPromptEditorHandle,
@@ -148,6 +150,7 @@ export function Composer({
   const [webSearchEnabled, setWebSearchEnabled] = useState(false)
   const [includeCurrentNote, setIncludeCurrentNote] = useState(true)
   const [dictationBusy, setDictationBusy] = useState(false)
+  const promptFiles = useComposerFiles(submitting || !agent)
   const [selectedModels, setSelectedModels] = useState<Record<AgentCliBackendId, string | null>>({
     ...DEFAULT_SELECTED_MODELS,
     ...storedPreference?.models
@@ -482,8 +485,9 @@ export function Composer({
 
   async function submit(): Promise<void> {
     const editorValue = promptEditorRef.current?.getValue() ?? promptValue
-    const currentText = editorValue.text.trimEnd()
-    if (!agent || !sourceWindowId || !currentText.trim() || submitting) return
+    const promptText = editorValue.text.trimEnd()
+    if (!agent || !sourceWindowId || !promptText.trim() || submitting) return
+    const currentText = appendMemryFileBlocks(promptText, promptFiles.files)
     const currentAttachments = dedupeAttachments([
       ...editorValue.attachments,
       ...(includeCurrentNote && currentNoteAttachment ? [currentNoteAttachment] : [])
@@ -503,6 +507,7 @@ export function Composer({
         }
       })
       promptEditorRef.current?.clear()
+      promptFiles.clear()
       setPromptValue({ text: '', attachments: [], formatRanges: [] })
       closePicker()
       return
@@ -529,6 +534,7 @@ export function Composer({
         attachments: currentAttachments
       })
       promptEditorRef.current?.clear()
+      promptFiles.clear()
       setPromptValue({ text: '', attachments: [], formatRanges: [] })
       closePicker()
     } catch {
@@ -611,6 +617,8 @@ export function Composer({
         <ConnectedToolsTray />
         <div
           ref={composerBoxRef}
+          data-testid="agent-composer-box"
+          {...promptFiles.dropHandlers}
           className="relative flex min-h-[102px] cursor-text flex-col justify-between gap-4 rounded-2xl border border-border bg-card px-2.5 pb-2.5 pt-3"
         >
           <div
@@ -646,6 +654,11 @@ export function Composer({
               onValueChange={setPromptValue}
             />
           </div>
+          <ComposerFileChips
+            files={promptFiles.files}
+            refusal={promptFiles.refusal}
+            onRemove={promptFiles.remove}
+          />
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <ComposerSettingsMenu
@@ -684,6 +697,10 @@ export function Composer({
               />
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              <AttachFileButton
+                disabled={submitting || !agent}
+                onFiles={(files) => void promptFiles.add(files)}
+              />
               <button
                 type="button"
                 aria-label={t('agentChat.composer.mentionContext')}
