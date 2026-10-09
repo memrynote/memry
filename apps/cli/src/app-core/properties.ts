@@ -7,6 +7,7 @@ import {
   listPropertyDefinitions,
   upsertPropertyDefinition
 } from '@memry/storage-data'
+import { parsePropertyDefinitionEntries } from '@memry/contracts/property-types'
 import type { NewPropertyDefinition, PropertyDefinition } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
 import type { NotesService } from './notes.ts'
@@ -107,21 +108,63 @@ function propertiesFileEntry(definition: PropertyDefinition): unknown {
   }
 }
 
+/**
+ * The file's current `properties` map, or null when the file exists but cannot
+ * be read as one. Writing over an unreadable file would drop every definition
+ * it holds, so the caller skips the write.
+ */
+async function readFileProperties(filePath: string): Promise<Record<string, unknown> | null> {
+  let raw: string
+  try {
+    raw = await fs.readFile(filePath, 'utf8')
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    throw err
+  }
+  let parsed: ReturnType<typeof parsePropertyDefinitionEntries>
+  try {
+    parsed = parsePropertyDefinitionEntries(matter(raw).data.properties)
+  } catch {
+    return null
+  }
+  if (!parsed) return null
+  return { ...Object.fromEntries(parsed.unparsed), ...parsed.valid }
+}
+
+/**
+ * Write the CLI's definitions into `.memry/properties.md`, the way desktop's
+ * PropertyDefinitionsService does: entries the CLI does not own (other types,
+ * entries this build cannot parse, fields desktop added) stay as they are, and
+ * only `removed` leaves the file.
+ */
 async function persistPortableDefinitions(
   vaultPath: string,
-  definitions: PropertyDefinition[]
+  definitions: PropertyDefinition[],
+  removed?: string
 ): Promise<void> {
-  const properties: Record<string, unknown> = {}
+  const filePath = path.join(getMemryDir(vaultPath), 'properties.md')
+  const properties = await readFileProperties(filePath)
+  if (!properties) {
+    process.stderr.write(
+      `Warning: ${filePath} cannot be parsed; property definitions were saved but the file was not updated.\n`
+    )
+    return
+  }
+  if (removed !== undefined) delete properties[removed]
   for (const definition of definitions) {
     if (!portableDefinitionTypes.has(definition.type)) continue
-    properties[definition.name] = propertiesFileEntry(definition)
+    const existing = properties[definition.name] as { type?: unknown } | undefined
+    const entry = propertiesFileEntry(definition) as { type: string }
+    // Keep fields desktop writes that the CLI's rows do not carry, such as a
+    // date's `showOnCalendar`, as long as the type is unchanged.
+    properties[definition.name] =
+      existing && typeof existing === 'object' && existing.type === entry.type
+        ? { ...existing, ...entry }
+        : entry
   }
 
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
-  await fs.writeFile(
-    path.join(getMemryDir(vaultPath), 'properties.md'),
-    matter.stringify('', { properties })
-  )
+  await fs.writeFile(filePath, matter.stringify('', { properties }))
 }
 
 export function createPropertiesService({
@@ -179,7 +222,7 @@ export function createPropertiesService({
 
     async deleteDefinition(name) {
       deletePropertyDefinition(dataDb, name)
-      await persistPortableDefinitions(vaultPath, listPropertyDefinitions(dataDb))
+      await persistPortableDefinitions(vaultPath, listPropertyDefinitions(dataDb), name)
       return true
     },
 

@@ -6,15 +6,14 @@ import { getMemryDir } from './init'
 import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
 import { getSetting, setSetting } from '../database/queries/settings'
 import {
-  PropertyDefinitionSchema,
   type PropertyDefinition,
-  type PropertyType,
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
   DEFAULT_STATUS_CATEGORIES,
   DEFAULT_STATUS_DEFINITION,
-  isPersistableDefinitionType
+  isPersistableDefinitionType,
+  parsePropertyDefinitionEntries
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
 import {
@@ -112,7 +111,7 @@ export class PropertyDefinitionsService {
     }
 
     try {
-      const parsed = parseDefinitionEntries(matter(raw).data.properties)
+      const parsed = parsePropertyDefinitionEntries(matter(raw).data.properties)
       if (!parsed) {
         this.fileUnreadable = true
         logger.warn('Invalid properties.md format, keeping last-known-good cache')
@@ -120,6 +119,12 @@ export class PropertyDefinitionsService {
       }
 
       this.fileUnreadable = false
+      for (const name of parsed.unparsed.keys()) {
+        logger.warn(
+          'Skipping unreadable property definition in properties.md; keeping it as is',
+          name
+        )
+      }
       this.unparsed = parsed.unparsed
       this.applyParsedData({ properties: parsed.valid })
       const healed = parsed.healed
@@ -576,45 +581,6 @@ function sharedFields(def: {
     ...(def.defaultValue ? { defaultValue: def.defaultValue } : {}),
     ...(def.color ? { color: def.color } : {})
   }
-}
-
-/**
- * The file's `properties` map, parsed one entry at a time, or null when the map
- * itself is not an object. An entry that fails the schema is kept verbatim in
- * `unparsed` so one bad definition no longer costs the vault the rest. A
- * `relation` entry is dropped instead (`healed`): older builds wrote synced
- * relations here, and older builds reject the whole file on one.
- */
-function parseDefinitionEntries(properties: unknown): {
-  valid: PropertyDefinitionsFileData['properties']
-  unparsed: Map<string, unknown>
-  healed: boolean
-} | null {
-  const result = {
-    valid: {} as PropertyDefinitionsFileData['properties'],
-    unparsed: new Map<string, unknown>(),
-    healed: false
-  }
-  if (properties === undefined || properties === null) return result
-  if (typeof properties !== 'object' || Array.isArray(properties)) return null
-  for (const [name, entry] of Object.entries(properties)) {
-    const type = (entry as { type?: PropertyType } | null)?.type
-    if (type && !isPersistableDefinitionType(type)) {
-      result.healed = true
-      continue
-    }
-    const parsed = PropertyDefinitionSchema.safeParse(entry)
-    if (parsed.success) {
-      result.valid[name] = parsed.data
-    } else {
-      logger.warn(
-        'Skipping unreadable property definition in properties.md; keeping it as is',
-        name
-      )
-      result.unparsed.set(name, entry)
-    }
-  }
-  return result
 }
 
 function renameOptionInDefinition(
