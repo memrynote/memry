@@ -7,7 +7,6 @@ export {
   noteCacheExists,
   getLocalOnlyCount,
   listNotesFromCache,
-  listNoteCacheFilesAfter,
   listNoteCacheUnderFolder,
   countNotes,
   bulkInsertNotes,
@@ -18,7 +17,6 @@ export {
   getAllSyncableNoteMetadataIds,
   getNotesModifiedAfter,
   type ListNotesOptions,
-  type NoteCacheFileRow,
   type NoteCacheRefRow,
   type NoteTreeCacheRow
 } from './note-crud'

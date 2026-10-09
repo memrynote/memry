@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => ({
   startProjectionRuntime: vi.fn(),
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
+  replayMissedRemovals: vi.fn(async () => {}),
   rebuildProjections: vi.fn(),
   detectCorruption: vi.fn(),
   trackMainError: vi.fn(),
@@ -171,7 +172,10 @@ vi.mock('../database/queries/settings', () => ({
 vi.mock('./watcher', () => ({
   startWatcher: (...args: unknown[]) => mocks.startWatcher(...args),
   stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args),
-  getWatcher: () => ({ isWatching: () => mocks.watcherRunning })
+  getWatcher: () => ({
+    isWatching: () => mocks.watcherRunning,
+    replayMissedRemovals: () => mocks.replayMissedRemovals()
+  })
 }))
 
 vi.mock('./journal-format-migration', () => ({
@@ -748,7 +752,7 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
   })
 
-  it('prunes missing files only after locked files deleted while closed are restored (#2606)', async () => {
+  it('replays removals after locked files are restored and before the walk (#2606, #3013)', async () => {
     let finishLockCheck!: () => void
     mocks.checkLockedFilesAtOpen.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -760,12 +764,16 @@ describe('vault lifecycle', () => {
 
     expect(result.success).toBe(true)
     expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
-    expect(mocks.reconcileProjections).not.toHaveBeenCalled()
+    expect(mocks.replayMissedRemovals).not.toHaveBeenCalled()
 
     finishLockCheck()
 
-    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+    // A file moved while closed pairs with its old path before the walk can
+    // index the new path under a fresh id.
+    await vi.waitFor(() => expect(mocks.indexVault).toHaveBeenCalled())
+    expect(mocks.replayMissedRemovals.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.indexVault.mock.invocationCallOrder[0]
+    )
   })
 
   it('still prunes missing files when the locked-file check fails (#2606)', async () => {
@@ -773,7 +781,7 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/locked-failed' })
 
-    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+    await vi.waitFor(() => expect(mocks.replayMissedRemovals).toHaveBeenCalled())
   })
 
   it('does not reset a current index and reports no recovery on a fast open', async () => {

@@ -88,8 +88,10 @@ open, though its title in the sidebar stays as it was. Deleting a file from
 your other devices like one made in the app, except that the board's images
 stay in your vault so the file can bring them back if you restore it. Moving a file out of `canvases/`
 counts as deleting it, because memrynote only reads canvases from that folder.
-A file deleted while memrynote is closed, or while the vault's drive is
-disconnected, is not deleted from memrynote yet. A deleted canvas's file put
+A file deleted while memrynote is closed is deleted from memrynote, and on
+your other devices, the next time it opens the vault. A file that is only
+offloaded to iCloud, cannot be read, or sits on a drive that is disconnected is
+not deleted. A deleted canvas's file put
 back into `canvases/` (from your trash or a backup) comes back as a new canvas
 the next time memrynote opens the vault, images included.
 

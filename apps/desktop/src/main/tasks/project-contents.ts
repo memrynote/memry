@@ -8,10 +8,11 @@ import type { IndexDb } from '../database'
  *
  * `listProjectContents` resolves links against `note_metadata` in the data DB,
  * but opening a note goes through the index. A file that disappears while the
- * app is closed is only dropped from the index on the next launch
- * (`reconcileMissingFiles`), so its metadata row and project link survive and
- * the hub lists a note that answers "no longer in this vault" when clicked
- * (#2653). The hub lists only what it can open.
+ * app is closed keeps both until the next launch's removal scan
+ * (`replayMissedRemovals`) deletes it, and a file it keeps (evicted, not yet
+ * downloaded) keeps them for good, so the hub would list a note that answers
+ * "no longer in this vault" when clicked (#2653). The hub lists only what it
+ * can open.
  */
 export function withoutMissingVaultItems(
   indexDb: IndexDb,
