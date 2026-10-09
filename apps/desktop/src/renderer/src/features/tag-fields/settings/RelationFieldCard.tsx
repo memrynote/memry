@@ -64,11 +64,14 @@ export function RelationFieldCard({
         <Select value={target ?? undefined} onValueChange={(value) => setTarget(value)}>
           <SelectTrigger className="h-8" aria-label={t('tagFields.settings.relation.target')}>
             {target ? (
-              <TagChip
-                name={targetRow?.tag ?? target}
-                color={targetRow?.color ?? ''}
-                icon={targetRow?.icon ?? null}
-              />
+              // The trigger line-clamps its direct span children, which breaks the chip's flex row.
+              <div className="min-w-0">
+                <TagChip
+                  name={targetRow?.tag ?? target}
+                  color={targetRow?.color ?? ''}
+                  icon={targetRow?.icon ?? null}
+                />
+              </div>
             ) : (
               <span className="text-text-tertiary">{t('tagFields.settings.relation.pickTag')}</span>
             )}

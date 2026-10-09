@@ -35,7 +35,7 @@ import {
 } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { tagsService } from '@/services/tags-service'
-import { useEditTagSchema } from '../use-tag-schemas'
+import { useEditTagSchema, useTagSchemas } from '../use-tag-schemas'
 import { PresetTagChip } from './preset-tag-chip'
 
 const FIELD_TYPE_ICONS: Record<string, AppIcon> = {
@@ -59,6 +59,10 @@ export function AddPresetFieldsDialog({
 }): React.JSX.Element {
   const { t } = useT('notes')
   const editSchema = useEditTagSchema()
+  const presets = useTagSchemas().data?.presets
+  // A relation target not added yet still draws in its ready-made look.
+  const targetLook = (target: string): PresetOffer | undefined =>
+    presets?.find((preset) => preset.name === target)
   const [otherName, setOtherName] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const tag = offer?.existingTag?.key ?? offer?.name ?? ''
@@ -120,7 +124,10 @@ export function AddPresetFieldsDialog({
                     {field.relationTarget ? (
                       <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
                         <ArrowUpRight aria-hidden className="size-3 shrink-0" />
-                        <PresetTagChip tag={field.relationTarget} />
+                        <PresetTagChip
+                          tag={field.relationTarget}
+                          preset={targetLook(field.relationTarget)}
+                        />
                       </span>
                     ) : (
                       <span className="text-muted-foreground">
@@ -146,7 +153,7 @@ export function AddPresetFieldsDialog({
                   <p key={target} className="flex flex-wrap items-center gap-1.5">
                     <Plus aria-hidden className="size-3.5 shrink-0" />
                     {t('tagFields.hub.dialog.alsoAddsPrefix', { field })}
-                    <PresetTagChip tag={target} />
+                    <PresetTagChip tag={target} preset={targetLook(target)} />
                     {t('tagFields.hub.dialog.alsoAddsSuffix', { field })}
                   </p>
                 )

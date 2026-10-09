@@ -1137,8 +1137,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
             {/* Colored tag chip (segmented for a hierarchical tag) + item count */}
             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              {/* The tag name keeps its width; the counts after it give way first. */}
               <span
-                className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                className="inline-flex min-w-0 max-w-56 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
                 style={{
                   backgroundColor: withAlpha(tagColors?.text ?? '', 0.12),
                   color: tagColors?.text
@@ -1156,7 +1157,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 ))}
               </span>
               <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
-              <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+              <span className="min-w-0 truncate whitespace-nowrap font-medium text-text-tertiary">
                 {isLoading ? (
                   <Skeleton className="h-3.5 w-16" />
                 ) : totalNotes < unfilteredCount ? (
@@ -1168,7 +1169,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               {resolvedTag?.hasFields && (
                 <>
                   <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
-                  <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+                  <span className="min-w-0 truncate whitespace-nowrap font-medium text-text-tertiary">
                     {t('tagFields.settings.headerFields', {
                       count: resolvedTag.effectiveFields.length
                     })}

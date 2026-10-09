@@ -46,7 +46,7 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
   }
 
   return (
-    <div className="flex flex-col gap-2 pt-1">
+    <div className="flex min-w-0 flex-col gap-2 pt-1">
       {groups.map((group) => (
         <FieldGroupCard
           key={`${group.tag.key}:${group.via?.key ?? ''}`}
@@ -112,7 +112,7 @@ function FieldGroupCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-background px-2 py-2">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-background px-2 py-2">
       <header className="flex items-center gap-1.5 pb-1 text-[12px] font-semibold text-foreground">
         {tag &&
           (tag.icon ? (

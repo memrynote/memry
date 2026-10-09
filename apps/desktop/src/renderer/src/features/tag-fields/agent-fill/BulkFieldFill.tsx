@@ -229,7 +229,7 @@ export function BulkFieldFill({ tag, notes }: { tag: ResolvedTag; notes: BulkFil
                       {columns.map((field) => {
                         const proposal = row.proposals.find((p) => p.field === field.name)
                         return (
-                          <td key={field.name} className="px-2 py-2">
+                          <td key={field.name} className="overflow-hidden px-2 py-2">
                             {proposal ? (
                               <FillValue proposal={proposal} />
                             ) : (

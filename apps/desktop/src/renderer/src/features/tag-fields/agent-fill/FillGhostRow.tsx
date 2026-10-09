@@ -35,7 +35,7 @@ export function FillValue({ proposal }: { proposal: FieldFillProposal }) {
       </span>
     )
   }
-  return <span className="truncate text-[13px] text-foreground">{proposal.display}</span>
+  return <span className="block truncate text-[13px] text-foreground">{proposal.display}</span>
 }
 
 interface FillGhostRowProps {
