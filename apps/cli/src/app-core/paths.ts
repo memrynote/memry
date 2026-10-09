@@ -89,10 +89,10 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
 
   const configPath = getConfigPath(vaultPath)
-  let config = defaultVaultConfig
+  let config = structuredClone(defaultVaultConfig)
   try {
     const raw = await fs.readFile(configPath, 'utf-8')
-    config = { ...defaultVaultConfig, ...(JSON.parse(raw) as Partial<VaultConfig>) }
+    config = { ...config, ...(JSON.parse(raw) as Partial<VaultConfig>) }
   } catch {
     await fs.writeFile(configPath, `${JSON.stringify(defaultVaultConfig, null, 2)}\n`, 'utf-8')
   }

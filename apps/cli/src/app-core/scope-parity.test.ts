@@ -426,7 +426,6 @@ async function listFolderPaths(journal: { folder: string; showInSidebar: boolean
   await fs.writeFile(
     path.join(vaultPath, '.memry', 'config.json'),
     JSON.stringify({
-      defaultNoteFolder: '',
       journalFolder: journal.folder,
       journalShowInSidebar: journal.showInSidebar
     })
