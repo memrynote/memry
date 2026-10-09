@@ -151,4 +151,14 @@ describe('an inline <!-- before a fenced block', () => {
     const block = ['<!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
     expect(stripMarkdownComments(block)).toBe(' y\n```\nAfter [[After]]')
   })
+
+  it('treats a <!-- on the line that closes a comment as inline (BBF-57)', () => {
+    const reopened = ['<!--', 'z --> a <!--', '```', 'x --> y', '```', '[[F]]'].join('\n')
+    expect(blankMarkdownCode(reopened)).toBe(
+      ['<!--', 'z --> a <!--', '', '', '', '[[F]]'].join('\n')
+    )
+    expect(stripMarkdownComments(reopened)).toBe(
+      [' a <!--', '```', 'x --> y', '```', '[[F]]'].join('\n')
+    )
+  })
 })
