@@ -81,9 +81,9 @@ vi.mock('@/services/saved-filters-service', () => ({
   })
 }))
 
-// Mock applyFiltersAndSort
+// Mock applyFiltersAndSortWithContext
 vi.mock('@/lib/task-utils', () => ({
-  applyFiltersAndSort: vi.fn((tasks: Task[]) => tasks),
+  applyFiltersAndSortWithContext: vi.fn((tasks: Task[]) => ({ tasks, contextIds: new Set() })),
   hasActiveFilters: vi.fn((filters: TaskFilters) => {
     return (
       filters.search !== '' ||
@@ -94,7 +94,7 @@ vi.mock('@/lib/task-utils', () => ({
   })
 }))
 
-import { applyFiltersAndSort, hasActiveFilters } from '@/lib/task-utils'
+import { applyFiltersAndSortWithContext, hasActiveFilters } from '@/lib/task-utils'
 
 // ============================================================================
 // Test Data
@@ -697,7 +697,10 @@ describe('useFilteredAndSortedTasks', () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     // Default mock returns all tasks
-    vi.mocked(applyFiltersAndSort).mockImplementation((tasks) => tasks)
+    vi.mocked(applyFiltersAndSortWithContext).mockImplementation((tasks) => ({
+      tasks,
+      contextIds: new Set()
+    }))
   })
 
   afterEach(() => {
@@ -732,7 +735,7 @@ describe('useFilteredAndSortedTasks', () => {
       { initialProps: { filters: defaultFilters } }
     )
 
-    expect(applyFiltersAndSort).toHaveBeenCalledWith(
+    expect(applyFiltersAndSortWithContext).toHaveBeenCalledWith(
       mockTasks,
       expect.objectContaining({ search: '' }),
       defaultSort,
@@ -743,17 +746,19 @@ describe('useFilteredAndSortedTasks', () => {
 
     rerender({ filters: { ...defaultFilters, search: 'query' } })
 
-    const callCountBeforeDebounce = vi.mocked(applyFiltersAndSort).mock.calls.length
+    const callCountBeforeDebounce = vi.mocked(applyFiltersAndSortWithContext).mock.calls.length
     act(() => {
       vi.advanceTimersByTime(100)
     })
-    expect(vi.mocked(applyFiltersAndSort).mock.calls.length).toBe(callCountBeforeDebounce)
+    expect(vi.mocked(applyFiltersAndSortWithContext).mock.calls.length).toBe(
+      callCountBeforeDebounce
+    )
 
     act(() => {
       vi.advanceTimersByTime(100)
     })
 
-    expect(applyFiltersAndSort).toHaveBeenCalledWith(
+    expect(applyFiltersAndSortWithContext).toHaveBeenCalledWith(
       mockTasks,
       expect.objectContaining({ search: 'query' }),
       defaultSort,
@@ -764,7 +769,10 @@ describe('useFilteredAndSortedTasks', () => {
   })
 
   it('should update counts when tasks change', () => {
-    vi.mocked(applyFiltersAndSort).mockImplementation((tasks) => tasks.slice(0, 2))
+    vi.mocked(applyFiltersAndSortWithContext).mockImplementation((tasks) => ({
+      tasks: tasks.slice(0, 2),
+      contextIds: new Set()
+    }))
 
     const { result } = renderHook(() =>
       useFilteredAndSortedTasks({
@@ -796,11 +804,13 @@ describe('useFilteredAndSortedTasks', () => {
       { initialProps: { filters: defaultFilters } }
     )
 
-    const initialCallCount = vi.mocked(applyFiltersAndSort).mock.calls.length
+    const initialCallCount = vi.mocked(applyFiltersAndSortWithContext).mock.calls.length
 
     rerender({ filters: { ...defaultFilters, priorities: ['high'] } })
 
-    expect(vi.mocked(applyFiltersAndSort).mock.calls.length).toBeGreaterThan(initialCallCount)
+    expect(vi.mocked(applyFiltersAndSortWithContext).mock.calls.length).toBeGreaterThan(
+      initialCallCount
+    )
   })
 })
 

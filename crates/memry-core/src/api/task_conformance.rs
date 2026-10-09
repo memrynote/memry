@@ -316,10 +316,14 @@ pub fn task_filtering_conformance(file_json: String) -> String {
             });
             let now = instant(&file["nows"][text(c, "now")]).unwrap_or(LocalDateTime::from_ms(0));
             let week = u32::try_from(c["weekStartsOn"].as_u64().unwrap_or(1)).unwrap_or(1);
-            let result =
-                task_filter::apply_filters_and_sort(&tasks, &filters, &sort, &projects, now, week);
+            let (result, context) = task_filter::apply_filters_and_sort_with_context(
+                &tasks, &filters, &sort, &projects, now, week,
+            );
+            let mut context: Vec<&str> = context.into_iter().collect();
+            context.sort_unstable();
             json!({
                 "taskIds": ids(&result),
+                "contextIds": context,
                 "hasActiveFilters": task_filter::has_active_filters(&filters),
                 "countActiveFilters": task_filter::count_active_filters(&filters),
             })

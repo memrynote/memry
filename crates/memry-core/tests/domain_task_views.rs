@@ -14,7 +14,7 @@
 //! | next 7 is overdue then today..today+6             | `getTasksInDueWindow` next7   |
 //! | by-project keeps completed tasks and subtasks     | the project arm               |
 //! | completed view keys on the status; Done on stamp  | `isComplete` / `completedAt`  |
-//! | a subtask rides along with a matching parent      | `includeSubtasksForMatching…` |
+//! | a dated subtask is its own row                    | `getTasksInDueWindow` rows    |
 //! | a task whose status will not resolve is open      | `status?.type !== 'done'`     |
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -257,30 +257,30 @@ fn the_completed_view_keys_on_the_status_and_the_done_section_on_completed_at() 
 }
 
 #[test]
-fn a_subtask_rides_along_with_its_matching_parent_and_never_on_its_own() {
+fn a_dated_subtask_is_its_own_row_and_an_undated_one_is_not() {
     let db = open("views-subtasks");
     db.call_blocking(|conn| {
         seed_project(conn);
         seed_task(conn, "parent", 1, json!({"dueDate": TODAY}));
-        // Neither dated nor started, and even done: it is in because its
-        // parent matched.
+        // Undated: its parent matching does not make it a row.
+        seed_task(conn, "child", 2, json!({"parentId": "parent"}));
+        seed_task(conn, "other-parent", 3, json!({}));
+        // Dated two levels below an undated root: a row of its own.
         seed_task(
             conn,
-            "child",
-            2,
-            json!({"parentId": "parent", "statusId": "done"}),
+            "grandchild",
+            4,
+            json!({"parentId": "child", "dueDate": TODAY}),
         );
-        seed_task(conn, "other-parent", 3, json!({}));
-        seed_task(conn, "other-child", 4, json!({"parentId": "other-parent"}));
 
         let tasks = task_views::load(conn)?;
         assert_eq!(
             ids(task_views::in_due_window(&tasks, DueWindow::Today, now())),
-            vec!["parent".to_owned(), "child".to_owned()]
+            vec!["parent".to_owned(), "grandchild".to_owned()]
         );
         Ok(())
     })
-    .expect("the subtask ride-along");
+    .expect("the subtask rows");
 }
 
 #[test]

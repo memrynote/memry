@@ -61,6 +61,8 @@ pub struct TaskSettingsItem {
     pub default_sort_order: String,
     pub default_view: String,
     pub stale_inbox_days: i64,
+    /// Local to this device: subtasks below the first level may be made.
+    pub nested_subtasks: bool,
 }
 
 impl From<task_settings::TaskSettings> for TaskSettingsItem {
@@ -70,6 +72,7 @@ impl From<task_settings::TaskSettings> for TaskSettingsItem {
             default_sort_order: settings.default_sort_order,
             default_view: settings.default_view,
             stale_inbox_days: settings.stale_inbox_days,
+            nested_subtasks: settings.nested_subtasks,
         }
     }
 }
@@ -408,5 +411,11 @@ impl Tasks {
     pub fn set_default_view(&self, view: String) -> Result<TaskSettingsItem, StorageError> {
         self.db
             .call_blocking(move |conn| Ok(task_settings::set_default_view(conn, &view)?.into()))
+    }
+
+    /// Local to this device, as on desktop.
+    pub fn set_nested_subtasks(&self, on: bool) -> Result<TaskSettingsItem, StorageError> {
+        self.db
+            .call_blocking(move |conn| Ok(task_settings::set_nested_subtasks(conn, on)?.into()))
     }
 }

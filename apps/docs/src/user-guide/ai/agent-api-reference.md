@@ -17778,6 +17778,7 @@ Change task settings; any subset of them.
 | `settings.defaultSortOrder` | `"manual" \| "dueDate" \| "priority" \| "createdAt"` | no       | `"manual"`, `"dueDate"`, `"priority"`, `"createdAt"` |
 | `settings.defaultView`      | `"today" \| "tomorrow" \| "next7" \| "all"`          | no       | `"today"`, `"tomorrow"`, `"next7"`, `"all"`          |
 | `settings.staleInboxDays`   | `integer`                                            | no       | min `1`; max `90`                                    |
+| `settings.nestedSubtasks`   | `boolean`                                            | no       |                                                      |
 
 Example call:
 

@@ -41,8 +41,7 @@ import {
   // Completion handling
   completeParentWithSubtasks,
   getIncompleteSubtasks,
-  hasIncompleteSubtasks,
-  getPotentialParents
+  hasIncompleteSubtasks
 } from './subtask-utils'
 
 // ============================================================================
@@ -506,7 +505,7 @@ describe('subtask-utils', () => {
         })
       })
 
-      it('returns error "Cannot make a parent task into a subtask"', () => {
+      it('refuses a task with subtasks under another task, unless nesting is on', () => {
         const parent = createMockTask({
           id: 'parent-1',
           projectId: 'project-1'
@@ -516,15 +515,24 @@ describe('subtask-utils', () => {
           projectId: 'project-1',
           subtaskIds: ['child-1']
         })
+        const child = createMockTask({
+          id: 'child-1',
+          projectId: 'project-1',
+          parentId: 'task-with-children'
+        })
+        const all = [parent, taskWithChildren, child]
 
-        const result = validateSubtaskRelationship('parent-1', 'task-with-children', [
-          parent,
-          taskWithChildren
-        ])
-
-        expect(result).toEqual({
+        expect(validateSubtaskRelationship('parent-1', 'task-with-children', all)).toEqual({
           valid: false,
-          error: 'Cannot make a parent task into a subtask'
+          error: 'Cannot add subtasks to a subtask (no nested subtasks)'
+        })
+        expect(validateSubtaskRelationship('parent-1', 'task-with-children', all, true)).toEqual({
+          valid: true
+        })
+        // Never inside its own branch, whatever the setting.
+        expect(validateSubtaskRelationship('child-1', 'task-with-children', all, true)).toEqual({
+          valid: false,
+          error: 'A task cannot be moved inside its own subtasks'
         })
       })
 
@@ -1311,10 +1319,15 @@ describe('subtask-utils', () => {
         expect(updatedParent?.subtaskIds).toEqual(['existing', 'task-1'])
       })
 
-      it('returns error "Task is already a subtask"', () => {
+      it('moves a subtask from one parent to another', () => {
         const parent = createMockTask({
           id: 'parent-1',
           projectId: 'project-1'
+        })
+        const otherParent = createMockTask({
+          id: 'other-parent',
+          projectId: 'project-1',
+          subtaskIds: ['sub-1']
         })
         const subtask = createMockTask({
           id: 'sub-1',
@@ -1323,12 +1336,13 @@ describe('subtask-utils', () => {
           subtaskIds: []
         })
 
-        const result = demoteToSubtask('sub-1', 'parent-1', [parent, subtask])
+        const result = demoteToSubtask('sub-1', 'parent-1', [parent, otherParent, subtask])
 
-        expect(result).toEqual({
-          success: false,
-          error: 'Task is already a subtask'
-        })
+        expect(result.success).toBe(true)
+        const byId = new Map(result.updatedTasks?.map((t) => [t.id, t]))
+        expect(byId.get('sub-1')?.parentId).toBe('parent-1')
+        expect(byId.get('parent-1')?.subtaskIds).toEqual(['sub-1'])
+        expect(byId.get('other-parent')?.subtaskIds).toEqual([])
       })
 
       it('fails when parent is a subtask (no nested)', () => {
@@ -1364,12 +1378,13 @@ describe('subtask-utils', () => {
           projectId: 'project-1',
           subtaskIds: ['child-1']
         })
+        const child = createMockTask({ id: 'child-1', projectId: 'project-1', parentId: 'task-1' })
 
-        const result = demoteToSubtask('task-1', 'parent-1', [parent, taskWithChildren])
+        const result = demoteToSubtask('task-1', 'parent-1', [parent, taskWithChildren, child])
 
         expect(result).toEqual({
           success: false,
-          error: 'Cannot make a parent task into a subtask'
+          error: 'Cannot add subtasks to a subtask (no nested subtasks)'
         })
       })
 
@@ -1577,150 +1592,6 @@ describe('subtask-utils', () => {
 
         const result = hasIncompleteSubtasks('parent-1', [sub1, sub2])
         expect(result).toBe(true)
-      })
-    })
-
-    describe('getPotentialParents', () => {
-      it('excludes self from results', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-
-        const result = getPotentialParents('task-1', [task])
-        expect(result.find((t) => t.id === 'task-1')).toBeUndefined()
-      })
-
-      it('excludes subtasks from results', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-        const subtask = createMockTask({
-          id: 'subtask-1',
-          parentId: 'parent-1',
-          projectId: 'project-1'
-        })
-
-        const result = getPotentialParents('task-1', [task, subtask])
-        expect(result.find((t) => t.id === 'subtask-1')).toBeUndefined()
-      })
-
-      it('prioritizes same project', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-        const sameProject = createMockTask({
-          id: 'same-proj',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 1)
-        })
-        const differentProject = createMockTask({
-          id: 'diff-proj',
-          projectId: 'project-2',
-          createdAt: new Date(2026, 0, 5)
-        })
-
-        const result = getPotentialParents(
-          'task-1',
-          [task, sameProject, differentProject],
-          'project-1'
-        )
-
-        expect(result[0].id).toBe('same-proj')
-        expect(result[1].id).toBe('diff-proj')
-      })
-
-      it('sorts by recency within same project priority', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-        const older = createMockTask({
-          id: 'older',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 1)
-        })
-        const newer = createMockTask({
-          id: 'newer',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 10)
-        })
-
-        const result = getPotentialParents('task-1', [task, older, newer], 'project-1')
-
-        expect(result[0].id).toBe('newer')
-        expect(result[1].id).toBe('older')
-      })
-
-      it('returns empty array if task not found', () => {
-        const result = getPotentialParents('nonexistent', [])
-        expect(result).toEqual([])
-      })
-
-      it('allows tasks with existing subtasks to be parents', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-        const parentWithSubs = createMockTask({
-          id: 'parent-with-subs',
-          projectId: 'project-1',
-          subtaskIds: ['existing-sub']
-        })
-
-        const result = getPotentialParents('task-1', [task, parentWithSubs])
-
-        expect(result.find((t) => t.id === 'parent-with-subs')).toBeDefined()
-      })
-
-      it('includes tasks from all projects when no currentProjectId', () => {
-        const task = createMockTask({ id: 'task-1', projectId: 'project-1' })
-        const projA = createMockTask({
-          id: 'proj-a',
-          projectId: 'project-a',
-          createdAt: new Date(2026, 0, 1)
-        })
-        const projB = createMockTask({
-          id: 'proj-b',
-          projectId: 'project-b',
-          createdAt: new Date(2026, 0, 5)
-        })
-
-        const result = getPotentialParents('task-1', [task, projA, projB])
-
-        expect(result).toHaveLength(2)
-        // Sorted by recency when no project preference
-        expect(result[0].id).toBe('proj-b')
-        expect(result[1].id).toBe('proj-a')
-      })
-
-      it('handles complex scenario with mixed tasks', () => {
-        const task = createMockTask({
-          id: 'task-to-demote',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 8)
-        })
-        const sameProjectRecent = createMockTask({
-          id: 'same-recent',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 10)
-        })
-        const sameProjectOld = createMockTask({
-          id: 'same-old',
-          projectId: 'project-1',
-          createdAt: new Date(2026, 0, 1)
-        })
-        const diffProjectRecent = createMockTask({
-          id: 'diff-recent',
-          projectId: 'project-2',
-          createdAt: new Date(2026, 0, 9)
-        })
-        const subtaskInProject = createMockTask({
-          id: 'subtask',
-          projectId: 'project-1',
-          parentId: 'same-recent'
-        })
-
-        const result = getPotentialParents(
-          'task-to-demote',
-          [task, sameProjectRecent, sameProjectOld, diffProjectRecent, subtaskInProject],
-          'project-1'
-        )
-
-        // Excludes self and subtasks
-        expect(result.map((t) => t.id)).not.toContain('task-to-demote')
-        expect(result.map((t) => t.id)).not.toContain('subtask')
-        // Same project first, then sorted by recency
-        expect(result[0].id).toBe('same-recent')
-        expect(result[1].id).toBe('same-old')
-        expect(result[2].id).toBe('diff-recent')
       })
     })
   })

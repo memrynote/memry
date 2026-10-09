@@ -54,7 +54,7 @@ struct InlineTriggerTests {
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let code = Block(id: "c", kind: "codeBlock", depth: 0, props: [], inline: [])
         let field = BlockField(block: code, session: session, style: style, alignment: .natural)
-        session.titles = ["Dune"]
+        session.linkNotes = [WikiLinkNote(title: "Dune", folderPath: nil)]
         session.tags = ["work"]
         session.focusChanged(to: field)
         for text in ["[[Du", "@", "/", "#wo"] {
@@ -77,11 +77,11 @@ struct EditorSuggestionTests {
     }
 
     @Test func the_wiki_menu_offers_a_create_row_when_nothing_matches_exactly() {
-        let items = EditorSuggestions.wiki(query: "Du", titles: ["Dune", "Emma", "Dubai"])
+        let items = EditorSuggestions.wiki(query: "Du", notes: ["Dune", "Emma", "Dubai"].map { WikiLinkNote(title: $0, folderPath: nil) })
         #expect(items.map(\.kind) == [
             .note(title: "Dune", alias: ""), .note(title: "Dubai", alias: ""), .create(title: "Du", alias: ""),
         ])
-        let exact = EditorSuggestions.wiki(query: "dune", titles: ["Dune"])
+        let exact = EditorSuggestions.wiki(query: "dune", notes: [WikiLinkNote(title: "Dune", folderPath: nil)])
         #expect(!exact.contains { if case .create = $0.kind { true } else { false } })
     }
 

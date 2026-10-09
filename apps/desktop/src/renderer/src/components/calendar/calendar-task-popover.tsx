@@ -13,6 +13,7 @@ import {
   CalendarTaskPopoverMoveRow
 } from './calendar-task-popover-actions'
 import { useTask } from '@/hooks/use-task'
+import { openTaskInTasksTab } from '@/components/tasks/task-detail-host'
 import { useSubtasks } from '@/hooks/use-subtasks'
 import { useProject } from '@/hooks/use-project'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
@@ -308,6 +309,10 @@ export function CalendarTaskPopover({
             projectName={taskProject?.name ?? project?.name ?? ''}
             onToggleComplete={handleToggleComplete}
             onOpenTask={handleOpenTask}
+            onOpenParent={() => {
+              openTaskInTasksTab(openTab, taskId, task.projectId, task.parentId)
+              onDismiss()
+            }}
             menu={
               <CalendarTaskPopoverMenu
                 isCompleted={isCompleted}

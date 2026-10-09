@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestIndexDb } from '@tests/utils/test-db'
+import { NoteError, NoteErrorCode } from '../../../lib/errors'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -660,6 +661,66 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.updateNoteCommand.mock.calls).toEqual([
       [{ id: 'note-1', content: 'Current\n\nNext' }]
     ])
+  })
+
+  describe('when the note file cannot be read before an update', () => {
+    const busy = () =>
+      new NoteError(
+        'Failed to read file: /vault/work/alpha.md',
+        NoteErrorCode.READ_FAILED,
+        undefined,
+        {
+          cause: Object.assign(new Error('resource busy'), { code: 'EBUSY' })
+        }
+      )
+
+    const updateNote = (content_markdown: string) =>
+      buildWriteTools(createVaultServiceHandles(deps), async () => ({ approved: true }))
+        .find((tool) => tool.name === 'vault_update_note')!
+        .handler(
+          { id: 'note-1', mode: 'append', content_markdown },
+          { writeGrant: 'g', windowId: null }
+        )
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockReset().mockResolvedValue({
+        id: 'note-1',
+        title: 'Alpha',
+        content: 'Current',
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {},
+        properties: {}
+      })
+      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
+    })
+
+    it('reads it again once and lands the update', async () => {
+      mocks.getNoteById.mockRejectedValueOnce(busy())
+
+      await updateNote('Next')
+
+      expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Current\n\nNext'
+      })
+    })
+
+    it('writes nothing and names the cause when the second read fails too', async () => {
+      mocks.getNoteById.mockRejectedValueOnce(busy()).mockRejectedValueOnce(busy())
+
+      const failure = updateNote('x')
+
+      await expect(failure).rejects.toThrow(/Note note-1 could not be read \(EBUSY\)/)
+      await expect(failure).rejects.not.toThrow(/\/vault\//)
+      expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
+    })
   })
 
   it.each([

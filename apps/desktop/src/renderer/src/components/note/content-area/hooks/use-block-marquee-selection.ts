@@ -6,7 +6,12 @@ import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { createLogger } from '@/lib/logger'
 import { hasSelectableTextAt, shouldStartMarquee } from '../marquee-hit-test'
-import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
+import {
+  classifyBlocks,
+  indentTaskBlock,
+  outdentTaskBlock,
+  type TaskParents
+} from './task-block-marquee-indent'
 
 const log = createLogger('Hook:Marquee')
 
@@ -41,6 +46,10 @@ interface UseBlockMarqueeSelectionOptions {
   /** The outer wrapper element that owns the listener and the overlay coordinate space. */
   triggerContainerEl: HTMLDivElement | null
   enabled?: boolean
+  /** The `tasks.nestedSubtasks` setting, which lets a task block indent below one level. */
+  nestedSubtasks?: boolean
+  /** The note's task parents, for task rows listed below the first level. */
+  taskParents?: TaskParents
   onDeleteSelectedBlocks?: (ids: string[]) => boolean
 }
 
@@ -239,6 +248,8 @@ export function useBlockMarqueeSelection({
   blockContainerRef,
   triggerContainerEl,
   enabled = true,
+  nestedSubtasks = false,
+  taskParents,
   onDeleteSelectedBlocks
 }: UseBlockMarqueeSelectionOptions): UseBlockMarqueeSelectionReturn {
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null)
@@ -297,8 +308,8 @@ export function useBlockMarqueeSelection({
   //   - textblocks (paragraph, bulletListItem, heading, etc.) use
   //     BlockNote's built-in `nestBlock`, gated on `canNestBlock`
   //   - taskBlocks use the `parentTaskId` prop + tasksService.update
-  //     path via `indentTaskBlock` — mirroring the single-task Tab
-  //     handler in `task-block-renderer.tsx`. BlockNote's `nestBlock`
+  //     path via `indentTaskBlock`, the same call the single-task Tab
+  //     handler in `task-block-renderer.tsx` makes. BlockNote's `nestBlock`
   //     crashes on non-textblock custom blocks because it assumes a
   //     TextSelection inside a textblock; the ReactNodeView corrupts
   //     and the next iteration blows up in syncNodeSelection.descAt.
@@ -337,7 +348,10 @@ export function useBlockMarqueeSelection({
       }
       for (const id of taskBlocks) {
         try {
-          const outcome = indentTaskBlock(editor, id)
+          const outcome = indentTaskBlock(editor, id, {
+            nested: nestedSubtasks,
+            parents: taskParents
+          })
           if (outcome.kind === 'skipped') {
             log.debug('indentTaskBlock skipped', id, outcome.reason)
           }
@@ -348,7 +362,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
-  }, [editor, blockContainerRef, recomputeHighlightRects])
+  }, [editor, blockContainerRef, recomputeHighlightRects, nestedSubtasks, taskParents])
 
   // Outdent every marquee-selected block by one level. Both the textblock
   // and taskBlock loops run in REVERSE order:
@@ -387,7 +401,7 @@ export function useBlockMarqueeSelection({
       for (let i = taskBlocks.length - 1; i >= 0; i -= 1) {
         const id = taskBlocks[i]
         try {
-          const outcome = outdentTaskBlock(editor, id)
+          const outcome = outdentTaskBlock(editor, id, { parents: taskParents })
           if (outcome.kind === 'skipped') {
             log.debug('outdentTaskBlock skipped', id, outcome.reason)
           }
@@ -398,7 +412,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
-  }, [editor, blockContainerRef, recomputeHighlightRects])
+  }, [editor, blockContainerRef, recomputeHighlightRects, taskParents])
 
   useEffect(() => {
     if (!enabled) return

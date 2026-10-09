@@ -7,7 +7,9 @@ import XCTest
 // staging test account with the MemryNote vault, and the synced journal
 // settings give Wednesday the `Agent Test Journal` template and leave the
 // default template unset (JP049 set both; JP095 undoes them after the last
-// run). A test that lands on sign-in fails with that instruction.
+// run). A test that lands on sign-in
+// skips, with that instruction as the reason. A skip is
+// not a pass: check the run's skip count before calling a UI plan green.
 //
 // Each run picks its own random day in the second half of 2099, so reruns
 // rarely meet a day an earlier run wrote; the flows that need an empty day
@@ -125,12 +127,15 @@ final class JournalUITests: XCTestCase {
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name].firstMatch
         let journalTab = app.buttons["Journal"].firstMatch
-        let signIn = app.staticTexts["Sign in to Memry"]
+        // Signed out lands on the welcome screen first, or on sign-in once
+        // past it.
+        let signIn = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
+        )).firstMatch
         let deadline = Date().addingTimeInterval(60)
         while Date() < deadline, !journalTab.exists {
             if signIn.exists {
-                XCTFail("Signed out: sign in to the staging test account first (tasks.md §0.4).")
-                throw XCTSkip("signed out")
+                throw XCTSkip("Signed out: sign in to the staging test account first (tasks.md §0.4).")
             }
             if vault.exists, vault.isHittable { vault.tap() }
             Thread.sleep(forTimeInterval: 0.5)

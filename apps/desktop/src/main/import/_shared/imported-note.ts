@@ -112,7 +112,7 @@ export async function convertChecklistsToTasks(
   keepLine: (lineIndex: number) => boolean = () => false
 ): Promise<ConvertedChecklist> {
   const unchanged: ConvertedChecklist = { markdown, created: [] }
-  const planned = planChecklistTasks(markdown, new Date())
+  const planned = planChecklistTasks(markdown, new Date(), getTaskSettings().nestedSubtasks)
   if (planned.every((item) => keepLine(item.lineIndex))) return unchanged
 
   const target = resolveImportTarget()

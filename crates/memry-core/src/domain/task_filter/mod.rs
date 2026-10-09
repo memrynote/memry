@@ -30,9 +30,10 @@ pub use config::{
     SortField, TaskFilters, TaskSort,
 };
 pub use filters::{
-    apply_filters_and_sort, count_active_filters, filter_by_completion, filter_by_due_date_range,
-    filter_by_has_time, filter_by_priorities, filter_by_projects, filter_by_repeat_type,
-    filter_by_search, filter_by_statuses, filter_by_tags, has_active_filters, sort_tasks_advanced,
+    apply_filters_and_sort, apply_filters_and_sort_with_context, count_active_filters,
+    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_priorities,
+    filter_by_projects, filter_by_repeat_type, filter_by_search, filter_by_statuses,
+    filter_by_tags, has_active_filters, sort_tasks_advanced,
 };
 pub use grouping::{TaskGroup, group_tasks_for_sort, task_note_id};
 

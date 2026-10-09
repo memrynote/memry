@@ -204,20 +204,47 @@ struct TasksSubtasksTests {
         #expect(vault.store.items[task]?.projectId == home)
     }
 
-    @Test func parent_candidates_are_top_level_same_project_first() async throws {
+    @Test func move_under_offers_the_project_tree_at_any_depth_and_locks_the_own_branch() async throws {
         let vault = try TasksTestVault()
         let home = try vault.project("Agent Test Home")
         let away = try vault.project("Agent Test Away")
         let task = try vault.task("[agent] task", project: home)
+        let below = try vault.task("[agent] below", project: home, parent: task)
         let other = try vault.task("[agent] other", project: away)
         let sibling = try vault.task("[agent] sibling", project: home)
-        _ = try vault.task("[agent] nested", project: home, parent: sibling)
+        let nested = try vault.task("[agent] nested", project: home, parent: sibling)
         await vault.store.load()
 
         let item = try #require(vault.store.items[task])
-        let ids = vault.store.parentCandidates(for: item).map(\.id)
-        #expect(ids == [sibling, other])
-        #expect(vault.store.parentCandidates(for: item, matching: "OTH").map(\.id) == [other])
+        let places = await vault.store.moveUnderPlaces(for: item)
+        #expect(places.map(\.taskId) == [task, below, sibling, nested])
+        #expect(places.map(\.allowed) == [false, false, true, true])
+        #expect(vault.store.otherProjectParents(for: item).map(\.id) == [other])
+
+        await vault.store.moveUnder(item, parentId: nested, title: "[agent] nested")
+        #expect(vault.store.items[task]?.parentId == nested)
+        #expect(vault.store.tree[below]?.parentId == task)
+    }
+
+    @Test func indent_and_outdent_follow_the_tree_and_the_local_gate() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project()
+        let root = try vault.task("[agent] root", project: project)
+        let first = try vault.task("[agent] first", project: project, parent: root)
+        let second = try vault.task("[agent] second", project: project, parent: root)
+        await vault.store.load()
+
+        await vault.store.indent(try #require(vault.store.items[second]))
+        #expect(vault.store.items[second]?.parentId == first)
+
+        await vault.store.outdent(try #require(vault.store.items[second]))
+        #expect(vault.store.items[second]?.parentId == root)
+
+        await vault.store.setNestedSubtasks(false)
+        #expect(vault.store.settings?.nestedSubtasks == false)
+        #expect(vault.store.tree[second]?.indentUnder == nil)
+        #expect(!vault.store.canAddSubtask(first))
+        await vault.store.setNestedSubtasks(true)
     }
 
     @Test func bulk_writes_count_their_subtasks() async throws {

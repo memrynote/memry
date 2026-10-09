@@ -52,7 +52,7 @@ interface FakeTask {
   archived: boolean
 }
 
-function makeDeps(): { deps: NotePlanTaskDeps; tasks: FakeTask[] } {
+function makeDeps(nestedSubtasks = true): { deps: NotePlanTaskDeps; tasks: FakeTask[] } {
   const tasks: FakeTask[] = []
   let n = 0
   const deps: NotePlanTaskDeps = {
@@ -78,7 +78,8 @@ function makeDeps(): { deps: NotePlanTaskDeps; tasks: FakeTask[] } {
       if (t) t.archived = true
       return {}
     },
-    getInboxProjectId: () => 'inbox-1'
+    getInboxProjectId: () => 'inbox-1',
+    nestedSubtasks: () => nestedSubtasks
   }
   return { deps, tasks }
 }

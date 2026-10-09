@@ -14,6 +14,11 @@ import { useTabActions } from '@/contexts/tabs'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { tasksService } from '@/services/tasks-service'
 import { markTaskRemovalsHandled } from '../task-removal'
+import {
+  indentTaskBlock,
+  noteTaskDepth,
+  outdentTaskBlock
+} from '../hooks/task-block-marquee-indent'
 import { toTaskUpdateInput } from '@/features/tasks/task-update-input'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
@@ -156,7 +161,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const { t: tCommon } = useT('common')
   const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading: _isLoading, isDeleted } = useTaskBlockData(taskId)
-  const { draftProjectId, noteId: hostNoteId, hasActiveReminder } = useTaskPrefetch()
+  const {
+    draftProjectId,
+    noteId: hostNoteId,
+    hasActiveReminder,
+    nestedSubtasks,
+    taskParents
+  } = useTaskPrefetch()
+  // A task below the first level is listed under its top-level task like a
+  // subtask (MAX_NOTE_TASK_DEPTH); its DB depth sets the indent. `ms-7` per level.
+  const listedDepth = parentTaskId ? noteTaskDepth(taskId, parentTaskId, taskParents) : 0
+  const deepIndent = listedDepth > 1 ? { marginInlineStart: `${1.75 * listedDepth}rem` } : undefined
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const openTaskDetail = useOpenTaskDetail()
@@ -449,81 +464,39 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         return
       }
 
-      // Tab inside the title input: indent (demote) this taskBlock under the
-      // previous top-level taskBlock sibling. The BlockNote-native Tab
+      // Tab / Shift+Tab inside the title input: indent under the previous task
+      // sibling, or lift out of the parent task. The BlockNote-native Tab
       // handler can't reach us here because focus lives in a regular HTML
       // input owned by this React component. Without this branch the browser
       // moves focus to the next focusable element, which is exactly the bug
       // the user reported as "Tab switches to another section".
-      if (e.key === 'Tab' && !e.shiftKey) {
+      if (e.key === 'Tab') {
         e.preventDefault()
-        if (parentTaskId) return // already nested; nothing to do
-        const doc = editor.document
-        const idx = doc.findIndex((b) => b.id === block.id)
-        if (idx <= 0) return
-        const prev = doc[idx - 1]
-        if (prev?.type !== 'taskBlock' || !prev?.props?.taskId) return
+        const edit = parseQuickAddEdit(editTitle, task?.title ?? '', displayTask, projects)
+        const trimmedTitle = edit ? edit.title : editTitle.trim()
+        const title = trimmedTitle || block.props.title
 
+        // The move re-renders this block, and the input's blur must not commit
+        // the edit a second time.
         skipBlurRef.current = true
+        const outcome = e.shiftKey
+          ? outdentTaskBlock(editor, block.id, { title, parents: taskParents })
+          : indentTaskBlock(editor, block.id, {
+              nested: nestedSubtasks,
+              title,
+              parents: taskParents
+            })
+        if (outcome.kind === 'skipped') {
+          skipBlurRef.current = false
+          return
+        }
+
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = commitTitleEdit(editTitle)
+        if (edit) void applyUpdates(edit.changes)
         if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
           void tasksService.update({ id: taskId, title: trimmedTitle })
         }
         setIsEditingTitle(false)
-
-        const movedChild = {
-          ...block,
-          props: {
-            ...block.props,
-            title: trimmedTitle || block.props.title,
-            parentTaskId: prev.props.taskId
-          }
-        }
-        const newParent = {
-          ...prev,
-          children: [...(prev.children ?? []), movedChild]
-        }
-        editor.replaceBlocks([prev, block], [newParent])
-
-        if (taskId) {
-          void tasksService.update({ id: taskId, parentId: prev.props.taskId })
-        }
-        return
-      }
-
-      // Shift+Tab inside the title input: lift this subtask back to a
-      // top-level task. We need to physically move the block out of its
-      // parent's children[] — clearing parentTaskId in props alone wouldn't
-      // re-shape the document.
-      if (e.key === 'Tab' && e.shiftKey) {
-        e.preventDefault()
-        if (!parentTaskId) return
-        const doc = editor.document
-        const parentBlock = doc.find(
-          (b) => b.type === 'taskBlock' && b.children?.some((c) => c.id === block.id)
-        )
-        if (!parentBlock) return
-
-        skipBlurRef.current = true
-        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = commitTitleEdit(editTitle)
-        if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
-          void tasksService.update({ id: taskId, title: trimmedTitle })
-        }
-        setIsEditingTitle(false)
-
-        const remainingChildren = (parentBlock.children ?? []).filter((c) => c.id !== block.id)
-        const newParent = { ...parentBlock, children: remainingChildren }
-        const promotedSelf = {
-          ...block,
-          props: { ...block.props, title: trimmedTitle || block.props.title, parentTaskId: '' }
-        }
-        editor.replaceBlocks([parentBlock], [newParent, promotedSelf])
-
-        if (taskId) {
-          void tasksService.update({ id: taskId, parentId: null })
-        }
         return
       }
 
@@ -593,8 +566,21 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           setEditTitle(committed)
           void saveTitleToDb(committed)
           setIsEditingTitle(false)
+          // The next row is this one's sibling, under its DB parent when this
+          // row is listed deeper than the note's block tree holds.
+          const siblingParentId = listedDepth > 1 ? taskParents.get(taskId) : null
           editor.insertBlocks(
-            [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
+            [
+              {
+                type: 'taskBlock',
+                props: {
+                  taskId: '',
+                  title: '',
+                  checked: false,
+                  ...(siblingParentId ? { parentTaskId: siblingParentId } : {})
+                }
+              }
+            ],
             block,
             'after'
           )
@@ -631,7 +617,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       block,
       taskId,
       task,
-      parentTaskId,
+      displayTask,
+      projects,
+      applyUpdates,
+      nestedSubtasks,
+      taskParents,
+      listedDepth,
       editTitle,
       saveTitleToDb,
       commitTitleEdit,
@@ -855,6 +846,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{task?.title ?? title}</span>
@@ -895,6 +887,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <Loader2 className="size-4 animate-spin" />
 
@@ -970,6 +963,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           'focus:bg-surface-active/60',
           parentTaskId && 'ms-7'
         )}
+        style={deepIndent}
       >
         <TaskRow
           task={rowTask}

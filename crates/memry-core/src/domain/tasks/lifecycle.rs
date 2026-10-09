@@ -4,7 +4,7 @@
 //! Completion is two fields, never one: `statusId` moves to the project's
 //! done status and `completedAt` is stamped, and uncompleting moves back to
 //! the default todo status with an explicit `null` (§13.4). Completing a
-//! parent completes its open subtasks with it.
+//! parent completes the open tasks of its whole branch with it.
 //!
 //! Completing a **repeating** task (spec 004 D3) closes this occurrence —
 //! `repeatConfig` becomes `null` (desktop also clears the local-only
@@ -24,8 +24,8 @@ use super::super::repeat_config::{RepeatConfig, with_completed_count};
 use super::batch::{Batch, TaskWrite};
 use super::create::{copied, seeded};
 use super::model::{
-    ProjectStatuses, StatusKind, StoredTask, load_live, new_task_id, next_position, status_kind,
-    subtask_ids,
+    ProjectStatuses, StatusKind, StoredTask, descendant_ids, load_live, new_task_id, next_position,
+    status_kind,
 };
 
 /// The fields the next occurrence copies from the one completed. Desktop
@@ -111,7 +111,7 @@ pub fn complete(
     }
     batch.edit(task_id, changes)?;
 
-    for subtask_id in subtask_ids(batch.conn(), task_id)? {
+    for subtask_id in descendant_ids(batch.conn(), task_id)? {
         let subtask = load_live(batch.conn(), &subtask_id)?;
         if subtask.is_completed() {
             continue;

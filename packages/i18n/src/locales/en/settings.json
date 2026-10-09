@@ -611,6 +611,7 @@
     },
     "groups": {
       "defaults": "Defaults",
+      "subtasks": "Subtasks",
       "inbox": "Inbox"
     },
     "defaultProject": {
@@ -647,6 +648,11 @@
       "description": "Tasks older than this are highlighted as stale",
       "unit": "days",
       "error": "Failed to update stale inbox threshold"
+    },
+    "nestedSubtasks": {
+      "label": "Subtasks inside subtasks",
+      "description": "Nest subtasks at any depth. Devices on older versions only show the first level until they update.",
+      "error": "Failed to update nested subtasks"
     }
   },
   "inbox": {

@@ -20,6 +20,14 @@ describe('toTaskUpdateInput', () => {
     })
   })
 
+  // A dropped null left "make top level" and "move out" as silent no-ops.
+  it('sends a cleared parent as null so the task becomes top level', () => {
+    expect(toTaskUpdateInput('task-1', { parentId: null })).toEqual({
+      id: 'task-1',
+      parentId: null
+    })
+  })
+
   it('writes dates as calendar keys and a cleared repeat as null', () => {
     expect(
       toTaskUpdateInput('task-1', {

@@ -4,7 +4,8 @@ import XCTest
 //
 // **Precondition:** signed in to the staging test account with the MemryNote
 // vault available (spec 006 goal "Simulator and sign-in"). A test that lands on
-// sign-in fails with that instruction instead of skipping.
+// sign-in skips, with that instruction as the reason. A skip is
+// not a pass: check the run's skip count before calling a UI plan green.
 //
 // Every value a test changes is put back before it ends: the device name, the
 // colour mode, and the `agentui…` test tag (deleted with its `[agent]` task's
@@ -111,12 +112,15 @@ final class SettingsUITests: XCTestCase {
         // `TEST_RUNNER_MEMRY_UI_VAULT` picks the one this run uses.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name].firstMatch
-        let signIn = app.staticTexts["Sign in to Memry"]
+        // Signed out lands on the welcome screen first, or on sign-in once
+        // past it.
+        let signIn = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
+        )).firstMatch
         let deadline = Date().addingTimeInterval(90)
         while Date() < deadline, !more.exists {
             if signIn.exists {
-                XCTFail("Signed out: sign in to the staging test account first (spec 006 goal).")
-                throw XCTSkip("signed out")
+                throw XCTSkip("Signed out: sign in to the staging test account first (spec 006 goal).")
             }
             if vault.exists { vault.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
             Thread.sleep(forTimeInterval: 1)

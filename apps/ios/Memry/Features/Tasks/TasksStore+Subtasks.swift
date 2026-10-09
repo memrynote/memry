@@ -58,7 +58,7 @@ extension TasksStore {
         }
     }
 
-    /// Opens the "Make subtask of…" picker for a task.
+    /// Opens the "Move under…" picker for a task.
     func requestParentPicker(_ task: TaskItem) {
         scratch[Self.parentPickerScratchKey] = task.id
     }
@@ -210,22 +210,19 @@ extension TasksStore {
         subtasks(of: parentId).filter { !$0.isDone }
     }
 
-    /// The top-level tasks a task may move under, same project first, then
-    /// newest (`getPotentialParents`); `query` narrows by title.
-    func parentCandidates(for task: TaskItem, matching query: String = "") -> [TaskItem] {
+    /// Top-level tasks of other projects a task may move under, newest first;
+    /// `query` narrows by title. The task's own project is the core's tree
+    /// (`moveUnderPlaces`). With `tasks.nestedSubtasks` off, a task with
+    /// subtasks stays top level, as the core's tree rules there.
+    func otherProjectParents(for task: TaskItem, matching query: String = "") -> [TaskItem] {
+        guard rowCanBecomeSubtask(task) else { return [] }
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return ordered
             .filter { candidate in
-                candidate.id != task.id && candidate.id != task.parentId
-                    && candidate.parentId == nil && candidate.archivedAt == nil
+                candidate.projectId != task.projectId && candidate.parentId == nil && candidate.archivedAt == nil
                     && (needle.isEmpty || candidate.title.localizedCaseInsensitiveContains(needle))
             }
-            .sorted { lhs, rhs in
-                let lhsSame = lhs.projectId == task.projectId
-                let rhsSame = rhs.projectId == task.projectId
-                if lhsSame != rhsSame { return lhsSame }
-                return (lhs.createdAt ?? "") > (rhs.createdAt ?? "")
-            }
+            .sorted { ($0.createdAt ?? "") > ($1.createdAt ?? "") }
     }
 
     // MARK: Helpers

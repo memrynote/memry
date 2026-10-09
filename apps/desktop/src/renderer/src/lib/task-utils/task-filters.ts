@@ -4,7 +4,9 @@ import type { TaskNoteIndex } from '@/lib/task-note-index'
 import { getWeekStartsOn } from '@/lib/week-start'
 import {
   applyFiltersAndSort as applyFiltersAndSortAt,
-  filterByDueDateRange as filterByDueDateRangeAt
+  applyFiltersAndSortWithContext as applyFiltersAndSortWithContextAt,
+  filterByDueDateRange as filterByDueDateRangeAt,
+  type FilteredTasks
 } from '@memry/domain-tasks/filtering'
 
 // The filter and sort rules live in `@memry/domain-tasks/filtering`, pinned for
@@ -46,3 +48,22 @@ export const applyFiltersAndSort = (
   noteIndex?: TaskNoteIndex
 ): Task[] =>
   applyFiltersAndSortAt(tasks, filters, sort, projects, now, getWeekStartsOn(), noteIndex)
+
+/** `applyFiltersAndSort` plus the ancestors shown only as context for deeper matches. */
+export const applyFiltersAndSortWithContext = (
+  tasks: Task[],
+  filters: TaskFilters,
+  sort: TaskSort,
+  projects: Project[],
+  now: Date = new Date(),
+  noteIndex?: TaskNoteIndex
+): FilteredTasks<Task> =>
+  applyFiltersAndSortWithContextAt(
+    tasks,
+    filters,
+    sort,
+    projects,
+    now,
+    getWeekStartsOn(),
+    noteIndex
+  )

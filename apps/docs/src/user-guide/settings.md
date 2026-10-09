@@ -232,7 +232,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).
 
-**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note, journal entry or template stays a plain checkbox, and so does one in a template the agent applies, an inbox item it turns into a note or a file it imports, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks as it writes them, and the agent's reply lists each task it created. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
+**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note, journal entry or template stays a plain checkbox, and so does one in a template the agent applies, an inbox item it turns into a note or a file it imports, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks: the note and journal tools convert them as they write and list each task they created in the reply. A write through `vault_desktop_write` leaves its checklist items for the editor to convert when the note opens, so its reply does not list them. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
 
 ---
 
@@ -280,6 +280,10 @@ Show or hide journal sidebar panes:
 - **Default Project** — which project new tasks are assigned to
 - **Default Sort Order** — manual, due date, priority, or created date
 - **Default View** — which scope the Tasks page opens on (All, Today, Tomorrow, or Next 7 days). Defaults to All.
+
+### Subtasks
+
+**Subtasks inside subtasks** — on by default: a subtask can have subtasks of its own, at any depth. Turn it off to keep subtasks one level deep. It applies to this device only. Devices running an older version of memrynote show only the first level of subtasks until they update; nothing is lost, the deeper tasks reappear once they do. See [Subtasks at any depth](/user-guide/tasks/subtasks-recurrence#subtasks-at-any-depth).
 
 ### Inbox
 

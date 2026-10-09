@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
-import { Plus } from '@/lib/icons'
+import { ChevronRight, Plus } from '@/lib/icons'
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
 import { StatusIcon } from './status-icon'
@@ -13,6 +14,14 @@ interface TaskSubissuesSectionProps {
   onToggleComplete?: (taskId: string) => void
   /** Absent: the list is read-only and an empty list says so in words. */
   onAddSubtask?: (title: string) => void
+  /** Each subtask's own direct-subtask progress, shown on rows that have some. */
+  progressById?: ReadonlyMap<string, SubtaskProgress>
+  /**
+   * Opens a subtask in the drawer, so the drawer drills down one level at a
+   * time. Present: the status icon completes and the title opens. Absent: the
+   * whole row completes, as before.
+   */
+  onOpenSubtask?: (taskId: string) => void
 }
 
 /**
@@ -24,7 +33,9 @@ export const TaskSubissuesSection = ({
   subtasks,
   statuses,
   onToggleComplete,
-  onAddSubtask
+  onAddSubtask,
+  progressById,
+  onOpenSubtask
 }: TaskSubissuesSectionProps): React.JSX.Element => {
   const { t } = useT('tasks')
   const [isAdding, setIsAdding] = useState(false)
@@ -65,25 +76,58 @@ export const TaskSubissuesSection = ({
           ? (doneStatus?.color ?? status?.color ?? 'var(--text-tertiary)')
           : (status?.color ?? 'var(--text-tertiary)')
 
-        return (
-          <button
-            key={sub.id}
-            type="button"
-            onClick={() => onToggleComplete?.(sub.id)}
-            className={DRAWER_ROW}
+        const title = (
+          <span
+            className={cn(
+              'min-w-0 truncate',
+              isDone
+                ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+                : 'text-text-primary'
+            )}
           >
-            <StatusIcon type={type} color={color} className="size-3.5" />
-            <span
-              className={cn(
-                'min-w-0 truncate',
-                isDone
-                  ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-                  : 'text-text-primary'
-              )}
+            {sub.title}
+          </span>
+        )
+
+        if (!onOpenSubtask) {
+          return (
+            <button
+              key={sub.id}
+              type="button"
+              onClick={() => onToggleComplete?.(sub.id)}
+              className={DRAWER_ROW}
             >
-              {sub.title}
-            </span>
-          </button>
+              <StatusIcon type={type} color={color} className="size-3.5" />
+              {title}
+            </button>
+          )
+        }
+
+        const progress = progressById?.get(sub.id)
+        return (
+          <div key={sub.id} className={cn(DRAWER_ROW, 'pe-1')} data-testid="drawer-subtask-row">
+            <button
+              type="button"
+              onClick={() => onToggleComplete?.(sub.id)}
+              className="flex shrink-0 rounded-full"
+              aria-label={t('subtaskTree.toggleComplete', { title: sub.title })}
+            >
+              <StatusIcon type={type} color={color} className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenSubtask(sub.id)}
+              className="flex min-w-0 grow items-center gap-2 text-start"
+            >
+              {title}
+              {progress && progress.total > 0 && (
+                <span className="ms-auto flex shrink-0 items-center gap-1 text-[11px] text-text-tertiary tabular-nums">
+                  {progress.completed}/{progress.total}
+                  <ChevronRight className="size-3" aria-hidden="true" />
+                </span>
+              )}
+            </button>
+          </div>
         )
       })}
 

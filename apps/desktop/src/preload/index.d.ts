@@ -1406,6 +1406,7 @@ export interface TaskSettingsDTO {
   defaultSortOrder: 'manual' | 'dueDate' | 'priority' | 'createdAt'
   defaultView: 'today' | 'tomorrow' | 'next7' | 'all'
   staleInboxDays: number
+  nestedSubtasks: boolean
 }
 
 export interface ShortcutBindingDTO {

@@ -74,6 +74,13 @@ function tagNote(input: unknown): Readback {
 
 const settings = (operation: AgentMcpDesktopReadOperation) => () => read(operation)
 
+/** A status is read in its project's list; only the write's reply names the project. */
+function projectStatus(args: Args, reply: unknown): Readback | null {
+  const projectId = field(field(reply, 'status'), 'projectId')
+  if (typeof projectId !== 'string') return null
+  return findIn(call('tasks.listStatuses', [projectId]), null, 'id', equals(args[0]))
+}
+
 /**
  * Writes whose reply carries no record get one read after the write lands, so
  * the agent sees what was stored. Writes that already return their record
@@ -82,7 +89,9 @@ const settings = (operation: AgentMcpDesktopReadOperation) => () => read(operati
  * the others report counts or positions the agent sent. agent-mcp.md names the
  * few others that reply without `stored`.
  */
-const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => Readback>> = {
+const READBACKS: Partial<
+  Record<AgentMcpDesktopWriteOperation, (args: Args, reply: unknown) => Readback | null>
+> = {
   'notes.ensurePropertyDefinition': propertyDefinition,
   'notes.addPropertyOption': propertyDefinition,
   'notes.addStatusOption': propertyDefinition,
@@ -94,6 +103,7 @@ const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => R
   'tasks.archive': (args) => read('tasks.get', [args[0]]),
   'tasks.unarchive': (args) => read('tasks.get', [args[0]]),
   'tasks.archiveProject': (args) => read('tasks.getProject', [args[0]]),
+  'tasks.updateStatus': projectStatus,
   'tasks.linkProjectItem': (args) => read('tasks.listProjectLinks', [field(args[0], 'projectId')]),
   'tasks.unlinkProjectItem': (args) =>
     read('tasks.listProjectLinks', [field(args[0], 'projectId')]),
@@ -109,6 +119,7 @@ const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => R
   'inbox.retryTranscription': inboxItem,
   'inbox.retryMetadata': inboxItem,
   'inbox.snooze': (args) => read('inbox.get', [field(args[0], 'itemId')]),
+  'inbox.file': (args) => read('inbox.get', [field(args[0], 'itemId')]),
   'inbox.setStaleThreshold': () => read('inbox.getStaleThreshold'),
   'tags.updateTagColor': (args) => tag(field(args[0], 'tag')),
   'tags.updateTagIcon': (args) => tag(field(args[0], 'tag')),
@@ -155,8 +166,9 @@ const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => R
 export function desktopWriteReadback(input: {
   operation: AgentMcpDesktopWriteOperation
   args: unknown[]
+  reply?: unknown
 }): Readback | null {
-  return READBACKS[input.operation]?.(input.args) ?? null
+  return READBACKS[input.operation]?.(input.args, input.reply) ?? null
 }
 
 /**
@@ -214,7 +226,7 @@ export async function writeAndReadBack(
       ? { ...input, args: await keepLegacyPropertyKeys(input.args, currentProperties) }
       : input
   const data = await invoke(request)
-  const readback = desktopWriteReadback(request)
+  const readback = desktopWriteReadback({ ...request, reply: data })
   if (!readback || isFailedReply(data)) return data
   const reply = data && typeof data === 'object' && !Array.isArray(data) ? data : { result: data }
   try {

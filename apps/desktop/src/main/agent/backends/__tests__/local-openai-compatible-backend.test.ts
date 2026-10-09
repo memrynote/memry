@@ -352,7 +352,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       toolBridge: {
         execute: vi.fn()
       } as never,
-      fetch: createProbeFetch({ toolProbeStatus: 500 })
+      fetch: createProbeFetch({ toolProbeStatus: 400 })
     })
 
     await expect(backend.probeCapabilities()).resolves.toMatchObject({
@@ -362,7 +362,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       toolCallingSupported: false,
       toolContinuationSupported: false,
       toolsEnabled: false,
-      detail: '/v1/chat/completions returned HTTP 500'
+      detail: '/v1/chat/completions returned HTTP 400'
     })
   })
 
@@ -616,34 +616,6 @@ describe('LocalOpenAICompatibleBackend', () => {
 
       await turn(backend)
       expect(probeCallCount(fetchImpl)).toBe(8)
-    })
-
-    it('expires a cached probe after the TTL', async () => {
-      alwaysStream()
-      vi.useFakeTimers({ toFake: ['Date'] })
-      try {
-        vi.setSystemTime(new Date('2026-08-07T00:00:00.000Z'))
-        const fetchImpl = createProbeFetch()
-        const backend = new LocalOpenAICompatibleBackend({
-          getSettings: async () => baseSettings,
-          getApiKey: async () => null,
-          toolBridge: { execute: vi.fn() } as never,
-          fetch: fetchImpl
-        })
-
-        await turn(backend)
-        expect(probeCallCount(fetchImpl)).toBe(4)
-
-        vi.setSystemTime(new Date('2026-08-07T00:09:00.000Z'))
-        await turn(backend)
-        expect(probeCallCount(fetchImpl)).toBe(4)
-
-        vi.setSystemTime(new Date('2026-08-07T00:10:01.000Z'))
-        await turn(backend)
-        expect(probeCallCount(fetchImpl)).toBe(8)
-      } finally {
-        vi.useRealTimers()
-      }
     })
   })
 

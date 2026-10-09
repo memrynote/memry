@@ -5240,14 +5240,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func reminders(noteId: String) throws  -> [ReminderSummary]
     
     /**
-     * What a `[[wiki link]]` points at, by title and then by alias.
+     * What a `[[wiki link]]` points at: by vault path when the note half
+     * holds a `/`, then by title, then by alias, with the `#Heading` to
+     * scroll to.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
      * title rather than an id, so a link can name a note that does not exist
      * and the shell offers to create it. Nothing is created here — a reader
      * that wrote would turn scrolling past a broken link into an edit.
      */
-    func resolveWikiTarget(target: String) throws  -> String?
+    func resolveWikiTarget(target: String) throws  -> NoteLinkTarget?
     
     /**
      * One table's rows, cells and column widths, by the `blockContainer` id
@@ -5614,15 +5616,17 @@ open func reminders(noteId: String)throws  -> [ReminderSummary]  {
 }
     
     /**
-     * What a `[[wiki link]]` points at, by title and then by alias.
+     * What a `[[wiki link]]` points at: by vault path when the note half
+     * holds a `/`, then by title, then by alias, with the `#Heading` to
+     * scroll to.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
      * title rather than an id, so a link can name a note that does not exist
      * and the shell offers to create it. Nothing is created here — a reader
      * that wrote would turn scrolling past a broken link into an edit.
      */
-open func resolveWikiTarget(target: String)throws  -> String?  {
-    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func resolveWikiTarget(target: String)throws  -> NoteLinkTarget?  {
+    return try  FfiConverterOptionTypeNoteLinkTarget.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_resolve_wiki_target(
             self.uniffiCloneHandle(),
@@ -7946,9 +7950,11 @@ public protocol SearchProtocol: AnyObject, Sendable {
      * query would have returned an empty list forever and read as "no note
      * links here".
      *
-     * Matched on the **title** rather than only on a resolved id, so a link
-     * written before its target existed still counts once the target is
-     * created — which is the case `target_id` being nullable exists for.
+     * Matched on the **title** (any case) and on the note's vault-path forms
+     * (`Folder/Note`, `/Folder/Note.md`, ...) rather than only on a resolved
+     * id, so a link written before its target existed still counts once the
+     * target is created — which is the case `target_id` being nullable
+     * exists for.
      */
     func backlinks(noteId: String, order: BacklinkOrder) throws  -> [Backlink]
     
@@ -8058,9 +8064,11 @@ open class Search: SearchProtocol, @unchecked Sendable {
      * query would have returned an empty list forever and read as "no note
      * links here".
      *
-     * Matched on the **title** rather than only on a resolved id, so a link
-     * written before its target existed still counts once the target is
-     * created — which is the case `target_id` being nullable exists for.
+     * Matched on the **title** (any case) and on the note's vault-path forms
+     * (`Folder/Note`, `/Folder/Note.md`, ...) rather than only on a resolved
+     * id, so a link written before its target existed still counts once the
+     * target is created — which is the case `target_id` being nullable
+     * exists for.
      */
 open func backlinks(noteId: String, order: BacklinkOrder)throws  -> [Backlink]  {
     return try  FfiConverterSequenceTypeBacklink.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -9725,6 +9733,11 @@ public protocol TasksProtocol: AnyObject, Sendable {
      */
     func setDefaultView(view: String) throws  -> TaskSettingsItem
     
+    /**
+     * Local to this device, as on desktop.
+     */
+    func setNestedSubtasks(on: Bool) throws  -> TaskSettingsItem
+    
     func setProjectArchived(id: String, archived: Bool) throws 
     
     func setProjectHomeNote(id: String, noteId: String?) throws 
@@ -9806,6 +9819,17 @@ public protocol TasksProtocol: AnyObject, Sendable {
      * Reschedules or retitles a reminder (any target).
      */
     func updateReminder(id: String, remindAt: String?, title: String?) throws 
+    
+    /**
+     * The "Move under…" picker for `task_id`: its project's unarchived tasks
+     * as the tree, depth first. Empty when the task is gone.
+     */
+    func moveUnderPlaces(taskId: String) throws  -> [TaskPlace]
+    
+    /**
+     * Every live task's place in the tree, in `position` order.
+     */
+    func tree() throws  -> [TaskTreeEntry]
     
     /**
      * Every live task, archived ones included, in `position` order.
@@ -10345,6 +10369,19 @@ open func setDefaultView(view: String)throws  -> TaskSettingsItem  {
 })
 }
     
+    /**
+     * Local to this device, as on desktop.
+     */
+open func setNestedSubtasks(on: Bool)throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_nested_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(on),uniffiCallStatus
+    )
+})
+}
+    
 open func setProjectArchived(id: String, archived: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_set_project_archived(
@@ -10605,6 +10642,32 @@ open func updateReminder(id: String, remindAt: String?, title: String?)throws   
         FfiConverterOptionString.lower(title),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * The "Move under…" picker for `task_id`: its project's unarchived tasks
+     * as the tree, depth first. Empty when the task is gone.
+     */
+open func moveUnderPlaces(taskId: String)throws  -> [TaskPlace]  {
+    return try  FfiConverterSequenceTypeTaskPlace.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_move_under_places(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every live task's place in the tree, in `position` order.
+     */
+open func tree()throws  -> [TaskTreeEntry]  {
+    return try  FfiConverterSequenceTypeTaskTreeEntry.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_tree(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -19975,6 +20038,71 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * The note a `[[wiki link]]` opens, and the heading to scroll to.
+ */
+public struct NoteLinkTarget: Equatable, Hashable {
+    public var id: String
+    /**
+     * The `#Heading` half, `None` when there is nothing to scroll to: no `#`,
+     * a `#^block` reference, or a `#` that belongs to the title.
+     */
+    public var heading: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * The `#Heading` half, `None` when there is nothing to scroll to: no `#`,
+         * a `#^block` reference, or a `#` that belongs to the title.
+         */heading: String?) {
+        self.id = id
+        self.heading = heading
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteLinkTarget: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteLinkTarget: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteLinkTarget {
+        return
+            try NoteLinkTarget(
+                id: FfiConverterString.read(from: &buf), 
+                heading: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteLinkTarget, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.heading, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteLinkTarget_lift(_ buf: RustBuffer) throws -> NoteLinkTarget {
+    return try FfiConverterTypeNoteLinkTarget.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteLinkTarget_lower(_ value: NoteLinkTarget) -> RustBuffer {
+    return FfiConverterTypeNoteLinkTarget.lower(value)
+}
+
+
+/**
  * A note's tags and properties.
  */
 public struct NoteMetadata: Equatable, Hashable {
@@ -23413,6 +23541,89 @@ public func FfiConverterTypeTaskItem_lower(_ value: TaskItem) -> RustBuffer {
 
 
 /**
+ * One row of the "Move under…" picker.
+ */
+public struct TaskPlace: Equatable, Hashable {
+    public var taskId: String
+    /**
+     * 0 for a top-level task.
+     */
+    public var depth: UInt32
+    /**
+     * Ancestors, outermost first (shown beside a search match).
+     */
+    public var pathIds: [String]
+    /**
+     * False for the task's own branch and for a place the depth rule refuses.
+     */
+    public var allowed: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: String, 
+        /**
+         * 0 for a top-level task.
+         */depth: UInt32, 
+        /**
+         * Ancestors, outermost first (shown beside a search match).
+         */pathIds: [String], 
+        /**
+         * False for the task's own branch and for a place the depth rule refuses.
+         */allowed: Bool) {
+        self.taskId = taskId
+        self.depth = depth
+        self.pathIds = pathIds
+        self.allowed = allowed
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskPlace: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskPlace: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskPlace {
+        return
+            try TaskPlace(
+                taskId: FfiConverterString.read(from: &buf), 
+                depth: FfiConverterUInt32.read(from: &buf), 
+                pathIds: FfiConverterSequenceString.read(from: &buf), 
+                allowed: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskPlace, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.taskId, into: &buf)
+        FfiConverterUInt32.write(value.depth, into: &buf)
+        FfiConverterSequenceString.write(value.pathIds, into: &buf)
+        FfiConverterBool.write(value.allowed, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskPlace_lift(_ buf: RustBuffer) throws -> TaskPlace {
+    return try FfiConverterTypeTaskPlace.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskPlace_lower(_ value: TaskPlace) -> RustBuffer {
+    return FfiConverterTypeTaskPlace.lower(value)
+}
+
+
+/**
  * One task's fields before a write.
  */
 public struct TaskPrior: Equatable, Hashable {
@@ -23477,14 +23688,22 @@ public struct TaskSettingsItem: Equatable, Hashable {
     public var defaultSortOrder: String
     public var defaultView: String
     public var staleInboxDays: Int64
+    /**
+     * Local to this device: subtasks below the first level may be made.
+     */
+    public var nestedSubtasks: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(defaultProjectId: String?, defaultSortOrder: String, defaultView: String, staleInboxDays: Int64) {
+    public init(defaultProjectId: String?, defaultSortOrder: String, defaultView: String, staleInboxDays: Int64, 
+        /**
+         * Local to this device: subtasks below the first level may be made.
+         */nestedSubtasks: Bool) {
         self.defaultProjectId = defaultProjectId
         self.defaultSortOrder = defaultSortOrder
         self.defaultView = defaultView
         self.staleInboxDays = staleInboxDays
+        self.nestedSubtasks = nestedSubtasks
     }
 
     
@@ -23506,7 +23725,8 @@ public struct FfiConverterTypeTaskSettingsItem: FfiConverterRustBuffer {
                 defaultProjectId: FfiConverterOptionString.read(from: &buf), 
                 defaultSortOrder: FfiConverterString.read(from: &buf), 
                 defaultView: FfiConverterString.read(from: &buf), 
-                staleInboxDays: FfiConverterInt64.read(from: &buf)
+                staleInboxDays: FfiConverterInt64.read(from: &buf), 
+                nestedSubtasks: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -23515,6 +23735,7 @@ public struct FfiConverterTypeTaskSettingsItem: FfiConverterRustBuffer {
         FfiConverterString.write(value.defaultSortOrder, into: &buf)
         FfiConverterString.write(value.defaultView, into: &buf)
         FfiConverterInt64.write(value.staleInboxDays, into: &buf)
+        FfiConverterBool.write(value.nestedSubtasks, into: &buf)
     }
 }
 
@@ -23600,6 +23821,111 @@ public func FfiConverterTypeTaskTabCounts_lift(_ buf: RustBuffer) throws -> Task
 #endif
 public func FfiConverterTypeTaskTabCounts_lower(_ value: TaskTabCounts) -> RustBuffer {
     return FfiConverterTypeTaskTabCounts.lower(value)
+}
+
+
+/**
+ * One live task's place in the tree, with the moves its menu offers.
+ */
+public struct TaskTreeEntry: Equatable, Hashable {
+    public var id: String
+    /**
+     * The parent the tree places the task under; `None` at the top level.
+     * Differs from the stored `parentId` only for the root of a loop.
+     */
+    public var parentId: String?
+    /**
+     * Unarchived children, in `position` order.
+     */
+    public var childIds: [String]
+    /**
+     * "Indent": the sibling above, when the task may move under it.
+     */
+    public var indentUnder: String?
+    /**
+     * "Outdent": the grandparent, when the task may move under it.
+     */
+    public var outdentTo: String?
+    /**
+     * Whether a new subtask may go under this task.
+     */
+    public var canAddSubtask: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * The parent the tree places the task under; `None` at the top level.
+         * Differs from the stored `parentId` only for the root of a loop.
+         */parentId: String?, 
+        /**
+         * Unarchived children, in `position` order.
+         */childIds: [String], 
+        /**
+         * "Indent": the sibling above, when the task may move under it.
+         */indentUnder: String?, 
+        /**
+         * "Outdent": the grandparent, when the task may move under it.
+         */outdentTo: String?, 
+        /**
+         * Whether a new subtask may go under this task.
+         */canAddSubtask: Bool) {
+        self.id = id
+        self.parentId = parentId
+        self.childIds = childIds
+        self.indentUnder = indentUnder
+        self.outdentTo = outdentTo
+        self.canAddSubtask = canAddSubtask
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskTreeEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskTreeEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskTreeEntry {
+        return
+            try TaskTreeEntry(
+                id: FfiConverterString.read(from: &buf), 
+                parentId: FfiConverterOptionString.read(from: &buf), 
+                childIds: FfiConverterSequenceString.read(from: &buf), 
+                indentUnder: FfiConverterOptionString.read(from: &buf), 
+                outdentTo: FfiConverterOptionString.read(from: &buf), 
+                canAddSubtask: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskTreeEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.parentId, into: &buf)
+        FfiConverterSequenceString.write(value.childIds, into: &buf)
+        FfiConverterOptionString.write(value.indentUnder, into: &buf)
+        FfiConverterOptionString.write(value.outdentTo, into: &buf)
+        FfiConverterBool.write(value.canAddSubtask, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskTreeEntry_lift(_ buf: RustBuffer) throws -> TaskTreeEntry {
+    return try FfiConverterTypeTaskTreeEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskTreeEntry_lower(_ value: TaskTreeEntry) -> RustBuffer {
+    return FfiConverterTypeTaskTreeEntry.lower(value)
 }
 
 
@@ -23719,11 +24045,13 @@ public func FfiConverterTypeTaskViewQuery_lower(_ value: TaskViewQuery) -> RustB
 public struct TaskViewResult: Equatable, Hashable {
     /**
      * The list, in order: filtered and sorted, then (on a window tab) the
-     * window's overdue-first order. Subtasks ride with their parents.
+     * window's overdue-first order. On a window tab every id is its own row,
+     * at any depth; elsewhere subtasks ride with their parents.
      */
     public var taskIds: [String]
     /**
-     * The groups the sort field produces over the top-level rows; empty for
+     * The groups the sort field produces over the rows (top-level ones off a
+     * window tab); empty for
      * `title`, `completedAt` and an unknown field.
      */
     public var groups: [TaskGroupItem]
@@ -23744,10 +24072,12 @@ public struct TaskViewResult: Equatable, Hashable {
     public init(
         /**
          * The list, in order: filtered and sorted, then (on a window tab) the
-         * window's overdue-first order. Subtasks ride with their parents.
+         * window's overdue-first order. On a window tab every id is its own row,
+         * at any depth; elsewhere subtasks ride with their parents.
          */taskIds: [String], 
         /**
-         * The groups the sort field produces over the top-level rows; empty for
+         * The groups the sort field produces over the rows (top-level ones off a
+         * window tab); empty for
          * `title`, `completedAt` and an unknown field.
          */groups: [TaskGroupItem], 
         /**
@@ -24142,6 +24472,10 @@ public struct WikiTargetMatch: Equatable, Hashable {
      * The journal's date, `None` for a note.
      */
     public var date: String?
+    /**
+     * The `#Heading` half to scroll to, see [`NoteLinkTarget::heading`].
+     */
+    public var heading: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -24154,10 +24488,14 @@ public struct WikiTargetMatch: Equatable, Hashable {
          */kind: String, 
         /**
          * The journal's date, `None` for a note.
-         */date: String?) {
+         */date: String?, 
+        /**
+         * The `#Heading` half to scroll to, see [`NoteLinkTarget::heading`].
+         */heading: String?) {
         self.id = id
         self.kind = kind
         self.date = date
+        self.heading = heading
     }
 
     
@@ -24178,7 +24516,8 @@ public struct FfiConverterTypeWikiTargetMatch: FfiConverterRustBuffer {
             try WikiTargetMatch(
                 id: FfiConverterString.read(from: &buf), 
                 kind: FfiConverterString.read(from: &buf), 
-                date: FfiConverterOptionString.read(from: &buf)
+                date: FfiConverterOptionString.read(from: &buf), 
+                heading: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -24186,6 +24525,7 @@ public struct FfiConverterTypeWikiTargetMatch: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.kind, into: &buf)
         FfiConverterOptionString.write(value.date, into: &buf)
+        FfiConverterOptionString.write(value.heading, into: &buf)
     }
 }
 
@@ -29416,6 +29756,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteLinkTarget: FfiConverterRustBuffer {
+    typealias SwiftType = NoteLinkTarget?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteLinkTarget.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteLinkTarget.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeNoteMetadata: FfiConverterRustBuffer {
     typealias SwiftType = NoteMetadata?
 
@@ -31303,6 +31667,31 @@ fileprivate struct FfiConverterSequenceTypeTaskItem: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTaskPlace: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskPlace]
+
+    public static func write(_ value: [TaskPlace], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskPlace.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskPlace] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskPlace]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskPlace.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTaskPrior: FfiConverterRustBuffer {
     typealias SwiftType = [TaskPrior]
 
@@ -31320,6 +31709,31 @@ fileprivate struct FfiConverterSequenceTypeTaskPrior: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTaskPrior.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTaskTreeEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskTreeEntry]
+
+    public static func write(_ value: [TaskTreeEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskTreeEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskTreeEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskTreeEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskTreeEntry.read(from: &buf))
         }
         return seq
     }
@@ -32707,7 +33121,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_reminders() != 16202) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 21867) {
+    if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 32390) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_table() != 23484) {
@@ -32818,7 +33232,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_backlinks() != 53743) {
+    if (uniffi_memry_core_checksum_method_search_backlinks() != 60571) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_links_from() != 32512) {
@@ -33004,6 +33418,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_tasks_set_default_view() != 60508) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_tasks_set_nested_subtasks() != 25232) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_tasks_set_project_archived() != 17486) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -33065,6 +33482,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_update_reminder() != 43650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_move_under_places() != 63984) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_tree() != 21365) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_all() != 20951) {

@@ -62,6 +62,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
+mod links;
 mod maintenance;
 
 pub use maintenance::{

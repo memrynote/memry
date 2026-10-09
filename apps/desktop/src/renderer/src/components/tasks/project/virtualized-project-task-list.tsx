@@ -18,6 +18,8 @@ import {
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { TaskExpansionContext } from '@/components/tasks/subtask-tree/task-expansion-context'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 import { useDragContext } from '@/contexts/drag-context'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import { PROJECT_TASKS_SCROLL_KEY } from '@/pages/tasks-view-state'
@@ -196,6 +198,7 @@ const VirtualItemRenderer = memo(
             task={parentItem.task}
             project={parentItem.project}
             projects={[parentItem.project]}
+            allTasks={allTasks}
             subtasks={parentItem.subtasks}
             progress={progress}
             isExpanded={isExpanded}
@@ -255,10 +258,20 @@ export const VirtualizedProjectTaskList = ({
 }: VirtualizedProjectTaskListProps): React.JSX.Element => {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const { expandedIds, toggleExpanded } = useExpandedTasks({
+  const { expandedIds, toggleExpanded, expand } = useExpandedTasks({
     storageKey: `project-${project.id}`,
     persist: true
   })
+  const expansion = useMemo(
+    () => ({ expandedIds, toggle: toggleExpanded, expand }),
+    [expandedIds, toggleExpanded, expand]
+  )
+  // A filter that matches below the first level shows the match's ancestors as
+  // context; open them so the match itself is on screen.
+  const contextIds = useSubtaskTree()?.contextIds
+  useEffect(() => {
+    contextIds?.forEach(expand)
+  }, [contextIds, expand])
   const { dragState } = useDragContext()
 
   const lookupContext = useMemo(() => createLookupContext([project]), [project])
@@ -350,46 +363,48 @@ export const VirtualizedProjectTaskList = ({
             position: 'relative'
           }}
         >
-          <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const item = virtualItems[virtualRow.index]
-              return (
-                <div
-                  key={item.id}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`
-                  }}
-                >
-                  <VirtualItemRenderer
-                    item={item}
-                    lookupContext={lookupContext}
-                    allTasks={tasks}
-                    project={project}
-                    selectedTaskId={selectedTaskId}
-                    onToggleComplete={onToggleComplete}
-                    onUpdateTask={onUpdateTask}
-                    onToggleSubtaskComplete={onToggleSubtaskComplete}
-                    onTaskClick={onTaskClick}
-                    onNoteClick={onNoteClick}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={onToggleSelect}
-                    onShiftSelect={onShiftSelect}
-                    expandedIds={expandedIds}
-                    onToggleExpand={toggleExpanded}
-                    onAddSubtask={onAddSubtask}
-                    onReorderSubtasks={onReorderSubtasks}
-                  />
-                </div>
-              )
-            })}
-          </SortableContext>
+          <TaskExpansionContext.Provider value={expansion}>
+            <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const item = virtualItems[virtualRow.index]
+                return (
+                  <div
+                    key={item.id}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                  >
+                    <VirtualItemRenderer
+                      item={item}
+                      lookupContext={lookupContext}
+                      allTasks={tasks}
+                      project={project}
+                      selectedTaskId={selectedTaskId}
+                      onToggleComplete={onToggleComplete}
+                      onUpdateTask={onUpdateTask}
+                      onToggleSubtaskComplete={onToggleSubtaskComplete}
+                      onTaskClick={onTaskClick}
+                      onNoteClick={onNoteClick}
+                      isSelectionMode={isSelectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelect={onToggleSelect}
+                      onShiftSelect={onShiftSelect}
+                      expandedIds={expandedIds}
+                      onToggleExpand={toggleExpanded}
+                      onAddSubtask={onAddSubtask}
+                      onReorderSubtasks={onReorderSubtasks}
+                    />
+                  </div>
+                )
+              })}
+            </SortableContext>
+          </TaskExpansionContext.Provider>
         </div>
       </div>
     </div>

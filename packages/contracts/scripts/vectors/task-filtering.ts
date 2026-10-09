@@ -11,7 +11,7 @@
  * explicit. Titles and project names order by `localeCompare` (ICU root).
  */
 import {
-  applyFiltersAndSort,
+  applyFiltersAndSortWithContext,
   countActiveFilters,
   filterByCompletion,
   filterByDueDateRange,
@@ -182,8 +182,8 @@ function build() {
   const applied = FILTER_CASES.map((c) => ({
     ...c,
     expected: {
-      taskIds: ids(
-        applyFiltersAndSort(
+      ...(() => {
+        const result = applyFiltersAndSortWithContext(
           tasks,
           toFilters(c.filters),
           c.sort as TaskSort,
@@ -191,7 +191,8 @@ function build() {
           new Date(FILTER_NOWS[c.now]),
           c.weekStartsOn
         )
-      ),
+        return { taskIds: ids(result.tasks), contextIds: [...result.contextIds].sort() }
+      })(),
       hasActiveFilters: hasActiveFilters(toFilters(c.filters)),
       countActiveFilters: countActiveFilters(toFilters(c.filters))
     }

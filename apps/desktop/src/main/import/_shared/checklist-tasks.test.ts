@@ -3,7 +3,8 @@ import { markChecklistLinesPlain, planChecklistTasks } from './checklist-tasks'
 
 const NOW = new Date('2026-03-04T09:30:00.000Z')
 
-const plan = (markdown: string) => planChecklistTasks(markdown, NOW)
+const plan = (markdown: string) => planChecklistTasks(markdown, NOW, false)
+const planNested = (markdown: string) => planChecklistTasks(markdown, NOW, true)
 const titles = (markdown: string) => plan(markdown).map((item) => item.title)
 
 describe('planChecklistTasks', () => {
@@ -39,6 +40,18 @@ describe('planChecklistTasks', () => {
     const planned = plan('- [ ] A\n  - [ ] B\n    - [ ] C')
 
     expect(planned.map((item) => item.parentIndex)).toEqual([null, 0, null])
+  })
+
+  it('with nested subtasks on, keeps every level a subtask of the line above it', () => {
+    const planned = planNested('- [ ] A\n  - [ ] B\n    - [ ] C\n      - [ ] D\n  - [ ] E')
+
+    expect(planned.map((item) => [item.title, item.parentIndex])).toEqual([
+      ['A', null],
+      ['B', 0],
+      ['C', 1],
+      ['D', 2],
+      ['E', 0]
+    ])
   })
 
   it('does not treat a checkbox under a plain bullet as a subtask', () => {
@@ -178,6 +191,22 @@ describe('planChecklistTasks', () => {
         ['B', null, 'abc123'],
         ['C', null, null]
       ])
+    })
+
+    it('with nested subtasks on, parents a checkbox two levels under an existing task', () => {
+      const planned = planNested('- [ ] A {task:abc123}\n  - [ ] B\n    - [ ] C')
+
+      expect(planned.map((item) => [item.title, item.parentIndex, item.parentTaskId])).toEqual([
+        ['B', null, 'abc123'],
+        ['C', 0, null]
+      ])
+    })
+
+    it('with nested subtasks on, hands back an existing subtask line\u2019s id', () => {
+      const planned = planNested('- [ ] A {task:a1}\n  - [ ] B {task:b1}\n    - [ ] C')
+
+      expect(planned).toHaveLength(1)
+      expect(planned[0]).toMatchObject({ title: 'C', parentIndex: null, parentTaskId: 'b1' })
     })
 
     it('reports no parent task id for a line this run creates the parent of', () => {

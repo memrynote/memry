@@ -5,6 +5,8 @@
 //! absent, not `null`, because a create has nothing to clear (§13.4). Every
 //! field clock starts at this device's first tick (§6.7).
 
+use std::collections::HashSet;
+
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
@@ -17,7 +19,7 @@ use super::super::notes::{insert_local, iso, next_clock, object};
 use super::super::task_merge;
 use super::batch::{Batch, TaskWrite};
 use super::model::{
-    ProjectStatuses, StoredTask, load_live, new_task_id, next_position, subtask_ids,
+    ProjectStatuses, StoredTask, find_live, load_live, new_task_id, next_position, subtask_ids,
 };
 use super::{ITEM_TYPE, NewTask, valid_item_id};
 
@@ -32,7 +34,7 @@ pub struct TaskDetails<'a> {
     /// (`getDefaultTodoStatus(project)?.id || statuses[0]?.id`). An id that
     /// is not one of the project's statuses resolves the same way.
     pub status_id: Option<&'a str>,
-    /// The parent, which must be a live top-level task in the same project.
+    /// The parent, which must be a live task in the same project.
     pub parent_id: Option<&'a str>,
     pub start_date: Option<&'a str>,
     /// `"due"` or `"completion"`; desktop's `repeatFrom`.
@@ -205,9 +207,10 @@ pub(super) fn seeded(
     Ok(fields)
 }
 
-/// `validateSubtaskRelationship`: a task cannot be its own parent, the parent
-/// must be a live top-level task (one level deep), and both are in one
-/// project.
+/// `checkParent`: a task cannot be its own parent or sit inside its own
+/// branch, the parent must be live, and both are in one project. Any depth is
+/// allowed: the one-level rule older desktop builds apply is their setting,
+/// not the core's.
 pub(super) fn require_parent(
     conn: &Connection,
     task_id: &str,
@@ -221,11 +224,19 @@ pub(super) fn require_parent(
         return Err(refuse("a task cannot be its own parent"));
     }
     let parent = load_live(conn, parent_id)?;
-    if parent.parent_id().is_some() {
-        return Err(refuse("subtasks cannot have subtasks"));
-    }
     if parent.project_id() != project_id {
         return Err(refuse("a subtask belongs to its parent's project"));
+    }
+    let mut seen = HashSet::from([parent_id.to_owned()]);
+    let mut current = parent.parent_id().map(str::to_owned);
+    while let Some(ancestor) = current {
+        if ancestor == task_id {
+            return Err(refuse("a task cannot sit inside its own branch"));
+        }
+        if !seen.insert(ancestor.clone()) {
+            break;
+        }
+        current = find_live(conn, &ancestor)?.and_then(|task| task.parent_id().map(str::to_owned));
     }
     Ok(parent)
 }

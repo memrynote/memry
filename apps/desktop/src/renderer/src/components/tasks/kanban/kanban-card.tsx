@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Link2 } from '@/lib/icons'
+import { CornerDownRight, Link2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
@@ -11,6 +11,7 @@ import { priorityConfig, type Priority, type Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { formatDueDate } from '@/lib/task-utils'
 import { getSubtasks } from '@/lib/subtask-utils'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 
 interface KanbanCardProps {
   task: Task
@@ -66,6 +67,8 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
     const subtasks = getSubtasks(task.id, allTasks)
     const completedSubtasks = subtasks.filter((s) => s.completedAt !== null)
     const hasSubtasks = subtasks.length > 0
+    // The next step, so a card says what is left without being opened.
+    const nextSubtask = isDone ? undefined : subtasks.find((s) => s.completedAt === null)
     const hasLinkedNotes = task.linkedNoteIds.length > 0
 
     const dueDateInfo = task.dueDate ? formatDueDate(task.dueDate, task.dueTime) : null
@@ -147,6 +150,16 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
               {task.title}
             </span>
           </div>
+
+          {nextSubtask && (
+            <div
+              className="flex min-w-0 items-center gap-1 text-[11px] text-text-secondary"
+              data-testid="kanban-next-subtask"
+            >
+              <CornerDownRight className="size-3 shrink-0 text-text-tertiary" aria-hidden="true" />
+              <span className="truncate">{nextSubtask.title}</span>
+            </div>
+          )}
 
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -256,14 +269,16 @@ export const SortableKanbanCard = (props: KanbanCardProps): React.JSX.Element =>
   }
 
   return (
-    <KanbanCardContent
-      {...props}
-      isDragging={isDragging}
-      style={style}
-      attributes={attributes}
-      listeners={listeners}
-      setNodeRef={setNodeRef}
-    />
+    <TaskRowMenu task={props.task} canDraft={false}>
+      <KanbanCardContent
+        {...props}
+        isDragging={isDragging}
+        style={style}
+        attributes={attributes}
+        listeners={listeners}
+        setNodeRef={setNodeRef}
+      />
+    </TaskRowMenu>
   )
 }
 

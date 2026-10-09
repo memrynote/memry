@@ -48,7 +48,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         // only the draft.
         let bridge = NoteEditingBridge(
             model: editorModel,
-            titles: model.vaultNotes.map(\.title),
+            linkNotes: model.vaultNotes.map { WikiLinkNote(title: $0.title, folderPath: $0.folderPath) },
             icons: Dictionary(
                 model.vaultNotes.compactMap { note in ProjectIconValue.emoji(note.emoji).map { (note.title.lowercased(), $0) } },
                 uniquingKeysWith: { first, _ in first }

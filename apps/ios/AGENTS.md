@@ -33,7 +33,7 @@ Test gotchas:
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app, such as the UI plan or a manual check, comes after a fresh sign-in, never straight after a Unit run.
 - Before signing in to the staging test account, whether for iOS sign-in, an OTP, a recovery phrase, or a desktop launched on staging to pair or sync, read `.pi/skills/staging-test-account/SKILL.md`.
-- `TasksUITests` needs the simulator signed in to the staging test account. It fails, rather than skips, when it lands on sign-in.
+- `TasksUITests` needs the simulator signed in to the staging test account. It and the other UI tests skip, rather than fail, when they land on sign-in, so a UI run with skips has not exercised the flows.
 - `JournalUITests` needs the same sign-in plus the synced journal settings its header names, a Wednesday template. It pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a day in 2099.
 - An editable block is a text view, so its text is the accessibility value, not the label. Match `label CONTAINS x OR value CONTAINS x`.
 - `XCUIApplication.typeKey(.escape)` does not reach the app on the simulator. Drive `.cancelAction` shortcuts with `⌘.` instead.

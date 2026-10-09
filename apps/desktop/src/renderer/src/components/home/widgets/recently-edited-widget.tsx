@@ -65,7 +65,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
               }
             >
               {n.emoji ? (
-                <NoteIconDisplay value={n.emoji} className="shrink-0 text-sm leading-none" />
+                <NoteIconDisplay value={n.emoji} className="shrink-0 text-base leading-none" />
               ) : n.fileType === 'image' ? (
                 <FileImage className="size-4 shrink-0 text-muted-foreground/70" />
               ) : (

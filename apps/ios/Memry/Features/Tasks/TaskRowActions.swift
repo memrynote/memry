@@ -10,8 +10,10 @@ import SwiftUI
 //
 // **Long press** (artboard 07, desktop's Move menu): the four reschedule
 // targets as a small icon row (Today, Tomorrow, Next week, No date);
-// Priority ›, Status › and Move to › as pickers; Duplicate, Make subtask of…,
-// Select; Archive (Unarchive) and Delete. The preview is the row itself.
+// Priority ›, Status › and Move to › as pickers; the tree moves (Move under
+// {sibling}, Move out one level, Move under…, Make top-level task);
+// Duplicate, Select; Archive (Unarchive) and Delete. The preview is the row
+// itself.
 //
 // **Duplicate asks only when there are subtasks to copy**
 // (`duplicate-with-subtasks-dialog.tsx`); a task without subtasks is copied at
@@ -153,13 +155,10 @@ private struct TaskRowMenu: View {
             statusMenu
             projectMenu
         }
+        TaskTreeMenuSection(task: task, store: store, pickParent: pickParent)
         Section {
             Button(TasksCopy.rowDuplicate, systemImage: "plus.square.on.square", action: duplicate)
                 .accessibilityIdentifier("tasks.row.menu.duplicate")
-            if store.rowCanBecomeSubtask(task) {
-                Button(TasksCopy.rowMakeSubtaskOf, systemImage: "arrow.turn.down.right", action: pickParent)
-                    .accessibilityIdentifier("tasks.row.menu.makeSubtask")
-            }
             if let select {
                 Button(TasksCopy.moreSelect, systemImage: "checkmark.circle", action: select)
                     .accessibilityIdentifier("tasks.row.menu.select")

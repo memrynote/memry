@@ -59,6 +59,6 @@ extension NotesReading {
 
     /// Every link is broken until a test scripts otherwise — which is the
     /// honest default for a reader holding no notes.
-    func resolveWikiTarget(_ target: String) async throws -> String? { nil }
+    func resolveWikiTarget(_ target: String) async throws -> NoteLinkTarget? { nil }
 }
 

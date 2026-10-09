@@ -18,11 +18,11 @@ import {
   getLocalProviderSettings,
   setLocalProviderSettings
 } from './backends/local-provider-settings'
+import { LocalOpenAICompatibleBackend } from './backends/local-openai-compatible-backend'
 import {
   listOpenAiCompatibleModels,
-  LocalOpenAICompatibleBackend,
   testOpenAiCompatibleConnection
-} from './backends/local-openai-compatible-backend'
+} from './backends/local-provider-probe'
 import { createAgentBackendRegistry } from './backends/registry'
 import { AgentToolBridge } from './backends/tool-bridge'
 import type { AgyCliSpawnInput, ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'

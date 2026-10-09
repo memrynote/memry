@@ -206,7 +206,8 @@ enum WikiLinkText {
 /// One row of the `[[` or `@` menu.
 struct EditorSuggestion: Identifiable, Equatable {
     enum Kind: Equatable {
-        /// A link to a note by title, with the alias typed after `|`.
+        /// A link to a note by its target (a title, or a path stem when the
+        /// title is shared), with the alias typed after `|`.
         case note(title: String, alias: String)
         /// A link to a note that does not exist yet (desktop's `create` row).
         case create(title: String, alias: String)
@@ -226,17 +227,27 @@ enum EditorSuggestions {
     static let limit = 10
 
     /// The `[[` menu (`getWikiLinkItems`): matching notes, then a create row
-    /// when nothing matches exactly.
-    static func wiki(query: String, titles: [String]) -> [EditorSuggestion] {
+    /// when nothing matches exactly. A note sharing its title with another
+    /// links by its path stem and shows its folder (`/` at the root), as
+    /// desktop's `linkTargetFor` and `folderOf` do.
+    static func wiki(query: String, notes: [WikiLinkNote]) -> [EditorSuggestion] {
         let (search, alias) = WikiLinkText.parseQuery(query)
-        let matched = rank(titles, search)
-        if !alias.isEmpty, let exact = matched.first(where: { $0.caseInsensitiveCompare(search) == .orderedSame }) {
-            return [EditorSuggestion(id: "alias:\(exact)", title: alias, subtitle: exact, symbol: "link", kind: .note(title: exact, alias: alias))]
+        var counts: [String: Int] = [:]
+        for note in notes { counts[note.title.lowercased(), default: 0] += 1 }
+        let shared = { (note: WikiLinkNote) in counts[note.title.lowercased(), default: 0] > 1 }
+        let target = { (note: WikiLinkNote) in shared(note) ? WikiTarget.pathStem(of: note) : note.title }
+        let matched = rank(notes, search, title: \.title)
+        if !alias.isEmpty, let exact = matched.first(where: { $0.title.caseInsensitiveCompare(search) == .orderedSame }) {
+            return [EditorSuggestion(id: "alias:\(target(exact))", title: alias, subtitle: exact.title, symbol: "link", kind: .note(title: target(exact), alias: alias))]
         }
-        var out = matched.prefix(limit).map {
-            EditorSuggestion(id: "note:\($0)", title: $0.isEmpty ? "Untitled" : $0, symbol: "doc.text", kind: .note(title: $0, alias: alias))
+        var out = matched.prefix(limit).map { note in
+            EditorSuggestion(
+                id: "note:\(target(note))", title: note.title.isEmpty ? "Untitled" : note.title,
+                subtitle: shared(note) ? (note.folderPath ?? "/") : nil,
+                symbol: "doc.text", kind: .note(title: target(note), alias: alias)
+            )
         }
-        if !search.isEmpty, !titles.contains(where: { $0.caseInsensitiveCompare(search) == .orderedSame }) {
+        if !search.isEmpty, !notes.contains(where: { $0.title.caseInsensitiveCompare(search) == .orderedSame }) {
             out.append(EditorSuggestion(id: "create:\(search)", title: "Create \u{201c}\(search)\u{201d}", symbol: "plus", kind: .create(title: search, alias: alias)))
         }
         return out
@@ -300,10 +311,15 @@ enum EditorSuggestions {
     /// Titles containing `search`, prefix matches first. Empty search lists
     /// every title in the order given (most recently modified first).
     static func rank(_ titles: [String], _ search: String) -> [String] {
-        guard !search.isEmpty else { return titles }
-        let prefixed = titles.filter { $0.lowercased().hasPrefix(search.lowercased()) }
-        let contained = titles.filter {
-            !$0.lowercased().hasPrefix(search.lowercased()) && $0.localizedCaseInsensitiveContains(search)
+        rank(titles, search, title: \.self)
+    }
+
+    static func rank<Item>(_ items: [Item], _ search: String, title: KeyPath<Item, String>) -> [Item] {
+        guard !search.isEmpty else { return items }
+        let prefixed = items.filter { $0[keyPath: title].lowercased().hasPrefix(search.lowercased()) }
+        let contained = items.filter {
+            !$0[keyPath: title].lowercased().hasPrefix(search.lowercased())
+                && $0[keyPath: title].localizedCaseInsensitiveContains(search)
         }
         return prefixed + contained
     }

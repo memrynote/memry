@@ -62,15 +62,9 @@ export {
   type TaskCounts,
   getTaskCounts,
   formatTaskSubtitle,
-  type TodayViewTasks,
-  getTodayTasks,
   type TaskDueWindow,
   getTasksInDueWindow,
   getCompletedTasksInDueWindow,
-  type TodayWithWeekTasks,
-  getTodayWithWeekTasks,
-  type UpcomingViewTasks,
-  getUpcomingTasks,
   type DayHeaderText,
   getDayHeaderText,
   getCompletedTasks,
@@ -90,6 +84,7 @@ export {
   filterByHasTime,
   sortTasksAdvanced,
   applyFiltersAndSort,
+  applyFiltersAndSortWithContext,
   hasActiveFilters,
   countActiveFilters
 } from './task-filters'

@@ -1,9 +1,6 @@
-import { useState } from 'react'
-import { AlertTriangle } from '@/lib/icons'
-
+import { useRef } from 'react'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,128 +8,87 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
-// ============================================================================
-// TYPES
-// ============================================================================
+export interface DeleteParentBranch {
+  /** Direct subtasks. */
+  direct: number
+  /** Tasks below the direct subtasks. */
+  deeper: number
+  /** Open tasks anywhere in the branch. */
+  open: number
+}
 
 interface DeleteParentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   parent: Task | null
-  subtaskCount: number
+  branch: DeleteParentBranch
   onConfirm: (keepSubtasks: boolean) => void
 }
 
-type DeleteOption = 'delete-all' | 'keep-subtasks'
-
-// ============================================================================
-// DELETE PARENT DIALOG COMPONENT
-// ============================================================================
-
+/**
+ * Deleting a task that has subtasks asks once, naming how much is under it.
+ * "Keep subtasks" moves the direct subtasks up into the deleted task's place;
+ * it is the focused choice unless everything under the task is already done.
+ * Both choices can be undone.
+ */
 export const DeleteParentDialog = ({
   open,
   onOpenChange,
   parent,
-  subtaskCount,
+  branch,
   onConfirm
 }: DeleteParentDialogProps): React.JSX.Element | null => {
-  const { t: tPhaseF } = useT('tasks')
-  const [option, setOption] = useState<DeleteOption>('delete-all')
-
+  const { t } = useT('tasks')
+  const deleteAllRef = useRef<HTMLButtonElement>(null)
+  const keepRef = useRef<HTMLButtonElement>(null)
   if (!parent) return null
 
-  const handleConfirm = (): void => {
-    onConfirm(option === 'keep-subtasks')
+  const keepIsDefault = branch.open > 0
+  const confirm = (keepSubtasks: boolean): void => {
+    onConfirm(keepSubtasks)
     onOpenChange(false)
-    // Reset option for next time
-    setOption('delete-all')
-  }
-
-  const handleCancel = (): void => {
-    onOpenChange(false)
-    setOption('delete-all')
   }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          ;(keepIsDefault ? keepRef : deleteAllRef).current?.focus()
+        }}
+      >
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-
-            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskWithSubtasks')}
+          <AlertDialogTitle>
+            {t('subtaskTree.deleteParent.title', { title: parent.title })}
           </AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="space-y-3">
-              <p>
-                <span className="font-medium text-foreground">"{parent.title}"</span>{' '}
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.has')}
-                {subtaskCount}
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.subtask')}
-                {subtaskCount !== 1 ? 's' : ''}.
-              </p>
-              <p>
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.whatWouldYouLikeToDo')}
-              </p>
-            </div>
+          <AlertDialogDescription>
+            {t('subtaskTree.deleteParent.summary', {
+              direct: branch.direct,
+              deeper: branch.deeper,
+              open: branch.open
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
-
-        <div className="py-4">
-          <RadioGroup
-            value={option}
-            onValueChange={(value) => setOption(value as DeleteOption)}
-            className="space-y-3"
-          >
-            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
-              <RadioGroupItem value="delete-all" id="delete-all" className="mt-0.5" />
-              <Label htmlFor="delete-all" className="cursor-pointer flex-1">
-                <div className="font-medium">
-                  {tPhaseF(
-                    'phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskAndAllSubtasks'
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {tPhaseF(
-                    'phaseF.componentsTasksDialogsDeleteParentDialog.permanentlyRemovesEverything'
-                  )}
-                </div>
-              </Label>
-            </div>
-
-            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
-              <RadioGroupItem value="keep-subtasks" id="keep-subtasks" className="mt-0.5" />
-              <Label htmlFor="keep-subtasks" className="cursor-pointer flex-1">
-                <div className="font-medium">
-                  {tPhaseF(
-                    'phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskKeepSubtasksAsStandaloneTasks'
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {tPhaseF(
-                    'phaseF.componentsTasksDialogsDeleteParentDialog.subtasksBecomeTopLevelTasks'
-                  )}
-                </div>
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel}>
-            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.cancel')}
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.delete')}
-          </AlertDialogAction>
+        <AlertDialogFooter className="sm:justify-between">
+          <AlertDialogCancel>{t('subtaskTree.deleteParent.cancel')}</AlertDialogCancel>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => confirm(false)}
+              ref={deleteAllRef}
+            >
+              {t('subtaskTree.deleteParent.deleteAll')}
+            </Button>
+            <Button onClick={() => confirm(true)} ref={keepRef}>
+              {t('subtaskTree.deleteParent.keepSubtasks')}
+            </Button>
+          </div>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

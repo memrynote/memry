@@ -6,13 +6,15 @@ import Observation
 
 /// Where a note route in the browse stack points.
 ///
-/// The **id and nothing else**. `Codable` because `NavigationStack` restores a
+/// The id, plus the heading a `[[Note#Heading]]` link scrolls to. `Codable` because `NavigationStack` restores a
 /// saved path, and a restored path must resolve without the row that produced
 /// it ever having existed — which is the case research R15's
 /// `navigationDestination` rule is about. Carrying the title here would make a
 /// restored route render a title the vault may no longer agree with.
+/// `heading` is optional, so a path saved before it existed still decodes.
 struct NoteRoute: Hashable, Codable, Sendable {
     let id: String
+    var heading: String? = nil
 }
 
 /// What the body of a successfully read note actually is.
@@ -110,7 +112,9 @@ extension NoteReadViewModel {
     /// opens in the Journal tab (JP052, `JournalLink`).
     func wikiTarget(for title: String) async -> NoteRoute? {
         do {
-            if let id = try await reader.resolveWikiTarget(title) { return NoteRoute(id: id) }
+            if let hit = try await reader.resolveWikiTarget(title) {
+                return NoteRoute(id: hit.id, heading: hit.heading)
+            }
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("a wiki link could not be resolved", .code(mapped.code))
@@ -127,13 +131,17 @@ extension NoteReadViewModel {
 
     /// Whether a wiki link's title names a note in this vault, or `nil` while
     /// the list is unread — which draws every link as whole rather than
-    /// calling a good one broken. Titles only: a link naming a note by its
-    /// alias reads as broken here and still resolves on the tap. A date title
-    /// always leads somewhere, its journal day (JP052), so it reads as whole.
+    /// calling a good one broken. Titles and `Folder/Title` paths, with any
+    /// `#Heading` split off: a link naming a note by its alias reads as broken
+    /// here and still resolves on the tap. A date title always leads
+    /// somewhere, its journal day (JP052), so it reads as whole.
     var titleExists: ((String) -> Bool)? {
         guard !vaultNotes.isEmpty else { return nil }
         let titles = vaultTitles
-        return { titles.contains($0.lowercased()) || JournalLink.date(fromWikiTarget: $0) != nil }
+        let paths = vaultPaths
+        return {
+            WikiTarget.names($0, titles: titles, paths: paths) || JournalLink.date(fromWikiTarget: $0) != nil
+        }
     }
 
     /// The note's text for an export (N802).

@@ -6,6 +6,7 @@ import type { DataDb } from '../database'
 import { commitLocalChange } from '../sync/sync-intents'
 import { createLogger } from '../lib/logger'
 import { tasksEventSyncIntents } from './sync-intents'
+import { getTaskSettings } from '../settings/task-settings'
 
 const log = createLogger('TasksDomain')
 
@@ -32,6 +33,7 @@ export function createDesktopTasksDomain(
     },
     onPublisherError: (kind, error) => {
       log.warn('Tasks publisher side effect failed after commit', { kind, error })
-    }
+    },
+    allowNestedSubtasks: () => getTaskSettings().nestedSubtasks
   })
 }

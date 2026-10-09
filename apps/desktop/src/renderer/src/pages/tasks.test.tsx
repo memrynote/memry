@@ -719,6 +719,9 @@ vi.mock('@/components/tasks/dialogs', () => ({
     <div data-testid="delete-subtasks-dialog" data-open={String(isOpen)}>
       {subtasks.length}
     </div>
+  ),
+  DeleteParentDialog: ({ open }: any) => (
+    <div data-testid="delete-parent-dialog" data-open={String(open)} />
   )
 }))
 

@@ -319,7 +319,7 @@ export function getFileExtensionLabel(note: NoteListItem): string | null {
 
 export function getFileIcon(note: NoteListItem): React.ReactElement {
   if (note.emoji) {
-    return <NoteIconDisplay value={note.emoji} className="text-sm leading-none shrink-0" />
+    return <NoteIconDisplay value={note.emoji} className="shrink-0" />
   }
 
   const fileType = note.fileType ?? 'markdown'

@@ -50,10 +50,12 @@ use crate::sync::store;
 
 mod attachments;
 mod duplicate;
+pub(crate) mod link_rewrite;
 mod metadata;
 
 pub use attachments::*;
 pub use duplicate::duplicate;
+use link_rewrite::{LinkNames, Renamed};
 pub use metadata::*;
 
 /// The `(type, _)` half of every key this module writes.
@@ -102,7 +104,7 @@ pub fn create(
     )
 }
 
-/// Retitles a note.
+/// Retitles a note, then re-points the links to it ([`link_rewrite`]).
 pub fn rename(
     conn: &Connection,
     note_id: &str,
@@ -110,14 +112,28 @@ pub fn rename(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    edit(
+    let from = LinkNames::of(conn, note_id)?;
+    let durable = edit(
         conn,
         ITEM_TYPE,
         note_id,
         vec![("title", Change::set(title))],
         device_id,
         now_ms,
-    )
+    )?;
+    if let Some(from) = from {
+        let to = LinkNames {
+            title: title.to_owned(),
+            ..from.clone()
+        };
+        let renamed = Renamed {
+            note_id: note_id.to_owned(),
+            from,
+            to,
+        };
+        link_rewrite::rewrite_inbound(conn, &[renamed], device_id, now_ms);
+    }
+    Ok(durable)
 }
 
 /// Moves a note to `folder_path`, or to the vault root with `None`.
@@ -132,18 +148,30 @@ pub fn move_to_folder(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    let target = match folder_path {
-        Some(path) => Value::String(super::folders::valid_path(path)?.to_owned()),
-        None => Value::Null,
-    };
-    edit(
+    let folder = folder_path.map(super::folders::valid_path).transpose()?;
+    let target = folder.map_or(Value::Null, |path| Value::String(path.to_owned()));
+    let from = LinkNames::of(conn, note_id)?;
+    let durable = edit(
         conn,
         ITEM_TYPE,
         note_id,
         vec![("folderPath", Change::Set(target))],
         device_id,
         now_ms,
-    )
+    )?;
+    if let Some(from) = from {
+        let to = LinkNames {
+            folder: folder.map(str::to_owned),
+            ..from.clone()
+        };
+        let moved = Renamed {
+            note_id: note_id.to_owned(),
+            from,
+            to,
+        };
+        link_rewrite::rewrite_inbound(conn, &[moved], device_id, now_ms);
+    }
+    Ok(durable)
 }
 
 /// Tombstones a note.

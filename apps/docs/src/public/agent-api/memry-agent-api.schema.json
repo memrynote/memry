@@ -22529,6 +22529,9 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 90
+            },
+            "nestedSubtasks": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false

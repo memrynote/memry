@@ -10,6 +10,10 @@
 //! | properties are ordered by name                    | two reads render the same           |
 //! | a wiki link resolves by title, ignoring case      | chapter 12 §12.3                    |
 //! | a wiki link falls back to an alias                | same                                |
+//! | a path link resolves from the root, in any case   | desktop `resolveNoteByTitle`        |
+//! | a path link to an attachment keeps its extension  | desktop `noteLinkStem`              |
+//! | a path matching no file falls back to the title   | same                                |
+//! | a heading link names the heading                  | desktop `resolveWikiTarget`         |
 //! | a link naming nothing is broken, not an error     | `nil` is an answer                  |
 //! | a deleted note resolves nothing                   | §7.15                               |
 
@@ -102,8 +106,37 @@ fn metadata(db: &Db, id: &str) -> Option<note_meta::NoteMetadata> {
 }
 
 fn resolve(db: &Db, target: &str) -> Option<String> {
+    link(db, target).map(|found| found.id)
+}
+
+fn link(db: &Db, target: &str) -> Option<note_meta::NoteLinkTarget> {
     db.call_blocking(|conn: &mut Connection| note_meta::resolve_wiki_target(conn, target))
         .expect("the lookup")
+}
+
+/// A note in `folder`, of `file_type` (`markdown`, `pdf`, ...).
+fn write_in(db: &Db, id: &str, title: &str, folder: Option<&str>, file_type: &str) {
+    db.call_blocking(|conn: &mut Connection| {
+        let note = NewNote {
+            id,
+            title,
+            folder_path: folder,
+            content: "",
+            tags: &[],
+            properties: None,
+        };
+        notes::create(conn, &note, DEVICE, NOW)?;
+        // Nothing in the write surface creates an attachment note; desktop does.
+        conn.execute(
+            "UPDATE notes SET file_type = ?2 WHERE id = ?1",
+            (id, file_type),
+        )
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })?;
+        Ok(())
+    })
+    .expect("the write");
 }
 
 #[test]
@@ -207,6 +240,64 @@ fn a_deleted_note_resolves_nothing() {
 
     assert!(resolve(&db, "Dune").is_none());
     assert!(metadata(&db, "n1").is_none());
+}
+
+#[test]
+fn a_path_link_resolves_from_the_vault_root_in_any_case() {
+    // Two notes share a title, which is when desktop writes the path form.
+    let (db, _vault) = vault("path");
+    write_in(&db, "root", "Plan", None, "markdown");
+    write_in(&db, "work", "Plan", Some("Work"), "markdown");
+    write_in(&db, "deep", "Plan", Some("Home/Sub"), "markdown");
+
+    assert_eq!(resolve(&db, "Work/Plan").as_deref(), Some("work"));
+    assert_eq!(resolve(&db, "work/plan").as_deref(), Some("work"));
+    assert_eq!(resolve(&db, "/Home/Sub/PLAN.md").as_deref(), Some("deep"));
+    assert_eq!(resolve(&db, "home/sub/Plan.MD").as_deref(), Some("deep"));
+    // A leading `/` alone names the root note, never the linking note's folder.
+    assert_eq!(resolve(&db, "/Plan").as_deref(), Some("root"));
+    // A folder prefix that is only part of the path is not a match.
+    assert_eq!(resolve(&db, "Sub/Plan"), None);
+}
+
+#[test]
+fn a_path_link_to_an_attachment_keeps_its_extension() {
+    let (db, _vault) = vault("path-file");
+    write_in(&db, "pdf", "spec", Some("Docs"), "pdf");
+
+    assert_eq!(resolve(&db, "Docs/spec.pdf").as_deref(), Some("pdf"));
+    // Only a markdown note's path drops its extension.
+    assert_eq!(resolve(&db, "Docs/spec"), None);
+}
+
+#[test]
+fn a_path_that_matches_no_file_falls_back_to_the_title_lookup() {
+    let (db, _vault) = vault("path-fallback");
+    write_in(&db, "n1", "Plan", Some("Work"), "markdown");
+    set_aliases(&db, "n1", &["Archive/Plan"]);
+
+    assert_eq!(resolve(&db, "Archive/Plan").as_deref(), Some("n1"));
+}
+
+#[test]
+fn a_heading_link_opens_the_note_and_names_the_heading() {
+    let (db, _vault) = vault("heading");
+    write_in(&db, "work", "Plan", Some("Work"), "markdown");
+    write_in(&db, "sprint", "Sprint #4", None, "markdown");
+
+    let found = link(&db, "Work/Plan#Goals").expect("the note");
+    assert_eq!(found.id, "work");
+    assert_eq!(found.heading.as_deref(), Some("Goals"));
+    // `Note#H1#H2` names the last heading.
+    let nested = link(&db, "plan#Goals#Q3").expect("the note");
+    assert_eq!(nested.heading.as_deref(), Some("Q3"));
+    // A block reference opens the note with nothing to scroll to.
+    assert_eq!(link(&db, "Plan#^abc123").expect("the note").heading, None);
+    // The split misses, so the `#` belongs to the title.
+    let raw = link(&db, "Sprint #4").expect("the note");
+    assert_eq!((raw.id.as_str(), raw.heading), ("sprint", None));
+    // `[[#Heading]]` is the current note, which only the caller knows.
+    assert!(link(&db, "#Goals").is_none());
 }
 
 // MARK: - Property writes (N700)

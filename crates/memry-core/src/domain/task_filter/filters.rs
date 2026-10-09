@@ -15,6 +15,7 @@ use super::config::{
 };
 use super::{FilterProject, FilterTask, Priority, StatusType, find_status};
 use crate::domain::calendar::{CivilDate, LocalDateTime};
+use crate::domain::task_tree::{TaskTree, TreeNode};
 
 /// `filterBySearch`: case-insensitive substring of the title or description.
 /// A blank query keeps every task.
@@ -214,21 +215,14 @@ pub fn sort_tasks_advanced<'a>(
     sorted
 }
 
-/// `applyFiltersAndSort`: every dimension over the top-level tasks, then each
-/// surviving parent's subtasks (in input order) appended, then the sort over
-/// both together.
-pub fn apply_filters_and_sort<'a>(
-    tasks: &'a [FilterTask],
+fn apply_filter_chain<'a>(
+    tasks: &[&'a FilterTask],
     filters: &TaskFilters,
-    sort: &TaskSort,
     projects: &[FilterProject],
     now: LocalDateTime,
     week_starts_on: u32,
 ) -> Vec<&'a FilterTask> {
-    let mut result: Vec<&FilterTask> = tasks
-        .iter()
-        .filter(|task| task.parent_id.is_none())
-        .collect();
+    let mut result = tasks.to_vec();
     if !filters.search.is_empty() {
         result = filter_by_search(&result, &filters.search);
     }
@@ -239,15 +233,109 @@ pub fn apply_filters_and_sort<'a>(
     result = filter_by_statuses(&result, &filters.status_ids);
     result = filter_by_completion(&result, &filters.completion, projects);
     result = filter_by_repeat_type(&result, &filters.repeat_type);
-    result = filter_by_has_time(&result, &filters.has_time);
+    filter_by_has_time(&result, &filters.has_time)
+}
 
-    let surviving: HashSet<&str> = result.iter().map(|task| task.id.as_str()).collect();
-    result.extend(tasks.iter().filter(|task| {
-        task.parent_id
-            .as_deref()
-            .is_some_and(|parent| surviving.contains(parent))
-    }));
-    sort_tasks_advanced(&result, sort, projects)
+/// `hasNarrowingFilter`: a filter that picks tasks by what they are, as
+/// opposed to the completion and project scopes. Only these reach below the
+/// top level.
+fn has_narrowing_filter(filters: &TaskFilters) -> bool {
+    !filters.search.trim().is_empty()
+        || !filters.priorities.is_empty()
+        || !filters.tags.is_empty()
+        || filters.due_date.kind != DueDateKind::Any
+        || !filters.status_ids.is_empty()
+        || filters.repeat_type != RepeatFilter::All
+        || filters.has_time != HasTimeFilter::All
+}
+
+impl TreeNode for FilterTask {
+    fn node_id(&self) -> &str {
+        &self.id
+    }
+    fn node_parent(&self) -> Option<&str> {
+        self.parent_id.as_deref()
+    }
+}
+
+/// `applyFiltersAndSortWithContext`: matching top-level tasks bring their
+/// whole branch at any depth. With a narrowing filter, a deeper match also
+/// shows with its branch, and its ancestors join as context (the second
+/// value), which lists draw muted.
+pub fn apply_filters_and_sort_with_context<'a>(
+    tasks: &'a [FilterTask],
+    filters: &TaskFilters,
+    sort: &TaskSort,
+    projects: &[FilterProject],
+    now: LocalDateTime,
+    week_starts_on: u32,
+) -> (Vec<&'a FilterTask>, HashSet<&'a str>) {
+    let tree = TaskTree::build(tasks);
+    let roots: Vec<&FilterTask> = tasks.iter().filter(|t| tree.is_root(&t.id)).collect();
+    let mut included: HashSet<&str> = HashSet::new();
+    let mut context: HashSet<&str> = HashSet::new();
+    let include_branch =
+        |id: &'a str, included: &mut HashSet<&'a str>, context: &mut HashSet<&'a str>| {
+            for each in std::iter::once(id).chain(tree.descendant_ids(id)) {
+                included.insert(each);
+                context.remove(each);
+            }
+        };
+
+    for root in apply_filter_chain(&roots, filters, projects, now, week_starts_on) {
+        include_branch(&root.id, &mut included, &mut context);
+    }
+
+    if has_narrowing_filter(filters) {
+        let deeper: Vec<&FilterTask> = tasks
+            .iter()
+            .filter(|t| !tree.is_root(&t.id) && !included.contains(t.id.as_str()))
+            .collect();
+        for found in apply_filter_chain(&deeper, filters, projects, now, week_starts_on) {
+            let id = found.id.as_str();
+            if included.contains(id) && !context.contains(id) {
+                continue;
+            }
+            let ancestors = tree.ancestor_ids(id);
+            // Under a missing parent the task is in no tree, so it shows nowhere.
+            if !ancestors.last().is_some_and(|top| tree.is_root(top)) {
+                continue;
+            }
+            for ancestor in ancestors {
+                if included.insert(ancestor) {
+                    context.insert(ancestor);
+                }
+            }
+            include_branch(id, &mut included, &mut context);
+        }
+    }
+
+    // Roots first, then deeper rows, each in input order: the order the sort
+    // breaks ties by.
+    let ordered: Vec<&FilterTask> = roots
+        .iter()
+        .copied()
+        .filter(|t| included.contains(t.id.as_str()))
+        .chain(
+            tasks
+                .iter()
+                .filter(|t| !tree.is_root(&t.id) && included.contains(t.id.as_str())),
+        )
+        .collect();
+    (sort_tasks_advanced(&ordered, sort, projects), context)
+}
+
+/// `applyFiltersAndSort`: [`apply_filters_and_sort_with_context`] without the
+/// context ids.
+pub fn apply_filters_and_sort<'a>(
+    tasks: &'a [FilterTask],
+    filters: &TaskFilters,
+    sort: &TaskSort,
+    projects: &[FilterProject],
+    now: LocalDateTime,
+    week_starts_on: u32,
+) -> Vec<&'a FilterTask> {
+    apply_filters_and_sort_with_context(tasks, filters, sort, projects, now, week_starts_on).0
 }
 
 /// `hasActiveFilters`: anything differs from the default filter.

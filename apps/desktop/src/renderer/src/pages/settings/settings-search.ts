@@ -103,6 +103,9 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     ['tasks.sortOrder.label'],
     ['tasks.defaultView.label']
   ]),
+  ...group('tasks', 'tasks.groups.subtasks', [
+    ['tasks.nestedSubtasks.label', ['tasks.nestedSubtasks.description']]
+  ]),
   ...group('tasks', 'tasks.groups.inbox', [['tasks.staleInbox.label']]),
   ...group('inbox', 'inbox.reviewReminder.group', [
     ['inbox.reviewReminder.enabled.label'],

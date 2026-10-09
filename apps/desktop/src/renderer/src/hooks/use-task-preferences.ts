@@ -8,7 +8,8 @@ const DEFAULTS: TaskSettingsDTO = {
   defaultProjectId: null,
   defaultSortOrder: 'manual',
   defaultView: 'all',
-  staleInboxDays: 7
+  staleInboxDays: 7,
+  nestedSubtasks: true
 }
 
 interface UseTaskPreferencesReturn {

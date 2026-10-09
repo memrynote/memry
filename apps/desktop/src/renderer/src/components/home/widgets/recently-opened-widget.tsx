@@ -86,7 +86,7 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
                 // Icons are not always bare emoji: a note or canvas can carry an
                 // `icon:`/`custom:` reference, which reads as literal text if
                 // rendered raw.
-                <NoteIconDisplay value={item.emoji} className="shrink-0 text-sm leading-none" />
+                <NoteIconDisplay value={item.emoji} className="shrink-0 text-base leading-none" />
               ) : isCanvas ? (
                 <PenTool className="size-4 shrink-0 text-muted-foreground/70" />
               ) : item.fileType === 'image' ? (

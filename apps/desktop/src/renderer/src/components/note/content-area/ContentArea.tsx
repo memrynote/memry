@@ -77,7 +77,7 @@ import {
 } from './slash-menu-model'
 import { SlashMenu, SlashMenuFallbackContext, type SlashMenuFallbacks } from './slash-menu'
 import { getTaskSlashMenuItem } from './task-block'
-import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
+import { TaskPrefetchProvider, useTaskPrefetch } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { memrySyntaxHighlighter } from '@memry/editor-schema/code-block'
@@ -167,6 +167,7 @@ import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
+import { capNoteTaskTree, taskDepthBelow } from './hooks/task-block-marquee-indent'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 import { AllSelection, TextSelection } from '@tiptap/pm/state'
@@ -421,6 +422,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Off until the setting is read. The note's first scan runs before the read
   // returns, and the default there would convert checkboxes the owner turned off.
   const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
+  const { nestedSubtasks, taskParents } = useTaskPrefetch()
+  // Read by the Tab plugin at key time; it is registered once per editor.
+  const nestedSubtasksRef = useRef(nestedSubtasks)
+  // Read by the create paths and the Tab plugin, which outlive a render.
+  const taskParentsRef = useRef(taskParents)
+  useEffect(() => {
+    nestedSubtasksRef.current = nestedSubtasks
+    taskParentsRef.current = taskParents
+  }, [nestedSubtasks, taskParents])
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openSidebarItem } = useSidebarNavigation()
@@ -518,6 +528,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     tRef.current = t
   }, [t])
+  // Read when a conversion settles, not when it starts: a note's first scan
+  // runs before the setting is read.
+  const convertChecklistsRef = useRef(convertChecklists)
+  useEffect(() => {
+    convertChecklistsRef.current = convertChecklists
+  }, [convertChecklists])
 
   // Upload function — defined before editor creation so BlockNote can use it.
   //
@@ -1067,7 +1083,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // before the date ghost below on purpose: each prepend goes to the front, so
   // the ghost ends up ahead of it and keeps Tab while a date is being typed.
   useEffect(() => {
-    const plugin = createMultiBlockIndentPlugin(editor)
+    const plugin = createMultiBlockIndentPlugin(editor, () => ({
+      nested: nestedSubtasksRef.current,
+      parents: taskParentsRef.current
+    }))
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
 
@@ -1236,7 +1255,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editor,
     blockContainerRef: editorContainerRef,
     triggerContainerEl: triggerEl,
-    enabled: editable
+    enabled: editable,
+    nestedSubtasks,
+    taskParents
   })
 
   // Retyping from the toolbar or the block menu reads this at click time, not
@@ -1324,6 +1345,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // so, and says how to keep it a checkbox. After that, undo is the way.
   const showConversionHint = useCallback(
     (blockId: string) => {
+      // The hint says a new checkbox becomes a task. With conversion off only a
+      // checkbox under a task converts, so it would be false.
+      if (!convertChecklistsRef.current) return
       try {
         if (localStorage.getItem(CONVERSION_HINT_KEY)) return
         localStorage.setItem(CONVERSION_HINT_KEY, '1')
@@ -1359,6 +1383,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.completeFailed')))
     }
   }, [])
+
+  // A row created nested below the first level keeps that parent in the DB,
+  // and the note lists it under its top-level task (MAX_NOTE_TASK_DEPTH).
+  const settleCreatedTask = useCallback(
+    (blockId: string, taskId: string, parentId: string) => {
+      taskParentsRef.current.set(taskId, parentId || null)
+      capNoteTaskTree(editor, blockId)
+    },
+    [editor]
+  )
 
   const convertCheckboxToTask = useCallback(
     (blockId: string, auto = false) => {
@@ -1505,6 +1539,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   parentTaskId: currentParentTaskId
                 }
               })
+              settleCreatedTask(blockId, result.task.id, liveParentTaskId)
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
@@ -1529,7 +1564,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       restoreCheckbox,
       discardTask,
       keepCheckboxPlain,
-      rememberConversion
+      rememberConversion,
+      settleCreatedTask
     ]
   )
 
@@ -1626,6 +1662,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   parentTaskId
                 }
               })
+              settleCreatedTask(blockId, result.task.id, parentTaskId)
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
@@ -1647,7 +1684,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       restoreCheckbox,
       discardTask,
       keepCheckboxPlain,
-      rememberConversion
+      rememberConversion,
+      settleCreatedTask
     ]
   )
 
@@ -1765,6 +1803,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   parentTaskId: currentParentTaskId
                 }
               })
+              settleCreatedTask(blockId, result.task.id, liveParentTaskId)
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
@@ -1783,7 +1822,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       })()
     },
-    [editor, noteId, tasksCtx]
+    [editor, noteId, tasksCtx, settleCreatedTask]
   )
 
   // The attachment picker every `/image`, `/media`, `/pdf`, `/file` opens
@@ -2471,7 +2510,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
     const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
       openedBlockIds: openedBlockIdsRef.current,
-      convertChecklists
+      convertChecklists,
+      nestedSubtasks
     })
 
     // Both paths convert in the same change that produced the checkbox, so a
@@ -2515,6 +2555,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       editor.updateBlock(block, {
         props: { ...block.props, parentTaskId: demoted.newParentTaskId }
       })
+      // A task listed under its top-level task may sit deeper in the DB
+      // (MAX_NOTE_TASK_DEPTH). The DB parent owns that; only a task not yet
+      // under the new tree parent moves.
+      if (taskDepthBelow(demoted.taskId, demoted.newParentTaskId, taskParentsRef.current)) continue
       void tasksService.update({
         id: demoted.taskId,
         parentId: demoted.newParentTaskId

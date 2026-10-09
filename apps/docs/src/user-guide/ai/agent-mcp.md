@@ -293,11 +293,12 @@ worked and every chat turn repeats it:
   probe saw the model call tools the native way. Only the names
   of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
-The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
-up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
-API key re-checks immediately, and an unreachable provider is never remembered — start your local
-server and the next message picks it up. If you swap the model behind an unchanged configuration,
-press **Probe Tools** in Settings to force a fresh check.
+The probe costs a couple of model generations, so memrynote runs it once and keeps the verdict until
+you change the preset, base URL, model, or API key, or restart the app. An unreachable provider is
+never remembered: start your local server and the next message picks it up. A temporary provider
+error during the tool check (network failure, timeout, rate limit, or a 5xx server error) does not
+turn tools off. That message keeps its tools, and the next message checks again. If you swap the
+model behind an unchanged configuration, press **Probe Tools** in Settings to force a fresh check.
 
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
@@ -440,6 +441,11 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
 
 `vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
 markdown.
+
+`vault_update_note` builds the update from the note file as it is on disk, so it reads the file
+before it writes. When another program holds the file and that read fails, it reads once more a
+moment later. If the second read fails too, nothing is written and the error names the
+cause, for example `EBUSY`.
 
 ### Looking at images and PDF pages
 
@@ -772,10 +778,6 @@ option, a tag color, pinning a note to a tag, saving a folder view, creating a f
 - Bulk calls and conversions, which reply with counts or the new item's id: the `bulk*` operations,
   `inbox.fileAllStale`, `inbox.convertTo*`, `tasks.captureUrlToProject`,
   `tasks.importFilesToProject` and `notes.importFiles`.
-- `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
-  `tasks.listStatuses`.
-- `inbox.file`, which replies `{ success, filedTo, noteId }`; read the filed note with
-  `notes.get`.
 - `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
   store no record.
 

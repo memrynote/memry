@@ -41,7 +41,80 @@ export interface TaskNormalizableBlock {
 export function serializeTaskBlock(props: TaskBlockProps): string {
   const check = props.checked ? 'x' : ' '
   const indent = props.parentTaskId ? '  ' : ''
+  // A draft task block has no row yet. An empty `{task:}` names nothing, so the
+  // line is written as the checkbox it is until the id lands.
+  if (!props.taskId) return `${indent}- [${check}] ${props.title}`
   return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
+}
+
+/**
+ * How many task levels a note body holds under a top-level task: the note's
+ * markdown and its block tree (the Y.Doc every device syncs). Compat contract:
+ * builds released before nested subtasks parse and write back only one level,
+ * and misplace or drop lines below it (#2877). A deeper task stays deep in the
+ * DB (`parentId`), which owns the hierarchy; the note lists it flat under its
+ * top-level ancestor. Lift this only together with the client version floor
+ * that retires those builds.
+ */
+export const MAX_NOTE_TASK_DEPTH = 1
+
+/**
+ * A top-level task block with every task block below `MAX_NOTE_TASK_DEPTH`
+ * lifted to that depth, in document order, each `parentTaskId` naming its new
+ * tree parent. Only the tree changes; the DB parents stay where they are.
+ * Returns `block` itself when nothing sits too deep.
+ */
+export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
+  const tooDeep = (children: TaskNormalizableBlock[] | undefined, depth: number): boolean =>
+    (children ?? []).some(
+      (child) =>
+        child.type === 'taskBlock' &&
+        (depth > MAX_NOTE_TASK_DEPTH || tooDeep(child.children, depth + 1))
+    )
+  if (!tooDeep(block.children, 1)) return block
+
+  const reparent = (children: T[], parentTaskId: string): T[] =>
+    children.map((child) =>
+      child.type === 'taskBlock' ? { ...child, props: { ...child.props, parentTaskId } } : child
+    )
+  // The node, then the task blocks lifted out from under it to its own level.
+  const cap = (node: T, depth: number): T[] => {
+    const kept: T[] = []
+    const lifted: T[] = []
+    for (const child of (node.children ?? []) as T[]) {
+      if (child.type !== 'taskBlock') {
+        kept.push(child)
+        continue
+      }
+      const [self, ...below] = cap(child, depth + 1)
+      if (depth < MAX_NOTE_TASK_DEPTH) kept.push(self, ...below)
+      else lifted.push(self, ...below)
+    }
+    const parentTaskId = node.props?.taskId as string
+    const own = depth < MAX_NOTE_TASK_DEPTH ? reparent(kept, parentTaskId) : kept
+    return [{ ...node, children: own }, ...lifted]
+  }
+  return cap(block, 0)[0]
+}
+
+/**
+ * A task block and the task blocks under it, one tight-list line each, capped
+ * at `MAX_NOTE_TASK_DEPTH`. With the cap at one level the output is
+ * byte-identical to what builds before nested subtasks wrote.
+ */
+export function serializeTaskBlockTree(block: TaskNormalizableBlock): string[] {
+  // SAFETY: a `taskBlock`'s props are `TaskBlockProps`; callers pass only those.
+  const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
+  const walk = (children: TaskNormalizableBlock[], depth: number): void => {
+    for (const child of children) {
+      if (child.type !== 'taskBlock') continue
+      const props = child.props as unknown as TaskBlockProps
+      lines.push('  '.repeat(depth) + serializeTaskBlock({ ...props, parentTaskId: '' }))
+      walk(child.children ?? [], depth + 1)
+    }
+  }
+  walk(capTaskTreeDepth(block).children ?? [], 1)
+  return lines
 }
 
 /**
@@ -204,6 +277,70 @@ function scanTaskLineTitles(markdown: string): Map<string, string[]> {
   return titles
 }
 
+/**
+ * Each task line's nesting depth among the task lines above it, by indent.
+ * The first line for an id wins.
+ */
+function scanTaskLineDepths(markdown: string): Map<string, number> {
+  const depths = new Map<string, number>()
+  const fence = createFenceTracker()
+  const open: number[] = []
+  for (const line of markdown.split('\n')) {
+    if (fence.consume(line) || line.trim() === '') continue
+    const indent = line.length - line.trimStart().length
+    while (open.length > 0 && open[open.length - 1] >= indent) open.pop()
+    const checkbox = checkboxTextStart(line)
+    const parsed = checkbox ? parseTaskBlockSuffix(line.slice(checkbox.start)) : null
+    if (!parsed) {
+      if (indent === 0) open.length = 0
+      continue
+    }
+    if (!depths.has(parsed.taskId)) depths.set(parsed.taskId, open.length)
+    open.push(indent)
+  }
+  return depths
+}
+
+/**
+ * BlockNote's markdown parser strips a task item's sub-lines inconsistently:
+ * by one column below the content column, by the whole column at or past it.
+ * A third-level `- [ ]` line two spaces deeper per level then lands under the
+ * wrong parent. The parse keeps line order, so the tree is rebuilt from that
+ * order and each line's source depth. A tree holding anything but task blocks,
+ * or a task the source scan missed, is left as parsed.
+ */
+function renestTaskTree<T extends TaskNormalizableBlock>(root: T, depths: Map<string, number>): T {
+  const rootId = root.props?.taskId as string
+  const rootDepth = depths.get(rootId)
+  if (rootDepth === undefined) return root
+  const flat: T[] = []
+  const collect = (children: TaskNormalizableBlock[] | undefined): boolean =>
+    (children ?? []).every((child) => {
+      if (child.type !== 'taskBlock' || !depths.has(child.props?.taskId as string)) return false
+      flat.push(child as T)
+      return collect(child.children)
+    })
+  if (!collect(root.children)) return root
+
+  type Node = { block: T; depth: number; children: Node[] }
+  const top: Node = { block: root, depth: rootDepth, children: [] }
+  const stack = [top]
+  for (const block of flat) {
+    const depth = depths.get(block.props?.taskId as string)!
+    while (stack.length > 1 && stack[stack.length - 1].depth >= depth) stack.pop()
+    if (stack[stack.length - 1].depth >= depth) return root
+    const node: Node = { block, depth, children: [] }
+    stack[stack.length - 1].children.push(node)
+    stack.push(node)
+  }
+  const build = (node: Node, parentTaskId: string): T => ({
+    ...node.block,
+    props: { ...node.block.props, parentTaskId },
+    children: node.children.map((child) => build(child, node.block.props?.taskId as string))
+  })
+  return build(top, (root.props?.parentTaskId as string) ?? '')
+}
+
 function words(text: string): string[] {
   return text.match(/[\p{L}\p{N}]+/gu) ?? []
 }
@@ -247,6 +384,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
   }
 
   const sourceTitles = source === null ? null : scanTaskLineTitles(source)
+  const sourceDepths = source === null ? null : scanTaskLineDepths(source)
   let didChange = false
 
   function processBlocks(blockList: T[], parentTaskId: string): T[] {
@@ -278,7 +416,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       // (and some tests) pass `isChecked`. Honour both so a `- [x]` round-trips.
       const checked = block.props?.checked ?? block.props?.isChecked ?? false
 
-      return {
+      const taskBlock = {
         type: 'taskBlock',
         props: {
           taskId: parsed.taskId,
@@ -290,6 +428,8 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         children: processedChildren,
         id: block.id
       } as unknown as T
+      if (parentTaskId !== '') return taskBlock
+      return capTaskTreeDepth(sourceDepths ? renestTaskTree(taskBlock, sourceDepths) : taskBlock)
     })
   }
 

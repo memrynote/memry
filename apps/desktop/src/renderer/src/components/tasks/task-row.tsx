@@ -7,6 +7,7 @@ import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-
 import { TaskTagsBadge } from '@/components/tasks/task-badges'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
 import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
@@ -112,6 +113,7 @@ export const TaskRow = ({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
+  const path = useTaskPath(task)
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { color: statusColor } = resolveStatus(task, project.statuses)
@@ -204,16 +206,18 @@ export const TaskRow = ({
       {renderTitle ? (
         renderTitle()
       ) : (
-        <span
-          className={cn(
-            'text-[13px] font-medium grow shrink min-w-0 truncate',
-            isCompleted
-              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-              : 'text-foreground/90'
-          )}
-        >
-          {task.title}
-        </span>
+        <TaskPathTitle task={task} path={path}>
+          <span
+            className={cn(
+              'text-[13px] font-medium grow shrink min-w-0 truncate',
+              isCompleted
+                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : 'text-foreground/90'
+            )}
+          >
+            {task.title}
+          </span>
+        </TaskPathTitle>
       )}
 
       {meta ?? (
@@ -226,7 +230,7 @@ export const TaskRow = ({
         </>
       )}
 
-      {showProjectBadge && onProjectChange && interactive ? (
+      {path ? null : showProjectBadge && onProjectChange && interactive ? (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <InteractiveProjectBadge
             projectId={task.projectId}

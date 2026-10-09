@@ -27,6 +27,8 @@ export const TASKS_VIEW_STATE_KEYS = {
   selectedProjectId: 'selectedProjectId',
   /** Task open in the detail drawer. */
   openTaskId: 'openTaskId',
+  /** Task whose branch the list is zoomed into. Absent or null: the whole list. */
+  zoomedTaskId: 'zoomedTaskId',
   /** Saved filter currently applied. */
   activeSavedFilterId: 'activeSavedFilterId',
   /** Collapsed groups in the all-tasks list. */

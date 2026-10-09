@@ -9,22 +9,24 @@ import { useCustomIcon } from './custom-icons-store'
 import { HugeIconByName } from './hugeicon-renderer'
 
 /**
- * The box a folder's custom icon gets: 20px, the size the built-in folder glyph
- * already reserves in the sidebar row and the folder-view header. Without it a
- * URL-backed icon renders at the row's 14px text size and is unreadable.
- *
- * Both surfaces put the icon inside a button that is already at least this tall,
- * so widening the glyph does not move the row height.
+ * The box a folder's custom icon gets in the folder-view header: 20px, the size
+ * the chip reserves. Without it a URL-backed icon renders at the chip's text
+ * size and is hard to identify.
  */
 export const FOLDER_CUSTOM_ICON_CLASS = 'size-5'
 
-/** Default box: track the surrounding text, as emoji and library icons do. */
-const TEXT_SIZED_CUSTOM_ICON_CLASS = 'h-[1em] w-[1em]'
+/**
+ * Default box for every icon kind: one em of the surrounding text, the box an
+ * emoji glyph already takes. Library SVGs otherwise render at their 24px
+ * default and custom images at their intrinsic size, so the three kinds would
+ * differ in size on the same row.
+ */
+const TEXT_SIZED_ICON_CLASS = 'h-[1em] w-[1em]'
 
 /**
  * A user-uploaded icon, sized to the surrounding text so one component covers
- * a 14px sidebar row and a 28px note title alike — or to `customIconClassName`
- * where the text size is too small to identify the image (folder rows).
+ * a sidebar row and a note title alike — or to `customIconClassName` where the
+ * caller needs a different box (the folder-view header, the note title tile).
  *
  * The library is loaded asynchronously and an icon can also be missing outright
  * (deleted on another device while a folder still points at it), so an unknown
@@ -34,7 +36,7 @@ const TEXT_SIZED_CUSTOM_ICON_CLASS = 'h-[1em] w-[1em]'
 function CustomIconImage({
   id,
   className,
-  customIconClassName = TEXT_SIZED_CUSTOM_ICON_CLASS
+  customIconClassName = TEXT_SIZED_ICON_CLASS
 }: {
   id: string
   className?: string
@@ -69,7 +71,12 @@ export function NoteIconDisplay({
   customIconClassName?: string
 }): React.JSX.Element {
   if (isIconValue(value)) {
-    return <HugeIconByName name={parseIconName(value)} className={className} />
+    return (
+      <HugeIconByName
+        name={parseIconName(value)}
+        className={cn(TEXT_SIZED_ICON_CLASS, className)}
+      />
+    )
   }
   if (isCustomIconValue(value)) {
     return (
@@ -81,10 +88,17 @@ export function NoteIconDisplay({
     )
   }
   // `font-emoji` pins the glyph to a color emoji font (see emoji-font.css) so
-  // the icon matches what the picker showed, whatever the UI font is.
+  // the icon matches what the picker showed, whatever the UI font is. A color
+  // emoji glyph is wider than 1em, so the box is pinned to 1em like the other
+  // kinds and the glyph centres in it; otherwise the label beside an emoji
+  // starts further along than beside a library icon or an image.
   return (
     <span
-      className={cn('inline-flex items-center justify-center font-emoji leading-none', className)}
+      className={cn(
+        'inline-flex items-center justify-center font-emoji leading-none',
+        TEXT_SIZED_ICON_CLASS,
+        className
+      )}
     >
       {value}
     </span>
