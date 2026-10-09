@@ -159,15 +159,15 @@ final class NoteReadViewModel {
             Log.storage.error("this vault's folders could not be read for a move", .code(mapped.code))
             return []
         }
-        let derived: [FolderSummary]
+        let notes: [NoteSummary]
         do {
-            derived = VaultOutline.derivedFolders(configured: configured, notes: try await reader.list())
+            notes = try await reader.list()
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this vault's notes could not be read for a move", .code(mapped.code))
-            derived = []
+            notes = []
         }
-        return (configured + derived).sorted { $0.path < $1.path }
+        return VaultOutline.destinations(configured: configured, notes: notes)
     }
 
     /// Pulls this note's body, then re-reads the note in place.
