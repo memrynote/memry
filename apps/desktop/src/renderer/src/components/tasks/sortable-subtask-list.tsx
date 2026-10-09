@@ -233,26 +233,25 @@ export const SortableSubtaskList = ({
         </SortableContext>
       </DndContext>
       {showDraft && (
-        <SubtaskDraftRow
-          parent={parent}
-          siblings={subtasks}
-          depth={depth}
-          grandparent={grandparent}
-        />
+        <SubtaskDraftRow parent={parent} siblings={subtasks} grandparent={grandparent} />
       )}
     </div>
   )
 }
 
 /**
- * The guide line of a nested level sits under its parent's status icon. Past
+ * The guide line of a nested level sits under its parent's status icon. A
+ * top-level parent (`parentDepth` 0) has its icon after the row padding, the
+ * chevron, and the selection column when the list has one. Past
  * `MAX_VISUAL_DEPTH` levels stop indenting, so a deep title keeps its width.
  */
-export const nestedListClass = (parentDepth: number): string =>
+export const nestedListClass = (parentDepth: number, hasSelectColumn = false): string =>
   parentDepth >= MAX_VISUAL_DEPTH
     ? ''
-    : parentDepth === 1
-      ? 'ms-[51px] border-s border-border'
-      : 'ms-[31px] border-s border-border'
+    : parentDepth > 0
+      ? 'ms-[31px] border-s border-border'
+      : hasSelectColumn
+        ? 'ms-[70px] border-s border-border'
+        : 'ms-[44px] border-s border-border'
 
 export default SortableSubtaskList
