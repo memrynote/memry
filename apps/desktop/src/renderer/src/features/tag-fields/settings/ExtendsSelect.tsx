@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useEditTagSchema } from '../use-tag-schemas'
 import { TagChip } from './TagChip'
-import { capitalize, isExtendsCandidateDisabled } from './settings-logic'
+import { isExtendsCandidateDisabled } from './settings-logic'
+import { tagDisplayName } from '../tag-display-name'
 
 const NOTHING = '__nothing__'
 
@@ -55,11 +56,15 @@ export function ExtendsSelect({
           aria-label={t('tagFields.settings.sections.extends')}
         >
           {parentKey ? (
-            <TagChip
-              name={parent?.name ?? parentKey}
-              color={parent?.color ?? ''}
-              icon={parent?.icon ?? null}
-            />
+            // A div, not the chip's own span: the trigger line-clamps a direct
+            // span child, which stacks the chip's icon over its name.
+            <div className="flex min-w-0">
+              <TagChip
+                name={parent?.name ?? parentKey}
+                color={parent?.color ?? ''}
+                icon={parent?.icon ?? null}
+              />
+            </div>
           ) : (
             <div className="flex items-center gap-1.5">
               <CornerDownRight className="size-3.5 text-text-tertiary" />
@@ -83,8 +88,8 @@ export function ExtendsSelect({
       <p className="pt-0.5 text-xs text-text-tertiary">
         {parentKey
           ? t('tagFields.settings.extends.hintSet', {
-              tag: capitalize(tag?.name ?? tagKey),
-              parent: capitalize(parent?.name ?? parentKey)
+              tag: tagDisplayName(tag?.name ?? tagKey),
+              parent: tagDisplayName(parent?.name ?? parentKey)
             })
           : t('tagFields.settings.extends.hint')}
       </p>

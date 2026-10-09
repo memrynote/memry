@@ -191,6 +191,14 @@ function NewInGroup({
           event.metaKey || event.ctrlKey
         )
       }}
+      onKeyDown={(event) => {
+        // F1: ⌘↵ creates in the group and opens the new note in a tab.
+        if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+        event.preventDefault()
+        event.stopPropagation()
+        table.createInGroup(property, relationGroupUris(value) ?? value, true)
+      }}
+      title={t('tagObjects.table.newInGroupHint')}
       className="ms-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
     >
       <Plus className="size-3" />

@@ -11,7 +11,8 @@ import { useTabs } from '@/contexts/tabs'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { templatesService } from '@/services/templates-service'
 import { useEditTagSchema } from '../use-tag-schemas'
-import { capitalize, templatePreview } from './settings-logic'
+import { templatePreview } from './settings-logic'
+import { tagDisplayName } from '../tag-display-name'
 
 interface TagTemplateSectionProps {
   tagKey: string
@@ -58,7 +59,7 @@ export function TagTemplateSection({
   const createTemplate = async (): Promise<void> => {
     setBusy(true)
     try {
-      const name = capitalize(tagName)
+      const name = tagDisplayName(tagName)
       const result = await templatesService.create({
         name,
         content: `## ${t('tagFields.settings.template.defaultHeading')}\n`

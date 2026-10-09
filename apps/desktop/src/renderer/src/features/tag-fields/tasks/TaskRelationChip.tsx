@@ -1,23 +1,16 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
-import { Tag } from '@/lib/icons'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { propertiesService } from '@/services/properties-service'
 import type { Task } from '@/data/task-model'
+import { withAlpha } from '@/components/note/tags-row/tag-colors'
+import { cn } from '@/lib/utils'
 
 type TaskFields = NonNullable<Task['fields']>
 import { buildFieldGroups } from '../build-field-groups'
+import { ObjectAvatar, objectColor } from '../object-avatar'
 import { useObjectIdentity, useTagSchemas } from '../use-tag-schemas'
 import { firstRelationChip } from './task-relation-chip-model'
-
-function initialsOf(title: string): string {
-  const words = title.trim().split(/\s+/).filter(Boolean)
-  return words
-    .slice(0, 2)
-    .map((word) => word[0].toLocaleUpperCase())
-    .join('')
-}
 
 /**
  * "Waiting on Ahmet Yılmaz": the first filled relation field of a task row.
@@ -49,29 +42,14 @@ export function TaskRelationChip({
   const title = ref.title
   return (
     <span
-      className="flex min-w-0 max-w-[200px] shrink items-center gap-1 rounded-full bg-tint/10 py-0.5 ps-0.5 pe-2 text-[11px] leading-3.5 text-foreground/80"
+      className={cn(
+        'flex min-w-0 max-w-[200px] shrink items-center gap-1 rounded-full py-0.5 ps-0.5 pe-2 text-[11px] leading-3.5 text-foreground/80',
+        !identity && 'bg-tint/10'
+      )}
+      style={identity ? { backgroundColor: withAlpha(objectColor(identity), 0.1) } : undefined}
       aria-label={t('tagFields.tasks.chipAria', { field: chip.field, title })}
     >
-      {identity?.avatar ? (
-        <span
-          aria-hidden
-          className="flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-semibold text-white"
-          style={{ backgroundColor: identity.color }}
-        >
-          {initialsOf(title)}
-        </span>
-      ) : identity ? (
-        <span
-          aria-hidden
-          className="flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-surface"
-        >
-          {identity.icon ? (
-            <NoteIconDisplay value={identity.icon} className="size-3 text-[10px] leading-none" />
-          ) : (
-            <Tag className="size-3" style={{ color: identity.color }} />
-          )}
-        </span>
-      ) : null}
+      {identity && <ObjectAvatar look={identity} title={title} size={16} />}
       <span className="truncate">
         {chip.field} {title}
       </span>

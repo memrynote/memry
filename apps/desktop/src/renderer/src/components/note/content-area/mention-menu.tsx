@@ -20,6 +20,7 @@ import type { ObjectMatch } from '@memry/contracts/tag-objects-api'
 import { AlarmClock, Clock, FileText, Link, PenTool, Plus, type AppIcon } from '@/lib/icons'
 import { ObjectAvatar, TagGlyph } from '@/features/tag-fields/object-avatar'
 import { lookOfTagKey } from '@/features/tag-fields/object-look'
+import { objectGroupLabel, tagDisplayName } from '@/features/tag-fields/tag-display-name'
 import { buildCreateOptions } from '@/features/tag-fields/mention-create-options'
 import { useOptionalTagSchemaSnapshot } from '@/features/tag-fields/use-optional-object-identity'
 import { cn } from '@/lib/utils'
@@ -222,7 +223,7 @@ export function MentionMenu({
             const startsGroup =
               previous?.kind !== 'object' || previous.match.groupTag !== item.match.groupTag
             const subtitle = [
-              ...(item.match.viaTag ? [capitalize(item.match.viaTag)] : []),
+              ...(item.match.viaTag ? [tagDisplayName(item.match.viaTag)] : []),
               ...item.match.subtitle
             ].join(' · ')
             return (
@@ -234,7 +235,16 @@ export function MentionMenu({
                     )}
                     <div className="mention-menu-group flex items-center gap-1.5 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.04em] text-muted-foreground">
                       {groupLook && <TagGlyph look={groupLook} className="size-3" />}
-                      {snapshot?.tags[item.match.groupTag]?.name ?? item.match.groupTag}
+                      {objectGroupLabel(
+                        snapshot?.tags[item.match.groupTag] ?? {
+                          name: item.match.groupTag,
+                          ownPreset: null
+                        },
+                        (preset) => ({
+                          name: t(`tagFields.presets.${preset}.name`),
+                          plural: t(`tagFields.presets.${preset}.plural`)
+                        })
+                      )}
                     </div>
                   </>
                 )}
@@ -362,10 +372,6 @@ function EnterKey(): React.JSX.Element {
       {t('tagObjects.keys.enter')}
     </kbd>
   )
-}
-
-function capitalize(name: string): string {
-  return name.charAt(0).toLocaleUpperCase() + name.slice(1)
 }
 
 interface CanvasChoiceMenuProps {

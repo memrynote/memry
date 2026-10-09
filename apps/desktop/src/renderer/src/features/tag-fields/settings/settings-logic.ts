@@ -4,6 +4,7 @@
  * template preview shows.
  */
 import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
+import { tagDisplayName } from '../tag-display-name'
 
 /** A parent is out when it is the tag itself or already descends from it (a loop). */
 export function isExtendsCandidateDisabled(
@@ -36,11 +37,7 @@ export function findPropertyByName<T extends { name: string }>(
 
 /** "Use Client status instead": the tag's name in front of the field name. */
 export function alternativeFieldName(tagName: string, fieldName: string): string {
-  return `${capitalize(tagName)} ${fieldName.trim().toLowerCase()}`
-}
-
-export function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1)
+  return `${tagDisplayName(tagName)} ${fieldName.trim().toLowerCase()}`
 }
 
 export interface TemplatePreviewSection {

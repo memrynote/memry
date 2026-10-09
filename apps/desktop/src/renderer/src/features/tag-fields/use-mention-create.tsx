@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { addPresetTag, createObject, lastCreateTag } from './create-object'
 import { buildCreateOptions, type CreateOption } from './mention-create-options'
 import { lookOfTag } from './object-look'
+import { tagDisplayName } from './tag-display-name'
 import { ObjectAvatar, type ObjectLook } from './object-avatar'
 import { QuickFieldsCard, quickFields, type QuickFieldsTarget } from './quick-fields-card'
 import { tagSchemaQueryKey, useEditTagSchema, useTagSchemas } from './use-tag-schemas'
@@ -191,7 +192,7 @@ function MentionCreateMenu({
         const selected = index === state.selectedIndex
         const look = lookOf(option)
         const label =
-          option.kind === 'plain' ? t('tagObjects.create.plainNote') : capitalize(option.name)
+          option.kind === 'plain' ? t('tagObjects.create.plainNote') : tagDisplayName(option.name)
         return (
           <div key={option.kind === 'tag' ? option.tag : option.kind + label}>
             {option.kind === 'plain' && state.options.length > 1 && (
@@ -241,8 +242,4 @@ function MentionCreateMenu({
       })}
     </div>
   )
-}
-
-function capitalize(name: string): string {
-  return name.charAt(0).toLocaleUpperCase() + name.slice(1)
 }

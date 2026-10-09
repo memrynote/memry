@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { TagChip } from './TagChip'
-import { capitalize } from './settings-logic'
+import { tagDisplayName } from '../tag-display-name'
 
 interface RelationFieldCardProps {
   /** Field name, shown in the header. */
@@ -112,7 +112,7 @@ export function RelationFieldCard({
           id={inverseId}
           value={inverse}
           onChange={(event) => setInverse(event.target.value)}
-          placeholder={capitalize(tagName)}
+          placeholder={tagDisplayName(tagName)}
           className="h-8"
         />
         <span className="text-xs text-text-tertiary">

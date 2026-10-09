@@ -1456,6 +1456,7 @@
     "presets": {
       "person": {
         "name": "Kişi",
+        "plural": "Kişiler",
         "fields": {
           "company": "Şirket",
           "role": "Rol",
@@ -1474,6 +1475,7 @@
       },
       "company": {
         "name": "Şirket",
+        "plural": "Şirketler",
         "fields": {
           "website": "Web sitesi",
           "industry": "Sektör",
@@ -1488,6 +1490,7 @@
       },
       "meeting": {
         "name": "Toplantı",
+        "plural": "Toplantılar",
         "fields": {
           "date": "Tarih",
           "attendees": "Katılımcılar",
@@ -1506,6 +1509,7 @@
       },
       "book": {
         "name": "Kitap",
+        "plural": "Kitaplar",
         "fields": {
           "author": "Yazar",
           "shelf": "Raf",
@@ -1779,6 +1783,7 @@
       "makeFailed": "Etiket eklenemedi",
       "makeHint": "#{tag} etiketini başlığa ekler ve alanlarını gösterir",
       "meta": "{count, plural, one {# nesne} other {# nesne}} · {fields, plural, one {# alan} other {# alan}}",
+      "metaNamed": "{count} {one} · {fields, plural, one {# alan} other {# alan}}",
       "open": "#{tag} aç",
       "remove": "Etiketi metinden kaldır"
     },
@@ -1815,6 +1820,7 @@
     "table": {
       "untitled": "Yeni {tag}",
       "newInGroup": "{group} içinde yeni {tag}",
+      "newInGroupHint": "⌘↵ yeni sekmede açar",
       "new": "Yeni {tag}",
       "includes": "{field} şunu içerir",
       "removeFilter": "Filtreyi kaldır",
@@ -1823,6 +1829,15 @@
       "mentionedMeta": "{count, plural, one {Metninde '#'{tag} geçen # not} other {Metninde '#'{tag} geçen # not}}",
       "saveFailed": "Alan kaydedilemedi",
       "created": "{title} oluşturuldu"
+    },
+    "relationDrop": {
+      "title": "“{title}” notuna #{tag} eklensin mi?",
+      "body": "Bu alan yalnızca #{tag} etiketli notlara bağlanır. Memry “{title}” başlığına #{tag} ekler, sonra buraya bağlar.",
+      "confirm": "#{tag} ekle ve bağla",
+      "cancel": "Vazgeç",
+      "added": "“{title}” artık bir #{tag} ve bağlandı",
+      "notANote": "Buraya #{tag} olarak yalnızca notlar bağlanabilir",
+      "failed": "Bu not bağlanamadı"
     }
   }
 }

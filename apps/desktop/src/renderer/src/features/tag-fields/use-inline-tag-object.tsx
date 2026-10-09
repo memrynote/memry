@@ -10,6 +10,7 @@ import { ArrowUpRight, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { TagGlyph } from './object-avatar'
 import { lookOfTag } from './object-look'
+import { presetPlural, tagDisplayName } from './tag-display-name'
 import { useTagSchemas } from './use-tag-schemas'
 
 interface PopoverState {
@@ -151,7 +152,14 @@ export function useInlineTagObject(
     : 0
   const color = resolved ? getTagColors(resolved.color, resolved.key).text : null
   const tagName = resolved?.name ?? state?.tag ?? ''
-  const label = tagName.charAt(0).toLocaleUpperCase() + tagName.slice(1)
+  const label = tagDisplayName(tagName)
+  // C3: "12 companies · 3 fields" for a ready-made tag; other tags count objects.
+  const plural = resolved
+    ? presetPlural(resolved, (preset) => ({
+        name: t(`tagFields.presets.${preset}.name`),
+        plural: t(`tagFields.presets.${preset}.plural`)
+      }))
+    : null
 
   const overlay =
     state && resolved && color ? (
@@ -171,10 +179,17 @@ export function useInlineTagObject(
               <TagGlyph look={lookOfTag(resolved)} className="size-3" />
               {tagName}
             </span>
-            {t('tagObjects.inline.meta', {
-              count: objects,
-              fields: resolved.effectiveFields.length
-            })}
+            {plural
+              ? t('tagObjects.inline.metaNamed', {
+                  count: objects,
+                  one: tagName.toLocaleLowerCase(),
+                  other: plural.toLocaleLowerCase(),
+                  fields: resolved.effectiveFields.length
+                })
+              : t('tagObjects.inline.meta', {
+                  count: objects,
+                  fields: resolved.effectiveFields.length
+                })}
           </div>
           <p className="text-xs text-muted-foreground">
             {t('tagObjects.inline.explain', { tag: tagName })}

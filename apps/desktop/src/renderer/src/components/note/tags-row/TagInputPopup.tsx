@@ -8,6 +8,7 @@ import { useT } from '@memry/i18n/renderer'
 import { CornerDownLeft, List, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
+import { tagDisplayName } from '@/features/tag-fields/tag-display-name'
 
 /** The note header picker marks tags with fields and says what adding one does (C1). */
 export interface TagFieldHints {
@@ -271,7 +272,7 @@ function FieldTagRow({
         </span>
         {fills && (
           <span className="text-[12px] text-text-tertiary">
-            {t('tagFields.picker.fillsTemplate', { tag: resolved.name })}
+            {t('tagFields.picker.fillsTemplate', { tag: tagDisplayName(resolved.name) })}
           </span>
         )}
       </span>

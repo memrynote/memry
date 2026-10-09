@@ -9,6 +9,7 @@ import type { Task } from '@/data/task-model'
 
 type TaskFields = NonNullable<Task['fields']>
 import { buildFieldGroups, isFilledValue, type FieldSlot } from '../build-field-groups'
+import { tagDisplayName } from '../tag-display-name'
 import { useTagSchemas } from '../use-tag-schemas'
 import { isRelationField } from './task-relation-chip-model'
 
@@ -52,8 +53,11 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
           tag={group.tag}
           title={
             group.via
-              ? t('tagFields.tasks.viaTag', { name: group.tag.name, via: group.via.name })
-              : group.tag.name
+              ? t('tagFields.tasks.viaTag', {
+                  name: tagDisplayName(group.tag.name),
+                  via: group.via.name
+                })
+              : tagDisplayName(group.tag.name)
           }
         >
           {group.slots.map((slot) => (
@@ -62,6 +66,8 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
               property={slotProperty(slot)}
               onValueChange={(next) => write(slot.field.name, slot.value, next)}
               relationTarget={slot.field.relation?.target}
+              relationMany={slot.field.relation?.many}
+              compact
             />
           ))}
         </FieldGroupCard>
@@ -73,6 +79,7 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
               key={name}
               property={{ id: name, name, type: inferType(value), value, isCustom: false }}
               onValueChange={(next) => write(name, value, next)}
+              compact
               renderAction={(hovered) => (
                 <button
                   type="button"
@@ -105,7 +112,7 @@ function FieldGroupCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-background px-2.5 py-2">
+    <section className="rounded-lg border border-border bg-background px-2 py-2">
       <header className="flex items-center gap-1.5 pb-1 text-[12px] font-semibold text-foreground">
         {tag &&
           (tag.icon ? (

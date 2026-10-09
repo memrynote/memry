@@ -27,7 +27,7 @@ import { ExtendsSelect } from './ExtendsSelect'
 import { DeleteTagDialog } from './FieldImpactDialogs'
 import { FieldListEditor } from './FieldListEditor'
 import { TagTemplateSection } from './TagTemplateSection'
-import { capitalize } from './settings-logic'
+import { tagDisplayName } from '../tag-display-name'
 
 const NO_CATEGORY = '__none__'
 
@@ -239,7 +239,7 @@ function AppearanceRow({ tag, tagKey, color, icon }: AppearanceRowProps): React.
             <span className="truncate">
               {isHexColor(color)
                 ? t('tagFields.settings.appearance.customColor')
-                : capitalize(color || t('tagFields.settings.appearance.color'))}
+                : tagDisplayName(color || t('tagFields.settings.appearance.color'))}
             </span>
           </span>
         </SelectTrigger>
@@ -248,7 +248,7 @@ function AppearanceRow({ tag, tagKey, color, icon }: AppearanceRowProps): React.
             <SelectItem key={name} value={name}>
               <span className="flex items-center gap-1.5">
                 {swatch(name)}
-                {capitalize(name)}
+                {tagDisplayName(name)}
               </span>
             </SelectItem>
           ))}

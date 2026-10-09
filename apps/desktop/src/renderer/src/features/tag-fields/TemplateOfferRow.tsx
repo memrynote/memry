@@ -13,6 +13,7 @@ import { insertTemplateBlocks } from '@/components/note/content-area/insert-temp
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { templateOffers, usePendingTemplateOffers } from './template-offers'
+import { tagDisplayName } from './tag-display-name'
 import { useTagSchemas } from './use-tag-schemas'
 
 const log = createLogger('TemplateOfferRow')
@@ -99,7 +100,7 @@ export function TemplateOffers({
         >
           <LayoutTemplate className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate">
-            {t('tagFields.offer.text', { tag: tag.name })}
+            {t('tagFields.offer.text', { tag: tagDisplayName(tag.name) })}
           </span>
           <Button
             size="sm"

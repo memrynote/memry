@@ -67,6 +67,7 @@ interface PropertyValueRendererProps {
   onValueChange: (value: unknown) => void
   onEndEdit: () => void
   relationTarget?: string | null
+  relationMany?: boolean
 }
 
 function PropertyValueDisplay({ property }: { property: Property }) {
@@ -273,7 +274,8 @@ function PropertyValueRenderer({
   autoOpen,
   onValueChange,
   onEndEdit,
-  relationTarget
+  relationTarget,
+  relationMany
 }: PropertyValueRendererProps) {
   if (property.type === 'checkbox') {
     return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
@@ -296,7 +298,14 @@ function PropertyValueRenderer({
 
   if (property.type === 'relation') {
     const val = Array.isArray(property.value) ? (property.value as string[]) : []
-    return <RelationEditor value={val} onChange={onValueChange} targetTag={relationTarget} />
+    return (
+      <RelationEditor
+        value={val}
+        onChange={onValueChange}
+        targetTag={relationTarget}
+        many={relationMany}
+      />
+    )
   }
 
   if (property.type === 'date') {
@@ -341,6 +350,10 @@ interface PropertyRowProps {
   renderAction?: (hovered: boolean) => React.ReactNode
   /** A relation field's target tag: the picker lists only that tag's objects. */
   relationTarget?: string | null
+  /** False: a relation field holds one link, so a new pick replaces it. */
+  relationMany?: boolean
+  /** A narrow label lane for tight panels (the task drawer, G1). */
+  compact?: boolean
 }
 
 export function PropertyRow({
@@ -352,7 +365,9 @@ export function PropertyRow({
   autoFocus = false,
   isSortable = false,
   renderAction,
-  relationTarget
+  relationTarget,
+  relationMany,
+  compact = false
 }: PropertyRowProps) {
   const { t } = useT('notes')
   const { isEnabled, setEnabled } = useCalendarProperties()
@@ -496,7 +511,7 @@ export function PropertyRow({
             onBlur={handleEndNameEdit}
             onKeyDown={handleNameKeyDown}
             className={cn(
-              'w-28 shrink-0',
+              compact ? 'w-[72px] shrink-0' : 'w-28 shrink-0',
               'text-[13px] text-muted-foreground font-sans',
               'bg-transparent border-b border-border',
               'focus:outline-none focus:border-muted-foreground',
@@ -508,7 +523,7 @@ export function PropertyRow({
           <span
             onClick={canRenameName ? handleStartNameEdit : undefined}
             className={cn(
-              'w-28 shrink-0',
+              compact ? 'w-[72px] shrink-0' : 'w-28 shrink-0',
               'text-[13px] text-text-tertiary font-sans leading-4',
               'truncate',
               canRenameName && !disabled && 'cursor-pointer hover:text-text-secondary'
@@ -561,6 +576,7 @@ export function PropertyRow({
           onValueChange={onValueChange}
           onEndEdit={handleEndEdit}
           relationTarget={relationTarget}
+          relationMany={relationMany}
         />
       </div>
 

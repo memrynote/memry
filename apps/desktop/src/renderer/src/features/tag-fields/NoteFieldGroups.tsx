@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import type { FieldGroup, FieldSlot } from './build-field-groups'
+import { tagDisplayName } from './tag-display-name'
 
 export interface NoteFieldGroupsProps {
   groups: FieldGroup[]
@@ -70,7 +71,9 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
           >
             <div className="group/field-group flex min-h-7 items-center gap-1.5 ps-1">
               <TagGlyph tag={group.tag} className="flex shrink-0" />
-              <span className="text-[12px] font-semibold text-foreground">{group.tag.name}</span>
+              <span className="text-[12px] font-semibold text-foreground">
+                {tagDisplayName(group.tag.name)}
+              </span>
               {group.via && (
                 <span className="text-[12px] text-text-tertiary">
                   {t('tagFields.panel.via', { tag: group.via.name.toLowerCase() })}
@@ -115,6 +118,7 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
                         onFieldChange(slot.field.name, value, slot.field.type)
                       }
                       relationTarget={slot.field.relation?.target}
+                      relationMany={slot.field.relation?.many}
                       disabled={disabled}
                     />
                   )

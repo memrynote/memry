@@ -1345,7 +1345,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] shadow-sm transition-colors hover:bg-[var(--tint-hover)]"
           >
             <Plus className="size-3.5" />
-            {tPhaseF('phaseF.pagesFolderView.createNewNote')}
+            {/* B1/F1: a tag with fields names what it creates ("New person"). */}
+            {resolvedTag?.hasFields
+              ? t('tagObjects.table.new', { tag: resolvedTag.name })
+              : tPhaseF('phaseF.pagesFolderView.createNewNote')}
           </button>
 
           {/* Tag actions overflow menu (rename, color, icon, delete) — tag scope only */}

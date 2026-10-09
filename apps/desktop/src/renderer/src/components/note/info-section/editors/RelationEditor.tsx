@@ -18,6 +18,11 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { RelationKind } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
 import { useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { ObjectAvatar } from '@/features/tag-fields/object-avatar'
+import { useRelationDrop } from '@/features/tag-fields/relation-drop'
+import { useOptionalTagSchemaSnapshot } from '@/features/tag-fields/use-optional-object-identity'
+import { objectIdentityOf } from '@/features/tag-fields/use-tag-schemas'
 import { RelationPicker } from './RelationPicker'
 
 const log = createLogger('RelationEditor')
@@ -35,6 +40,8 @@ interface RelationEditorProps {
   onChange: (next: string[]) => void
   /** A relation field's target tag: the picker only offers its objects. */
   targetTag?: string | null
+  /** False: a "one" relation field, where a new pick replaces the link. Default true. */
+  many?: boolean
 }
 
 // Renders live-resolved chips for a relation property's stored URIs, plus a
@@ -43,9 +50,10 @@ interface RelationEditorProps {
 // renaming a target requires zero writes here. Dangling refs (exists: false)
 // render as a distinct "deleted" chip and are never auto-scrubbed from the
 // value; only an explicit remove click writes.
-export function RelationEditor({ value, onChange, targetTag }: RelationEditorProps) {
+export function RelationEditor({ value, onChange, targetTag, many = true }: RelationEditorProps) {
   const { t } = useT('notes')
   const navigate = useRelationNavigation()
+  const snapshot = useOptionalTagSchemaSnapshot()
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -81,39 +89,57 @@ export function RelationEditor({ value, onChange, targetTag }: RelationEditorPro
   // URI already in the value is a no-op here, before onChange ever fires.
   const handleSelect = (uri: string) => {
     if (value.includes(uri)) return
-    onChange([...value, uri])
+    onChange(many ? [...value, uri] : [uri])
     setPickerOpen(false)
   }
+
+  const drop = useRelationDrop({ targetTag, snapshot, onLink: handleSelect })
 
   const chips = value.length === 0 ? [] : resolved
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div
+      {...drop.dropProps}
+      className={cn('flex flex-wrap items-center gap-1 rounded', drop.isOver && 'ring-1 ring-tint')}
+    >
+      {drop.dialog}
       {chips.map((ref) => {
         const Icon = KIND_ICONS[ref.targetType]
         const label = ref.exists ? ref.title : t('properties.relation.deleted')
 
-        // A note's own emoji stands in for the generic kind icon. Only markdown
+        // An object (G1, E1) draws its avatar or tag tile in its tag colour. A
+        // note's own emoji stands in for the generic kind icon. Only markdown
         // notes carry one; files, tasks and events keep their kind icon.
-        const glyph = ref.emoji ? (
-          <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
-            <NoteIconDisplay value={ref.emoji} />
-          </span>
-        ) : (
-          <Icon className="size-3 shrink-0" aria-hidden />
-        )
+        const identity =
+          ref.exists && ref.targetType === 'note' ? objectIdentityOf(snapshot, ref.targetId) : null
+        const objectColor = identity ? getTagColors(identity.color, identity.tag).text : null
+        const glyph =
+          identity && !ref.emoji ? (
+            <ObjectAvatar look={identity} title={label} size={16} />
+          ) : ref.emoji ? (
+            <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
+              <NoteIconDisplay value={ref.emoji} />
+            </span>
+          ) : (
+            <Icon className="size-3 shrink-0" aria-hidden />
+          )
 
         return (
           <span
             key={ref.uri}
             data-testid={ref.exists ? 'relation-chip' : 'relation-chip-deleted'}
             className={cn(
-              '[font-synthesis:none] inline-flex items-center gap-1',
+              'group/chip [font-synthesis:none] inline-flex items-center gap-1',
               'rounded-[10px] ps-1.5 pe-1 py-0.5',
               'text-[11px]/3.5 font-medium',
               'shrink-0 select-none max-w-full',
-              ref.exists ? 'bg-tint/10 text-tint' : 'bg-muted text-muted-foreground'
+              objectColor
+                ? 'ps-0.5 text-foreground'
+                : ref.exists
+                  ? 'bg-tint/10 text-tint'
+                  : 'bg-muted text-muted-foreground'
             )}
+            style={objectColor ? { backgroundColor: withAlpha(objectColor, 0.1) } : undefined}
           >
             {/* A dangling ref has nothing to open, so it stays inert text.
                 The remove control is a sibling, never nested inside this
@@ -144,6 +170,9 @@ export function RelationEditor({ value, onChange, targetTag }: RelationEditorPro
               aria-label={t('properties.relation.removeAria', { title: label })}
               className={cn(
                 'flex size-3.5 shrink-0 items-center justify-center rounded-full',
+                // An object chip reads like the boards' chips: its remove control
+                // appears on hover or keyboard focus, so a narrow drawer fits the title.
+                objectColor && 'hidden group-focus-within/chip:flex group-hover/chip:flex',
                 'transition-colors duration-150',
                 // main.css clears the global focus-visible outline, so every
                 // focusable control has to draw its own ring.
