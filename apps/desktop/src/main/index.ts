@@ -177,6 +177,7 @@ import {
   performQuitAndInstall
 } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
+import { startOcrLanguages } from './file-text/ocr-languages'
 import {
   applyGpuCrashGuard,
   enableSoftwareWebglFallback,
@@ -1870,6 +1871,7 @@ const appReady = app.whenReady().then(async () => {
   // and fires its first GitHub check straight away. None of that is on the way
   // to the first frame, and all of it landed between window creation and reveal.
   onceWindowShown('updater', initializeUpdater)
+  onceWindowShown('ocr-languages', startOcrLanguages)
 
   // Open the last vault and start schedulers concurrently with renderer load.
   // The renderer subscribes to vault status events and updates automatically.

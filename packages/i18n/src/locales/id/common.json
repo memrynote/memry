@@ -346,7 +346,10 @@
         "access": "Akses",
         "tools": "Alat"
       },
-      "modelSettingsLabel": "Pengaturan model agen: {model}, {settings}"
+      "modelSettingsLabel": "Pengaturan model agen: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Hanya alat brankas dengan model ini"
+      }
     },
     "refPicker": {
       "noMatches": "Tidak ada kecocokan"

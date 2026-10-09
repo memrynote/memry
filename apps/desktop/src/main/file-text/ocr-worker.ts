@@ -12,7 +12,7 @@ if (!parentPort) {
 
 installWorkerLogForwarding('Ocr')
 
-const reader = createOcrReader(process.env.MEMRY_OCR_LANG_PATH)
+const reader = createOcrReader(JSON.parse(process.env.MEMRY_OCR_LANGUAGES ?? '{}'))
 
 async function recognize(
   message: Extract<OcrMainToWorkerMessage, { type: 'recognize' }>

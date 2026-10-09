@@ -9,8 +9,6 @@ import type { LanguageModelMiddleware } from 'ai'
 export interface ToolCallProfile {
   /** `omit` when the provider rejected a named tool_choice and only worked without one. */
   toolChoice: 'auto' | 'omit'
-  /** `text` when the model writes its call into the reply as `<tool_call>{...}</tool_call>`. */
-  toolCalls: 'native' | 'text'
 }
 
 export interface TextToolCall {
@@ -101,7 +99,7 @@ function parseTextToolCall(body: string, toolNames: ReadonlySet<string>): TextTo
   return { toolName: name, input: typeof input === 'string' ? input : JSON.stringify(input) }
 }
 
-/** Replays a probed profile on the chat model. A native, auto profile changes nothing. */
+/** Replays a probed profile on the chat model and runs `<tool_call>` blocks found in reply text. */
 export function toolCallProfileMiddleware(profile: ToolCallProfile): LanguageModelMiddleware {
   return {
     specificationVersion: 'v3',
@@ -109,7 +107,6 @@ export function toolCallProfileMiddleware(profile: ToolCallProfile): LanguageMod
       profile.toolChoice === 'omit' ? { ...params, toolChoice: undefined } : params,
     wrapStream: async ({ doStream, params }) => {
       const result = await doStream()
-      if (profile.toolCalls === 'native') return result
       const toolNames = new Set((params.tools ?? []).map((tool) => tool.name))
       return { ...result, stream: result.stream.pipeThrough(textToolCallTransform(toolNames)) }
     }

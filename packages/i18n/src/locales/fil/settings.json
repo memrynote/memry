@@ -2220,7 +2220,8 @@
         "label": "Default na access",
         "description": "Itinatakda ang panimulang access mode para sa mga bagong turn ng Agent.",
         "vaultOnly": "Vault lang",
-        "computerAccess": "Access sa computer"
+        "computerAccess": "Access sa computer",
+        "builtInNote": "Laging mga tool ng vault lang ang gamit ng built-in na koneksyon ng model."
       },
       "confirm": {
         "label": "Kumpirmahin ang mga aksyon",

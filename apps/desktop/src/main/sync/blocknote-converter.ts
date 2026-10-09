@@ -2,6 +2,7 @@ import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
+import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
 import {
   BOOKMARK_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
@@ -790,8 +791,10 @@ async function serializeBlocks(
   const { blocks: wrapped, replacements } = extractInlineColorRuns(
     withPlainCheckboxMarkers(blocks as never[])
   )
+  // The server editor exports the blocks before its first await, so the
+  // export runs inside the token scope.
   const md = normalizeSerializedMarkdown(
-    await editor.blocksToMarkdownLossy(wrapped as PartialBlock[])
+    await writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(wrapped as PartialBlock[]))
   )
   return restoreInlineColorTokens(md, replacements)
 }

@@ -2220,7 +2220,8 @@
         "label": "Výchozí přístup",
         "description": "Nastaví počáteční režim přístupu pro nové zprávy agentovi.",
         "vaultOnly": "Pouze trezor",
-        "computerAccess": "Přístup k počítači"
+        "computerAccess": "Přístup k počítači",
+        "builtInNote": "Vestavěné připojení k modelu vždy používá pouze nástroje trezoru."
       },
       "confirm": {
         "label": "Potvrzovat akce",

@@ -83,6 +83,10 @@ vi.mock('@/hooks/use-sync-status', () => ({
   useSyncStatus: () => mocks.syncStatus
 }))
 
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: () => ({ resetAuthState: vi.fn() })
+}))
+
 vi.mock('@/hooks/use-sync-history', () => ({
   useSyncHistory: () => mocks.syncHistory
 }))

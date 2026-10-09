@@ -267,6 +267,11 @@ impl HttpClient {
         &self.identity
     }
 
+    /// The seam this client sends over, for the realtime socket that shares it.
+    pub fn transport(&self) -> Arc<dyn Transport> {
+        Arc::clone(&self.transport)
+    }
+
     /// Sends a request, running the ladder. Returns the 2xx response or the
     /// classified failure.
     pub async fn send(&self, request: ApiRequest) -> Result<HttpResponse, ApiError> {
@@ -505,7 +510,8 @@ fn retryable_transport(error: &TransportError) -> bool {
         | TransportError::Failed { .. } => true,
         TransportError::Tls { .. }
         | TransportError::Cancelled
-        | TransportError::SocketClosed { .. } => false,
+        | TransportError::SocketClosed { .. }
+        | TransportError::HandshakeRejected { .. } => false,
     }
 }
 

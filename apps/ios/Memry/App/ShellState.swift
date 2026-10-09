@@ -170,13 +170,13 @@ final class ShellState {
             // second re-read from the app root would be a duplicate, not a
             // fix.
             //
-            // `realtimeSocket` and `reachability` have **no production
-            // producer today** — `RealtimeClient` is not exported
-            // (spec-defect 103) and no `PathReachability` is constructed
-            // outside tests — and the screen that would read either is the
-            // sync-status half of this task, which is cut. Wiring a reader
-            // for a hint nothing emits is how a tier ends up finished and
-            // never called.
+            // `realtimeSocket` needs no reader here: the socket's hints reach
+            // `TasksStore.scheduleSync` through `VaultRealtime`'s listener
+            // (#2798). `reachability` has **no production producer today** —
+            // no `PathReachability` is constructed outside tests — and the
+            // screen that would read it is the sync-status half of this task,
+            // which is cut. Wiring a reader for a hint nothing emits is how a
+            // tier ends up finished and never called.
             break
         }
     }

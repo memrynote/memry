@@ -272,12 +272,18 @@ files and nothing here syncs. Two kinds of file are read: a filed PDF or image (
   part 1. `method` is `pdf-text` (the page's text layer), `ocr`, `html` (an HTML block's visible
   text), or `unreadable` (failed twice; kept so a resumed job skips it).
 - `file_text_jobs` (`note_id`, `source`, `signature`, `status`, `page_count`, `error`,
-  `app_version`) holds the job state per file. `signature` is the size and mtime of the bytes the
+  `app_version`, `ocr_languages`) holds the job state per file.
+  `ocr_languages` is the Tesseract language string the job's `ocr` rows were read with
+  (`eng+deu`), null for builds that read English only. Index migration 0024 adds it. `signature` is the size and mtime of the bytes the
   rows came from; a file whose signature moves starts over. Renaming or moving a filed file keeps
   its job; renaming an attachment is a new `source` and is read again. A `failed` job, or a `done`
   job with `unreadable` rows, runs again when another app version opens the vault or a day after
   it last ran. Its `unreadable` rows go first and the job reads every page it has no row for, so a
-  gap before a good page is read again and the text it already read stays.
+  gap before a good page is read again and the text it already read stays. A `done` job with
+  `ocr` rows whose `ocr_languages` lacks a language OCR now reads with runs again too. It keeps
+  its rows and reads its `ocr` pages again, so search keeps the old text until each page is
+  replaced. A page whose new read fails keeps its old text, and the job fails with its old
+  `ocr_languages`, so it waits for the failure retry above. Removing a language queues nothing.
 
 Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
 searchable: an attachment's text sits under the markdown note that owns the folder, so a search
@@ -315,8 +321,10 @@ is a synced attachment that Memry only reads.
 
 Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
 
-- **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the English data in
-  `out/main/tessdata/`, unpacked from `app.asar`. `ocr-reader.ts` turns each image upright, grey
+- **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the languages
+  `ocr-languages.ts` hands it: English from `out/main/tessdata/`, unpacked from `app.asar`, as
+  tesseract.js `langPath`, and the downloaded languages from `userData/ocr-languages/` as its
+  `cachePath` with `cacheMethod: 'readOnly'`. A change of languages starts a new worker. `ocr-reader.ts` turns each image upright, grey
   and on white, doubles a small one (under 1600 px) and caps a large one at 4000 px before
   Tesseract reads it. Under Node, tesseract.js 7.0.0 loads the full `tesseract-core*.js` builds
   even for LSTM-only work, so the afterPack prune keeps those and drops the LSTM and browser
@@ -338,7 +346,19 @@ The route is public, answers only the names in `src/lib/ocr-languages.ts`, and m
 `immutable`. The files sit under `ocr/v1/` in the R2 bucket bound as `OCR_DATA`, which is the same
 bucket as `STORAGE`. `scripts/upload-ocr-language-data.ts` uploads them by hand together with
 `ocr/v1/manifest.json` (`{lang, bytes, sha256}` per file), and refuses to replace a file whose
-hash the manifest already records. The current app reads only the bundled English data.
+hash the manifest already records.
+
+`src/main/file-text/ocr-languages.ts` owns the languages on desktop. The choice lives in the
+machine-local `memry-config.json` as `ocrLanguages`. Null means the app language plus English, so
+it follows the app language until the user picks. English is always on.
+`ocr-language-data.ts` pins every downloadable file's `{bytes, sha256}` as the manifest records
+it. `syncOcrLanguages` converges `userData/ocr-languages/` on the choice, one file at a time. It
+deletes files of languages not chosen, checks a file an earlier run left against its pin, and
+downloads the rest with `net.fetch` from the sync server URL into a temp file. A file is renamed
+to `<lang>.traineddata` only when its size and sha256 match. OCR reads a downloaded language only
+after its file matched in this run. A failed download stays failed until the next start or a
+retry from Settings. Each change is broadcast as `ocr-languages:changed`, and a change of the
+languages OCR reads with makes the runner compare every file again.
 
 ## Migrations
 
@@ -417,7 +437,7 @@ The relative ref resolves back to a `memry-file://` URL at render time only, so 
 - The `file` block is a custom spec that renders its own URL, so the same resolver reaches it through `note-file-url-context.tsx`. The resolved URL is never written back to the block's props — that would put the machine path back into the markdown.
 - Only the note page passes the note's path as a prop; the journal, canvas cards and a project's home note look it up by note id, from the same index row the write side reads.
 
-Because note-relative refs point from the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder would leave those refs pointing at the wrong place. `moveNote` therefore re-points them: it resolves each note-relative ref against the _old_ note folder and expresses the same target relative to the new one (`rewriteNoteRefsForMove` in `@memry/editor-schema/note-refs`, shared with the CLI's `notes move`). A mobile root-relative ref for the moved note stays unchanged. When a block moves to another note, the same function converts that root-relative ref to a ref relative to the target note. The function covers both the `![alt](ref)` image embed and the `<!-- file:{"url":…} -->` marker, whose other members stay byte-identical. Refs with a URL scheme, root-anchored refs, refs that climb above the vault root, and wiki-links (which resolve by title, not by path) stay exactly as written.
+Because note-relative refs point from the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder would leave those refs pointing at the wrong place. `moveNote` therefore re-points them: it resolves each note-relative ref against the _old_ note folder and expresses the same target relative to the new one (`rewriteNoteRefsForMove` in `@memry/editor-schema/note-refs`, shared with the CLI's `notes move`). A mobile root-relative ref for the moved note stays unchanged. When a block moves to another note, the same function converts that root-relative ref to a ref relative to the target note. The function covers both the `![alt](ref)` image embed and the `<!-- file:{"url":…} -->` marker, whose other members stay byte-identical. Refs with a URL scheme, root-anchored refs, refs that climb above the vault root, and wiki-links stay exactly as written by this function. Inbound path-form wiki-links (`[[Folder/Note]]`) are a separate rewrite: `moveNote`, `renameNote` and a folder rename (`moveIndexedNotesWithFolder`) all call `rewriteInboundWikiLinks` in `vault/rename-link-rewrite.ts`, which rewrites each source note through the shared `rewriteWikiLinksToNote`.
 
 Two properties that matter more than the arithmetic:
 
@@ -437,7 +457,7 @@ The pipeline is wired into both duplicated serializers: the renderer save path (
 
 An author's `<!-- … -->` comment is kept in the document as an inline `htmlComment` node whose `source` prop holds the comment byte for byte (`packages/editor-schema/src/inline/html-comment.ts`). The editor shows a small muted marker in its place, never the text. A comment on its own line is a paragraph holding only the node; one inside or glued to a line of text stays in that paragraph, so an edit beside it changes only the edited line.
 
-Both parse paths mask each comment into one `MEMRYCMT<hex>X` token before anything splits the note into lines (`maskHtmlComments`, `packages/shared/src/html-comments.ts`), so a multi-line comment holding blank lines, a heading or a fence stays one comment. The serializer writes the node as the same token, and `normalizeSerializedMarkdown` turns it back into the comment last. Comments inside fenced code or code spans stay code. Memry's own marker comments (block colors and alignment, table layout, file and nesting markers, writing tools markers) keep their own readers. A build that predates the node finds it unrepresentable and keeps the note's file unchanged.
+Both parse paths mask each comment into one `MEMRYCMT<word><hex>X` token before anything splits the note into lines (`maskHtmlComments`, `packages/shared/src/html-comments.ts`), so a multi-line comment holding blank lines, a heading or a fence stays one comment. `<word>` is drawn once per process, so note text that only looks like a token, such as `MEMRYCMT41X` in a note about Memry, stays text through the parse and the write-back. The serializer writes the node as the same token, and `normalizeSerializedMarkdown` turns it back into the comment last. The node writes its token only inside `writeHtmlCommentTokens`, which the renderer and main markdown writers wrap around `blocksToMarkdownLossy`. Every other external HTML export, the clipboard's `text/html` and the markdown BlockNote derives from it for `text/plain` included, writes the node as an empty span, so a token never leaves the process. A paste into another note gets the comment back from the `blocknote/html` flavor, whose node carries `source` as an attribute. Comments inside fenced code or code spans stay code. Memry's own marker comments (block colors and alignment, table layout, file and nesting markers, writing tools markers) keep their own readers. A build that predates the node finds it unrepresentable and keeps the note's file unchanged.
 
 ### Layout markers in markdown
 

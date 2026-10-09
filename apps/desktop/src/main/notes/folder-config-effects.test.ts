@@ -90,6 +90,17 @@ describe('syncFolderConfigRename', () => {
 
     expect(paths().sort()).toEqual(['Work', 'Work/2026/Q1'])
   })
+
+  it('keeps the icon when the watcher already recorded the moved folder', () => {
+    syncFolderConfigCreate('Projects')
+    testDb.db.update(folderConfigs).set({ icon: 'star' }).run()
+    syncFolderConfigCreate('Work')
+
+    syncFolderConfigRename('Projects', 'Work')
+
+    const rows = testDb.db.select().from(folderConfigs).all()
+    expect(rows.map((r) => [r.path, r.icon])).toEqual([['Work', 'star']])
+  })
 })
 
 describe('backfillFolderConfigs', () => {

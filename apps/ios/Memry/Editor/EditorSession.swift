@@ -115,6 +115,17 @@ final class EditorSession {
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
+    /// Background tasks held until their resign's writes land. Each resign
+    /// ends only its own, so a later resign's write stays protected.
+    @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
+    /// Seam for tests; the app holds tasks from `UIApplication`.
+    @ObservationIgnored var beginBackgroundTask: (@escaping () -> Void) -> UIBackgroundTaskIdentifier = {
+        UIApplication.shared.beginBackgroundTask(withName: "editor-commit", expirationHandler: $0)
+    }
+    @ObservationIgnored var endBackgroundTask: (UIBackgroundTaskIdentifier) -> Void = {
+        UIApplication.shared.endBackgroundTask($0)
+    }
 
     init() {
         keyboardObserver = NotificationCenter.default.addObserver(
@@ -127,10 +138,48 @@ final class EditorSession {
                 if frame.height - accessory > 200 { self.keyboardHeight = frame.height - accessory }
             }
         }
+        // #2820: typing is committed when editing ends, and leaving the app
+        // does not end editing. A kill from the app switcher then dropped
+        // everything typed since the caret went in, so the focused block is
+        // committed as the app stops being active. Entering the background is
+        // too late: a kill within a second of going home beats it, and
+        // swiping straight into the switcher never backgrounds the app.
+        resignObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.commitBeforeLeaving() }
+        }
     }
 
     deinit {
         if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
+        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+    }
+
+    /// Commits the focused block's typing, and holds a background task until
+    /// the queued writes land, so suspension cannot cut them off.
+    private func commitBeforeLeaving() {
+        // Resigning also fires for Control Center and incoming calls, and the
+        // commit's reload would cancel an IME composition, so marked text
+        // waits for the next trigger.
+        if let field, field.dirty, field.textView.markedTextRange == nil { commit(field) }
+        guard let tail else { return }
+        var id = UIBackgroundTaskIdentifier.invalid
+        id = beginBackgroundTask {
+            MainActor.assumeIsolated { self.release(id) }
+        }
+        guard id != .invalid else { return }
+        heldTasks.insert(id)
+        Task { @MainActor in
+            await tail.value
+            self.release(id)
+        }
+    }
+
+    /// Ends `id` once, whichever of expiry or the landed write gets here first.
+    private func release(_ id: UIBackgroundTaskIdentifier) {
+        guard heldTasks.remove(id) != nil else { return }
+        endBackgroundTask(id)
     }
 
     // MARK: Input views

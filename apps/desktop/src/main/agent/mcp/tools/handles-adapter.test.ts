@@ -26,14 +26,12 @@ const mocks = vi.hoisted(() => ({
   createDesktopTasksDomain: vi.fn(),
   createTasksPublisher: vi.fn(),
   createFolder: vi.fn(),
-  deleteFolder: vi.fn(),
+  deleteFolderCommand: vi.fn(),
   getFolders: vi.fn(),
   getNoteById: vi.fn(),
   listNotes: vi.fn(),
   renameFolderCommand: vi.fn(),
   syncFolderConfigCreate: vi.fn(),
-  syncFolderConfigDelete: vi.fn(),
-  syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
   getAllTagsWithCounts: vi.fn(),
   listTagCategories: vi.fn(),
@@ -92,6 +90,7 @@ vi.mock('../../../vault/journal', () => ({
 
 vi.mock('../../../notes/domain', () => ({
   createNoteCommand: mocks.createNoteCommand,
+  deleteFolderCommand: mocks.deleteFolderCommand,
   deleteNoteCommand: mocks.deleteNoteCommand,
   moveNoteCommand: mocks.moveNoteCommand,
   renameFolderCommand: mocks.renameFolderCommand,
@@ -109,16 +108,13 @@ vi.mock('../../../tasks/publisher', () => ({
 
 vi.mock('../../../vault/notes', () => ({
   createFolder: mocks.createFolder,
-  deleteFolder: mocks.deleteFolder,
   getFolders: mocks.getFolders,
   getNoteById: mocks.getNoteById,
   listNotes: mocks.listNotes
 }))
 
 vi.mock('../../../notes/folder-config-effects', () => ({
-  syncFolderConfigCreate: mocks.syncFolderConfigCreate,
-  syncFolderConfigDelete: mocks.syncFolderConfigDelete,
-  syncFolderConfigRename: mocks.syncFolderConfigRename
+  syncFolderConfigCreate: mocks.syncFolderConfigCreate
 }))
 
 vi.mock('../../../vault', () => ({
@@ -1321,13 +1317,11 @@ describe('createVaultServiceHandles', () => {
       handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
     ).resolves.toEqual({ path: 'archive/planning' })
     expect(mocks.renameFolderCommand).toHaveBeenCalledWith('planning', 'archive/planning')
-    expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
 
     await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({
       path: 'archive/planning'
     })
-    expect(mocks.deleteFolder).toHaveBeenCalledWith('archive/planning')
-    expect(mocks.syncFolderConfigDelete).toHaveBeenCalledWith('archive/planning')
+    expect(mocks.deleteFolderCommand).toHaveBeenCalledWith('archive/planning')
   })
 
   it('rejects a folder that does not exist and names its path, but lists an empty one', async () => {

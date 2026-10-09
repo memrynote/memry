@@ -2220,7 +2220,8 @@
         "label": "Accesso predefinito",
         "description": "Imposta la modalità di accesso iniziale per i nuovi turni dell'agente.",
         "vaultOnly": "Solo vault",
-        "computerAccess": "Accesso al computer"
+        "computerAccess": "Accesso al computer",
+        "builtInNote": "La connessione al modello integrata usa sempre solo gli strumenti del vault."
       },
       "confirm": {
         "label": "Conferma le azioni",

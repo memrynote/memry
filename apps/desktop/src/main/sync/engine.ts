@@ -142,7 +142,17 @@ export class SyncEngine extends SyncEventEmitter {
     }
 
     this.ctx = {
-      deps: { ...deps, adapters },
+      deps: {
+        ...deps,
+        adapters,
+        // One read site for the status: every key read, whichever cycle makes
+        // it, tells the state manager whether pushes can be signed (#2866).
+        getSigningKeys: async () => {
+          const keys = await deps.getSigningKeys()
+          this.stateManager.setDeviceKeysMissing(keys === null)
+          return keys
+        }
+      },
       options: resolvedOptions,
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',
@@ -374,6 +384,9 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync.clearCaches()
     this.quarantine.clear()
     this.ctx.syncing = false
+    // A stopped engine reads no more keys: sign-out deletes them right after
+    // this, and its last status must not be the missing-keys error.
+    this.stateManager.setDeviceKeysMissing(false)
     this.stateManager.setState('idle')
     SyncEngine.activeInstance = null
   }
@@ -733,6 +746,9 @@ export class SyncEngine extends SyncEventEmitter {
       secureCleanup(signingKeys.secretKey)
       secureCleanup(signingKeys.publicKey)
     }
+    // The read above follows the deletion, so it always finds no keys. That is
+    // the wipe, not a session missing its keys: report idle, not the error.
+    this.stateManager.setDeviceKeysMissing(false)
 
     this.stateManager.setState('idle')
     this.ctx.syncing = false

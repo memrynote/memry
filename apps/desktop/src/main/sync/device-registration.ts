@@ -6,6 +6,8 @@ import { eq, inArray } from 'drizzle-orm'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
+import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
+import type { RepairDeviceKeysResult, SyncNotStartedReason } from '@memry/contracts/ipc-sync-ops'
 import {
   DeviceRegisterResponseSchema,
   RecoveryDataResponseSchema,
@@ -32,13 +34,14 @@ import {
   markKeyMaterialActivity,
   persistAccountKeyVerifier
 } from './key-verification'
-import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime } from './runtime'
+import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime, stopSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { adoptAccountVaultIfAbsent } from './vault-adoption'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
+  getValidAccessToken,
   retrieveToken,
   scheduleTokenRefresh,
   storeToken
@@ -269,7 +272,8 @@ const activateSyncAfterSignIn = (): void => {
  * Signs a device back in with the email code alone (#2612). The server has
  * already confirmed that the account still lists this device's signing key;
  * here the vault key must also still be the account's. The device keeps its
- * keychain, device row and sync cursor, and only gets new tokens. Returns null
+ * keychain, device row and sync cursor, and gets new tokens plus the install
+ * identity a sign-out or reinstall dropped. Returns null
  * whenever that is not proven, and the caller asks for the recovery phrase.
  */
 export const signInKnownDevice = async (setupToken: string): Promise<string | null> => {
@@ -295,7 +299,15 @@ export const signInKnownDevice = async (setupToken: string): Promise<string | nu
       signingSecretKey,
       db ? getOrCreateVaultUuid(db) : undefined
     )
-    if (db) activateSyncAfterSignIn()
+    // The keychain can outlive the install identity: sign-out clears the store's
+    // device id and a reinstall drops userData, while the keys stay. Record the
+    // id here, or the vault opened after a vault-less sign-in seeds no device
+    // row and every push aborts for want of signing keys (#2866).
+    setStoredDeviceId(deviceId)
+    if (db) {
+      await ensureDeviceRowForVault(db)
+      activateSyncAfterSignIn()
+    }
     logger.info('Signed a known device back in with the email code', { deviceId })
     return deviceId
   } catch (err) {
@@ -354,4 +366,83 @@ export const ensureDeviceRowForVault = async (
   } finally {
     secureCleanup(signingSecretKey)
   }
+}
+
+/**
+ * Repairs a session whose pushes abort for want of signing keys (#2866),
+ * without losing queued changes. When the keychain key is still on the
+ * account's device list, only the install's device id was lost: restore it and
+ * the vault's device row, and resume. Otherwise nothing local can sign again,
+ * so sign out the way an integrity failure does, which keeps the sync queue and
+ * the vault key, and the next sign-in registers new keys.
+ */
+let repairInProgress: Promise<RepairDeviceKeysResult> | null = null
+
+/** Concurrent calls share one run: two would each insert a row and restart. */
+export const repairDeviceKeys = (): Promise<RepairDeviceKeysResult> => {
+  repairInProgress ??= performDeviceKeysRepair().finally(() => {
+    repairInProgress = null
+  })
+  return repairInProgress
+}
+
+/** Why a repaired device row did not bring the runtime up. */
+const reasonSyncDidNotStart = async (): Promise<SyncNotStartedReason> => {
+  // Dynamic like the rest of this module's runtime-side imports.
+  const [{ getVaultBindingState }, { getCachedEntitlement }] = await Promise.all([
+    import('./vault-account-binding'),
+    import('../billing/entitlement-cache')
+  ])
+  if (getVaultBindingState().status !== 'bound') return 'vault-binding'
+  if (getCachedEntitlement()?.isPaid === false) return 'entitlement'
+  return 'unavailable'
+}
+
+const performDeviceKeysRepair = async (): Promise<RepairDeviceKeysResult> => {
+  const db = isDatabaseInitialized() ? getDatabase() : null
+  const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
+  try {
+    const accessToken = db && signingSecretKey ? await getValidAccessToken() : null
+    if (db && signingSecretKey && accessToken) {
+      await sodium.ready
+      const publicKey = sodium.to_base64(
+        getDevicePublicKey(signingSecretKey),
+        sodium.base64_variants.ORIGINAL
+      )
+      const parsed = DeviceKeysResponseSchema.safeParse(
+        await getFromServer<unknown>('/auth/devices', accessToken)
+      )
+      const device = parsed.success
+        ? parsed.data.devices.find(
+            (entry) => entry.signingPublicKey === publicKey && entry.revokedAt === null
+          )
+        : undefined
+      if (device) {
+        setStoredDeviceId(device.id)
+        // Pulls cache every device as a peer row, this one included.
+        db.delete(syncDevices).where(eq(syncDevices.id, device.id)).run()
+        await ensureDeviceRowForVault(db)
+        // A restart, not activate(): without a device id, record edits were
+        // not queued. The start's dirty sweep queues tasks, projects and the
+        // other swept types, rebinding their offline clocks. Types exempt from
+        // the sweep (dirty-recovery.ts DIRTY_RECOVERY) are not recovered.
+        await stopSyncRuntime()
+        const engine = await startSyncRuntime()
+        logger.info('Restored the device row from the registered signing key', {
+          deviceId: device.id,
+          started: engine !== null
+        })
+        if (engine) return { status: 'repaired' }
+        return { status: 'sync-not-started', reason: await reasonSyncDidNotStart() }
+      }
+    }
+  } finally {
+    if (signingSecretKey) secureCleanup(signingSecretKey)
+  }
+
+  logger.warn('Device keys cannot be restored on this device, signing out to set up new ones')
+  // Dynamic: session-teardown imports the runtime, which imports this module.
+  const { teardownSession } = await import('./session-teardown')
+  await teardownSession('integrity')
+  return { status: 'sign-in-required' }
 }

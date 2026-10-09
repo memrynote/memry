@@ -131,13 +131,20 @@ final class VaultSelectionViewModel {
     /// wipes the phone like any other call.
     let session: (any AuthSessionProtocol)?
 
+    /// Where the last open vault is remembered. Injected so a test reads and
+    /// writes its own, rather than the process-wide one every other test and
+    /// the running app share.
+    private let snapshot: LaunchSnapshot
+
     init(
         registry: any VaultRegistry,
         opener: any VaultOpening,
         mint: (any VaultFillerMinting)? = nil,
         secureStore: (any SecureStore)? = nil,
-        session: (any AuthSessionProtocol)? = nil
+        session: (any AuthSessionProtocol)? = nil,
+        snapshot: LaunchSnapshot = .shared
     ) {
+        self.snapshot = snapshot
         self.registry = registry
         self.opener = opener
         self.mint = mint
@@ -182,14 +189,14 @@ final class VaultSelectionViewModel {
             phase = .empty
             return
         }
-        LaunchSnapshot.shared.prune(keeping: Set(summaries.map(\.id)))
+        snapshot.prune(keeping: Set(summaries.map(\.id)))
         guard summaries.count > 1 else {
             await open(first)
             return
         }
         // The vault open when the app was last used opens again without
         // asking. "Switch vault" clears it, so the list still shows then.
-        if let last = LaunchSnapshot.shared.lastVault,
+        if let last = snapshot.lastVault,
            let summary = summaries.first(where: { $0.id == last }) {
             await open(summary)
             return
@@ -212,7 +219,7 @@ final class VaultSelectionViewModel {
             filler = try await mint?.filler(for: opened)
             // Before `vault` is published, so the shell built from it reads
             // this vault's saved tab and stacks.
-            LaunchSnapshot.shared.vaultOpened(summary.id)
+            snapshot.vaultOpened(summary.id)
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
@@ -238,7 +245,7 @@ final class VaultSelectionViewModel {
         // Leaving a vault, or one that failed to open, forgets it; a retry
         // after an unreadable registry keeps it.
         switch phase {
-        case .opened, .failedToOpen: LaunchSnapshot.shared.vaultClosed()
+        case .opened, .failedToOpen: snapshot.vaultClosed()
         default: break
         }
         vault = nil

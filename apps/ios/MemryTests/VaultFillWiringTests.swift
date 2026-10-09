@@ -214,7 +214,10 @@ final class VaultFillWiringTests {
         let model = VaultSelectionViewModel(
             registry: OneVault(id: vaultId),
             opener: opener,
-            mint: try CoreVaultFillerMint(session: session(), executor: executor)
+            mint: try CoreVaultFillerMint(session: session(), executor: executor),
+            snapshot: LaunchSnapshot(
+                defaults: try #require(UserDefaults(suiteName: "fill-wiring-\(UUID().uuidString)"))
+            )
         )
         await model.load()
 

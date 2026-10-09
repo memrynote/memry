@@ -40,6 +40,7 @@ function group(
 export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   ...group('general', 'general.groups.languageRegion', [
     ['general.language.label'],
+    ['general.ocrLanguages.label', ['general.ocrLanguages.helper']],
     ['general.clockFormat.label'],
     ['general.dateFormat.label']
   ]),

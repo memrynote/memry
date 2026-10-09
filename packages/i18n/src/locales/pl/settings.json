@@ -2220,7 +2220,8 @@
         "label": "Domyślny dostęp",
         "description": "Ustawia początkowy tryb dostępu dla nowych tur agenta.",
         "vaultOnly": "Tylko sejf",
-        "computerAccess": "Dostęp do komputera"
+        "computerAccess": "Dostęp do komputera",
+        "builtInNote": "Wbudowane połączenie z modelem zawsze używa tylko narzędzi sejfu."
       },
       "confirm": {
         "label": "Potwierdzaj działania",

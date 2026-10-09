@@ -39,7 +39,9 @@ export type FileTextJobStatus = (typeof FILE_TEXT_JOB_STATUSES)[number]
  * `signature` is the size and mtime of the bytes the rows came from; a file
  * whose signature moves starts over. A `pending` job reads the parts it has not
  * stored yet. `app_version` is the build that last worked on it, so a newer
- * build retries what an older one failed.
+ * build retries what an older one failed. `ocr_languages` is the Tesseract
+ * language string (`eng+deu`) its OCR parts were read with, null for the builds
+ * that read English only; a job missing a language chosen since reads them again.
  */
 export const fileTextJobs = sqliteTable(
   'file_text_jobs',
@@ -53,7 +55,8 @@ export const fileTextJobs = sqliteTable(
     pageCount: integer('page_count'),
     error: text('error'),
     appVersion: text('app_version').notNull(),
-    updatedAt: text('updated_at').notNull()
+    updatedAt: text('updated_at').notNull(),
+    ocrLanguages: text('ocr_languages')
   },
   (table) => [primaryKey({ columns: [table.noteId, table.source] })]
 )

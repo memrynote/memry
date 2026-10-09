@@ -1,0 +1,11 @@
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"role":"assistant","content":null}}],"created":1760000000,"id":"chatcmpl-llamacpp","model":"qwen2.5-7b-instruct","system_fingerprint":"b6400-1a2b3c4d","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"Checking. <tool"}}],"created":1760000000,"id":"chatcmpl-llamacpp","model":"qwen2.5-7b-instruct","system_fingerprint":"b6400-1a2b3c4d","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"_call>\n{\"name\": \"vault_get_tags\", "}}],"created":1760000000,"id":"chatcmpl-llamacpp","model":"qwen2.5-7b-instruct","system_fingerprint":"b6400-1a2b3c4d","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\"arguments\": {}}\n</tool_call>"}}],"created":1760000000,"id":"chatcmpl-llamacpp","model":"qwen2.5-7b-instruct","system_fingerprint":"b6400-1a2b3c4d","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":"stop","index":0,"delta":{}}],"created":1760000000,"id":"chatcmpl-llamacpp","model":"qwen2.5-7b-instruct","system_fingerprint":"b6400-1a2b3c4d","object":"chat.completion.chunk","usage":{"completion_tokens":24,"prompt_tokens":812,"total_tokens":836},"timings":{"prompt_n":812,"predicted_n":24}}
+
+data: [DONE]

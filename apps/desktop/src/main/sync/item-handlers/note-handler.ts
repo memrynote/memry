@@ -37,24 +37,21 @@ import {
   serializeNote,
   serializeParsedNote,
   mergeTagLists,
-  inferPropertyType,
-  resolvePropertyType,
   replacePropertiesOnRoot,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
-import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
-import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import {
+  syncNoteToCache,
+  syncFileToCache,
+  deleteNoteFromCache,
+  learnCanonicalPropertyType
+} from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
 import { reconcileNoteLinks } from '../../projections/projectors/note-project-links-projector'
 import { isMarkdownNote } from '../../database/queries/projects'
-import {
-  getNoteMetadataById,
-  updateNoteMetadata,
-  getPropertyDefinition as getCanonicalPropertyDefinition
-} from '@memry/storage-data'
-import { saveCanonicalPropertyDefinition } from '@memry/domain-notes'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import {
   getNoteCacheByPath,
   getNoteTags,
@@ -514,22 +511,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (indexed && propertiesPresent) {
-        const getType = (name: string, value: unknown) => {
-          const existing = getCanonicalPropertyDefinition(ctx.db, name)
-          const type = resolvePropertyType(
-            name,
-            value,
-            existing?.type as PropertyType | undefined,
-            inferPropertyType
-          )
-          // `relation` has no PropertyDefinitionSchema member, so it is never
-          // persisted — it is re-derived from the value on every pass instead.
-          if (isPersistableDefinitionType(type)) {
-            saveCanonicalPropertyDefinition(ctx.db, { name, type })
-          }
-          return type
-        }
-        setNoteProperties(indexDb, itemId, remoteProperties, getType)
+        setNoteProperties(indexDb, itemId, remoteProperties, (name, value) =>
+          learnCanonicalPropertyType(ctx.db, name, value)
+        )
       }
 
       if (data.pinnedTags) {

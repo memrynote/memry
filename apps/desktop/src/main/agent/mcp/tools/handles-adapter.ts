@@ -9,6 +9,7 @@ import { EXTRACTED_TEXT_REPLY_CHARS, extractedTextReply } from './extracted-text
 import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
+  deleteFolderCommand,
   deleteNoteCommand,
   moveNoteCommand,
   renameFolderCommand,
@@ -18,21 +19,11 @@ import {
 import { getCrdtProvider } from '../../../sync/crdt-provider'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
-import {
-  createFolder,
-  deleteFolder,
-  getFolders,
-  getNoteById,
-  listNotes
-} from '../../../vault/notes'
+import { createFolder, getFolders, getNoteById, listNotes } from '../../../vault/notes'
 import { fileSpelledProperties } from '../../../vault/yaml-dates'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId, generateNoteId } from '../../../lib/id'
-import {
-  syncFolderConfigCreate,
-  syncFolderConfigDelete,
-  syncFolderConfigRename
-} from '../../../notes/folder-config-effects'
+import { syncFolderConfigCreate } from '../../../notes/folder-config-effects'
 import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
@@ -378,13 +369,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const oldInternal = internalFolderFromToolPath(old_path) ?? ''
         const newInternal = internalFolderFromToolPath(new_path) ?? ''
         await renameFolderCommand(oldInternal, newInternal)
-        syncFolderConfigRename(oldInternal, newInternal)
         return { path: newInternal }
       },
       async delete(folderPath) {
         const internal = internalFolderFromToolPath(folderPath) ?? ''
-        await deleteFolder(internal)
-        syncFolderConfigDelete(internal)
+        await deleteFolderCommand(internal)
         return { path: internal }
       }
     },

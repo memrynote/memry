@@ -176,6 +176,28 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     expect(await yDocToMarkdown(doc)).toBe(markdown.trimEnd())
   })
 
+  it('keeps text that looks like a comment token as text through an edit (BBF-30)', async () => {
+    const markdown = [
+      'Line to edit.',
+      '',
+      'Literal MEMRYCMTX and MEMRYCMT3c212d2d2d3eX here.',
+      '',
+      'Code `MEMRYCMT41X` span.',
+      '',
+      '```',
+      'MEMRYCMT42X',
+      '```'
+    ].join('\n')
+    for (const keepSource of [true, false]) {
+      const doc = await seed(markdown, { keepSource })
+      expect(inlineItems(await blocksOf(doc)).some((item) => item.type === 'htmlComment')).toBe(
+        false
+      )
+      await edit(doc, 'Line to edit.', 'Line, edited.')
+      expect(await yDocToMarkdown(doc)).toBe(markdown.replace('Line to edit.', 'Line, edited.'))
+    }
+  })
+
   it('keeps a comment inside a list item and a table cell', async () => {
     const markdown = '- item <!-- li -->\n- two\n\n| a | b |\n| --- | --- |\n| 1 <!-- td --> | 2 |'
     const doc = await seed(markdown, { keepSource: false })

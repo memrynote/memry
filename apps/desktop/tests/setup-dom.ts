@@ -78,6 +78,14 @@ const createMockApi = () => ({
   // Native context menu bridge (main-process IPC in production)
   showContextMenu: vi.fn().mockResolvedValue(null),
 
+  // OCR languages (read by Settings > General on mount)
+  ocrLanguages: {
+    get: vi.fn().mockResolvedValue({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
+    set: vi.fn(),
+    retry: vi.fn()
+  },
+  onOcrLanguagesChanged: vi.fn().mockReturnValue(() => {}),
+
   // Auto-updater API (used by useAppUpdater on mount)
   updater: {
     getState: vi.fn().mockResolvedValue({

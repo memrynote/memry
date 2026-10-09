@@ -218,6 +218,13 @@ describe('session teardown', () => {
     expect(mocks.dbDelete).toHaveBeenCalled()
     expect(mocks.deleteWhere).toHaveBeenCalled()
     expect(mocks.transaction).not.toHaveBeenCalled()
+    // #2866: the device-keys repair signs out this way, so queued edits must
+    // survive it. Only the current-device row goes.
+    // drizzle-orm is mocked here, so read the table name drizzle stores.
+    const cleared = mocks.dbDelete.mock.calls.map(
+      ([table]) => (table as Record<symbol, string>)[Symbol.for('drizzle:Name')]
+    )
+    expect(cleared).toEqual(['sync_devices'])
     expect(crdtProvider.wipeStorage).not.toHaveBeenCalled()
   })
 

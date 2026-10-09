@@ -80,7 +80,9 @@ import type {
   CrdtWriteBackFailedEvent
 } from '@memry/contracts/ipc-crdt'
 import type {
+  RepairDeviceKeysResult,
   ResolveVaultBindingResult,
+  SyncErrorCategory,
   VaultBindingChoice,
   VaultBindingState
 } from '@memry/contracts/ipc-sync-ops'
@@ -101,6 +103,7 @@ import type {
   VaultLockSetInput,
   VaultLockState
 } from '@memry/contracts/vault-locks-api'
+import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -656,6 +659,12 @@ export interface HomePage {
 export interface VaultLocksClientAPI {
   list(): Promise<VaultLockState>
   set(input: VaultLockSetInput): Promise<VaultLockState>
+}
+
+export interface OcrLanguagesClientAPI {
+  get(): Promise<OcrLanguagesState>
+  set(input: OcrLanguagesSetInput): Promise<OcrLanguagesState>
+  retry(): Promise<OcrLanguagesState>
 }
 
 export interface CustomIconsClientAPI {
@@ -1722,6 +1731,7 @@ interface SyncOpsClientAPI {
     lastSyncAt?: number
     pendingCount: number
     error?: string
+    errorCategory?: SyncErrorCategory
     offlineSince?: number
   }>
   triggerSync: () => Promise<{
@@ -1776,6 +1786,7 @@ interface SyncOpsClientAPI {
   getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
+  repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
 }
 
 // Crypto API
@@ -1947,6 +1958,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   homePages: HomePagesClientAPI
   customIcons: CustomIconsClientAPI
   vaultLocks: VaultLocksClientAPI
+  ocrLanguages: OcrLanguagesClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {
@@ -2009,6 +2021,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
   onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
   onVaultLocksChanged: (callback: (state: VaultLockState) => void) => () => void
+  onOcrLanguagesChanged: (callback: (state: OcrLanguagesState) => void) => () => void
   onVaultLockExternalEditRestored: (
     callback: (event: VaultLockExternalEditRestoredEvent) => void
   ) => () => void

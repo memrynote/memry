@@ -47,6 +47,14 @@ private final class ScriptedOpener: VaultOpening, @unchecked Sendable {
     }
 }
 
+/// A launch snapshot of its own. `LaunchSnapshot.shared` is one value for the
+/// whole process, and these tests run in parallel with each other and with
+/// every other suite that opens a vault: a vault one of them remembered made
+/// another's `load()` reopen it instead of offering the choice (#2834).
+private func isolatedSnapshot() -> LaunchSnapshot {
+    LaunchSnapshot(defaults: UserDefaults(suiteName: "vault-selection-\(UUID().uuidString)")!)
+}
+
 private func summary(_ id: String, _ name: String?) -> VaultSummary {
     VaultSummary(id: id, name: name)
 }
@@ -56,9 +64,14 @@ private func summary(_ id: String, _ name: String?) -> VaultSummary {
 struct VaultSelectionTests {
     private func model(
         _ answer: Result<[VaultSummary], any Error>,
-        opener: ScriptedOpener = ScriptedOpener()
+        opener: ScriptedOpener = ScriptedOpener(),
+        snapshot: LaunchSnapshot = isolatedSnapshot()
     ) -> VaultSelectionViewModel {
-        VaultSelectionViewModel(registry: ScriptedRegistry(answer: answer), opener: opener)
+        VaultSelectionViewModel(
+            registry: ScriptedRegistry(answer: answer),
+            opener: opener,
+            snapshot: snapshot
+        )
     }
 
     @Test("an account with no vaults is empty, and is never reported as a failure")
@@ -161,6 +174,23 @@ struct VaultSelectionTests {
         #expect(selection.vault == nil)
         #expect(selection.phase == .choosing(vaults))
         #expect(opener.openedVaultIds == ["a"])
+    }
+
+    @Test("the vault open last time reopens without asking, and switching forgets it")
+    func theLastVaultReopensUntilSwitched() async {
+        let snapshot = isolatedSnapshot()
+        snapshot.vaultOpened("b")
+        let opener = ScriptedOpener()
+        let vaults = [summary("a", "Work"), summary("b", "Personal")]
+        let selection = model(.success(vaults), opener: opener, snapshot: snapshot)
+        await selection.load()
+        #expect(selection.phase == .opened(vaults[1]))
+        #expect(opener.openedVaultIds == ["b"])
+
+        await selection.chooseAgain()
+        #expect(snapshot.lastVault == nil)
+        #expect(selection.phase == .choosing(vaults))
+        #expect(opener.openedVaultIds == ["b"])
     }
 }
 

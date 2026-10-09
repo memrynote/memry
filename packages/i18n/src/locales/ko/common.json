@@ -346,7 +346,10 @@
         "access": "액세스",
         "tools": "도구"
       },
-      "modelSettingsLabel": "에이전트 모델 설정: {model}, {settings}"
+      "modelSettingsLabel": "에이전트 모델 설정: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "이 모델에서는 볼트 도구만 사용"
+      }
     },
     "refPicker": {
       "noMatches": "일치하는 항목이 없습니다."

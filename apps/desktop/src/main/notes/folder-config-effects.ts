@@ -28,6 +28,19 @@ export function syncFolderConfigCreate(folderPath: string): void {
   syncFolderConfigSet(folderPath, null)
 }
 
+/**
+ * A folder made outside the app (Finder, a terminal, another tool) reaches the
+ * watcher, not createFolder. It gets the same row, but only if it has none: the
+ * app's own creates and remotely applied rows land here too, and must keep
+ * their icon and skip a redundant update.
+ */
+export function syncFolderConfigDiscovered(folderPath: string): void {
+  const db = getDatabase()
+  if (!db || !folderPath) return
+  if (db.select().from(folderConfigs).where(eq(folderConfigs.path, folderPath)).get()) return
+  syncFolderConfigSet(folderPath, null)
+}
+
 export function syncFolderConfigSet(folderPath: string, icon: string | null | undefined): void {
   const db = getDatabase()
   if (!db) return
@@ -50,6 +63,38 @@ export function syncFolderConfigSet(folderPath: string, icon: string | null | un
 }
 
 /**
+ * Folders the app itself is renaming or deleting. The watcher's unlinkDir for
+ * such a folder arrives while the app is still moving notes, before it re-keys
+ * or deletes the rows, so the watcher must leave these paths to the app
+ * instead of tombstoning their rows as an outside delete (#2850).
+ */
+const appFolderChanges = new Map<string, number>()
+
+export function isAppFolderChange(folderPath: string): boolean {
+  for (const owned of appFolderChanges.keys()) {
+    if (folderPath === owned || folderPath.startsWith(`${owned}/`)) return true
+  }
+  return false
+}
+
+/** Marks `folderPaths` as app-owned until `change` settles. */
+export async function withAppFolderChange<T>(
+  folderPaths: string[],
+  change: () => Promise<T>
+): Promise<T> {
+  for (const p of folderPaths) appFolderChanges.set(p, (appFolderChanges.get(p) ?? 0) + 1)
+  try {
+    return await change()
+  } finally {
+    for (const p of folderPaths) {
+      const count = (appFolderChanges.get(p) ?? 1) - 1
+      if (count > 0) appFolderChanges.set(p, count)
+      else appFolderChanges.delete(p)
+    }
+  }
+}
+
+/**
  * Renaming a folder moves its whole subtree on disk, so every descendant row is
  * re-keyed too. Re-keying only the folder itself left the descendants pointing
  * at the old path, and another device re-created the old tree from them.
@@ -58,22 +103,31 @@ export function syncFolderConfigRename(oldPath: string, newPath: string): void {
   const db = getDatabase()
   if (!db) return
 
-  for (const existing of selectSubtree(db, oldPath)) {
-    const targetPath = newPath + existing.path.slice(oldPath.length)
-    const snapshot = JSON.stringify({
-      path: existing.path,
-      icon: existing.icon,
-      clock: existing.clock
-    })
-    db.delete(folderConfigs).where(eq(folderConfigs.path, existing.path)).run()
-    enqueueLocalSyncDelete('folder_config', existing.path, snapshot)
+  // One transaction: a failure part-way must not leave old rows deleted and new
+  // ones missing. The target upserts because the watcher's addDir for the moved
+  // directory can record it (null icon) before this runs.
+  db.transaction((tx) => {
+    for (const existing of selectSubtree(tx, oldPath)) {
+      const targetPath = newPath + existing.path.slice(oldPath.length)
+      const snapshot = JSON.stringify({
+        path: existing.path,
+        icon: existing.icon,
+        clock: existing.clock
+      })
+      tx.delete(folderConfigs).where(eq(folderConfigs.path, existing.path)).run()
+      enqueueLocalSyncDelete('folder_config', existing.path, snapshot)
 
-    const now = utcNow()
-    db.insert(folderConfigs)
-      .values({ path: targetPath, icon: existing.icon, createdAt: now, modifiedAt: now })
-      .run()
-    enqueueLocalSyncCreate('folder_config', targetPath)
-  }
+      const now = utcNow()
+      tx.insert(folderConfigs)
+        .values({ path: targetPath, icon: existing.icon, createdAt: now, modifiedAt: now })
+        .onConflictDoUpdate({
+          target: folderConfigs.path,
+          set: { icon: existing.icon, modifiedAt: now }
+        })
+        .run()
+      enqueueLocalSyncCreate('folder_config', targetPath)
+    }
+  })
 }
 
 /**
@@ -135,7 +189,7 @@ export async function backfillFolderConfigs(): Promise<number> {
  * full scan is cheaper than the escaping it replaces.
  */
 function selectSubtree(
-  db: NonNullable<ReturnType<typeof getDatabase>>,
+  db: Pick<NonNullable<ReturnType<typeof getDatabase>>, 'select'>,
   folderPath: string
 ): { path: string; icon: string | null; clock: unknown }[] {
   const prefix = `${folderPath}/`

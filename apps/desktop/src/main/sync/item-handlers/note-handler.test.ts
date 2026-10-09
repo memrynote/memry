@@ -25,15 +25,6 @@ vi.mock('../../vault/frontmatter', async (importOriginal) => ({
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
   serializeParsedNote: vi.fn(() => '---\n---\ncontent'),
-  inferPropertyType: vi.fn(() => 'number'),
-  resolvePropertyType: vi.fn(
-    (
-      name: string,
-      value: unknown,
-      definitionType: string | undefined,
-      inferFn: (name: string, value: unknown) => string
-    ) => (name === 'project' ? 'project' : (definitionType ?? inferFn(name, value)))
-  ),
   replacePropertiesOnRoot: vi.fn((frontmatter, properties) => {
     const next = { ...frontmatter }
     delete next.properties
@@ -41,15 +32,19 @@ vi.mock('../../vault/frontmatter', async (importOriginal) => ({
   })
 }))
 
+const mockLearnCanonicalPropertyType = vi.fn(
+  (_db: unknown, _name: string, _value: unknown) => 'number'
+)
 vi.mock('../../vault/note-sync', () => ({
   syncNoteToCache: vi.fn(),
   syncFileToCache: vi.fn(),
-  deleteNoteFromCache: vi.fn()
+  deleteNoteFromCache: vi.fn(),
+  learnCanonicalPropertyType: (db: unknown, name: string, value: unknown) =>
+    mockLearnCanonicalPropertyType(db, name, value)
 }))
 
 const mockGetNoteMetadataById = vi.fn(() => undefined)
 const mockUpdateNoteMetadata = vi.fn()
-const mockGetPropertyDefinition = vi.fn()
 
 vi.mock('@main/database/queries/notes', () => ({
   noteCacheExists: vi.fn(() => true),
@@ -63,14 +58,7 @@ vi.mock('@main/database/queries/notes', () => ({
 
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
-  updateNoteMetadata: (...args: unknown[]) => mockUpdateNoteMetadata(...args),
-  getPropertyDefinition: (...args: unknown[]) => mockGetPropertyDefinition(...args)
-}))
-
-const mockSaveCanonicalPropertyDefinition = vi.fn()
-vi.mock('@memry/domain-notes', () => ({
-  saveCanonicalPropertyDefinition: (...args: unknown[]) =>
-    mockSaveCanonicalPropertyDefinition(...args)
+  updateNoteMetadata: (...args: unknown[]) => mockUpdateNoteMetadata(...args)
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -207,7 +195,6 @@ describe('noteHandler.applyUpsert — path collision', () => {
     ctx = makeCtx(testDb)
     takenRelPaths.clear()
     mockGetNoteMetadataById.mockReturnValue(undefined)
-    mockGetPropertyDefinition.mockReturnValue(undefined)
 
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
     fs.mkdirSync(VAULT_ROOT, { recursive: true })
@@ -321,10 +308,9 @@ describe('noteHandler.applyUpsert — path collision', () => {
       { Rating: 5 },
       expect.any(Function)
     )
-    expect(mockSaveCanonicalPropertyDefinition).toHaveBeenCalledWith(ctx.db, {
-      name: 'Rating',
-      type: 'number'
-    })
+    const getType = vi.mocked(setNoteProperties).mock.calls[0][3]
+    expect(getType('Rating', 5)).toBe('number')
+    expect(mockLearnCanonicalPropertyType).toHaveBeenCalledWith(ctx.db, 'Rating', 5)
     expect(mockApplyPinnedTags).toHaveBeenCalledWith({}, 'note-1', ['remote'])
     expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
       ctx.db,

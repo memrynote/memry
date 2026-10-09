@@ -12,7 +12,7 @@ import type {
   CodexReasoningEffort,
   ClaudeEffort
 } from '@memry/contracts/ipc-agent'
-import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
+import { DEFAULT_CLAUDE_EFFORT, effectiveTurnPermissions } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
@@ -384,10 +384,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       ...(selectedBackendModel ? { model: selectedBackendModel } : {})
     }
   }
-  const turnPermissions = () =>
-    accessMode !== DEFAULT_ACCESS_MODE || webSearchEnabled
-      ? { accessMode, webSearchEnabled }
+  const turnPermissions = () => {
+    const effective = effectiveTurnPermissions(selectedProvider, { accessMode, webSearchEnabled })
+    return effective.accessMode !== DEFAULT_ACCESS_MODE || effective.webSearchEnabled
+      ? effective
       : undefined
+  }
   const persistPreference = (overrides: {
     provider?: AgentProvider
     models?: Record<AgentCliBackendId, string | null>

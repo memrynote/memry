@@ -109,7 +109,8 @@ struct NoteBlocksView: View {
                 base + NoteBlockList.checkboxesBefore(row.id, in: blocks)
             },
             siblings: editing == nil ? nil : BlockSiblings.of(row.id, in: blocks),
-            indent: row.indent
+            indent: row.indent,
+            toggleDepth: row.toggleDepth
         )
     }
 }

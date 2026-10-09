@@ -46,6 +46,7 @@
     "./journal-api": "./src/journal-api.ts",
     "./linking-api": "./src/linking-api.ts",
     "./locale-api": "./src/locale-api.ts",
+    "./ocr-languages-api": "./src/ocr-languages-api.ts",
     "./notes-api": "./src/notes-api.ts",
     "./pack-format": "./src/pack-format.ts",
     "./properties-api": "./src/properties-api.ts",

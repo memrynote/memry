@@ -20,7 +20,8 @@ export const syncOps = {
   getUnsentNotes: () => invoke(SYNC_CHANNELS.GET_UNSENT_NOTES),
   getVaultBinding: () => invoke(SYNC_CHANNELS.GET_VAULT_BINDING),
   resolveVaultBinding: (choice: VaultBindingChoice) =>
-    invoke(SYNC_CHANNELS.RESOLVE_VAULT_BINDING, { choice })
+    invoke(SYNC_CHANNELS.RESOLVE_VAULT_BINDING, { choice }),
+  repairDeviceKeys: () => invoke(SYNC_CHANNELS.REPAIR_DEVICE_KEYS)
 }
 
 type CryptoItemType = 'note' | 'task' | 'project' | 'settings'

@@ -346,7 +346,10 @@
         "access": "Доступ",
         "tools": "Инструменты"
       },
-      "modelSettingsLabel": "Настройки модели агента: {model}, {settings}"
+      "modelSettingsLabel": "Настройки модели агента: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "С этой моделью только инструменты хранилища"
+      }
     },
     "refPicker": {
       "noMatches": "Нет совпадений"

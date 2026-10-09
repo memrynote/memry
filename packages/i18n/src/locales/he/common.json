@@ -346,7 +346,10 @@
         "access": "גישה",
         "tools": "כלים"
       },
-      "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}"
+      "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "רק כלי הכספת עם מודל זה"
+      }
     },
     "refPicker": {
       "noMatches": "אין התאמות"

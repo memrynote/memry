@@ -48,6 +48,8 @@ struct NoteBlockView: View {
     /// Indentation steps: the block's depth, or within a column the depth
     /// counted from the column (`NoteColumns.layout`).
     var indent: UInt32?
+    /// How many toggles the block sits inside (`NoteBlockList.Row.toggleDepth`).
+    var toggleDepth: UInt32 = 0
 
     /// Whether a wiki link's title names a note here, so a broken one can be
     /// drawn as broken. `nil` until the vault's notes are read, which draws
@@ -74,7 +76,11 @@ struct NoteBlockView: View {
             // Indentation carries nesting, exactly as it does in the browse
             // list: the block list is flat and depth is the only thing saying
             // a list item sits inside another.
-            .padding(.leading, CGFloat(indent ?? block.depth) * Tokens.Space.inset)
+            .padding(
+                .leading,
+                CGFloat(indent ?? block.depth) * Tokens.Space.inset
+                    + CGFloat(toggleDepth) * ToggleSummaryRow.childShift
+            )
             .frame(maxWidth: .infinity, alignment: frameAlignment)
             // After the frame, so the handle sits in the page margin whatever
             // the block's depth or alignment.

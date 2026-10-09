@@ -77,6 +77,7 @@ private let ownCopy: [any Error] = [
     TransportError.Cancelled,
     TransportError.Failed(what: payload),
     TransportError.SocketClosed(code: 1006, reason: payload),
+    TransportError.HandshakeRejected(status: 426),
     CaptureError.NotPermitted,
     CaptureError.Restricted,
     CaptureError.Cancelled,
