@@ -139,10 +139,11 @@ function shapeOf(blocks: any[]): unknown[] {
 }
 
 function registerPlugin(editor: BlockNoteEditor): void {
-  registerEditorPlugin(editor, createMultiBlockIndentPlugin(editor), (p, plugins) => [
-    p,
-    ...plugins
-  ])
+  registerEditorPlugin(
+    editor,
+    createMultiBlockIndentPlugin(editor, () => ({ nested: false })),
+    (p, plugins) => [p, ...plugins]
+  )
 }
 
 function selectAcross(editor: BlockNoteEditor, fromId: string, toId: string): void {
@@ -171,7 +172,7 @@ function countTransactions(editor: BlockNoteEditor): () => number {
 }
 
 function pluginOf(editor: BlockNoteEditor): any {
-  return createMultiBlockIndentPlugin(editor)
+  return createMultiBlockIndentPlugin(editor, () => ({ nested: false }))
 }
 
 function tabEvent(init: KeyboardEventInit = {}): KeyboardEvent {
@@ -266,7 +267,7 @@ describe('mixed paragraph and task blocks', () => {
   function byHand(editor: BlockNoteEditor, ids: string[], direction: 'indent' | 'outdent'): void {
     for (const id of direction === 'indent' ? ids : [...ids].reverse()) {
       if ((editor as any).getBlock(id)?.type === 'taskBlock') {
-        if (direction === 'indent') indentTaskBlock(editor, id)
+        if (direction === 'indent') indentTaskBlock(editor, id, { nested: false })
         else outdentTaskBlock(editor, id)
         continue
       }
@@ -283,7 +284,7 @@ describe('mixed paragraph and task blocks', () => {
 
   it('indents the paragraph and re-parents every task in one batch', () => {
     const editor = mountEditor(blocks(), true)
-    indentBlocks(editor, ['P', 'T1', 'T2'])
+    indentBlocks(editor, ['P', 'T1', 'T2'], { nested: false })
 
     expect(topOutline(editor)).toEqual(['#t0(P #t1 #t2)'])
     const nested = (editor.document[0] as any).children
@@ -325,10 +326,10 @@ describe('mixed paragraph and task blocks', () => {
 
   it('outdents the same batch back to where it started', () => {
     const editor = mountEditor(blocks(), true)
-    indentBlocks(editor, ['P', 'T1', 'T2'])
+    indentBlocks(editor, ['P', 'T1', 'T2'], { nested: false })
     vi.mocked(tasksService.update).mockClear()
 
-    outdentBlocks(editor, ['P', 'T1', 'T2'])
+    outdentBlocks(editor, ['P', 'T1', 'T2'], { nested: false })
 
     expect(topOutline(editor)).toEqual(['#t0', 'P', '#t1', '#t2'])
     expect(vi.mocked(tasksService.update).mock.calls.map(([arg]) => arg)).toEqual([
@@ -337,7 +338,7 @@ describe('mixed paragraph and task blocks', () => {
     ])
 
     const hand = mountEditor(blocks(), true)
-    indentBlocks(hand, ['P', 'T1', 'T2'])
+    indentBlocks(hand, ['P', 'T1', 'T2'], { nested: false })
     byHand(hand, ['P', 'T1', 'T2'], 'outdent')
     expect(shapeOf(topBlocks(editor))).toEqual(shapeOf(topBlocks(hand)))
     expect(analyzeTaskIntents(topBlocks(editor) as never, new Set())).toEqual(

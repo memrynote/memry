@@ -12,10 +12,11 @@
  *     candidate (converting it would mint a duplicate and drop the original id)
  *   - a line `obsidianTaskImportBlocker` rejects is left byte-identical
  *   - plugin fields are lifted off the title with `buildObsidianTaskImport`
- *   - 1-level subtask depth: a checkbox nested directly under a *top-level*
- *     converted checkbox is its subtask; anything deeper becomes a standalone
- *     task, exactly as the editor's analyzer resolves it. A top-level line that
- *     already carries `{task:<id>}` parents its children too, for the same
+ *   - a checkbox nested directly under a converted checkbox is its subtask, at
+ *     any depth with the `tasks.nestedSubtasks` setting on. With it off, only a
+ *     *top-level* one parents and anything deeper becomes a standalone task,
+ *     exactly as the editor's analyzer resolves it. A line that already
+ *     carries `{task:<id>}` parents its children too, for the same
  *     reason the analyzer does (`normalizeTaskBlocks` turns it into a taskBlock
  *     before the walk sees it). The id is handed back unverified, and
  *     `imported-note.ts` checks the row exists before using it.
@@ -113,11 +114,16 @@ interface OpenListItem {
   planIndex: number | null
   /** Task id when the enclosing line already carries a `{task:<id>}` suffix. */
   existingTaskId: string | null
-  /** True when no list item encloses this one — the analyzer's 1-level gate. */
+  /** True when no list item encloses this one — the analyzer's one-level gate. */
   topLevel: boolean
 }
 
-export function planChecklistTasks(markdown: string, now: Date): PlannedChecklistTask[] {
+/** `nested` is the `tasks.nestedSubtasks` setting. */
+export function planChecklistTasks(
+  markdown: string,
+  now: Date,
+  nested: boolean
+): PlannedChecklistTask[] {
   const planned: PlannedChecklistTask[] = []
   const fence = createFenceTracker()
   const open: OpenListItem[] = []
@@ -151,6 +157,7 @@ export function planChecklistTasks(markdown: string, now: Date): PlannedChecklis
       listMarker,
       rest,
       enclosing,
+      nested,
       planned,
       now
     })
@@ -166,6 +173,7 @@ interface ChecklistLineInput {
   listMarker: string
   rest: string
   enclosing: OpenListItem | null
+  nested: boolean
   planned: PlannedChecklistTask[]
   now: Date
 }
@@ -199,10 +207,10 @@ function planChecklistLine(input: ChecklistLineInput): ChecklistLineResult {
   const title = (obsidian?.title ?? text).trim()
   if (title === '' || title.length > TITLE_MAX_LENGTH) return PARENTS_NOTHING
 
-  // 1-level subtask depth, as the editor resolves it: the enclosing item must
-  // be a task that is itself top-level. Deeper checkboxes become standalone
-  // tasks, which is what the analyzer's `passAsParent` rule does.
-  const parent = input.enclosing?.topLevel === true ? input.enclosing : null
+  // As the editor resolves it: with nested subtasks off, the enclosing item
+  // must be a task that is itself top-level, and deeper checkboxes become
+  // standalone tasks, which is what the analyzer's `passAsParent` rule does.
+  const parent = input.nested || input.enclosing?.topLevel === true ? input.enclosing : null
 
   input.planned.push({
     lineIndex: input.lineIndex,

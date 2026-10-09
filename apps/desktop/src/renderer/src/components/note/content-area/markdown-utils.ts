@@ -59,7 +59,7 @@ import {
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeBookmark } from './bookmark-block'
 import { extractDomain } from '@/lib/url-metadata'
-import { serializeTaskBlock } from './task-block/task-block-utils'
+import { serializeTaskBlockTree } from './task-block/task-block-utils'
 import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -619,26 +619,8 @@ export async function serializeBlocksPreservingBlanks(
     if ((block.type as string) === 'taskBlock') {
       await flushContent()
       flushGap()
-      const props = block.props as {
-        taskId: string
-        title: string
-        checked: boolean
-        parentTaskId?: string
-      }
-      segments.push({ type: 'content', text: serializeTaskBlock(props) })
-      if (block.children?.length) {
-        for (const child of block.children as Block[]) {
-          if ((child.type as string) === 'taskBlock') {
-            const childProps = child.props as {
-              taskId: string
-              title: string
-              checked: boolean
-              parentTaskId?: string
-            }
-            segments.push({ type: 'content', text: serializeTaskBlock(childProps) })
-          }
-        }
-      }
+      for (const line of serializeTaskBlockTree(block))
+        segments.push({ type: 'content', text: line })
     } else if ((block.type as string) === 'youtubeEmbed') {
       await flushContent()
       flushGap()

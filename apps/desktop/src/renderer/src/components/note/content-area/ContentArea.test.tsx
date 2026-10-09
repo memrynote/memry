@@ -28,6 +28,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   tasksService: {
     listProjects: vi.fn(),
     listForItem: vi.fn(),
+    getLinkedTasks: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
     complete: vi.fn(),
@@ -258,7 +259,11 @@ vi.mock('@/services/tasks-service', () => ({
   tasksService: contentAreaMocks.tasksService,
   // The task prefetch provider re-reads the note's project links whenever a
   // project changes, so the editor mounts a subscription here.
-  onProjectUpdated: () => vi.fn()
+  onProjectUpdated: () => vi.fn(),
+  // And it follows task parents, which set how deep a listed task shows.
+  onTaskCreated: () => vi.fn(),
+  onTaskUpdated: () => vi.fn(),
+  onTaskMoved: () => vi.fn()
 }))
 
 vi.mock('@/sync/use-yjs-collaboration', () => ({
@@ -1035,6 +1040,34 @@ describe('ContentArea', () => {
     // Closing after delete must not also run keep.
     expect(contentAreaMocks.tasksService.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ id: 'existing-task' })
+    )
+  })
+
+  it('leaves a deeper DB parent alone when the note lists the task under its top-level task', async () => {
+    // #given the note lists task-demoted under parent-task, while the DB has it
+    // one level further down, under sub-task (MAX_NOTE_TASK_DEPTH)
+    contentAreaMocks.tasksService.getLinkedTasks.mockResolvedValue([
+      { id: 'parent-task', parentId: null },
+      { id: 'sub-task', parentId: 'parent-task' },
+      { id: 'task-demoted', parentId: 'sub-task' }
+    ])
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(() => expect(contentAreaMocks.tasksService.getLinkedTasks).toHaveBeenCalled())
+    await act(async () => {})
+
+    // #when the scan sees its block under parent-task with a stale prop
+    contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+      ...emptyIntents(new Set()),
+      demotedTaskBlocks: [
+        { blockId: 'demoted', taskId: 'task-demoted', newParentTaskId: 'parent-task' }
+      ]
+    })
+    fireEvent.click(screen.getByText('change'))
+
+    // #then the block prop follows the tree and the DB parent stays deep
+    expect(contentAreaMocks.blocks.get('demoted').props.parentTaskId).toBe('parent-task')
+    expect(contentAreaMocks.tasksService.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task-demoted' })
     )
   })
 

@@ -4,7 +4,10 @@ import {
   parseTaskBlockSuffix,
   scanTaskCheckboxStates,
   serializeTaskBlock,
-  stripTaskBlockSuffixes
+  serializeTaskBlockTree,
+  capTaskTreeDepth,
+  stripTaskBlockSuffixes,
+  type TaskNormalizableBlock
 } from './task-block'
 
 describe('scanTaskCheckboxStates', () => {
@@ -194,5 +197,63 @@ describe('normalizeTaskBlocks title from the source line', () => {
     const source = '```\n- [ ] Dune `fenced` x {task:t1}\n```\n- [ ] **Dune** x {task:t1}'
     const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1')], source)
     expect(titles(blocks)).toEqual(['**Dune** x'])
+  })
+})
+
+describe('serializeTaskBlockTree', () => {
+  const task = (taskId: string, parentTaskId: string, children: TaskNormalizableBlock[] = []) => ({
+    type: 'taskBlock',
+    props: { taskId, title: taskId.toUpperCase(), checked: false, parentTaskId },
+    children
+  })
+
+  it('lists every task below the first level flat under its top-level task, in order', () => {
+    const tree = task('a', '', [task('b', 'a', [task('c', 'b', [task('d', 'c')])]), task('e', 'a')])
+
+    const md = serializeTaskBlockTree(tree).join('\n')
+
+    // Released builds read one level only; deeper lines would be misplaced or dropped.
+    expect(md).toBe(
+      [
+        '- [ ] A {task:a}',
+        '  - [ ] B {task:b}',
+        '  - [ ] C {task:c}',
+        '  - [ ] D {task:d}',
+        '  - [ ] E {task:e}'
+      ].join('\n')
+    )
+  })
+
+  it('writes a one-level subtask exactly as serializeTaskBlock does', () => {
+    const child = task('b', 'a')
+    expect(serializeTaskBlockTree(task('a', '', [child]))[1]).toBe(serializeTaskBlock(child.props))
+  })
+})
+
+describe('capTaskTreeDepth', () => {
+  const task = (taskId: string, parentTaskId: string, children: TaskNormalizableBlock[] = []) => ({
+    type: 'taskBlock',
+    props: { taskId, title: taskId, checked: false, parentTaskId },
+    children
+  })
+  const shape = (block: TaskNormalizableBlock): unknown => ({
+    id: block.props?.taskId,
+    parent: block.props?.parentTaskId,
+    children: (block.children ?? []).map(shape)
+  })
+
+  it('lifts deeper tasks to the first level under the top-level task', () => {
+    const tree = task('a', '', [task('b', 'a', [task('c', 'b', [task('d', 'c')])]), task('e', 'a')])
+
+    expect(shape(capTaskTreeDepth(tree))).toEqual({
+      id: 'a',
+      parent: '',
+      children: ['b', 'c', 'd', 'e'].map((id) => ({ id, parent: 'a', children: [] }))
+    })
+  })
+
+  it('returns a one-level tree unchanged', () => {
+    const tree = task('a', '', [task('b', 'a'), task('c', 'a')])
+    expect(capTaskTreeDepth(tree)).toBe(tree)
   })
 })

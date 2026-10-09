@@ -252,6 +252,37 @@ describe('analyzeTaskIntents', () => {
       expect(result.subtaskCandidate).toBeNull()
     })
 
+    it('with nested subtasks on, makes a checkbox under a subtask that subtask\u2019s subtask', () => {
+      const subtask = tb('tb-sub', 'task-sub', 'Sub', 'task-1', [cl('cl1', 'Deeper')])
+      const blocks = [tb('tb1', 'task-1', 'Top', '', [subtask])]
+
+      const result = analyzeTaskIntents(blocks, new Set(), { nestedSubtasks: true })
+
+      expect(result.subtaskCandidate).toEqual({ blockId: 'cl1', parentTaskId: 'task-sub' })
+      expect(result.standaloneCandidate).toBeNull()
+    })
+
+    it('with nested subtasks on, drafts an empty checkbox under a subtask with that parent', () => {
+      const subtask = tb('tb-sub', 'task-sub', 'Sub', 'task-1', [{ ...cl('cl1', ''), content: [] }])
+      const blocks = [tb('tb1', 'task-1', 'Top', '', [subtask])]
+
+      const result = analyzeTaskIntents(blocks, new Set(), { nestedSubtasks: true })
+
+      expect(result.emptyCheckbox).toEqual({ blockId: 'cl1', parentTaskId: 'task-sub' })
+    })
+
+    it('with nested subtasks on, wires a task block moved under a subtask to it', () => {
+      const moved = tb('tb3', 'task-c', 'Moved', 'task-a')
+      const blocks = [
+        tb('tb1', 'task-a', 'Top', '', [tb('tb2', 'task-b', 'Sub', 'task-a', [moved])])
+      ]
+
+      expect(
+        analyzeTaskIntents(blocks, new Set(), { nestedSubtasks: true }).demotedTaskBlocks
+      ).toEqual([{ blockId: 'tb3', taskId: 'task-c', newParentTaskId: 'task-b' }])
+      expect(analyzeTaskIntents(blocks, new Set()).demotedTaskBlocks).toEqual([])
+    })
+
     it('should prefer subtask over standalone when both exist', () => {
       // #given
       const blocks = [

@@ -22,7 +22,10 @@ export interface ParsedTask {
   dueDate: string | null
   /** From an `@done(YYYY-MM-DD)` token in the line. */
   completedAt: string | null
-  /** Nearest shallower task, by indentation. */
+  /**
+   * Nearest shallower task, by indentation. With `nestedSubtasks` off, only a
+   * top-level task parents, as Memry then allows one level of subtasks.
+   */
   parentTempId: string | null
 }
 
@@ -73,12 +76,17 @@ function indentDepth(indent: string): number {
   return tabs + Math.floor(spaces / 4)
 }
 
-export function convertBody(source: string): ConvertedBody {
+export interface ConvertBodyOptions {
+  /** The `tasks.nestedSubtasks` setting. */
+  nestedSubtasks: boolean
+}
+
+export function convertBody(source: string, options: ConvertBodyOptions): ConvertedBody {
   const lines = source.split('\n')
   const out: string[] = []
   const tasks: ParsedTask[] = []
   /** Open tasks by depth, so a nested task can find its parent. */
-  const stack: { depth: number; tempId: string }[] = []
+  const stack: { depth: number; tempId: string; parentTempId: string | null }[] = []
   let inFence = false
   let counter = 0
 
@@ -147,10 +155,12 @@ export function convertBody(source: string): ConvertedBody {
     // Nearest shallower task is the parent; anything at or below this depth
     // is a sibling or a closed branch.
     while (stack.length > 0 && stack[stack.length - 1].depth >= depth) stack.pop()
-    const parentTempId = stack.length > 0 ? stack[stack.length - 1].tempId : null
+    const parent = stack.length > 0 ? stack[stack.length - 1] : null
+    const parentTempId =
+      parent && (options.nestedSubtasks || parent.parentTempId === null) ? parent.tempId : null
 
     const tempId = `t${counter++}`
-    stack.push({ depth, tempId })
+    stack.push({ depth, tempId, parentTempId })
     tasks.push({ tempId, title, state, dueDate, completedAt, parentTempId })
 
     const checked = state === 'open' ? ' ' : 'x'

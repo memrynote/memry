@@ -3,11 +3,20 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode
 } from 'react'
-import { tasksService, onProjectUpdated, type Task } from '@/services/tasks-service'
+import {
+  tasksService,
+  onProjectUpdated,
+  onTaskCreated,
+  onTaskMoved,
+  onTaskUpdated,
+  type Task
+} from '@/services/tasks-service'
+import type { TaskParents } from '../hooks/task-block-marquee-indent'
 import { useTasksOptional } from '@/contexts/tasks'
 import {
   loadNoteTaskProjectContext,
@@ -16,6 +25,7 @@ import {
 } from '@/lib/note-task-project'
 import { createLogger } from '@/lib/logger'
 import { useReminders } from '@/hooks/use-reminders'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import type { ListRemindersInput } from '@/services/reminder-service'
 
 const log = createLogger('TaskPrefetch')
@@ -60,6 +70,18 @@ interface TaskPrefetchValue {
   noteId: string | null
   /** Whether the task has a reminder still to fire. */
   hasActiveReminder: (taskId: string) => boolean
+  /**
+   * The `tasks.nestedSubtasks` setting, false until it loads: main refuses a
+   * parent below one level with it off, so an edit made before then stays
+   * within what main accepts either way.
+   */
+  nestedSubtasks: boolean
+  /**
+   * Each task's DB parent, which owns the hierarchy: the note's block tree
+   * lists tasks below the first level flat (see `MAX_NOTE_TASK_DEPTH`), and
+   * the rows read their depth from here. A new value re-renders the rows.
+   */
+  taskParents: TaskParents
 }
 
 // Default used when a taskBlock renders outside a provider (e.g. unit tests):
@@ -70,7 +92,9 @@ const DEFAULT_VALUE: TaskPrefetchValue = {
   getCached: () => undefined,
   draftProjectId: null,
   noteId: null,
-  hasActiveReminder: () => false
+  hasActiveReminder: () => false,
+  nestedSubtasks: false,
+  taskParents: { get: () => undefined, set: () => {} }
 }
 
 const TaskPrefetchContext = createContext<TaskPrefetchValue>(DEFAULT_VALUE)
@@ -99,6 +123,28 @@ export function TaskPrefetchProvider({
     useState<NoteTaskProjectContext>(EMPTY_PROJECT_CONTEXT)
   const [prevNoteId, setPrevNoteId] = useState(noteId)
   const tasksCtx = useTasksOptional()
+  // A ref so Tab over several rows in one pass reads the parents it just set.
+  const parentsRef = useRef<Map<string, string | null>>(new Map())
+  const [parentsVersion, setParentsVersion] = useState(0)
+  const taskParents = useMemo<TaskParents>(
+    () => ({
+      get: (taskId) => parentsRef.current.get(taskId),
+      set: (taskId, parentId) => {
+        if (parentsRef.current.get(taskId) === parentId) return
+        parentsRef.current.set(taskId, parentId)
+        setParentsVersion((version) => version + 1)
+      }
+    }),
+    // A new object per change, so the rows reading it re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parentsVersion]
+  )
+
+  useEffect(() => {
+    const record = ({ task }: { task: Task }): void => taskParents.set(task.id, task.parentId)
+    const unsubscribers = [onTaskCreated(record), onTaskUpdated(record), onTaskMoved(record)]
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+  }, [taskParents])
 
   // Clear the cache synchronously when the note changes, at render time rather
   // than in an effect, so blocks never read another note's tasks for a frame.
@@ -121,6 +167,8 @@ export function TaskPrefetchProvider({
         const tasks = await tasksService.getLinkedTasks(noteId)
         if (cancelled) return
         setTasksById(new Map(tasks.map((t) => [t.id, t])))
+        for (const t of tasks) parentsRef.current.set(t.id, t.parentId)
+        setParentsVersion((version) => version + 1)
       } catch (err) {
         // Non-fatal: blocks fall back to their own fetch on a cache miss.
         log.warn('Failed to prefetch linked tasks', err)
@@ -175,15 +223,20 @@ export function TaskPrefetchProvider({
     [reminders]
   )
 
+  const { settings: taskSettings, isLoading: taskSettingsLoading } = useTaskPreferences()
+  const nestedSubtasks = !taskSettingsLoading && taskSettings.nestedSubtasks
+
   const value = useMemo<TaskPrefetchValue>(
     () => ({
       status,
       getCached: (taskId: string) => tasksById.get(taskId),
       draftProjectId,
       noteId: noteId ?? null,
-      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId)
+      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId),
+      nestedSubtasks,
+      taskParents
     }),
-    [status, tasksById, draftProjectId, noteId, reminderTaskIds]
+    [status, tasksById, draftProjectId, noteId, reminderTaskIds, nestedSubtasks, taskParents]
   )
 
   return <TaskPrefetchContext.Provider value={value}>{children}</TaskPrefetchContext.Provider>

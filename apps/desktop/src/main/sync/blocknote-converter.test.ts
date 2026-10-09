@@ -380,6 +380,62 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('  - [x] Child {task:c1}')
   })
 
+  it('writes an existing one-level task body back byte-identical', async () => {
+    // #given a body as builds before nested subtasks wrote it
+    const md = [
+      '# Groceries',
+      '',
+      'Weekly run.',
+      '',
+      '- [ ] Buy milk {task:p1}',
+      '  - [x] Check fridge {task:c1}',
+      '  - [ ] Pick brand {task:c2}',
+      '',
+      '- [x] Pay bill {task:p2}',
+      '',
+      '- plain bullet'
+    ].join('\n')
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result?.trim()).toBe(md)
+  })
+
+  it('writes subtasks below one level flat under their top-level task', async () => {
+    // #given a task tree three levels deep in the Y.Doc
+    const md = [
+      '- [ ] Parent {task:p1}',
+      '  - [ ] Child {task:c1}',
+      '    - [x] Grandchild {task:g1}',
+      '      - [ ] Great-grandchild {task:gg1}',
+      '  - [ ] Second child {task:c2}'
+    ].join('\n')
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
+    const result = await yDocToMarkdown(doc)
+
+    // #then every line is kept, one level deep, in order: released builds read no deeper
+    expect(result?.trim()).toBe(
+      [
+        '- [ ] Parent {task:p1}',
+        '  - [ ] Child {task:c1}',
+        '  - [x] Grandchild {task:g1}',
+        '  - [ ] Great-grandchild {task:gg1}',
+        '  - [ ] Second child {task:c2}'
+      ].join('\n')
+    )
+  })
+
   it('does not accumulate blank lines around inline task list items on reopen', async () => {
     // Reproduces the inline-task bug: a task checklist followed by a gap and more
     // content. Each markdown → Yjs → markdown round-trip models one note reopen;
