@@ -78,8 +78,7 @@ export function markdownToHtml(markdown: string): string {
 /**
  * Footnotes as numbered superscripts and a Notes list at the end with
  * back-links (BBF-24). Every definition line leaves the body, referenced or
- * not: printed in place it is raw syntax, and `marked` would read it as a link
- * reference definition and link `[^label]` to its first word.
+ * not, because `marked` has no footnotes and prints it in place as raw syntax.
  */
 function renderFootnotes(markdown: string): { body: string; notes: string } {
   const { references, definitions } = scanFootnotes(markdown)
