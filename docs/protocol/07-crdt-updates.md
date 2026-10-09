@@ -852,6 +852,19 @@ already durable across relaunches. A random id per launch would make every
 relaunch look like a new peer and grow the document's state vector without
 bound; a counter would collide across devices immediately.
 
+**A client MUST NOT mint the same `(client id, clock)` pair twice for one
+document id (#2986).** Purging a document's local log (§7.15) and writing the
+id again restarts the clock at 0. A peer that missed the delete still holds the
+old items under that client id, takes the new ones for them, and drops them
+silently. The core keeps a per-document epoch that each purge bumps
+(`crates/memry-core/src/crdt/epoch.rs`, table `yjs_doc_epochs`). At epoch 0 it
+writes under the derived id above; at epoch n > 0 it writes under the first 53
+bits of the SHA-256 of `<device id>\0epoch<n>`. Desktop draws a random client
+id for every `Y.Doc` it opens (`new Y.Doc({ guid })`,
+`apps/desktop/src/main/sync/crdt-provider.ts`), so it never reuses one. Peers
+need not agree on the derivation; only uniqueness per document crosses the
+wire.
+
 ## 7.17 Note bodies in the change feed (#2295)
 
 **Normative.** `crdt_updates` and `crdt_snapshots` carry a `server_cursor`

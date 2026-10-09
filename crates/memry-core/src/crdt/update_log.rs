@@ -411,6 +411,7 @@ pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
             )
             .map_err(failed("purge a snapshot"))?;
     }
+    super::epoch::bump_in(conn, doc_id)?;
     // The document's body cursor goes with its log. Kept, it would make a
     // later pull of a revived document ask only for what came after it, and
     // the history the server still holds would never come back to this
