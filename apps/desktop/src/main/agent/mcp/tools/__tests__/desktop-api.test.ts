@@ -4,6 +4,7 @@ import {
   type AgentMcpDesktopApiRequest
 } from '@memry/contracts/agent-mcp-channels'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { OutsideVaultError } from '../../../../lib/errors'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn() }
@@ -123,6 +124,41 @@ describe('invokeDesktopApiFromWindow', () => {
         ).rejects.toMatchObject({
           code: 'PERMISSION_DENIED',
           message: VAULT_LOCKED_NOTE_MESSAGE,
+          details: { operation }
+        })
+      }
+    )
+
+    const outsideRefusal = new OutsideVaultError('notes/swapped.md').message
+
+    it('maps a thrown notes.get outside-vault refusal to PERMISSION_DENIED (#2829)', async () => {
+      vi.mocked(mainToRendererInvoke).mockResolvedValue({
+        ok: false,
+        error: { code: 'DESKTOP_API_ERROR', message: outsideRefusal }
+      })
+
+      await expect(
+        invokeDesktopApiFromWindow('123', { operation: 'notes.get', args: [] })
+      ).rejects.toMatchObject({
+        code: 'PERMISSION_DENIED',
+        message: outsideRefusal,
+        details: { operation: 'notes.get' }
+      })
+    })
+
+    it.each(['notes.update', 'properties.set'] as const)(
+      'maps a %s {success:false} outside-vault envelope to PERMISSION_DENIED (#2829)',
+      async (operation) => {
+        vi.mocked(mainToRendererInvoke).mockResolvedValue({
+          ok: true,
+          data: { success: false, error: outsideRefusal }
+        })
+
+        await expect(
+          invokeDesktopApiFromWindow('123', { operation, args: [] })
+        ).rejects.toMatchObject({
+          code: 'PERMISSION_DENIED',
+          message: outsideRefusal,
           details: { operation }
         })
       }

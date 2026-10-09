@@ -1290,6 +1290,7 @@ fn seed_locally_renamed_note(db: &Db, id: &str) {
                 content: "",
                 tags: &[],
                 properties: None,
+                emoji: None,
             },
             "device-a",
             MERGE_NOW,

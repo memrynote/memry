@@ -277,6 +277,7 @@ async fn a_skipped_note_record_owes_no_body_pull() {
                 content: "",
                 tags: &[],
                 properties: None,
+                emoji: None,
             },
             "device-a",
             1_760_000_000_000,

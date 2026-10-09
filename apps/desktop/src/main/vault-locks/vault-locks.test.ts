@@ -74,6 +74,7 @@ import {
 import { getBaseline, writeBaseline, writeLockRow } from './store'
 import { atomicWrite, deleteFile } from '../vault/file-ops'
 import { getAttachmentPath } from '../vault/attachments'
+import { watchLockedAttachments } from './attachment-watch'
 
 const isWindows = process.platform === 'win32'
 
@@ -500,6 +501,51 @@ describe('vault read-only locks (#2606)', () => {
         { timeout: 5000 }
       )
       expect([unlocked, partial].map(modeOf)).toEqual([0o644, 0o644])
+    }
+  )
+
+  it.skipIf(isWindows)(
+    'an attachment added after the attachments folder is first created is read-only',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+
+      const added = path.join(vault, 'attachments/note-a/late.png')
+      fs.mkdirSync(path.dirname(added), { recursive: true })
+      fs.writeFileSync(added, 'bytes')
+      fs.chmodSync(added, 0o644)
+
+      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
+    }
+  )
+
+  it('watching the attachments of a vault folder that went away does not recreate it', async () => {
+    const gone = path.join(vault, 'gone-vault')
+
+    await watchLockedAttachments(path.join(gone, 'attachments'))
+    await watchLockedAttachments(null)
+
+    expect(fs.existsSync(gone)).toBe(false)
+  })
+
+  it.skipIf(isWindows)(
+    'a reconcile still running when the vault closes does not watch attachments again',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      await watchLockedAttachments(null)
+
+      const running = reconcileLockedFiles()
+      state.vaultPath = ''
+      await running
+      state.vaultPath = vault
+      const added = path.join(vault, 'attachments/note-a/after-close.png')
+      fs.mkdirSync(path.dirname(added), { recursive: true })
+      fs.writeFileSync(added, 'bytes')
+      fs.chmodSync(added, 0o644)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      expect(modeOf(added)).toBe(0o644)
     }
   )
 

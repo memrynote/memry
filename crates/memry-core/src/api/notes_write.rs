@@ -118,6 +118,7 @@ impl NotesWriter {
                 content: "",
                 tags: &[],
                 properties: None,
+                emoji: None,
             };
             // The domain hands back the payload it wrote, not the id. Consumed
             // and dropped: taking it is what marks the write acknowledged, and

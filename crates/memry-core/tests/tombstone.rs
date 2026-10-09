@@ -177,6 +177,7 @@ fn seed_note(db: &Db) {
                 content: "",
                 tags: &[],
                 properties: None,
+                emoji: None,
             },
             DEVICE,
             NOW,

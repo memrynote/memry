@@ -75,7 +75,7 @@ struct NoteExportButton: View {
 
 // MARK: - N803, templates
 
-/// Making a note from a template.
+/// The templates a note can be made from: desktop's list, built-ins first.
 @MainActor
 @Observable
 final class TemplatePickerViewModel {
@@ -83,14 +83,10 @@ final class TemplatePickerViewModel {
     private(set) var failure: UserFacingError?
 
     private let reader: any NotesReading
-    private let writer: (any NotesWriting)?
 
-    init(reader: any NotesReading, writer: (any NotesWriting)?) {
+    init(reader: any NotesReading) {
         self.reader = reader
-        self.writer = writer
     }
-
-    var canApply: Bool { writer != nil }
 
     func load() async {
         do {
@@ -100,30 +96,22 @@ final class TemplatePickerViewModel {
             failure = ErrorMapping.userFacing(error)
         }
     }
-
-    /// Creates a note from a template and returns its id.
-    func apply(_ templateId: String, title: String, folderPath: String?) async -> String? {
-        guard let writer else { return nil }
-        do {
-            return try await writer.createFromTemplate(
-                templateId: templateId,
-                title: title,
-                folderPath: folderPath
-            )
-        } catch {
-            failure = ErrorMapping.userFacing(error)
-            return nil
-        }
-    }
 }
 
+/// "From template…": a title and a template. Picking one closes the sheet and
+/// hands both to the caller, which creates the note through
+/// `VaultBrowseViewModel`, the owner of note writes and their sync request.
 struct TemplatePicker: View {
-    let model: TemplatePickerViewModel
-    /// Where the new note goes. `nil` is the vault root.
-    let folderPath: String?
-    let made: (String) -> Void
+    let pick: (_ templateId: String, _ title: String) -> Void
 
+    @Environment(\.dismiss) private var dismiss
+    @State private var model: TemplatePickerViewModel
     @State private var title = ""
+
+    init(reader: any NotesReading, pick: @escaping (_ templateId: String, _ title: String) -> Void) {
+        self.pick = pick
+        _model = State(initialValue: TemplatePickerViewModel(reader: reader))
+    }
 
     var body: some View {
         NavigationStack {
@@ -133,43 +121,62 @@ struct TemplatePicker: View {
                         .accessibilityLabel("Title for the new note")
                 }
                 Section {
-                    if model.templates.isEmpty {
-                        Text("This vault has no templates yet.")
+                    if let failure = model.failure {
+                        Text(failure.title)
                             .font(Tokens.Typography.supporting.font)
                             .foregroundStyle(Tokens.Text.secondary.color)
-                    } else {
-                        ForEach(model.templates, id: \.id) { template in
-                            Button {
-                                Task {
-                                    if let id = await model.apply(
-                                        template.id,
-                                        title: title,
-                                        folderPath: folderPath
-                                    ) {
-                                        made(id)
-                                    }
-                                }
-                            } label: {
-                                HStack(spacing: Tokens.Space.small) {
-                                    if let icon = template.icon { Text(icon) }
-                                    VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                                        Text(template.name)
-                                            .foregroundStyle(Tokens.Text.primary.color)
-                                        if let description = template.description {
-                                            Text(description)
-                                                .font(Tokens.Typography.caption.font)
-                                                .foregroundStyle(Tokens.Text.secondary.color)
-                                        }
+                    }
+                    ForEach(model.templates, id: \.id) { template in
+                        Button {
+                            dismiss()
+                            pick(template.id, title)
+                        } label: {
+                            HStack(spacing: Tokens.Space.small) {
+                                if let icon = template.icon { Text(icon) }
+                                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                                    Text(template.name)
+                                        .foregroundStyle(Tokens.Text.primary.color)
+                                    if let description = template.description {
+                                        Text(description)
+                                            .font(Tokens.Typography.caption.font)
+                                            .foregroundStyle(Tokens.Text.secondary.color)
                                     }
                                 }
                             }
-                            .disabled(!model.canApply)
                         }
+                        .accessibilityIdentifier("notes.template.\(template.id)")
                     }
                 }
             }
             .navigationTitle("New from template")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
             .task { await model.load() }
+        }
+    }
+}
+
+extension View {
+    /// The "From template…" sheet. The note is made by `browse`, which asks
+    /// for the sync pass every note write asks for, then opened with `open`.
+    func fromTemplateSheet(
+        isPresented: Binding<Bool>,
+        browse: VaultBrowseViewModel,
+        folderPath: String?,
+        open: @escaping (String) -> Void
+    ) -> some View {
+        sheet(isPresented: isPresented) {
+            TemplatePicker(reader: browse.reader) { templateId, title in
+                Task {
+                    if let id = await browse.createNote(fromTemplate: templateId, title: title, in: folderPath) {
+                        open(id)
+                    }
+                }
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ import {
 } from './list-section-drag-state'
 import type { TaskRowProps } from './task-row'
 import { SubtaskDraftRow } from '@/components/tasks/subtask-tree/subtask-draft-row'
+import { nestedListClass } from '@/components/tasks/sortable-subtask-list'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 
 interface SortableTaskRowProps extends Omit<
@@ -93,7 +94,9 @@ export const SortableTaskRow = ({
       />
       {/* A task's first subtask is drafted here; with one, it renders as a parent row. */}
       {tree?.draftParentId === task.id && (
-        <SubtaskDraftRow parent={task} siblings={[]} depth={1} grandparent={null} />
+        <div className={nestedListClass(0, !!rest.onToggleSelect)}>
+          <SubtaskDraftRow parent={task} siblings={[]} grandparent={null} />
+        </div>
       )}
     </div>
   )

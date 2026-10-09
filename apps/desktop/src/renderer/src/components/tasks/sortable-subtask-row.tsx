@@ -114,8 +114,7 @@ export const SortableSubtaskRow = ({
           data-task-id={subtask.id}
           data-depth={depth}
           className={cn(
-            'group/addable flex items-center gap-1 py-1.5 pe-3',
-            depth === 1 ? 'ps-6' : 'ps-1',
+            'group/addable flex items-center gap-1 py-1.5 ps-1 pe-3',
             'hover:bg-muted rounded-e-sm',
             'transition-colors duration-150',
             onClick && 'focus-visible:outline-none focus-visible:bg-muted',

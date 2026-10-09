@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AssistantActions } from './assistant-actions'
 import { AgentSourceRefsProvider, CitedMemryLink } from './memry-links'
-import { ThinkingIndicator } from './thinking-indicator'
+import { ThinkingIndicator, useSilentSince } from './thinking-indicator'
 
 /** Stable identity: a new `components` object would defeat the renderer's own memoisation. */
 const markdownComponents = { a: CitedMemryLink }
@@ -70,6 +70,10 @@ function AssistantMessageContent({
   const toolsUnavailable = message.content.data.toolsUnavailable
   const toolsNotice = toolsUnavailable && (
     <ToolsOffNotice notice={toolsUnavailable} wroteToolCall={wroteToolCall} />
+  )
+  const silentSince = useSilentSince(
+    `${message.content.data.text.length}:${reasoning.length}`,
+    streaming && answerStarted
   )
 
   if (streaming && !answerStarted && !hasReasoning) {
@@ -131,6 +135,11 @@ function AssistantMessageContent({
               </MessageResponse>
             </AgentSourceRefsProvider>
           )
+        )}
+        {silentSince !== null && !typing && (
+          <div role="status" aria-label={t('agentChat.thinking')} className="mt-2">
+            <ThinkingIndicator label={t('agentChat.thinking')} since={silentSince} />
+          </div>
         )}
         {message.content.data.stepLimitReached && !streaming && message.status !== 'error' && (
           <StepLimitNotice wroteToolCall={wroteToolCall} onContinue={onContinue} />

@@ -156,7 +156,9 @@ export async function reconcileLockedFiles(unlockedFolder?: string): Promise<voi
     if (!isVaultPathLocked(relative)) await releaseLockedFile(path.join(root, relative))
   }
 
-  await watchLockedAttachments(hasAnyVaultLock() ? getAttachmentsRoot(root) : null)
+  // The vault may have closed while this ran; its close already stopped the watch.
+  const watchRoot = vaultPath() === root && hasAnyVaultLock() ? getAttachmentsRoot(root) : null
+  await watchLockedAttachments(watchRoot)
 }
 
 let reconcileTimer: ReturnType<typeof setTimeout> | null = null
