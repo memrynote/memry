@@ -14,6 +14,7 @@ const BASE_RECONNECT_DELAY_MS = 1_000
 const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
 const HTTP_UNAUTHORIZED = 401
+const HTTP_FORBIDDEN = 403
 const HTTP_UPGRADE_REQUIRED = 426
 // Steady state is one listener per event name: the constructor's own 'error'
 // logger, plus the SyncEngine's four ('message', 'connected', 'device_revoked',
@@ -212,6 +213,13 @@ export class WebSocketManager extends SyncEventEmitter {
       if (statusCode === HTTP_UNAUTHORIZED) {
         this.authFailed = true
         log.warn('WebSocket auth rejected during handshake', { statusCode })
+      }
+
+      // An unknown or revoked device (§9.10): reconnecting cannot fix it, and
+      // the HTTP sync path owns the revocation handling.
+      if (statusCode === HTTP_FORBIDDEN) {
+        this.authFailed = true
+        log.warn('WebSocket handshake rejected: device unknown or revoked', { statusCode })
       }
 
       if (statusCode === HTTP_UPGRADE_REQUIRED) {

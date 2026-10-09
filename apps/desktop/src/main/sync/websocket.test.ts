@@ -708,6 +708,19 @@ describe('WebSocketManager', () => {
     })
   })
 
+  describe('#given server rejects with 403 #when reconnect scheduled', () => {
+    it('#then does not auto-reconnect after a revoked-device handshake', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateUnexpectedResponse(403)
+      lastWs().simulateClose(1006)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(getInstances().length).toBe(1)
+    })
+  })
+
   describe('#given WS close code 4009 #when version rejected via close (T237b-alt)', () => {
     it('#then emits version_rejected and suppresses reconnect', async () => {
       // #given
