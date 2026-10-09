@@ -1727,6 +1727,15 @@
           "thoughts": "Thoughts"
         }
       }
+    },
+    "toast": {
+      "becameObject": "{{title}} is now a {{tag}}. Template added.",
+      "templateChanged": "The note changed after the template was added, so it stays.",
+      "undoFailed": "Could not undo",
+      "addFailed": "Could not add the tag",
+      "removeFailed": "Could not remove the tag",
+      "removedKept": "Removed #{{tag}}. {{count}} values kept.",
+      "removedKeptOne": "Removed #{{tag}}. 1 value kept."
     }
   }
 }

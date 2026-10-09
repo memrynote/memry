@@ -1,4 +1,4 @@
-import { TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
+import { PropertiesChannels, TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
 import type {
   ImpactQuery,
   TagSchemaCommand,
@@ -79,5 +79,9 @@ export const tagEvents = {
     subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback),
 
   onTagsProgress: (callback: (event: TagsProgressEvent) => void): (() => void) =>
-    subscribe<TagsProgressEvent>(TagSchemaChannels.events.PROGRESS, callback)
+    subscribe<TagsProgressEvent>(TagSchemaChannels.events.PROGRESS, callback),
+
+  /** A vault-wide property definition changed: a field's type or options may differ. */
+  onPropertyDefinitionChanged: (callback: (event: { name: string }) => void): (() => void) =>
+    subscribe<{ name: string }>(PropertiesChannels.events.DEFINITION_CHANGED, callback)
 }

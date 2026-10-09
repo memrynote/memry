@@ -1523,6 +1523,15 @@
           "thoughts": "Düşünceler"
         }
       }
+    },
+    "toast": {
+      "becameObject": "{{title}} artık bir {{tag}}. Şablon eklendi.",
+      "templateChanged": "Şablon eklendikten sonra not değişti, bu yüzden şablon kaldı.",
+      "undoFailed": "Geri alınamadı",
+      "addFailed": "Etiket eklenemedi",
+      "removeFailed": "Etiket kaldırılamadı",
+      "removedKept": "#{{tag}} kaldırıldı. {{count}} değer korundu.",
+      "removedKeptOne": "#{{tag}} kaldırıldı. 1 değer korundu."
     }
   }
 }
