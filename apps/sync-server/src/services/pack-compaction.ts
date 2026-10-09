@@ -444,18 +444,36 @@ export const compactOneRange = async (
   // is no second full-size allocation anywhere in this flow.
   await storage.put(packKey, built.bytes)
 
-  await insertPackIndexRow(
-    db,
-    scope,
-    kind,
-    packKey,
-    minSortValue,
-    maxSortValue,
-    built.entries.length,
-    built.payloadBytes
-  )
-
-  await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
+  // A note delete purges its snapshot rows and drops every snapshot pack of the
+  // vault (#2986). One that commits after this run selected would leave the
+  // deleted body in this pack, so the row and the watermark commit together
+  // and only while every packed snapshot row is still current and not dead.
+  // Otherwise the object is deleted and the next run reselects.
+  const guard = kind === 'crdt_snapshot' ? snapshotsCurrent(scope, built.entries) : ALWAYS
+  const [, , check] = await db.batch<{ ok: number }>([
+    packIndexInsert(
+      db,
+      scope,
+      kind,
+      packKey,
+      minSortValue,
+      maxSortValue,
+      built.entries.length,
+      built.payloadBytes,
+      guard
+    ),
+    watermarkUpsert(db, scope, kind, selection.nextSortValue, selection.nextTiebreak, guard),
+    db.prepare(`SELECT ${guard.sql} AS ok`).bind(...guard.bind)
+  ])
+  if (!check.results?.[0]?.ok) {
+    await storage.delete(packKey)
+    logger.info('pack superseded by a body purge; discarded', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind
+    })
+    return { ...noop, holes }
+  }
 
   logger.info('pack built', {
     userId: scope.userId,
@@ -493,10 +511,40 @@ export const insertPackIndexRow = async (
   itemCount: number,
   byteSize: number
 ): Promise<void> => {
-  await db
+  await packIndexInsert(
+    db,
+    scope,
+    kind,
+    packKey,
+    minSortValue,
+    maxSortValue,
+    itemCount,
+    byteSize
+  ).run()
+}
+
+interface Guard {
+  sql: string
+  bind: unknown[]
+}
+
+const ALWAYS: Guard = { sql: '1', bind: [] }
+
+const packIndexInsert = (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  packKey: string,
+  minSortValue: number,
+  maxSortValue: number,
+  itemCount: number,
+  byteSize: number,
+  guard: Guard = ALWAYS
+): D1PreparedStatement =>
+  db
     .prepare(
       `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql}
        ON CONFLICT (user_id, vault_id, item_kind, min_cursor) DO NOTHING`
     )
     .bind(
@@ -509,10 +557,36 @@ export const insertPackIndexRow = async (
       maxSortValue,
       itemCount,
       byteSize,
-      Math.floor(Date.now() / 1000)
+      Math.floor(Date.now() / 1000),
+      ...guard.bind
     )
-    .run()
-}
+
+const watermarkUpsert = (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  sortValue: number,
+  tiebreak: string,
+  guard: Guard = ALWAYS
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at)
+       SELECT ?, ?, ?, ?, ?, ? WHERE ${guard.sql}
+       ON CONFLICT (user_id, vault_id, item_kind) DO UPDATE SET
+         last_sort_value = excluded.last_sort_value,
+         last_sort_tiebreak = excluded.last_sort_tiebreak,
+         updated_at = excluded.updated_at`
+    )
+    .bind(
+      scope.userId,
+      scope.vaultId,
+      kind,
+      sortValue,
+      tiebreak,
+      Math.floor(Date.now() / 1000),
+      ...guard.bind
+    )
 
 const advanceWatermark = async (
   db: D1Database,
@@ -521,18 +595,28 @@ const advanceWatermark = async (
   sortValue: number,
   tiebreak: string
 ): Promise<void> => {
-  await db
-    .prepare(
-      `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT (user_id, vault_id, item_kind) DO UPDATE SET
-         last_sort_value = excluded.last_sort_value,
-         last_sort_tiebreak = excluded.last_sort_tiebreak,
-         updated_at = excluded.updated_at`
-    )
-    .bind(scope.userId, scope.vaultId, kind, sortValue, tiebreak, Math.floor(Date.now() / 1000))
-    .run()
+  await watermarkUpsert(db, scope, kind, sortValue, tiebreak).run()
 }
+
+// True while every packed entry's snapshot row still exists with the packed
+// blob and its note is not dead. Entries ride as one JSON bind, clear of
+// D1's 100-bind limit.
+const snapshotsCurrent = (
+  scope: VaultScope,
+  entries: ReadonlyArray<{ id: string; sourceKey: string }>
+): Guard => ({
+  sql: `(SELECT COUNT(*) FROM json_each(?) e JOIN crdt_snapshots s
+          ON s.user_id = ? AND s.vault_id = ?
+            AND s.note_id = json_extract(e.value, '$[0]') AND s.blob_key = json_extract(e.value, '$[1]')
+          WHERE NOT (EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
+            AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL))) = ?`,
+  bind: [
+    JSON.stringify(entries.map((entry) => [entry.id, entry.sourceKey])),
+    scope.userId,
+    scope.vaultId,
+    entries.length
+  ]
+})
 
 const loadSnapshotMeta = async (
   db: D1Database,

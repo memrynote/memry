@@ -125,6 +125,7 @@ export async function deleteVaultData(
   await db.batch([
     scoped('DELETE FROM crdt_updates WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM crdt_snapshots WHERE user_id = ? AND vault_id = ?'),
+    scoped('DELETE FROM crdt_sequence_floors WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM upload_sessions WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM blob_chunks WHERE user_id = ? AND vault_id = ?'),
     // Bootstrap sessions are vault-scoped claims on elevated throughput
