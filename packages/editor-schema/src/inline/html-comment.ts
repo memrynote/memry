@@ -63,26 +63,22 @@ function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): Inline
  * The marks a comment sat inside (BBF-52). The node holds no marks, so
  * `**a <!-- b --> c**` reads back as bold `a `, the comment, bold ` c`, and the
  * serializer closed the bold before the comment and reopened it on ` c`, which
- * CommonMark does not read as bold. A mark both neighbours hold, or one a
- * neighbour holds on a whitespace edge next to the comment, is one the comment
- * was inside, since emphasis neither opens before nor closes after whitespace.
+ * CommonMark does not read as bold. A mark a neighbour holds on a whitespace
+ * edge next to the comment is one the comment was inside, since emphasis
+ * neither opens before nor closes after whitespace. Without such an edge the
+ * runs read back the same whether the comment sat inside or between them
+ * (`**a**<!-- b -->**c**`), and the serializer already writes valid emphasis.
  * Never `code`: a comment inside a code span would come back as code text.
  */
 function enclosingMarks(left: InlineItem | undefined, right: InlineItem | undefined): Styles {
-  const leftOpen = /\s$/.test(left?.text ?? '')
-  const rightOpen = /^\s/.test(right?.text ?? '')
   const marks: Styles = {}
-  for (const name of new Set([
-    ...Object.keys(left?.styles ?? {}),
-    ...Object.keys(right?.styles ?? {})
-  ])) {
-    const inLeft = left?.styles?.[name] === true
-    const inRight = right?.styles?.[name] === true
-    if (
-      name !== 'code' &&
-      ((inLeft && inRight) || (inLeft && leftOpen) || (inRight && rightOpen))
-    ) {
-      marks[name] = true
+  for (const [side, open] of [
+    [left, /\s$/.test(left?.text ?? '')],
+    [right, /^\s/.test(right?.text ?? '')]
+  ] as const) {
+    if (!open) continue
+    for (const [name, on] of Object.entries(side?.styles ?? {})) {
+      if (on === true && name !== 'code') marks[name] = true
     }
   }
   return marks
