@@ -145,6 +145,18 @@ final class NoteReadViewModel {
         await load()
     }
 
+    /// Every configured folder, for the Move to sheet (N808, #2909). A read
+    /// that fails leaves only the vault root on offer and is logged.
+    func moveDestinations() async -> [FolderSummary] {
+        do {
+            return try await reader.folders()
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's folders could not be read for a move", .code(mapped.code))
+            return []
+        }
+    }
+
     /// Pulls this note's body, then re-reads the note in place.
     ///
     /// Runs on appear and after every sync pass: a desktop body edit is CRDT

@@ -53,6 +53,19 @@ private final class ScriptedNoteReader: NotesReading, @unchecked Sendable {
     }
 }
 
+/// A reader holding two configured folders, for the Move to sheet (#2909).
+private struct FolderedReader: NotesReading {
+    func folders() async throws -> [FolderSummary] {
+        [
+            FolderSummary(path: "work", parentPath: nil, name: "work", icon: nil),
+            FolderSummary(path: "work/plans", parentPath: "work", name: "plans", icon: nil)
+        ]
+    }
+
+    func list() async throws -> [NoteSummary] { [] }
+    func read(id: String) async throws -> NoteDetail? { nil }
+}
+
 private func summary(_ id: String, title: String = "A note") -> NoteSummary {
     NoteSummary(id: id, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil)
 }
@@ -121,6 +134,21 @@ struct NoteReadTests {
         await model.reload()
         #expect(reader.seen.allSatisfy { $0.hasPrefix("ready/") }, "seen: \(reader.seen)")
         #expect(reader.seen.count == 1)
+    }
+
+    // MARK: Move to (#2909)
+
+    @Test("the move sheet offers the vault's folders, not only the vault root")
+    func theMoveSheetOffersTheVaultFolders() async {
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: FolderedReader())
+        let paths = await model.moveDestinations().map(\.path)
+        #expect(paths == ["work", "work/plans"])
+    }
+
+    @Test("a folder read that fails leaves the vault root, rather than failing the sheet")
+    func aFailedFolderReadLeavesTheRoot() async {
+        let (model, _) = makeModel(.success(nil))
+        #expect(await model.moveDestinations().isEmpty)
     }
 
     // MARK: The four outcomes, each against the other three
@@ -277,6 +305,10 @@ private enum NoteReadSources {
         featureRoot.appendingPathComponent("NotesListView.swift").path
     }
 
+    static var readDialogs: String {
+        featureRoot.appendingPathComponent("NoteReadDialogs.swift").path
+    }
+
     /// The rows moved out of `NotesListView.swift` in the line-ceiling split.
     static var notesRows: String {
         featureRoot.appendingPathComponent("NotesListRows.swift").path
@@ -324,6 +356,16 @@ struct NoteReadSourceTests {
         // registered once: a wiki link must resolve against that registration
         // rather than a second one declared inside the read screen.
         #expect(notesList.contains("open: { path.append($0) }"))
+    }
+
+    @Test(
+        "the move sheet is handed the folders the model read (#2909)",
+        .enabled(if: NoteReadSources.readable, "the checkout is not present on a device")
+    )
+    func theMoveSheetIsHandedTheFolders() throws {
+        let dialogs = try NoteReadSources.source(NoteReadSources.readDialogs)
+        #expect(dialogs.contains("folders: moveFolders"))
+        #expect(dialogs.contains("moveFolders = await model.moveDestinations()"))
     }
 
     @Test(
