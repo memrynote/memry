@@ -401,6 +401,41 @@ describe('attachment backfill', () => {
     expect(files).toEqual([path.join(path.resolve(vaultPath), 'attachments', 'n1', 'a b.png')])
   })
 
+  it('queues a file note indexed at startup under its own id, once', () => {
+    const fileNote = (
+      id: string,
+      relative: string,
+      fields: { attachmentId?: string; localOnly?: boolean } = {}
+    ): void => {
+      upsertNoteMetadata(db, {
+        id,
+        path: relative,
+        title: id,
+        fileType: 'image',
+        attachmentId: fields.attachmentId ?? null,
+        localOnly: fields.localOnly ?? false,
+        createdAt: '2026-08-21T00:00:00.000Z',
+        modifiedAt: '2026-08-21T00:00:00.000Z'
+      })
+    }
+    // Stored ahead of the file note, so the embed would carry it first.
+    addNote('a-trip')
+    writeNote('a-trip', '![p](../sources/photo.png)')
+    writeVaultFile('sources/photo.png')
+    writeVaultFile('sources/sent.png')
+    writeVaultFile('sources/private.png')
+    fileNote('photo', 'sources/photo.png')
+    fileNote('sent', 'sources/sent.png', { attachmentId: 'att-sent' })
+    fileNote('private', 'sources/private.png', { localOnly: true })
+    fileNote('gone', 'sources/gone.png')
+
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+    expect(
+      listPendingUploads(db).map((row) => [row.noteId, path.relative(vaultPath, row.diskPath)])
+    ).toEqual([['photo', path.join('sources', 'photo.png')]])
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+  })
+
   it('returns empty for a vault with no attachments folder at all', () => {
     fs.rmSync(path.join(vaultPath, 'attachments'), { recursive: true, force: true })
 
