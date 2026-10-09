@@ -46,33 +46,47 @@ pub fn extract(blocks: &[Block]) -> Vec<String> {
 }
 
 fn scan(line: &str, found: &mut Vec<String>) {
-    let chars: Vec<char> = line.chars().collect();
+    for (start, end) in tag_spans(line, None) {
+        found.push(line[start..end].to_owned());
+    }
+}
+
+/// The byte range of each tag name (after its `#`) in `line`, by the grammar
+/// [`extract`] reads. `before` is the character preceding `line`, for a run
+/// that continues a paragraph; `None` is the start of a line.
+pub(crate) fn tag_spans(line: &str, before: Option<char>) -> Vec<(usize, usize)> {
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
+    let byte = |at: usize| chars.get(at).map_or(line.len(), |(offset, _)| *offset);
+    let char_at = |at: usize| chars.get(at).map(|(_, c)| *c);
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
+    let mut spans = Vec::new();
     let mut at = 0;
     while at < chars.len() {
-        let starts = chars[at] == '#'
-            && (at == 0 || chars[at - 1].is_whitespace())
-            && chars.get(at + 1).is_some_and(char::is_ascii_alphabetic);
+        let preceding = if at == 0 { before } else { char_at(at - 1) };
+        let starts = char_at(at) == Some('#')
+            && preceding.is_none_or(char::is_whitespace)
+            && char_at(at + 1).is_some_and(|c| c.is_ascii_alphabetic());
         if !starts {
             at += 1;
             continue;
         }
         let mut end = at + 1;
-        while end < chars.len() && word(chars[end]) {
+        while char_at(end).is_some_and(word) {
             end += 1;
         }
         // A `/` continues the tag only when a segment follows it.
-        while chars.get(end) == Some(&'/')
-            && chars.get(end + 1).is_some_and(char::is_ascii_alphanumeric)
+        while char_at(end) == Some('/')
+            && char_at(end + 1).is_some_and(|c| c.is_ascii_alphanumeric())
         {
             end += 1;
-            while end < chars.len() && word(chars[end]) {
+            while char_at(end).is_some_and(word) {
                 end += 1;
             }
         }
-        found.push(chars[at + 1..end].iter().collect());
+        spans.push((byte(at + 1), byte(end)));
         at = end;
     }
+    spans
 }
 
 /// Replaces one document's cached body tags.

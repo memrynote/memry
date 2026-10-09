@@ -38,6 +38,8 @@ pub mod saved_filters;
 pub mod search;
 pub mod settings;
 pub mod tag_admin;
+pub mod tag_body_rename;
+pub mod tag_rename;
 pub mod tag_schema_refs;
 pub mod tags;
 pub mod task_activity;

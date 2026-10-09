@@ -459,7 +459,14 @@ definition whose `schema` names `from`
 - Otherwise the new `t` is the old `t` (an integer `>= 0`, else 0) plus 1, so
   the rewrite wins the §6.11 join against the value it replaces. The rewritten
   definition is written and pushed like any other definition edit
-  (`crates/memry-core/src/domain/tag_admin.rs:366`, `:386`).
+  (`crates/memry-core/src/domain/tag_rename.rs:100`,
+  `crates/memry-core/src/domain/tag_admin.rs:361`).
+- A rename renames each `/` child of `from` too, so it applies the rule once
+  per renamed tag: `from` to `to`, and each `from/rest` any item or
+  definition holds to `to/rest`, children first
+  (`apps/desktop/src/main/tags/rename-tag.ts:33-63`, `:151`,
+  `crates/memry-core/src/domain/tag_rename.rs:26-56`, `:100`). A merge
+  applies it to `from` alone.
 - The rule accepts `to = null` (the reference becomes `null`), but **a tag
   delete does not invoke it**: references to a deleted tag stay, and resolve
   again if the tag returns. A reader MUST tolerate an `extends` or `target`

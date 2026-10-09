@@ -1,6 +1,6 @@
 //! Vault-wide tag management (spec 006 ST16), after desktop
 //! `ipc/tags-handlers.ts`: list with counts, rename, merge, delete, colour and
-//! icon.
+//! icon. Rename, which carries `/` children along, is [`super::tag_rename`].
 //!
 //! Tags are matched with [`tags::same_tag`] (ASCII fold, `COLLATE NOCASE`).
 //! A rename or merge rewrites every live note, journal entry and task carrying
@@ -141,7 +141,7 @@ pub fn list(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
 
 /// `(item_type, item_id, tag)` for every tag entry on a live note, journal or
 /// task; optionally only entries matching `only`.
-fn carriers(
+pub(crate) fn carriers(
     conn: &Connection,
     only: Option<&str>,
 ) -> Result<Vec<(String, String, String)>, StorageError> {
@@ -169,7 +169,7 @@ fn carriers(
     Ok(out)
 }
 
-fn current_tags(
+pub(crate) fn current_tags(
     conn: &Connection,
     item_type: &str,
     item_id: &str,
@@ -208,14 +208,15 @@ fn write_tags(
     Ok(())
 }
 
-/// Replaces `source` by `target` on every carrier. Returns the item count.
-fn rewrite(
+/// Replaces `source` by `target` on every carrier. Returns the rewritten
+/// `(item_type, item_id)`s.
+pub(crate) fn rewrite(
     conn: &Connection,
     source: &str,
     target: Option<&str>,
     device_id: &str,
     now_ms: i64,
-) -> Result<u32, StorageError> {
+) -> Result<Vec<(String, String)>, StorageError> {
     let mut items: Vec<(String, String)> = carriers(conn, Some(source))?
         .into_iter()
         .map(|(t, id, _)| (t, id))
@@ -246,10 +247,14 @@ fn rewrite(
             now_ms,
         )?;
     }
-    Ok(u32::try_from(items.len()).unwrap_or(u32::MAX))
+    Ok(items)
 }
 
-fn live_definition(conn: &Connection, id: &str) -> Result<Option<Value>, StorageError> {
+pub(crate) fn item_count(items: usize) -> u32 {
+    u32::try_from(items).unwrap_or(u32::MAX)
+}
+
+pub(crate) fn live_definition(conn: &Connection, id: &str) -> Result<Option<Value>, StorageError> {
     let Some(row) = sync_items::load(conn, DEFINITION_TYPE, id)? else {
         return Ok(None);
     };
@@ -259,7 +264,7 @@ fn live_definition(conn: &Connection, id: &str) -> Result<Option<Value>, Storage
     Ok(row.payload.and_then(|raw| serde_json::from_str(&raw).ok()))
 }
 
-fn delete_definition(
+pub(crate) fn delete_definition(
     conn: &Connection,
     id: &str,
     device_id: &str,
@@ -279,7 +284,7 @@ fn delete_definition(
 }
 
 /// Creates the definition when it is missing, or edits `changes` into it.
-fn upsert_definition(
+pub(crate) fn upsert_definition(
     conn: &Connection,
     name: &str,
     template: Option<&Value>,
@@ -331,40 +336,10 @@ fn upsert_definition(
     Ok(())
 }
 
-fn refuse(what: &str) -> StorageError {
+pub(crate) fn refuse(what: &str) -> StorageError {
     StorageError::Invalid {
         what: what.to_owned(),
     }
-}
-
-/// Renames a tag everywhere. Returns the number of items rewritten.
-pub fn rename(
-    conn: &Connection,
-    old: &str,
-    new: &str,
-    device_id: &str,
-    now_ms: i64,
-) -> Result<u32, StorageError> {
-    let new = new.trim();
-    if new.is_empty() {
-        return Err(refuse("a tag name cannot be empty"));
-    }
-    let count = rewrite(conn, old, Some(new), device_id, now_ms)?;
-    let old_id = definition_id(old);
-    if old_id != definition_id(new)
-        && let Some(snapshot) = live_definition(conn, &old_id)?
-    {
-        let mut template = snapshot;
-        if let Some(map) = template.as_object_mut() {
-            map.remove("clock");
-        }
-        if live_definition(conn, &definition_id(new))?.is_none() {
-            upsert_definition(conn, new, Some(&template), Vec::new(), device_id, now_ms)?;
-        }
-        delete_definition(conn, &old_id, device_id, now_ms)?;
-    }
-    tag_schema_refs::rewrite_definitions(conn, old, Some(new), device_id, now_ms)?;
-    Ok(count)
 }
 
 /// Merges `source` into `target` (desktop `tags:merge`). Returns the number of
@@ -380,7 +355,7 @@ pub fn merge(
     if target.is_empty() || tags::same_tag(source.trim(), target) {
         return Err(refuse("merge needs two different tags"));
     }
-    let count = rewrite(conn, source, Some(target), device_id, now_ms)?;
+    let count = item_count(rewrite(conn, source, Some(target), device_id, now_ms)?.len());
     delete_definition(conn, &definition_id(source), device_id, now_ms)?;
     upsert_definition(conn, target, None, Vec::new(), device_id, now_ms)?;
     tag_schema_refs::rewrite_definitions(conn, source, Some(target), device_id, now_ms)?;
@@ -394,7 +369,7 @@ pub fn delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<u32, StorageError> {
-    let count = rewrite(conn, tag, None, device_id, now_ms)?;
+    let count = item_count(rewrite(conn, tag, None, device_id, now_ms)?.len());
     delete_definition(conn, &definition_id(tag), device_id, now_ms)?;
     Ok(count)
 }
@@ -519,25 +494,6 @@ mod tests {
             .expect("job");
         assert_eq!((job.notes, job.journals, job.tasks), (2, 1, 0));
         assert_eq!(job.color.as_deref(), Some("#ff0000"));
-    }
-
-    #[test]
-    fn rename_rewrites_every_item_and_moves_the_definition() {
-        let (db, _d) = vault("tags-rename");
-        let count = db
-            .call_blocking(|c| rename(c, "job", "career", "phone", NOW + 1))
-            .expect("rename");
-        assert_eq!(count, 3);
-        assert_eq!(tags_of(&db, "note", "n1"), vec!["career", "ideas"]);
-        assert_eq!(tags_of(&db, "journal", "j1"), vec!["career"]);
-        db.call_blocking(|c| {
-            assert!(live_definition(c, "job")?.is_none());
-            let moved = live_definition(c, "career")?.expect("career");
-            assert_eq!(moved["color"], json!("#ff0000"));
-            assert_eq!(moved["icon"], json!("💼"));
-            Ok(())
-        })
-        .expect("defs");
     }
 
     #[test]

@@ -214,8 +214,10 @@ mod tests {
     #[test]
     fn rename_and_merge_rewrite_referencing_schemas() {
         let (db, _d) = vault("tag-refs-rename");
-        db.call_blocking(|c| tag_admin::rename(c, "job", "career", "phone", NOW + 1))
-            .expect("rename");
+        db.call_blocking(|c| {
+            crate::domain::tag_rename::rename(c, "job", "career", "phone", NOW + 1)
+        })
+        .expect("rename");
         let schema = person_schema(&db);
         assert_eq!(schema["extends"], json!("career"));
         assert_eq!(schema["fields"][0]["relation"]["target"], json!("career"));
