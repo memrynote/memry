@@ -8,7 +8,7 @@
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { eq } from 'drizzle-orm'
-import { TagsChannels } from '@memry/contracts/ipc-channels'
+import { TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
   PinNoteToTagSchema,
@@ -64,7 +64,8 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 import { assertNoteWritable } from '../vault-locks/registry'
 import { editNoteHeaderTags, keepLockedNoteTags } from '../tags/note-tag-edits'
-import { renameTagEverywhere } from '../tags/rename-tag'
+import { renameTagEverywhere, TagRenameInProgressError } from '../tags/rename-tag'
+import { generateId } from '../lib/id'
 import {
   syncMergedTagDefinitions,
   syncTagDefinitionDelete,
@@ -248,12 +249,23 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const affectedNotes = await renameTagEverywhere(
-          indexDb,
-          dataDb,
-          input.oldName,
-          input.newName
-        )
+        let result
+        try {
+          result = await renameTagEverywhere(
+            indexDb,
+            dataDb,
+            { from: input.oldName, to: input.newName, runId: input.runId ?? generateId() },
+            (event) => broadcastToAllWindows(TagSchemaChannels.events.PROGRESS, event)
+          )
+        } catch (error) {
+          if (!(error instanceof TagRenameInProgressError)) throw error
+          const { from, to } = error.job
+          return {
+            success: false,
+            error: getMainI18n().t('errors:tag.renameInProgress', { from, to })
+          } as RenameTagResponse
+        }
+        const affectedNotes = result.notesWritten
 
         emitTagEvent(TagsChannels.events.RENAMED, {
           oldName: input.oldName,
@@ -266,11 +278,16 @@ export function registerTagsHandlers(): void {
           surface: 'tags',
           action: 'renamed',
           objectType: 'tag',
-          result: 'success',
+          result: result.failedNoteIds.length > 0 ? 'failed' : 'success',
           metrics: { itemCount: affectedNotes }
         })
 
-        return { success: true, affectedNotes } as RenameTagResponse
+        return {
+          success: true,
+          affectedNotes,
+          failedNoteIds: result.failedNoteIds,
+          bodySkipped: result.bodySkipped
+        } as RenameTagResponse
       }, 'errors:tag.renameFailed')
     )
   )

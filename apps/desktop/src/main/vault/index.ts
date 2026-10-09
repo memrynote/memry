@@ -106,6 +106,7 @@ import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
 import { backfillHeaderTagFlags } from './header-tag-backfill'
 import { resumeFieldRename } from '../tags/schema/field-rename'
+import { resumeTagRename } from '../tags/rename-tag'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -571,6 +572,18 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   } catch (error) {
     logger.error('Resuming a field rename failed:', error)
     trackMainError('vault', 'field_rename_resume', error)
+  }
+
+  try {
+    const resumed = await resumeTagRename(getIndexDatabase(), dataDb)
+    if (resumed && resumed.failedNoteIds.length > 0) {
+      logger.warn('A resumed tag rename could not write some notes', {
+        failedNoteIds: resumed.failedNoteIds
+      })
+    }
+  } catch (error) {
+    logger.error('Resuming a tag rename failed:', error)
+    trackMainError('vault', 'tag_rename_resume', error)
   }
 
   if (isStale()) return

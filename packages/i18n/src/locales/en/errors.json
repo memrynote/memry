@@ -265,6 +265,7 @@
     "shortcutInUse": "Shortcut {shortcut} is already in use"
   },
   "tag": {
+    "renameInProgress": "A rename of #{from} to #{to} is still running. Try again when it finishes.",
     "mergeSameTag": "Source and target tags are the same",
     "categoryNameRequired": "Category name is required",
     "pinNoteFailed": "Failed to pin note",

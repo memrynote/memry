@@ -52,6 +52,15 @@ notes and journal entries, including notes you have open. Only whole tags change
 `person` leaves `#personal` alone, and a `#tag` inside code stays as written. A delete changes
 the `tags:` list only, so a `#tag` in the text stays until you edit it.
 
+If the new name can't be typed as a `#tag` (it has a space, starts with a digit, or uses a
+letter outside A to Z), the rename still changes the `tags:` lists, but `#tags` in the text
+keep the old name, and Memry tells you so. A rename runs one note at a time; if Memry quits
+partway, it finishes the rename the next time the vault opens, and it doesn't start another
+rename until then. If a note can't be updated, Memry tells you how many were skipped.
+
+Tag names match ignoring the case of the letters A to Z only: `Work` and `work` are one tag,
+but `Ünal` and `ünal` are two.
+
 Renaming a tag renames its child tags too: `person` to `people` also turns `person/vip` into
 `people/vip`, with their colors, icons, views and fields. If the new name, or a child's new
 name, already exists, the two merge as they do with **Merge**: the existing tag keeps its color

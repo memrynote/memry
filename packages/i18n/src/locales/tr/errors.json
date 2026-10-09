@@ -263,6 +263,7 @@
     "shortcutInUse": "{shortcut} kısayolu zaten kullanılıyor"
   },
   "tag": {
+    "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
     "mergeSameTag": "Kaynak ve hedef etiketler aynı",
     "categoryNameRequired": "Kategori adı gerekli",
     "pinNoteFailed": "Not sabitlenemedi",

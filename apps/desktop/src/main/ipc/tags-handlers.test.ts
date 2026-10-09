@@ -114,7 +114,10 @@ vi.mock('../tags/runtime-effects', () => ({
 vi.mock('../tags/schema/references', () => ({ rewriteSchemaReferences: vi.fn(() => []) }))
 
 // The rename itself is covered against real files in tags/rename-tag.test.ts.
-vi.mock('../tags/rename-tag', () => ({ renameTagEverywhere: vi.fn() }))
+vi.mock('../tags/rename-tag', () => ({
+  renameTagEverywhere: vi.fn(),
+  TagRenameInProgressError: class extends Error {}
+}))
 
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { rewriteSchemaReferences } from '../tags/schema/references'
@@ -222,17 +225,26 @@ describe('tags-handlers', () => {
 
   it('renames, updates color, and deletes tags', async () => {
     registerTagsHandlers()
-    ;(renameTagEverywhere as Mock).mockResolvedValue(3)
+    ;(renameTagEverywhere as Mock).mockResolvedValue({
+      notesWritten: 3,
+      failedNoteIds: ['n9'],
+      bodySkipped: false
+    })
     const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
       oldName: 'old',
       newName: 'new'
     })
-    expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
+    expect(renameResult).toEqual({
+      success: true,
+      affectedNotes: 3,
+      failedNoteIds: ['n9'],
+      bodySkipped: false
+    })
     expect(renameTagEverywhere).toHaveBeenCalledWith(
       expect.any(Object),
       expect.any(Object),
-      'old',
-      'new'
+      expect.objectContaining({ from: 'old', to: 'new', runId: expect.any(String) }),
+      expect.any(Function)
     )
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
@@ -862,14 +874,18 @@ describe('tags-handlers vault-file edge cases', () => {
     // The index is already updated at this point; a missing/unreadable file on
     // disk must not be reported to the user as a failed rename/delete/merge.
     fileMocks.updateNoteCommand.mockRejectedValue(new Error('ENOENT: no such file or directory'))
-    ;(renameTagEverywhere as Mock).mockResolvedValue(2)
+    ;(renameTagEverywhere as Mock).mockResolvedValue({
+      notesWritten: 2,
+      failedNoteIds: [],
+      bodySkipped: false
+    })
     ;(notesQueries.deleteTag as Mock).mockReturnValue(2)
     ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
     ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
 
     await expect(
       invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' })
-    ).resolves.toEqual({ success: true, affectedNotes: 2 })
+    ).resolves.toMatchObject({ success: true, affectedNotes: 2 })
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new', affectedNotes: 2 })
