@@ -302,7 +302,9 @@ function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void 
  * Ensure folder exists, create if not
  */
 async function ensureFolderExists(folderPath: string): Promise<void> {
-  if (!folderPath || folderPath === '' || folderPath === 'root') {
+  // 'root' is an ordinary folder name: the folder picker sends a real root/
+  // folder by that name, and only '' means the vault root (#2994).
+  if (!folderPath) {
     return // Root folder always exists
   }
 

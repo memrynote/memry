@@ -2604,6 +2604,16 @@ describe('createVaultServiceHandles', () => {
       for (const reply of replies) expect(reply).not.toHaveProperty('created_folders')
     })
 
+    it("lists root/ when an inbox.file to 'root' made it, like any folder (#2994)", async () => {
+      landWriteInto('root')
+
+      await expect(
+        desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'folder', path: 'root' } }
+        ])
+      ).resolves.toMatchObject({ created_folders: ['root'] })
+    })
+
     it('lists the folders notes.move made', async () => {
       landWriteInto('archive/2026')
 

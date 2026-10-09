@@ -394,6 +394,29 @@ describe('Inbox Filing Operations', () => {
       expect(mockCreateFolder).not.toHaveBeenCalled()
     })
 
+    it("files a text item to 'root' into a folder named root, like any folder (#2994)", async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', title: 'Test Item' })
+
+      const result = await fileToFolder(itemId, 'root')
+
+      expect(result.success).toBe(true)
+      expect(mockCreateFolder).toHaveBeenCalledWith('root')
+      expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'root' }))
+    })
+
+    it('creates a missing root/ folder before moving a binary into it (#2994)', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-1', type: 'image', title: 'Screenshot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-1/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'root')
+
+      expect(result).toEqual({ success: true, filedTo: 'root/Screenshot.png' })
+      expect(mockCreateFolder).toHaveBeenCalledWith('root')
+      expect(mockCreateFolder.mock.invocationCallOrder[0]).toBeLessThan(
+        mockRename.mock.invocationCallOrder[0]
+      )
+    })
+
     it('should move binary attachments directly into the target folder', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'image-1',
@@ -1535,6 +1558,20 @@ describe('Inbox Filing Operations', () => {
       await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }], [], 'references')
 
       expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'references' }))
+    })
+
+    it('creates a missing root/ folder when linking into it (#2994)', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', title: 'Test Item' })
+      mockGetNoteById.mockResolvedValue({
+        id: 'note-1',
+        content: '# Note 1',
+        path: 'notes/note1.md'
+      })
+
+      await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }], [], 'root')
+
+      expect(mockCreateFolder).toHaveBeenCalledWith('root')
+      expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'root' }))
     })
 
     it('should link binary items by moving the attachment and updating target notes', async () => {
