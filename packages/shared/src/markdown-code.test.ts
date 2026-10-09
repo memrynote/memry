@@ -120,6 +120,18 @@ describe('stripMarkdownComments', () => {
     expect(stripMarkdownComments('a <!-- b')).toBe('a <!-- b')
   })
 
+  it('never lets a comment in a table row cross a cell pipe (BBF-51)', () => {
+    const percent = '| a | b |\n| --- | --- |\n| 50%% | 20%% |'
+    const html = '| a | b |\n| --- | --- |\n| 1 <!-- x | y --> | z |'
+    expect(stripMarkdownComments(percent)).toBe(percent)
+    expect(stripMarkdownComments(html)).toBe(html)
+  })
+
+  it('reads a comment inside one table cell as a comment, wikilink alias included', () => {
+    expect(stripMarkdownComments('| a %% [[A|alias]] %% | b |')).toBe('| a  | b |')
+    expect(stripMarkdownComments('| a <!-- [[A|alias]] --> | b |')).toBe('| a  | b |')
+  })
+
   it('works on CRLF notes', () => {
     expect(stripMarkdownComments('A\r\n%%\r\n[[X]]\r\n%%\r\nB')).toBe('A\r\n\r\nB')
   })

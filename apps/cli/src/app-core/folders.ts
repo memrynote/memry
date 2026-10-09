@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { normalizePath, type VaultConfig } from './paths.ts'
+import { ATTACHMENTS_DIR, normalizePath, type VaultConfig } from './paths.ts'
 
 export interface FolderRecord {
   path: string
@@ -46,7 +46,7 @@ export function createFoldersService({
   // unplaced note lands, not a notes root to resolve folders under.
   const root = vaultPath
   const hiddenTopLevel = new Set(
-    [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+    [config.journalFolder, ATTACHMENTS_DIR, ...config.excludePatterns]
       .filter(Boolean)
       .map((p) => normalizePath(p).split('/')[0])
   )

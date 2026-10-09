@@ -308,6 +308,10 @@ On the line where a `%%` comment opens, the next `%%` closes it, even inside inl
 ``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
 so the export reads ``Sale 50d` [[X]]``, with a stray backtick. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
 
+In a table row, a comment ends inside its own cell. A `%%` or `<!--` whose partner sits past the
+next `|` is plain text, so `| 50%% | 20%% |` keeps both cells. A `|` inside `[[Topic|alias]]` does
+not end the cell, so `| %% [[Topic|alias]] %% |` is still one comment.
+
 ### Footnotes
 
 A footnote is another way to cite a note without a link in the sentence. Write a reference
