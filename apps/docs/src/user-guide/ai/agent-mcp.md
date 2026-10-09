@@ -845,7 +845,9 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   one you sent.
 - A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
 - `vault_create_note` and `vault_move_to_folder` list the folders the call created in
-  `created_folders`, shallowest first, when the folder they wrote into did not exist yet.
+  `created_folders`, shallowest first, when the folder they wrote into did not exist yet. So do the
+  `vault_desktop_write` operations `notes.create`, `notes.importFiles`, `notes.move` and
+  `inbox.file` with a destination `path`. The field is absent when every folder already existed.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.
