@@ -65,7 +65,9 @@ to it. Any model id your Google account can reach can be typed in, not only the 
 When the model exposes its reasoning (Claude thinking, Codex reasoning summaries, and local models
 that stream reasoning), the reply opens with a "Thinking…" block that follows the reasoning as it
 arrives. Once the answer starts, the block folds into a "Thought for Ns" line you can click to
-reopen. The reasoning is stored encrypted with the reply and is only displayed: it is never sent
+reopen. If the model thinks again later in the same turn, for example between tool calls, the line
+shows "Thinking…" again but stays folded. An open block keeps the newest reasoning line in view
+unless you scroll up inside it; scroll back to its bottom to follow again. The reasoning is stored encrypted with the reply and is only displayed: it is never sent
 back to the model in later turns or in conversation summaries. Antigravity does not report its
 reasoning, so its replies show the plain thinking indicator.
 

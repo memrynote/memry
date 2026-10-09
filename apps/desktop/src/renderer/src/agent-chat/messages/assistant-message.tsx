@@ -1,7 +1,7 @@
 import type { Message } from '@memry/contracts/ipc-agent'
 import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 import { OctagonPauseIcon, WrenchIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import {
@@ -66,6 +66,11 @@ function AssistantMessageContent({
   const answerStarted = message.content.data.text.trim().length > 0
   const reasoning = message.content.data.reasoning ?? ''
   const hasReasoning = reasoning.trim().length > 0
+  const reasoningNewest = useReasoningIsNewest(
+    message.content.data.text.length,
+    reasoning.length,
+    !answerStarted
+  )
   const wroteToolCall = TOOL_CALL_MARKUP.test(message.content.data.text)
   const toolsUnavailable = message.content.data.toolsUnavailable
   const toolsNotice = toolsUnavailable && (
@@ -97,8 +102,9 @@ function AssistantMessageContent({
       <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-3 py-0">
         {hasReasoning && (
           <ThinkingReasoning
-            thinking={streaming && !answerStarted}
-            content={reasoning}
+            thinking={streaming && reasoningNewest}
+            streaming={streaming}
+            answerStarted={answerStarted}
             durationMs={message.content.data.reasoningDurationMs}
             thinkingLabel={t('agentChat.reasoning.thinking')}
             formatSummary={(seconds) =>
@@ -150,6 +156,28 @@ function AssistantMessageContent({
       </MessageContent>
     </AIMessage>
   )
+}
+
+/**
+ * True while reasoning is the stream that grew last. A turn is one message, so
+ * every step appends to the same text and reasoning; the answer having started
+ * does not mean the model stopped thinking. When both grow in one update the
+ * answer wins. `initial` covers a message first seen mid-turn.
+ */
+function useReasoningIsNewest(
+  textLength: number,
+  reasoningLength: number,
+  initial: boolean
+): boolean {
+  const [seen, setSeen] = useState({
+    text: textLength,
+    reasoning: reasoningLength,
+    newest: initial
+  })
+  if (seen.text === textLength && seen.reasoning === reasoningLength) return seen.newest
+  const newest = seen.text === textLength
+  setSeen({ text: textLength, reasoning: reasoningLength, newest })
+  return newest
 }
 
 function ToolsOffNotice({
