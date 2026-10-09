@@ -15,8 +15,7 @@ import { getNoteCacheById } from './store'
 import { updateNote } from '../vault/notes'
 import { syncNoteUpdate } from './runtime-effects'
 import { enqueueJournalUpdate } from '../journal/runtime-effects'
-import { updateJournalProperties } from '../journal/properties'
-import { readJournalEntry } from '../vault/journal'
+import { patchJournalProperties, updateJournalProperties } from '../journal/properties'
 import { getMainI18n } from '../lib/main-i18n'
 import { flushProjectionEvents } from '../projections'
 
@@ -55,8 +54,8 @@ export async function setEntityProperties(
 
 /**
  * Sets only the given keys and leaves the rest; a null value removes its key.
- * A note's patch runs inside its write queue against the file's own
- * frontmatter, so it sees every earlier write and any external edit the index
+ * A patch runs inside the note's or journal's write queue against the file's
+ * own frontmatter, so it sees every earlier write and any external edit the index
  * has not caught up with yet.
  */
 export async function mergeEntityProperties(
@@ -68,13 +67,7 @@ export async function mergeEntityProperties(
     return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
   }
   if (entity.date) {
-    // Journals: patch the record the file holds, not the index.
-    const record = (await readJournalEntry(entity.date))?.properties ?? {}
-    for (const [name, value] of Object.entries(values)) {
-      if (value === null) delete record[name]
-      else record[name] = value
-    }
-    await updateJournalProperties(entity.date, record)
+    await patchJournalProperties(entity.date, values)
     enqueueJournalUpdate(entityId, entity.date)
   } else {
     await updateNote({ id: entityId, propertyPatch: values })

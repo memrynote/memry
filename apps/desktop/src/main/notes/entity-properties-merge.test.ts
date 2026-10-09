@@ -18,6 +18,9 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import * as vaultIndex from '../vault/index'
 import * as database from '../database'
 import { createNote, updateNote } from '../vault/notes'
+import { writeJournalEntry, readJournalEntry } from '../vault/journal'
+import { updateJournalProperties } from '../journal/properties'
+import { getJournalEntryByDate } from './store'
 import { mergeEntityProperties, getEntityPropertiesRecord } from './entity-properties'
 
 vi.mock('electron', () => {
@@ -30,6 +33,7 @@ vi.mock('electron', () => {
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
 vi.mock('./runtime-effects', () => ({ syncNoteUpdate: vi.fn() }))
+vi.mock('../journal/runtime-effects', () => ({ enqueueJournalUpdate: vi.fn() }))
 
 describe('mergeEntityProperties', () => {
   let vault: TestVaultResult
@@ -129,5 +133,22 @@ describe('mergeEntityProperties', () => {
     const raw = fs.readFileSync(path.join(vault.path, note.path), 'utf8')
     expect(raw).toMatch(/^c: three$/m)
     expect(raw).toMatch(/person/)
+  })
+  it('keeps both of two concurrent single-key writes to a journal entry', async () => {
+    await writeJournalEntry('2026-05-04', 'Day.', [], { mood: 'calm' })
+    await updateJournalProperties('2026-05-04', { mood: 'calm' })
+    const id = getJournalEntryByDate(indexDb.db, '2026-05-04')!.id
+
+    const results = await Promise.all([
+      mergeEntityProperties(id, { energy: 'high' }),
+      mergeEntityProperties(id, { sleep: 7 })
+    ])
+
+    expect(results).toEqual([{ success: true }, { success: true }])
+    expect((await readJournalEntry('2026-05-04'))?.properties).toEqual({
+      mood: 'calm',
+      energy: 'high',
+      sleep: 7
+    })
   })
 })
