@@ -40,6 +40,9 @@ const toDateKey = (date: Date | null | undefined): string | null =>
  * Dates and times are the reverse: `null` in the edit means "clear it" and has
  * to reach main as `null`.
  *
+ * `fields` in an edit is a patch (name -> value, `null` removes), not the
+ * whole map; `applyFieldsPatch` gives the map the optimistic copy shows.
+ *
  * `completedAt` and `archivedAt` are not fields of this payload; they go
  * through `complete` / `archive` and are the caller's to split off.
  */
@@ -61,10 +64,25 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
     repeatFrom: updates.repeatFrom,
     linkedNoteIds: updates.linkedNoteIds,
     linkedCanvasIds: updates.linkedCanvasIds,
-    tags: updates.tags
+    tags: updates.tags,
+    // A patch: names left out keep their values, `null` removes one.
+    fields: updates.fields
   }
   for (const key of Object.keys(input) as (keyof TaskUpdateInput)[]) {
     if (input[key] === undefined) delete input[key]
   }
   return input
+}
+
+/** The task's field map after a `fields` patch: `null` removes a name. */
+export function applyFieldsPatch(
+  current: UiTask['fields'],
+  patch: NonNullable<UiTask['fields']>
+): NonNullable<UiTask['fields']> {
+  const next = { ...current }
+  for (const [name, value] of Object.entries(patch)) {
+    if (value === null) delete next[name]
+    else next[name] = value
+  }
+  return next
 }

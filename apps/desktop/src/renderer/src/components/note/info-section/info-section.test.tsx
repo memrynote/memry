@@ -12,7 +12,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { InfoSection } from './InfoSection'
 import { AddPropertyPopup } from './AddPropertyPopup'
-import type { Property, PropertyTemplate } from './types'
+import type { Property } from './types'
 import { PROPERTY_TYPE_CONFIG, PROPERTY_TYPES } from './types'
 
 let i18nEn: I18nInstance
@@ -51,11 +51,6 @@ const mockProperties: Property[] = [
   createProperty('prop-4', 'Completed', 'checkbox', false, false),
   createProperty('prop-5', 'Notes', 'text', 'Some notes', true),
   createProperty('prop-6', 'URL', 'url', 'https://example.com', true)
-]
-
-const mockFolderProperties: PropertyTemplate[] = [
-  { id: 'tpl-1', name: 'Category', type: 'text' },
-  { id: 'tpl-2', name: 'Author', type: 'text' }
 ]
 
 // ============================================================================
@@ -122,12 +117,6 @@ describe('T513: InfoSection - basic display', () => {
     expect(screen.getByText('Completed')).toBeInTheDocument()
     expect(screen.getByText('Notes')).toBeInTheDocument()
     expect(screen.getByText('URL')).toBeInTheDocument()
-  })
-
-  it('should show workspace properties label when folder properties exist', () => {
-    renderWithI18n(<InfoSection {...defaultProps} folderProperties={mockFolderProperties} />)
-
-    expect(screen.getByText(/workspace properties/i)).toBeInTheDocument()
   })
 
   it('should show add property button when expanded', () => {

@@ -31,8 +31,8 @@ export interface UseHeaderTagsArgs {
 }
 
 export interface HeaderTagActions {
-  addTag(name: string): Promise<void>
-  removeTag(name: string): Promise<void>
+  addTag: (name: string) => Promise<void>
+  removeTag: (name: string) => Promise<void>
 }
 
 const hasTag = (tags: readonly string[], name: string): boolean =>

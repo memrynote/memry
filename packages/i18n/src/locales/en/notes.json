@@ -1729,13 +1729,195 @@
       }
     },
     "toast": {
-      "becameObject": "{{title}} is now a {{tag}}. Template added.",
+      "becameObject": "{title} is now a {tag}. Template added.",
       "templateChanged": "The note changed after the template was added, so it stays.",
       "undoFailed": "Could not undo",
       "addFailed": "Could not add the tag",
       "removeFailed": "Could not remove the tag",
-      "removedKept": "Removed #{{tag}}. {{count}} values kept.",
-      "removedKeptOne": "Removed #{{tag}}. 1 value kept."
+      "removedKept": "Removed #{tag}. {count} values kept.",
+      "removedKeptOne": "Removed #{tag}. 1 value kept."
+    },
+    "picker": {
+      "create": "Create #{tag}",
+      "fillsTemplate": "Fills this empty note with the {tag} template"
+    },
+    "hub": {
+      "strip": {
+        "title": "Ready-made tags",
+        "subtitle": "Tags that come with fields. Notes stay as they are until you tag them.",
+        "notNow": "Not now",
+        "add": "Add",
+        "addFields": "Add fields",
+        "added": "Added",
+        "alreadyOn": "Already on {count} notes",
+        "alreadyOnOne": "Already on 1 note"
+      },
+      "dialog": {
+        "title": "Add {preset} fields to #{tag}?",
+        "body": "#{tag} is already on {count} notes. They keep everything they have and get these fields, empty until someone fills them.",
+        "bodyOne": "#{tag} is already on 1 note. It keeps everything it has and gets these fields, empty until someone fills them.",
+        "template": "The template ({sections}) fills only notes that are empty.",
+        "alsoAddsPrefix": "Also adds",
+        "alsoAddsSuffix": "for the {field} field.",
+        "useAnotherName": "Use another name",
+        "nameLabel": "New tag name",
+        "namePlaceholder": "contact",
+        "cancel": "Cancel",
+        "addFields": "Add fields"
+      },
+      "toast": {
+        "added": "Added #{tag}",
+        "addedFields": "Added {preset} fields to #{tag}"
+      },
+      "hasFields": "Has fields"
+    },
+    "tasks": {
+      "thisTask": "This task",
+      "viaTag": "{name} via #{via}",
+      "clearValue": "Clear {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "via #{tag}",
+      "groupMenu": "{tag} options",
+      "openTag": "Open #{tag}",
+      "thisNote": "This note"
+    },
+    "offer": {
+      "text": "Add the {tag} template below your text",
+      "add": "Add",
+      "dismiss": "Dismiss",
+      "addFailed": "Could not add the template"
+    },
+    "settings": {
+      "title": "Settings for #{tag}",
+      "close": "Close",
+      "cancel": "Cancel",
+      "save": "Save",
+      "onCounts": "On {notes, plural, one {# note} other {# notes}} and {tasks, plural, one {# task} other {# tasks}}",
+      "onNotes": "On {count, plural, one {# note} other {# notes}}",
+      "headerFields": "{count, plural, one {# field} other {# fields}}",
+      "editTag": "Edit tag",
+      "syncNote": "Changes sync to your other devices",
+      "newerVersion": "A newer version of Memry changed this tag. Update Memry to edit it here.",
+      "sections": {
+        "appearance": "Appearance",
+        "extends": "Extends",
+        "fields": "Fields · {count}",
+        "template": "Template"
+      },
+      "appearance": {
+        "icon": "Icon",
+        "color": "Colour",
+        "customColor": "Custom",
+        "category": "Category",
+        "noCategory": "No category"
+      },
+      "extends": {
+        "nothing": "Nothing",
+        "hint": "Take another tag's fields and show up in its table.",
+        "hintSet": "{tag} notes get {parent}'s fields and appear in the {parent} table."
+      },
+      "types": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "url": "URL",
+        "status": "Status",
+        "select": "Select",
+        "multiselect": "Multi-select",
+        "checkbox": "Checkbox",
+        "relation": "Relation"
+      },
+      "fields": {
+        "empty": "No fields yet. Add one to give every #tag note the same properties.",
+        "fromParent": "From #{tag} · edit there",
+        "inverseSub": "Shown on the {target} as {inverse}",
+        "anyNoteSub": "Links to any note",
+        "actions": "Actions for {field}",
+        "rename": "Rename…",
+        "relationSettings": "Relation settings",
+        "remove": "Remove…"
+      },
+      "addField": {
+        "button": "Add field",
+        "namePlaceholder": "Field name",
+        "existing": "Existing properties",
+        "existingSub": "{type} · on {count, plural, one {# note} other {# notes}} · reuse",
+        "newType": "New field type",
+        "relationSub": "Link to notes with a tag",
+        "submit": "Add field",
+        "reserved": "{name} is reserved and cannot be a field.",
+        "taken": "#{tag} already has {name}."
+      },
+      "relation": {
+        "target": "Points to notes tagged",
+        "pickTag": "Pick a tag",
+        "howMany": "How many",
+        "one": "One",
+        "many": "Many",
+        "inverseLabel": "On the {target} page, list them as",
+        "inverseLabelAny": "On the linked page, list them as",
+        "inverseHint": "A read-only list on each {target}. Nothing is written to {target} notes.",
+        "inverseHintAny": "A read-only list on each linked note. Nothing is written to those notes."
+      },
+      "shared": {
+        "title": "New field on #{tag}",
+        "existsWith": "{name} already exists in this vault with {options}.",
+        "existsAs": "{name} already exists in this vault as a {type} property.",
+        "shareWith": "#{tag} will share it with your {others} notes.",
+        "shareAny": "#{tag} will share it with your other notes.",
+        "useInstead": "Use {name} instead",
+        "share": "Share {name}"
+      },
+      "template": {
+        "edit": "Edit template",
+        "none": "No template yet. A template fills empty notes when they get the tag.",
+        "create": "Create template",
+        "defaultHeading": "Notes",
+        "inherited": "From #{tag}",
+        "autofill": "Fill empty notes when they get #{tag}"
+      },
+      "remove": {
+        "title": "Remove {field} from #{tag}?",
+        "body": "{field} is filled on {filled, plural, one {# note} other {# notes}}. Those values stay on the notes as a regular property; the {empty, plural, one {# empty slot disappears} other {# empty slots disappear}}.",
+        "confirm": "Remove field"
+      },
+      "rename": {
+        "title": "Rename {from} to {to}",
+        "titleEmpty": "Rename {from}",
+        "label": "New name",
+        "body": "{count, plural, one {# note has} other {# notes have}} a {field} value. Memry renames the key in each file and in their properties; Obsidian sees the new name too.",
+        "progress": "Renaming in notes",
+        "confirm": "Rename",
+        "taken": "This tag already has {name}.",
+        "done": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}."
+      },
+      "delete": {
+        "button": "Delete tag",
+        "title": "Delete #{tag}?",
+        "body": "#{tag} will be removed from {notes, plural, one {# note} other {# notes}} and the tag goes away with its {fields, plural, one {# field} other {# fields}} and template.",
+        "bodyNoTemplate": "#{tag} will be removed from {notes, plural, one {# note} other {# notes}} and the tag goes away with its {fields, plural, one {# field} other {# fields}}.",
+        "bodyPlain": "#{tag} will be removed from every note that has it in its tags.",
+        "statNotes": "notes keep their text",
+        "statValues": "values stay as properties",
+        "plainText": "Notes that mention #{tag} in their text keep it as plain text.",
+        "confirm": "Delete tag",
+        "done": "Deleted #{tag}."
+      },
+      "errors": {
+        "addField": "Could not add the field.",
+        "removeField": "Could not remove the field.",
+        "renameField": "Could not rename the field.",
+        "moveField": "Could not move the field.",
+        "relation": "Could not save the relation.",
+        "extends": "Could not change what this tag extends.",
+        "template": "Could not update the template.",
+        "deleteTag": "Could not delete the tag.",
+        "icon": "Could not change the icon.",
+        "color": "Could not change the colour.",
+        "category": "Could not change the category."
+      }
     }
   }
 }

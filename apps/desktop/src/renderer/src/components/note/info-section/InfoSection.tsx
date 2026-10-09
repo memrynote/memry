@@ -17,7 +17,7 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property, PropertyTemplate, NewProperty, PropertyType } from './types'
+import { Property, NewProperty, PropertyType } from './types'
 import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
@@ -25,7 +25,10 @@ import { useT } from '@memry/i18n/renderer'
 
 export interface InfoSectionProps {
   properties: Property[]
-  folderProperties?: PropertyTemplate[]
+  /** Field groups of the note's tags, shown above its own properties. */
+  fieldGroups?: React.ReactNode
+  /** Slots the field groups show, counted in the header. */
+  fieldSlotCount?: number
   newlyAddedPropertyId?: string | null
   isExpanded: boolean
   onToggleExpand: () => void
@@ -45,7 +48,8 @@ export interface InfoSectionProps {
 
 export const InfoSection = memo(function InfoSection({
   properties,
-  folderProperties,
+  fieldGroups,
+  fieldSlotCount = 0,
   newlyAddedPropertyId: externalNewlyAddedId,
   isExpanded,
   onToggleExpand,
@@ -166,7 +170,7 @@ export const InfoSection = memo(function InfoSection({
           isExpanded={isExpanded}
           onToggle={onToggleExpand}
           variant={variant}
-          propertyCount={properties.length}
+          propertyCount={properties.length + fieldSlotCount}
         />
       )}
 
@@ -176,11 +180,11 @@ export const InfoSection = memo(function InfoSection({
           id="properties-content"
           className={cn(variant === 'embedded' && 'mt-1.5 border-t border-border/60 pt-2.5')}
         >
-          {/* Section Header */}
-          {folderProperties && folderProperties.length > 0 && (
-            <div className="mb-3 flex items-center gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                {t('properties.workspaceAria')}
+          {fieldGroups}
+          {fieldGroups && properties.length > 0 && (
+            <div className="flex min-h-7 items-center ps-1">
+              <span className="text-[12px] font-semibold text-foreground">
+                {t('tagFields.panel.thisNote')}
               </span>
             </div>
           )}
