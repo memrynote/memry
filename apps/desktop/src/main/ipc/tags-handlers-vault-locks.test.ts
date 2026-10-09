@@ -41,7 +41,14 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('fs/promises', () => ({ readFile: files.readFile }))
-vi.mock('../vault/notes', () => ({ toAbsolutePath: (p: string) => `/vault/${p}` }))
+vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => '/vault',
+  toAbsolutePath: (p: string) => `/vault/${p}`
+}))
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  refuseOutsideVault: async () => undefined
+}))
 vi.mock('../vault/file-ops', () => ({ atomicWrite: files.atomicWrite }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))

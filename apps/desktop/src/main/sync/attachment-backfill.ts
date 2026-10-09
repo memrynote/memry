@@ -5,6 +5,7 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
+import { resolveVaultFileSync } from '../lib/paths'
 import { getCurrentVaultPath } from '../store'
 import { queueUploadIfAbsent } from './attachment-outbox'
 import {
@@ -130,6 +131,10 @@ function embeddedFilesOf(
 ): string[] {
   // A binary note's file IS the attachment; it has no body to scan.
   if (!note.path.endsWith('.md')) return []
+  if (resolveVaultFileSync(vaultPath, note.path).kind === 'outside') {
+    log.warn('Note file points outside the vault; its embeds are not offered', { noteId: note.id })
+    return []
+  }
   const notePath = path.join(vaultPath, note.path)
   let markdown: string
   let version: string

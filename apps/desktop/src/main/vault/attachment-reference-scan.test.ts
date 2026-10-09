@@ -134,6 +134,21 @@ describe('findNotesReferencingAttachment', () => {
     expect(findNotesReferencingAttachment(target)).toEqual({ referencedBy: [], complete: true })
   })
 
+  it('does not read a note file linked outside the vault, and calls the scan incomplete (#2936)', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'attachment-ref-scan-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, '![x](../attachments/note-a/k3f9x2-report.pdf)')
+    fs.mkdirSync(path.join(state.vaultPath, 'notes'))
+    fs.symlinkSync(secret, path.join(state.vaultPath, 'notes/B.md'))
+    state.rows = [{ id: 'note-b', path: 'notes/B.md', title: 'B' }]
+
+    try {
+      expect(findNotesReferencingAttachment(target)).toEqual({ referencedBy: [], complete: false })
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   it('reports an incomplete scan when the notes cannot be enumerated', () => {
     state.throwOnRows = true
 

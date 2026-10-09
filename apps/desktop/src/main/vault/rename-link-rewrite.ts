@@ -48,7 +48,8 @@ import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
 import { isNoteLocked } from '../vault-locks/registry'
-import { emitNoteEvent, toAbsolutePath } from './notes-io'
+import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
+import { refuseOutsideVault } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('RenameLinkRewrite')
@@ -143,6 +144,7 @@ async function rewriteSource(
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.
   const sourcePath = sourceId === noteId ? input.newPath : cached.path
+  await refuseOutsideVault(getVaultRoot(), sourcePath)
   const absolutePath = toAbsolutePath(sourcePath)
   const original = await safeRead(absolutePath)
   if (!original) return
