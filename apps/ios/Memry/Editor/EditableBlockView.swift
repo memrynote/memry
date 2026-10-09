@@ -76,12 +76,19 @@ struct EditableBlockView: UIViewRepresentable {
         // change that kept the row's shape): nothing is left to focus.
         if changed, session.pendingFocus == field.blockId, view.isFirstResponder {
             session.pendingFocus = nil
+            session.shortcutField = nil
         }
         if session.pendingFocus == field.blockId, !view.isFirstResponder {
             session.pendingFocus = nil
+            let previous = session.shortcutField
+            session.shortcutField = nil
             DispatchQueue.main.async {
                 view.becomeFirstResponder()
-                view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+                if let previous, previous !== field, previous.blockId == field.blockId {
+                    field.takeOver(from: previous)
+                } else {
+                    view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+                }
             }
         }
     }
@@ -293,6 +300,33 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textView.selectedRange = NSRange(location: location, length: min(selection.length, text.length - location))
         }
         textView.invalidateIntrinsicContentSize()
+    }
+
+    /// Takes the caret, and what was typed since this row was drawn, from
+    /// `old`: the text view this block was edited in before a type change
+    /// redrew its row. Its runs are restyled for this row; the next render
+    /// draws them from the core.
+    func takeOver(from old: BlockField) {
+        let source = old.textView
+        if source.text != textView.text {
+            let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
+            let whole = NSRange(location: 0, length: text.length)
+            text.enumerateAttribute(.font, in: whole) { value, range, _ in
+                if (value as? UIFont) == old.style.font { text.addAttribute(.font, value: style.font, range: range) }
+            }
+            text.enumerateAttribute(.foregroundColor, in: whole) { value, range, _ in
+                if (value as? UIColor) == old.style.ink { text.addAttribute(.foregroundColor, value: style.ink, range: range) }
+            }
+            textView.attributedText = text
+            textView.typingAttributes = BlockText.baseAttributes(style)
+            base = old.base
+            dirty = old.dirty
+            old.dirty = false
+            textView.invalidateIntrinsicContentSize()
+        }
+        let caret = source.selectedRange
+        let location = min(caret.location, textView.textStorage.length)
+        textView.selectedRange = NSRange(location: location, length: min(caret.length, textView.textStorage.length - location))
     }
 
     /// Draws each typed `[[target]]` as the link chip the commit turns it
