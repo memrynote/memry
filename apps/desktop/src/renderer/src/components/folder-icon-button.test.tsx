@@ -15,28 +15,28 @@ vi.mock('@/lib/custom-icons-store', () => ({
 }))
 
 describe('FolderIconButton custom icons', () => {
-  it('renders a URL-backed folder icon at the built-in glyph size, not the row text size', () => {
+  // The picker button is the row's 20px slot, and its font size is the one icon
+  // size every kind shares: a custom image takes one em of it, as an emoji does.
+  it('renders a URL-backed folder icon in the same em box as emoji and library icons', () => {
     const { container } = render(
       <FolderIconButton icon="custom:known" isExpanded={false} onIconChange={vi.fn()} />
     )
 
     const img = container.querySelector('img')
-    expect(img?.className).toContain('size-5')
-    expect(img?.className).toContain('object-contain')
+    expect(img?.className).toContain('h-[1em] w-[1em]')
     expect(img?.getAttribute('alt')).toBe('Rocket')
-    // The picker button is the row's reserved 20px slot; the icon fills it
-    // rather than growing it, which is what keeps the row height put.
     expect(img?.closest('button')?.className).toContain('h-5 w-5')
+    expect(img?.closest('button')?.className).toContain('text-base')
   })
 
-  it('keeps the same 20px slot when the icon is missing from the library', () => {
+  it('keeps the same box when the icon is missing from the library', () => {
     const { container } = render(
       <FolderIconButton icon="custom:deleted-on-a-peer" isExpanded={false} onIconChange={vi.fn()} />
     )
 
     expect(container.querySelector('img')).toBeNull()
     const placeholder = container.querySelector('button span > span')
-    expect(placeholder?.className).toBe('size-5')
+    expect(placeholder?.className).toBe('h-[1em] w-[1em]')
   })
 
   it('falls back to the built-in folder glyph when the folder has no icon', () => {

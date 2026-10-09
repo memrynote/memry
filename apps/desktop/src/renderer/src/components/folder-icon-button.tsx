@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
-import { FOLDER_CUSTOM_ICON_CLASS, NoteIconDisplay } from '@/lib/render-note-icon'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -26,11 +26,7 @@ export function FolderIconButton({
   const { t: tPhaseF } = useT('common')
 
   const folderIcon = icon ? (
-    <NoteIconDisplay
-      value={icon}
-      className="text-sm leading-none"
-      customIconClassName={FOLDER_CUSTOM_ICON_CLASS}
-    />
+    <NoteIconDisplay value={icon} />
   ) : isExpanded ? (
     <FolderOpen className="h-4 w-4 text-muted-foreground" />
   ) : (

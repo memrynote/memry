@@ -9,8 +9,12 @@ everywhere.
 Open any icon picker — click a folder's icon in the sidebar, or a note's icon next to its title —
 and switch to **Custom**.
 
-Inside a note, the icon sits to the left of the title. Click it to change it, or to remove it from
-the same picker. A note with no icon shows no placeholder there — set its first icon from the
+Inside a note, the icon sits to the left of the title. Emoji and icons from the **Icons** tab show
+on their own, with no frame. A custom image fills the whole rounded square, edge to edge. Click the
+icon to change it, or to remove it from the same picker.
+
+In the sidebar, emoji, **Icons** tab icons, and custom images all take the same square, so the
+labels next to them line up whichever kind each row uses. A note with no icon shows no placeholder there — set its first icon from the
 sidebar or from a folder row, and it then appears in the note itself.
 
 When a folder is open as a tab, you can also right-click any note there and choose **Set Icon**
