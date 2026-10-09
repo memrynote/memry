@@ -16,6 +16,7 @@ import {
   reusableAttachmentIds
 } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { attachmentFiles } from '@memry/db-schema/data-schema'
 
 describe('placeDownloadedFile', () => {
   let tempDir: string
@@ -160,6 +161,55 @@ describe('placeDownloadedFile', () => {
     expect(fs.existsSync(landed)).toBe(false)
     expect(recordedFileOf(db, vaultPath, 'note-a', 'att-1')).toBe(linked)
     expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+  })
+
+  describe('a note file linked outside the vault (#2936)', () => {
+    let outside: string
+
+    const linkNoteOutside = (id: string, body: string): void => {
+      addNote(id, '')
+      const secret = path.join(outside, 'private.md')
+      fs.writeFileSync(secret, body)
+      const notePath = path.join(vaultPath, 'notes', `${id}.md`)
+      fs.rmSync(notePath)
+      fs.symlinkSync(secret, notePath)
+    }
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-place-outside-'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true })
+    })
+
+    it('keeps a download where it landed instead of placing it by the outside body', async () => {
+      linkNoteOutside('note-a', '![x](../sources/x.txt)\n')
+      const landed = download('note-a', 'x.txt')
+
+      expect(await placeDownloadedFile(db, vaultPath, 'note-a', landed)).toBe(landed)
+      expect(fs.existsSync(path.join(vaultPath, 'sources'))).toBe(false)
+    })
+
+    it('counts only the own folder files when the first record of an older note lands', () => {
+      fs.mkdirSync(path.join(vaultPath, 'sources'))
+      fs.writeFileSync(path.join(vaultPath, 'sources', 'y.txt'), 'vault file')
+      linkNoteOutside('note-a', '![y](../sources/y.txt)\n')
+      upsertNoteMetadata(db, {
+        id: 'note-a',
+        path: 'notes/note-a.md',
+        title: 'note-a',
+        createdAt: '2026-10-08T00:00:00.000Z',
+        modifiedAt: '2026-10-08T00:00:00.000Z',
+        attachmentReferences: ['att-1', 'att-2']
+      })
+      const landed = download('note-a', 'x.txt')
+
+      recordAttachmentFile(db, vaultPath, 'note-a', landed, 'att-1')
+
+      const rows = db.select({ path: attachmentFiles.path }).from(attachmentFiles).all()
+      expect(rows.map((row) => row.path).sort()).toEqual(['attachments/note-a/x.txt'])
+    })
   })
 
   it("offers the note's attachments for a file outside its folder only", () => {
