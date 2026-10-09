@@ -7,6 +7,8 @@ import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
+import { ObjectPreviewBody } from '@/features/tag-fields/object-preview-card'
+import { useObjectIdentity } from '@/features/tag-fields/use-tag-schemas'
 
 interface WikiLinkPreviewCardProps {
   preview: WikiLinkPreview | null
@@ -30,6 +32,34 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
 }: WikiLinkPreviewCardProps) {
   const dateFormat = useDateFormat()
   const { t } = useT('notes')
+  const identity = useObjectIdentity(preview?.id)
+
+  // An object (a note with a tag with fields in its header) shows who or what
+  // it is instead of its snippet. An explicit note emoji keeps today's card.
+  if (preview && identity && !preview.emoji) {
+    return createPortal(
+      <div
+        data-wiki-link-preview=""
+        className="fixed z-50 w-[304px] rounded-[10px] border border-border/40 bg-popover shadow-[var(--shadow-dropdown)] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 duration-150"
+        style={{
+          top: position.top,
+          left: position.left,
+          transformOrigin: position.placement === 'below' ? 'top left' : 'bottom left',
+          color: 'var(--text-primary)'
+        }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <ObjectPreviewBody
+          noteId={preview.id}
+          title={preview.title}
+          look={identity}
+          onOpen={() => onNoteClick?.(preview.title)}
+        />
+      </div>,
+      document.body
+    )
+  }
 
   if (!preview) {
     if (!missingTarget) return null

@@ -1737,5 +1737,68 @@
       "removedKept": "Removed #{{tag}}. {{count}} values kept.",
       "removedKeptOne": "Removed #{{tag}}. 1 value kept."
     }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Create {title} as",
+      "asPrefix": "Create",
+      "asSuffix": "as",
+      "failed": "Could not create the note",
+      "lastUsed": "Last used",
+      "noteWord": "note",
+      "plainNote": "Plain note",
+      "readyMade": "Ready-made tag",
+      "row": "Create “{title}”",
+      "rowHint": "As a {types}"
+    },
+    "hover": {
+      "at": "at",
+      "lastMet": "Last met · {title}",
+      "lastMetOn": "Last met {date} · {title}",
+      "mentionedIn": "{count, plural, one {Mentioned in # note} other {Mentioned in # notes}}",
+      "open": "Open",
+      "tasks": "{count, plural, one {# task · {field}} other {# tasks · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} in the text",
+      "explain": "In the text, a tag is a label. This note is listed under Mentioned in on #{tag}.",
+      "made": "Added #{tag} to this note's tags",
+      "make": "Make this note a {tag}",
+      "makeFailed": "Could not add the tag",
+      "makeHint": "Adds #{tag} to the header and shows its fields",
+      "meta": "{count, plural, one {# object} other {# objects}} · {fields, plural, one {# field} other {# fields}}",
+      "open": "Open #{tag}",
+      "remove": "Remove tag from text"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "as {field}",
+      "due": "Due {date}",
+      "inTheText": "in the text",
+      "mentionedIn": "Mentioned in",
+      "tasks": "Tasks",
+      "title": "Linked here"
+    },
+    "mention": {
+      "notes": "Notes"
+    },
+    "picker": {
+      "create": "New {tag}",
+      "createNamed": "New {tag} “{title}”",
+      "empty": "No matches",
+      "search": "Search {tag}",
+      "untitled": "New {tag}"
+    },
+    "quickFields": {
+      "add": "Add {field}",
+      "aria": "First fields of {title}",
+      "done": "Done",
+      "later": "Later",
+      "newObject": "New {tag}",
+      "saveFailed": "Could not save the fields"
+    }
   }
 }

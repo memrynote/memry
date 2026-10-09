@@ -1,0 +1,25 @@
+import { useCallback } from 'react'
+import type { ResolvedTag } from '@memry/contracts/tag-schema'
+import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
+import { useTagSchemas } from './use-tag-schemas'
+import type { ObjectLook } from './object-avatar'
+
+/** A resolved tag's look. Person-like = the tag is or extends the person preset. */
+export function lookOfTag(tag: ResolvedTag): ObjectLook {
+  return { tag: tag.key, color: tag.color, icon: tag.icon, avatar: tag.preset === 'person' }
+}
+
+/** Look of a tag by key, or null when the tag has no schema. */
+export function lookOfTagKey(
+  snapshot: TagSchemaSnapshot | undefined,
+  tag: string | null | undefined
+): ObjectLook | null {
+  const resolved = tag ? snapshot?.tags[tag.toLowerCase()] : undefined
+  return resolved ? lookOfTag(resolved) : null
+}
+
+/** Synchronous tag-key → look selector over the schema snapshot (menus, linked rows, tables). */
+export function useTagLookLookup(): (tag: string | null | undefined) => ObjectLook | null {
+  const { data } = useTagSchemas()
+  return useCallback((tag) => lookOfTagKey(data, tag), [data])
+}
