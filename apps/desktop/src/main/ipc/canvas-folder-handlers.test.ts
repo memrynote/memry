@@ -17,8 +17,6 @@ import {
   setCanvasFolderIcon
 } from '../canvas/folder-store'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
-import { reconcileCanvasAssets } from '../canvas/assets/asset-service'
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -60,16 +58,6 @@ vi.mock('../canvas/folder-store', () => ({
 }))
 vi.mock('../lib/window-broadcast', () => ({
   broadcastToAllWindows: vi.fn()
-}))
-// Same reason canvas-handlers.test.ts stubs these: the real context builder
-// pulls the whole attachment + writeback graph into a registration test, and the
-// asset service is unit-tested in asset-service.test.ts. Here we only care that
-// the handler calls it for every canvas the delete tombstoned.
-vi.mock('../canvas/assets/asset-service-context', () => ({
-  buildAssetServiceContext: vi.fn(() => null)
-}))
-vi.mock('../canvas/assets/asset-service', () => ({
-  reconcileCanvasAssets: vi.fn(async () => {})
 }))
 
 const INVOKE_CHANNELS = Object.values(CanvasFolderChannels.invoke)
@@ -436,71 +424,6 @@ describe('canvasFolder:delete', () => {
     )
     expect(deleteCanvasFolder).not.toHaveBeenCalled()
     expect(broadcastToAllWindows).not.toHaveBeenCalled()
-  })
-
-  /**
-   * A folder delete tombstones every canvas inside it, exactly as `canvas:delete`
-   * does one at a time — so it owes the same asset GC. Without it the images
-   * those canvases referenced keep their server ref_count forever: nothing else
-   * ever revisits a tombstoned canvas's assets, so a leak here is permanent and
-   * grows with every folder the user deletes.
-   */
-  describe('asset GC', () => {
-    it('reconciles the assets of every canvas the delete tombstoned', async () => {
-      await withWorkingCanvasContext()
-      const fakeCtx = { marker: 'ctx' }
-      vi.mocked(buildAssetServiceContext).mockReturnValue(fakeCtx as never)
-      vi.mocked(deleteCanvasFolder).mockResolvedValue(['canvas-1', 'canvas-2'])
-      const handlers = await registerAndGetHandlers()
-
-      await handlers[CanvasFolderChannels.invoke.DELETE]({}, { path: 'Work' })
-
-      // Empty scene = "this canvas references nothing now", the same argument
-      // canvas:delete passes. The GC's other-canvas union protects anything a
-      // surviving canvas still uses.
-      expect(reconcileCanvasAssets).toHaveBeenCalledWith(fakeCtx, 'canvas-1', '')
-      expect(reconcileCanvasAssets).toHaveBeenCalledWith(fakeCtx, 'canvas-2', '')
-      expect(reconcileCanvasAssets).toHaveBeenCalledTimes(2)
-    })
-
-    it('skips reconcile when no vault is open (ctx is null)', async () => {
-      await withWorkingCanvasContext()
-      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
-      vi.mocked(deleteCanvasFolder).mockResolvedValue(['canvas-1'])
-      const handlers = await registerAndGetHandlers()
-
-      await handlers[CanvasFolderChannels.invoke.DELETE]({}, { path: 'Work' })
-
-      expect(reconcileCanvasAssets).not.toHaveBeenCalled()
-    })
-
-    /**
-     * Sequential, not `Promise.all`: two canvases in the same folder can share an
-     * image, and the GC decides whether to dereference it on the server by asking
-     * which OTHER canvases still hold a row for that hash. Run concurrently, both
-     * calls read the union before either prunes, both see the other's row, and
-     * neither dereferences — the shared asset leaks. One at a time, the second
-     * call sees the first's rows gone and releases it.
-     */
-    it('reconciles one canvas at a time so a shared asset is still released', async () => {
-      await withWorkingCanvasContext()
-      vi.mocked(buildAssetServiceContext).mockReturnValue({ marker: 'ctx' } as never)
-      vi.mocked(deleteCanvasFolder).mockResolvedValue(['canvas-1', 'canvas-2'])
-
-      const inFlight: string[] = []
-      const overlapped: string[] = []
-      vi.mocked(reconcileCanvasAssets).mockImplementation(async (_ctx, canvasId) => {
-        if (inFlight.length > 0) overlapped.push(canvasId)
-        inFlight.push(canvasId)
-        await Promise.resolve()
-        inFlight.pop()
-      })
-      const handlers = await registerAndGetHandlers()
-
-      await handlers[CanvasFolderChannels.invoke.DELETE]({}, { path: 'Work' })
-
-      expect(overlapped).toEqual([])
-    })
   })
 })
 

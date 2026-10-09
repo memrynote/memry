@@ -27,8 +27,6 @@ import {
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { createHandler, createValidatedHandler } from './validate'
 import { getCanvasContext } from '../canvas/vault-key'
-import { reconcileCanvasAssets } from '../canvas/assets/asset-service'
-import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
 import { CanvasFolderError, CanvasFolderErrorCode } from '../canvas/folder-errors'
 import {
   createCanvasFolder,
@@ -173,32 +171,9 @@ export function registerCanvasFolderHandlers(): void {
           deleteCanvasFolder(db, vaultPath, vaultId, input.path, (abs) => shell.trashItem(abs))
         )
 
-        // The same asset GC `canvas:delete` runs, once per canvas the folder
-        // took with it. Without it the images those canvases referenced keep
-        // their server ref_count forever — nothing else ever revisits a
-        // tombstoned canvas's assets, so the leak is permanent and grows with
-        // every folder deleted. An empty scene says "this canvas references
-        // nothing now"; the GC's other-canvas union protects whatever a
-        // surviving canvas still uses.
-        //
-        // Sequentially, never `Promise.all`: two canvases in one folder can
-        // share an image, and that union is read from the asset ROWS. Run
-        // concurrently, each call would still see the other's row and neither
-        // would dereference the shared hash. One at a time, the last holder
-        // releases it.
-        //
-        // After the tombstones rather than before (the mirror image of
-        // `canvas:delete`, which GCs first) because the store call is what
-        // tombstones them and reports their ids. Safe: the union is row-based,
-        // not liveness-based, so the tombstone does not change what it sees —
-        // and `dereference` never throws, so a delete that already committed
-        // cannot be reported to the user as a failure.
-        const assetCtx = buildAssetServiceContext()
-        if (assetCtx) {
-          for (const id of deletedCanvasIds) {
-            await reconcileCanvasAssets(assetCtx, id, '')
-          }
-        }
+        // The canvases' asset files and server refs are kept, as for a single
+        // canvas delete (canvas/delete.ts) and a note's attachments: a folder put
+        // back from the Trash re-imports its images (#3002).
 
         // One `canvas:deleted` per canvas the folder took with it, alongside the
         // folder event. The folder event carries a path, and a path is not

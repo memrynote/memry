@@ -347,9 +347,9 @@ describe('adoption', () => {
   /**
    * `missingFiles` is a fleet-health signal (it ships as a warn metric), so it
    * has to count documents that really vanished — not every canvas the user has
-   * ever deleted. `deleteCanvas` tombstones the row and LEAVES `file_path`
-   * populated, so an unfiltered scan re-counts each one on every vault open and
-   * the number only ever grows.
+   * ever deleted. A tombstone keeps `file_path` until its document is confirmed
+   * gone (`releaseRemovedCanvasPaths`), so a scan that read tombstones would
+   * re-count each one on every vault open and the number would only grow.
    */
   it('does not count a canvas the user deleted in the app as a missing document', async () => {
     const kept = createCanvas(db, vault, 'vault-1', { title: 'Kept' })
@@ -375,7 +375,7 @@ describe('adoption', () => {
     const abs = path.join(vault, CANVAS_DIR, `${title}.excalidraw`)
     const content = fs.readFileSync(abs, 'utf8')
     // What the watcher's external delete does: the file is already gone, so
-    // there is nothing to trash (`removeCanvas(id, noop, { keepAssets: true })`).
+    // there is nothing to trash (`removeCanvas(id, noop)`).
     fs.rmSync(abs)
     await deleteCanvas(db, vault, canvas.id, async () => {})
     return { id: canvas.id, content }

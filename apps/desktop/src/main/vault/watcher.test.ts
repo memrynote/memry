@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
-import { eq } from 'drizzle-orm'
+import { eq, isNull } from 'drizzle-orm'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/data-schema'
@@ -15,7 +15,7 @@ import {
 } from '@tests/utils/test-db'
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, ipcMain, shell } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
 import { trackPendingDelete, clearAllPendingDeletes, hasPendingDeletes } from './rename-tracker'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -37,7 +37,9 @@ const baseConfig: VaultConfig = {
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn()
-  }
+  },
+  ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
+  shell: { trashItem: vi.fn() }
 }))
 
 vi.mock('chokidar', () => ({
@@ -173,6 +175,12 @@ import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
 import { listAssetsByCanvas, recordAsset } from '../canvas/assets/asset-store'
 import { removeCanvas } from '../canvas/delete'
+import { reconcileCanvasFiles } from '../canvas/reconcile'
+import { CanvasFolderChannels } from '@memry/contracts/canvas-folder-api'
+import {
+  registerCanvasFolderHandlers,
+  unregisterCanvasFolderHandlers
+} from '../ipc/canvas-folder-handlers'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -1934,15 +1942,85 @@ describe('vault watcher', () => {
       expect(listAssetsByCanvas(db, id)).toHaveLength(1)
     })
 
-    it('an in-app delete still releases its assets', async () => {
-      const { id } = makeCanvas('Deleted in app')
+    /** Names the asset in the document's own sidecar, which reconcile re-imports from. */
+    function carryAsset(absolutePath: string, canvasId: string): void {
+      const scene = JSON.parse(fs.readFileSync(absolutePath, 'utf8'))
+      scene.memryAssets = [
+        {
+          fileId: 'file-1',
+          attachmentId: 'attachment-1',
+          contentHash: `hash-${canvasId}`,
+          chunkHashes: ['chunk-1'],
+          mimeType: 'image/png',
+          sizeBytes: 3,
+          filename: `hash-${canvasId}.png`
+        }
+      ]
+      fs.writeFileSync(absolutePath, JSON.stringify(scene))
+    }
+
+    /** The one live canvas after a restore, with the asset rows reconcile gave it. */
+    async function reconcileRestored(db: ReturnType<typeof asClientDb>) {
+      await reconcileCanvasFiles(db, vault.path, getOrCreateVaultUuid(db))
+      const live = dataDb.db.select().from(canvases).where(isNull(canvases.deletedAt)).all()
+      expect(live).toHaveLength(1)
+      return listAssetsByCanvas(db, live[0].id)
+    }
+
+    // An in-app delete keeps the assets, as a note delete keeps its
+    // attachments: the .excalidraw goes to the Trash, and putting it back must
+    // bring its images with it (#3002).
+    it('an in-app delete keeps its assets so a Trash restore brings the images back', async () => {
+      const { id, absolutePath } = makeCanvas('Deleted in app')
+      carryAsset(absolutePath, id)
       const { db, dereference, diskPath } = withAsset(id)
+      const trashed = path.join(vault.path, 'trashed.excalidraw')
 
-      expect(await removeCanvas(id, async () => {})).toBe(true)
+      expect(await removeCanvas(id, async (abs) => fs.renameSync(abs, trashed))).toBe(true)
+      expect(dereference).not.toHaveBeenCalled()
+      expect(fs.existsSync(diskPath)).toBe(true)
 
-      expect(dereference).toHaveBeenCalledWith(['chunk-1'])
-      expect(fs.existsSync(diskPath)).toBe(false)
-      expect(listAssetsByCanvas(db, id)).toHaveLength(0)
+      fs.renameSync(trashed, absolutePath)
+      const restored = await reconcileRestored(db)
+
+      expect(restored).toHaveLength(1)
+      expect(restored[0].contentHash).toBe(`hash-${id}`)
+      expect(fs.existsSync(diskPath)).toBe(true)
+    })
+
+    it('a canvas folder delete keeps its assets so a Trash restore brings the images back', async () => {
+      const handle = vi.mocked(ipcMain.handle)
+      registerCanvasFolderHandlers()
+      const folderDelete = handle.mock.calls.find(
+        ([channel]) => channel === CanvasFolderChannels.invoke.DELETE
+      )![1]
+      const db = asClientDb(dataDb.db)
+      vi.mocked(requireDatabase).mockReturnValue(db as never)
+      vi.mocked(getStatus).mockReturnValue({ path: vault.path } as never)
+      const canvas = createCanvas(db, vault.path, getOrCreateVaultUuid(db), {
+        title: 'Plan',
+        folder: 'Work'
+      })
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, canvas.id)).get()
+      carryAsset(resolveCanvasFile(vault.path, row!.filePath!), canvas.id)
+      const { dereference, diskPath } = withAsset(canvas.id)
+      const dir = path.dirname(resolveCanvasFile(vault.path, row!.filePath!))
+      const trashed = path.join(vault.path, 'trashed-Work')
+      vi.mocked(shell.trashItem).mockImplementation(async (abs) => fs.renameSync(abs, trashed))
+
+      try {
+        await folderDelete({} as never, { path: 'Work' })
+      } finally {
+        unregisterCanvasFolderHandlers()
+      }
+      expect(dereference).not.toHaveBeenCalled()
+      expect(fs.existsSync(diskPath)).toBe(true)
+
+      fs.renameSync(trashed, dir)
+      const restored = await reconcileRestored(db)
+
+      expect(restored).toHaveLength(1)
+      expect(restored[0].contentHash).toBe(`hash-${canvas.id}`)
     })
 
     it('logs a failure in the delayed check instead of rejecting', async () => {

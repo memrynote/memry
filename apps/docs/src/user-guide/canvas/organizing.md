@@ -146,7 +146,17 @@ copy in its trash.
 To undo a delete, put the file or folder back in `canvases/` from your trash.
 memrynote picks it up the next time it opens the vault, as a new canvas: the
 delete has already reached your other devices, so the restored board syncs to
-them as a new one. Its images come back with it.
+them as a new one. Its images come back with it, whether you deleted it in
+memrynote or outside it.
+
+Two cases can leave you with two copies of a restored canvas; delete the one
+you don't want:
+
+- Two devices share one vault folder through iCloud and both run memrynote
+  sync. The second device can pick up the restored file before the first one
+  marks it, and adds it as a canvas of its own.
+- Another device edited the canvas while you were deleting it. That edit comes
+  back as its own canvas next to the one you restored.
 
 ## Next steps
 
