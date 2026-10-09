@@ -130,7 +130,9 @@ body to the re-created day. So when the server purges a deleted note's body
 them because the note's older revisions can sit in any pack built before its last snapshot write.
 Compaction rebuilds the set without the dead note. Until the rebuild finishes, a fresh device
 fetches those bodies item by item. A compaction run that selected the old snapshot before the
-delete committed can still write its pack after the drop. This is a known gap.
+purge cannot publish it: it inserts the `pack_index` row and advances the watermark in one batch,
+guarded on every packed snapshot row still existing with the packed blob and its note not dead.
+If the guard fails, it deletes the pack object and the next run reselects.
 
 Rows larger than `MAX_PACKED_ITEM_BYTES` = 8 MB are excluded from packs permanently and stay on the
 item-granular tail. The largest legal record payload is roughly 7 MB of JSON text (a 5 MB decoded

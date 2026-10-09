@@ -8,6 +8,7 @@ import { cleanupDeletedDocumentBodies } from '../services/cleanup'
 import { getSnapshot, getUpdates, storeUpdates } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { purgeDeletedDocumentBodies } from '../services/document-body-purge'
+import { compactOneRange } from '../services/pack-compaction'
 import type { AppContext, Bindings } from '../types'
 import type { RecordSyncItemType } from '@memry/contracts/sync-api'
 
@@ -265,6 +266,40 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     expect(count('pack_index')).toBe(0)
     expect(count('pack_watermarks')).toBe(0)
     expect(await storage.get(packKey)).toBeNull()
+  })
+
+  // #2986: compaction selected the snapshot before the delete committed.
+  it('a compaction run racing the purge publishes no pack with the deleted body', async () => {
+    const app = buildApp()
+    const liveId = 'note-live'
+    await createDay(app)
+    await push(app, { id: liveId, type: 'note', operation: 'create', clock: { [DEVICE_ID]: 1 } })
+    await writeSnapshot(DAY_ID, bytes(9, 9, 9))
+    await writeSnapshot(liveId, bytes(7, 7))
+    const { blob_key: dayBlob } = harness.raw
+      .prepare('SELECT blob_key FROM crdt_snapshots WHERE note_id = ?')
+      .get(DAY_ID) as { blob_key: string }
+
+    const get = storage.get.bind(storage)
+    let raced = false
+    vi.spyOn(storage, 'get').mockImplementation((async (key: string) => {
+      const body = await get(key)
+      if (key === dayBlob && !raced) {
+        raced = true
+        expect(await deleteDay(app)).toEqual([DAY_ID])
+      }
+      return body
+    }) as R2Bucket['get'])
+
+    const scope = { userId: USER_ID, vaultId: VAULT_ID }
+    const racing = await compactOneRange(harness.db, storage, scope, 'crdt_snapshot')
+    expect(raced).toBe(true)
+    expect(count('pack_index')).toBe(0)
+    expect(racing.packKey && (await get(racing.packKey))).toBeFalsy()
+
+    await compactOneRange(harness.db, storage, scope, 'crdt_snapshot')
+    const packs = harness.raw.prepare('SELECT item_count FROM pack_index').all()
+    expect(packs).toEqual([{ item_count: 1 }])
   })
 
   // #2986

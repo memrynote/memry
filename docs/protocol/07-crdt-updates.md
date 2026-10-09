@@ -760,8 +760,13 @@ purged snapshot can sit in any pack built before its last write. Compaction
 rebuilds them without the dead note. Until it does, a fresh device bootstraps
 those bodies item by item.
 
-Known gap: a compaction run that selected the old snapshot before the delete
-committed can still write its pack after the drop.
+A compaction run that selected the old snapshot before the purge commits its
+`pack_index` row and watermark in one batch, and only while every packed
+snapshot row still exists with the packed `blob_key` and its note is not dead
+(`apps/sync-server/src/services/pack-compaction.ts:452`). Otherwise it deletes
+the pack object and leaves the watermark, so the next run reselects
+(`apps/sync-server/src/services/pack-compaction.ts:469`). A run that commits
+first is dropped by the purge's later pack drop.
 
 Before #2986 the server kept the rows. Clients MUST NOT rely on either
 behaviour: a server from before #2986 still holds the rows, and the purge of an

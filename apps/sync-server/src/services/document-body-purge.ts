@@ -39,8 +39,9 @@ const PURGE_CHUNK = 20
  *
  * Idempotent: a re-run finds no rows and changes nothing. Object deletes are
  * best-effort; a failure leaves unreachable objects, never a row without its
- * object. Known gap: a compaction run that selected the old snapshot before the
- * delete committed can still write its pack after the drop.
+ * object. A compaction run that selected the old snapshot before this purge
+ * publishes nothing: its pack commit is guarded on the snapshot rows
+ * (`pack-compaction.ts`).
  */
 export const purgeDeletedDocumentBodies = async (
   db: D1Database,
