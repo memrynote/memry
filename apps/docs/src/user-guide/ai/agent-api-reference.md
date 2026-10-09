@@ -16277,11 +16277,12 @@ Rename a tag everywhere it is used.
 
 `tags.renameTag(input)` through `vault_desktop_write`; needs approval.
 
-| Argument        | Type     | Required | Allowed values                  |
-| --------------- | -------- | -------- | ------------------------------- |
-| `input`         | `object` | yes      |                                 |
-| `input.oldName` | `string` | yes      | min length `1`                  |
-| `input.newName` | `string` | yes      | min length `1`; max length `50` |
+| Argument        | Type     | Required | Allowed values                   |
+| --------------- | -------- | -------- | -------------------------------- |
+| `input`         | `object` | yes      |                                  |
+| `input.oldName` | `string` | yes      | min length `1`                   |
+| `input.newName` | `string` | yes      | min length `1`; max length `50`  |
+| `input.runId`   | `string` | no       | min length `1`; max length `100` |
 
 Example call:
 

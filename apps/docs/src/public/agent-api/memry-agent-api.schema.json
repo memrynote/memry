@@ -19808,6 +19808,11 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 50
+            },
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
             }
           },
           "required": ["oldName", "newName"],
