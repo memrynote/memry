@@ -299,17 +299,11 @@ function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void 
 }
 
 /**
- * A filing destination of 'root' names the same place as '', the folder
- * picker's root entry, so it never becomes a root/ folder (#2994).
- */
-function filingFolderPath<T extends string | undefined>(folderPath: T): T | '' {
-  return folderPath === 'root' ? '' : folderPath
-}
-
-/**
  * Ensure folder exists, create if not
  */
 async function ensureFolderExists(folderPath: string): Promise<void> {
+  // 'root' is an ordinary folder name: the folder picker sends a real root/
+  // folder by that name, and only '' means the vault root (#2994).
   if (!folderPath) {
     return // Root folder always exists
   }
@@ -730,16 +724,15 @@ async function fileBinaryToFolder(
  * - Binary types (image, voice, pdf, video): Moves file directly
  *
  * @param itemId - Inbox item ID
- * @param requestedFolder - Target folder path (relative to vault; '' or 'root' for root)
+ * @param folderPath - Target folder path (relative to vault, empty string for root)
  * @param tags - Additional tags to add to the note (only for text types)
  */
 export async function fileToFolder(
   itemId: string,
-  requestedFolder: string,
+  folderPath: string,
   tags: string[] = [],
   options: PlainChecklistsOption = {}
 ): Promise<FileResponse> {
-  const folderPath = filingFolderPath(requestedFolder)
   try {
     const db = requireDatabase()
 
@@ -1412,13 +1405,13 @@ async function linkBinaryToNotes(
  * @param itemId - Inbox item ID
  * @param noteIds - Array of target note IDs
  * @param tags - Additional tags to add to the created note (only for text types)
- * @param requestedFolder - Optional folder path for the created note/file ('root' means '')
+ * @param folderPath - Optional folder path for the created note/file
  */
 export async function linkToNotes(
   itemId: string,
   targets: FilingTarget[],
   tags: string[] = [],
-  requestedFolder?: string,
+  folderPath?: string,
   imageMode?: ImageFilingMode,
   options: PlainChecklistsOption = {}
 ): Promise<{
@@ -1428,7 +1421,6 @@ export async function linkToNotes(
   noteIds?: string[]
   fellBackToLink?: boolean
 }> {
-  const folderPath = filingFolderPath(requestedFolder)
   try {
     const db = requireDatabase()
 
