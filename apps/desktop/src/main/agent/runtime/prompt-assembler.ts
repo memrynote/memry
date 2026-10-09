@@ -1,6 +1,7 @@
 import type { AgentBackendId, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
 
 import type { Message, MessageAttachment } from '../storage/types'
+import { compactionView } from './compaction-view'
 
 const IDENTITY = '# Identity'
 const TOOLS_IDENTITY =
@@ -113,7 +114,7 @@ export function assemblePrompt(input: AssembleInput): string {
   // shared prefix survives a permission toggle or a new attachment.
   if (input.history.length > 0) {
     lines.push('--- Prior turns ---')
-    for (const message of compactedHistory(input.history)) {
+    for (const message of compactionView(input.history)) {
       lines.push(...renderMessage(message))
     }
     lines.push('')
@@ -177,42 +178,6 @@ function formatDate(now: Date, timezone: string): string {
   } catch {
     return now.toISOString().slice(0, 10)
   }
-}
-
-function compactedHistory(history: Message[]): Message[] {
-  const sorted = [...history].sort((a, b) => a.createdAt - b.createdAt)
-  const latestCompactionIndex = findLatestCompactionIndex(sorted)
-  if (latestCompactionIndex === -1) return sorted
-
-  const compaction = sorted[latestCompactionIndex]
-  if (compaction.content.role !== 'system') return sorted
-
-  const summarizedThroughId = compaction.content.data.payload.summarizedThroughId
-  if (typeof summarizedThroughId !== 'string') return sorted
-
-  const summarizedThroughIndex = sorted.findIndex((message) => message.id === summarizedThroughId)
-  if (summarizedThroughIndex === -1) return sorted
-
-  return [
-    compaction,
-    ...sorted.filter(
-      (_, index) => index > summarizedThroughIndex && index !== latestCompactionIndex
-    )
-  ]
-}
-
-function findLatestCompactionIndex(messages: Message[]): number {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index]
-    if (
-      message.role === 'system' &&
-      message.content.role === 'system' &&
-      message.content.data.kind === 'compacted'
-    ) {
-      return index
-    }
-  }
-  return -1
 }
 
 function renderAttachment(attachment: MessageAttachment, toolsAvailable: boolean): string[] {

@@ -1,5 +1,6 @@
 import type { MessageStore } from '../storage/message-store'
 import type { Message } from '../storage/types'
+import { compactionView, isCompactionMarker } from './compaction-view'
 
 export const COMPACT_PROMPT =
   'Summarize the following conversation history concisely. Begin your output with "Earlier in this conversation:" and preserve the user\'s intents, decisions, and any task ids or note ids that were created. Skip pleasantries.'
@@ -25,15 +26,16 @@ export interface MaybeCompactInput {
 export async function maybeCompact(input: MaybeCompactInput): Promise<Message | null> {
   if (input.currentEstimate < input.estimateLimit) return null
 
-  // Copied before sorting: the array belongs to the caller, which keeps using it
-  // for the rest of the turn.
-  const all = [...input.history].sort((a, b) => a.createdAt - b.createdAt)
-  const lastCompactedIndex = findLastCompactedIndex(all)
-  const activeHistory = all.slice(lastCompactedIndex + 1)
-  if (activeHistory.length < 2) return null
+  // The new summary starts from the conversation's beginning: its input is every
+  // summary and uncovered message the prompt shows before the cut, so it replaces
+  // them without loss.
+  const view = compactionView(input.history)
+  const firstActive = view.findLastIndex(isCompactionMarker) + 1
+  const activeCount = view.length - firstActive
+  if (activeCount < 2) return null
 
-  const oldest = activeHistory.slice(0, Math.floor(activeHistory.length / 2))
-  const dump = oldest.map(renderForSummary).join('\n')
+  const toSummarize = view.slice(0, firstActive + Math.floor(activeCount / 2))
+  const dump = toSummarize.map(renderForSummary).join('\n')
   const summary = await input.summarize(`${COMPACT_PROMPT}\n\n${dump}`)
 
   return input.messages.append({
@@ -45,28 +47,15 @@ export async function maybeCompact(input: MaybeCompactInput): Promise<Message | 
         kind: 'compacted',
         payload: {
           summary,
-          summarizedThroughId: oldest[oldest.length - 1].id,
-          summarizedAt: Date.now()
+          summarizedThroughId: toSummarize[toSummarize.length - 1].id,
+          summarizedAt: Date.now(),
+          summarizedFromStart: true
         }
       }
     },
     attachments: [],
     status: 'completed'
   })
-}
-
-function findLastCompactedIndex(messages: Message[]): number {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index]
-    if (
-      message.role === 'system' &&
-      message.content.role === 'system' &&
-      message.content.data.kind === 'compacted'
-    ) {
-      return index
-    }
-  }
-  return -1
 }
 
 function renderForSummary(message: Message): string {
@@ -81,6 +70,10 @@ function renderForSummary(message: Message): string {
       ...data
     } = message.content.data
     return `[${message.role}] ${JSON.stringify(data)}`
+  }
+  if (isCompactionMarker(message) && message.content.role === 'system') {
+    const summary = message.content.data.payload.summary
+    if (typeof summary === 'string') return `[summary] ${summary}`
   }
   return `[${message.role}] ${JSON.stringify(message.content.data)}`
 }

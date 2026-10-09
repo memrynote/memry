@@ -180,7 +180,8 @@ describe('Conversation compactor', () => {
         payload: {
           summary: expect.stringContaining('summary:'),
           summarizedThroughId: 'm2',
-          summarizedAt: expect.any(Number)
+          summarizedAt: expect.any(Number),
+          summarizedFromStart: true
         }
       }
     })
