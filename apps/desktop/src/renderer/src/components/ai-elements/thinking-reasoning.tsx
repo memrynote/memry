@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -30,8 +30,6 @@ export interface ThinkingReasoningProps {
   streaming: boolean
   /** Thinking unfolds the block only before the answer starts, so the answer never jumps. */
   answerStarted: boolean
-  /** The raw reasoning text; changes drive the follow-the-stream scroll. */
-  content: string
   /** Persisted thinking time. Absent for a turn that is still streaming. */
   durationMs?: number
   thinkingLabel: string
@@ -46,7 +44,6 @@ export function ThinkingReasoning({
   thinking,
   streaming,
   answerStarted,
-  content,
   durationMs,
   thinkingLabel,
   formatSummary,
@@ -58,7 +55,10 @@ export function ThinkingReasoning({
   const [fadeTop, setFadeTop] = useState(false)
   const [fadeBottom, setFadeBottom] = useState(false)
   const viewportRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const followRef = useRef(true)
+  /** Content height at the last sync: what the reader has seen of the bottom. */
+  const seenHeightRef = useRef(0)
 
   // A turn watched live has no persisted duration until the message completes,
   // so the summary in between is measured here, from the moment the block
@@ -88,19 +88,36 @@ export function ThinkingReasoning({
     setFadeBottom(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1)
   }
 
-  useLayoutEffect(() => {
+  const sync = useCallback((): void => {
     const viewport = viewportRef.current
-    if (!viewport || !expanded) return
+    if (!viewport) return
     setCapped(viewport.scrollHeight > MAX_H + 1)
     if (followRef.current) viewport.scrollTop = viewport.scrollHeight
+    seenHeightRef.current = viewport.scrollHeight
     syncFade(viewport)
-  }, [content, expanded])
+  }, [])
 
+  useLayoutEffect(() => {
+    if (expanded) sync()
+  }, [expanded, sync])
+
+  // Streamdown commits new lines in a transition, after this component's
+  // effects ran, so growth is followed where it lands in the DOM.
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return undefined
+    const observer = new ResizeObserver(sync)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [sync])
+
+  // Measured against the bottom as of the last sync: a scroll event, ours or
+  // the reader's, can arrive after more lines landed but before they synced.
   const onScroll = (): void => {
     const viewport = viewportRef.current
     if (!viewport) return
     followRef.current =
-      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= FOLLOW_SLACK
+      viewport.scrollTop + viewport.clientHeight >= seenHeightRef.current - FOLLOW_SLACK
     syncFade(viewport)
   }
 
@@ -152,7 +169,7 @@ export function ThinkingReasoning({
             style={{ maxHeight: MAX_H, WebkitMaskImage: mask, maskImage: mask }}
             onScroll={onScroll}
           >
-            {children}
+            <div ref={contentRef}>{children}</div>
           </div>
         </div>
       </div>

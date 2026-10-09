@@ -105,7 +105,6 @@ function AssistantMessageContent({
             thinking={streaming && reasoningNewest}
             streaming={streaming}
             answerStarted={answerStarted}
-            content={reasoning}
             durationMs={message.content.data.reasoningDurationMs}
             thinkingLabel={t('agentChat.reasoning.thinking')}
             formatSummary={(seconds) =>
