@@ -35,9 +35,13 @@ struct NoteRowActions: ViewModifier {
         } else {
             content
                 .swipeActions(edge: .trailing) {
-                    Button("Delete", systemImage: "trash", role: .destructive) {
+                    // Tinted, not `role: .destructive`: a destructive swipe
+                    // tells the list the row is being removed, and the
+                    // confirmation attached to that row never appears.
+                    Button("Delete", systemImage: "trash") {
                         isConfirmingDelete = true
                     }
+                    .tint(.red)
                 }
                 .contextMenu {
                     NoteRowMenu(
