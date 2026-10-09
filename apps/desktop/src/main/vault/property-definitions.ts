@@ -175,6 +175,37 @@ export class PropertyDefinitionsService {
     return { filePath: this.filePath, content: this.serializeFile() }
   }
 
+  /**
+   * Take a pulled definition row into the cache, and return the
+   * `.memry/properties.md` bytes the caller must write, or null when the row
+   * is not a persistable definition.
+   *
+   * The post-pull reload lets the file win for every name it covers, so a
+   * stale file would revert the pulled edit while the rebuild keeps the
+   * peer's clock, leaving nothing to re-sync it (#2896). Same journaled write
+   * contract as `applyRemoteDelete`.
+   */
+  applyRemoteUpsert(row: {
+    name: string
+    type: string
+    options: string | null
+    defaultValue: string | null
+    color: string | null
+  }): { filePath: string; content: string } | null {
+    const pulled = definitionFromRow(row)
+    if (!pulled) return null
+    const cached = this.cache.get(row.name)
+    // `showOnCalendar` lives only in this device's file and does not sync.
+    if (pulled.type === 'date' && cached?.type === 'date') {
+      pulled.showOnCalendar = cached.showOnCalendar
+    }
+    this.cache.set(row.name, pulled)
+    void this.enqueueWrite(() => this.persistToFile()).catch((err: unknown) => {
+      logger.warn('Failed to persist a remote property definition upsert:', err)
+    })
+    return { filePath: this.filePath, content: this.serializeFile() }
+  }
+
   getAll(): PropertyDefinition[] {
     return Array.from(this.cache.values())
   }
