@@ -377,7 +377,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       return {
         backend: 'local_openai_compatible',
         toolsEnabled: true,
-        ...(showEffort ? { reasoningEffort: localReasoning } : {}),
+        // The backend owns whether the preset can use it, so this does not wait on settings.
+        ...(localReasoning !== 'default' ? { reasoningEffort: localReasoning } : {}),
         ...(effectiveLocalModel ? { model: effectiveLocalModel } : {})
       }
     }

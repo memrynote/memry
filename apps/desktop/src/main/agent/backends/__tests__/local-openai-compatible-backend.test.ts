@@ -436,7 +436,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     })
   })
 
-  it('ollama preset uses the native /api endpoint with num_ctx 8192', async () => {
+  it('ollama preset uses the native /api endpoint with num_ctx 8192 and no reasoning fields', async () => {
     mocks.streamText.mockReturnValueOnce({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'ok' }
@@ -449,7 +449,8 @@ describe('LocalOpenAICompatibleBackend', () => {
         baseUrl: 'http://localhost:11434/v1',
         model: 'gemma4',
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'off'
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never,
@@ -461,7 +462,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       conversationId: 'c1',
       writeGrant: TEST_GRANT,
       windowId: 'window-1',
-      options: { backend: 'local_openai_compatible' }
+      options: { backend: 'local_openai_compatible', reasoningEffort: 'max' }
     })
 
     expect(mocks.createOllama).toHaveBeenCalledWith(
