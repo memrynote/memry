@@ -13,8 +13,9 @@ Inside a note, the icon sits to the left of the title. Emoji and icons from the 
 on their own, with no frame. A custom image fills the whole rounded square, edge to edge. Click the
 icon to change it, or to remove it from the same picker.
 
-In the sidebar, emoji, **Icons** tab icons, and custom images all take the same square, so the
-labels next to them line up whichever kind each row uses. A note with no icon shows no placeholder there — set its first icon from the
+In the sidebar and in the Home page's recently edited and recently opened lists, emoji, **Icons**
+tab icons, and custom images all take the same square, so the labels next to them line up
+whichever kind each row uses. A note with no icon shows no placeholder there — set its first icon from the
 sidebar or from a folder row, and it then appears in the note itself.
 
 When a folder is open as a tab, you can also right-click any note there and choose **Set Icon**
