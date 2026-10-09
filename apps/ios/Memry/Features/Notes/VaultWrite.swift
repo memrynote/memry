@@ -332,7 +332,8 @@ extension VaultBrowseViewModel {
             await wrote()
         } catch {
             report(error, "a folder could not be deleted")
-            // Some notes may already be gone; show what is true now.
+            // Some notes may already be gone; push their tombstones and show
+            // what is true now.
             await wrote()
         }
     }

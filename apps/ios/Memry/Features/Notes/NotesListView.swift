@@ -188,9 +188,12 @@ struct NotesListView: View {
                 .onChange(of: notesLinks.pending, initial: true) {
                     if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
-                .task {
+                .task { await model.loadIfNeeded() }
+                // Not a one-off in `.task`: Notes is the first tab, and on a
+                // cold launch the vault's sync request is still nil until the
+                // tasks store exists.
+                .onChange(of: requestVaultSync == nil, initial: true) {
                     model.requestSync = requestVaultSync
-                    await model.loadIfNeeded()
                 }
                 .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
                 .onAppear { Task { await model.refresh() } }
