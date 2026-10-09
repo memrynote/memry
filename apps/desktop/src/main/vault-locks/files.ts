@@ -45,6 +45,7 @@ import {
   forgetFileMode,
   getBaseline,
   getFileMode,
+  listFileModes,
   recordFileMode,
   writeBaseline
 } from './store'
@@ -93,6 +94,36 @@ function nextMode(
   }
   const next = readOnly ? (recorded ?? found) & ~0o222 : (recorded ?? (current | 0o200) & 0o777)
   return next === found ? null : (current & 0o7000) | next
+}
+
+/**
+ * At vault open: a vault copied or restored with its data DB gives every file
+ * a new inode, so each record would name another file and unlocking would
+ * keep the read-only bits. When every recorded file still on disk has a new
+ * identity and exactly the bits the lock left, the records move to the new
+ * identities. One file that really changed keeps the per-file rule.
+ */
+export async function adoptCopiedVaultIdentities(root: string): Promise<void> {
+  const found: Array<{ path: string; mode: number; identity: string }> = []
+  for (const row of listFileModes(getDatabase())) {
+    let stats: fs.Stats
+    try {
+      stats = await fs.promises.stat(path.join(root, row.path))
+    } catch (err) {
+      if (isNodeError(err) && err.code === 'ENOENT') continue
+      log.warn('Could not check a locked file at vault open', { error: err })
+      return
+    }
+    const identity = `${stats.ino}:${stats.birthtimeMs}`
+    if (row.identity === null || row.identity === identity) return
+    if ((stats.mode & 0o777) !== (row.mode & ~0o222)) return
+    found.push({ path: row.path, mode: row.mode, identity })
+  }
+  if (found.length === 0) return
+  for (const row of found) recordFileMode(getDatabase(), row.path, row.mode, row.identity)
+  log.info('Locked files have new identities, as in a copied vault; kept their recorded modes', {
+    files: found.length
+  })
 }
 
 async function changeMode(
