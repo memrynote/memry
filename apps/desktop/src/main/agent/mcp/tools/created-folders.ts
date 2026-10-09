@@ -49,13 +49,18 @@ const stringOr = (value: unknown, fallback: string) =>
  * The vault-relative folder a desktop API write lands in, when the write
  * creates it. A note or import without a folder goes to the default note
  * folder; a move to '' goes to the vault root. An inbox filing without a path
- * routes by item type, so only a named path is predicted.
+ * routes by item type, so only a named path is predicted. A new-note filing
+ * ignores the path, and filing treats 'root' as the vault root.
  */
 const WRITE_FOLDERS: Partial<Record<AgentMcpDesktopWriteOperation, (args: unknown[]) => string>> = {
   'notes.create': ([input]) => stringOr(field(input, 'folder'), getConfig().defaultNoteFolder),
   'notes.importFiles': ([, targetFolder]) => stringOr(targetFolder, getConfig().defaultNoteFolder),
   'notes.move': ([, newFolder]) => stringOr(newFolder, ''),
-  'inbox.file': ([input]) => stringOr(field(field(input, 'destination'), 'path'), '')
+  'inbox.file': ([input]) => {
+    const destination = field(input, 'destination')
+    const folder = stringOr(field(destination, 'path'), '')
+    return field(destination, 'type') === 'new-note' || folder === 'root' ? '' : folder
+  }
 }
 
 /** Read before a desktop API write: the folders, shallowest first, it would create. */
