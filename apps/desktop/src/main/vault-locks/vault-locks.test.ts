@@ -288,6 +288,31 @@ describe('vault read-only locks (#2606)', () => {
       expect(fs.lstatSync(file).isSymbolicLink()).toBe(true)
       expect(fs.readFileSync(secret, 'utf-8')).toBe('outside secret\n')
     })
+
+    it.skipIf(isWindows)(
+      'locking and unlocking leave the outside file mode alone (#2989)',
+      async () => {
+        fs.chmodSync(secret, 0o640)
+        const file = addNote('note-a', 'notes/a.md', 'vault text\n')
+        swapForLink(file)
+
+        await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+        expect(fs.statSync(secret).mode & 0o777).toBe(0o640)
+
+        fs.chmodSync(secret, 0o440)
+        await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+        expect(fs.statSync(secret).mode & 0o777).toBe(0o440)
+      }
+    )
+
+    it.skipIf(isWindows)('the sync write path leaves the outside file mode alone (#2989)', () => {
+      fs.chmodSync(secret, 0o640)
+      const file = addNote('note-a', 'notes/a.md', 'vault text\n')
+      swapForLink(file)
+
+      setFileReadOnlySync(file, true)
+      expect(fs.statSync(secret).mode & 0o777).toBe(0o640)
+    })
   })
 
   it('a write through the vault file primitives is refused for a locked note', async () => {
