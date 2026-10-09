@@ -10,7 +10,7 @@ import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { InsertionIndicator } from '@/components/tasks/drag-drop/insertion-indicator'
 import type { SectionDragState } from '@/components/tasks/drag-drop/list-section-drag-state'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
-import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
+import { SortableSubtaskList, nestedListClass } from '@/components/tasks/sortable-subtask-list'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
@@ -411,6 +411,7 @@ export const ParentTaskRow = ({
           onReorder={onReorderSubtasks || (() => {})}
           onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
           onClick={onClick}
+          className={nestedListClass(0, !!onToggleSelect)}
         />
       )}
     </div>
