@@ -13,13 +13,10 @@ import SwiftUI
 // the board's columns and that filters narrow the list.
 
 extension TasksStore {
-    /// Top-level open and done rows in the current answer (subtasks ride
-    /// with their parents, as the list draws them).
+    /// Open and done rows in the current answer, as the list draws them.
     var listCounts: (open: Int, done: Int) {
         guard let result else { return (0, 0) }
-        let open = result.taskIds.filter { items[$0]?.parentId == nil }.count
-        let done = result.doneIds.filter { items[$0]?.parentId == nil }.count
-        return (open, done)
+        return (listRowIds(result.taskIds).count, listRowIds(result.doneIds).count)
     }
 
     /// The count a view shows in the title menu.

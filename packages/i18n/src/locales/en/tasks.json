@@ -1054,6 +1054,7 @@
       "outdent": "Move out one level",
       "topLevel": "Make top-level task",
       "delete": "Delete"
-    }
+    },
+    "openPath": "Open {{path}}"
   }
 }

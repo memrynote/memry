@@ -19,6 +19,7 @@ import { useT } from '@memry/i18n/renderer'
 import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
 import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
 
 interface TaskRowProps {
   task: Task
@@ -137,6 +138,8 @@ const TaskRowComponent = ({
   const { t: tPhaseF } = useT('tasks')
   const isOverlay = renderMode === 'overlay'
   const tree = useSubtaskTree()
+  const taskPath = useTaskPath(task)
+  const path = isOverlay ? null : taskPath
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
   const {
@@ -304,26 +307,28 @@ const TaskRowComponent = ({
           />
         )}
 
-        <span
-          className={cn(
-            'text-[13px] font-medium grow shrink min-w-0 truncate',
-            isExiting || isCompleted
-              ? isOverlay
-                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-                : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-              : isOverlay
-                ? 'text-foreground/90'
-                : 'text-foreground/90'
-          )}
-        >
-          {task.title}
-        </span>
+        <TaskPathTitle task={task} path={path}>
+          <span
+            className={cn(
+              'text-[13px] font-medium grow shrink min-w-0 truncate',
+              isExiting || isCompleted
+                ? isOverlay
+                  ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                  : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : isOverlay
+                  ? 'text-foreground/90'
+                  : 'text-foreground/90'
+            )}
+          >
+            {task.title}
+          </span>
+        </TaskPathTitle>
 
         {task.isRepeating && task.repeatConfig && (
           <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
         )}
 
-        {showProjectBadge && (
+        {showProjectBadge && !path && (
           <div className="flex items-center shrink-0 gap-[5px]">
             <div
               className="rounded-xs shrink-0 size-2"

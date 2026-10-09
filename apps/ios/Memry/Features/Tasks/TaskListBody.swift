@@ -83,7 +83,8 @@ struct TaskListBody<Header: View>: View {
                         task: task,
                         store: store,
                         depth: row.depth,
-                        context: context(for: sections[item.section], depth: row.depth),
+                        context: context(for: sections[item.section], task: task, depth: row.depth),
+                        path: store.isDateWindow ? store.listPath(task) : nil,
                         selection: isEditing ? TaskRowSelection(
                             isSelected: selection.contains(row.id),
                             toggle: { toggle(row.id) }
@@ -123,10 +124,12 @@ struct TaskListBody<Header: View>: View {
     }
 
     /// What a row may leave out because the screen already says it.
-    private func context(for section: TaskListSection, depth: Int) -> TaskMeta.Context {
+    /// A subtask on a date window names its project in its path instead.
+    private func context(for section: TaskListSection, task: TaskItem, depth: Int) -> TaskMeta.Context {
         TaskMeta.Context(
             omitsDay: store.sectionNamesDay(section),
             showsProject: depth == 0 && store.state.projectId == nil
+                && !(store.isDateWindow && task.parentId != nil)
         )
     }
 }

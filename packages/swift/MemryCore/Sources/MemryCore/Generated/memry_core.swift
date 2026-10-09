@@ -23562,11 +23562,13 @@ public func FfiConverterTypeTaskViewQuery_lower(_ value: TaskViewQuery) -> RustB
 public struct TaskViewResult: Equatable, Hashable {
     /**
      * The list, in order: filtered and sorted, then (on a window tab) the
-     * window's overdue-first order. Subtasks ride with their parents.
+     * window's overdue-first order. On a window tab every id is its own row,
+     * at any depth; elsewhere subtasks ride with their parents.
      */
     public var taskIds: [String]
     /**
-     * The groups the sort field produces over the top-level rows; empty for
+     * The groups the sort field produces over the rows (top-level ones off a
+     * window tab); empty for
      * `title`, `completedAt` and an unknown field.
      */
     public var groups: [TaskGroupItem]
@@ -23587,10 +23589,12 @@ public struct TaskViewResult: Equatable, Hashable {
     public init(
         /**
          * The list, in order: filtered and sorted, then (on a window tab) the
-         * window's overdue-first order. Subtasks ride with their parents.
+         * window's overdue-first order. On a window tab every id is its own row,
+         * at any depth; elsewhere subtasks ride with their parents.
          */taskIds: [String], 
         /**
-         * The groups the sort field produces over the top-level rows; empty for
+         * The groups the sort field produces over the rows (top-level ones off a
+         * window tab); empty for
          * `title`, `completedAt` and an unknown field.
          */groups: [TaskGroupItem], 
         /**

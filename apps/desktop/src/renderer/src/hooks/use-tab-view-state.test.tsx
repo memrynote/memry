@@ -130,6 +130,21 @@ describe('useTabViewState', () => {
     expect(result.current[0]).toBe('list')
   })
 
+  it('picks up a value merged into the tab while the page stays mounted', () => {
+    let stored: Record<string, unknown> = { mode: 'list' }
+    mocks.getTab.mockImplementation(() => tabWith(stored))
+
+    const { result, rerender } = renderHook(() =>
+      useTabViewState({ key: 'mode', defaultValue: 'list' as const, parse: parseMode })
+    )
+    expect(result.current[0]).toBe('list')
+
+    stored = { mode: 'board' }
+    rerender()
+
+    expect(result.current[0]).toBe('board')
+  })
+
   it('reads a legacy alias key when the current key is absent', () => {
     mocks.getTab.mockReturnValue(tabWith({ activeTab: 'board' }))
 

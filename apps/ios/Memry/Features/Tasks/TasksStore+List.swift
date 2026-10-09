@@ -9,7 +9,10 @@ import SwiftUI
 // `virtualized-all-tasks-view.tsx` and `lib/virtual-list-utils.ts` do:
 //
 // - top-level rows only, each followed by its subtasks two levels deep
-//   (`treeRows`, TasksStore+Tree);
+//   (`treeRows`, TasksStore+Tree); on a date window (Today, Tomorrow,
+//   Next 7) every task the core places is its own row at any depth, with its
+//   path under the title (desktop `date-view-context.tsx`), so the count
+//   matches the rows;
 // - one section per core group, or one `flat` section when the sort has none;
 //   on Today and Next 7 a flat list's leading overdue rows get their own
 //   Overdue header;
@@ -57,7 +60,7 @@ extension TasksStore {
         let orders = orders ?? listOrders
         guard let result else { return [] }
         _ = scratch[Self.orderRevisionKey]
-        let topLevel = result.taskIds.filter { items[$0]?.parentId == nil }
+        let topLevel = listRowIds(result.taskIds)
         var sections: [TaskListSection] = []
         if result.groups.isEmpty {
             sections += flatSections(topLevel, orders: orders)
@@ -82,7 +85,7 @@ extension TasksStore {
                 ))
             }
         }
-        let done = result.doneIds.filter { items[$0]?.parentId == nil }
+        let done = listRowIds(result.doneIds)
         if !done.isEmpty {
             sections.append(section(
                 id: "done", kind: .done, title: TasksCopy.completedGroup, color: nil, ids: done, bucket: nil,
@@ -138,8 +141,35 @@ extension TasksStore {
             count: ids.count,
             isCollapsed: collapsed,
             dropBucket: bucket,
-            rows: collapsed ? [] : ordered.flatMap { treeRows($0) }
+            rows: collapsed ? [] : ordered.flatMap { id in
+                isDateWindow ? [TaskListRow(id: id, depth: 0)] : treeRows(id)
+            }
         )
+    }
+
+    /// Today, Tomorrow and Next 7: the core lists each dated task on its own.
+    var isDateWindow: Bool { [.today, .tomorrow, .next7].contains(state.tab) }
+
+    /// The core's ids that get a row of their own: all of them on a date
+    /// window, else the top-level ones (their subtasks ride under them).
+    func listRowIds(_ ids: [String]) -> [String] {
+        isDateWindow ? ids : ids.filter { items[$0]?.parentId == nil }
+    }
+
+    /// A subtask's path on a date window, top-down: the project, then its
+    /// ancestors, folded to project, "…", direct parent past two ancestors
+    /// (desktop `foldTaskPath`). `nil` for a top-level task.
+    func listPath(_ task: TaskItem) -> [String]? {
+        var titles: [String] = []
+        var seen: Set<String> = [task.id]
+        var parentId = task.parentId
+        while let id = parentId, seen.insert(id).inserted {
+            titles.insert(items[id]?.title ?? "", at: 0)
+            parentId = items[id]?.parentId
+        }
+        guard !titles.isEmpty else { return nil }
+        let project = project(task.projectId)?.name ?? ""
+        return titles.count > 2 ? [project, "…", titles[titles.count - 1]] : [project] + titles
     }
 
     /// Bumped when the device-local order changes, so the list redraws.
@@ -151,8 +181,8 @@ extension TasksStore {
     /// Today's progress: completed today against everything on Today.
     var todayProgress: (done: Int, total: Int)? {
         guard state.tab == .today, let result else { return nil }
-        let done = result.doneIds.filter { items[$0]?.parentId == nil }.count
-        let open = result.taskIds.filter { items[$0]?.parentId == nil }.count
+        let done = listRowIds(result.doneIds).count
+        let open = listRowIds(result.taskIds).count
         let total = done + open
         return total > 0 ? (done, total) : nil
     }
