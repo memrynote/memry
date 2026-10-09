@@ -10,6 +10,7 @@
 import type { NoteWithProperties, FilterExpression } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import { compareCalendarDays, compareDates } from '@/lib/filter-date-compare'
 
 const log = createLogger('Evaluator:Filter')
 
@@ -410,6 +411,8 @@ function evaluateOperator(actual: unknown, operator: string, expected: unknown):
  * Check equality, handling strings case-insensitively.
  */
 function isEqual(actual: unknown, expected: unknown): boolean {
+  const days = compareCalendarDays(actual, expected)
+  if (days !== null) return days === 0
   if (typeof actual === 'string' && typeof expected === 'string') {
     return actual.toLowerCase() === expected.toLowerCase()
   }
@@ -429,18 +432,6 @@ function compareValues(actual: unknown, expected: unknown): number {
 
   // Try date comparison
   return compareDates(actual, expected)
-}
-
-/**
- * Compare two date values.
- */
-function compareDates(actual: unknown, expected: unknown): number {
-  const dateActual = toDate(actual)
-  const dateExpected = toDate(expected)
-
-  if (!dateActual || !dateExpected) return 0
-
-  return dateActual.getTime() - dateExpected.getTime()
 }
 
 /**
@@ -496,18 +487,6 @@ function toNumber(value: unknown): number | null {
   if (typeof value === 'string') {
     const num = Number(value)
     return isNaN(num) ? null : num
-  }
-  return null
-}
-
-/**
- * Convert value to Date, returning null if not possible.
- */
-function toDate(value: unknown): Date | null {
-  if (value instanceof Date) return value
-  if (typeof value === 'string' || typeof value === 'number') {
-    const date = new Date(value)
-    return isNaN(date.getTime()) ? null : date
   }
   return null
 }
