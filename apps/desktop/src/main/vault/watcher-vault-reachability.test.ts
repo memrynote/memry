@@ -16,8 +16,12 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { createTestVault } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import { generateContentHash } from './frontmatter'
 
-const mocks = vi.hoisted(() => ({ watch: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  watch: vi.fn(),
+  beforeWalkReturns: null as null | (() => Promise<void>)
+}))
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
 vi.mock('chokidar', () => ({ default: { watch: mocks.watch }, watch: mocks.watch }))
@@ -40,6 +44,17 @@ vi.mock('../notes/runtime-effects', () => ({
   unlinkTasksFromDeletedNote: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn()
 }))
+vi.mock('./indexer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./indexer')>()
+  return {
+    ...actual,
+    findVaultFiles: vi.fn(async (...args: Parameters<typeof actual.findVaultFiles>) => {
+      const files = await actual.findVaultFiles(...args)
+      await mocks.beforeWalkReturns?.()
+      return files
+    })
+  }
+})
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => {}) }))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => {})
@@ -143,6 +158,7 @@ describe('watcher and an unreachable vault (#2785)', () => {
     data.close()
     index.close()
     vault.cleanup()
+    mocks.beforeWalkReturns = null
     vi.clearAllMocks()
     vi.useRealTimers()
   })
@@ -241,5 +257,36 @@ describe('watcher and an unreachable vault (#2785)', () => {
     expect(enqueueJournalDelete).not.toHaveBeenCalled()
     expect(row('note-kept')?.contentHash).toBe('hash-note-kept')
     expect(row('journal-day')?.path).toBe('journal/2026-05-10.md')
+  })
+
+  it('keeps the id of a note renamed while away when the walk outlasts the rename window (#2797)', async () => {
+    fs.renameSync(vault.path, away)
+    unlinkEverything()
+    await vi.advanceTimersByTimeAsync(600)
+
+    const kept = fs.readFileSync(path.join(away, 'notes/kept.md'), 'utf8')
+    index.db
+      .update(noteCache)
+      .set({ contentHash: generateContentHash(kept) })
+      .where(eq(noteCache.id, 'note-kept'))
+      .run()
+    fs.renameSync(path.join(away, 'notes/kept.md'), path.join(away, 'notes/kept-2026.md'))
+    fs.rmSync(path.join(away, 'notes/gone.md'))
+    // A large vault: walking the tree takes longer than the rename window.
+    mocks.beforeWalkReturns = () => vi.advanceTimersByTimeAsync(600)
+    fs.renameSync(away, vault.path)
+
+    await vi.waitFor(
+      () => {
+        expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
+        expect(row('note-kept')?.path).toBe('notes/kept-2026.md')
+      },
+      { timeout: 10_000, interval: 100 }
+    )
+
+    expect(syncNoteDelete).toHaveBeenCalledTimes(1)
+    expect(
+      index.db.select().from(noteCache).where(eq(noteCache.path, 'notes/kept-2026.md')).all()
+    ).toHaveLength(1)
   })
 })
