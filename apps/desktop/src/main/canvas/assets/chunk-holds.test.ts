@@ -69,7 +69,21 @@ describe('against a server', () => {
 
   it('fails on a server error so the caller retries', async () => {
     const hold = [{ contentHash: HASH, chunkHashes: ['a'.repeat(64)] }]
-    expect(await holdCanvasAssetChunks('canvas-1', hold, deps(503))).toEqual({ status: 'failed' })
+    expect(await holdCanvasAssetChunks('canvas-1', hold, deps(503))).toEqual({
+      status: 'failed',
+      retryable: true,
+      httpStatus: 503
+    })
     expect(await releaseCanvasAssetHolds('canvas-1', [HASH], deps(503))).toEqual({ ok: false })
+  })
+
+  it('marks a rate limit retryable and a rejected request final', async () => {
+    const hold = [{ contentHash: HASH, chunkHashes: ['a'.repeat(64)] }]
+    expect(await holdCanvasAssetChunks('canvas-1', hold, deps(429))).toMatchObject({
+      retryable: true
+    })
+    expect(await holdCanvasAssetChunks('canvas-1', hold, deps(400))).toMatchObject({
+      retryable: false
+    })
   })
 })

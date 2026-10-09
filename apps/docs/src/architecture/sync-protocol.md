@@ -1103,7 +1103,9 @@ canvas is pushed, desktop holds every image its sidecar names under a holder id
 derived per (canvas, image) from the vault key, so every device names the same
 holder and repeats are no-ops. When the server answers that an image's chunks
 are gone, desktop uploads its local copy again, holds the new chunks, and the
-push carries the new attachment. Removing an image from a canvas, and the
+push carries the new attachment. A canvas whose holds keep failing waits at
+most five push cycles, or none when the server rejects the request outright,
+then pushes without them as before. Removing an image from a canvas, and the
 30-day release of a deleted canvas, release that canvas's holds. A dereference
 that takes a held chunk to zero refunds nothing; the release of its last hold
 does.

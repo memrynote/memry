@@ -277,34 +277,44 @@ live while `ref_count > 0` or a hold names it.
   `packages/contracts/src/blob-api.ts:80-87`) and drops every hold of those
   holders. A replay drops nothing. A chunk left with no hold and `ref_count <= 0`
   refunds its `size_bytes` here (`apps/sync-server/src/services/chunk-holds.ts:82-111`).
+  The delete and the refund check are separate statements, so two concurrent
+  releases of different last holders of one chunk, or a release racing the
+  dereference of its last upload ref, can both see the chunk free and both
+  refund it. Storage is clamped at zero, so the effect is an under-counted
+  quota, never a freed live chunk.
 - A dereference that takes a held chunk to zero refunds nothing; the release of
-  its last hold does (`apps/sync-server/src/routes/blob.ts:695-705`). The sweep
+  its last hold does (`apps/sync-server/src/routes/blob.ts:695-706`). The sweep
   reaps only rows with `ref_count <= 0` and no hold
   (`apps/sync-server/src/services/cleanup.ts:345,360`).
 - A server that predates holds answers 404. A client treats that as "no holds":
   it pushes as before and has nothing to release
-  (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:103,137`).
+  (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:107,143`).
 
 **Holder ids are opaque to the server.** `holderId` is 64 lowercase hex
 characters (`packages/contracts/src/blob-api.ts:57-59`). Desktop derives one per
 (canvas, image) as BLAKE2b-256 keyed by the vault key over
 `"memry/canvas-asset-hold/v1" \0 canvasId \0 contentHash`
-(`apps/desktop/src/main/canvas/assets/chunk-holds.ts:19,45-52`), so every device
+(`apps/desktop/src/main/canvas/assets/chunk-holds.ts:19,49-56`), so every device
 names the same holder and holding or releasing from any of them is idempotent.
 The server learns how many holders a chunk has, as `ref_count` already shows,
 and nothing about which canvas or image they are.
 
 **Desktop canvas lifecycle.** Before a canvas create or update is encrypted, the
 push coordinator holds every image its scene sidecar names
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:738`,
-`apps/desktop/src/main/canvas/assets/asset-service.ts:409`). For a `missing`
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:749`,
+`apps/desktop/src/main/canvas/assets/asset-service.ts:411`). For a `missing`
 image it uploads its local copy, holds the new chunks, drops the new upload's
 own reference so the hold owns them, and points the row at the new attachment
-(`apps/desktop/src/main/canvas/assets/asset-service.ts:436`). The pushed sidecar
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:454`). The pushed sidecar
 then names the row's attachment (`apps/desktop/src/main/canvas/assets/memry-assets.ts:97`),
 and a receiver adopts it (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`,
 `recordSceneAssets`). A canvas whose hold or re-upload cannot finish stays queued
-for the next cycle. Removing an image from a canvas releases that pair first
+for the next cycle, at most `MAX_CANVAS_HOLD_DEFERRALS` (5) cycles in a row;
+then it pushes without the hold, as before holds existed. A hold the server
+refuses with a 4xx other than 404, 408 or 429 pushes the canvas at once
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:424-441`,
+`apps/desktop/src/main/sync/engine/push-coordinator.ts:46`). Removing an image
+from a canvas releases that pair first
 (`apps/desktop/src/main/canvas/assets/asset-service.ts:293`), and the 30-day
 release of a deleted canvas releases all of its pairs
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:203`). Note attachments and

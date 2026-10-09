@@ -36,7 +36,12 @@ vi.mock('../http-client', async (importOriginal) => {
   return { ...actual, postToServer: postToServerMock }
 })
 
-import { PushCoordinator } from './push-coordinator'
+import { MAX_CANVAS_HOLD_DEFERRALS, PushCoordinator } from './push-coordinator'
+import {
+  holdCanvasAssetsForPush,
+  type AssetServiceContext
+} from '../../canvas/assets/asset-service'
+import type { HoldOutcome } from '../../canvas/assets/chunk-holds'
 import { PUSH_DEBOUNCE_MS } from './sync-context'
 import { SyncServerError } from '../http-client'
 
@@ -405,6 +410,81 @@ describe('PushCoordinator', () => {
       const [row] = queue.peek()
       expect(row).toMatchObject({ itemId: 'canvas-blocked', attempts: 0 })
       expect(prepareCanvasPush).toHaveBeenCalledTimes(2)
+    })
+
+    // A canvas whose holds keep failing must not stay queued forever: before
+    // holds, a canvas push never depended on them.
+    function holdingPrepare(testDb: TestDatabaseResult, outcome: HoldOutcome) {
+      const trackEvent = vi.fn()
+      const ctx = {
+        db: testDb.db,
+        vaultId: 'vault-1',
+        vaultPath: '/nonexistent',
+        holdChunks: vi.fn(async () => outcome),
+        trackEvent
+      } as unknown as AssetServiceContext
+      const scene = JSON.stringify({
+        type: 'excalidraw',
+        memryAssets: [{ contentHash: 'c'.repeat(64), chunkHashes: ['d'.repeat(64)] }]
+      })
+      return {
+        trackEvent,
+        prepare: (canvasId: string) => holdCanvasAssetsForPush(ctx, canvasId, scene)
+      }
+    }
+
+    function enqueueBoard(queue: SyncQueueManager): void {
+      queue.enqueue({
+        type: 'canvas',
+        itemId: 'canvas-board',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Board', clock: { 'device-1': 1 } })
+      })
+    }
+
+    const sentIds = (): string[] =>
+      postToServerMock.mock.calls.flatMap((call) => (call[1] as PushBody).items.map((i) => i.id))
+
+    it('#then a hold the server rejects outright pushes the canvas as before and reports it', async () => {
+      const { ctx, coordinator, queue } = createHarness(getDb())
+      const { prepare, trackEvent } = holdingPrepare(getDb(), {
+        status: 'failed',
+        retryable: false,
+        httpStatus: 400
+      })
+      ctx.deps.prepareCanvasPush = prepare
+      acceptAll()
+      enqueueBoard(queue)
+
+      await coordinator.push()
+
+      expect(sentIds()).toEqual(['canvas-board'])
+      expect(trackEvent).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({ action: 'canvas_asset_hold', errorCode: 'http_400' })
+      )
+    })
+
+    it('#then a rate-limited hold keeps the canvas queued, then pushes it after the cap', async () => {
+      const { ctx, coordinator, queue } = createHarness(getDb())
+      const { prepare } = holdingPrepare(getDb(), {
+        status: 'failed',
+        retryable: true,
+        httpStatus: 429
+      })
+      ctx.deps.prepareCanvasPush = prepare
+      acceptAll()
+      enqueueBoard(queue)
+
+      for (let cycle = 1; cycle < MAX_CANVAS_HOLD_DEFERRALS; cycle++) {
+        await coordinator.push()
+        expect(sentIds()).toEqual([])
+        expect(queue.peek()[0]).toMatchObject({ itemId: 'canvas-board', attempts: 0 })
+      }
+      await coordinator.push()
+
+      expect(sentIds()).toEqual(['canvas-board'])
+      expect(queue.peek()).toEqual([])
     })
   })
 

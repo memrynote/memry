@@ -65,6 +65,7 @@ let token: string
 let vaultKey: Uint8Array
 let signing: { publicKey: Uint8Array; privateKey: Uint8Array }
 let deviceId: string
+let userId: string
 const cleanup: string[] = []
 
 const realFetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) =>
@@ -72,7 +73,7 @@ const realFetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) =>
 
 async function seedUser(): Promise<void> {
   const db = await server.getD1()
-  const userId = randomUUID()
+  userId = randomUUID()
   deviceId = randomUUID()
   const now = Math.floor(Date.now() / 1000)
   await db
@@ -111,7 +112,7 @@ interface Device {
   restoreErrors: number
 }
 
-async function device(): Promise<Device> {
+async function device(fetchFn: typeof fetch = realFetch): Promise<Device> {
   const db = createTestDataDb()
   const vaultPath = await mkdtemp(path.join(os.tmpdir(), 'memry-holds-int-'))
   cleanup.push(vaultPath)
@@ -133,7 +134,7 @@ async function device(): Promise<Device> {
     getSyncServerUrl: () => baseUrl,
     getVaultId: () => VAULT_ID,
     getVaultKey: async () => new Uint8Array(vaultKey),
-    fetchFn: realFetch
+    fetchFn
   }
   const dev: Device = {
     db,
@@ -226,6 +227,37 @@ async function storedChunks(hashes: string[]): Promise<number> {
   return n
 }
 
+async function chunkState(hashes: string[]): Promise<{ refs: number; bytes: number }> {
+  const d1 = await server.getD1()
+  let refs = 0
+  let bytes = 0
+  for (const hash of hashes) {
+    const row = await d1
+      .prepare('SELECT ref_count, size_bytes FROM blob_chunks WHERE hash = ?')
+      .bind(hash)
+      .first<{ ref_count: number; size_bytes: number }>()
+    refs += row?.ref_count ?? 0
+    bytes += row?.size_bytes ?? 0
+  }
+  return { refs, bytes }
+}
+
+async function storageUsed(): Promise<number> {
+  const d1 = await server.getD1()
+  return (
+    (await d1
+      .prepare('SELECT storage_used FROM users WHERE id = ?')
+      .bind(userId)
+      .first<number>('storage_used')) ?? 0
+  )
+}
+
+/** An old server: no hold routes, so they answer 404 like any unknown path. */
+const oldServerFetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) =>
+  String(input).includes('/attachments/holds')
+    ? Promise.resolve(new Response('Not Found', { status: 404 }))
+    : realFetch(input, init)) as typeof fetch
+
 async function restoredBytes(dev: Device, scene: string): Promise<Buffer> {
   const [descriptor] = readMemryAssets(scene)
   return readFile(canvasAssetDiskPath(dev.vaultPath, descriptor!.filename))
@@ -308,5 +340,72 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
 
     expect(p.restoreErrors).toBe(0)
     expect(Buffer.compare(await restoredBytes(p, revived), Buffer.from(image))).toBe(0)
+  })
+
+  it('frees an image two devices drop at once only after its last hold, and refunds it once', async () => {
+    const p = await device()
+    const q = await device()
+    const image = new Uint8Array(randomBytes(32 * 1024))
+    const emptied = JSON.stringify({ type: 'excalidraw', files: {} })
+
+    // P uploads the image on A; Q shows it on B and C too (dedup hits, held).
+    const a = await canvasWithImage(p, image)
+    const pushedA = await push(p, a.id, a.scene)
+    await apply(q, a.id, pushedA)
+    const b = await canvasWithImage(q, image)
+    const c = await canvasWithImage(q, image)
+    expect(b.deduped && c.deduped).toBe(true)
+    const pushedB = await push(q, b.id, b.scene)
+    const pushedC = await push(q, c.id, c.scene)
+    const [asset] = readMemryAssets(pushedB)
+    const hashes = asset!.chunkHashes
+
+    // P frees A, its only canvas with the image: the upload ref goes, so only
+    // the holds of B and C keep the chunks. Then both devices show B and C.
+    await deleteAndFree(p, a.id)
+    expect(await chunkState(hashes)).toMatchObject({ refs: 0 })
+    expect(await storedChunks(hashes)).toBe(hashes.length)
+    await apply(p, b.id, pushedB)
+    await apply(p, c.id, pushedC)
+    const { bytes } = await chunkState(hashes)
+    const charged = await storageUsed()
+
+    // Both drop the image from B at once: C still holds it, so nothing is freed.
+    await Promise.all([
+      reconcileCanvasAssets(p.ctx, b.id, emptied),
+      reconcileCanvasAssets(q.ctx, b.id, emptied)
+    ])
+    await server.triggerScheduled()
+    expect(await storedChunks(hashes)).toBe(hashes.length)
+    expect(await storageUsed()).toBe(charged)
+
+    // Both drop it from C at once: the last hold goes, the bytes are refunded
+    // once, and the cron reaps the chunks.
+    await Promise.all([
+      reconcileCanvasAssets(p.ctx, c.id, emptied),
+      reconcileCanvasAssets(q.ctx, c.id, emptied)
+    ])
+    expect(await storageUsed()).toBe(charged - bytes)
+    await server.triggerScheduled()
+    expect(await storedChunks(hashes)).toBe(0)
+  })
+
+  it('pushes and drops images as before against a server without holds', async () => {
+    const p = await device(oldServerFetch)
+    const q = await device(oldServerFetch)
+    const image = new Uint8Array(randomBytes(32 * 1024))
+
+    const a = await canvasWithImage(p, image)
+    const pushedA = await push(p, a.id, a.scene)
+    await apply(q, a.id, pushedA)
+    expect(q.restoreErrors).toBe(0)
+    expect(Buffer.compare(await restoredBytes(q, pushedA), Buffer.from(image))).toBe(0)
+
+    // Dropping the image still dereferences the upload, so the cron frees it.
+    const [asset] = readMemryAssets(pushedA)
+    await reconcileCanvasAssets(p.ctx, a.id, JSON.stringify({ type: 'excalidraw', files: {} }))
+    expect(listAssetsByCanvas(p.db, a.id)).toEqual([])
+    await server.triggerScheduled()
+    expect(await storedChunks(asset!.chunkHashes)).toBe(0)
   })
 })

@@ -36,10 +36,14 @@ export interface AssetHold {
 /**
  * - `ok`: every image not in `missing` is held.
  * - `unsupported`: the server predates holds (404); nothing was held.
- * - `failed`: no token, no vault key, offline, or a server error.
+ * - `failed`: no token, no vault key, offline, or a server error. `retryable`
+ *   is false for a 4xx other than 404, 408 and 429: the same request fails the
+ *   same way on every retry.
  */
 export type HoldOutcome =
-  { status: 'ok'; missing: Set<string> } | { status: 'unsupported' } | { status: 'failed' }
+  | { status: 'ok'; missing: Set<string> }
+  | { status: 'unsupported' }
+  | { status: 'failed'; retryable: boolean; httpStatus: number }
 
 /** BLAKE2b-256 keyed by the vault key over `domain \0 canvasId \0 contentHash`, hex. */
 export function canvasAssetHolderId(
@@ -86,7 +90,7 @@ export async function holdCanvasAssetChunks(
   if (holds.length === 0) return { status: 'ok', missing: new Set() }
   await sodium.ready
   const vaultKey = await deps.getVaultKey()
-  if (!vaultKey) return { status: 'failed' }
+  if (!vaultKey) return { status: 'failed', retryable: true, httpStatus: 0 }
 
   const byHolder = new Map(
     holds.map((hold) => [canvasAssetHolderId(vaultKey, canvasId, hold.contentHash), hold])
@@ -103,7 +107,9 @@ export async function holdCanvasAssetChunks(
     if (res.status === 404) return { status: 'unsupported' }
     if (res.status !== 200) {
       log.warn('chunk hold failed', { status: res.status })
-      return { status: 'failed' }
+      const retryable =
+        res.status === 0 || res.status === 408 || res.status === 429 || res.status >= 500
+      return { status: 'failed', retryable, httpStatus: res.status }
     }
     for (const holderId of (res.json as { missing?: string[] }).missing ?? []) {
       const hold = byHolder.get(holderId)

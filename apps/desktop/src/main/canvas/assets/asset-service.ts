@@ -404,7 +404,9 @@ export function injectSceneAssetSidecar(
  * sidecar every peer can download.
  *
  * Returns false when the push should wait for a later cycle: the server could
- * not be reached or the re-upload failed.
+ * not be reached or the re-upload failed. A hold the server refuses outright
+ * (a 4xx other than 404/408/429) fails the same way on every retry, so the
+ * canvas pushes without it, as before holds existed.
  */
 export async function holdCanvasAssetsForPush(
   ctx: AssetServiceContext,
@@ -420,6 +422,22 @@ export async function holdCanvasAssetsForPush(
   }))
 
   const outcome = await ctx.holdChunks(canvasId, holds)
+  if (outcome.status === 'failed' && !outcome.retryable) {
+    log.warn('server refused canvas asset holds; pushing without them', {
+      canvasId,
+      httpStatus: outcome.httpStatus,
+      images: holds.length
+    })
+    ctx.trackEvent('app_error_seen', {
+      surface: 'sync',
+      action: 'canvas_asset_hold',
+      objectType: 'canvas',
+      source: 'canvas_asset_service',
+      result: 'failed',
+      errorCode: `http_${outcome.httpStatus}`
+    })
+    return true
+  }
   if (outcome.status === 'failed') return false
   // A server without holds cannot report freed chunks either; push as before.
   if (outcome.status === 'unsupported') return true
