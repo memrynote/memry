@@ -1,4 +1,5 @@
 import type { PropertyType } from '@memry/db-schema/schema/notes-cache'
+import { spellYamlDate } from '@main/vault/yaml-dates'
 
 // ============================================================================
 // Activity Level
@@ -33,6 +34,9 @@ export function serializeValue(value: unknown): string | null {
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value)
+  }
+  if (value instanceof Date) {
+    return spellYamlDate(value)
   }
   return JSON.stringify(value)
 }

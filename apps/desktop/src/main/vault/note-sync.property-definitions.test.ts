@@ -29,6 +29,7 @@ vi.mock('./property-definitions', () => ({
 }))
 
 import { syncNoteToCache } from './note-sync'
+import { parseNote } from './frontmatter'
 import { propertyDefinitionHandler } from '../sync/item-handlers/property-definition-handler'
 
 const FIXED_ISO = '2026-01-15T12:00:00.000Z'
@@ -71,6 +72,37 @@ describe('syncNoteToCache property definitions', () => {
     propertyDefinitionHandler.seedUnclocked(testDb.db as unknown as DrizzleDb, 'device-a', queue)
     expect(queue.peek(10).map(({ type, itemId }) => ({ type, itemId }))).toEqual([
       { type: 'property_definition', itemId: 'area' }
+    ])
+  })
+
+  it('learns date from an unquoted YAML date and leaves a stored definition alone', () => {
+    const testDb = state.testDb!
+    testDb.db.insert(propertyDefinitions).values({ name: 'owner', type: 'text' }).run()
+    const file = '---\ndue: 2026-10-07\nowner: 2026-10-08\n---\n'
+    syncNoteToCache(
+      {} as IndexDb,
+      {
+        id: 'note-1',
+        path: 'notes/dates.md',
+        fileContent: file,
+        parsedContent: '',
+        frontmatter: parseNote(file, 'notes/dates.md').frontmatter,
+        title: 'dates',
+        createdAt: FIXED_ISO,
+        modifiedAt: FIXED_ISO
+      },
+      { isNew: true }
+    )
+
+    expect(
+      testDb.db
+        .select({ name: propertyDefinitions.name, type: propertyDefinitions.type })
+        .from(propertyDefinitions)
+        .orderBy(propertyDefinitions.name)
+        .all()
+    ).toEqual([
+      { name: 'due', type: 'date' },
+      { name: 'owner', type: 'text' }
     ])
   })
 })

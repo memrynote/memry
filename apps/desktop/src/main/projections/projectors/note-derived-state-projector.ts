@@ -24,7 +24,8 @@ import {
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { getIndexDatabase, type IndexDb } from '../../database'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
-import { inferPropertyType, parseNote } from '../../vault/frontmatter'
+import { parseNote } from '../../vault/frontmatter'
+import { inferPropertyType } from '../../vault/property-type'
 import type { NoteProjectionRecord, ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:NoteState')

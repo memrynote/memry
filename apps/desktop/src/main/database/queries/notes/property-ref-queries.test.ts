@@ -10,7 +10,7 @@ import {
   getPropertyType,
   setNoteProperties
 } from './property-queries'
-import { inferPropertyType } from '../../../vault/frontmatter'
+import { inferPropertyType } from '../../../vault/property-type'
 import {
   setPropertyRefs,
   getPropertyRefsForNote,
