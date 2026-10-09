@@ -8,7 +8,8 @@ import {
   insertPropertyDefinition
 } from './property-queries'
 import { insertNoteCache } from './note-crud'
-import { inferPropertyType } from '../../../vault/frontmatter'
+import { extractProperties, parseNote } from '../../../vault/frontmatter'
+import { inferPropertyType } from '../../../vault/property-type'
 
 describe('project property typing', () => {
   let dbResult: TestDatabaseResult
@@ -95,6 +96,85 @@ describe('project property typing', () => {
 
     expect(getNoteProperties(db, 'note-5')).toEqual([
       { name: 'project', type: 'project', value: ['Alpha'] }
+    ])
+  })
+})
+
+describe('unquoted YAML date typing (BBF-43)', () => {
+  let dbResult: TestDatabaseResult
+  let db: TestDb
+
+  const indexFile = (id: string, file: string) => {
+    insertNoteCache(db, {
+      id,
+      path: `notes/${id}.md`,
+      title: id,
+      emoji: null,
+      contentHash: `hash-${id}`,
+      wordCount: 1,
+      characterCount: 1,
+      date: null,
+      createdAt: '2026-01-10T00:00:00.000Z',
+      modifiedAt: '2026-01-12T00:00:00.000Z'
+    })
+    const { frontmatter } = parseNote(file, `notes/${id}.md`)
+    setNoteProperties(db, id, extractProperties(frontmatter), (name, value) =>
+      getPropertyType(db, name, value, inferPropertyType)
+    )
+    return getNoteProperties(db, id)
+  }
+
+  beforeEach(() => {
+    dbResult = createTestIndexDb()
+    db = dbResult.db
+  })
+
+  afterEach(() => {
+    dbResult.close()
+  })
+
+  it('indexes unquoted dates exactly as the same dates quoted', () => {
+    const unquoted = indexFile(
+      'unquoted',
+      '---\ndue: 2026-10-07\nat: 2026-09-01T08:30:00.000Z\n---\n'
+    )
+    const quoted = indexFile(
+      'quoted',
+      "---\ndue: '2026-10-07'\nat: '2026-09-01T08:30:00.000Z'\n---\n"
+    )
+
+    expect(unquoted).toEqual([
+      { name: 'due', value: '2026-10-07', type: 'date' },
+      { name: 'at', value: '2026-09-01T08:30:00.000Z', type: 'date' }
+    ])
+    expect(quoted).toEqual(unquoted)
+  })
+
+  it('does not let a text definition learned from an unquoted date pin text', () => {
+    insertPropertyDefinition(db, {
+      name: 'due',
+      type: 'text',
+      options: null,
+      defaultValue: null,
+      color: null
+    })
+
+    expect(indexFile('note-1', '---\ndue: 2026-10-07\n---\n')).toEqual([
+      { name: 'due', value: '2026-10-07', type: 'date' }
+    ])
+  })
+
+  it('keeps a definition the user chose over a non-text type', () => {
+    insertPropertyDefinition(db, {
+      name: 'due',
+      type: 'select',
+      options: null,
+      defaultValue: null,
+      color: null
+    })
+
+    expect(indexFile('note-1', '---\ndue: 2026-10-07\n---\n')).toEqual([
+      { name: 'due', value: '2026-10-07', type: 'select' }
     ])
   })
 })

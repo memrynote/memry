@@ -81,7 +81,7 @@ export function checkboxLineMarkdown(editor: any, block: { content?: unknown }):
   const line = { type: 'checkListItem', props: { checked: false }, content: block.content }
   const { blocks, replacements } = extractInlineColorRuns([line] as never[])
   const md = normalizeSerializedMarkdown(
-    writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(blocks))
+    writeHtmlCommentTokens(blocks, (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements).trim().replace(CHECKBOX_MARKER, '').trim()
 }
@@ -171,7 +171,7 @@ async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
     withPlainCheckboxMarkers(blocks) as never[]
   )
   const md = normalizeSerializedMarkdown(
-    await writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(wrapped))
+    await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
 }

@@ -170,7 +170,8 @@ vi.mock('../../../notes/runtime-effects', () => ({
 }))
 
 import { deserializeValue, serializeValue } from '../../../database/queries/notes/query-helpers'
-import { inferPropertyType, parseNote } from '../../../vault/frontmatter'
+import { parseNote } from '../../../vault/frontmatter'
+import { inferPropertyType } from '../../../vault/property-type'
 import { createVaultServiceHandles } from './handles-adapter'
 import { buildWriteTools } from './write-tools'
 

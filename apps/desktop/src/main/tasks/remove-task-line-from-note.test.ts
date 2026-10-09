@@ -56,8 +56,10 @@ vi.mock('../vault/notes-io', () => ({
     calls.push('emitNoteEvent')
     emitted.push({ channel, event })
   }),
+  getVaultRoot: () => '/vault',
   toAbsolutePath: vi.fn((p: string) => `/vault/${p}`)
 }))
+vi.mock('../lib/paths', () => ({ refuseOutsideVault: async () => undefined }))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))

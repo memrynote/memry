@@ -257,7 +257,7 @@ note or reopened it a few times. Opening the note is now enough.
 Link syntax written inside inline code or a fenced code block is text, not a link. A note
 that documents the syntax, such as `` `[[Example]]` `` or a code block of sample markdown,
 adds no backlink, no outgoing link and no graph node for it. This holds for files saved with
-Windows line endings too.
+Windows line endings too. A PDF or HTML export prints it as written, brackets included.
 
 A link inside a comment still counts. See [Hidden Links](#hidden-links).
 
@@ -285,7 +285,8 @@ well. Comment syntax written inside inline code or a code block is text, so it s
 export as code, unless a comment opened earlier on the same line (see below).
 
 Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
-byte for byte. In the editor both forms show as a small muted marker, `<!---->` for an HTML
+byte for byte. A comment inside bold, italic or strikethrough text, such as
+`**a <!-- [[Topic]] --> b**`, stays inside it. In the editor both forms show as a small muted marker, `<!---->` for an HTML
 comment and `%%%%` for a `%%` comment, never as their text. A note's preview and the snippets
 in the Backlinks panel leave comments out as well, so a backlink that comes from a hidden link
 lists its note with no snippet.

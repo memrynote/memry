@@ -139,6 +139,8 @@ In the property panel, click **Add property** and pick from the list. Set the va
 
 For a `Date` property, clicking the value opens a calendar pop-up — pick a day, or type the date directly. Dates display in the format chosen at **Settings → General → Date Format**.
 
+A date typed into the frontmatter by another editor is a `Date` property whether or not it is quoted: `due: 2026-10-07` and `due: '2026-10-07'` read the same. Older versions showed an unquoted date as text. The first open after the update corrects those notes without rewriting their files, including a property that an older version had defined as text because of such a date.
+
 ### Showing Dates on the Calendar
 
 A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. The note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.

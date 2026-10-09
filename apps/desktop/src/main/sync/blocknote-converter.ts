@@ -790,7 +790,7 @@ async function serializeBlocks(
   // The server editor exports the blocks before its first await, so the
   // export runs inside the token scope.
   const md = normalizeSerializedMarkdown(
-    await writeHtmlCommentTokens(() => editor.blocksToMarkdownLossy(wrapped as PartialBlock[]))
+    await writeHtmlCommentTokens(wrapped as PartialBlock[], (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
 }

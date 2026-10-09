@@ -102,6 +102,9 @@ final class EditorSession {
     @ObservationIgnored weak var field: BlockField?
     /// A block to put the caret in once it is drawn.
     @ObservationIgnored var pendingFocus: String?
+    /// The field a block shortcut fired in, held until the row its type
+    /// change redraws takes the caret (`BlockField.takeOver`).
+    @ObservationIgnored var shortcutField: BlockField?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).
@@ -415,7 +418,7 @@ final class EditorSession {
         }
     }
 
-    private func turn(_ model: NoteEditorViewModel, _ blockId: String, into block: InsertableBlock) async {
+    func turn(_ model: NoteEditorViewModel, _ blockId: String, into block: InsertableBlock) async {
         let previous = focusedKind ?? "paragraph"
         history.record(await model.turnIntoStep(blockId, into: block, from: previous))
         focusedKind = block.id

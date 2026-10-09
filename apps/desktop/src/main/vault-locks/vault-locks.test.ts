@@ -249,6 +249,47 @@ describe('vault read-only locks (#2606)', () => {
     expect(mocks.createSnapshot).not.toHaveBeenCalled()
   })
 
+  describe('a note file linked outside the vault (#2969)', () => {
+    let outside: string
+    let secret: string
+
+    const swapForLink = (file: string): void => {
+      fs.rmSync(file)
+      fs.symlinkSync(secret, file)
+    }
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-locks-outside-'))
+      secret = path.join(outside, 'private.md')
+      fs.writeFileSync(secret, 'outside secret\n')
+    })
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true })
+    })
+
+    it('locking keeps no baseline read from the outside file', async () => {
+      swapForLink(addNote('note-a', 'notes/a.md', 'vault text\n'))
+
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+
+      expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
+    })
+
+    it('at vault open, reads nothing from it and leaves the link alone', async () => {
+      const file = addNote('note-a', 'notes/a.md', 'locked text\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      fs.chmodSync(file, 0o644)
+      swapForLink(file)
+
+      await checkLockedFilesAtOpen()
+
+      expect(mocks.createSnapshot).not.toHaveBeenCalled()
+      expect(fs.lstatSync(file).isSymbolicLink()).toBe(true)
+      expect(fs.readFileSync(secret, 'utf-8')).toBe('outside secret\n')
+    })
+  })
+
   it('a write through the vault file primitives is refused for a locked note', async () => {
     const file = addNote('note-a', 'notes/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
