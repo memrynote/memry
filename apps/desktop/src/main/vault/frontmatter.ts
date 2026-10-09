@@ -16,7 +16,6 @@ import {
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { editFrontmatterBlock } from './frontmatter-edit'
-import { isRelationValue } from '@memry/contracts/relation-uri'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
