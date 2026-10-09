@@ -11,7 +11,7 @@ For setup, see [Agent Chat & MCP Server](/user-guide/ai/agent-mcp) and
 
 ## What each backend can reach
 
-The permissions menu in the prompt bar has three settings:
+The model menu in the prompt bar has an **Access** setting and a **Web search** switch:
 
 - **Vault only**: the agent gets the memrynote vault tools. It reads and writes notes, tasks,
   journal entries and the rest of your vault, and every change asks you first unless you turned
@@ -35,8 +35,10 @@ it to the vault tools.
 
 - **Vault only** turns get no shell and no file access outside the vault. Web search is added only
   when you turn it on.
-- **Computer access** turns run the CLI with its own tools and without its permission prompts, so
-  the agent can run commands and read and write files anywhere your user account can.
+- **Computer access** turns give the CLI its own tools, such as a shell and file edits, with access
+  to your whole disk. Codex and Antigravity run them without asking. Claude Code runs without
+  prompts too, so a tool its own permission settings do not allow is refused rather than asked
+  about.
 - memrynote sets no step limit. A turn runs until the CLI finishes or you press Stop.
 - Claude Code and Codex take a reasoning effort from the prompt bar. Antigravity model ids carry
   their own tier, such as `gemini-3.1-pro-high`.
@@ -73,9 +75,8 @@ two setups.
 
 ### Read through the MCP server
 
-memrynote starts a local MCP server the first time you open Agent Chat or the Agent MCP settings
-after a vault opens. Copy its URL
-and bearer token from [Settings → AI Assistant → Agent MCP](/user-guide/settings#agent-mcp), then
+memrynote starts a local MCP server the first time you open Agent Chat or the AI Assistant
+settings after a vault opens. Copy its URL and bearer token from [Settings → AI Assistant → Agent MCP](/user-guide/settings#agent-mcp), then
 add them to your agent as an HTTP MCP server. For example, with Claude Code:
 
 ```bash
@@ -97,8 +98,8 @@ Limits of this setup:
 
 - External clients are read-only. The write tools are listed, but a call fails with
   `PERMISSION_DENIED`, because writes need a turn that memrynote itself is running.
-- The port and token change each time memrynote starts, and when you rotate the token. Update your
-  agent's configuration after a restart.
+- The port and token change each time memrynote starts or switches vault, and when you rotate the
+  token. Update your agent's configuration after that.
 - `vault_get_current_note` returns `null`, because an external client has no memrynote window.
 
 ### Write through the `memrynote` command
