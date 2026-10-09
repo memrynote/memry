@@ -12,7 +12,7 @@
  */
 
 import type { AgentMcpDesktopApiRequest } from '@memry/contracts/agent-mcp-channels'
-import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
+import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 
 import {
   linesAlreadyIn,
@@ -34,13 +34,16 @@ function agentChecklistsBecomeTasks(): boolean {
   return getEditorSettings().convertAgentChecklistsToTasks
 }
 
+export function agentChecklistsOption(): PlainChecklistsOption {
+  return { plainChecklists: !agentChecklistsBecomeTasks() }
+}
+
 type DesktopOperation = AgentMcpDesktopApiRequest['operation']
 
 /** The body each desktop write held before, for the operations whose request carries one. */
 const DESKTOP_BODY_WRITES: Partial<
   Record<DesktopOperation, (input: Record<string, unknown>) => Promise<string>>
 > = {
-  'notes.create': async () => '',
   'notes.update': async (input) =>
     typeof input.id === 'string' ? ((await getNoteById(input.id))?.content ?? '') : '',
   'journal.createEntry': async () => '',
@@ -51,21 +54,28 @@ const DESKTOP_BODY_WRITES: Partial<
     typeof input.id === 'string' ? ((await getTemplate(input.id))?.content ?? '') : ''
 }
 
+type WithOption = (args: unknown[], option: PlainChecklistsOption) => unknown[]
+
+const intoInput: WithOption = ([input, ...rest], option) => [
+  { ...(input as Record<string, unknown>), ...option },
+  ...rest
+]
+
 /**
  * The writes whose body main builds from stored data (a template, an inbox
  * item, a file on disk), with the option that tells the owner whether to mark
  * the checkbox lines it adds. The option is always replaced, so an agent cannot
- * choose for the owner.
+ * choose for the owner. `notes.create` is here because its body may be the
+ * template's, which only main reads.
  */
-const DESKTOP_BUILT_BODIES: Partial<
-  Record<DesktopOperation, (args: unknown[], option: PlainChecklistsOption) => unknown[]>
-> = {
-  'notes.applyTemplate': ([input, ...rest], option) => [
-    { ...(input as Record<string, unknown>), ...option },
-    ...rest
-  ],
+const DESKTOP_BUILT_BODIES: Partial<Record<DesktopOperation, WithOption>> = {
+  'notes.create': intoInput,
+  'notes.applyTemplate': intoInput,
   'inbox.convertToNote': ([itemId], option) => [itemId, option],
-  'notes.importFiles': ([sourcePaths, targetFolder], option) => [sourcePaths, targetFolder, option]
+  'inbox.file': intoInput,
+  'inbox.linkToNote': ([itemId, noteId, tags], option) => [itemId, noteId, tags, option],
+  'notes.importFiles': ([sourcePaths, targetFolder], option) => [sourcePaths, targetFolder, option],
+  'tasks.importFilesToProject': intoInput
 }
 
 /**
@@ -78,8 +88,7 @@ export async function withAgentChecklists<R extends AgentMcpDesktopApiRequest>(
 ): Promise<R> {
   const withOption = DESKTOP_BUILT_BODIES[request.operation]
   if (withOption) {
-    const option = { plainChecklists: !agentChecklistsBecomeTasks() }
-    return { ...request, args: withOption(request.args, option) }
+    return { ...request, args: withOption(request.args, agentChecklistsOption()) }
   }
 
   const previousBody = DESKTOP_BODY_WRITES[request.operation]

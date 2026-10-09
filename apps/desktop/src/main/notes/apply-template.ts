@@ -13,7 +13,7 @@ import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/err
 import { assertNoteWritable } from '../vault-locks/registry'
 import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
 import type { Template } from '@memry/contracts/templates-api'
-import type { PlainChecklistsOption } from '@memry/contracts/notes-api'
+import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 
 /**
  * Build the NoteUpdateInput for applying a template to a note.

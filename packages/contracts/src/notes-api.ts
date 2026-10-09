@@ -10,6 +10,7 @@ import { z } from 'zod'
 // Import and re-export channels from the contract-local surface.
 import { NotesChannels } from './ipc-channels'
 import { PropertyTypes } from './property-types'
+import { PlainChecklistsOptionSchema } from './plain-checklists'
 export { NotesChannels }
 
 // ============================================================================
@@ -162,7 +163,8 @@ export const NoteCreateSchema = z.object({
   tags: z.array(z.string().max(50)).max(50).optional(),
   template: z.string().optional(), // Template ID to use
   properties: z.record(z.string(), z.unknown()).optional(),
-  emoji: z.string().nullable().optional()
+  emoji: z.string().nullable().optional(),
+  ...PlainChecklistsOptionSchema.shape
 })
 
 export const NoteUpdateSchema = z.object({
@@ -262,21 +264,6 @@ export const SetCalendarPropertyVisibilitySchema = z.object({
   name: z.string().min(1),
   showOnCalendar: z.boolean()
 })
-
-/**
- * `plainChecklists` marks each checkbox line a write adds with `{check}`, so the
- * editor keeps it a checkbox. Main sets it on every agent call (#2759).
- */
-const plainChecklists = z
-  .boolean()
-  .optional()
-  .describe(
-    "Set by memrynote on every agent call from the owner's agent checklist setting; " +
-      'a value you pass is replaced.'
-  )
-
-export const PlainChecklistsOptionSchema = z.object({ plainChecklists })
-export type PlainChecklistsOption = z.infer<typeof PlainChecklistsOptionSchema>
 
 export const ImportFilesSchema = z.object({
   sourcePaths: z.array(z.string()),
@@ -445,7 +432,7 @@ export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
   mode: z.enum(['full', 'body']),
-  plainChecklists
+  ...PlainChecklistsOptionSchema.shape
 })
 
 /**

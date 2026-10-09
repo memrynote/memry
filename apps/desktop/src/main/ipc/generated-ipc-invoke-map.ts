@@ -185,7 +185,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxStats>>
   "inbox:get-suggestions": (...args: [any]) => Awaited<Promise<{ suggestions: import("../../../../../packages/domain-inbox/src/types").InboxFilingSuggestion[]; }>>
   "inbox:get-tags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>
-  "inbox:link-to-note": (...args: [any, any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:link-to-note": (...args: [any, any, any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:list": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxListResponse>>
   "inbox:list-archived": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").ArchivedListResponse>>
   "inbox:mark-viewed": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
@@ -225,7 +225,7 @@ export interface MainIpcInvokeHandlers {
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentResolveResult>>
   "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
   "notes:cluster": (...args: [{ noteIds: string[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").NoteClustersResponse>>
-  "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; properties?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
+  "notes:create": (...args: [{ title: string; plainChecklists?: boolean | undefined; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; properties?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:create-property-definition": (...args: [{ name: string; type: "number" | "date" | "text" | "select" | "url" | "checkbox" | "status" | "multiselect"; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: true; definition: { type: string; name: string; createdAt: string; clock: import("../../../../../packages/contracts/src/sync-api").VectorClock | null; syncedAt: string | null; options: string | null; defaultValue: string | null; color: string | null; } | null; }> | { success: false; error: string }>
   "notes:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
@@ -472,7 +472,7 @@ export interface MainIpcInvokeHandlers {
   "tasks:project-create": (...args: [{ name: string; description?: string | null | undefined; color?: string | undefined; icon?: string | null | undefined; statuses?: { name: string; type: "todo" | "in_progress" | "done"; order: number; color?: string | undefined; }[] | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; project: import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses; }>>
   "tasks:project-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "tasks:project-get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses | undefined>>
-  "tasks:project-import-files": (...args: [{ projectId: string; sourcePaths: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | import("../tasks/import-files-to-project").ImportFilesToProjectResult>>
+  "tasks:project-import-files": (...args: [{ projectId: string; sourcePaths: string[]; plainChecklists?: boolean | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../tasks/import-files-to-project").ImportFilesToProjectResult>>
   "tasks:project-link-item": (...args: [{ projectId: string; itemType: "file" | "note" | "calendar_event"; itemId: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error?: string | undefined; }>>
   "tasks:project-list": (...args: []) => Awaited<Promise<{ projects: import("../../../../../packages/domain-tasks/src/types").ProjectWithStats[]; }>>
   "tasks:project-list-contents": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").ProjectContents>>

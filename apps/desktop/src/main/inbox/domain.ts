@@ -534,7 +534,8 @@ export function createDesktopInboxDomain() {
       convertToTask,
       convertToEvent,
       convertToReminder,
-      linkToNote,
+      linkToNote: (itemId, noteId, tags, options) =>
+        linkToNote(itemId, noteId, tags, undefined, options),
       linkToNotes,
       snoozeItem,
       unsnoozeItem,
