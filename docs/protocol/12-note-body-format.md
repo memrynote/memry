@@ -67,7 +67,7 @@ from the same bytes in the same transaction
 Desktop writes that `content` as the new note's file (§12.2 carve-out A).
 
 **The race is the journal row's.** Desktop builds a document from the file only when the note's
-fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:1687-1689`). If desktop opens the
+fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:1689-1691`). If desktop opens the
 note after the record arrives and before the seeded updates do, both devices have seeded a tree,
 and the merge holds the body twice. The window and the outcome are the same as for a journal day
 opened from a template on the phone, and neither write closes it.
