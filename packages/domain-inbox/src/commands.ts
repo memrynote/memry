@@ -64,7 +64,7 @@ export interface InboxCommandServices {
   ): Promise<{ success: boolean; eventId: string | null; error?: string }>
   convertToReminder(
     itemId: string,
-    input: { remindAt: string }
+    input: { remindAt: string } & PlainChecklistsOptions
   ): Promise<{ success: boolean; noteId: string | null; error?: string }>
   linkToNote(
     itemId: string,
@@ -116,7 +116,7 @@ export interface InboxCommands {
   ): Promise<{ success: boolean; eventId: string | null; error?: string }>
   convertToReminder(
     itemId: string,
-    input: { remindAt: string }
+    input: { remindAt: string } & PlainChecklistsOptions
   ): Promise<{ success: boolean; noteId: string | null; error?: string }>
   linkToNote(
     itemId: string,

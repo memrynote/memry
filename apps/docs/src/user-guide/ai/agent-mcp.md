@@ -565,8 +565,8 @@ tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_n
 `vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
 `journal.createEntry`, `journal.updateEntry`, `templates.create` and `templates.update` operations of
 `vault_desktop_write`. It also covers the checkbox lines that `notes.applyTemplate`,
-`inbox.convertToNote`, `inbox.file`, `inbox.linkToNote`, `notes.importFiles` and
-`tasks.importFilesToProject` write when an agent calls them, and the template body a note created
+`inbox.convertToNote`, `inbox.convertToReminder`, `inbox.file`, `inbox.bulkFile`,
+`inbox.linkToNote`, `notes.importFiles` and `tasks.importFilesToProject` write when an agent calls them, and the template body a note created
 by an agent starts from (a `template` it names, or its folder's template when the body is empty),
 whoever wrote the template, the inbox item or the imported file. A checkbox line that was already
 in the note before the write is left exactly as it was.
