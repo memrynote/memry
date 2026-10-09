@@ -411,7 +411,7 @@ describe('LocalOpenAICompatibleBackend', () => {
         tools: expect.anything()
       })
     )
-    expect(mocks.streamText.mock.calls[0][0].system).toMatch(/^No tools are available/)
+    expect(mocks.streamText.mock.calls[0][0].system).toBeUndefined()
   })
 
   it('retries the tool probe without tool_choice when the named choice is rejected', async () => {

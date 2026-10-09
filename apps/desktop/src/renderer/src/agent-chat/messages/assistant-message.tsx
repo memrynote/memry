@@ -26,6 +26,10 @@ const TOOLS_OFF_KEYS = {
   streaming_unsupported: 'agentChat.toolsOff.streamingUnsupported'
 } as const satisfies Record<AgentToolsOffReason, string>
 
+// Tool-call syntax a model writes as text when it was sent no tool schemas: generic
+// XML-style calls, Anthropic-style invoke blocks, and DeepSeek's DSML markers.
+const TOOL_CALL_MARKUP = /<tool_calls?\b|<function_calls\b|<invoke name=|\uff5cDSML\uff5c/
+
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>
 }
@@ -49,7 +53,12 @@ function AssistantMessageContent({
   const reasoning = message.content.data.reasoning ?? ''
   const hasReasoning = reasoning.trim().length > 0
   const toolsUnavailable = message.content.data.toolsUnavailable
-  const toolsNotice = toolsUnavailable && <ToolsOffNotice notice={toolsUnavailable} />
+  const toolsNotice = toolsUnavailable && (
+    <ToolsOffNotice
+      notice={toolsUnavailable}
+      wroteToolCall={TOOL_CALL_MARKUP.test(message.content.data.text)}
+    />
+  )
 
   if (streaming && !answerStarted && !hasReasoning) {
     return (
@@ -120,9 +129,11 @@ function AssistantMessageContent({
 }
 
 function ToolsOffNotice({
-  notice
+  notice,
+  wroteToolCall
 }: {
   notice: NonNullable<AssistantMessageModel['content']['data']['toolsUnavailable']>
+  wroteToolCall: boolean
 }): React.JSX.Element {
   const { t } = useT('common')
   const { reason, detail } = notice
@@ -137,6 +148,7 @@ function ToolsOffNotice({
       <span>
         {sentence}
         {reason && detail && ` ${t('agentChat.toolsOff.providerSaid', { detail })}`}
+        {wroteToolCall && ` ${t('agentChat.toolsOff.wroteToolCall')}`}
       </span>
     </p>
   )

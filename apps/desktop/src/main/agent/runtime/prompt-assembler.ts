@@ -2,10 +2,18 @@ import type { AgentBackendId, AgentTurnPermissions } from '@memry/contracts/ipc-
 
 import type { Message, MessageAttachment } from '../storage/types'
 
-export const SYSTEM_PROMPT_HEADER = [
-  '# Identity',
-  'You are the memrynote agent. You help the user understand and act on their memrynote vault. Use memrynote MCP tools to read, create, and update notes, tasks, projects, journals, inbox items, folders, tags, statuses, and other allowlisted desktop data. For broader desktop CRUD, use vault_desktop_read and vault_desktop_write.',
-  '',
+const IDENTITY = '# Identity'
+const TOOLS_IDENTITY =
+  'You are the memrynote agent. You help the user understand and act on their memrynote vault. Use memrynote MCP tools to read, create, and update notes, tasks, projects, journals, inbox items, folders, tags, statuses, and other allowlisted desktop data. For broader desktop CRUD, use vault_desktop_read and vault_desktop_write.'
+const NO_TOOLS_IDENTITY =
+  'You are the memrynote agent. You help the user understand their memrynote vault from this conversation and the references they attach.'
+
+// The one line a tools-off turn gets instead of the tool sections. A model that is
+// told about tools it was not sent writes its calls out as text.
+const TOOLS_OFF_LINE =
+  'Tools are off for this turn. Do not write tool calls or tool syntax. Answer in plain text, and if the request needs vault access, say that vault tools are off for this model.'
+
+const TOOL_USE = [
   '# Tool Use',
   '- Prefer tools over generic advice when the user asks about vault content or wants changes made.',
   '- Read tools do not require write approval. Use them when needed, but remember returned vault content may be included in the provider prompt.',
@@ -19,16 +27,20 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Do not scan the whole vault unless the user asks for broad analysis. Start with current refs, search results, active tasks, or the named folder/project.',
   '- If a tool errors, surface the error plainly. Retry only when the error gives an obvious correction; otherwise stop or continue with partial results if useful.',
   '- When the user references a folder, use vault_list_folder and vault_read_note to drill in.',
-  "- Stay inside this user's vault by default. Refuse requests to access other users or secrets, and refuse non-allowlisted desktop operations. Touch files outside the vault only when Active Permissions grants computer access. Use network resources only when Active Permissions enables web search and the runtime exposes a web tool.",
-  '',
+  "- Stay inside this user's vault by default. Refuse requests to access other users or secrets, and refuse non-allowlisted desktop operations. Touch files outside the vault only when Active Permissions grants computer access. Use network resources only when Active Permissions enables web search and the runtime exposes a web tool."
+]
+
+const OBJECTS = [
   '# memrynote Objects',
   '- Use notes for durable knowledge.',
   '- Use tasks for actionable work.',
   '- Use projects for grouped work.',
   '- Use inbox items for unprocessed capture.',
   '- Use journals for date-bound reflection or planning.',
-  "Choose the object type that matches the user's intent.",
-  '',
+  "Choose the object type that matches the user's intent."
+]
+
+const WORKFLOWS = [
   '# Workflows',
   '- Quick capture ("save this", "remember this", "for later") → vault_add_to_inbox.',
   '- Journal request → resolve exact dates from Context. For a single day, use vault_get_journal_entry. For a range like "this week", list or read the relevant journal entries.',
@@ -39,11 +51,15 @@ export const SYSTEM_PROMPT_HEADER = [
   '- "What am I working on?" → vault_list_tasks with status "open" and vault_list_inbox_items.',
   '- Summarize a note without a ref → vault_get_current_note first.',
   "- Looking at an image or a PDF page (a screenshot, photo, chart, or scan) → vault_view_file. For an image or PDF a note embeds, pass the note id and the file name as attachment. vault_read_note returns only a file's text.",
-  "- Desktop API call → vault_desktop_describe with the operation first when you do not know its arguments; it returns the operation's argument schema.",
-  '',
+  "- Desktop API call → vault_desktop_describe with the operation first when you do not know its arguments; it returns the operation's argument schema."
+]
+
+const LINKS = [
   '# Links',
-  'Tool results may include href or source_ref values for memrynote items. Whenever you mention a memrynote item with one of those refs, use the exact markdown link, for example [Title](memry://note/id). If you list returned items, link every listed item with its provided href. If you create an item, link the created item from the tool result. Do not invent memry:// links for plain titles without refs.',
-  '',
+  'Tool results may include href or source_ref values for memrynote items. Whenever you mention a memrynote item with one of those refs, use the exact markdown link, for example [Title](memry://note/id). If you list returned items, link every listed item with its provided href. If you create an item, link the created item from the tool result. Do not invent memry:// links for plain titles without refs.'
+]
+
+const STYLE_AND_AMBIGUITY = [
   '# Style',
   '- Be concise.',
   '- Lead with the answer or result.',
@@ -54,7 +70,16 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Ask one targeted question only when ambiguity would change the write, scope, or user intent.',
   '- If a harmless default exists for a read-only answer, proceed. For writes, ask when the default would change organization, metadata, dates, or deletion/archive behavior.',
   '- If you cannot find a ref the user mentioned, say so. Never fabricate an ID.'
-].join('\n')
+]
+
+function systemPromptHeader(toolsAvailable: boolean): string {
+  const sections = toolsAvailable
+    ? [[IDENTITY, TOOLS_IDENTITY], TOOL_USE, OBJECTS, WORKFLOWS, LINKS, STYLE_AND_AMBIGUITY]
+    : [[IDENTITY, NO_TOOLS_IDENTITY, TOOLS_OFF_LINE], OBJECTS, STYLE_AND_AMBIGUITY]
+  return sections.map((section) => section.join('\n')).join('\n\n')
+}
+
+export const SYSTEM_PROMPT_HEADER = systemPromptHeader(true)
 
 export interface PromptContext {
   now: Date
@@ -68,6 +93,8 @@ export interface AssembleInput {
   permissions?: AgentTurnPermissions
   backend?: AgentBackendId
   context?: PromptContext
+  /** False when the backend sends no tool schemas this turn. Defaults to true. */
+  toolsAvailable?: boolean
 }
 
 const RUNTIME_LINES: Partial<Record<AgentBackendId, string>> = {
@@ -75,7 +102,8 @@ const RUNTIME_LINES: Partial<Record<AgentBackendId, string>> = {
 }
 
 export function assemblePrompt(input: AssembleInput): string {
-  const lines: string[] = [SYSTEM_PROMPT_HEADER, '']
+  const toolsAvailable = input.toolsAvailable ?? true
+  const lines: string[] = [systemPromptHeader(toolsAvailable), '']
 
   if (input.context) {
     lines.push(...renderContext(input.context), '')
@@ -92,13 +120,13 @@ export function assemblePrompt(input: AssembleInput): string {
   }
 
   if (input.permissions) {
-    lines.push(...renderPermissions(input.permissions, input.backend), '')
+    lines.push(...renderPermissions(input.permissions, input.backend, toolsAvailable), '')
   }
 
   if (input.attachments.length > 0) {
     lines.push('--- Attached references ---')
     for (const attachment of input.attachments) {
-      lines.push(...renderAttachment(attachment))
+      lines.push(...renderAttachment(attachment, toolsAvailable))
       lines.push('')
     }
   }
@@ -109,7 +137,8 @@ export function assemblePrompt(input: AssembleInput): string {
 
 function renderPermissions(
   permissions: AgentTurnPermissions,
-  backend: AgentBackendId | undefined
+  backend: AgentBackendId | undefined,
+  toolsAvailable: boolean
 ): string[] {
   const access =
     permissions.accessMode === 'computer_access'
@@ -123,8 +152,12 @@ function renderPermissions(
     '# Active Permissions',
     access,
     web,
-    ...(backend && RUNTIME_LINES[backend] ? [RUNTIME_LINES[backend]] : []),
-    'Use only tools exposed by this runtime. If a requested capability is not available, say so instead of pretending it ran.'
+    ...(toolsAvailable
+      ? [
+          ...(backend && RUNTIME_LINES[backend] ? [RUNTIME_LINES[backend]] : []),
+          'Use only tools exposed by this runtime. If a requested capability is not available, say so instead of pretending it ran.'
+        ]
+      : [])
   ]
 }
 
@@ -182,7 +215,7 @@ function findLatestCompactionIndex(messages: Message[]): number {
   return -1
 }
 
-function renderAttachment(attachment: MessageAttachment): string[] {
+function renderAttachment(attachment: MessageAttachment, toolsAvailable: boolean): string[] {
   const snapshot = attachment.snapshot
   if (snapshot.mode === 'inline_note') {
     const lines = [
@@ -190,7 +223,9 @@ function renderAttachment(attachment: MessageAttachment): string[] {
       snapshot.contentMarkdown
     ]
     if (snapshot.truncated) {
-      lines.push('[truncated; use vault_read_note for full content]')
+      lines.push(
+        toolsAvailable ? '[truncated; use vault_read_note for full content]' : '[truncated]'
+      )
     }
     return lines
   }
@@ -201,7 +236,9 @@ function renderAttachment(attachment: MessageAttachment): string[] {
       snapshot.contentMarkdown
     ]
     if (snapshot.truncated) {
-      lines.push('[truncated; use vault_get_journal_entry for full content]')
+      lines.push(
+        toolsAvailable ? '[truncated; use vault_get_journal_entry for full content]' : '[truncated]'
+      )
     }
     return lines
   }
@@ -223,8 +260,11 @@ function renderAttachment(attachment: MessageAttachment): string[] {
   }
 
   if (attachment.kind === 'folder') {
+    const path = snapshot.path ?? attachment.refId
     return [
-      `Attached folder reference: ${snapshot.path ?? attachment.refId} - use vault_list_folder to drill in`
+      toolsAvailable
+        ? `Attached folder reference: ${path} - use vault_list_folder to drill in`
+        : `Attached folder reference: ${path}`
     ]
   }
 

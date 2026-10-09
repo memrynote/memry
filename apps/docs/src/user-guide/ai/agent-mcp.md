@@ -278,7 +278,9 @@ the probe fails, local chat can still answer from attached context, but vault to
 disabled. The reply then starts with a note that vault tools are off for this model and why, in plain
 words: the provider refused requests with tools, the model answered without calling the test tool, the
 model failed after getting the tool result back, or the provider did not stream. When the provider sent
-its own error message, the note quotes it. The model is told not to write tool calls as text.
+its own error message, the note quotes it. The model gets instructions without any tool sections or
+tool names, and is told that tools are off and not to write tool calls as text. If it writes one
+anyway, the note adds that the model wrote a tool call as text and nothing ran.
 
 Models call tools in different ways, and memrynote adapts to each provider configuration instead of
 asking you to. Hosted OpenAI-compatible APIs work through the Custom preset. The probe records what

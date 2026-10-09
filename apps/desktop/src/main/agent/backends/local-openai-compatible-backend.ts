@@ -1,6 +1,7 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createOllama } from 'ollama-ai-provider-v2'
 import {
+  type AgentBackendOptions,
   type AgentBackendStatus,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings
@@ -43,12 +44,6 @@ const PROBE_DEGRADED_TTL_MS = 60_000
 // earlier pass is known for this configuration.
 const DEFAULT_TOOL_PROFILE: ToolCallProfile = { toolChoice: 'auto' }
 
-// The assembled prompt names the vault tools, so a model that was sent no tool schemas
-// writes its tool calls out as plain text unless it is told they are gone.
-const TOOLS_UNAVAILABLE_SYSTEM =
-  'No tools are available in this conversation. Do not write tool calls or tool syntax. ' +
-  'Answer in plain text, and if the request needs vault access, say that vault tools are off for this model.'
-
 // Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
 // the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
 function toOllamaApiBaseUrl(baseUrl: string): string {
@@ -72,6 +67,9 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     apiKey: string | null
     promise: Promise<LocalProbe>
   } | null = null
+  // The probe turnHasTools answered from, kept for the run that follows so a transient
+  // answer, which is never cached, is not probed a second time. Taken once.
+  private turnProbe: { settingsKey: string; apiKey: string | null; probe: LocalProbe } | null = null
   // Whether the chat model takes image input, learned the first time a tool returns an
   // image (FB-002). Same single slot as the tool probe; the model is part of the key
   // because a chat can pick a model other than the configured one.
@@ -121,6 +119,27 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     // The settings screen asks for this on demand, so it must be live and it doubles as
     // the manual way to clear a stale verdict.
     return (await this.resolveProbe(settings, apiKey, { force: true })).result
+  }
+
+  async turnHasTools(options: AgentBackendOptions): Promise<boolean> {
+    if (options.backend === this.id && options.toolsEnabled === false) return false
+    const settings = await this.deps.getSettings()
+    const apiKey = await this.deps.getApiKey()
+    const probe = await this.resolveProbe(settings, apiKey)
+    this.turnProbe = { settingsKey: probeSettingsKey(settings), apiKey, probe }
+    return probe.tools.kind === 'on'
+  }
+
+  private async turnTools(
+    settings: AgentLocalProviderSettings,
+    apiKey: string | null
+  ): Promise<LocalProbe['tools']> {
+    const reserved = this.turnProbe
+    this.turnProbe = null
+    if (reserved?.settingsKey === probeSettingsKey(settings) && reserved.apiKey === apiKey) {
+      return reserved.probe.tools
+    }
+    return (await this.resolveProbe(settings, apiKey)).tools
   }
 
   private async resolveProbe(
@@ -215,7 +234,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const controller = new AbortController()
     const tools =
       allowTools && (options?.toolsEnabled ?? true) && input.writeGrant
-        ? (await this.resolveProbe(settings, apiKey)).tools
+        ? await this.turnTools(settings, apiKey)
         : null
     const toolsUnavailable: BackendEvent[] =
       tools?.kind === 'off'
@@ -233,7 +252,6 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
             })
           : model,
       prompt: input.prompt,
-      ...(toolsUnavailable.length > 0 ? { system: TOOLS_UNAVAILABLE_SYSTEM } : {}),
       abortSignal: controller.signal,
       stopWhen: stepCountIs(8),
       ...(isOllama

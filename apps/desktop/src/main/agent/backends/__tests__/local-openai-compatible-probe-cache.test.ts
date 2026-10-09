@@ -85,13 +85,19 @@ function backendFor(fetchImpl: ReturnType<typeof vi.fn>, apiKey = { value: 'key-
   })
 }
 
+const TURN_OPTIONS = {
+  backend: 'local_openai_compatible',
+  model: MODEL,
+  toolsEnabled: true
+} as const
+
 async function turn(backend: LocalOpenAICompatibleBackend) {
   const run = await backend.runTurn({
     conversationId: 'conversation-1',
     writeGrant: 'grant' as TurnWriteGrant,
     windowId: 'window-1',
     prompt: 'User: hello',
-    options: { backend: 'local_openai_compatible', model: MODEL, toolsEnabled: true }
+    options: TURN_OPTIONS
   })
   const events: BackendEvent[] = []
   for await (const event of run.events) events.push(event)
@@ -177,6 +183,27 @@ describe('local provider probe cache and failure classes', () => {
     const second = await turn(backend)
     expect(fetchImpl.mock.calls.length).toBe(calls)
     expect(second.events[0]).toMatchObject({ kind: 'tools_unavailable', reason })
+  })
+
+  it('tells the turn whether it has tools from the probe the run then reuses', async () => {
+    const off = provider({ toolStep: () => 'no_call' })
+    expect(await backendFor(off).turnHasTools(TURN_OPTIONS)).toBe(false)
+
+    const transientOnce = provider({
+      toolStep: (n) => (n === 0 ? new TypeError('fetch failed') : 'ok')
+    })
+    const backend = backendFor(transientOnce)
+    expect(await backend.turnHasTools(TURN_OPTIONS)).toBe(true)
+    const calls = transientOnce.mock.calls.length
+    expect((await turn(backend)).tools).toBeDefined()
+    expect(transientOnce.mock.calls.length).toBe(calls)
+  })
+
+  it('reports no tools when the chat turned them off, without probing', async () => {
+    const fetchImpl = provider()
+    const has = await backendFor(fetchImpl).turnHasTools({ ...TURN_OPTIONS, toolsEnabled: false })
+    expect(has).toBe(false)
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it('reuses a pass until the key changes, however long ago it ran', async () => {
