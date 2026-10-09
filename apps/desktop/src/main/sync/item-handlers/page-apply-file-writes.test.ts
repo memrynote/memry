@@ -249,3 +249,79 @@ describe('property definition delete inside a page transaction (#2284)', () => {
     expect(healed).toContain('Area')
   })
 })
+
+describe('property definition upsert inside a page transaction (#2896)', () => {
+  let testDb: TestDatabaseResult
+  const propertiesFile = path.join(vaultPath, '.memry', 'properties.md')
+  const blue = JSON.stringify([{ value: 'Lead', color: 'blue' }])
+  const purple = JSON.stringify([{ value: 'Lead', color: 'purple' }])
+
+  beforeEach(() => {
+    _resetBulkApplyForTests()
+    fs.rmSync(vaultPath, { recursive: true, force: true })
+    fs.rmSync(path.join(userDataDir, 'sync-bulk-apply-journal.json'), { force: true })
+    fs.mkdirSync(path.dirname(propertiesFile), { recursive: true })
+    fs.writeFileSync(
+      propertiesFile,
+      '---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Lead\n        color: blue\n---\n'
+    )
+    testDb = createTestDataDb()
+    currentDb.value = testDb.db
+    testDb.db
+      .insert(propertyDefinitions)
+      .values({
+        name: 'Stage',
+        type: 'select',
+        options: blue,
+        clock: { 'device-a': 1 },
+        createdAt: '2026-01-01'
+      })
+      .run()
+    PropertyDefinitionsService.init(vaultPath)
+  })
+
+  afterEach(() => {
+    PropertyDefinitionsService.destroy()
+    _resetBulkApplyForTests()
+    testDb.close()
+  })
+
+  const stageRow = () =>
+    testDb.db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, 'Stage')).get()
+
+  it('keeps the pulled options, default and color through the post-pull reload', async () => {
+    await PropertyDefinitionsService.get().reload()
+    const page = beginPageApply(asSyncDb(testDb.db))
+
+    const result = propertyDefinitionHandler.applyUpsert(
+      { db: page.db, emit: vi.fn() },
+      'Stage',
+      { name: 'Stage', type: 'select', options: purple, defaultValue: 'Lead', color: 'purple' },
+      { 'device-a': 2 }
+    )
+    page.commit()
+    await page.flushFiles()
+    await PropertyDefinitionsService.get().reload()
+
+    expect(result).toBe('applied')
+    expect(stageRow()).toMatchObject({
+      options: purple,
+      defaultValue: 'Lead',
+      color: 'purple',
+      clock: { 'device-a': 2 }
+    })
+    expect(fs.readFileSync(propertiesFile, 'utf-8')).toContain('purple')
+  })
+
+  it('still lets a local file edit win over an unchanged row', async () => {
+    await PropertyDefinitionsService.get().reload()
+    fs.writeFileSync(
+      propertiesFile,
+      '---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Lead\n        color: green\n---\n'
+    )
+
+    await PropertyDefinitionsService.get().reload()
+
+    expect(JSON.parse(stageRow()!.options!)).toEqual([{ value: 'Lead', color: 'green' }])
+  })
+})
