@@ -2,8 +2,11 @@ import type { Message, MessageAttachment } from '@memry/contracts/ipc-agent'
 import type { MouseEvent } from 'react'
 
 import { Message as AIMessage, MessageContent } from '@/components/ai-elements/message'
+import { formatBytes } from '@/lib/format'
+import { ChevronDown, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
+import { splitMemryFileBlocks } from '../memry-file-block'
 import { mentionColorForKind } from '../mention-icons'
 import { MemryLinkIcon, useMemryLinkNavigation } from './memry-links'
 
@@ -24,19 +27,35 @@ export function UserMessage({ message }: { message: Message }): React.JSX.Elemen
 
   if (message.content.role !== 'user') return null
 
-  const renderedText = renderUserTextWithMentions({
-    text: message.content.data.text,
-    attachments: message.attachments,
-    navigateMemryLink
+  const inlinedAttachmentKeys = new Set<string>()
+  const segments = splitMemryFileBlocks(message.content.data.text).map((segment, index) => {
+    if (segment.kind === 'file') {
+      return (
+        <UserFileCard key={index} name={segment.name} bytes={segment.bytes}>
+          {segment.content}
+        </UserFileCard>
+      )
+    }
+    const renderedText = renderUserTextWithMentions({
+      text: segment.text,
+      attachments: message.attachments,
+      navigateMemryLink
+    })
+    renderedText.inlinedAttachmentKeys.forEach((key) => inlinedAttachmentKeys.add(key))
+    return (
+      <p key={index} className="whitespace-pre-wrap break-words">
+        {renderedText.content}
+      </p>
+    )
   })
   const remainingAttachments = message.attachments.filter(
-    (attachment) => !renderedText.inlinedAttachmentKeys.has(attachmentKey(attachment))
+    (attachment) => !inlinedAttachmentKeys.has(attachmentKey(attachment))
   )
 
   return (
     <AIMessage from="user" className="max-w-[85%]">
       <MessageContent className="bg-primary text-primary-foreground">
-        <p className="whitespace-pre-wrap break-words">{renderedText.content}</p>
+        {segments}
         {remainingAttachments.length > 0 && (
           <div className="mt-2 flex flex-wrap justify-end gap-1">
             {remainingAttachments.map((attachment) => (
@@ -51,6 +70,33 @@ export function UserMessage({ message }: { message: Message }): React.JSX.Elemen
         )}
       </MessageContent>
     </AIMessage>
+  )
+}
+
+function UserFileCard({
+  name,
+  bytes,
+  children
+}: {
+  name: string
+  bytes: number
+  children: string
+}): React.JSX.Element {
+  return (
+    <details className="group mt-2 min-w-0 rounded-md border border-primary-foreground/20 text-xs first:mt-0">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 [&::-webkit-details-marker]:hidden">
+        <ChevronDown
+          className="size-3 shrink-0 -rotate-90 transition-transform group-open:rotate-0 rtl:rotate-90 rtl:group-open:rotate-0 motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+        <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate font-medium">{name}</span>
+        <span className="ms-auto shrink-0 tabular-nums opacity-70">{formatBytes(bytes)}</span>
+      </summary>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words border-t border-primary-foreground/20 px-2 py-1.5 text-start font-mono text-[11px]">
+        {children}
+      </pre>
+    </details>
   )
 }
 
