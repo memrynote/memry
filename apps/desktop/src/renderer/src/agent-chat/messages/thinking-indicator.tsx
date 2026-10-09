@@ -49,16 +49,15 @@ const SILENCE_MS = 3000
  * changed for 3 s; null otherwise. Any change hides the waiting state and
  * restarts the count.
  */
-export function useSilentSince(signal: unknown, active: boolean): number | null {
-  const [silentSince, setSilentSince] = useState<number | null>(null)
+export function useSilentSince(signal: string, active: boolean): number | null {
+  const [silence, setSilence] = useState<{ signal: string; since: number } | null>(null)
 
   useEffect(() => {
-    setSilentSince(null)
     if (!active) return
     const lastChange = Date.now()
-    const timer = setTimeout(() => setSilentSince(lastChange), SILENCE_MS)
+    const timer = setTimeout(() => setSilence({ signal, since: lastChange }), SILENCE_MS)
     return () => clearTimeout(timer)
   }, [signal, active])
 
-  return active ? silentSince : null
+  return active && silence?.signal === signal ? silence.since : null
 }
