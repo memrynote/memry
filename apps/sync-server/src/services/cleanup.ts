@@ -2,6 +2,7 @@ import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
+import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
 import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
 
@@ -340,7 +341,10 @@ export const cleanupOrphanedBlobChunks = async (
   storage: R2Bucket
 ): Promise<number> => {
   const orphaned = await db
-    .prepare(`SELECT id FROM blob_chunks WHERE ref_count <= 0 LIMIT ${ORPHAN_CHUNK_LIMIT}`)
+    .prepare(
+      `SELECT id FROM blob_chunks WHERE ref_count <= 0 AND NOT ${chunkHeldSql('blob_chunks')}
+       LIMIT ${ORPHAN_CHUNK_LIMIT}`
+    )
     .all<{ id: string }>()
   const ids = (orphaned.results ?? []).map((row) => row.id)
 
@@ -348,10 +352,12 @@ export const cleanupOrphanedBlobChunks = async (
   for (let start = 0; start < ids.length; start += ORPHAN_CHUNK_BATCH) {
     const batch = ids.slice(start, start + ORPHAN_CHUNK_BATCH)
     // The row goes first, and only while it is still orphaned: an upload of the
-    // same hash re-references it (ON CONFLICT ref_count + 1) and needs the object.
+    // same hash re-references it (ON CONFLICT ref_count + 1) and needs the object,
+    // and a hold (#3022) keeps it.
     const deleted = await db
       .prepare(
-        `DELETE FROM blob_chunks WHERE id IN (${batch.map(() => '?').join(',')}) AND ref_count <= 0
+        `DELETE FROM blob_chunks WHERE id IN (${batch.map(() => '?').join(',')})
+           AND ref_count <= 0 AND NOT ${chunkHeldSql('blob_chunks')}
          RETURNING r2_key`
       )
       .bind(...batch)

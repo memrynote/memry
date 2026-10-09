@@ -61,6 +61,7 @@ import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
 import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
+import { holdCanvasAssetsBeforePush } from '../canvas/assets/asset-service-context'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
   initTagDefinitionSyncService,
@@ -855,6 +856,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             log.warn('calendarSyncOneSource failed', { sourceId, err })
           })
         },
+        prepareCanvasPush: (canvasId) => holdCanvasAssetsBeforePush(canvasId),
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
         onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
         onVaultKeyMismatch: () => {

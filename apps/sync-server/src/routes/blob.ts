@@ -15,6 +15,7 @@ import {
   getBlob,
   putBlob
 } from '../services/blob'
+import { chunkHeldSql, holdChunks, releaseHolds } from '../services/chunk-holds'
 import { assertFileSizeAllowed } from '../services/entitlements'
 import { reclaimUnusedPresignedChunks } from '../services/presigned-chunk-reclaim'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
@@ -32,6 +33,8 @@ import {
   type UploadedChunkEntry
 } from '../services/upload-size'
 import {
+  ChunkHoldReleaseRequestSchema,
+  ChunkHoldRequestSchema,
   DereferenceRequestSchema,
   DirectChunkEntrySchema,
   PresignBatchRequestSchema,
@@ -120,6 +123,14 @@ const uploadSessionLimit = createRateLimiter({
 const dereferenceLimit = createRateLimiter({
   keyPrefix: 'dereference',
   maxRequests: 20,
+  windowSeconds: 60
+})
+
+// #3022: desktop holds a canvas's images before each canvas push, so this
+// follows the push rate rather than the rarer dereference.
+const chunkHoldLimit = createRateLimiter({
+  keyPrefix: 'chunk_hold',
+  maxRequests: 120,
   windowSeconds: 60
 })
 
@@ -681,17 +692,57 @@ blob.post('/attachments/dereference', dereferenceLimit, async (c) => {
       .first<{ id: string; ref_count: number; size_bytes: number }>()
     if (!chunk) continue
 
+    // A held chunk keeps its bytes charged; the release of its last hold refunds them.
     const after = await c.env.DB.prepare(
-      'UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ? AND ref_count > 0 RETURNING ref_count'
+      `UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ? AND ref_count > 0
+       RETURNING ref_count, ${chunkHeldSql('blob_chunks')} AS held`
     )
       .bind(chunk.id)
-      .first<{ ref_count: number }>()
+      .first<{ ref_count: number; held?: number }>()
     if (!after) continue
     dereferenced++
-    if (after.ref_count === 0) await adjustStorageUsed(c.env.DB, userId, -chunk.size_bytes)
+    if (after.ref_count === 0 && !after.held) {
+      await adjustStorageUsed(c.env.DB, userId, -chunk.size_bytes)
+    }
   }
 
   return c.json({ dereferenced }, 200)
+})
+
+// #3022: idempotent holds keyed by an opaque holder id (protocol 14 §14.8).
+// `missing` names the holders whose chunks are no longer stored; the client
+// re-uploads those from its local copy.
+blob.post('/attachments/holds', chunkHoldLimit, async (c) => {
+  const body: unknown = await c.req.json()
+  const parsed = ChunkHoldRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid hold: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+  const missing = await holdChunks(c.env.DB, c.get('userId')!, c.get('vaultId')!, parsed.data.holds)
+  return c.json({ missing }, 200)
+})
+
+blob.post('/attachments/holds/release', chunkHoldLimit, async (c) => {
+  const body: unknown = await c.req.json()
+  const parsed = ChunkHoldReleaseRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid hold release: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+  const released = await releaseHolds(
+    c.env.DB,
+    c.get('userId')!,
+    c.get('vaultId')!,
+    parsed.data.holderIds
+  )
+  return c.json({ released }, 200)
 })
 
 // ============================================================================

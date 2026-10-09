@@ -46,6 +46,12 @@ export interface SyncEngineDeps {
    * Escalation re-registers or signs out — retrying cannot fix it (#2218).
    */
   onDeviceKeyMismatch?: () => void | Promise<void>
+  /**
+   * Runs before a canvas create/update is encrypted (#3022): holds its images'
+   * chunks on the server and re-uploads any the server no longer has. False
+   * keeps the row queued for the next cycle.
+   */
+  prepareCanvasPush?: (canvasId: string) => Promise<boolean>
 }
 
 export interface SyncEngineOptions {

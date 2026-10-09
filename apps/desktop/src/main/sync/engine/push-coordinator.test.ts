@@ -374,6 +374,40 @@ describe('PushCoordinator', () => {
     })
   })
 
+  // #3022: a canvas whose image holds could not be settled must not push a
+  // sidecar naming chunks a peer may have freed.
+  describe('#given a canvas whose asset holds cannot be settled #when push runs', () => {
+    it('#then the canvas stays queued untouched and the other rows still go out', async () => {
+      const { ctx, coordinator, queue } = createHarness(getDb())
+      const prepareCanvasPush = vi.fn(async (id: string) => id !== 'canvas-blocked')
+      ctx.deps.prepareCanvasPush = prepareCanvasPush
+      acceptAll()
+
+      queue.enqueue({
+        type: 'canvas',
+        itemId: 'canvas-blocked',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Board', clock: { 'device-1': 1 } })
+      })
+      queue.enqueue({
+        type: 'canvas',
+        itemId: 'canvas-ok',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Other', clock: { 'device-1': 1 } })
+      })
+
+      await coordinator.push()
+
+      const sent = postToServerMock.mock.calls.flatMap((call) =>
+        (call[1] as PushBody).items.map((i) => i.id)
+      )
+      expect(sent).toEqual(['canvas-ok'])
+      const [row] = queue.peek()
+      expect(row).toMatchObject({ itemId: 'canvas-blocked', attempts: 0 })
+      expect(prepareCanvasPush).toHaveBeenCalledTimes(2)
+    })
+  })
+
   describe('#given the push request fails #when push runs', () => {
     it('#then the item stays queued and is NOT marked synced, so the next cycle retries it', async () => {
       const { coordinator, queue, stateManager } = createHarness(getDb())

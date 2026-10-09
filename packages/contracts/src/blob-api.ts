@@ -49,6 +49,43 @@ export const DereferenceRequestSchema = z.object({
   chunkHashes: z.array(z.string().min(1)).min(1).max(4096)
 })
 
+/**
+ * Opaque id of one chunk holder (protocol 14 §14.8). Desktop derives it per
+ * (canvas, image) with a vault-keyed BLAKE2b, so every device names the same
+ * holder and the server learns nothing about the canvas or the image.
+ */
+export const ChunkHolderIdSchema = z
+  .string()
+  .regex(/^[a-f0-9]{64}$/, 'must be 64 lowercase hex chars')
+
+/** POST /sync/attachments/holds — hold each holder's chunks; a holder with a gone chunk is `missing`. */
+export const ChunkHoldRequestSchema = z.object({
+  holds: z
+    .array(
+      z.object({
+        holderId: ChunkHolderIdSchema,
+        chunkHashes: z.array(ChunkHashSchema).min(1).max(128)
+      })
+    )
+    .min(1)
+    .max(64)
+})
+
+export const ChunkHoldResponseSchema = z.object({
+  /** Holders that got no hold because one of their chunks is no longer stored. */
+  missing: z.array(ChunkHolderIdSchema)
+})
+
+/** POST /sync/attachments/holds/release — drop every hold of these holders. */
+export const ChunkHoldReleaseRequestSchema = z.object({
+  holderIds: z.array(ChunkHolderIdSchema).min(1).max(64)
+})
+
+export const ChunkHoldReleaseResponseSchema = z.object({
+  /** Hold rows removed; 0 for a replay. */
+  released: z.number().int().min(0)
+})
+
 // ---------------------------------------------------------------------------
 // Direct-to-R2 transfers (presigned URLs)
 //
@@ -119,6 +156,10 @@ export type ChunkUploadParams = z.infer<typeof ChunkUploadParamsSchema>
 export type UploadCompleteRequest = z.infer<typeof UploadCompleteRequestSchema>
 export type ChunkExistenceCheck = z.infer<typeof ChunkExistenceCheckSchema>
 export type DereferenceRequest = z.infer<typeof DereferenceRequestSchema>
+export type ChunkHoldRequest = z.infer<typeof ChunkHoldRequestSchema>
+export type ChunkHoldResponse = z.infer<typeof ChunkHoldResponseSchema>
+export type ChunkHoldReleaseRequest = z.infer<typeof ChunkHoldReleaseRequestSchema>
+export type ChunkHoldReleaseResponse = z.infer<typeof ChunkHoldReleaseResponseSchema>
 export type UploadInitResponse = z.infer<typeof UploadInitResponseSchema>
 export type ChunkUploadResponse = z.infer<typeof ChunkUploadResponseSchema>
 export type UploadCompleteResponse = z.infer<typeof UploadCompleteResponseSchema>

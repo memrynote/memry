@@ -11,17 +11,23 @@
  */
 
 import { getOrCreateVaultUuid } from '../../agent/storage/vault-id'
+import { getOrInitializeLocalVaultKey } from '../../crypto/vault-key-state'
 import { getDatabase, isDatabaseInitialized } from '../../database/client'
 import { getCanvasAssetIO } from '../../ipc/sync-attachment-handlers'
 import { markWritebackIgnored } from '../../sync/crdt-writeback'
 import { getSyncEngine } from '../../sync/runtime'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getValidAccessToken } from '../../sync/token-manager'
+import { createLogger } from '../../lib/logger'
 import { trackMainEvent } from '../../telemetry/track'
 import { getStatus as getVaultStatus } from '../../vault/index'
+import { getCanvasFilePath, readCanvasScene } from '../store'
 
 import { dereferenceChunks, type DereferenceDeps } from './attachment-dereference'
-import type { AssetServiceContext } from './asset-service'
+import { holdCanvasAssetsForPush, type AssetServiceContext } from './asset-service'
+import { holdCanvasAssetChunks, releaseCanvasAssetHolds, type ChunkHoldDeps } from './chunk-holds'
+
+const log = createLogger('CanvasAssetContext')
 
 /**
  * Assemble the real asset-service context, or `null` when the vault is not
@@ -41,6 +47,10 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
     getAccessToken: () => getValidAccessToken(),
     getSyncServerUrl: () => resolveSyncServerUrl(),
     getVaultId: () => vaultId
+  }
+  const holdDeps: ChunkHoldDeps = {
+    ...dereferenceDeps,
+    getVaultKey: () => getOrInitializeLocalVaultKey(db, vaultId).catch(() => null)
   }
 
   return {
@@ -63,6 +73,9 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
       const { ok } = await dereferenceChunks(chunkHashes, dereferenceDeps)
       return { ok }
     },
+    holdChunks: (canvasId, holds) => holdCanvasAssetChunks(canvasId, holds, holdDeps),
+    releaseHolds: (canvasId, contentHashes) =>
+      releaseCanvasAssetHolds(canvasId, contentHashes, holdDeps),
     markWritebackIgnored,
     trackEvent: trackMainEvent
   }
@@ -86,5 +99,24 @@ export async function canUploadCanvasAssets(): Promise<boolean> {
     return (await getValidAccessToken()) !== null
   } catch {
     return false
+  }
+}
+
+/**
+ * The push coordinator's pre-push step for a canvas (#3022): hold its images,
+ * re-uploading any whose chunks are gone. False defers this canvas's push to a
+ * later cycle. A canvas this cannot read pushes as before.
+ */
+export async function holdCanvasAssetsBeforePush(canvasId: string): Promise<boolean> {
+  const ctx = buildAssetServiceContext()
+  if (!ctx) return true
+  try {
+    const filePath = getCanvasFilePath(ctx.db, canvasId)
+    const scene = filePath ? readCanvasScene(ctx.vaultPath, filePath) : null
+    if (scene === null) return true
+    return await holdCanvasAssetsForPush(ctx, canvasId, scene)
+  } catch (err) {
+    log.warn('holding canvas assets before push failed; pushing without', { canvasId, err })
+    return true
   }
 }

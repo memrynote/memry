@@ -69,6 +69,8 @@ function assetCtx(): AssetServiceContext {
     },
     downloadAttachment: async () => {},
     dereference,
+    holdChunks: async () => ({ status: 'ok', missing: new Set() }),
+    releaseHolds: async () => ({ ok: true }),
     markWritebackIgnored: () => {},
     trackEvent: () => {}
   }
@@ -84,6 +86,7 @@ const release = () =>
       return [`chunk-of-${attachmentId}`]
     },
     dereference,
+    releaseHolds: async () => ({ ok: true }),
     markWritebackIgnored: () => {}
   })
 
@@ -320,6 +323,7 @@ describe('deleted note attachments', () => {
         throw new Error('manifest signer revoked')
       },
       dereference,
+      releaseHolds: async () => ({ ok: true }),
       markWritebackIgnored: () => {}
     })
     expect(settled).toBe(0)

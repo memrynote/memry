@@ -27,7 +27,7 @@ import { readCanvasScene, writeCanvasScene } from '../../canvas/store'
 import { getCanvasVaultPath } from '../../canvas/vault-path'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { clearCanvasEdges, rewriteCanvasEdges } from '../../canvas/edge-index'
-import { readMemryAssets } from '../../canvas/assets/memry-assets'
+import { readMemryAssets, sceneWithCurrentAssetRows } from '../../canvas/assets/memry-assets'
 import { ensureAssetsPresent } from '../../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
@@ -83,7 +83,12 @@ function recordSceneAssets(
         chunkHashes: descriptor.chunkHashes,
         createdAt: now
       })
-      .onConflictDoNothing()
+      // The sidecar names the attachment this canvas shows. A peer that
+      // re-uploaded an image whose chunks were freed (#3022) sends a new one.
+      .onConflictDoUpdate({
+        target: [canvasAssets.canvasId, canvasAssets.contentHash],
+        set: { attachmentId: descriptor.attachmentId, chunkHashes: descriptor.chunkHashes }
+      })
       .run()
   }
 }
@@ -412,7 +417,10 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       id: row.id,
       vaultId: row.vaultId,
       title: row.title,
-      scene,
+      scene: sceneWithCurrentAssetRows(
+        scene,
+        db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, itemId)).all()
+      ),
       folder: row.folder ?? null,
       icon: row.icon ?? null,
       // Always stated, null included: a present key beats any stale capture of

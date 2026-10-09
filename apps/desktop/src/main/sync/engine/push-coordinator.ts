@@ -238,7 +238,11 @@ export class PushCoordinator {
             break
           }
 
-          const dedupedItems = this.deduplicateByItemId(items)
+          const dedupedItems = await this.prepareCanvasItems(
+            this.deduplicateByItemId(items),
+            rejectedThisCycle
+          )
+          if (dedupedItems.length === 0) continue
           // Payload as it stood at dequeue. A local mutation made while this
           // batch is in flight coalesces into the same row (queue.ts enqueue),
           // so the ack below must only delete rows that still look like this.
@@ -723,6 +727,29 @@ export class PushCoordinator {
     }
 
     return Array.from(seen.values())
+  }
+
+  /**
+   * #3022: a canvas holds the chunks of the images it shows before its scene
+   * goes out, so a sidecar never names chunks a peer's release freed. A canvas
+   * whose hold or re-upload could not finish waits for the next cycle with its
+   * attempts untouched.
+   */
+  private async prepareCanvasItems<
+    T extends { id: string; type: string; itemId: string; operation: string }
+  >(items: T[], rejectedThisCycle: Set<string>): Promise<T[]> {
+    const prepare = this.ctx.deps.prepareCanvasPush
+    if (!prepare) return items
+    const ready: T[] = []
+    for (const item of items) {
+      if (item.type === 'canvas' && item.operation !== 'delete' && !(await prepare(item.itemId))) {
+        log.info('Push: canvas waits for its asset holds', { itemId: item.itemId.slice(0, 8) })
+        rejectedThisCycle.add(item.id)
+        continue
+      }
+      ready.push(item)
+    }
+    return ready
   }
 
   /**
