@@ -194,7 +194,9 @@ Said no to a side project today. Felt good.`
     tags: ['daily', 'work', 'meetings'],
     body: `Sprint planning. Team is *into* the Inbox redesign. Validates the call.
 
-Lunch with M. — first time in a month. Wonderful.`
+Lunch with M. — first time in a month. Wonderful.
+
+Quick #meeting with [[Ahmet Yılmaz]] after standup about the Acme rollout.`
   },
   {
     date: '2026-04-25',
@@ -290,6 +292,8 @@ More [[Sapiens]]. Chapter on agriculture. The wheat take feels stretched but in 
     mood: 5,
     tags: ['daily', 'flow', 'work'],
     body: `Wrote, lifted, shipped.
+
+[[Ahmet Yılmaz]] sent over two #person intros for the Globex pilot.
 
 Best day this week. The morning routine — see [[Morning Routine]] — is *paying for itself.* Two months in.`
   },

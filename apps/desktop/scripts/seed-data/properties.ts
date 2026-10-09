@@ -1,4 +1,5 @@
 import type { SeedPropertyDefinition } from '../seed-vault/db-writer'
+import { OBJECT_FIELD_DEFINITIONS } from './object-fields'
 
 // ============================================================================
 // Property definitions.
@@ -6,10 +7,10 @@ import type { SeedPropertyDefinition } from '../seed-vault/db-writer'
 // `.memry/properties.md` is the source of truth — PropertyDefinitionsService
 // reloads it on vault open and rebuilds the `property_definitions` table from
 // it, so a DB-only seed would be wiped the first time the vault is opened.
-// Only the five persistable kinds may appear in that file (status, select,
-// multiselect, date, project); anything else fails PropertyDefinitionsFileSchema
-// and discards *every* definition in the file. Text/number/url props are typed
-// by inference from their values instead.
+// Every property type except `relation` may appear in that file; a relation
+// fails PropertyDefinitionsFileSchema and discards *every* definition in it.
+// Most seeded text/number/url props are still typed by inference from their
+// values; the tag fields of ready-made tags (./objects) are declared here.
 // ============================================================================
 
 type SelectOption = { value: string; color: string; default?: boolean }
@@ -25,6 +26,7 @@ export type PersistableDefinition =
   | { name: string; type: 'multiselect'; options: SelectOption[] }
   | { name: string; type: 'date'; showOnCalendar?: boolean }
   | { name: string; type: 'project' }
+  | { name: string; type: 'text' | 'number' | 'url' }
 
 /**
  * Workflow status shared by notes across every folder. Categories are what the
@@ -192,7 +194,9 @@ export const PERSISTABLE_PROPERTY_DEFINITIONS: PersistableDefinition[] = [
   { name: 'deadline', type: 'date', showOnCalendar: true },
   { name: 'startDate', type: 'date', showOnCalendar: true },
   { name: 'endDate', type: 'date', showOnCalendar: true },
-  { name: 'reviewOn', type: 'date', showOnCalendar: true }
+  { name: 'reviewOn', type: 'date', showOnCalendar: true },
+
+  ...OBJECT_FIELD_DEFINITIONS
 ]
 
 /** The `properties:` frontmatter block written into `.memry/properties.md`. */
@@ -203,10 +207,10 @@ export function buildPropertiesFileData(): Record<string, unknown> {
       properties[def.name] = { type: 'status', categories: def.categories }
     } else if (def.type === 'date') {
       properties[def.name] = { type: 'date', showOnCalendar: def.showOnCalendar ?? false }
-    } else if (def.type === 'project') {
-      properties[def.name] = { type: 'project' }
-    } else {
+    } else if (def.type === 'select' || def.type === 'multiselect') {
       properties[def.name] = { type: def.type, options: def.options }
+    } else {
+      properties[def.name] = { type: def.type }
     }
   }
   return properties
@@ -219,18 +223,7 @@ export function buildPropertiesFileData(): Record<string, unknown> {
  * The inferred-only props (text/number/url) are seeded here as well so property
  * pickers have colors before any note is opened.
  */
-export const PROPERTY_DEFINITION_ROWS: SeedPropertyDefinition[] = [
-  ...PERSISTABLE_PROPERTY_DEFINITIONS.map((def) => ({
-    name: def.name,
-    type: def.type,
-    options:
-      def.type === 'status'
-        ? JSON.stringify({ categories: def.categories })
-        : def.type === 'select' || def.type === 'multiselect'
-          ? JSON.stringify(def.options)
-          : null,
-    color: null
-  })),
+const COLORED_ROWS: SeedPropertyDefinition[] = [
   { name: 'rating', type: 'number', color: '#C4A44E' },
   { name: 'pages', type: 'number', color: '#C4A44E' },
   { name: 'year', type: 'number', color: '#748CE0' },
@@ -246,4 +239,21 @@ export const PROPERTY_DEFINITION_ROWS: SeedPropertyDefinition[] = [
   { name: 'owner', type: 'text', color: '#949490' },
   { name: 'url', type: 'url', color: '#64A0D8' },
   { name: 'shared', type: 'checkbox', color: '#50B888' }
+]
+
+export const PROPERTY_DEFINITION_ROWS: SeedPropertyDefinition[] = [
+  ...PERSISTABLE_PROPERTY_DEFINITIONS.filter(
+    (def) => !COLORED_ROWS.some((row) => row.name === def.name)
+  ).map((def) => ({
+    name: def.name,
+    type: def.type,
+    options:
+      def.type === 'status'
+        ? JSON.stringify({ categories: def.categories })
+        : def.type === 'select' || def.type === 'multiselect'
+          ? JSON.stringify(def.options)
+          : null,
+    color: null
+  })),
+  ...COLORED_ROWS
 ]
