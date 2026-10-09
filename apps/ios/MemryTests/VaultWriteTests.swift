@@ -157,6 +157,7 @@ struct VaultWriteTests {
             #expect(actions.failure == nil)
         }
         #expect(!actions.deleted, "a failed delete must leave the note open")
+        #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
     }
 
     @Test("a screen with no writer performs no write")
