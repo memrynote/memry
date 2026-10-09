@@ -53,17 +53,27 @@ private final class ScriptedNoteReader: NotesReading, @unchecked Sendable {
     }
 }
 
-/// A reader holding two configured folders, for the Move to sheet (#2909).
+/// A reader with scripted folders and notes, for the Move to sheet (#2909).
 private struct FolderedReader: NotesReading {
-    func folders() async throws -> [FolderSummary] {
-        [
-            FolderSummary(path: "work", parentPath: nil, name: "work", icon: nil),
-            FolderSummary(path: "work/plans", parentPath: "work", name: "plans", icon: nil)
-        ]
+    var configured: [FolderSummary] = []
+    var notes: [NoteSummary] = []
+    var listFails = false
+
+    func folders() async throws -> [FolderSummary] { configured }
+    func list() async throws -> [NoteSummary] {
+        if listFails { throw NotScripted() }
+        return notes
     }
 
-    func list() async throws -> [NoteSummary] { [] }
     func read(id: String) async throws -> NoteDetail? { nil }
+}
+
+private func folder(_ path: String, parent: String? = nil) -> FolderSummary {
+    FolderSummary(path: path, parentPath: parent, name: path, icon: nil)
+}
+
+private func note(_ id: String, in folderPath: String?) -> NoteSummary {
+    NoteSummary(id: id, title: id, folderPath: folderPath, emoji: nil, createdAt: nil, modifiedAt: nil)
 }
 
 private func summary(_ id: String, title: String = "A note") -> NoteSummary {
@@ -138,11 +148,28 @@ struct NoteReadTests {
 
     // MARK: Move to (#2909)
 
-    @Test("the move sheet offers the vault's folders, not only the vault root")
-    func theMoveSheetOffersTheVaultFolders() async {
-        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: FolderedReader())
-        let paths = await model.moveDestinations().map(\.path)
-        #expect(paths == ["work", "work/plans"])
+    @Test("the move sheet offers configured and note-derived folders, sorted by path")
+    func theMoveSheetOffersTheTreeFolders() async {
+        let reader = FolderedReader(
+            configured: [folder("work"), folder("work/plans", parent: "work")],
+            notes: [note("n2", in: "inbox"), note("n3", in: "work")]
+        )
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["inbox", "work", "work/plans"])
+    }
+
+    @Test("folders that exist only through note paths are offered, ancestors included")
+    func noteDerivedFoldersAreOffered() async {
+        let reader = FolderedReader(notes: [note("n2", in: "a/b")])
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["a", "a/b"])
+    }
+
+    @Test("a note list that fails to read leaves the configured folders")
+    func aFailedListLeavesTheConfiguredFolders() async {
+        let reader = FolderedReader(configured: [folder("work")], listFails: true)
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["work"])
     }
 
     @Test("a folder read that fails leaves the vault root, rather than failing the sheet")

@@ -145,16 +145,29 @@ final class NoteReadViewModel {
         await load()
     }
 
-    /// Every configured folder, for the Move to sheet (N808, #2909). A read
-    /// that fails leaves only the vault root on offer and is logged.
+    /// Every folder the notes-list tree shows, for the Move to sheet (N808,
+    /// #2909): configured folders plus the ones `VaultOutline` derives from
+    /// note paths, sorted by path. A failed `folders()` read leaves only the
+    /// vault root; a failed `list()` read degrades to the configured folders.
+    /// Both are logged.
     func moveDestinations() async -> [FolderSummary] {
+        let configured: [FolderSummary]
         do {
-            return try await reader.folders()
+            configured = try await reader.folders()
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this vault's folders could not be read for a move", .code(mapped.code))
             return []
         }
+        let derived: [FolderSummary]
+        do {
+            derived = VaultOutline.derivedFolders(configured: configured, notes: try await reader.list())
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's notes could not be read for a move", .code(mapped.code))
+            derived = []
+        }
+        return (configured + derived).sorted { $0.path < $1.path }
     }
 
     /// Pulls this note's body, then re-reads the note in place.
