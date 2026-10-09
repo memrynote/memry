@@ -24059,6 +24059,12 @@ public struct TaskViewResult: Equatable, Hashable {
      * The Done section under the list.
      */
     public var doneIds: [String]
+    /**
+     * The kanban cards: the tree's roots over the rows and the Done section,
+     * in that order (desktop `buildTaskTree(tasks).roots`). A subtask rides
+     * on its parent's card; one under a parent outside the set shows nowhere.
+     */
+    public var cardIds: [String]
     public var counts: TaskTabCounts
     /**
      * Rows before the filter bar, and after it (for the "filters hid
@@ -24082,7 +24088,12 @@ public struct TaskViewResult: Equatable, Hashable {
          */groups: [TaskGroupItem], 
         /**
          * The Done section under the list.
-         */doneIds: [String], counts: TaskTabCounts, 
+         */doneIds: [String], 
+        /**
+         * The kanban cards: the tree's roots over the rows and the Done section,
+         * in that order (desktop `buildTaskTree(tasks).roots`). A subtask rides
+         * on its parent's card; one under a parent outside the set shows nowhere.
+         */cardIds: [String], counts: TaskTabCounts, 
         /**
          * Rows before the filter bar, and after it (for the "filters hid
          * everything" empty state).
@@ -24090,6 +24101,7 @@ public struct TaskViewResult: Equatable, Hashable {
         self.taskIds = taskIds
         self.groups = groups
         self.doneIds = doneIds
+        self.cardIds = cardIds
         self.counts = counts
         self.totalCount = totalCount
         self.filteredCount = filteredCount
@@ -24114,6 +24126,7 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
                 taskIds: FfiConverterSequenceString.read(from: &buf), 
                 groups: FfiConverterSequenceTypeTaskGroupItem.read(from: &buf), 
                 doneIds: FfiConverterSequenceString.read(from: &buf), 
+                cardIds: FfiConverterSequenceString.read(from: &buf), 
                 counts: FfiConverterTypeTaskTabCounts.read(from: &buf), 
                 totalCount: FfiConverterUInt32.read(from: &buf), 
                 filteredCount: FfiConverterUInt32.read(from: &buf)
@@ -24124,6 +24137,7 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
         FfiConverterSequenceString.write(value.taskIds, into: &buf)
         FfiConverterSequenceTypeTaskGroupItem.write(value.groups, into: &buf)
         FfiConverterSequenceString.write(value.doneIds, into: &buf)
+        FfiConverterSequenceString.write(value.cardIds, into: &buf)
         FfiConverterTypeTaskTabCounts.write(value.counts, into: &buf)
         FfiConverterUInt32.write(value.totalCount, into: &buf)
         FfiConverterUInt32.write(value.filteredCount, into: &buf)

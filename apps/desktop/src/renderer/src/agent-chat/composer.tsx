@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 import type {
   AgentAccessMode,
   AgentBackendModelList,
-  AgentBackendModelOption,
   AgentCliBackendId,
   AgentBackendOptions,
   AgentLocalProviderSettings,
   AttachmentInput,
   BackendStatusesResponse,
   CodexReasoningEffort,
-  ClaudeEffort
+  ClaudeEffort,
+  LocalReasoningEffort
 } from '@memry/contracts/ipc-agent'
 import { DEFAULT_CLAUDE_EFFORT, effectiveTurnPermissions } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
@@ -23,7 +23,10 @@ import { ConnectedToolsTray } from './connected-tools-tray'
 import {
   ComposerSettingsMenu,
   claudeReasoningOptions,
-  codexReasoningOptions
+  codexReasoningOptions,
+  localReasoningOptions,
+  type ReasoningOption,
+  type ReasoningValue
 } from './composer-settings-menu'
 import { VoiceDictationButton } from './voice-dictation-button'
 import {
@@ -41,57 +44,41 @@ import {
   persistAgentModelPreference,
   readAgentModelPreference
 } from './agent-model-preference'
+import {
+  DEFAULT_SELECTED_MODELS,
+  EMPTY_MODEL_OPTIONS,
+  MODEL_LABEL_FALLBACKS,
+  catalogFor,
+  defaultModelForProvider,
+  isCliProvider
+} from './composer-models'
+
+export interface ComposerHandle {
+  /** Sends `text` as a new turn with the current settings, leaving the draft alone. */
+  send: (text: string) => Promise<void>
+}
 
 interface ComposerProps {
   conversationId: string | null
   sourceWindowId: string | null
+  ref?: Ref<ComposerHandle>
 }
 
-const DEFAULT_CLAUDE_MODEL = 'opus'
 const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
 const DEFAULT_ACCESS_MODE: AgentAccessMode = 'vault_only'
 
-const DEFAULT_SELECTED_MODELS: Record<AgentCliBackendId, string | null> = {
-  claude_cli: DEFAULT_CLAUDE_MODEL,
-  codex_cli: null,
-  antigravity_cli: null
-}
-
-const EMPTY_MODEL_OPTIONS: Record<AgentCliBackendId, AgentBackendModelList | null> = {
-  claude_cli: null,
-  codex_cli: null,
-  antigravity_cli: null
-}
-
-const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> = {
-  claude_cli: {
-    sonnet: 'Sonnet',
-    haiku: 'Haiku',
-    opus: 'Opus'
-  },
-  codex_cli: {
-    'gpt-5.5': 'GPT-5.5',
-    'gpt-5.4': 'GPT-5.4',
-    'gpt-5.4-mini': 'GPT-5.4 Mini'
-  },
-  antigravity_cli: {
-    'gemini-3.8-flash-high': 'Gemini 3.8 Flash (High)',
-    'gemini-3.8-flash-medium': 'Gemini 3.8 Flash (Medium)',
-    'gemini-3.1-pro-high': 'Gemini 3.1 Pro (High)',
-    'gemini-3.1-pro-low': 'Gemini 3.1 Pro (Low)',
-    'claude-sonnet-4-6': 'Claude Sonnet 4.6 (Thinking)'
-  }
-}
-
-function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
-  return provider !== 'local_openai_compatible'
-}
-
 /**
  * Antigravity model ids already name their reasoning tier, so the composer
- * shows no separate effort control for that backend.
+ * shows no separate effort control for that backend. The Ollama preset ignores
+ * the built-in backend's depth, so it gets none either.
  */
-function hasEffortControl(provider: AgentProvider): boolean {
+function hasEffortControl(
+  provider: AgentProvider,
+  localSettings: AgentLocalProviderSettings | null
+): boolean {
+  if (provider === 'local_openai_compatible') {
+    return localSettings !== null && localSettings.preset !== 'ollama'
+  }
   return provider === 'claude_cli' || provider === 'codex_cli'
 }
 
@@ -121,16 +108,6 @@ function cliAvailability(statuses: BackendStatusesResponse | null | undefined): 
   }
 }
 
-/** Loaded catalogue for a backend, falling back to the built-in labels. */
-function catalogFor(
-  modelOptions: Record<AgentCliBackendId, AgentBackendModelList | null>,
-  backend: AgentCliBackendId
-): AgentBackendModelOption[] {
-  const loaded = modelOptions[backend]?.models
-  if (loaded?.length) return loaded
-  return Object.entries(MODEL_LABEL_FALLBACKS[backend]).map(([id, label]) => ({ id, label }))
-}
-
 function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
   const seen = new Set<string>()
   return attachments.filter((attachment) => {
@@ -141,53 +118,11 @@ function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
   })
 }
 
-function codexModelVersion(modelId: string): number[] | null {
-  const match = /^gpt[-_]?(\d+(?:[.-]\d+)*)(?:-.+)?$/i.exec(modelId)
-  if (!match) return null
-  return match[1].split(/[.-]/).map((segment) => Number(segment))
-}
-
-function compareCodexModels(left: string, right: string): number {
-  const leftVersion = codexModelVersion(left)
-  const rightVersion = codexModelVersion(right)
-  if (!leftVersion && !rightVersion) return 0
-  if (leftVersion && !rightVersion) return 1
-  if (!leftVersion && rightVersion) return -1
-
-  const maxLength = Math.max(leftVersion!.length, rightVersion!.length)
-  for (let index = 0; index < maxLength; index += 1) {
-    const leftPart = leftVersion![index] ?? 0
-    const rightPart = rightVersion![index] ?? 0
-    if (leftPart !== rightPart) return leftPart - rightPart
-  }
-  return 0
-}
-
-function latestCodexModel(modelIds: string[]): string | null {
-  return modelIds.reduce<string | null>((latest, modelId) => {
-    if (!latest) return modelId
-    return compareCodexModels(modelId, latest) > 0 ? modelId : latest
-  }, null)
-}
-
-function defaultModelForProvider(
-  provider: AgentCliBackendId,
-  modelOptions: AgentBackendModelList | null
-): string | null {
-  if (provider === 'claude_cli') return DEFAULT_CLAUDE_MODEL
-  if (provider === 'antigravity_cli') {
-    return (
-      modelOptions?.models[0]?.id ?? Object.keys(MODEL_LABEL_FALLBACKS.antigravity_cli)[0] ?? null
-    )
-  }
-  const codexModelIds =
-    modelOptions?.models.length === 0 || !modelOptions
-      ? Object.keys(MODEL_LABEL_FALLBACKS.codex_cli)
-      : modelOptions.models.map((model) => model.id)
-  return latestCodexModel(codexModelIds)
-}
-
-export function Composer({ conversationId, sourceWindowId }: ComposerProps): React.JSX.Element {
+export function Composer({
+  conversationId,
+  sourceWindowId,
+  ref
+}: ComposerProps): React.JSX.Element {
   const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
@@ -227,6 +162,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   )
   const [codexReasoning, setCodexReasoning] = useState<CodexReasoningEffort>(
     storedPreference?.efforts?.codex_cli ?? DEFAULT_CODEX_REASONING
+  )
+  const [localReasoning, setLocalReasoning] = useState<LocalReasoningEffort>(
+    storedPreference?.efforts?.local_openai_compatible ?? 'default'
   )
 
   useEffect(() => {
@@ -331,17 +269,18 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const localConfigured =
     localSettings !== null &&
     (localSettings.model.trim().length > 0 || (localModels?.length ?? 0) > 0)
-  const selectedClaudeReasoning =
-    claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
-    claudeReasoningOptions[3]
-  const selectedCodexReasoning =
-    codexReasoningOptions.find((option) => option.value === codexReasoning) ??
-    codexReasoningOptions[1]
+  const isLocal = selectedProvider === 'local_openai_compatible'
+  // Each value is validated on read, so `find` always hits; the fallback is the default.
+  const [selectedReasoningOptions, selectedReasoningValue, defaultReasoningIndex] = isLocal
+    ? [localReasoningOptions, localReasoning, 0]
+    : selectedProvider === 'codex_cli'
+      ? [codexReasoningOptions, codexReasoning, 1]
+      : [claudeReasoningOptions, claudeReasoning, 3]
   const selectedReasoning =
-    selectedProvider === 'codex_cli' ? selectedCodexReasoning : selectedClaudeReasoning
-  const selectedReasoningOptions =
-    selectedProvider === 'codex_cli' ? codexReasoningOptions : claudeReasoningOptions
-  const selectedReasoningValue = selectedProvider === 'codex_cli' ? codexReasoning : claudeReasoning
+    (selectedReasoningOptions as ReadonlyArray<ReasoningOption<ReasoningValue>>).find(
+      (option) => option.value === selectedReasoningValue
+    ) ?? selectedReasoningOptions[defaultReasoningIndex]
+  const showEffort = hasEffortControl(selectedProvider, localSettings)
   const effortSummary = t(selectedReasoning.summaryKey)
   const currentModelValueLabel = isCliProvider(selectedProvider)
     ? selectedBackendModel
@@ -350,18 +289,20 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     : (effectiveLocalModel ?? localProviderLabel)
   const summaryLabel = !providerReady
     ? t('agentChat.composer.chooseModel')
-    : hasEffortControl(selectedProvider)
+    : showEffort
       ? `${currentModelValueLabel} · ${effortSummary}`
       : currentModelValueLabel
   const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
     model: currentModelValueLabel,
-    settings: hasEffortControl(selectedProvider) ? effortSummary : localProviderLabel
+    settings: showEffort ? effortSummary : localProviderLabel
   })
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
       return {
         backend: 'local_openai_compatible',
         toolsEnabled: true,
+        // The backend owns whether the preset can use it, so this does not wait on settings.
+        ...(localReasoning !== 'default' ? { reasoningEffort: localReasoning } : {}),
         ...(effectiveLocalModel ? { model: effectiveLocalModel } : {})
       }
     }
@@ -395,6 +336,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     models?: Record<AgentCliBackendId, string | null>
     claudeEffort?: ClaudeEffort
     codexEffort?: CodexReasoningEffort
+    localEffort?: LocalReasoningEffort
     localModel?: string | null
   }): void => {
     persistAgentModelPreference({
@@ -402,7 +344,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       models: overrides.models ?? selectedModels,
       efforts: {
         claude_cli: overrides.claudeEffort ?? claudeReasoning,
-        codex_cli: overrides.codexEffort ?? codexReasoning
+        codex_cli: overrides.codexEffort ?? codexReasoning,
+        local_openai_compatible: overrides.localEffort ?? localReasoning
       },
       localModel: overrides.localModel !== undefined ? overrides.localModel : localModel
     })
@@ -418,14 +361,19 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     setLocalModel(model)
     persistPreference({ provider: 'local_openai_compatible', localModel: model })
   }
-  const selectReasoning = (value: ClaudeEffort | CodexReasoningEffort): void => {
+  const selectReasoning = (value: ReasoningValue): void => {
+    if (isLocal) {
+      setLocalReasoning(value as LocalReasoningEffort)
+      persistPreference({ localEffort: value as LocalReasoningEffort })
+      return
+    }
     if (selectedProvider === 'codex_cli') {
       setCodexReasoning(value as CodexReasoningEffort)
       persistPreference({ codexEffort: value as CodexReasoningEffort })
       return
     }
-    setClaudeReasoning(value)
-    persistPreference({ claudeEffort: value })
+    setClaudeReasoning(value as ClaudeEffort)
+    persistPreference({ claudeEffort: value as ClaudeEffort })
   }
   const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
     if (modelOptions[provider]) return
@@ -590,6 +538,24 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     }
   }
 
+  useImperativeHandle(ref, () => ({
+    send: async (text) => {
+      if (!agent || !conversationId || !sourceWindowId) return
+      try {
+        await agent.sendTurn({
+          conversationId,
+          sourceWindowId,
+          text,
+          backendOptions: backendOptions(),
+          permissions: turnPermissions(),
+          attachments: []
+        })
+      } catch {
+        // Agent context owns the user-facing error.
+      }
+    }
+  }))
+
   function cancelTurn(): void {
     if (!agent || !conversationId || !turnInFlight) return
 
@@ -692,7 +658,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 selectedProvider={selectedProvider}
                 selectedBackendModel={selectedBackendModel}
                 effectiveLocalModel={effectiveLocalModel}
-                showEffort={hasEffortControl(selectedProvider)}
+                showEffort={showEffort}
                 effortSummary={effortSummary}
                 reasoningOptions={selectedReasoningOptions}
                 selectedReasoningValue={selectedReasoningValue}

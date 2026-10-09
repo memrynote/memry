@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -85,5 +93,24 @@ describe('migrateNestedPropertiesToRoot', () => {
       failed: 0
     })
     expect(readFileSync(notePath, 'utf8')).toBe(original)
+  })
+
+  it('leaves a note file linked outside the vault unread and unwritten (#2936)', async () => {
+    const vaultPath = mkdtempSync(path.join('/tmp', 'memry-root-properties-'))
+    const outside = mkdtempSync(path.join('/tmp', 'memry-root-properties-outside-'))
+    tempVaults.push(vaultPath, outside)
+    mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    const secret = path.join(outside, 'private.md')
+    const original = '---\nproperties:\n  status: idea\n---\n\nOutside secret\n'
+    writeFileSync(secret, original)
+    const link = path.join(vaultPath, 'notes', 'Linked.md')
+    symlinkSync(secret, link)
+
+    await expect(migrateNestedPropertiesToRoot(vaultPath)).resolves.toMatchObject({
+      scanned: 0,
+      migrated: 0
+    })
+    expect(lstatSync(link).isSymbolicLink()).toBe(true)
+    expect(readFileSync(secret, 'utf8')).toBe(original)
   })
 })

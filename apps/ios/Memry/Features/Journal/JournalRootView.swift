@@ -67,6 +67,13 @@ struct JournalTabContent: View {
             }
         }
         .task(id: vault.id()) { make() }
+        // The sync request is nil until the tasks store exists, which can be
+        // after this store was made on a cold launch.
+        .onChange(of: requestVaultSync == nil) { store?.requestSync = requestVaultSync }
+        // And once the store exists: `make()` runs in a task that may hold a
+        // render from before the request arrived, and the change above found
+        // no store to hand it to (#2910).
+        .onChange(of: store?.vaultId) { store?.requestSync = requestVaultSync }
         .onChange(of: isSyncing) { _, syncing in
             if !syncing, let store {
                 Task {

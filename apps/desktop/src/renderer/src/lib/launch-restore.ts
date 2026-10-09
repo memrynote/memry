@@ -1,51 +1,36 @@
-// The launch's restored active tab, read straight out of localStorage.
+// The launch's restored active tab, read straight out of localStorage before
+// React renders, so its page chunk can be prefetched and its note-readable mark
+// matched to the right note.
 //
-// Read from storage rather than asked over IPC because the vault path is not
-// available synchronously in the renderer, and a synchronous round-trip here
-// would put back the one a sibling issue just removed from this spot. Tab state
-// is written under `memry_tab_state` (legacy, global) and
-// `memry_tab_state:<vaultPath>`, so with no vault path to key on this picks the
-// entry with the largest `savedAt`. Guessing wrong costs one speculative chunk
-// fetch and nothing else.
+// The key comes from the vault the window was created for (main passes it on
+// the command line, see `@memry/contracts/startup-vault`), so a second vault's
+// newer tab state can never be picked instead. Falls back to the legacy global
+// key that `adoptLegacyState` hands to the first vault that opens.
 import { prefetchPageModule } from '@/components/split-view/tab-content'
-import { STORAGE_KEY } from '@/contexts/tabs/persistence'
+import { STORAGE_KEY, tabStateStorageKey } from '@/contexts/tabs/persistence'
 import type { PersistedTabGroup, PersistedTabState } from '@/contexts/tabs/persistence'
 import type { TabType } from '@/contexts/tabs/types'
+import { vaultService } from '@/services/vault-service'
 import { trackNoteReadable } from './telemetry-diagnostics'
 
 /** Read by `scripts/launch-bench.mjs` over CDP; renaming it breaks that bench. */
 export const NOTE_READABLE_MARK = 'memry:note-readable'
 
+const readTabState = (key: string): Partial<PersistedTabState> | null => {
+  const raw = localStorage.getItem(key)
+  return raw ? (JSON.parse(raw) as Partial<PersistedTabState>) : null
+}
+
 export const readRestoredActiveTab = (): { type: string; entityId?: string } | null => {
   try {
-    let newest: Partial<PersistedTabState> | null = null
-    let newestSavedAt = Number.NEGATIVE_INFINITY
+    const vaultPath = vaultService.getStartupPath()
+    if (!vaultPath) return null
 
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index)
-      if (!key?.startsWith(STORAGE_KEY)) continue
+    const state = readTabState(tabStateStorageKey(vaultPath)) ?? readTabState(STORAGE_KEY)
+    if (!state?.activeGroupId) return null
 
-      const raw = localStorage.getItem(key)
-      if (!raw) continue
-
-      let parsed: Partial<PersistedTabState>
-      try {
-        parsed = JSON.parse(raw) as Partial<PersistedTabState>
-      } catch {
-        continue
-      }
-
-      const savedAt = parsed?.savedAt
-      if (typeof savedAt !== 'number' || savedAt <= newestSavedAt) continue
-
-      newest = parsed
-      newestSavedAt = savedAt
-    }
-
-    if (!newest?.activeGroupId) return null
-
-    const groups = newest.tabGroups as Record<string, PersistedTabGroup | undefined> | undefined
-    const group = groups?.[newest.activeGroupId]
+    const groups = state.tabGroups as Record<string, PersistedTabGroup | undefined> | undefined
+    const group = groups?.[state.activeGroupId]
     if (!group?.activeTabId) return null
 
     const tab = group.tabs?.find((candidate) => candidate.id === group.activeTabId)

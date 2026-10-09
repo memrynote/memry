@@ -145,4 +145,43 @@ test.describe('Tags with fields', () => {
       .toMatch(new RegExp(`^Employer:\\n\\s+- '${acmeLink}'`, 'm'))
     expect(frontmatter(noteFile(testVaultPath, TITLE))).not.toMatch(/^Company:/m)
   })
+
+  test('a template added again after Undo reaches the open editor', async ({
+    page,
+    testVaultPath
+  }) => {
+    test.setTimeout(120_000)
+    await ready(page)
+    await page.locator('button[aria-label="Open tag hub"]').click()
+    await expect(page.getByRole('heading', { name: 'Ready-made tags' })).toBeVisible()
+    await addPreset(page, 'Person')
+
+    const title = `Again ${Date.now().toString(36)}`
+    await createNote(page, title)
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const toast = page.locator('[data-sonner-toast]').filter({ hasText: 'is now a person' })
+
+    await addHeaderTag(page, 'person')
+    await expect(toast).toBeVisible()
+    await expect(editor).toContainText('Context')
+    await toast.getByRole('button', { name: 'Undo' }).click()
+    await expect(editor).not.toContainText('Context')
+    await expect(toast).toHaveCount(0)
+
+    const chip = tagsRow(page).getByRole('option', { name: 'person' })
+    await chip.hover()
+    await page.getByRole('button', { name: 'Remove tag: person' }).click()
+    await expect(chip).toHaveCount(0)
+
+    await addHeaderTag(page, 'person')
+    await expect(toast).toBeVisible()
+    await expect
+      .poll(() => fs.readFileSync(noteFile(testVaultPath, title), 'utf8'))
+      .toContain('Context')
+    await expect(editor).toContainText('Context')
+
+    // The open editor must not write its stale empty body back over the template.
+    await page.waitForTimeout(2500)
+    expect(fs.readFileSync(noteFile(testVaultPath, title), 'utf8')).toContain('Context')
+  })
 })

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { VirtualizedAllTasksView } from './virtualized-all-tasks-view'
+import { DateViewContext, type DateViewValue } from './date-view-context'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
@@ -93,16 +94,19 @@ vi.mock('@/components/tasks/drag-drop', async () => {
     ),
     SortableParentTaskRow: ({
       task,
+      subtasks,
       sectionId,
       columnId
     }: {
       task: Task
+      subtasks: Task[]
       sectionId: string
       columnId?: string
     }) => (
       <div
         data-testid="sortable-parent-task-row"
         data-task-id={task.id}
+        data-subtask-ids={subtasks.map((subtask) => subtask.id).join(',')}
         data-section-id={sectionId}
         data-column-id={columnId ?? ''}
       />
@@ -320,5 +324,41 @@ describe('VirtualizedAllTasksView list DnD metadata', () => {
     rerender(<VirtualizedAllTasksView {...props} />)
 
     expect(measureMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('VirtualizedAllTasksView in a date view', () => {
+  beforeEach(() => {
+    useDragContextMock.mockReturnValue({ dragState: { isDragging: false, activeIds: [] } })
+  })
+
+  it('lists a dated subtask once: as its own row, not inside its parent', () => {
+    const today = new Date()
+    const parent = createTask({ id: 'parent', dueDate: today, subtaskIds: ['child', 'undated'] })
+    const child = createTask({ id: 'child', parentId: 'parent', dueDate: today })
+    const undated = createTask({ id: 'undated', parentId: 'parent' })
+    const dateView: DateViewValue = {
+      tasks: [parent, child, undated],
+      pathOf: () => null,
+      openPath: vi.fn()
+    }
+
+    render(
+      <DateViewContext.Provider value={dateView}>
+        <VirtualizedAllTasksView
+          tasks={[parent, child]}
+          projects={[createProject()]}
+          onToggleComplete={vi.fn()}
+          onQuickAdd={vi.fn()}
+        />
+      </DateViewContext.Provider>
+    )
+
+    const parentRow = screen.getByTestId('sortable-parent-task-row')
+    expect(parentRow).toHaveAttribute('data-task-id', 'parent')
+    expect(parentRow).toHaveAttribute('data-subtask-ids', 'undated')
+    expect(screen.getAllByTestId('sortable-task-row').map((row) => row.dataset.taskId)).toEqual([
+      'child'
+    ])
   })
 })

@@ -19,6 +19,7 @@ import {
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
+import { refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
@@ -573,6 +574,8 @@ async function performWriteback(
     log.debug('Write-back skipped: no note row', { noteId })
     return
   }
+  // A file linked outside the vault is neither read nor written over (#2804).
+  refuseOutsideVaultSync(getVaultRoot(), cached.path)
 
   // Fail closed. If the doc holds a node type this build has no schema spec
   // for, every serialization of it is missing that node — writing the result

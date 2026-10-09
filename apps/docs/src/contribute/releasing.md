@@ -13,6 +13,19 @@ A release runs in two places. GitHub Actions builds and signs the macOS artifact
 
 `pnpm release` checks every item above before it dispatches anything. When one is missing, it names the exact fix for that item.
 
+## Before the release: provider smoke check
+
+Before each desktop release, run the built-in agent backend against DeepSeek:
+
+```bash
+MEMRY_SMOKE_BASE_URL=https://api.deepseek.com/v1 \
+MEMRY_SMOKE_MODEL=deepseek-v4-flash \
+MEMRY_SMOKE_API_KEY=<your key> \
+pnpm --filter @memry/desktop smoke:local-provider
+```
+
+The script runs the app's own capability probe, one vault tool round trip and a reasoning check, then sends each optional field the app can add to a request (`reasoning_effort` `high` and `max`, `thinking` disabled). It prints `PASS` or `FAIL` for each check and exits 1 when any check fails. It never prints the key: every output line, including an error the provider sends back, has the key replaced with `[key]`. A failure means a DeepSeek user would hit it in this build, so fix it before releasing. The same script works against any OpenAI-compatible endpoint.
+
 ## Running a release
 
 ```bash

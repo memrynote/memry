@@ -205,3 +205,60 @@ fn storage_failed(error: rusqlite::Error) -> CrdtError {
         what: error.to_string(),
     })
 }
+
+/// Seeds a document from `markdown` when its body is empty, and queues the
+/// update with its log row, inside `tx` (chapter 12 §12.1.0): a journal day
+/// opened from a template, and a note created from one. A body that holds
+/// anything is left alone.
+pub(crate) fn seed_empty_body_in(
+    tx: &Connection,
+    item_type: &str,
+    id: &str,
+    markdown: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if crate::domain::journal_rules::js_trim(markdown).is_empty() {
+        return Ok(());
+    }
+    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let authored = Arc::clone(&authored);
+        Arc::new(move |_, bytes: &[u8]| {
+            authored
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(bytes.to_vec());
+        })
+    };
+    let document = DocumentRegistry::new(device_id, sink)
+        .get_or_open(id)
+        .map_err(seed_failed)?;
+    for blob in update_log::load_plan(tx, id).map_err(seed_failed)?.blobs() {
+        document.apply_durable_update(blob).map_err(seed_failed)?;
+    }
+    if !markdown_seed::body_is_empty(&document).map_err(seed_failed)? {
+        return Ok(());
+    }
+    markdown_seed::seed_document(&document, markdown).map_err(seed_failed)?;
+
+    let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
+    for update in updates {
+        update_log::append_local_update_in(tx, id, &update, now_ms).map_err(seed_failed)?;
+        outbox::enqueue(
+            tx,
+            &outbox::Change::crdt_update(item_type, id, update),
+            now_ms,
+        )?;
+    }
+    Ok(())
+}
+
+fn seed_failed(error: CrdtError) -> StorageError {
+    match error {
+        CrdtError::Storage { source } => source,
+        other => StorageError::Failed {
+            what: other.to_string(),
+        },
+    }
+}

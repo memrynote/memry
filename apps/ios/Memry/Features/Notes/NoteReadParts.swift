@@ -163,11 +163,14 @@ extension NoteReadViewModel {
         return detail.summary.folderPath
     }
 
-    var displayTitle: String {
-        guard case let .ready(detail) = phase, !detail.summary.title.isEmpty else {
-            return "Untitled note"
-        }
+    /// The stored title, empty when the note has none: what a rename edits.
+    var title: String {
+        guard case let .ready(detail) = phase else { return "" }
         return detail.summary.title
+    }
+
+    var displayTitle: String {
+        title.isEmpty ? "Untitled note" : title
     }
 
     /// Fetches the bytes for every attachment this note is still waiting on,

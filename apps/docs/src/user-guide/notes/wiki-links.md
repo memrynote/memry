@@ -282,7 +282,7 @@ the note's outgoing links and on the graph.
 
 Neither comment appears in a PDF or HTML export, and the links inside them are left out as
 well. Comment syntax written inside inline code or a code block is text, so it stays in the
-export as code.
+export as code, unless a comment opened earlier on the same line (see below).
 
 Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
 byte for byte. In the editor both forms show as a small muted marker, `<!---->` for an HTML
@@ -299,7 +299,46 @@ later `B 20%% tax` hide everything between them. A `%%` in a code block, or in i
 a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
 A `%%` with no partner is plain text.
 
-Footnotes are not supported yet.
+An HTML comment that opens after other text on its line, such as `a <!--`, ends before a code
+block that starts below it. If its `-->` is inside that code block, the `<!--` is plain text
+and the code block stays code. An HTML comment that starts its line runs to the first `-->`,
+code blocks included.
+
+On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
+``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
+so the export reads ``Sale 50d` [[X]]``, with a stray backtick. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
+
+In a table row, a comment ends inside its own cell. A `%%` or `<!--` whose partner sits past the
+next `|` is plain text, so `| 50%% | 20%% |` keeps both cells. A `|` inside `[[Topic|alias]]` does
+not end the cell, so `| %% [[Topic|alias]] %% |` is still one comment.
+
+### Footnotes
+
+A footnote is another way to cite a note without a link in the sentence. Write a reference
+such as `[^1]` or `[^source]` in the text, and its definition on its own line, usually at the
+end of the note:
+
+```markdown
+The figure comes from last year's review[^source].
+
+[^source]: See [[Annual Review]], page 4.
+```
+
+The file keeps both lines exactly as written, so other Markdown apps and older memrynote
+versions read the same text. In the editor a reference shows as a small superscript number.
+Hover it to read the definition, and move the cursor into it to edit the raw `[^label]`. A
+definition line stays where you wrote it, in a muted style. Notes are numbered in the order
+they are first referenced, whatever their labels. A reference with no definition stays plain
+text.
+
+A link inside a definition works like any other link: it shows in the target's backlinks and
+on the graph.
+
+A PDF or HTML export prints each reference as a numbered superscript and lists the notes under
+**Notes** at the end, each with a link back to its reference. The definition lines are not
+printed where they stand, and a definition nothing references is left out.
+
+Inline footnotes such as `^[text]` are not supported and stay plain text.
 
 ## People and Things in Links
 

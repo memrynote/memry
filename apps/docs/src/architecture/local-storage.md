@@ -39,9 +39,10 @@ no user keys has no YAML block at all.
   delete and polls for the vault every two seconds. When it is back the watcher restarts, since
   chokidar hears nothing after its root was moved, and rescans: an indexed file that is gone takes
   the normal delete path, a file newer than its index stamp takes the change path, and a file the
-  index does not know takes the add path (`src/main/vault/watcher.ts`). A note renamed while the
-  vault was away matches by content hash only if its new path is reached inside the rename window,
-  so in a large vault it can come back as a delete plus a new note.
+  index does not know takes the add path (`src/main/vault/watcher.ts`). The rescan lists the gone,
+  new and changed files before it starts any delete, then issues the deletes and the adds back to
+  back, so a note renamed while the vault was away matches its old id by content hash inside the
+  rename window however long the vault takes to walk.
 
 ## Derived State Projections
 
@@ -109,6 +110,12 @@ folder and date format, and attachments folder. `getConfig()` reads it on most v
 — note IO, folder listing, journal resolution, embed resolution, indexing, inbox filing and the
 per-note sync handler — so the parsed result is cached per vault in the main process rather than
 re-read and re-parsed on every call.
+
+The config's `attachmentsFolder` field is kept so older builds can read the file, but nothing
+uses it. Desktop and the CLI always keep attachments in `attachments/<noteId>/`
+(`ATTACHMENTS_DIR`), and the indexer, the watcher and the folder tree skip that folder. A vault
+whose config names another folder keeps its files there; that folder is indexed like any other
+vault folder.
 
 The cache is validated against the file itself, not against a list of known writers:
 

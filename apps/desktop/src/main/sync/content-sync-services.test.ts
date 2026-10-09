@@ -171,11 +171,18 @@ vi.mock('../vault/frontmatter', () => ({
 vi.mock('../vault/journal', () => ({
   extractJournalProperties: (frontmatter: { properties?: Record<string, unknown> }) =>
     frontmatter.properties,
-  getJournalPath: (date: string) => `/vault/journals/${date}.md`,
+  readJournalTextSync: (date: string) => mocks.readFileSync(`/vault/journals/${date}.md`, 'utf-8'),
   parseJournalEntry: (...args: unknown[]) => mocks.parseJournalEntry(...args)
 }))
 
+// `fs` is mocked whole here, so the outside-vault check has no disk to resolve.
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  refuseOutsideVaultSync: vi.fn()
+}))
+
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => '/vault',
   toAbsolutePath: (relativePath: string) => `/vault/${relativePath}`
 }))
 

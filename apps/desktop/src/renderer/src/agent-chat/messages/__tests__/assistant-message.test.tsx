@@ -1,5 +1,5 @@
 import type { AgentSourceRef, Message } from '@memry/contracts/ipc-agent'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -281,6 +281,111 @@ describe('AssistantMessage', () => {
     )
 
     expect(screen.getByText(notice)).toBeInTheDocument()
+  })
+
+  it.each([
+    'I will search.\n<\uff5c\uff5cDSML\uff5c\uff5c calls>\n<\uff5c\uff5cDSML\uff5c\uff5c invoke name="vault_search_notes">',
+    '<tool_calls><vault_search_notes query="X" /></tool_calls>',
+    '<tool_call>{"name":"vault_search_notes"}</tool_call>',
+    '<function_calls><invoke name="vault_search_notes"></invoke></function_calls>'
+  ])('says nothing ran when a tools-off answer writes a tool call as text: %s', (text) => {
+    const nothingRan = /wrote a tool call as text, and nothing ran/
+    const message = (toolsUnavailable?: { reason: 'no_tool_call'; detail: null }): Message => ({
+      ...assistantMessage(text),
+      content: { role: 'assistant', data: { text, ...(toolsUnavailable && { toolsUnavailable }) } }
+    })
+    const { rerender } = render(
+      <AssistantMessage message={message({ reason: 'no_tool_call', detail: null })} />
+    )
+    expect(screen.getByText(nothingRan)).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={message()} />)
+    expect(screen.queryByText(nothingRan)).not.toBeInTheDocument()
+  })
+
+  it('adds no nothing-ran sentence to a plain tools-off answer', () => {
+    render(
+      <AssistantMessage
+        message={{
+          ...assistantMessage('Plain answer'),
+          content: {
+            role: 'assistant',
+            data: {
+              text: 'Plain answer',
+              toolsUnavailable: { reason: 'no_tool_call', detail: null }
+            }
+          }
+        }}
+      />
+    )
+    expect(screen.queryByText(/nothing ran/)).not.toBeInTheDocument()
+  })
+
+  it('says the turn stopped at the step limit and continues from a button', async () => {
+    const stopped = (text: string): Message => ({
+      ...assistantMessage(text),
+      content: { role: 'assistant', data: { text, stepLimitReached: true } }
+    })
+    const onContinue = vi.fn()
+    const { rerender } = render(
+      <AssistantMessage message={stopped('Done: A. Left: B.')} onContinue={onContinue} />
+    )
+
+    expect(screen.getByText('Stopped at the step limit.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(onContinue).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/nothing ran/)).not.toBeInTheDocument()
+
+    rerender(<AssistantMessage message={stopped('Done: A. Left: B.')} />)
+    expect(screen.getByText('Stopped at the step limit.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+
+    rerender(
+      <AssistantMessage
+        message={stopped('<tool_call>{"name":"vault_get_tags"}</tool_call>')}
+        onContinue={onContinue}
+      />
+    )
+    expect(screen.getByText(/wrote a tool call as text, and nothing ran/)).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={assistantMessage('Done.')} onContinue={onContinue} />)
+    expect(screen.queryByText('Stopped at the step limit.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+  })
+
+  it('shows a waiting timer under a started answer after 3 s without a delta', () => {
+    vi.useFakeTimers()
+    try {
+      const streaming = (text: string): Message => ({
+        ...assistantMessage(text),
+        status: 'streaming'
+      })
+      const waiting = (): HTMLElement | null =>
+        screen.queryByRole('status', { name: 'Agent is thinking' })
+      const { rerender } = render(<AssistantMessage message={streaming('Handing this off.')} />)
+
+      act(() => vi.advanceTimersByTime(2900))
+      expect(waiting()).toBeNull()
+
+      act(() => vi.advanceTimersByTime(1200))
+      expect(screen.getByText('Handing this off.')).toBeInTheDocument()
+      expect(waiting()).toHaveTextContent('4.1s')
+
+      rerender(<AssistantMessage message={streaming('Handing this off. Done')} />)
+      expect(waiting()).toBeNull()
+
+      act(() => vi.advanceTimersByTime(3500))
+      expect(waiting()).toHaveTextContent('3.5s')
+
+      rerender(
+        <AssistantMessage
+          message={{ ...assistantMessage('Handing this off. Done'), status: 'completed' }}
+        />
+      )
+      expect(waiting()).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {

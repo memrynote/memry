@@ -307,8 +307,11 @@ describe('vault watcher', () => {
 
     window.webContents.send.mockClear()
 
+    fs.rmSync(notePath)
     await watcher.handleFileDelete(notePath)
     await vi.advanceTimersByTimeAsync(500)
+    // The delete first checks on disk that the file is really gone.
+    await vi.waitFor(() => expect(unlinkTasksFromDeletedNote).toHaveBeenCalledWith(noteId))
 
     const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
     expect(deleted).toBeUndefined()
@@ -732,6 +735,34 @@ describe('vault watcher', () => {
     await watcher.stop()
   })
 
+  it('skips attachments/ and watches the folder a non-default attachmentsFolder names', async () => {
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' } as never)
+    const mockWatcher = {
+      on: vi.fn(() => mockWatcher),
+      once: vi.fn((event: string, handler: () => void) => {
+        if (event === 'ready') handler()
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+
+    const watcher = new VaultWatcher()
+    await watcher.start({ vaultPath: vault.path })
+    const ignored = mockWatch.mock.calls[0][1].ignored as (
+      filePath: string,
+      stats?: { isFile: () => boolean }
+    ) => boolean
+    const file = { isFile: () => true }
+    const dir = { isFile: () => false }
+
+    expect(ignored(path.join(vault.path, 'attachments'), dir)).toBe(true)
+    expect(ignored(path.join(vault.path, 'attachments', 'n1', 'a.md'), file)).toBe(true)
+    expect(ignored(path.join(vault.path, 'files'), dir)).toBe(false)
+    expect(ignored(path.join(vault.path, 'files', 'note.md'), file)).toBe(false)
+    await watcher.stop()
+  })
+
   it('logs an unsupported file dropped in after the initial walk, once', async () => {
     const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
     const mockWatcher = {
@@ -786,8 +817,10 @@ describe('vault watcher', () => {
     fs.writeFileSync(imagePath, Buffer.from('image'))
     await watcher.handleFileAdd(imagePath)
 
+    fs.rmSync(imagePath)
     watcher.handleFileDelete(imagePath)
     await vi.advanceTimersByTimeAsync(5_000)
+    await vi.waitFor(() => expect(listActivity()).toHaveLength(2))
     await flushProjectionEvents()
 
     expect(listActivity().map((entry) => [entry.kind, entry.path])).toEqual([
@@ -925,15 +958,18 @@ describe('vault watcher', () => {
     expect(emittedId).not.toBe('j2026-05-10')
 
     window.webContents.send.mockClear()
+    fs.rmSync(journalPath)
     watcher.handleFileDelete(journalPath)
     await vi.advanceTimersByTimeAsync(500)
 
-    expect(window.webContents.send).toHaveBeenCalledWith(
-      JournalChannels.events.ENTRY_DELETED,
-      expect.objectContaining({
-        date: '2026-05-10',
-        source: 'external'
-      })
+    await vi.waitFor(() =>
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        JournalChannels.events.ENTRY_DELETED,
+        expect.objectContaining({
+          date: '2026-05-10',
+          source: 'external'
+        })
+      )
     )
   })
 
@@ -1140,7 +1176,38 @@ describe('vault watcher', () => {
       { alternatives: {}, overflow: [] }
     )
     // …and the doc is handed back, since no editor asked for it
-    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id, { deferSnapshot: true })
+  })
+
+  it('neither indexes nor feeds the CRDT a note swapped for a link outside the vault', async () => {
+    const notePath = createTestNote(vault, { title: 'swapped', content: 'Vault body' })
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    watcher.onError = vi.fn()
+    await watcher.handleFileAdd(notePath)
+    const before = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/swapped.md'))
+      .get()
+    const outside = fs.mkdtempSync(path.join(path.dirname(vault.path), 'watcher-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret.')
+    fs.unlinkSync(notePath)
+    fs.symlinkSync(secret, notePath)
+    window.webContents.send.mockClear()
+    replaceNoteBodyInCrdt.mockClear()
+
+    await watcher.handleFileChange(notePath)
+
+    const after = indexDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
+    expect(after?.contentHash).toBe(before?.contentHash)
+    expect(replaceNoteBodyInCrdt).not.toHaveBeenCalled()
+    expect(JSON.stringify(window.webContents.send.mock.calls)).not.toContain('Outside secret')
+    expect(watcher.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('points outside the vault') })
+    )
+    fs.rmSync(outside, { recursive: true, force: true })
   })
 
   it('leaves a note that has no persisted doc to its markdown seed', async () => {
@@ -1168,7 +1235,7 @@ describe('vault watcher', () => {
     await feedExternalEdit(cached!.id, notePath, 'Old body\n\n- [[Somewhere]]')
 
     expect(replaceNoteBodyInCrdt).not.toHaveBeenCalled()
-    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id, { deferSnapshot: true })
   })
 
   // ==========================================================================
@@ -1267,6 +1334,30 @@ describe('vault watcher', () => {
         changes: expect.objectContaining({ wordCount: 3 })
       })
     )
+  })
+
+  it('backfills nothing from a new note file that links outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(path.dirname(vault.path), 'watcher-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret words')
+    const notePath = path.join(vault.path, 'notes', 'linked.md')
+    fs.symlinkSync(secret, notePath)
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+    window.webContents.send.mockClear()
+
+    await drainIngestBackfill()
+
+    const row = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/linked.md'))
+      .get()
+    expect(row?.contentHash ?? null).toBeNull()
+    expect(row?.snippet ?? null).toBeNull()
+    expect(JSON.stringify(window.webContents.send.mock.calls)).not.toContain('Outside secret')
+    fs.rmSync(outside, { recursive: true, force: true })
   })
 
   // The watcher never sees the attachments folder, so the body that embeds a

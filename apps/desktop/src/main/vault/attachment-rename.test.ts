@@ -28,6 +28,7 @@ vi.mock('./notes-io', () => ({ getVaultRoot: () => vaultPath }))
 vi.mock('./index', () => ({ getStatus: () => ({ path: vaultPath }) }))
 
 import {
+  applyDownloadedAttachmentName,
   buildRenamedFilename,
   renameAttachment,
   resolveCollision,
@@ -201,5 +202,45 @@ describe('renameAttachment', () => {
     expect(fs.existsSync(path.join(vaultPath, 'attachments', NOTE_ID, 'k3f9x2-scan.pdf'))).toBe(
       true
     )
+  })
+})
+
+describe('applyDownloadedAttachmentName', () => {
+  function writeNote(body: string): void {
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.writeFileSync(path.join(vaultPath, NOTE_PATH), body)
+  }
+
+  const fileMarker = (filename: string): string =>
+    `<!-- file:{"url":"../attachments/${NOTE_ID}/${filename}","name":"x","size":1,"mimeType":"application/pdf"} -->`
+
+  it('renames a download to the name the note body carries', async () => {
+    writeNote(fileMarker('k3f9x2-invoice.pdf'))
+    const downloaded = writeAttachment(`attachments/${NOTE_ID}/k3f9x2-scan.pdf`)
+
+    await applyDownloadedAttachmentName(NOTE_ID, downloaded)
+
+    expect(fs.readdirSync(path.join(vaultPath, 'attachments', NOTE_ID))).toEqual([
+      'k3f9x2-invoice.pdf'
+    ])
+  })
+
+  it('does not read a note file linked outside the vault (#2936)', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'attachment-rename-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, fileMarker('k3f9x2-outside-secret.pdf'))
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.symlinkSync(secret, path.join(vaultPath, NOTE_PATH))
+    const downloaded = writeAttachment(`attachments/${NOTE_ID}/k3f9x2-scan.pdf`)
+
+    try {
+      await applyDownloadedAttachmentName(NOTE_ID, downloaded)
+
+      expect(fs.readdirSync(path.join(vaultPath, 'attachments', NOTE_ID))).toEqual([
+        'k3f9x2-scan.pdf'
+      ])
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
   })
 })

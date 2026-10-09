@@ -14,10 +14,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TabContent } from './tab-content'
 import type { Tab } from '@/contexts/tabs/types'
 
-const mocks = vi.hoisted(() => ({
-  canvasMounts: [] as string[],
-  closeTab: vi.fn()
-}))
+const mocks = vi.hoisted(() => {
+  let releaseTagsHubChunk = (): void => {}
+  const tagsHubChunk = new Promise<void>((resolve) => {
+    releaseTagsHubChunk = resolve
+  })
+  return {
+    canvasMounts: [] as string[],
+    closeTab: vi.fn(),
+    tagsHubChunk,
+    releaseTagsHubChunk: () => releaseTagsHubChunk()
+  }
+})
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
@@ -52,6 +60,12 @@ vi.mock('@/pages/canvas', async () => {
       return <div data-testid="canvas-page-stub" data-canvas-id={canvasId} />
     }
   }
+})
+
+// Holds the chunk open until the test releases it, like a cold page download.
+vi.mock('@/pages/tags-hub', async () => {
+  await mocks.tagsHubChunk
+  return { TagsHubPage: () => <div data-testid="tags-hub-page-stub" /> }
 })
 
 vi.mock('@/components/graph/graph-page', () => ({
@@ -121,5 +135,20 @@ describe('TabContent canvas tabs', () => {
 
     expect(mocks.closeTab).toHaveBeenCalledWith('broken-graph', 'main')
     consoleError.mockRestore()
+  })
+})
+
+describe('TabContent page loading', () => {
+  it('shows a spinner, not a blank pane, while a slow page chunk loads', async () => {
+    render(<TabContent tab={{ ...makeGraphTab('tags-tab'), type: 'tags' }} groupId="main" />)
+
+    // Too early to show it: a prefetched chunk lands inside this window.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status', { name: 'state.loading' })).toBeInTheDocument()
+
+    mocks.releaseTagsHubChunk()
+
+    expect(await screen.findByTestId('tags-hub-page-stub')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

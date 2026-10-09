@@ -9,7 +9,8 @@ import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
-import { toAbsolutePath } from '../vault/notes'
+import { getVaultRoot, toAbsolutePath } from '../vault/notes'
+import { refuseOutsideVaultSync } from '../lib/paths'
 import { parseNote } from '../vault/frontmatter'
 import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
@@ -94,6 +95,7 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
     let tags: string[] = []
     const absolutePath = toAbsolutePath(cached.path)
     try {
+      refuseOutsideVaultSync(getVaultRoot(), cached.path)
       const raw = fs.readFileSync(absolutePath, 'utf-8')
       const parsed = parseNote(raw)
       content = operation === 'create' ? parsed.content : null

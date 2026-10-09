@@ -3,7 +3,8 @@ import type {
   AgentBackendId,
   AgentCliBackendId,
   ClaudeEffort,
-  CodexReasoningEffort
+  CodexReasoningEffort,
+  LocalReasoningEffort
 } from '@memry/contracts/ipc-agent'
 
 const log = createLogger('AgentModelPreference')
@@ -18,6 +19,7 @@ export interface AgentModelPreference {
   efforts?: {
     claude_cli?: ClaudeEffort
     codex_cli?: CodexReasoningEffort
+    local_openai_compatible?: LocalReasoningEffort
   }
   localModel?: string | null
 }
@@ -31,6 +33,7 @@ const PROVIDERS: AgentProvider[] = [
 const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
 const CLAUDE_EFFORTS: ClaudeEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']
 const CODEX_EFFORTS: CodexReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']
+const LOCAL_EFFORTS: LocalReasoningEffort[] = ['default', 'high', 'max']
 
 /** Last provider + per-backend model/effort the user picked. Device-local by design (no sync). */
 export function readAgentModelPreference(): AgentModelPreference | null {
@@ -54,6 +57,10 @@ export function readAgentModelPreference(): AgentModelPreference | null {
       }
       if (CODEX_EFFORTS.includes(parsed.efforts.codex_cli as CodexReasoningEffort)) {
         efforts.codex_cli = parsed.efforts.codex_cli
+      }
+      const local = parsed.efforts.local_openai_compatible
+      if (LOCAL_EFFORTS.includes(local as LocalReasoningEffort)) {
+        efforts.local_openai_compatible = local
       }
     }
     const localModel =

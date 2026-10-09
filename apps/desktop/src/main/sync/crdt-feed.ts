@@ -79,6 +79,13 @@ export async function replaceDocBody(
     await loadBlockNoteConverter()
   const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId), writing)
   if (!prepared) return false
+  // An open editor always holds at least one block, and its binding stops
+  // following the doc once the fragment is emptied under it: every later feed
+  // lands in the doc but never on screen, and the editor's stale empty body is
+  // what it saves next. An empty body is BlockNote's empty document instead.
+  if (prepared.blocks.length === 0) {
+    prepared.blocks = [{ type: 'paragraph' } as (typeof prepared.blocks)[number]]
+  }
 
   const fragment = doc.getXmlFragment('prosemirror')
   doc.transact(() => {

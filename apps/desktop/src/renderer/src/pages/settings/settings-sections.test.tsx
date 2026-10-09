@@ -382,7 +382,8 @@ function installWindowApi() {
         baseUrl: 'http://localhost:11434/v1',
         model: 'llama3',
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'default'
       }),
       getPreferences: vi.fn().mockResolvedValue(agentPreferences),
       getBackendStatuses: vi.fn().mockResolvedValue({
@@ -406,7 +407,8 @@ function installWindowApi() {
         baseUrl: input.baseUrl,
         model: input.model,
         apiKeyConfigured: Boolean(input.apiKey),
-        allowNonLoopback: input.allowNonLoopback
+        allowNonLoopback: input.allowNonLoopback,
+        thinking: input.thinking ?? 'default'
       })),
       listLocalModels: vi.fn().mockResolvedValue({ models: ['llama3', 'qwen2.5'] }),
       testLocalProvider: vi.fn().mockResolvedValue({
@@ -1176,6 +1178,7 @@ describe('settings section coverage', () => {
     expect(await screen.findByText('qwen2.5')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'qwen2.5' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'agentProviders.fields.thinking.off' }))
     const apiKeyInput = document.querySelector('input[type="password"]')
     expect(apiKeyInput).not.toBeNull()
     fireEvent.change(apiKeyInput as HTMLInputElement, { target: { value: 'local-secret' } })
@@ -1188,6 +1191,7 @@ describe('settings section coverage', () => {
           baseUrl: 'https://models.example.com/v1',
           model: 'qwen2.5',
           allowNonLoopback: true,
+          thinking: 'off',
           apiKey: 'local-secret'
         }),
       { timeout: 2000 }

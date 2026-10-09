@@ -53,7 +53,9 @@ struct NotesListView: View {
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
     @State private var isNamingFolder = false
     @State private var draftFolderName = ""
+    @State private var isPickingTemplate = false
     private let notesLinks = NotesLinks.shared
+    @Environment(\.requestVaultSync) private var requestVaultSync
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -167,11 +169,15 @@ struct NotesListView: View {
                             newFolder: {
                                 draftFolderName = ""
                                 isNamingFolder = true
-                            }
+                            },
+                            fromTemplate: { isPickingTemplate = true }
                         )
                         .padding(.horizontal, Tokens.Space.inset)
                         .padding(.bottom, Tokens.Space.medium)
                     }
+                }
+                .fromTemplateSheet(isPresented: $isPickingTemplate, browse: model, folderPath: nil) {
+                    path.append(NoteRoute(id: $0))
                 }
                 .alert("New folder", isPresented: $isNamingFolder) {
                     TextField("Name", text: $draftFolderName)
@@ -188,6 +194,12 @@ struct NotesListView: View {
                     if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
                 .task { await model.loadIfNeeded() }
+                // Not a one-off in `.task`: Notes is the first tab, and on a
+                // cold launch the vault's sync request is still nil until the
+                // tasks store exists.
+                .onChange(of: requestVaultSync == nil, initial: true) {
+                    model.requestSync = requestVaultSync
+                }
                 .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
                 .onAppear { Task { await model.refresh() } }
                 .writeFailureAlert(model)

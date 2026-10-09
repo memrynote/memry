@@ -111,7 +111,8 @@ describe('LocalOpenAICompatibleBackend text-format tool calls after a native pro
         baseUrl: 'http://127.0.0.1:8080/v1',
         model: MODEL,
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'default'
       }),
       getApiKey: async () => null,
       toolBridge: { execute } as never

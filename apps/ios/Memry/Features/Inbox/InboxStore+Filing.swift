@@ -24,6 +24,27 @@ struct InboxLinkChoice: Hashable, Sendable {
 }
 
 extension InboxStore {
+    /// The File sheet's folders: configured and derived, as the notes tree
+    /// lists them. Unreadable notes degrade to the configured folders.
+    func fileDestinations() async -> [FolderSummary] {
+        guard let notes else { return [] }
+        let configured: [FolderSummary]
+        do {
+            configured = try await executorRun { try notes.folders() }
+        } catch {
+            Log.storage.error("this vault's folders could not be read for filing", .code(ErrorMapping.userFacing(error).code))
+            return []
+        }
+        let listed: [NoteSummary]
+        do {
+            listed = try await executorRun { try notes.list() }
+        } catch {
+            Log.storage.error("this vault's notes could not be read for filing", .code(ErrorMapping.userFacing(error).code))
+            listed = []
+        }
+        return VaultOutline.destinations(configured: configured, notes: listed)
+    }
+
     /// Files to a folder (`""` = the vault root): the swipe, the quick-file
     /// row, the File sheet without note links.
     /// `sidebarFallback`: the user asked for an image "in the sidebar", which

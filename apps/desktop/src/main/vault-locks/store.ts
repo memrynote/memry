@@ -111,6 +111,12 @@ export function forgetFileMode(db: DataDb, path: string): void {
   db.delete(vaultLockFileModes).where(eq(vaultLockFileModes.path, path)).run()
 }
 
+export function listFileModes(
+  db: DataDb
+): Array<{ path: string; mode: number; identity: string | null }> {
+  return db.select().from(vaultLockFileModes).all()
+}
+
 export function listFileModePaths(db: DataDb): string[] {
   return db
     .select({ path: vaultLockFileModes.path })

@@ -88,7 +88,7 @@ export async function feedExternalEditToCrdt(
   } finally {
     // Only if it is still editor-less: the renderer may have opened the note
     // while the replace was in flight, and that doc belongs to the editor now.
-    if (!held) await provider.closeIfInactive(noteId)
+    if (!held) await provider.closeIfInactive(noteId, { deferSnapshot: true })
     // After the close: the outbox may flush the row at once, and that flush
     // must open its own doc rather than borrow this one.
     if (owesRow) provider.recordOwedFullState(noteId)

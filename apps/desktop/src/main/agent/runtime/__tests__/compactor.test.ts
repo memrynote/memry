@@ -198,7 +198,8 @@ describe('Conversation compactor', () => {
             text: 'Plain answer',
             reasoning: 'Thinking it over.',
             reasoningDurationMs: 900,
-            toolsUnavailable: { detail: 'HTTP 400' }
+            toolsUnavailable: { detail: 'HTTP 400' },
+            stepLimitReached: true
           }
         },
         createdAt: 0

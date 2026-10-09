@@ -137,4 +137,28 @@ describe('migrateTemplateFilesToDb', () => {
     expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
     expect(testDb.db.select().from(templates).all()[0]).toMatchObject({ id: 'good' })
   })
+
+  it('does not import a template file linked outside the vault, and retries it next open (#2936)', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tpl-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, matter.stringify('Outside secret', { id: 'leak', name: 'Leak' }))
+    const dir = path.join(vaultPath, '.memry', 'templates')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.symlinkSync(secret, path.join(dir, 'leak.md'))
+    writeTemplateFile('good', { id: 'good', name: 'Good', isBuiltIn: false }, 'body')
+
+    try {
+      expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
+      expect(
+        testDb.db
+          .select()
+          .from(templates)
+          .all()
+          .map((row) => row.id)
+      ).toEqual(['good'])
+      expect(getSetting(testDb.db as never, 'templates.importedFromFiles')).toBeNull()
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
 })

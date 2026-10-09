@@ -45,6 +45,12 @@ export interface AgentBackend {
   summarize(input: AgentBackendRunInput): Promise<BackendRunHandle>
   getStatus(): Promise<AgentBackendStatus>
   probeCapabilities?(): Promise<AgentLocalProviderProbeResult>
+  /**
+   * Whether the next turn with these options sends tool schemas. The turn asks once
+   * before it assembles the prompt, and the run reuses the same answer. A backend
+   * without it always has tools.
+   */
+  turnHasTools?(options: AgentBackendOptions): Promise<boolean>
 }
 
 export interface ClaudeCliSpawnInput {

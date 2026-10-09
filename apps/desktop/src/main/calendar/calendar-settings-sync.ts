@@ -72,8 +72,7 @@ interface SyncedField {
 }
 
 export interface CalendarSettingsSyncTarget {
-  /** False when no device is registered yet (#2287); nothing was written. */
-  updateField(fieldPath: string, value: unknown): boolean
+  updateField(fieldPath: string, value: unknown): void
   getPayload(): { settings: SyncedSettings; fieldClocks: Record<string, unknown> }
 }
 
@@ -190,8 +189,8 @@ export function seedCalendarSyncedSettings(db: DataDb, target: CalendarSettingsS
     for (const field of changedCalendarFields(key, null, getSetting(db, key))) {
       if (Object.prototype.hasOwnProperty.call(fieldClocks, field.path)) continue
       if (syncedValueAt(settings, field.path) !== undefined) continue
-      // Before a device registers nothing ticks; the seed runs again then.
-      if (target.updateField(field.path, field.value)) seeded += 1
+      target.updateField(field.path, field.value)
+      seeded += 1
     }
   }
   if (seeded > 0) log.info('Seeded calendar settings into settings sync', { seeded })

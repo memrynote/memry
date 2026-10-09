@@ -135,7 +135,7 @@ describe('TagDefinitionSyncService push', () => {
     expect(queueRows()).toEqual([])
   })
 
-  it('skips every mutation while there is no device id', () => {
+  it('queues every mutation under _offline while there is no device id (#2897)', () => {
     seedTag()
     const service = makeService(null)
 
@@ -143,8 +143,8 @@ describe('TagDefinitionSyncService push', () => {
     service.enqueueUpdate('work')
     service.enqueueDelete('work')
 
-    expect(queueRows()).toEqual([])
-    expect(storedClock()).toEqual({})
+    expect(queueRows().map((row) => row.operation)).toEqual(['delete'])
+    expect(storedClock()).toEqual({ _offline: 2 })
   })
 
   it('queues a create payload that satisfies the tag_definition sync schema when views are saved', () => {

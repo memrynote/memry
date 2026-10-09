@@ -42,7 +42,8 @@ import { saveAttachment } from '../vault/attachments'
 import { emitNoteAttachmentSaved, syncNoteCreate } from '../notes/runtime-effects'
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
 import { markAddedChecklistLinesPlain } from '../import/_shared/checklist-tasks'
-import type { NoteListItem, PlainChecklistsOption } from '@memry/contracts/notes-api'
+import type { NoteListItem } from '@memry/contracts/notes-api'
+import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
@@ -514,6 +515,11 @@ export function generateNoteContent(item: InboxItemRow): string {
   }
 }
 
+function filedNoteContent(item: InboxItemRow, options: PlainChecklistsOption): string {
+  const content = generateNoteContent(item)
+  return options.plainChecklists ? markAddedChecklistLinesPlain(content) : content
+}
+
 /**
  * Generate wikilink reference for inbox capture section
  */
@@ -722,7 +728,8 @@ async function fileBinaryToFolder(
 export async function fileToFolder(
   itemId: string,
   folderPath: string,
-  tags: string[] = []
+  tags: string[] = [],
+  options: PlainChecklistsOption = {}
 ): Promise<FileResponse> {
   try {
     const db = requireDatabase()
@@ -754,7 +761,7 @@ export async function fileToFolder(
 
     // Generate note title and content
     const title = generateNoteTitle(item)
-    const content = generateNoteContent(item)
+    const content = filedNoteContent(item, options)
 
     // Create note
     const note = await createNoteCommand({
@@ -816,8 +823,7 @@ export async function convertToNote(
 
     // Generate title from item content
     const title = generateNoteTitle(item)
-    const generated = generateNoteContent(item)
-    const content = options.plainChecklists ? markAddedChecklistLinesPlain(generated) : generated
+    const content = filedNoteContent(item, options)
 
     // Create note in root folder
     const note = await createNoteCommand({
@@ -1042,11 +1048,12 @@ export async function convertToEvent(
  * note-target reminder via the existing reminders service.
  *
  * @param itemId - Inbox item ID
- * @param input - Reminder timing (must be in the future)
+ * @param input - Reminder timing (must be in the future); `plainChecklists`
+ *   marks the checkbox lines the note adds
  */
 export async function convertToReminder(
   itemId: string,
-  input: { remindAt: string }
+  input: { remindAt: string } & PlainChecklistsOption
 ): Promise<{ success: boolean; noteId: string | null; error?: string }> {
   try {
     const db = requireDatabase()
@@ -1071,7 +1078,7 @@ export async function convertToReminder(
     const title = generateNoteTitle(item)
     const note = await createNoteCommand({
       title,
-      content: generateNoteContent(item),
+      content: filedNoteContent(item, input),
       tags: mergedTags,
       properties: extractItemProperties(item.metadata)
     })
@@ -1098,15 +1105,17 @@ export async function convertToReminder(
  * @param noteId - Target note ID
  * @param tags - Additional tags to add to the created note
  * @param folderPath - Optional folder path for the created inbox note
+ * @param options - `plainChecklists` marks the checkbox lines the link adds
  */
 export async function linkToNote(
   itemId: string,
   noteId: string,
   tags: string[] = [],
-  folderPath?: string
+  folderPath?: string,
+  options: PlainChecklistsOption = {}
 ): Promise<{ success: boolean; error?: string }> {
   // Delegate to linkToNotes with single note
-  return linkToNotes(itemId, [{ kind: 'note', noteId }], tags, folderPath)
+  return linkToNotes(itemId, [{ kind: 'note', noteId }], tags, folderPath, undefined, options)
 }
 
 /**
@@ -1401,7 +1410,8 @@ export async function linkToNotes(
   targets: FilingTarget[],
   tags: string[] = [],
   folderPath?: string,
-  imageMode?: ImageFilingMode
+  imageMode?: ImageFilingMode,
+  options: PlainChecklistsOption = {}
 ): Promise<{
   success: boolean
   error?: string
@@ -1470,7 +1480,7 @@ export async function linkToNotes(
     const mergedTags = [...new Set([...existingTags, ...tags, 'inbox'])]
 
     const inboxNoteTitle = generateNoteTitle(item)
-    const inboxNoteContent = generateNoteContent(item)
+    const inboxNoteContent = filedNoteContent(item, options)
 
     // Create the inbox note in the specified folder (we need this so the wikilink has a target)
     await createNoteCommand({
@@ -1527,11 +1537,13 @@ export async function linkToNotes(
  * @param itemIds - Array of inbox item IDs
  * @param folderPath - Target folder path
  * @param tags - Additional tags to add
+ * @param options - `plainChecklists` marks the checkbox lines each note adds
  */
 export async function bulkFileToFolder(
   itemIds: string[],
   folderPath: string,
-  tags: string[] = []
+  tags: string[] = [],
+  options: PlainChecklistsOption = {}
 ): Promise<{
   success: boolean
   processedCount: number
@@ -1541,7 +1553,7 @@ export async function bulkFileToFolder(
   let processedCount = 0
 
   for (const itemId of itemIds) {
-    const result = await fileToFolder(itemId, folderPath, tags)
+    const result = await fileToFolder(itemId, folderPath, tags, options)
     if (result.success) {
       processedCount++
     } else {

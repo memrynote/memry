@@ -29,6 +29,48 @@ describe('Prompt assembler', () => {
     expect(out.startsWith(SYSTEM_PROMPT_HEADER)).toBe(true)
   })
 
+  it('drops tool instructions and tool names when the turn has no tools', () => {
+    const input = {
+      history: [],
+      userMessage: 'summarize my week',
+      permissions: { accessMode: 'vault_only', webSearchEnabled: false } as const,
+      backend: 'local_openai_compatible' as const,
+      attachments: [
+        {
+          kind: 'note',
+          refId: 'note-1',
+          label: 'Long note',
+          snapshotAt: 0,
+          snapshot: {
+            mode: 'inline_note',
+            title: 'Long note',
+            contentMarkdown: 'body',
+            truncated: true
+          }
+        },
+        {
+          kind: 'folder',
+          refId: 'Projects',
+          label: 'Projects',
+          snapshotAt: 0,
+          snapshot: { mode: 'reference_only', path: 'Projects' }
+        }
+      ] as MessageAttachment[]
+    }
+
+    const off = assemblePrompt({ ...input, toolsAvailable: false })
+    expect(off).not.toContain('# Tool Use')
+    expect(off).not.toContain('# Workflows')
+    expect(off).not.toMatch(/vault_\w+/)
+    expect(off).not.toContain('Tools: memrynote vault tools only.')
+    expect(off.match(/Tools are off for this turn\./g)).toHaveLength(1)
+    expect(off).toContain('body')
+    expect(off).toContain('User: summarize my week')
+
+    expect(assemblePrompt({ ...input, toolsAvailable: true })).toBe(assemblePrompt(input))
+    expect(assemblePrompt(input).startsWith(SYSTEM_PROMPT_HEADER)).toBe(true)
+  })
+
   it('instructs the agent to use provided memrynote refs as exact markdown links', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('use the exact markdown link')
     expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent memry:// links')

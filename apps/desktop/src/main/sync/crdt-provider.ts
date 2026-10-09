@@ -40,6 +40,7 @@ import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { takeOwedFile } from './crdt-external-feed'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
+import { resolveVaultFile } from '../lib/paths'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
@@ -349,7 +350,10 @@ export class CrdtProvider {
    * through `/sync/crdt/snapshot/batch`. Nothing is weakened: the body already
    * reached the server through `/sync/crdt/updates`, the snapshot is only a
    * compaction point, and a close-time push that failed was dropped anyway.
-   * A close an editor or teardown asks for still pushes before it returns.
+   * A main-process edit to a closed note defers the same way (#2763): its
+   * caller replies only after the close, and a push the server refuses spends
+   * ~14 s in retries. A close an editor or teardown asks for still pushes
+   * before it returns.
    */
   setSnapshotDeferral(defer: ((noteId: string) => void) | null): void {
     this.deferSnapshot = defer
@@ -818,6 +822,7 @@ export class CrdtProvider {
       if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
+      if (await linksOutsideVault(noteId, cached.path)) return true
       const raw = await safeRead(toAbsolutePath(cached.path))
       if (raw === null) {
         clearOwedFileBody(noteId)
@@ -968,7 +973,7 @@ export class CrdtProvider {
   async close(
     noteId: string,
     windowId?: number,
-    options: { evicting?: boolean } = {}
+    options: { deferSnapshot?: boolean } = {}
   ): Promise<void> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing) return
@@ -983,7 +988,7 @@ export class CrdtProvider {
     this.flushNetworkBroadcast(noteId)
 
     const push = this.snapshotPushFn
-    const defer = options.evicting ? this.deferSnapshot : null
+    const defer = options.deferSnapshot ? this.deferSnapshot : null
     if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
       if (defer) {
         // Pushed later from the store, which flushDoc below brings up to date.
@@ -1036,7 +1041,10 @@ export class CrdtProvider {
    * it must close through here, never `close(noteId)`: an editor that opened
    * the note in between would lose its doc, and every edit after it (#2448).
    */
-  async closeIfInactive(noteId: string, options: { evicting?: boolean } = {}): Promise<boolean> {
+  async closeIfInactive(
+    noteId: string,
+    options: { deferSnapshot?: boolean } = {}
+  ): Promise<boolean> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing || entry.windowIds.size > 0 || this.holds.has(noteId)) return false
 
@@ -1686,6 +1694,7 @@ export class CrdtProvider {
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
+    if (await linksOutsideVault(noteId, cached.path)) return
 
     const absolutePath = toAbsolutePath(cached.path)
 
@@ -2108,7 +2117,7 @@ export class CrdtProvider {
     inactiveDocs.sort(([, left], [, right]) => left.lastTouchedAt - right.lastTouchedAt)
 
     for (const [noteId] of inactiveDocs.slice(0, overflow)) {
-      await this.closeIfInactive(noteId, { evicting: true })
+      await this.closeIfInactive(noteId, { deferSnapshot: true })
     }
   }
 
@@ -2358,6 +2367,13 @@ export class CrdtProvider {
     this.touchDoc(entry)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
+}
+
+/** A note file linked outside the vault gives the doc nothing: refuse, never follow (#2804). */
+async function linksOutsideVault(noteId: string, relativePath: string): Promise<boolean> {
+  if ((await resolveVaultFile(getVaultRoot(), relativePath)).kind !== 'outside') return false
+  log.warn('Refusing a note file that links outside the vault', { noteId })
+  return true
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

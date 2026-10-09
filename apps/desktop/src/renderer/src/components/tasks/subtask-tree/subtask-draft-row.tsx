@@ -10,8 +10,6 @@ interface SubtaskDraftRowProps {
   parent: Task
   /** The parent's current subtasks; the last one is the row above the draft. */
   siblings: Task[]
-  /** The draft's own depth: 1 under a top-level task. */
-  depth: number
   /** The parent's parent, for ⇧⇥. */
   grandparent: Task | null
 }
@@ -24,7 +22,6 @@ interface SubtaskDraftRowProps {
 export const SubtaskDraftRow = ({
   parent,
   siblings,
-  depth,
   grandparent
 }: SubtaskDraftRowProps): React.JSX.Element | null => {
   const { t } = useT('tasks')
@@ -78,9 +75,8 @@ export const SubtaskDraftRow = ({
     <div
       data-testid="subtask-draft-row"
       className={cn(
-        'flex items-center gap-1 py-1 pe-3 rounded-e-sm bg-background',
-        'ring-1 ring-inset ring-border',
-        depth === 1 ? 'ps-6' : 'ps-1'
+        'flex items-center gap-1 py-1 ps-1 pe-3 rounded-e-sm bg-background',
+        'ring-1 ring-inset ring-border'
       )}
     >
       <span className="w-4 shrink-0" aria-hidden="true" />

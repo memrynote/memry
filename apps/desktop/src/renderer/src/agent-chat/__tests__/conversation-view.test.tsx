@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useImperativeHandle } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
@@ -7,8 +8,13 @@ vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
 }))
 
+const mockComposerSend = vi.hoisted(() => vi.fn())
+
 vi.mock('../composer', () => ({
-  Composer: () => <div data-testid="composer" />
+  Composer: ({ ref }: { ref?: React.Ref<{ send: (text: string) => Promise<void> }> }) => {
+    useImperativeHandle(ref, () => ({ send: mockComposerSend }))
+    return <div data-testid="composer" />
+  }
 }))
 
 vi.mock('../conversation-header', () => ({
@@ -127,5 +133,57 @@ describe('ConversationView', () => {
     fireEvent.keyDown(screen.getByRole('region', { name: 'Agent chat' }), { key: 'Escape' })
 
     expect(cancelTurn).toHaveBeenCalledWith('conversation-1')
+  })
+
+  it('continues a turn stopped at the step limit with a normal message', () => {
+    const stopped = {
+      id: 'message-1',
+      conversationId: 'conversation-1',
+      role: 'assistant',
+      content: { role: 'assistant', data: { text: 'Done: A. Left: B.', stepLimitReached: true } },
+      toolCallId: null,
+      attachments: [],
+      status: 'completed',
+      vectorClock: {},
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null
+    }
+    const agentWith = (inFlight: boolean, messages: unknown[]) => ({
+      state: {
+        sourceWindowId: 'window-1',
+        conversations: { 'conversation-1': { id: 'conversation-1', title: 'Planning' } },
+        messagesByConversation: { 'conversation-1': messages },
+        inFlight: { 'conversation-1': inFlight }
+      },
+      cancelTurn: vi.fn()
+    })
+
+    const toolRow = {
+      ...stopped,
+      id: 'tool-1',
+      role: 'tool_result',
+      content: { role: 'tool_result', data: { ok: true } },
+      toolCallId: 'call-1',
+      createdAt: 2
+    }
+    mockUseAgentOptional.mockReturnValue(agentWith(false, [stopped, toolRow]))
+    const { rerender } = render(<ConversationView conversationId="conversation-1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(mockComposerSend).toHaveBeenCalledWith('Continue')
+
+    mockUseAgentOptional.mockReturnValue(agentWith(true, [stopped]))
+    rerender(<ConversationView conversationId="conversation-1" />)
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+
+    const later = {
+      ...stopped,
+      id: 'message-2',
+      content: { role: 'assistant', data: { text: 'Next' } }
+    }
+    mockUseAgentOptional.mockReturnValue(agentWith(false, [stopped, later]))
+    rerender(<ConversationView conversationId="conversation-1" />)
+    expect(screen.getByText('Stopped at the step limit.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
   })
 })

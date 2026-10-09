@@ -2,8 +2,8 @@ import MemryCore
 import SwiftUI
 
 // The note screen's dialogs, split from `NoteReadView.swift` (line ceiling):
-// N808's rename / delete / move, the broken wiki link notice, and TP054's
-// failed task write.
+// N808's rename / delete / move and their failure, the broken wiki link
+// notice, and TP054's failed task write.
 
 /// Every alert and sheet the note screen raises, as one modifier.
 struct NoteReadDialogs: ViewModifier {
@@ -15,9 +15,9 @@ struct NoteReadDialogs: ViewModifier {
     @Binding var moving: Bool
     @Binding var confirmingDelete: Bool
     @Binding var brokenLink: String?
+    @State private var moveFolders: [FolderSummary] = []
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.requestVaultSync) private var requestVaultSync
 
     func body(content: Content) -> some View {
         content
@@ -40,9 +40,8 @@ struct NoteReadDialogs: ViewModifier {
                     Task {
                         await actions.delete()
                         // The note is gone: leave its page rather than keep
-                        // showing it, and send the tombstone to other devices.
+                        // showing it.
                         guard actions.deleted else { return }
-                        requestVaultSync?()
                         dismiss()
                     }
                 }
@@ -52,14 +51,16 @@ struct NoteReadDialogs: ViewModifier {
                 Text("It will be removed from every device signed in to this vault.")
             }
             .sheet(isPresented: $moving) {
-                NoteFolderPicker(current: model.folderPath) { folder in
+                NoteFolderPicker(current: model.folderPath, choose: { folder in
                     moving = false
                     Task {
                         await actions.move(to: folder)
                         await model.reload()
                     }
-                }
+                }, folders: moveFolders)
+                .task { moveFolders = await model.moveDestinations() }
             }
+            .notePageFailureAlert(actions)
             .alert(
                 "There is no note called \u{201c}\(brokenLink ?? "")\u{201d}",
                 isPresented: Binding(
@@ -84,5 +85,23 @@ struct NoteReadDialogs: ViewModifier {
             } message: {
                 Text(taskActions.failure?.guidance ?? "")
             }
+    }
+}
+
+extension View {
+    /// A rename, move or delete that did not land (#2879). The note keeps
+    /// what it had, so the alert only says the action failed.
+    func notePageFailureAlert(_ actions: NotePageActions) -> some View {
+        alert(
+            actions.failure?.title ?? "",
+            isPresented: Binding(
+                get: { actions.failure != nil },
+                set: { if !$0 { actions.dismissFailure() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { actions.dismissFailure() }
+        } message: {
+            if let guidance = actions.failure?.guidance { Text(guidance) }
+        }
     }
 }

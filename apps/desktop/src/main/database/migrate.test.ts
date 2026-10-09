@@ -1425,12 +1425,12 @@ describe('0068_note_body_sync migration', () => {
   })
 })
 
-describe('0071_tag_schema_task_fields migration', () => {
+describe('0071_note_body_sync_snapshot migration', () => {
   let tempDir: string
   const migrationsDir = path.join(__dirname, 'drizzle-data')
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tag-schema-task-fields-'))
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-body-snapshot-'))
   })
 
   afterEach(() => {
@@ -1444,7 +1444,82 @@ describe('0071_tag_schema_task_fields migration', () => {
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    const cutoff = journal.entries.findIndex((e) => e.tag === '0071_tag_schema_task_fields')
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0071_note_body_sync_snapshot')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('keeps every existing row reading as before: confirmed stays confirmed, rejected stays rejected', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsBefore0071() })
+    const insert = sqlite.prepare(
+      `INSERT INTO note_body_sync (note_id, last_confirmed_at, last_rejected_at, updated_at)
+       VALUES (?, ?, ?, 9)`
+    )
+    insert.run('confirmed', 5, 2)
+    insert.run('rejected', 2, 5)
+    insert.run('never', null, 5)
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(
+      sqlite
+        .prepare(
+          'SELECT note_id, last_confirmed_at, last_rejected_at, last_snapshot_at FROM note_body_sync ORDER BY note_id'
+        )
+        .all()
+    ).toEqual([
+      { note_id: 'confirmed', last_confirmed_at: 5, last_rejected_at: 2, last_snapshot_at: 5 },
+      { note_id: 'never', last_confirmed_at: null, last_rejected_at: 5, last_snapshot_at: null },
+      { note_id: 'rejected', last_confirmed_at: 2, last_rejected_at: 5, last_snapshot_at: 2 }
+    ])
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        "INSERT INTO note_body_sync (note_id, last_confirmed_at, last_snapshot_at, updated_at) VALUES ('n1', 1, 1, 1)"
+      )
+      .run()
+
+    expect(() =>
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0071() })
+    ).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM note_body_sync').get()).toEqual({ n: 1 })
+    sqlite.close()
+  })
+})
+
+describe('0072_tag_schema_task_fields migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tag-schema-task-fields-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function migrationsBefore0072(): string {
+    const copy = path.join(tempDir, 'migrations-before-0072')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0072_tag_schema_task_fields')
     expect(cutoff).toBeGreaterThanOrEqual(0)
     for (const entry of journal.entries.splice(cutoff)) {
       fs.rmSync(path.join(copy, `${entry.tag}.sql`))
@@ -1463,7 +1538,7 @@ describe('0071_tag_schema_task_fields migration', () => {
   function upgradeWithCaptures(): Database.Database {
     const sqlite = new Database(path.join(tempDir, 'data.db'))
     const db = drizzle(sqlite)
-    migrate(db, { migrationsFolder: migrationsBefore0071() })
+    migrate(db, { migrationsFolder: migrationsBefore0072() })
     const tag = sqlite.prepare("INSERT INTO tag_definitions (name, color) VALUES (?, '#111')")
     for (const name of [
       'person',
@@ -1548,7 +1623,7 @@ describe('0071_tag_schema_task_fields migration', () => {
     sqlite.prepare(`UPDATE tasks SET fields = '{}' WHERE id = 't1'`).run()
 
     const fill = fs
-      .readFileSync(path.join(migrationsDir, '0071_tag_schema_task_fields.sql'), 'utf8')
+      .readFileSync(path.join(migrationsDir, '0072_tag_schema_task_fields.sql'), 'utf8')
       .split('--> statement-breakpoint')
       .filter((statement) => statement.includes('UPDATE `'))
     expect(fill).toHaveLength(2)
@@ -1572,7 +1647,7 @@ describe('0071_tag_schema_task_fields migration', () => {
       .run()
 
     expect(() =>
-      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0071() })
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0072() })
     ).not.toThrow()
 
     expect(sqlite.prepare('SELECT schema FROM tag_definitions').get()).toEqual({

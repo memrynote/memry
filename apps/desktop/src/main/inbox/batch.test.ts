@@ -148,7 +148,18 @@ describe('inbox batch handlers', () => {
       destination: { type: 'folder', path: 'Read Later' },
       tags: ['work']
     })
-    expect(mocks.bulkFileToFolder).toHaveBeenCalledWith(['item-1'], 'Read Later', ['work'])
+    expect(mocks.bulkFileToFolder).toHaveBeenCalledWith(['item-1'], 'Read Later', ['work'], {
+      plainChecklists: undefined
+    })
+
+    await handlers.handleBulkFile({
+      itemIds: ['item-1'],
+      destination: { type: 'folder', path: 'lists' },
+      plainChecklists: true
+    })
+    expect(mocks.bulkFileToFolder).toHaveBeenLastCalledWith(['item-1'], 'lists', undefined, {
+      plainChecklists: true
+    })
 
     await expect(handlers.handleFileAllStale()).resolves.toEqual({
       success: true,

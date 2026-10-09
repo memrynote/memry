@@ -46,8 +46,6 @@ struct NoteCoverSection: View {
     /// The reposition sheet, raised from the page menu.
     @Binding var repositioning: Bool
 
-    @Environment(\.requestVaultSync) private var requestVaultSync
-
     private var cover: NoteCoverValue? { NoteCoverValue.of(coverJson) }
 
     var body: some View {
@@ -127,7 +125,6 @@ struct NoteCoverSection: View {
     private func write(ref: String?, focus: Int) {
         Task {
             await metadataModel.setCover(url: ref, offsetY: Double(focus) / 100)
-            requestVaultSync?()
             await reload()
         }
     }

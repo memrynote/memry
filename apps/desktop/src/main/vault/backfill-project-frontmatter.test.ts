@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestDataDb, asClientDb, sql } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -43,7 +46,9 @@ vi.mock('../notes/store', () => ({
     cacheRecords.has(id) ? { id, path: `notes/${id}.md`, date: null } : undefined,
   getNoteTags: (_db: unknown, id: string) => cachedTags.get(id) ?? []
 }))
+const realVault = vi.hoisted(() => ({ path: '' }))
 vi.mock('./notes-io', () => ({
+  getVaultRoot: () => realVault.path,
   toAbsolutePath: (relativePath: string) => `/vault/${relativePath}`
 }))
 vi.mock('./file-ops', () => ({
@@ -88,10 +93,12 @@ describe('project frontmatter backfill', () => {
     unwritable.clear()
     rejecting.clear()
     indexAvailable = true
+    realVault.path = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-project-backfill-'))
   })
 
   afterEach(() => {
     dbResult.close()
+    fs.rmSync(realVault.path, { recursive: true, force: true })
   })
 
   const seedProject = (id: string, name: string, position = 0): void => {
@@ -439,6 +446,29 @@ describe('project frontmatter backfill', () => {
     expect(written('bad')).toEqual({ project: ['Alpha'] })
     expect(writeCount('n2')).toBe(1)
     expect(marker()).toBe('done')
+  })
+
+  it('does not read a note file linked outside the vault, and keeps it pending (#2936)', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-project-backfill-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, memryFile({ secret: 'outside' }))
+    fs.mkdirSync(path.join(realVault.path, 'notes'))
+    fs.symlinkSync(secret, path.join(realVault.path, 'notes', 'linked.md'))
+    seedProject('p1', 'Alpha')
+    seedNote('linked', 'markdown', { file: memryFile({ secret: 'outside' }) })
+    seedNote('n2', 'markdown')
+    seedLink('l1', 'p1', 'note', 'linked')
+    seedLink('l2', 'p1', 'note', 'n2')
+
+    try {
+      await runBackfill()
+
+      expect(writeCount('linked')).toBe(0)
+      expect(written('n2')).toEqual({ project: ['Alpha'] })
+      expect(marker()).toBe(JSON.stringify({ linked: ['Alpha'] }))
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
   })
 
   it('keeps a note pending when the write comes back as a failure envelope', async () => {

@@ -183,9 +183,12 @@ vi.mock('@/hooks/use-notes-query', () => ({
   })
 }))
 
-vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
-  resolveTag: () => null
+  useResolvedTag: () => null,
+  useObjectIdentity: () => null,
+  useObjectIdentityLookup: () => () => null
 }))
 
 vi.mock('@/hooks/use-property-section', () => ({

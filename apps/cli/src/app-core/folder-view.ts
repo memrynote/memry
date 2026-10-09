@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { parseMarkdownNote, writeMarkdownNote } from '@memry/app-core/markdown'
 import type { NoteRecord, NotesService } from './notes.ts'
-import { normalizePath, type VaultConfig } from './paths.ts'
+import { ATTACHMENTS_DIR, normalizePath, type VaultConfig } from './paths.ts'
 
 export interface FolderViewColumn {
   id: string
@@ -324,7 +324,7 @@ export function createFolderViewService({
       const currentFolder = noteFolder(note)
       const root = vaultPath
       const hiddenTopLevel = new Set(
-        [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+        [config.journalFolder, ATTACHMENTS_DIR, ...config.excludePatterns]
           .filter(Boolean)
           .map((p) => normalizePath(p).split('/')[0])
       )

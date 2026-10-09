@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { driver, type DriveStep, type Driver } from 'driver.js'
+import type { DriveStep, Driver, driver as createDriver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import './tour.css'
 import { useT } from '@memry/i18n/renderer'
@@ -185,7 +185,7 @@ export function useFirstRunTour(): void {
         ? localizedProgress
         : '{{current}} / {{total}}'
 
-    const drive = (): void => {
+    const drive = (driver: typeof createDriver): void => {
       const visibleSteps = steps.filter(
         (step) => typeof step.element !== 'string' || document.querySelector(step.element) !== null
       )
@@ -232,9 +232,18 @@ export function useFirstRunTour(): void {
         // Open the right Day Panel so its calendar + Agent steps have live targets,
         // even for returning users whose saved layout has it closed.
         openDayPanel()
-        // Defer one frame so the just-opened Day Panel has mounted before we test
-        // for each step's target element.
-        frame = requestAnimationFrame(drive)
+        // Loaded only for someone new, so driver.js stays off every other launch.
+        import('driver.js').then(
+          ({ driver }) => {
+            if (unmounted) return
+            // Defer one frame so the just-opened Day Panel has mounted before we
+            // test for each step's target element.
+            frame = requestAnimationFrame(() => drive(driver))
+          },
+          (err: unknown) => {
+            log.warn('Could not load the tour; it will be offered next launch', err)
+          }
+        )
       },
       // No answer is not proof of a new user: hold the tour back, ask again next launch.
       (err: unknown) => {

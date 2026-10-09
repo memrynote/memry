@@ -367,3 +367,22 @@ private final class UploadRefused: VaultFilling, @unchecked Sendable {
         BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
 }
+
+@MainActor
+@Suite("Inbox file destinations")
+struct InboxFileDestinationTests {
+    /// #2920: a folder that exists only because a note lives in it (no
+    /// `folder_config` row) is offered by the File sheet, as the notes tree shows it.
+    @Test func the_file_sheet_offers_folders_derived_from_note_paths() async throws {
+        let scratch = try InboxTestVault()
+        let writer = try scratch.vault.notesWriter(store: TaskTestKeychain())
+        _ = try writer.create(title: "[agent] nested", folderPath: "Projects/Alpha")
+        let store = InboxStore(
+            core: scratch.inbox, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory,
+            filler: nil, notes: scratch.vault.notes(), writer: writer, transcription: .scripted
+        )
+        let paths = await store.fileDestinations().map(\.path)
+        #expect(paths.contains("Projects"))
+        #expect(paths.contains("Projects/Alpha"))
+    }
+}

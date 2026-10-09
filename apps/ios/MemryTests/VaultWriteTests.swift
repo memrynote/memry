@@ -26,6 +26,7 @@ struct VaultWriteTests {
             case setFolderIcon(String, String?)
             case moveFolder(String, String?)
             case deleteFolder(String)
+            case createFromTemplate(String, String, String?)
         }
 
         let calls = Mutex([Call]())
@@ -45,6 +46,11 @@ struct VaultWriteTests {
             return "note-new"
         }
 
+        func createFromTemplate(templateId: String, title: String, folderPath: String?) async throws -> String {
+            try record(.createFromTemplate(templateId, title, folderPath))
+            return "note-from-template"
+        }
+
         func rename(id: String, title: String) async throws { try record(.rename(id, title)) }
         func move(id: String, folderPath: String?) async throws { try record(.move(id, folderPath)) }
         func delete(id: String) async throws { try record(.delete(id)) }
@@ -59,6 +65,20 @@ struct VaultWriteTests {
             try record(.moveFolder(path, newParent))
         }
         func deleteFolder(path: String) async throws { try record(.deleteFolder(path)) }
+        func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
+            if let failure { throw failure }
+            return true
+        }
+        func duplicate(id: String, title: String) async throws -> String? {
+            if let failure { throw failure }
+            return "note-copy"
+        }
+        func addReminder(noteId: String, remindAt: String, title: String?) async throws -> String {
+            if let failure { throw failure }
+            return "reminder-1"
+        }
+        func dismissReminder(id: String) async throws { if let failure { throw failure } }
+        func snoozeReminder(id: String, until: String) async throws { if let failure { throw failure } }
     }
 
     /// A fixed vault: `Work` has a config row, `Work/Drafts` does not, and
@@ -137,6 +157,103 @@ struct VaultWriteTests {
 
         #expect(model.writeFailure != nil, "a write that did nothing must not be silent")
         #expect(model.outline == outline, "the vault is still readable, so it stays on screen")
+    }
+
+    @Test("a note page rename, move or delete that fails raises an alert")
+    func notePageActionFailuresAreShown() async {
+        // #2879: the note page set a failed status that nothing displayed.
+        let writer = ScriptedWriter(failure: StorageError.Failed(what: "the disk is full"))
+        let actions = NotePageActions(noteId: "n", writer: writer)
+
+        for action in [
+            { await actions.rename(to: "New") },
+            { await actions.move(to: "Work") },
+            { await actions.delete() }
+        ] as [() async -> Void] {
+            await action()
+            #expect(actions.failure != nil, "a failed note action must not be silent")
+            #expect(actions.failure?.title.contains("the disk is full") == false)
+            actions.dismissFailure()
+            #expect(actions.failure == nil)
+        }
+        #expect(!actions.deleted, "a failed delete must leave the note open")
+        #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
+    }
+
+    @Test("every note page action that lands asks for a sync pass")
+    func notePageActionsAskForASync() async {
+        // Rename and move asked for none and waited for the next foreground
+        // (#2910); favorite, duplicate and delete asked from their buttons.
+        let actions = NotePageActions(noteId: "n", writer: ScriptedWriter())
+        var requests = 0
+        actions.requestSync = { requests += 1 }
+        await actions.rename(to: "New")
+        await actions.move(to: "Work")
+        await actions.toggleFavorite()
+        _ = await actions.duplicate(title: "copy")
+        await actions.delete()
+        #expect(requests == 5)
+
+        let failing = NotePageActions(noteId: "n", writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        await failing.rename(to: "New")
+        #expect(requests == 5, "a write that did not land has nothing to push")
+    }
+
+    @Test("every reminder write that lands asks for a sync pass")
+    func reminderWritesAskForASync() async {
+        let reminders = NoteRemindersViewModel(noteId: "n", reader: TreeReader(), writer: ScriptedWriter())
+        var requests = 0
+        reminders.requestSync = { requests += 1 }
+        await reminders.add(at: Date(), title: nil)
+        await reminders.snooze("reminder-1", until: Date())
+        await reminders.dismiss("reminder-1")
+        #expect(requests == 3)
+
+        let failing = NoteRemindersViewModel(
+            noteId: "n", reader: TreeReader(), writer: ScriptedWriter(failure: StorageError.Failed(what: "x"))
+        )
+        failing.requestSync = { requests += 1 }
+        await failing.add(at: Date(), title: nil)
+        #expect(requests == 3, "a write that did not land has nothing to push")
+    }
+
+    @Test("a note from a template is written in its folder and asks for a sync pass")
+    func aNoteFromATemplateAsksForASync() async {
+        // #2923: "From template" was advertised but had no caller. It is a
+        // note write like any other, so it goes through the same owner and
+        // pushes the same way.
+        let writer = ScriptedWriter()
+        let model = model(writer: writer)
+        var requests = 0
+        model.requestSync = { requests += 1 }
+        let id = await model.createNote(fromTemplate: "meeting-notes", title: "Sync", in: "Work")
+        #expect(id == "note-from-template")
+        #expect(writer.calls.withLock { $0 } == [.createFromTemplate("meeting-notes", "Sync", "Work")])
+        #expect(requests == 1)
+
+        let failing = self.model(writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        #expect(await failing.createNote(fromTemplate: "blank", title: "", in: nil) == nil)
+        #expect(failing.writeFailure != nil)
+        #expect(requests == 1, "a write that did not land has nothing to push")
+    }
+
+    @Test("a delete asks for a sync pass, and a failed one does not")
+    func aDeleteAsksForASync() async {
+        // The tombstone sits in the outbox until a pass pushes it. A delete
+        // that asked for none waited for the next foreground, and a phone
+        // wiped before then never told the server (#2893).
+        let model = model(writer: ScriptedWriter())
+        var requests = 0
+        model.requestSync = { requests += 1 }
+        await model.deleteNote(id: "note-0")
+        #expect(requests == 1)
+
+        let failing = self.model(writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        await failing.deleteNote(id: "note-0")
+        #expect(requests == 1, "a write that did not land has nothing to push")
     }
 
     @Test("a screen with no writer performs no write")

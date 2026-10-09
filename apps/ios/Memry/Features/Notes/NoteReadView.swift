@@ -356,16 +356,14 @@ struct NoteReadView: View {
                 composer: composer,
                 history: history,
                 renaming: $renaming,
+                renameDraft: $renameDraft,
                 moving: $moving,
                 confirmingDelete: $confirmingDelete,
                 choosingCover: $choosingCover,
                 repositioningCover: $repositioningCover,
                 addReminder: reminders.canWrite ? { reminders.adding = true } : nil,
                 applyHistory: applyHistory,
-                export: NoteExport(
-                    title: model.displayTitle,
-                    text: model.exportText
-                ),
+                export: NoteExport(title: model.displayTitle, text: model.exportText),
                 backlinks: backlinks,
                 finding: $finding,
                 open: openRoute
@@ -383,6 +381,7 @@ struct NoteReadView: View {
                 brokenLink: $brokenLink
             )
         )
+        .modifier(NotePageSync(actions: actions, metadata: metadataModel, reminders: reminders))
         .task {
             await model.loadIfNeeded()
             // After the body and its bindings are on screen, not before: the

@@ -64,6 +64,10 @@ final class VaultBrowseViewModel {
     /// outline is still true, only the write did not happen.
     var writeFailure: UserFacingError?
 
+    /// The vault's debounced sync request, asked after every write here. Set
+    /// by the screen that owns this model; `nil` in tests.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+
     /// The root's Bookmarks and Tags sections. Secondary to the outline: a
     /// failed read leaves them as they were rather than failing the screen.
     private(set) var bookmarks: [BookmarkEntry] = []

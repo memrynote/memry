@@ -39,6 +39,7 @@ describe('local provider settings', () => {
       baseUrl: 'http://localhost:11434/v1',
       model: '',
       allowNonLoopback: false,
+      thinking: 'default',
       apiKeyConfigured: false
     })
   })
@@ -52,6 +53,7 @@ describe('local provider settings', () => {
       baseUrl: 'http://localhost:1234/v1',
       model: '',
       allowNonLoopback: false,
+      thinking: 'default',
       apiKeyConfigured: true
     })
   })
@@ -77,6 +79,26 @@ describe('local provider settings', () => {
       }
     })
     expect(mocks.setApiKey).toHaveBeenCalledWith('secret')
+  })
+
+  it('stores Thinking Off and keeps it when an update leaves thinking out', async () => {
+    const base = {
+      preset: 'custom' as const,
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'any-model-name',
+      allowNonLoopback: true
+    }
+    await setLocalProviderSettings({ ...base, thinking: 'off' })
+    expect(mocks.storeSet).toHaveBeenLastCalledWith('agent', {
+      localProvider: { ...base, thinking: 'off' }
+    })
+
+    mocks.storeGet.mockReturnValue({ localProvider: { ...base, thinking: 'off' } })
+    await setLocalProviderSettings({ ...base, model: 'other-model' })
+    expect(mocks.storeSet).toHaveBeenLastCalledWith('agent', {
+      localProvider: { ...base, model: 'other-model', thinking: 'off' }
+    })
+    await expect(getLocalProviderSettings()).resolves.toMatchObject({ thinking: 'off' })
   })
 
   it('rejects non-loopback endpoints without explicit confirmation', async () => {

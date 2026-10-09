@@ -1,6 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TagChipContent } from './tag-chip-item'
+
+vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  useObjectIdentity: () => null,
+  useObjectIdentityLookup: () => () => null
+}))
 
 const tag = { tag: 'work/1:1', color: 'blue', icon: null, count: 8, sortOrder: 0 }
 

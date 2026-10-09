@@ -49,6 +49,7 @@ vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
 }))
 
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => h.vaultDir,
   toAbsolutePath: (relativePath: string) => path.join(h.vaultDir, relativePath)
 }))
 
@@ -245,6 +246,21 @@ describe('NoteSyncService push', () => {
       'Could not read note file for sync snapshot',
       expect.objectContaining({ noteId: 'note-1' })
     )
+  })
+
+  it('pushes neither the text nor the tags of a note file that links outside the vault', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-sync-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, '---\ntags: [outside-tag]\n---\nOutside secret\n')
+    fs.symlinkSync(secret, path.join(h.vaultDir, 'notes/Projects/Linked.md'))
+    seedNote({ path: 'notes/Projects/Linked.md' })
+
+    makeService().enqueueCreate('note-1')
+
+    const payload = payloadOf(queueRows()[0])
+    expect(payload.content).toBeNull()
+    expect(payload.tags).toEqual([])
+    fs.rmSync(outside, { recursive: true, force: true })
   })
 
   it('never pushes a local-only note and leaves its clock untouched', () => {

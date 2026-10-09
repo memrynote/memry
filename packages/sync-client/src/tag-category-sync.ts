@@ -5,6 +5,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
 
 interface TagCategorySyncDeps {
@@ -51,6 +52,16 @@ export class TagCategorySyncService {
 
         return { ...local, clock: newClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get() as
+            Record<string, unknown> | undefined,
+          deviceId,
+          (clock) =>
+            deps.db.update(tagCategories).set({ clock }).where(eq(tagCategories.id, itemId)).run()
+        ),
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]

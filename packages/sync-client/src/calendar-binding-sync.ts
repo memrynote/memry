@@ -4,6 +4,7 @@ import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
@@ -59,6 +60,20 @@ export class CalendarBindingSyncService {
 
         return { ...local, clock: nextClock }
       },
+      // #2897: edits queued with no device id tick `_offline`; rebind them
+      // before the first push (chapter 06 §6.6).
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(
+          deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get() as
+            Record<string, unknown> | undefined,
+          deviceId,
+          (clock) =>
+            deps.db
+              .update(calendarBindings)
+              .set({ clock })
+              .where(eq(calendarBindings.id, itemId))
+              .run()
+        ),
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]

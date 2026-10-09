@@ -1033,6 +1033,37 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
+    it('keeps checkbox lines plain when filing to a folder, if asked (#2796)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+
+      await fileToFolder(itemId, 'lists', [], { plainChecklists: true })
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk \{check\}$/m)
+    })
+
+    it('keeps the checkbox lines a link adds plain, leaving the target note\u2019s own lines alone (#2796)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target',
+        content: '- [ ] Owner item',
+        path: 'notes/target.md'
+      })
+
+      await linkToNote(itemId, 'target', [], undefined, { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk \{check\}$/m)
+      expect(mockUpdateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Owner item\n/)
+    })
+
     it('keeps checkbox lines plain when asked (#2759)', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'item-1',
@@ -1291,6 +1322,22 @@ describe('Inbox Filing Operations', () => {
   })
 
   describe('convertToReminder', () => {
+    it('keeps checkbox lines plain in the note a reminder creates, if asked (#2932)', async () => {
+      seedInboxItems(testDb.db, [
+        { id: 'item-1', type: 'note', title: 'Shopping', content: '- [ ] Buy milk' },
+        { id: 'item-2', type: 'note', title: 'Errands', content: '- [ ] Post office' }
+      ])
+      const remindAt = '2099-01-02T09:00:00.000Z'
+
+      await convertToReminder('item-1', { remindAt, plainChecklists: true })
+      await convertToReminder('item-2', { remindAt })
+
+      expect(mockCreateNote.mock.calls.map((call) => call[0].content)).toEqual([
+        expect.stringMatching(/^- \[ \] Buy milk \{check\}$/m),
+        expect.stringMatching(/^- \[ \] Post office$/m)
+      ])
+    })
+
     it('creates a note and a note-target reminder, files as reminder', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'reminder-source',
@@ -1836,6 +1883,20 @@ describe('Inbox Filing Operations', () => {
   // bulkFileToFolder
   // ==========================================================================
   describe('bulkFileToFolder', () => {
+    it('keeps checkbox lines plain when bulk filing to a folder, if asked (#2932)', async () => {
+      seedInboxItems(testDb.db, [
+        { id: 'item-1', type: 'note', title: 'Shopping', content: '- [ ] Buy milk' },
+        { id: 'item-2', type: 'note', title: 'Errands', content: '- [x] Post office' }
+      ])
+
+      await bulkFileToFolder(['item-1', 'item-2'], 'lists', [], { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls.map((call) => call[0].content)).toEqual([
+        expect.stringMatching(/^- \[ \] Buy milk \{check\}$/m),
+        expect.stringMatching(/^- \[x\] Post office \{check\}$/m)
+      ])
+    })
+
     it('should file multiple items to same folder', async () => {
       seedInboxItems(testDb.db, [
         { id: 'item-1', title: 'Item 1' },

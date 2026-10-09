@@ -6,7 +6,6 @@ import {
   TEXT_BEARING_FILE_TYPES
 } from '../../../database/queries/extracted-text'
 import { EXTRACTED_TEXT_REPLY_CHARS, extractedTextReply } from './extracted-text-reply'
-import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
   deleteFolderCommand,
@@ -34,6 +33,8 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { createJournalHandles } from './journal-handles'
+import { createInboxHandles } from './inbox-handles'
+import { assertSuccess } from './assert-success'
 import {
   folderPathFromNotePath,
   internalFolderFromToolPath,
@@ -41,8 +42,18 @@ import {
   normalizeFolderPath,
   toFolderEntry
 } from './folder-paths'
-import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
-import { createdFoldersReply, foldersToCreate } from './created-folders'
+import {
+  agentChecklistsOption,
+  createdTasksReply,
+  withAgentChecklists,
+  writeAgentBody
+} from './agent-checklists'
+import {
+  createdFoldersReply,
+  desktopWriteFoldersToCreate,
+  foldersToCreate,
+  withCreatedFolders
+} from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { readNoteRetried } from './note-read'
@@ -56,7 +67,6 @@ import { prepareViewImageInImageProcess } from '../../../image-processing/bridge
 import { getConfig, getStatus } from '../../../vault'
 import type {
   FolderEntry,
-  InboxSummary,
   NoteSummary,
   NoteSyncReply,
   ProjectSummary,
@@ -94,45 +104,6 @@ function taskStatusLabel(task: { statusId: string | null; completedAt?: string |
 
 function createTaskDomain(dataDb: DataDb) {
   return createDesktopTasksDomain(dataDb, createTasksPublisher(), generateId)
-}
-
-function assertSuccess(result: { success: boolean; error?: string }, fallback: string): void {
-  if (!result.success) {
-    throw new Error(result.error ?? fallback)
-  }
-}
-
-function inboxVisualType(item: {
-  type?: string
-  sourceUrl?: string | null
-  metadata?: unknown
-}): string | undefined {
-  if (item.type === 'clip') return 'quote'
-
-  const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : null
-  const platform =
-    metadata && 'platform' in metadata && typeof metadata.platform === 'string'
-      ? metadata.platform
-      : null
-
-  if (item.type === 'social' && platform === 'twitter') return 'twitter'
-  if ((item.type === 'social' || item.type === 'link') && item.sourceUrl) {
-    try {
-      const host = new URL(item.sourceUrl).hostname.toLowerCase()
-      if (
-        host === 'x.com' ||
-        host.endsWith('.x.com') ||
-        host === 'twitter.com' ||
-        host.endsWith('.twitter.com')
-      ) {
-        return 'twitter'
-      }
-    } catch {
-      return item.type === 'social' ? 'social' : undefined
-    }
-  }
-
-  return item.type === 'social' ? 'social' : undefined
 }
 
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
@@ -229,7 +200,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
               title: input.title,
               content,
               folder,
-              tags: input.tags
+              tags: input.tags,
+              ...agentChecklistsOption()
             })
           }
         )
@@ -644,84 +616,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       }
     },
     journal: createJournalHandles(indexDb),
-    inbox: {
-      async list({ unread_only }) {
-        const result = await createDesktopInboxDomain().list({
-          limit: 100,
-          offset: 0,
-          sortBy: 'created',
-          sortOrder: 'desc'
-        })
-        return result.items
-          .filter((item) => !unread_only || !item.viewedAt)
-          .map<InboxSummary>((item) => {
-            const visualType = inboxVisualType(item)
-            return {
-              id: item.id,
-              type: item.type,
-              ...(visualType ? { visual_type: visualType } : {}),
-              source: item.sourceUrl ?? item.captureSource ?? item.type,
-              title: item.title,
-              snippet: item.content ?? item.transcription ?? item.excerpt ?? '',
-              captured_at: item.createdAt.getTime()
-            }
-          })
-      },
-      async get(id) {
-        return createDesktopInboxCrudHandlers().handleGet(id)
-      },
-      async add({ source, title, content }) {
-        const result = await createDesktopInboxDomain().captureText({
-          title,
-          content,
-          source: source === 'api' ? 'api' : 'inline',
-          force: true
-        })
-        if (!result.success || !result.item) {
-          throw new Error(result.error ?? 'Failed to add inbox item')
-        }
-        return { id: result.item.id }
-      },
-      async update(input) {
-        const result = await createDesktopInboxCrudHandlers().handleUpdate(input)
-        assertSuccess(result, 'Failed to update inbox item')
-        return { id: input.id }
-      },
-      async snooze({ id, snooze_until, reason }) {
-        const result = await createDesktopInboxDomain().snooze({
-          itemId: id,
-          snoozeUntil: snooze_until,
-          reason
-        })
-        assertSuccess(result, 'Failed to snooze inbox item')
-        return { id }
-      },
-      async archive(id) {
-        const result = await createDesktopInboxCrudHandlers().handleArchive(id)
-        assertSuccess(result, 'Failed to archive inbox item')
-        return { id }
-      },
-      async unarchive(id) {
-        const result = await createDesktopInboxCrudHandlers().handleUnarchive(id)
-        assertSuccess(result, 'Failed to unarchive inbox item')
-        return { id }
-      },
-      async delete(id) {
-        const result = await createDesktopInboxCrudHandlers().handleDeletePermanent(id)
-        assertSuccess(result, 'Failed to delete inbox item')
-        return { id }
-      },
-      async addTag({ id, tag }) {
-        const result = await createDesktopInboxCrudHandlers().handleAddTag(id, tag)
-        assertSuccess(result, 'Failed to add inbox tag')
-        return { id }
-      },
-      async removeTag({ id, tag }) {
-        const result = await createDesktopInboxCrudHandlers().handleRemoveTag(id, tag)
-        assertSuccess(result, 'Failed to remove inbox tag')
-        return { id }
-      }
-    },
+    inbox: createInboxHandles(),
     tags: {
       async listAll() {
         const categoryNames = new Map(listTagCategories(dataDb).map((c) => [c.id, c.name]))
@@ -748,7 +643,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return writeAndReadBack(
+        const createdFolders = await desktopWriteFoldersToCreate(input)
+        const reply = await writeAndReadBack(
           input,
           async (request) =>
             agentDesktopReply(
@@ -758,6 +654,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             ),
           (entityId) => noteFileFrontmatter(indexDb, entityId)
         )
+        return withCreatedFolders(reply, createdFolders)
       }
     },
     windows: {

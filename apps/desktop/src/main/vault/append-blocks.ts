@@ -36,7 +36,8 @@ import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
-import { emitNoteEvent, toAbsolutePath } from './notes-io'
+import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
+import { refuseOutsideVault } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('AppendBlocks')
@@ -71,6 +72,7 @@ export async function appendBlocksToNote(
   const source = getNoteCacheById(db, sourceNoteId)
   if (!source) throw new Error(`Source note not found: ${sourceNoteId}`)
 
+  await refuseOutsideVault(getVaultRoot(), target.path)
   const absolutePath = toAbsolutePath(target.path)
   const original = await safeRead(absolutePath)
   if (original === null) throw new Error(`Target note is unreadable: ${target.path}`)

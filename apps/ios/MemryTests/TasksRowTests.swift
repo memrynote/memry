@@ -129,9 +129,14 @@ struct TasksRowTests {
         let counts = vault.store.rowSubtaskCounts(task)
         #expect(counts.done == 1)
         #expect(counts.total == 2)
-        #expect(!vault.store.rowCanBecomeSubtask(task))
         let child = try #require(vault.store.items[first])
+        #expect(vault.store.rowCanBecomeSubtask(task))
         #expect(vault.store.rowCanBecomeSubtask(child))
+
+        await vault.store.setNestedSubtasks(false)
+        #expect(!vault.store.rowCanBecomeSubtask(task))
+        #expect(vault.store.rowCanBecomeSubtask(child))
+        await vault.store.setNestedSubtasks(true)
     }
 
     @Test func linked_notes_count_the_source_note_when_nothing_is_linked() async throws {

@@ -1,6 +1,7 @@
+import { useCallback, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
-import { Composer } from './composer'
+import { Composer, type ComposerHandle } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { useAgentOptional } from './agent-context'
 import { MessageStream } from './message-stream'
@@ -23,6 +24,10 @@ export function ConversationView({
   const { t } = useT('common')
   const agent = useAgentOptional()
   const isWorkspace = layout === 'workspace'
+  const composerRef = useRef<ComposerHandle>(null)
+  const continueTurn = useCallback(() => {
+    void composerRef.current?.send(t('agentChat.stepLimit.continue'))
+  }, [t])
 
   if (!agent) {
     return (
@@ -79,15 +84,24 @@ export function ConversationView({
         inFlight={inFlight}
         contentClassName={isWorkspace ? cn(workspaceOuterClassName, 'pb-3 pt-6') : undefined}
         messageListClassName={isWorkspace ? workspaceMessageListClassName : undefined}
+        onContinue={continueTurn}
       />
       {isWorkspace ? (
         <div className={cn(workspaceOuterClassName, 'shrink-0 pb-10')}>
           <div className={workspaceColumnClassName}>
-            <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
+            <Composer
+              ref={composerRef}
+              conversationId={conversationId}
+              sourceWindowId={state.sourceWindowId}
+            />
           </div>
         </div>
       ) : (
-        <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
+        <Composer
+          ref={composerRef}
+          conversationId={conversationId}
+          sourceWindowId={state.sourceWindowId}
+        />
       )}
     </section>
   )

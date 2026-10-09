@@ -134,10 +134,9 @@ function enqueueDeleteOrDefer(
 ): void {
   // Recording is ADDITIVE and must never gate delivery. Handing the delete to a
   // live service is still the whole job; the tombstone only survives the cases
-  // where that hand-off silently achieves nothing, such as
-  // `RecordSyncController.enqueueDelete` returning on a null device id. Those
-  // deletes are recovered by `flushPendingLocalDeletes` at the next runtime
-  // start rather than by withholding the call.
+  // where that hand-off silently achieves nothing. Those deletes are recovered
+  // by `flushPendingLocalDeletes` at the next runtime start rather than by
+  // withholding the call.
   recordDeleteTombstone(type, itemId, snapshotPayload, !service)
   if (!service) return
 

@@ -51,6 +51,7 @@ struct VaultSettingsScope<Content: View>: View {
                 Task { await store.refreshIfChanged() }
             }
             let madeBrowse = VaultBrowseViewModel(vault: vault, executor: .shared, filler: model.filler, store: secureStore)
+            madeBrowse.requestSync = { tasks.scheduleSync() }
             browse = madeBrowse
             capture = QuickCapture(vault: vault, secureStore: secureStore, tasks: tasks, inbox: inboxStore, browse: madeBrowse)
             context = made

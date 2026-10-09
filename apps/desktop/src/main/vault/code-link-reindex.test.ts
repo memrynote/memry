@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -98,6 +98,25 @@ describe('reindexCodeLinks', () => {
       ['Guide', 'nte_guide'],
       ['Harbor Log', null]
     ])
+  })
+
+  it('skips a note file linked outside the vault and keeps its links (#2936)', async () => {
+    const outside = mkdtempSync(path.join(tmpdir(), 'memry-code-links-outside-'))
+    const secret = path.join(outside, 'private.md')
+    writeFileSync(secret, 'Write `[[Example]]` near [[Outside Secret]].\n')
+    const docs = path.join(vaultPath, 'notes/Docs.md')
+    rmSync(docs)
+    symlinkSync(secret, docs)
+
+    try {
+      expect(await run()).toBe(0)
+      expect(linksOf('nte_docs')).toEqual([
+        ['Example', null],
+        ['Guide', 'nte_guide']
+      ])
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
   })
 
   it('leaves the marker unset when stopped, so the next open resumes', async () => {

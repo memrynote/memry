@@ -150,6 +150,7 @@ export const ZoomedBranchView = ({
           onReorder={onReorderSubtasks}
           onToggleComplete={onToggleSubtaskComplete}
           onClick={onTaskClick}
+          className="ps-5"
         />
 
         {tree && tree.draftParentId !== task.id && (

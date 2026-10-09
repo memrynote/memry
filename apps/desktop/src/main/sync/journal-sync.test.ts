@@ -40,7 +40,8 @@ vi.mock('../vault/journal', async () => {
   return {
     extractJournalProperties: (frontmatter: { properties?: Record<string, unknown> }) =>
       frontmatter.properties,
-    getJournalPath: (date: string) => path.join(h.journalDir, `${date}.md`),
+    readJournalTextSync: (date: string) =>
+      fs.readFileSync(path.join(h.journalDir, `${date}.md`), 'utf-8'),
     parseJournalEntry: (raw: string, date: string) => {
       const parsed = matter(raw)
       return { frontmatter: parsed.data, content: parsed.content.trim(), date }
@@ -296,12 +297,14 @@ describe('JournalSyncService deletes', () => {
     expect(rows[0].operation).toBe('delete')
   })
 
-  it('does not enqueue a delete without a device id', () => {
+  it('queues a delete under _offline without a device id (#2897)', () => {
     seedJournalNote()
 
     makeService(null).enqueueDelete(JOURNAL_ID, DATE)
 
-    expect(queueRows()).toEqual([])
+    const rows = queueRows()
+    expect(rows.map((row) => row.operation)).toEqual(['delete'])
+    expect(JSON.parse(rows[0].payload).clock).toMatchObject({ _offline: 1 })
   })
 })
 

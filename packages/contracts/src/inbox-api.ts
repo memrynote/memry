@@ -9,7 +9,7 @@
 
 import { z } from 'zod'
 import { InboxChannels } from './ipc-channels'
-import type { PlainChecklistsOption } from './notes-api'
+import { PlainChecklistsOptionSchema, type PlainChecklistsOption } from './plain-checklists'
 import type { ReminderTargetType } from './reminder-types'
 
 // Re-export channels for convenience
@@ -463,7 +463,8 @@ export const FileItemSchema = z.object({
   }),
   tags: z.array(z.string().max(50)).max(20).optional(),
   // Image only: 'embed' saves a note attachment, 'link' moves the raw file.
-  imageMode: z.enum(['embed', 'link']).optional()
+  imageMode: z.enum(['embed', 'link']).optional(),
+  ...PlainChecklistsOptionSchema.shape
 })
 
 export const SnoozeSchema = z.object({
@@ -479,7 +480,8 @@ export const BulkFileSchema = z.object({
     path: z.string().optional(),
     noteId: z.string().optional()
   }),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  ...PlainChecklistsOptionSchema.shape
 })
 
 export const BulkArchiveSchema = z.object({
@@ -636,7 +638,9 @@ export interface InboxHandlers {
   ) => Promise<{ success: boolean; taskId: string | null; error?: string }>
   [InboxChannels.invoke.LINK_TO_NOTE]: (
     itemId: string,
-    noteId: string
+    noteId: string,
+    tags?: string[],
+    options?: PlainChecklistsOption
   ) => Promise<{ success: boolean; error?: string }>
 
   // Tags
@@ -796,7 +800,12 @@ export interface InboxClientAPI {
   convertToTask(
     itemId: string
   ): Promise<{ success: boolean; taskId: string | null; error?: string }>
-  linkToNote(itemId: string, noteId: string): Promise<{ success: boolean; error?: string }>
+  linkToNote(
+    itemId: string,
+    noteId: string,
+    tags?: string[],
+    options?: PlainChecklistsOption
+  ): Promise<{ success: boolean; error?: string }>
 
   // Tags
   addTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>

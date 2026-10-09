@@ -1,6 +1,7 @@
 import { lstatSync, realpathSync } from 'fs'
 import { lstat, realpath } from 'fs/promises'
 import path from 'path'
+import { OutsideVaultError } from './errors'
 
 const CONTROL_FILENAME_CHARS = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`
 const UNSAFE_FILENAME_CHARS = new RegExp(`[<>:"/\\\\|?*${CONTROL_FILENAME_CHARS}]`, 'g')
@@ -176,6 +177,22 @@ export function resolveVaultFileSync(vaultPath: string, relativePath: string): V
     if (real !== null) return placeInVault(vaultPath, realVault, real, probe === joined)
     if (attempt(() => lstatSync(probe).isSymbolicLink())) return { kind: 'outside' }
   }
+}
+
+/**
+ * Throws `OutsideVaultError` for a vault file linked outside the vault, so a
+ * reader refuses it instead of following the link. A reader that passes reads
+ * the joined path as before, and a missing file still reads as missing.
+ */
+export async function refuseOutsideVault(vaultPath: string, relativePath: string): Promise<void> {
+  const resolved = await resolveVaultFile(vaultPath, relativePath)
+  if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
+}
+
+/** `refuseOutsideVault` for readers inside a sync transaction, which cannot await. */
+export function refuseOutsideVaultSync(vaultPath: string, relativePath: string): void {
+  const resolved = resolveVaultFileSync(vaultPath, relativePath)
+  if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
 }
 
 function attempt<T>(read: () => T): T | null {
