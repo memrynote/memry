@@ -152,6 +152,8 @@ number, checkbox, URL, date, select, multi-select and status. A definition that 
 desktop API creates or edits is in that file as soon as the call returns. Older versions kept
 non-select definitions only in the app's database; the first time a vault opens after the update,
 they are copied into the file once, and entries the file already has are left as they are.
+If one entry in the file is malformed, the others still load and the malformed entry is kept as
+written. If the file cannot be read at all, Memry leaves it untouched until you fix it.
 The file also keeps each definition's default value and color, so both survive a restart. Older
 app versions read the file and ignore those two fields.
 Saving a note that uses a property never clears that property's options, default or color, and
