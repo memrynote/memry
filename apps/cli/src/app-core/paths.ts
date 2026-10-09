@@ -7,6 +7,8 @@ export interface VaultConfig {
   journalFolder: string
   journalDateFormat: string
   attachmentsFolder: string
+  /** Desktop's setting: list the journal folder in the notes tree. Absent means off. */
+  journalShowInSidebar?: boolean
 }
 
 /**

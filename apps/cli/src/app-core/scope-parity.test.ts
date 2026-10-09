@@ -425,7 +425,11 @@ async function listFolderPaths(journal: { folder: string; showInSidebar: boolean
   await fs.mkdir(path.join(vaultPath, '.memry'), { recursive: true })
   await fs.writeFile(
     path.join(vaultPath, '.memry', 'config.json'),
-    JSON.stringify({ journalFolder: journal.folder, journalShowInSidebar: journal.showInSidebar })
+    JSON.stringify({
+      defaultNoteFolder: '',
+      journalFolder: journal.folder,
+      journalShowInSidebar: journal.showInSidebar
+    })
   )
   const app = await createMemryApp({ vaultPath })
   try {

@@ -2,7 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { parseMarkdownNote, writeMarkdownNote } from '@memry/app-core/markdown'
 import type { NoteRecord, NotesService } from './notes.ts'
-import { ATTACHMENTS_DIR, CANVAS_DIR, normalizePath, type VaultConfig } from './paths.ts'
+import { listTreeFolders } from './folders.ts'
+import { normalizePath, type VaultConfig } from './paths.ts'
 
 export interface FolderViewColumn {
   id: string
@@ -183,27 +184,6 @@ function noteFolder(note: NoteRecord): string {
   return folder === '.' ? '' : normalizePath(folder)
 }
 
-async function walkFolderPaths(
-  root: string,
-  hiddenTopLevel: Set<string>,
-  current = ''
-): Promise<string[]> {
-  const entries = await fs.readdir(path.join(root, current), { withFileTypes: true })
-  const folders: string[] = []
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    // Skip hidden dirs (.memry, .obsidian, .git) and structural/excluded folders
-    // (journal, attachments, excludePatterns) — relevant once the notes root is the
-    // vault root (defaultNoteFolder = ''). Mirrors folders.ts walkFolders.
-    if (entry.name.startsWith('.')) continue
-    if (current === '' && hiddenTopLevel.has(entry.name)) continue
-    const relative = normalizePath(path.join(current, entry.name))
-    folders.push(relative)
-    folders.push(...(await walkFolderPaths(root, hiddenTopLevel, relative)))
-  }
-  return folders
-}
-
 function inferPropertyType(value: unknown): string {
   if (typeof value === 'number') return 'number'
   if (typeof value === 'boolean') return 'checkbox'
@@ -322,13 +302,7 @@ export function createFolderViewService({
       if (!note) return { suggestions: [] }
 
       const currentFolder = noteFolder(note)
-      const root = vaultPath
-      const hiddenTopLevel = new Set(
-        [config.journalFolder, ATTACHMENTS_DIR, CANVAS_DIR, ...config.excludePatterns]
-          .filter(Boolean)
-          .map((p) => normalizePath(p).split('/')[0])
-      )
-      const folders = (await walkFolderPaths(root, hiddenTopLevel)).filter(
+      const folders = (await listTreeFolders(vaultPath, config)).filter(
         (folder) => folder !== currentFolder
       )
 
