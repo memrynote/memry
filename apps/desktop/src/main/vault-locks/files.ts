@@ -106,14 +106,9 @@ function nextMode(
 export async function adoptCopiedVaultIdentities(root: string): Promise<void> {
   const found: Array<{ path: string; mode: number; identity: string }> = []
   for (const row of listFileModes(getDatabase())) {
-    let stats: fs.Stats
-    try {
-      stats = await fs.promises.stat(path.join(root, row.path))
-    } catch (err) {
-      if (isNodeError(err) && err.code === 'ENOENT') continue
-      log.warn('Could not check a locked file at vault open', { error: err })
-      return
-    }
+    // A file that cannot be read is skipped here; reconciling logs it when its mode cannot change.
+    const stats = await fs.promises.stat(path.join(root, row.path)).catch(() => null)
+    if (stats === null) continue
     const identity = `${stats.ino}:${stats.birthtimeMs}`
     if (row.identity === null || row.identity === identity) return
     if ((stats.mode & 0o777) !== (row.mode & ~0o222)) return
