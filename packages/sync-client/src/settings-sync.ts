@@ -92,8 +92,8 @@ export class SettingsSyncManager {
 
   /**
    * Moves `_offline` field ticks onto the registered device and re-queues the
-   * settings, so the stored clocks match what the push sends. Runs at sync
-   * start.
+   * settings, so the stored clocks match what the push sends. The first push
+   * that can sign under a registered device runs it (#2897).
    */
   recoverOfflineClocks(): void {
     const deviceId = this.getDeviceId()

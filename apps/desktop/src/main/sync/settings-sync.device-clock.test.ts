@@ -244,7 +244,7 @@ describe('settings field clocks — no device id (#2287, #2897)', () => {
     expect(device.queue.getSize()).toBe(1)
   })
 
-  it('#given a write made with no device #when the device registers #then sync start rebinds it', () => {
+  it('#given a write made with no device #when the device registers #then recoverOfflineClocks rebinds it', () => {
     const testDb = createTestDataDb()
     openDbs.push(testDb)
     const queue = new SyncQueueManager(asClientDb(testDb.db))

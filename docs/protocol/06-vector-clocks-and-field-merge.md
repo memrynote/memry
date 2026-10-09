@@ -380,6 +380,23 @@ and the pushed clock must agree: a push that rebound only the payload would
 leave `_offline` in the row, and the pulled echo would read as a concurrent
 edit on every cycle.
 
+Each queued row is fixed by its queue id, whatever its `attempts`: the queue
+coalesces a new enqueue only into an `attempts = 0` row, so a retried
+`_offline` row would otherwise sit next to its rebound copy. A create or update
+whose service queues nothing fresh (the row is gone, `shouldSkip` rejects it,
+or the type has no local adapter) stays queued and is logged once per session.
+
+The rebind is skipped while the device row and the signing keys disagree (the
+#2866 repair window), and it can fail. The push is therefore fail-closed on
+its own: an item whose resolved `clock` or `fieldClocks` names `_offline` is
+held back, left queued with its attempts untouched, and logged once per row
+per session (`holdBackOfflineClocks` in
+`apps/desktop/src/main/sync/engine/push-coordinator.ts`).
+
+**Known risk, downgrade.** A build older than #2897 has neither the rebind nor
+the hold-back. Downgrading with `_offline` rows still queued pushes them as
+they are, with the consequences §6.6.1 describes.
+
 ### 6.6.1 Fixed — `_offline` no longer rides the record create path (#2179)
 
 Desktop used to violate the rule above. `recoverDirtyItems` routes

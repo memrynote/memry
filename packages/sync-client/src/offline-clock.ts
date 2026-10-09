@@ -119,6 +119,24 @@ export function rebindOfflinePayloadClocks(payload: string, deviceId: string): s
   return JSON.stringify(next)
 }
 
+/**
+ * Whether a payload's `clock` or any of its `fieldClocks` names `_offline`, at
+ * any tick. The push refuses to send such a payload (chapter 06 §6.6).
+ */
+export function payloadCarriesOfflineClock(payload: string): boolean {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(payload)
+  } catch {
+    return false
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+  const record = parsed as { clock?: unknown; fieldClocks?: unknown }
+  const names = (clock: unknown): boolean => isClock(clock) && OFFLINE_DEVICE_KEY in clock
+  if (names(record.clock)) return true
+  return isClock(record.fieldClocks) && Object.values(record.fieldClocks).some(names)
+}
+
 function isClock(value: unknown): value is VectorClock {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }

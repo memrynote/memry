@@ -9,6 +9,7 @@ import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
 import { mergeUnknownPayloadFields } from '../unknown-fields'
 import { coalesceSyncOperations } from '@memry/sync-client/queue'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import { payloadCarriesOfflineClock } from '@memry/sync-client/offline-clock'
 import { rebindQueuedOfflineEdits } from './offline-queue-rebind'
 import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
@@ -61,6 +62,7 @@ export class PushCoordinator {
   private inFlightGeneration = 0
   private lastPushGeneration = 0
   private readonly settledWaiters = new Set<() => void>()
+  private readonly heldBackOffline = new Set<string>()
 
   /**
    * True from lock acquisition until the push released it, which spans every
@@ -181,12 +183,12 @@ export class PushCoordinator {
       }
 
       // #2897: the services must already read this id, or re-running an edit
-      // would tick `_offline` again.
+      // would tick `_offline` again. Skipped or failed, the hold-back at
+      // encrypt still keeps every `_offline` clock off the wire.
       if (getCurrentDeviceId(this.ctx.deps.db) === signingKeys.deviceId) {
         try {
           const rebound = rebindQueuedOfflineEdits(
             this.ctx.deps.db,
-            this.ctx.deps.queue,
             this.ctx.deps.adapters,
             signingKeys.deviceId
           )
@@ -292,6 +294,7 @@ export class PushCoordinator {
           }
 
           timer.startPhase('encrypt')
+          const offlineClocked = new Set<string>()
           const encryptedItems = await encryptPushBatch(
             dedupedItems,
             vaultKey,
@@ -301,14 +304,20 @@ export class PushCoordinator {
               workerBridge: this.ctx.deps.workerBridge,
               queue: this.ctx.deps.queue,
               extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
-              resolvePushPayload: (item, deviceId, key) =>
-                this.resolvePushPayload(item, deviceId, key),
+              resolvePushPayload: (item, deviceId, key) => {
+                const payload = this.resolvePushPayload(item, deviceId, key)
+                if (payloadCarriesOfflineClock(payload)) offlineClocked.add(item.id)
+                return payload
+              },
               onItemTooLarge: (item) => this.reportItemTooLarge(item)
             }
           )
           timer.endPhase(dedupedItems.length)
 
-          const pushItems = this.dropUnsendableItems(encryptedItems, rejectedThisCycle)
+          const pushItems = this.dropUnsendableItems(
+            this.holdBackOfflineClocks(encryptedItems, offlineClocked, rejectedThisCycle),
+            rejectedThisCycle
+          )
           if (pushItems.length === 0) {
             // Everything this batch held was retired above, so there is nothing
             // to send. `continue` instead of `break`: the next dequeue skips
@@ -898,6 +907,36 @@ export class PushCoordinator {
       type: item.type
     })
     return JSON.stringify({ ...parsed, clock: { [deviceId]: 1 } })
+  }
+
+  /**
+   * Fail-closed wire backstop for chapter 06 §6.6: a payload whose `clock` or
+   * `fieldClocks` names `_offline` is never sent. `rebindQueuedOfflineEdits`
+   * normally rebinds these first (#2897), but it is skipped while the device
+   * row and the signing keys disagree (the #2866 repair window) and can fail.
+   * The row stays queued with its attempts untouched, so the rebind can fix it
+   * on a later push, and is skipped for the rest of this push. Logged once per
+   * row per session.
+   */
+  private holdBackOfflineClocks(
+    items: Array<{ queueId: string; pushItem: PushItem }>,
+    offlineClocked: ReadonlySet<string>,
+    rejectedThisCycle: Set<string>
+  ): Array<{ queueId: string; pushItem: PushItem }> {
+    if (offlineClocked.size === 0) return items
+    return items.filter(({ queueId, pushItem }) => {
+      if (!offlineClocked.has(queueId)) return true
+      rejectedThisCycle.add(queueId)
+      if (!this.heldBackOffline.has(queueId)) {
+        this.heldBackOffline.add(queueId)
+        log.warn('Push: holding back an item whose clock still names _offline', {
+          queueId: queueId.slice(0, 8),
+          itemId: pushItem.id.slice(0, 8),
+          type: pushItem.type
+        })
+      }
+      return false
+    })
   }
 
   /**
