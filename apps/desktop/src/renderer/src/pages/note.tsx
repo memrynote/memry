@@ -51,6 +51,7 @@ import {
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
 import {
@@ -1891,6 +1892,7 @@ export function NotePage({ noteId }: NotePageProps) {
           {isLocked && <LockedNoteNotice />}
           <NoteTitle
             disabled={isLocked}
+            noteId={note.id}
             emoji={note.emoji ?? null}
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
@@ -2124,11 +2126,16 @@ export function NotePage({ noteId }: NotePageProps) {
         {/* Backlinks, outgoing links & linked tasks — separated from content and excluded
             from the marquee/focus-at-end zone. */}
         <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
-          <BacklinksSection
-            backlinks={backlinks}
-            isLoading={backlinksLoading}
-            initialCount={5}
-            onBacklinkClick={handleBacklinkClick}
+          <LinkedHereOrBacklinks
+            noteId={note.id}
+            fallback={
+              <BacklinksSection
+                backlinks={backlinks}
+                isLoading={backlinksLoading}
+                initialCount={5}
+                onBacklinkClick={handleBacklinkClick}
+              />
+            }
           />
 
           <OutgoingLinksSection

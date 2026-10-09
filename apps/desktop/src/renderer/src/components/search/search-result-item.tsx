@@ -5,6 +5,8 @@ import type {
 } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { TagGlyph } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
 import { PriorityIcon } from '@/components/tasks/priority-icon'
 import { HighlightedText, SearchRow } from './search-row'
@@ -18,6 +20,12 @@ const FILE_ICONS: Record<Exclude<NoteFileType, 'markdown'>, typeof FileText> = {
   image: Image,
   audio: Mic,
   video: Video
+}
+
+/** A note row: its object's tag icon when the note is an object (C2 bullet 4). */
+function NoteResultIcon({ noteId }: { noteId: string }): React.JSX.Element {
+  const identity = useOptionalObjectIdentity(noteId)
+  return identity ? <TagGlyph look={identity} className="size-4" /> : <FileText />
 }
 
 function ResultIcon({ item }: { item: SearchResultItemType }): React.JSX.Element {
@@ -36,7 +44,7 @@ function ResultIcon({ item }: { item: SearchResultItemType }): React.JSX.Element
           />
         )
       }
-      return <FileText />
+      return <NoteResultIcon noteId={item.id} />
     }
     case 'task':
       return meta.completedAt ? <CheckCircle2 /> : <Circle />

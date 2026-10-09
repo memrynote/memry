@@ -167,6 +167,9 @@ import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
+import { useMentionCreate } from '@/features/tag-fields/use-mention-create'
+import { useObjectIdentityLookup } from '@/features/tag-fields/use-tag-schemas'
+import { useInlineTagObject } from '@/features/tag-fields/use-inline-tag-object'
 import { capNoteTaskTree, taskDepthBelow } from './hooks/task-block-marquee-indent'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
@@ -789,14 +792,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
   // live by note created/renamed/deleted events (#1716).
-  useWikiLinkBroken(editor)
+  useWikiLinkBroken(editor, useObjectIdentityLookup())
 
   // Hook #4: Tag suggestions + inline plugin
+  const { onTagClick: onInlineObjectTagClick, overlay: inlineTagObjectOverlay } =
+    useInlineTagObject(editor, editorContainerRef, runSideEffects ? noteId : undefined)
   const { handleTagSuggestionSelect } = useTagSuggestions({
     editor,
     editorContainerRef,
     tagColorMap,
-    tagIconMap
+    tagIconMap,
+    onTagClick: onInlineObjectTagClick
   })
 
   // Hook #5: Drag and drop state
@@ -1151,6 +1157,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return registerEditorPlugin(editor, createInlineCheckboxPlugin())
   }, [editor])
 
+  const { openCreate: openMentionCreate, overlay: mentionCreateOverlay } = useMentionCreate(
+    editor,
+    editorContainerRef
+  )
+
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
   // as a date, plus recent notes (insert as wiki links) and canvases (a
   // Mention / Embed choice). The bound menu is memoized so it doesn't remount
@@ -1165,7 +1176,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   } = useMentionSuggestions(editor, {
     onInsertDate: insertDatePill,
     editorContainerRef,
-    canvasesEnabled: isFeatureEnabled('spatialCanvas')
+    canvasesEnabled: isFeatureEnabled('spatialCanvas'),
+    // Creating notes from the text: off where this editor runs no side
+    // effects (template editor, agent review, a sibling editor of the note).
+    onCreate: runSideEffects ? openMentionCreate : undefined
   })
   const MentionSuggestionMenu = useCallback(
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
@@ -3371,6 +3385,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           />
 
           <CanvasChoiceMenu choice={canvasChoice} onSelect={selectCanvasChoice} />
+          {mentionCreateOverlay}
+          {inlineTagObjectOverlay}
 
           <DateMentionPopover
             open={dateMentionState.open}

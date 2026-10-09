@@ -20,9 +20,13 @@
  * titles it has not seen. A note being created, renamed, or deleted anywhere
  * (this window or another device) drops the cache and re-resolves, which is
  * what restyles an open editor without a reload.
+ *
+ * The same pass paints object links (#tags with fields): a resolved note that
+ * the schema snapshot lists as an object gets the chip attrs. A snapshot change
+ * (a tag gains fields, a note joins a tag) repaints from the cache.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { EditorView } from '@tiptap/pm/view'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { notesService, onNoteCreated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
@@ -35,6 +39,8 @@ import {
   createWikiLinkBrokenPlugin,
   setBrokenWikiTargets
 } from '../wiki-link-broken-plugin'
+import type { ObjectLook } from '@/features/tag-fields/object-avatar'
+import { loadChipIcons, objectChipAttrs } from '@/features/tag-fields/object-chip-style'
 
 const REFRESH_DEBOUNCE_MS = 400
 
@@ -45,8 +51,20 @@ interface TiptapLike {
   off?: (event: string, handler: () => void) => void
 }
 
-export function useWikiLinkBroken(editor: unknown): void {
+/** A resolved title: the note id, `true` for a canvas, `false` for a miss. */
+type Resolution = string | boolean
+
+export function useWikiLinkBroken(
+  editor: unknown,
+  objectOf: (noteId: string) => ObjectLook | null = () => null
+): void {
   useEffect(() => registerEditorPlugin(editor, createWikiLinkBrokenPlugin()), [editor])
+  const objectOfRef = useRef(objectOf)
+  const repaintRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    objectOfRef.current = objectOf
+    repaintRef.current?.()
+  }, [objectOf])
 
   useEffect(() => {
     const tiptap = (editor as { _tiptapEditor?: TiptapLike } | undefined)?._tiptapEditor
@@ -54,9 +72,10 @@ export function useWikiLinkBroken(editor: unknown): void {
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    /** Lowercased title → whether it resolved. Session-scoped; note events clear it. */
-    const resolvedCache = new Map<string, boolean>()
+    /** Lowercased title → what it resolved to. Session-scoped; note events clear it. */
+    const resolvedCache = new Map<string, Resolution>()
     let lastBroken = new Set<string>()
+    let lastObjectsKey = ''
 
     const refresh = async (): Promise<void> => {
       const view = tiptap.view
@@ -85,7 +104,7 @@ export function useWikiLinkBroken(editor: unknown): void {
         try {
           const resolved = await notesService.resolveTitles(unknown)
           for (const title of unknown) {
-            resolvedCache.set(title.toLowerCase(), resolved[title] != null)
+            resolvedCache.set(title.toLowerCase(), resolved[title]?.id ?? false)
           }
         } catch {
           // IPC failed — keep the current styling rather than guessing.
@@ -98,7 +117,7 @@ export function useWikiLinkBroken(editor: unknown): void {
         // be painted broken. Asked only about titles no note claimed, so the
         // common case costs nothing.
         for (const title of unknown) {
-          if (resolvedCache.get(title.toLowerCase()) === true) continue
+          if (resolvedCache.get(title.toLowerCase()) !== false) continue
           const canvas = await resolveCanvasByTitle(title)
           if (canvas) resolvedCache.set(title.toLowerCase(), true)
         }
@@ -106,18 +125,42 @@ export function useWikiLinkBroken(editor: unknown): void {
       }
 
       const broken = new Set<string>()
+      const objectLooks = new Map<string, { look: ObjectLook; title: string }>()
       for (const [target, candidates] of perTarget) {
-        const resolves = candidates.some((title) => resolvedCache.get(title.toLowerCase()) === true)
-        if (!resolves) broken.add(target.toLowerCase())
+        const resolution = candidates
+          .map((title) => resolvedCache.get(title.toLowerCase()))
+          .find((value) => value !== undefined && value !== false)
+        if (resolution === undefined) {
+          broken.add(target.toLowerCase())
+          continue
+        }
+        const look = typeof resolution === 'string' ? objectOfRef.current(resolution) : null
+        if (look)
+          objectLooks.set(target.toLowerCase(), {
+            look,
+            title: splitWikiTarget(target).note || target
+          })
       }
+      const iconsAdded = await loadChipIcons([...objectLooks.values()].map(({ look }) => look.icon))
+      if (cancelled) return
+      const objects = new Map(
+        [...objectLooks].map(([key, { look, title }]) => [key, objectChipAttrs(look, title)])
+      )
+      const objectsKey = JSON.stringify([...objects])
 
-      // Unchanged set → no dispatch: this runs behind every keystroke.
-      if (broken.size === lastBroken.size && [...broken].every((key) => lastBroken.has(key))) {
+      // Unchanged sets → no dispatch: this runs behind every keystroke.
+      if (
+        !iconsAdded &&
+        objectsKey === lastObjectsKey &&
+        broken.size === lastBroken.size &&
+        [...broken].every((key) => lastBroken.has(key))
+      ) {
         return
       }
       lastBroken = broken
+      lastObjectsKey = objectsKey
       const liveView = getLiveTiptapView(tiptap)
-      if (liveView) setBrokenWikiTargets(liveView, broken)
+      if (liveView) setBrokenWikiTargets(liveView, broken, objects)
     }
 
     const scheduleRefresh = (): void => {
@@ -131,6 +174,7 @@ export function useWikiLinkBroken(editor: unknown): void {
       scheduleRefresh()
     }
 
+    repaintRef.current = scheduleRefresh
     void refresh()
     tiptap.on('update', scheduleRefresh)
     const unsubscribes = [
@@ -144,6 +188,7 @@ export function useWikiLinkBroken(editor: unknown): void {
 
     return () => {
       cancelled = true
+      repaintRef.current = null
       if (timer) clearTimeout(timer)
       tiptap.off?.('update', scheduleRefresh)
       unsubscribes.forEach((unsubscribe) => unsubscribe())

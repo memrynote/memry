@@ -16,7 +16,12 @@
 
 import { Fragment, useEffect } from 'react'
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { AlarmClock, Clock, FileText, Link, PenTool, type AppIcon } from '@/lib/icons'
+import type { ObjectMatch } from '@memry/contracts/tag-objects-api'
+import { AlarmClock, Clock, FileText, Link, PenTool, Plus, type AppIcon } from '@/lib/icons'
+import { ObjectAvatar, TagGlyph } from '@/features/tag-fields/object-avatar'
+import { lookOfTagKey } from '@/features/tag-fields/object-look'
+import { buildCreateOptions } from '@/features/tag-fields/mention-create-options'
+import { useOptionalTagSchemaSnapshot } from '@/features/tag-fields/use-optional-object-identity'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import type { DateMentionValue } from './date-mention-popover'
@@ -30,6 +35,10 @@ export type MentionSuggestionItem =
   | { kind: 'date-hint' }
   | { kind: 'note'; id: string; title: string; lastEdited?: string }
   | { kind: 'canvas'; id: string; title: string }
+  /** An object of a tag with fields, listed under its group tag (D1). */
+  | { kind: 'object'; match: ObjectMatch }
+  /** Always the last row: "Create {title}" opens the type choice (D2). */
+  | { kind: 'create'; title: string }
 
 export type CanvasChoiceOption = 'mention' | 'embed'
 
@@ -70,6 +79,8 @@ export function MentionMenu({
   onShowMore
 }: MentionMenuProps) {
   const { t } = useT('notes')
+  const snapshot = useOptionalTagSchemaSnapshot()
+  const lookOf = (tag: string) => lookOfTagKey(snapshot, tag)
 
   // Tab confirms the highlighted row (mirrors Enter). BlockNote's suggestion
   // handler ignores Tab, and the inline date ghost plugin otherwise swallows it
@@ -115,11 +126,17 @@ export function MentionMenu({
   )
   const firstNoteIndex = items.findIndex((item) => item.kind === 'note')
   const firstCanvasIndex = items.findIndex((item) => item.kind === 'canvas')
+  const hasObjects = items.some((item) => item.kind === 'object')
+  const createTypes = buildCreateOptions(snapshot, null)
+    .map((option) => (option.kind === 'plain' ? t('tagObjects.create.noteWord') : option.name))
+    .join(', ')
 
   return (
     <div
       className={cn(
-        'mention-menu z-50 min-w-[220px] max-w-[360px] max-h-[300px] overflow-y-auto',
+        'mention-menu z-50 min-w-[220px] max-w-[360px] max-h-[360px] overflow-y-auto',
+        // Two-line object and create rows read at the boards' width (D1).
+        (hasObjects || items.some((item) => item.kind === 'create')) && 'w-[340px]',
         'rounded-md border bg-popover text-popover-foreground text-[13px] leading-4',
         'shadow-[var(--shadow-card-hover)] animate-in fade-in-0 zoom-in-95'
       )}
@@ -198,6 +215,73 @@ export function MentionMenu({
             )
           }
 
+          if (item.kind === 'object') {
+            const look = lookOf(item.match.tag)
+            const groupLook = lookOf(item.match.groupTag)
+            const previous = items[index - 1]
+            const startsGroup =
+              previous?.kind !== 'object' || previous.match.groupTag !== item.match.groupTag
+            const subtitle = [
+              ...(item.match.viaTag ? [capitalize(item.match.viaTag)] : []),
+              ...item.match.subtitle
+            ].join(' · ')
+            return (
+              <Fragment key={`object-${item.match.noteId}`}>
+                {startsGroup && (
+                  <>
+                    {index > 0 && previous?.kind !== 'object' && (
+                      <hr className="my-1 h-px border-0 bg-border" />
+                    )}
+                    <div className="mention-menu-group flex items-center gap-1.5 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.04em] text-muted-foreground">
+                      {groupLook && <TagGlyph look={groupLook} className="size-3" />}
+                      {snapshot?.tags[item.match.groupTag]?.name ?? item.match.groupTag}
+                    </div>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={itemClassName(isSelected)}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => onItemClick?.(item)}
+                >
+                  {look && <ObjectAvatar look={look} title={item.match.title} size={24} />}
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate text-foreground">{item.match.title}</span>
+                    {subtitle && <span className="truncate text-xs">{subtitle}</span>}
+                  </span>
+                  {isSelected && <EnterKey />}
+                </button>
+              </Fragment>
+            )
+          }
+
+          if (item.kind === 'create') {
+            return (
+              <Fragment key="create">
+                {index > 0 && <hr className="my-1 h-px border-0 bg-border" />}
+                <button
+                  type="button"
+                  className={itemClassName(isSelected)}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => onItemClick?.(item)}
+                >
+                  <Plus className="size-3.5 shrink-0" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate text-foreground">
+                      {t('tagObjects.create.row', { title: item.title })}
+                    </span>
+                    <span className="truncate text-xs">
+                      {t('tagObjects.create.rowHint', { types: createTypes })}
+                    </span>
+                  </span>
+                  {isSelected && <EnterKey />}
+                </button>
+              </Fragment>
+            )
+          }
+
           if (item.kind === 'canvas') {
             return (
               <Fragment key={`canvas-${item.id}`}>
@@ -224,8 +308,15 @@ export function MentionMenu({
           }
 
           const divider =
-            hasDateGroup && index === firstNoteIndex ? (
-              <hr className="my-1 h-px border-0 bg-border" />
+            (hasDateGroup || hasObjects) && index === firstNoteIndex ? (
+              <>
+                <hr className="my-1 h-px border-0 bg-border" />
+                {hasObjects && (
+                  <div className="mention-menu-group px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.04em] text-muted-foreground">
+                    {t('tagObjects.mention.notes')}
+                  </div>
+                )}
+              </>
             ) : null
 
           return (
@@ -262,6 +353,19 @@ export function MentionMenu({
       </div>
     </div>
   )
+}
+
+function EnterKey(): React.JSX.Element {
+  const { t } = useT('notes')
+  return (
+    <kbd className="ms-auto rounded border border-border px-1 text-[11px] text-muted-foreground">
+      {t('tagObjects.keys.enter')}
+    </kbd>
+  )
+}
+
+function capitalize(name: string): string {
+  return name.charAt(0).toLocaleUpperCase() + name.slice(1)
 }
 
 interface CanvasChoiceMenuProps {

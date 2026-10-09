@@ -147,6 +147,8 @@ interface UseFolderViewOptions {
   pageSize?: number
   /** Saved view name to activate on load, preferred over the folder default (e.g. Home widget config). */
   initialViewName?: string
+  /** A tab-local filter ANDed onto the active view's (a "Linked here" count, F1). */
+  extraFilter?: string | null
 }
 
 /** Formula info for column selector */
@@ -275,7 +277,8 @@ interface UseFolderViewResult {
 export function useFolderView({
   scope,
   pageSize = 100,
-  initialViewName
+  initialViewName,
+  extraFilter
 }: UseFolderViewOptions): UseFolderViewResult {
   const queryClient = useQueryClient()
 
@@ -419,7 +422,11 @@ export function useFolderView({
 
   // Client-side filtered notes
   const filteredNotes = useMemo(() => {
-    const filters = activeView?.filters as FilterExpression | undefined
+    const viewFilters = activeView?.filters as FilterExpression | undefined
+    const filters: FilterExpression | undefined =
+      extraFilter && viewFilters
+        ? { and: [viewFilters, extraFilter] }
+        : (extraFilter ?? viewFilters)
     if (!filters) return notes
 
     try {
@@ -428,7 +435,7 @@ export function useFolderView({
       log.error('Filter evaluation error:', err)
       return notes
     }
-  }, [notes, activeView?.filters])
+  }, [notes, activeView?.filters, extraFilter])
 
   // Get properties data from query
   const availableProperties = propertiesQuery.data?.properties ?? []

@@ -1715,5 +1715,80 @@
         "category": "Kategori değiştirilemedi."
       }
     }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title} şu olarak oluştur",
+      "asPrefix": "Oluştur",
+      "asSuffix": "olarak",
+      "failed": "Not oluşturulamadı",
+      "lastUsed": "Son kullanılan",
+      "noteWord": "not",
+      "plainNote": "Düz not",
+      "readyMade": "Hazır etiket",
+      "row": "“{title}” oluştur",
+      "rowHint": "Şu olarak: {types}"
+    },
+    "hover": {
+      "at": "·",
+      "lastMet": "Son görüşme · {title}",
+      "lastMetOn": "Son görüşme {date} · {title}",
+      "mentionedIn": "{count, plural, one {# notta geçiyor} other {# notta geçiyor}}",
+      "open": "Aç",
+      "tasks": "{count, plural, one {# görev · {field}} other {# görev · {field}}}"
+    },
+    "inline": {
+      "aria": "Metindeki #{tag}",
+      "explain": "Metinde etiket yalnızca bir etikettir. Bu not #{tag} sayfasında Geçtiği notlar altında listelenir.",
+      "made": "#{tag} bu notun etiketlerine eklendi",
+      "make": "Bu notu {tag} yap",
+      "makeFailed": "Etiket eklenemedi",
+      "makeHint": "#{tag} etiketini başlığa ekler ve alanlarını gösterir",
+      "meta": "{count, plural, one {# nesne} other {# nesne}} · {fields, plural, one {# alan} other {# alan}}",
+      "open": "#{tag} aç",
+      "remove": "Etiketi metinden kaldır"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "{field} olarak",
+      "due": "Bitiş {date}",
+      "inTheText": "metinde",
+      "mentionedIn": "Geçtiği notlar",
+      "tasks": "Görevler",
+      "title": "Buraya bağlı"
+    },
+    "mention": {
+      "notes": "Notlar"
+    },
+    "picker": {
+      "create": "Yeni {tag}",
+      "createNamed": "Yeni {tag} “{title}”",
+      "empty": "Eşleşme yok",
+      "search": "{tag} ara",
+      "untitled": "Yeni {tag}"
+    },
+    "quickFields": {
+      "add": "{field} ekle",
+      "aria": "{title} için ilk alanlar",
+      "done": "Bitti",
+      "later": "Sonra",
+      "newObject": "Yeni {tag}",
+      "saveFailed": "Alanlar kaydedilemedi"
+    },
+    "table": {
+      "untitled": "Yeni {tag}",
+      "newInGroup": "{group} içinde yeni {tag}",
+      "new": "Yeni {tag}",
+      "includes": "{field} şunu içerir",
+      "removeFilter": "Filtreyi kaldır",
+      "shown": "{shown} / {total}",
+      "saveView": "Görünümü kaydet",
+      "mentionedMeta": "{count, plural, one {Metninde '#'{tag} geçen # not} other {Metninde '#'{tag} geçen # not}}",
+      "saveFailed": "Alan kaydedilemedi",
+      "created": "{title} oluşturuldu"
+    }
   }
 }

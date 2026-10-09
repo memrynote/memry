@@ -33,6 +33,8 @@ const KIND_ICONS: Record<RelationKind, AppIcon> = {
 interface RelationEditorProps {
   value: string[]
   onChange: (next: string[]) => void
+  /** A relation field's target tag: the picker only offers its objects. */
+  targetTag?: string | null
 }
 
 // Renders live-resolved chips for a relation property's stored URIs, plus a
@@ -41,7 +43,7 @@ interface RelationEditorProps {
 // renaming a target requires zero writes here. Dangling refs (exists: false)
 // render as a distinct "deleted" chip and are never auto-scrubbed from the
 // value; only an explicit remove click writes.
-export function RelationEditor({ value, onChange }: RelationEditorProps) {
+export function RelationEditor({ value, onChange, targetTag }: RelationEditorProps) {
   const { t } = useT('notes')
   const navigate = useRelationNavigation()
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
@@ -171,7 +173,7 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={6} className="w-auto p-0">
-          <RelationPicker onSelect={handleSelect} />
+          <RelationPicker onSelect={handleSelect} targetTag={targetTag} selected={value} />
         </PopoverContent>
       </Popover>
     </div>

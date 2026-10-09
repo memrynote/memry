@@ -1,6 +1,8 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { getExtension } from '@memry/shared/file-types'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { TagGlyph } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { PageJournalIcon } from '@/lib/icons/page-icons'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
@@ -338,6 +340,18 @@ export function getFileIcon(note: NoteListItem): React.ReactElement {
       return <Video className={`${iconClass} text-purple-500`} />
     case 'markdown':
     default:
-      return <FileText className={iconClass} />
+      return <NoteObjectIcon noteId={note.id} fallback={<FileText className={iconClass} />} />
   }
+}
+
+/** A note's sidebar icon: the object's tag icon when the note is an object. */
+function NoteObjectIcon({
+  noteId,
+  fallback
+}: {
+  noteId: string
+  fallback: React.ReactElement
+}): React.ReactElement {
+  const identity = useOptionalObjectIdentity(noteId)
+  return identity ? <TagGlyph look={identity} className="size-4" /> : fallback
 }

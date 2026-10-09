@@ -69,6 +69,7 @@ import { useFolderNoteIcons } from '@/hooks/use-folder-note-icons'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import {
   FOLDER_VIEW_STATE_KEYS,
+  parseLinkedFilter,
   folderScrollKey,
   parseSearchOpen,
   parseChartState,
@@ -91,6 +92,15 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { TagSuggestion } from '@/lib/tag-suggestions'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
+import {
+  LinkedFilterBar,
+  MentionedInSection,
+  TagTableProvider,
+  updateTaskField,
+  withLinkedFilter
+} from '@/features/tag-fields/tag-table'
+import { useResolvedTag } from '@/features/tag-fields/use-tag-schemas'
+import type { TaskFieldValue } from '@memry/contracts/tasks-api'
 
 const log = createLogger('Page:FolderView')
 
@@ -135,6 +145,39 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     parse: parseViewName
   })
 
+  const handleObjectCreated = useCallback(
+    (id: string, title: string, open: boolean) => {
+      if (open) {
+        openTab(
+          {
+            type: 'note',
+            title,
+            icon: 'file-text',
+            path: `/notes/${id}`,
+            entityId: id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          },
+          { forceNew: true }
+        )
+        return
+      }
+      toast.success(t('tagObjects.table.created', { title }))
+    },
+    [openTab, t]
+  )
+
+  // Tag with fields: the filter a "Linked here" count opened this tab with
+  // (F1). Tab-local and removable; Save view writes it into the view.
+  const [linkedFilter, setLinkedFilter] = useTabViewState<string | null>({
+    key: FOLDER_VIEW_STATE_KEYS.linkedFilter,
+    defaultValue: null,
+    parse: parseLinkedFilter
+  })
+  const fieldTag = useResolvedTag(scope.kind === 'tag' ? scope.tag : null)
+
   // Use the folder view hook
   const {
     views,
@@ -173,7 +216,11 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     updateNoteIcons,
     hasMore,
     loadMore
-  } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
+  } = useFolderView({
+    scope,
+    initialViewName: storedViewName ?? undefined,
+    extraFilter: fieldTag?.hasFields ? linkedFilter : null
+  })
 
   // Filters, sorts, groups and summaries run over the loaded rows, so a folder
   // past the first page must load every page or its later entries never show.
@@ -512,6 +559,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     (noteId: string, propertyName: string, value: unknown): void => {
       const note = notes.find((n) => n.id === noteId)
       if (!note) return
+      // A task row of a tag with fields edits that tag's fields (F1).
+      if (note.kind === 'task' && fieldTag?.effectiveFields.some((f) => f.name === propertyName)) {
+        updateTaskField(noteId, propertyName, value as TaskFieldValue | undefined)
+          .then(() => refresh())
+          .catch((error: unknown) =>
+            toast.error(extractErrorMessage(error, t('tagObjects.table.saveFailed')))
+          )
+        return
+      }
       if (!isMetadataEditableRow(note)) {
         log.warn('Ignoring property update on a row with no writable frontmatter', {
           id: noteId,
@@ -522,7 +578,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       }
       void updateNoteProperty(noteId, propertyName, value)
     },
-    [notes, updateNoteProperty]
+    [notes, updateNoteProperty, fieldTag, refresh, t]
   )
 
   // ============================================================================
@@ -1015,7 +1071,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [selectedRowIds])
 
-  return (
+  const page = (
     <div className="relative flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
       <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
@@ -1312,8 +1368,23 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           onOpenSavedSearch={handleOpenSavedSearch}
         />
       )}
+      {fieldTag?.hasFields && linkedFilter && (
+        <LinkedFilterBar
+          filter={linkedFilter}
+          shown={notes.length}
+          total={unfilteredCount}
+          onRemove={() => setLinkedFilter(null)}
+          onSave={() => {
+            void updateFilters(
+              withLinkedFilter(activeView?.filters as FilterExpression | undefined, linkedFilter)
+            ).then(() => setLinkedFilter(null))
+          }}
+        />
+      )}
 
-      {/* Content - relative container for absolute positioned table */}
+      {/* Content - relative container for absolute positioned table. A tag
+          with fields gives the tables its relation pickers, task field edits
+          and "+ New … in …" group rows (F1) from the TagTableProvider around the page. */}
       <div className="flex-1 relative min-w-0">
         {/* Absolute positioned inner container isolates table width from layout */}
         <div className="absolute inset-0 overflow-hidden">
@@ -1481,6 +1552,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           )}
       </div>
 
+      {fieldTag?.hasFields && (
+        <MentionedInSection
+          tag={fieldTag}
+          onOpen={(id, title) =>
+            openSidebarItem({ type: 'note', title, path: `/notes/${id}`, entityId: id })
+          }
+        />
+      )}
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -1546,6 +1626,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         </>
       )}
     </div>
+  )
+
+  return (
+    <TagTableProvider tag={fieldTag} onCreated={handleObjectCreated}>
+      {page}
+    </TagTableProvider>
   )
 }
 

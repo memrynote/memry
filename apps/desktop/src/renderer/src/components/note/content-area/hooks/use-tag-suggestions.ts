@@ -11,6 +11,8 @@ interface TagSuggestionsParams {
   editorContainerRef: React.RefObject<HTMLDivElement | null>
   tagColorMap?: Map<string, string>
   tagIconMap?: Map<string, string>
+  /** Takes a pill click first; returning true skips opening the tag page. */
+  onTagClick?: (tag: string, pill: HTMLElement) => boolean
 }
 
 interface TagSuggestionsResult {
@@ -22,9 +24,14 @@ export function useTagSuggestions({
   editor,
   editorContainerRef,
   tagColorMap,
-  tagIconMap
+  tagIconMap,
+  onTagClick
 }: TagSuggestionsParams): TagSuggestionsResult {
   const { openSidebarItem } = useSidebarNavigation()
+  const onTagClickRef = useRef(onTagClick)
+  useEffect(() => {
+    onTagClickRef.current = onTagClick
+  }, [onTagClick])
   const tagColorMapRef = useRef(tagColorMap)
   const tagIconMapRef = useRef(tagIconMap)
 
@@ -94,6 +101,7 @@ export function useTagSuggestions({
 
       const tag = pill.dataset.hashTag
       const color = pill.dataset.hashTagColor || ''
+      if (tag && onTagClickRef.current?.(tag, pill)) return
       if (tag) {
         openSidebarItem({
           type: 'tag',

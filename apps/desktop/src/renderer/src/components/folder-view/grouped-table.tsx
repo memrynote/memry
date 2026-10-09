@@ -12,6 +12,12 @@
  * - T114: Per-group summaries (when showSummary is enabled)
  */
 
+import { FieldPropertyCell } from './field-property-cell'
+import {
+  GroupValueTitle,
+  NewInGroupButton,
+  relationGroupUris
+} from '@/features/tag-fields/tag-table'
 import { useMemo, useCallback, useState, useRef, memo } from 'react'
 import {
   useReactTable,
@@ -91,7 +97,6 @@ import {
   TagsCell,
   DateCell,
   WordCountCell,
-  EditablePropertyCell,
   CheckboxCell,
   NumberCell,
   TextCell,
@@ -468,6 +473,8 @@ export function GroupedTable({
         <TitleCell
           title={note.title}
           emoji={note.emoji}
+          noteId={note.kind === 'task' || note.kind === 'inbox' ? undefined : note.id}
+          viaTag={note.viaTag}
           onClick={() => onNoteOpen?.(note.id)}
           highlightQuery={highlightQuery}
         />
@@ -534,17 +541,13 @@ export function GroupedTable({
         const value = info.getValue()
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return (
-          <EditablePropertyCell
+          <FieldPropertyCell
+            note={note}
+            columnId={columnId}
             value={value}
             type={type}
             highlightQuery={highlightQuery}
-            onSave={
-              onPropertyUpdate && isMetadataEditableRow(note)
-                ? (nextValue) => {
-                    onPropertyUpdate(note.id, columnId, nextValue)
-                  }
-                : undefined
-            }
+            onPropertyUpdate={onPropertyUpdate}
           />
         )
       }
@@ -1387,6 +1390,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
   const { t: tPhaseF } = useT('notes')
   const isExpanded = row.getIsExpanded()
   const groupValue = row.groupingValue
+  const groupUris = relationGroupUris(groupValue)
   const subRows = row.subRows
   const count = subRows.length
 
@@ -1464,7 +1468,11 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
           {getColumnLabel(groupByProperty)}:
         </span>
-        <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
+        {groupUris ? (
+          <GroupValueTitle uris={groupUris} />
+        ) : (
+          <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
+        )}
 
         {/* Count badge */}
         <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
@@ -1494,6 +1502,9 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
             )}
           </div>
         )}
+
+        {/* Tag with fields: "+ New meeting in Acme", the group's value prefilled (F1). */}
+        <NewInGroupButton property={groupByProperty} value={groupValue} />
       </td>
     </tr>
   )

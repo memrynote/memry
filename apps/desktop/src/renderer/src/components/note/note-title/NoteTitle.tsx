@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { TitleInput } from './TitleInput'
+import { ObjectAvatar } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { useT } from '@memry/i18n/renderer'
 
 const LazyEmojiPicker = lazy(async () => ({
@@ -10,6 +12,8 @@ const LazyEmojiPicker = lazy(async () => ({
 }))
 
 export interface NoteTitleProps {
+  /** An object note without its own icon shows its tag's avatar or icon tile (E1). */
+  noteId?: string
   emoji: string | null
   title: string
   placeholder?: string
@@ -27,6 +31,7 @@ export interface NoteTitleProps {
 }
 
 export function NoteTitle({
+  noteId,
   emoji,
   title,
   placeholder,
@@ -38,6 +43,7 @@ export function NoteTitle({
 }: NoteTitleProps) {
   const { t } = useT('notes')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const identity = useOptionalObjectIdentity(noteId)
 
   const handleIconSelect = useCallback(
     (value: string) => {
@@ -66,6 +72,7 @@ export function NoteTitle({
 
   return (
     <div className={cn('relative flex items-center gap-3')}>
+      {!emoji && identity && <ObjectAvatar look={identity} title={title} size={48} />}
       {emoji &&
         (onIconChange && !disabled ? (
           <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
