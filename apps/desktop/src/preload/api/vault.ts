@@ -1,4 +1,5 @@
 import { VaultChannels } from '@memry/contracts/ipc-channels'
+import { readStartupVaultArg } from '@memry/contracts/startup-vault'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const vaultApi = {
@@ -8,6 +9,7 @@ export const vaultApi = {
   getDefaultParent: () => invoke(VaultChannels.invoke.GET_DEFAULT_PARENT),
   getAll: () => invoke(VaultChannels.invoke.GET_ALL),
   getStatus: () => invoke(VaultChannels.invoke.GET_STATUS),
+  getStartupPath: () => readStartupVaultArg(process.argv),
   getConfig: () => invoke(VaultChannels.invoke.GET_CONFIG),
   updateConfig: (config: Record<string, unknown>) =>
     invoke(VaultChannels.invoke.UPDATE_CONFIG, config),
