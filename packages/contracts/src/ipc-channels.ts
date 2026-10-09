@@ -322,6 +322,8 @@ export const PropertiesChannels = {
     GET: 'properties:get',
     /** Set properties for any entity (note or journal) by ID */
     SET: 'properties:set',
+    /** Set only the given keys (null removes one), leaving the entity's other properties */
+    MERGE: 'properties:merge',
     /** Rename a property for a specific entity (note-only scope) */
     RENAME: 'properties:rename',
     /** Resolve relation property URIs to display data (title, existence) */

@@ -56,6 +56,14 @@ export const propertiesService = {
   },
 
   /**
+   * Set only the given keys, leaving the entity's other properties; null removes a key.
+   * Main serializes merges per entity, so concurrent single-key writes never drop each other.
+   */
+  merge: (entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse> => {
+    return window.api.properties.merge(entityId, values)
+  },
+
+  /**
    * Rename a property for an entity.
    * Note-only scope: rename only affects this entity's frontmatter.
    * @param entityId - Note ID or journal entry ID

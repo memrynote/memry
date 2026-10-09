@@ -49,7 +49,8 @@ export function usePropertySection({
     addProperty,
     removeProperty,
     renameProperty,
-    reorderProperties
+    reorderProperties,
+    setPropertyValue
   } = useProperties(entityId)
 
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
@@ -164,14 +165,12 @@ export function usePropertySection({
       const action: PropertySectionAction = !exists ? 'add' : filled ? 'update' : 'remove'
       if (!canPerformAction(action)) return
       try {
-        if (action === 'add') await addProperty(name, value, type)
-        else if (action === 'update') await updateProperty(name, value)
-        else await removeProperty(name)
+        await setPropertyValue(name, filled ? value : null, type)
       } catch (error) {
         onError?.(action, error)
       }
     },
-    [propertiesRecord, canPerformAction, addProperty, updateProperty, removeProperty, onError]
+    [propertiesRecord, canPerformAction, setPropertyValue, onError]
   )
 
   return {

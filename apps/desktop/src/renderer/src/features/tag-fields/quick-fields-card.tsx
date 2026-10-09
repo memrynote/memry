@@ -72,10 +72,7 @@ export function QuickFieldsCard({
     onClose()
     if (Object.keys(typed).length === 0) return
     try {
-      const current = await propertiesService.get(target.noteId)
-      const record: Record<string, unknown> = {}
-      for (const property of current) record[property.name] = property.value
-      const result = await propertiesService.set(target.noteId, { ...record, ...typed })
+      const result = await propertiesService.merge(target.noteId, typed)
       if (!result.success) throw new Error(result.error)
     } catch (error) {
       toast.error(extractErrorMessage(error, t('tagObjects.quickFields.saveFailed')))

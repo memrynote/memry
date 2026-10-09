@@ -1,7 +1,6 @@
 /**
- * Writes for accepted agent-fill proposals. One `properties:set` per note,
- * merged over the stored values read just before, so accepting several
- * proposals never races a stale record.
+ * Writes for accepted agent-fill proposals. One `properties:merge` per note:
+ * main sets only the accepted keys, so a field edited meanwhile survives.
  */
 import { formatRelationUri } from '@memry/contracts/relation-uri'
 import type { FieldFillProposal } from '@memry/contracts/tag-fill-api'
@@ -29,9 +28,6 @@ export async function writeProposals(
   if (proposals.length === 0) return
   const values: Record<string, unknown> = {}
   for (const proposal of proposals) values[proposal.field] = await valueOf(proposal)
-  const stored = await propertiesService.get(noteId)
-  const record: Record<string, unknown> = {}
-  for (const property of stored) record[property.name] = property.value
-  const result = await propertiesService.set(noteId, { ...record, ...values })
+  const result = await propertiesService.merge(noteId, values)
   if (!result.success) throw new Error(result.error ?? 'Failed to save fields')
 }

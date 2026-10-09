@@ -579,6 +579,10 @@ export interface PropertiesClientAPI {
    */
   set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
   /**
+   * Set only the given keys (null removes one); the entity's other properties stay.
+   */
+  merge(entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse>
+  /**
    * Rename a property for a specific entity (note-only scope).
    * Does not propagate to other entities - only affects this entity's frontmatter.
    */

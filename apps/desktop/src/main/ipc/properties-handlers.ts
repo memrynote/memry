@@ -13,6 +13,7 @@ import {
   PropertiesChannels,
   GetPropertiesSchema,
   SetPropertiesSchema,
+  MergePropertiesSchema,
   RenamePropertySchema,
   type SetPropertiesResponse,
   type RenamePropertyResponse
@@ -21,7 +22,7 @@ import type { PropertyValue } from '../notes/store'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '../notes/store'
 import { getIndexDatabase } from '../database'
-import { setEntityProperties } from '../notes/entity-properties'
+import { mergeEntityProperties, setEntityProperties } from '../notes/entity-properties'
 import { getMainI18n } from '../lib/main-i18n'
 import { flushProjectionEvents } from '../projections'
 import { fileSpelling } from '../vault/yaml-dates'
@@ -72,6 +73,30 @@ export function registerPropertiesHandlers(): void {
           properties: stored,
           removed: before.map((p) => p.name).filter((name) => !Object.hasOwn(stored, name))
         }
+      }, 'errors:property.setFailed')
+    )
+  )
+
+  // -------------------------------------------------------------------------
+  // properties:merge - Set only the given keys; the entity's other properties stay
+  // -------------------------------------------------------------------------
+  ipcMain.handle(
+    PropertiesChannels.invoke.MERGE,
+    createValidatedHandler(
+      MergePropertiesSchema,
+      withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
+        const result = await mergeEntityProperties(input.entityId, input.values)
+        if (!result.success) return result
+        const stored = Object.fromEntries(
+          getNoteProperties(getIndexDatabase(), input.entityId).map((p) => [
+            p.name,
+            fileSpelling(p.value)
+          ])
+        )
+        const removed = Object.keys(input.values).filter(
+          (name) => input.values[name] === null && !Object.hasOwn(stored, name)
+        )
+        return { success: true, properties: stored, removed }
       }, 'errors:property.setFailed')
     )
   )
@@ -134,5 +159,6 @@ export function registerPropertiesHandlers(): void {
 export function unregisterPropertiesHandlers(): void {
   ipcMain.removeHandler(PropertiesChannels.invoke.GET)
   ipcMain.removeHandler(PropertiesChannels.invoke.SET)
+  ipcMain.removeHandler(PropertiesChannels.invoke.MERGE)
   ipcMain.removeHandler(PropertiesChannels.invoke.RENAME)
 }
