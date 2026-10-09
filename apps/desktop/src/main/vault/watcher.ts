@@ -462,6 +462,10 @@ export class VaultWatcher {
 
       const existing = getNoteCacheByPath(db, relativePath)
       if (existing) {
+        // A note file that turns readable again arrives as an add (#2764).
+        if (fileType === 'markdown') {
+          await this.handleMarkdownFileChange(absolutePath, relativePath, existing, db)
+        }
         return
       }
 
@@ -1074,6 +1078,12 @@ export class VaultWatcher {
           // recursive delete takes the files before the database.
           if (!isVaultReachable(vaultPath)) {
             this.waitForVaultReturn()
+            return
+          }
+          // chokidar reports a file it cannot open (chmod 000, an antivirus
+          // lock) as unlinked. It is still there, so its note stays (#2764).
+          if (!(await isFileMissing(absolutePath))) {
+            logger.warn('Note file cannot be read; keeping the note', { path: relativePath })
             return
           }
           // A locked note removed outside the app gets its locked text back
