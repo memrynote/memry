@@ -192,6 +192,12 @@ extension VaultOutline {
 }
 
 extension VaultOutline {
+    /// Every folder a note can be put in: configured and derived, by path.
+    /// The pickers (Move to, File) offer what the notes tree shows.
+    static func destinations(configured: [FolderSummary], notes: [NoteSummary]) -> [FolderSummary] {
+        (configured + derivedFolders(configured: configured, notes: notes)).sorted { $0.path < $1.path }
+    }
+
     /// A folder for every note path, and every ancestor of one, that has no
     /// `folder_config` row. Parent before child, so the index keeps the core's
     /// ordering promise; the last path segment is the name, as on disk.
