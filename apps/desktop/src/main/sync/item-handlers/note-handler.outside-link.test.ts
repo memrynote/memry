@@ -112,11 +112,10 @@ describe('a synced note whose file links outside the vault', () => {
       REMOTE_CLOCK
     )
 
-    const files = fs.readdirSync(roots.vault, { recursive: true, encoding: 'utf-8' })
-    for (const name of files.filter((file) => file.endsWith('.md'))) {
-      const file = path.join(roots.vault, name)
-      if (fs.lstatSync(file).isSymbolicLink()) continue
-      expect(fs.readFileSync(file, 'utf-8')).not.toContain('Outside secret')
+    const entries = fs.readdirSync(roots.vault, { recursive: true, withFileTypes: true })
+    for (const entry of entries.filter((e) => e.isFile() && e.name.endsWith('.md'))) {
+      const text = fs.readFileSync(path.join(entry.parentPath, entry.name), 'utf-8')
+      expect(text).not.toContain('Outside secret')
     }
     expect(fs.readFileSync(secret, 'utf-8')).toBe(SECRET)
   })
