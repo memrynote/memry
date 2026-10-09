@@ -55,6 +55,7 @@ vi.mock('../tasks/reconcile-markdown-tasks', () => ({
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('./index', () => ({
+  emitIndexProgress: vi.fn(),
   getConfig: () => ({
     excludePatterns: [],
     defaultNoteFolder: 'notes',
@@ -73,7 +74,11 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
-import { clearIngestBackfill } from './ingest-backfill'
+import { reconcileCanvasFiles } from '../canvas/reconcile'
+import { withCanvasMeta } from '../canvas/scene-file'
+import { scanMarkdownFile } from './file-scan'
+import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
+import { indexVault } from './indexer'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { VaultWatcher } from './watcher'
 
@@ -108,7 +113,7 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
   function seedNote(
     id: string,
     relativePath: string,
-    file: { fileType?: 'markdown' | 'pdf'; fileSize?: number | null } = {}
+    file: { fileType?: 'markdown' | 'pdf'; fileSize?: number | null; contentHash?: string } = {}
   ): void {
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
     fs.writeFileSync(abs(relativePath), `${id} text\n`)
@@ -123,14 +128,35 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
     insertNoteCache(index.db, {
       ...fields,
       fileSize: file.fileSize === undefined ? 10 : file.fileSize,
-      contentHash: `hash-${id}`
+      contentHash: file.contentHash ?? `hash-${id}`
     })
     data.db.insert(noteMetadata).values(fields).run()
   }
 
+  /** A note whose cached hash is the one its file really has, so a move can pair. */
+  async function seedHashedNote(id: string, relativePath: string): Promise<void> {
+    seedNote(id, relativePath)
+    const scan = await scanMarkdownFile(abs(relativePath), 0)
+    index.db
+      .update(noteCache)
+      .set({ contentHash: scan!.contentHash })
+      .where(eq(noteCache.id, id))
+      .run()
+  }
+
+  const idAt = (relativePath: string): string | null =>
+    index.db.select().from(noteCache).where(eq(noteCache.path, relativePath)).get()?.id ?? null
+
   function seedCanvas(id: string, relativePath: string): void {
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
-    fs.writeFileSync(abs(relativePath), JSON.stringify({ type: 'excalidraw', elements: [] }))
+    fs.writeFileSync(
+      abs(relativePath),
+      withCanvasMeta(JSON.stringify({ type: 'excalidraw', elements: [] }), {
+        id,
+        createdAt: 1,
+        updatedAt: 1
+      })
+    )
     data.db
       .insert(canvases)
       .values({
@@ -150,13 +176,18 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
       .run()
   }
 
+  /** The open order of `runBackgroundIndexBuild`: canvas reconcile, replay, walk. */
   async function openVault(): Promise<void> {
+    await reconcileCanvasFiles(data.db as never, vault.path, VAULT_ID)
     await watcher.replayMissedRemovals()
+    await indexVault(vault.path)
     // The rename window a live unlink gets, then the projection of the delete.
     await vi.advanceTimersByTimeAsync(600)
     // The window's decision stats the disk off the timer turn.
     for (let i = 0; i < 50; i++) await new Promise((resolve) => setImmediate(resolve))
     await flushProjectionEvents()
+    // A moved file's body is read in the background; finish it inside the test.
+    await drainIngestBackfill()
   }
 
   beforeEach(async () => {
@@ -313,5 +344,45 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
     fs.rmSync(placeholderOf('canvases/Evicted.excalidraw'))
     await openVault()
     expect(syncCanvasDelete).toHaveBeenCalledWith('canvas-evicted')
+  })
+
+  it('keeps the ids of notes, a folder of notes and a canvas moved while closed', async () => {
+    await seedHashedNote('note-renamed', 'notes/old-name.md')
+    await seedHashedNote('note-in-a', 'projects/a/one.md')
+    await seedHashedNote('note-in-b', 'projects/a/two.md')
+    seedCanvas('canvas-moved', 'canvases/Board.excalidraw')
+    fs.renameSync(abs('notes/old-name.md'), abs('notes/new-name.md'))
+    fs.renameSync(abs('projects/a'), abs('projects/b'))
+    fs.mkdirSync(abs('canvases/sub'))
+    fs.renameSync(abs('canvases/Board.excalidraw'), abs('canvases/sub/Board.excalidraw'))
+
+    await openVault()
+    await vi.advanceTimersByTimeAsync(2000)
+    for (let i = 0; i < 50; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(syncCanvasDelete).not.toHaveBeenCalled()
+    expect(idAt('notes/new-name.md')).toBe('note-renamed')
+    expect(idAt('projects/b/one.md')).toBe('note-in-a')
+    expect(idAt('projects/b/two.md')).toBe('note-in-b')
+    expect(canvasRow('canvas-moved')).toMatchObject({
+      deletedAt: null,
+      filePath: 'canvases/sub/Board.excalidraw'
+    })
+  })
+
+  it('syncs no deletes when too many files are missing at once, and checks again next open', async () => {
+    for (let i = 0; i < 30; i++) seedNote(`note-${i}`, `notes/n${i}.md`)
+    for (let i = 0; i < 21; i++) fs.rmSync(abs(`notes/n${i}.md`))
+
+    await openVault()
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(noteRow('note-0')?.path).toBe('notes/n0.md')
+
+    // The rest of the copy landed: one file really was deleted.
+    for (let i = 1; i < 21; i++) fs.writeFileSync(abs(`notes/n${i}.md`), `note-${i} text\n`)
+    await openVault()
+    expect(vi.mocked(syncNoteDelete).mock.calls).toEqual([['note-0']])
   })
 })

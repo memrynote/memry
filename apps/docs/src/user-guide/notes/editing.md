@@ -917,6 +917,11 @@ a hidden `.icloud` file in its place) is not deleted, nor is an attachment this 
 downloaded yet; once the offloaded file is deleted as well, so is the note. A note file put back
 from the trash or a backup comes back as a new note.
 
+A note renamed or moved while memrynote is closed, alone or with its whole folder, keeps its
+history, tasks and links. When more than 20 files, and more than a quarter of the vault, are
+missing at once (a vault still being copied or restored, say), memrynote deletes none of them and
+checks again the next time it opens the vault.
+
 ## Opening a Note Written Somewhere Else
 
 Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it

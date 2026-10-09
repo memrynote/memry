@@ -97,6 +97,17 @@ const logger = createLogger('Watcher')
 
 const VAULT_RETURN_POLL_MS = 2000
 /**
+ * A scan that finds this many files missing at once, and more than this share
+ * of the indexed notes and canvases, syncs none of their deletes. A half-copied
+ * or half-restored vault (`.memry/` landed, most files not yet) looks exactly
+ * like a mass delete, and a synced delete unlinks the files on every device.
+ * The floor keeps a small vault's ordinary cleanup flowing; the share keeps a
+ * large vault's folder delete flowing. Renames still pair, and the skipped rows
+ * are checked again at the next open.
+ */
+const MASS_REMOVAL_MIN_COUNT = 20
+const MASS_REMOVAL_MIN_SHARE = 0.25
+/**
  * How long a folder removed outside the app waits before its folder_config
  * rows are deleted, so a remove-and-recreate (an editor's atomic swap) keeps
  * them. The app's own rename and delete are skipped by isAppFolderChange.
@@ -396,7 +407,7 @@ export class VaultWatcher {
       // Anything else that stopped or started the watcher meanwhile owns it now.
       if (this.generation !== generation + 1) return
       await this.start(options)
-      await this.rescan(this.generation)
+      await this.rescan(this.generation, true)
     } catch (err) {
       this.onError?.(err instanceof Error ? err : new Error(String(err)))
     }
@@ -407,16 +418,28 @@ export class VaultWatcher {
    * would have called. Removals go first, so a file renamed meanwhile matches
    * its pending delete by content hash when its new path is added. Both lists
    * are gathered before any delete starts its rename window: walking a large
-   * vault outlasts the window (#2797).
+   * vault outlasts the window (#2797). `withChanges` also replays edits; vault
+   * open leaves those to its index walk.
    */
-  private async rescan(generation: number): Promise<void> {
+  private async rescan(generation: number, withChanges: boolean): Promise<void> {
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     const isCurrent = (): boolean => this.generation === generation
     const db = getIndexDatabase()
 
-    const missing = await this.collectMissedRemovals(vaultPath, isCurrent)
-    if (missing === null) return
+    const scan = await this.collectMissedRemovals(vaultPath, isCurrent)
+    if (scan === null) return
+    const { missing, checked } = scan
+    // With nothing missing no add can be a rename, and the open walk indexes adds.
+    if (missing.length === 0 && !withChanges) return
+    const keepUnpaired =
+      missing.length > MASS_REMOVAL_MIN_COUNT && missing.length > checked * MASS_REMOVAL_MIN_SHARE
+    if (keepUnpaired) {
+      logger.warn('Too many files are missing at once; syncing no deletes until the next open', {
+        missing: missing.length,
+        checked
+      })
+    }
 
     const added: string[] = []
     const changed: string[] = []
@@ -433,11 +456,12 @@ export class VaultWatcher {
     }
 
     if (!isCurrent()) return
-    for (const absolutePath of missing) this.handleFileDelete(absolutePath)
+    for (const absolutePath of missing) this.handleFileDelete(absolutePath, keepUnpaired)
     for (const absolutePath of added) {
       if (!isCurrent()) return
       await this.handleFileAdd(absolutePath)
     }
+    if (!withChanges) return
     for (const absolutePath of changed) {
       if (!isCurrent()) return
       await this.handleFileChange(absolutePath)
@@ -448,40 +472,43 @@ export class VaultWatcher {
    * Vault open: a note or canvas removed while the app was closed gets the
    * delete a live unlink would have given it (#3013). `ignoreInitial` keeps
    * chokidar quiet about those, so the indexed rows are checked against disk.
-   * Called once the open's index walk is done.
+   * Called before the open's index walk: a file renamed or moved while closed
+   * has to be added here, against its pending delete, to keep its id. The walk
+   * would index the new path under a fresh id first.
    */
   async replayMissedRemovals(): Promise<void> {
-    const vaultPath = this.vaultPath
-    if (!vaultPath) return
-    const generation = this.generation
-    const isCurrent = (): boolean => this.generation === generation
-    const missing = await this.collectMissedRemovals(vaultPath, isCurrent)
-    if (missing === null) return
-    for (const absolutePath of missing) this.handleFileDelete(absolutePath)
+    await this.rescan(this.generation, false)
   }
 
   /**
    * Indexed notes and live canvases whose file is gone from the vault, as
-   * absolute paths for `handleFileDelete`. Null when the watcher moved on to
-   * another vault meanwhile.
+   * absolute paths for `handleFileDelete`, and how many rows were checked.
+   * Null when the watcher moved on to another vault meanwhile.
    *
    * Two kinds of row can lack a file without having lost one, and are left out:
    * - A synced attachment note this device never downloaded (auto-download
    *   off, or still queued) has no file yet. Its row says so with no size.
    * - A crashed sync apply leaves note files the bulk-apply journal writes on
    *   the next pull. While the journal is there, nothing is collected.
+   *
+   * Checking the journal once, up front, is enough: the rows checked are read
+   * after it, and an apply that commits later adds rows this scan never sees.
+   * A delete looks its row up by path when its window closes, so a remote move
+   * meanwhile finds no row at the old path and deletes nothing.
    */
   private async collectMissedRemovals(
     vaultPath: string,
     isCurrent: () => boolean
-  ): Promise<string[] | null> {
+  ): Promise<{ missing: string[]; checked: number } | null> {
     if (hasBulkApplyJournal()) {
       logger.info('Unflushed sync writes are pending; skipping the removal scan')
-      return []
+      return { missing: [], checked: 0 }
     }
     const indexDb = getIndexDatabase()
     const missing: string[] = []
+    let checked = 0
     for (const row of getAllNoteRefRows(indexDb)) {
+      checked += 1
       if (!isCurrent()) return null
       const absolutePath = path.join(vaultPath, row.path)
       if (!(await isGoneFromDisk(absolutePath))) continue
@@ -492,10 +519,11 @@ export class VaultWatcher {
     for (const row of liveCanvasPaths(getDatabase())) {
       if (!isCurrent()) return null
       if (!row.filePath) continue
+      checked += 1
       const absolutePath = resolveCanvasFile(vaultPath, row.filePath)
       if (await isGoneFromDisk(absolutePath)) missing.push(absolutePath)
     }
-    return isCurrent() ? missing : null
+    return isCurrent() ? { missing, checked } : null
   }
 
   // ==========================================================================
@@ -1109,8 +1137,10 @@ export class VaultWatcher {
   /**
    * Handle file deletion.
    * Tracks as pending delete to detect renames (delete + add with same UUID).
+   * `keepUnpaired` still lets a rename claim the row, but a removal that
+   * pairs with nothing keeps its row and syncs no delete.
    */
-  private handleFileDelete(absolutePath: string): void {
+  private handleFileDelete(absolutePath: string, keepUnpaired = false): void {
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1122,6 +1152,8 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
 
       if (isCanvasFilePath(relativePath)) {
+        // A moved canvas is re-pointed by the open's canvas reconcile, not here.
+        if (keepUnpaired) return
         trackExternalCanvasRemoval(vaultPath, relativePath, () =>
           this.isGoneFromVault(vaultPath, absolutePath, relativePath)
         )
@@ -1158,6 +1190,7 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
+          if (keepUnpaired) return
           if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
           // A locked note removed outside the app gets its locked text back
           // instead of a delete that would reach every device (#2606).
