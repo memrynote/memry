@@ -139,6 +139,27 @@ struct VaultWriteTests {
         #expect(model.outline == outline, "the vault is still readable, so it stays on screen")
     }
 
+    @Test("a note page rename, move or delete that fails raises an alert")
+    func notePageActionFailuresAreShown() async {
+        // #2879: the note page set a failed status that nothing displayed.
+        let writer = ScriptedWriter(failure: StorageError.Failed(what: "the disk is full"))
+        let actions = NotePageActions(noteId: "n", writer: writer)
+
+        for action in [
+            { await actions.rename(to: "New") },
+            { await actions.move(to: "Work") },
+            { await actions.delete() }
+        ] as [() async -> Void] {
+            await action()
+            #expect(actions.failure != nil, "a failed note action must not be silent")
+            #expect(actions.failure?.title.contains("the disk is full") == false)
+            actions.dismissFailure()
+            #expect(actions.failure == nil)
+        }
+        #expect(!actions.deleted, "a failed delete must leave the note open")
+        #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
+    }
+
     @Test("a screen with no writer performs no write")
     func noWriterNoWrite() async {
         // The affordances are hidden in this case, so this is the belt behind
