@@ -258,6 +258,14 @@ only** or **Computer access**, and optionally allow web search for that turn.
 backend broader local CLI access for that turn. Web search is passed through only when the selected
 backend supports it.
 
+The built-in model connection (local or custom OpenAI-compatible endpoints) has memrynote vault
+tools only: no shell, no files outside the vault, and no web search. With that backend selected,
+**Computer access** and **Web search** show as unavailable with the reason "Vault tools only with
+this model", and the turn runs vault-only with web search off. Your saved default does not change,
+so switching back to Claude, Codex, or Antigravity picks it up again. The prompt tells the model the
+same thing in its permissions section: "Runtime: built-in model connection. Tools: memrynote vault
+tools only."
+
 Claude and Codex conversations also have a per-conversation model selector. memrynote starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
 CLI for each turn. The built-in model list is only a shortcut for common CLI aliases; type a custom
@@ -281,7 +289,8 @@ worked and every chat turn repeats it:
 - Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind LM Studio or
   llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
 - Some servers return a model's tool call as plain reply text, as `<tool_call>{...}</tool_call>`.
-  memrynote reads these calls out of the text and runs them like any other tool call. Only the names
+  memrynote reads these calls out of the text and runs them like any other tool call, also when the
+  probe saw the model call tools the native way. Only the names
   of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for

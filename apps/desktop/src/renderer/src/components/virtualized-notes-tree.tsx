@@ -726,7 +726,9 @@ function NoteRowIcon({
     return (
       <div className="shrink-0 flex items-center gap-0.5">
         {NOTE_ICON_SPACER}
-        <span className="flex h-5 w-5 items-center justify-center">{getFileIcon(note)}</span>
+        <span className="flex h-5 w-5 items-center justify-center text-base leading-none">
+          {getFileIcon(note)}
+        </span>
       </div>
     )
   }

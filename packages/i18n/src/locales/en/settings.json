@@ -996,6 +996,7 @@
         "syncing": "Syncing...",
         "paused": "Paused",
         "syncError": "Sync Error",
+        "deviceKeysMissing": "Sync paused: device keys missing",
         "offline": "Offline",
         "connecting": "Connecting...",
         "localOnly": "Local only",
@@ -2133,7 +2134,15 @@
       "clockSkewDetected": "Clock skew detected",
       "items": "items",
       "willSyncWhenBackOnline": "Will sync when back online",
-      "openSyncSettings": "Open sync settings"
+      "openSyncSettings": "Open sync settings",
+      "repairDeviceKeys": "Repair",
+      "signInToRepair": "Sign in again to set up this device's keys. Unsynced notes, tasks and projects are kept. You may need your recovery phrase.",
+      "repairFailed": "Couldn't repair this device's keys. Try again.",
+      "syncNotStarted": {
+        "vault-binding": "This device's keys are restored, but this vault isn't set to sync with your account yet. Choose how to sync it from the sync menu.",
+        "entitlement": "This device's keys are restored, but sync needs an active Sync plan.",
+        "unavailable": "This device's keys are restored, but sync couldn't start. It will retry; restart Memry if it doesn't."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2248,7 +2257,8 @@
         "label": "Default access",
         "description": "Sets the starting access mode for new Agent turns.",
         "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "computerAccess": "Computer access",
+        "builtInNote": "The built-in model connection always runs with vault tools only."
       },
       "confirm": {
         "label": "Confirm actions",

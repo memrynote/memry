@@ -55,6 +55,7 @@ import { CANVASES } from './seed-data/canvas'
 import { buildPropertiesFileData, PROPERTY_DEFINITION_ROWS } from './seed-data/properties'
 import { TAG_CATEGORIES, TAG_PALETTE } from './seed-data/tags'
 import {
+  IOS_PARITY_LINK_TARGETS,
   IOS_PARITY_METADATA,
   IOS_PARITY_NOTE,
   writeIosParityAttachments
@@ -156,6 +157,7 @@ async function main(): Promise<void> {
       ...NOTE_METADATA,
       ...JOURNAL_METADATA,
       IOS_PARITY_METADATA,
+      ...IOS_PARITY_LINK_TARGETS.map((target) => target.metadata),
       WRITING_DRAFTS_METADATA
     ])
     console.log(`  → note_metadata: ${noteMetaCount}`)
@@ -223,8 +225,14 @@ async function main(): Promise<void> {
     close()
   }
 
-  console.log(`  → Writing ${NOTES.length + 2} note files`)
-  const notesWritten = writeNoteFiles(vaultPath, [...NOTES, IOS_PARITY_NOTE, WRITING_DRAFTS_NOTE])
+  const noteFiles = [
+    ...NOTES,
+    IOS_PARITY_NOTE,
+    ...IOS_PARITY_LINK_TARGETS.map((target) => target.note),
+    WRITING_DRAFTS_NOTE
+  ]
+  console.log(`  → Writing ${noteFiles.length} note files`)
+  const notesWritten = writeNoteFiles(vaultPath, noteFiles)
 
   const attachmentsWritten = writeIosParityAttachments(vaultPath)
   console.log(`  → iOS Parity Test attachments: ${attachmentsWritten}`)

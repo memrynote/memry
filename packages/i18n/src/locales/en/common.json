@@ -366,6 +366,9 @@
         "cancel": "Cancel",
         "sending": "Sending…",
         "notSent": "Not sent. Edit to send again, or remove it."
+      },
+      "unavailable": {
+        "vaultToolsOnly": "Vault tools only with this model"
       }
     },
     "refPicker": {

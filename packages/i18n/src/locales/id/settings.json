@@ -2220,7 +2220,8 @@
         "label": "Akses default",
         "description": "Menetapkan mode akses awal untuk giliran agen yang baru.",
         "vaultOnly": "Hanya brankas",
-        "computerAccess": "Akses komputer"
+        "computerAccess": "Akses komputer",
+        "builtInNote": "Koneksi model bawaan selalu berjalan hanya dengan alat brankas."
       },
       "confirm": {
         "label": "Konfirmasi tindakan",

@@ -205,8 +205,17 @@ final class WebSocketConnection: NSObject, SocketHandle, @unchecked Sendable {
 
     private func report(error: any Error) {
         guard finish() else { return }
-        let mapped = TransportErrorMapping.map(error, elapsedMs: 0)
-        Log.transport.error("realtime socket failed")
+        // Chapter 09 §9.10: a handshake answered 401, 403 or 426 is never
+        // reconnected into, so the core needs the status, not a generic
+        // failure (#2872). URLSession reports it as `badServerResponse` and
+        // leaves the answer on the task.
+        let status = (task.response as? HTTPURLResponse)?.statusCode
+        let mapped: TransportError = if let status, status != 101 {
+            .HandshakeRejected(status: UInt16(clamping: status))
+        } else {
+            TransportErrorMapping.map(error, elapsedMs: 0)
+        }
+        Log.transport.error("realtime socket failed", .status(status ?? 0))
         listener.onError(error: mapped)
         emitter.emit(CoreEvent(.realtimeSocket))
     }

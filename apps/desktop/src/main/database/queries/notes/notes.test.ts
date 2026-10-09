@@ -369,9 +369,9 @@ describe('notes cache queries', () => {
     expect(resolveNoteByTitle(db, 'Target')?.id).toBe('note-17')
 
     // Resolved rows match by id; unresolved rows match by title, case-insensitively.
-    expect(getInboundLinkSourceIds(db, 'note-17', 'anything')).toEqual(['note-16'])
-    expect(getInboundLinkSourceIds(db, 'no-such-note', 'UNRESOLVED')).toEqual(['note-16'])
-    expect(getInboundLinkSourceIds(db, 'no-such-note', 'Target')).toEqual([])
+    expect(getInboundLinkSourceIds(db, 'note-17', 'anything', 'anything.md')).toEqual(['note-16'])
+    expect(getInboundLinkSourceIds(db, 'no-such-note', 'UNRESOLVED', 'x.md')).toEqual(['note-16'])
+    expect(getInboundLinkSourceIds(db, 'no-such-note', 'Target', 'x.md')).toEqual([])
 
     unresolveLinksToNote(db, 'note-17')
     expect(getIncomingLinks(db, 'note-17')).toHaveLength(0)

@@ -51,6 +51,32 @@ Meeting", matched case-insensitively. Renaming the target therefore leaves exist
 pointing at the old title; see [Broken Links](#broken-links) for how such a link looks and
 what clicking it does.
 
+## Linking by Folder Path
+
+A link can name a note by its place in the vault instead of its title. Obsidian writes links
+this way when two notes share a name:
+
+- `[[Projects/Roadmap]]` opens the note at `Projects/Roadmap.md`
+- `[[Projects/Roadmap#Goals]]` opens it at its "Goals" heading
+- `[[Projects/Roadmap#Goals|this year's goals]]` reads "this year's goals"
+
+A path always starts at the vault root, never at the folder of the note you are writing in.
+A leading `/` and a trailing `.md` are both accepted, and case does not matter. A path that
+matches no file is looked up as a title, as before.
+
+When two or more notes share a title, the `[[` dropdown shows each one's folder under its
+title and writes the path, so the link opens the note you picked: `[[Projects/Roadmap]]`, or
+`[[/Roadmap]]` for the one at the top of the vault. A note whose title is unique is still
+written as `[[Roadmap]]`. Typing `#` after a path lists that note's headings.
+
+Moving a note to another folder, or renaming a folder, updates every path link that points
+into it. Links written by title do not change, because the title stays the same.
+
+::: warning Older versions and iPhone
+An older desktop version and the iPhone app read a path link as a title, so they show it as
+a broken link. The file is not changed.
+:::
+
 ## Following a Link
 
 Click any wiki link to open the target in a new tab — or in this tab, if you have turned "clicking a page opens a new tab" off in settings.
@@ -449,7 +475,8 @@ keeps opening the same note and backlinks, mention counts, and the graph carry o
 unchanged. This covers every link form — `[[Old Title#Heading]]` keeps its heading,
 `[[Old Title|label]]` keeps its label (the visible text you chose never changes) — and it
 applies to attached files too: rename a PDF inside Memry and notes linking to it by name
-follow along.
+follow along. A link written as a path, `[[Projects/Old Title]]`, becomes
+`[[Projects/New Title]]`.
 
 The rewrite is an ordinary edit to each source note, so it appears in open editors right
 away and syncs to your other devices like any other change. Links written in another app

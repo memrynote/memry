@@ -103,9 +103,47 @@ describe('runTurn against a stub backend', () => {
     )
     expect(backend.runTurn).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining('Computer access requested for this turn.')
+        prompt: expect.stringContaining(
+          [
+            '# Active Permissions',
+            'Computer access requested for this turn.',
+            'Web search requested for this turn.',
+            'Use only tools exposed by this runtime.'
+          ].join('\n')
+        )
       })
     )
+  })
+
+  it('gives the built-in backend vault-only, web-off permissions whatever was saved', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'read the log in Downloads',
+        attachments: [],
+        backendOptions: { backend: 'local_openai_compatible', model: 'deepseek-chat' },
+        permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+      }
+    )
+
+    const input = vi.mocked(backend.runTurn).mock.calls[0][0]
+    expect(input.permissions).toEqual({ accessMode: 'vault_only', webSearchEnabled: false })
+    expect(input.prompt).toContain(
+      [
+        '# Active Permissions',
+        'Vault-only access for this turn.',
+        'Web search is off for this turn.',
+        'Runtime: built-in model connection. Tools: memrynote vault tools only.'
+      ].join('\n')
+    )
+    expect(input.prompt).not.toContain('Computer access requested')
+    expect(input.prompt).not.toContain('Web search requested')
   })
 
   it('marks the assistant message as errored when the subprocess exits non-zero', async () => {

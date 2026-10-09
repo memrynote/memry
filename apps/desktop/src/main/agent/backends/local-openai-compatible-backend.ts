@@ -592,7 +592,7 @@ async function probeToolCalling(
       providerDetail: detail
     }
   }
-  return { ok: true, profile: { toolChoice, toolCalls: nativeCall?.id ? 'native' : 'text' } }
+  return { ok: true, profile: { toolChoice } }
 }
 
 /** True when the server answers a request that carries an image; any error is a no. */

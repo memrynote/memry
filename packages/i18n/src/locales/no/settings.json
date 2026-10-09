@@ -2220,7 +2220,8 @@
         "label": "Standardtilgang",
         "description": "Angir hvilken tilgangsmodus nye agentforespørsler starter med.",
         "vaultOnly": "Bare hvelvet",
-        "computerAccess": "Datamaskintilgang"
+        "computerAccess": "Datamaskintilgang",
+        "builtInNote": "Den innebygde modelltilkoblingen bruker alltid bare hvelvverktøy."
       },
       "confirm": {
         "label": "Bekreft handlinger",

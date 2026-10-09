@@ -2220,7 +2220,8 @@
         "label": "Oletuskäyttöoikeus",
         "description": "Määrittää agentin uusien vuorojen oletuskäyttötilan.",
         "vaultOnly": "Vain holvi",
-        "computerAccess": "Tietokoneen käyttö"
+        "computerAccess": "Tietokoneen käyttö",
+        "builtInNote": "Sisäänrakennettu malliyhteys käyttää aina vain holvin työkaluja."
       },
       "confirm": {
         "label": "Vahvista toiminnot",

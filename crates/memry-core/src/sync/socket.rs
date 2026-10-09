@@ -68,6 +68,12 @@ pub const BASE_RECONNECT_DELAY_MS: u64 = 1_000;
 pub const MAX_RECONNECT_DELAY_MS: u64 = 30_000;
 pub const RECONNECT_JITTER_MS: u64 = 500;
 
+/// §9.2's handshake refusals: an invalid token, an unknown or revoked device,
+/// and a version below the floor.
+pub const HANDSHAKE_UNAUTHORIZED: u16 = 401;
+pub const HANDSHAKE_DEVICE_REVOKED: u16 = 403;
+pub const HANDSHAKE_VERSION_INCOMPATIBLE: u16 = 426;
+
 /// §9.9's close codes.
 pub const CLOSE_REPLACED: u16 = 4001;
 pub const CLOSE_TOKEN_EXPIRED: u16 = 4003;
@@ -95,6 +101,10 @@ pub enum Reconnect {
     AfterRefresh,
     /// §9.9: 4004 and 4009. The latch stays set for the session.
     Terminal(Terminal),
+    /// §9.10: the handshake was refused `401`. Not reconnected into, and not
+    /// latched either: the next run, after the HTTP path has refreshed or
+    /// signed out, tries again (desktop's `authFailed`).
+    Refused,
     /// The client no longer wants a connection.
     Stopped,
 }
@@ -144,6 +154,8 @@ struct Inner {
     terminal: Option<Terminal>,
     /// The last close this client saw, for `note_closed`.
     last_close: Option<u16>,
+    /// The HTTP status a refused handshake answered with, for `note_closed`.
+    refused: Option<u16>,
     open: bool,
     /// The current connection reported a close or an error.
     ended: bool,
@@ -247,6 +259,7 @@ impl RealtimeClient {
             let mut inner = self.lock();
             inner.wants_connection = true;
             inner.last_close = None;
+            inner.refused = None;
         }
 
         let generation = {
@@ -320,10 +333,18 @@ impl RealtimeClient {
         inner.open = false;
         inner.handle = None;
         let code = inner.last_close.take();
+        let refused = inner.refused.take();
 
-        if let Some(terminal) = match code {
-            Some(CLOSE_DEVICE_REVOKED) => Some(Terminal::DeviceRevoked),
-            Some(CLOSE_VERSION_INCOMPATIBLE) => Some(Terminal::VersionIncompatible),
+        // §9.10: a refused handshake is never reconnected into. 403 and 426
+        // are §9.9's 4004 and 4009 met before the upgrade, so they latch the
+        // same way.
+        if let Some(terminal) = match (code, refused) {
+            (Some(CLOSE_DEVICE_REVOKED), _) | (_, Some(HANDSHAKE_DEVICE_REVOKED)) => {
+                Some(Terminal::DeviceRevoked)
+            }
+            (Some(CLOSE_VERSION_INCOMPATIBLE), _) | (_, Some(HANDSHAKE_VERSION_INCOMPATIBLE)) => {
+                Some(Terminal::VersionIncompatible)
+            }
             _ => None,
         } {
             inner.terminal = Some(terminal);
@@ -335,6 +356,10 @@ impl RealtimeClient {
         }
         if !inner.wants_connection {
             return Reconnect::Stopped;
+        }
+        if refused == Some(HANDSHAKE_UNAUTHORIZED) {
+            inner.wants_connection = false;
+            return Reconnect::Refused;
         }
         if code == Some(CLOSE_TOKEN_EXPIRED) {
             // §9.10.1: the same expired token yields another 4003 and burns an
@@ -446,9 +471,14 @@ impl SocketListener for Bridge {
         self.end(Some(code));
     }
 
-    fn on_error(&self, _error: TransportError) {
+    fn on_error(&self, error: TransportError) {
         // No code: an error is not one of §9.9's closes, so it takes the
-        // ordinary backoff branch rather than a latch.
+        // ordinary backoff branch unless it is a refused handshake.
+        if let TransportError::HandshakeRejected { status } = error
+            && let Some(mut inner) = self.current()
+        {
+            inner.refused = Some(status);
+        }
         self.end(None);
     }
 }

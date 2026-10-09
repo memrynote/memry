@@ -170,6 +170,13 @@ pub enum TransportError {
     /// The socket closed. Reconnect and backoff are the core's policy.
     #[error("socket closed with code {code}: {reason}")]
     SocketClosed { code: u16, reason: String },
+
+    /// The server answered the socket handshake with this HTTP status instead
+    /// of `101` (chapter 09 §9.2): 401, 403 or 426 each mean reconnecting
+    /// cannot help (§9.10), so the shell reports the status rather than a
+    /// generic failure.
+    #[error("socket handshake rejected with HTTP {status}")]
+    HandshakeRejected { status: u16 },
 }
 
 /// Failures of the `SecureStore` seam (chapter 01 §1.8).

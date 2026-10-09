@@ -80,10 +80,15 @@ impl VaultSync {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl VaultRealtime {
-    /// Holds the socket open until [`Self::stop`], or until a close says
-    /// reconnecting cannot help (§9.9). Answers `true` only for the second.
-    /// That close latches this vault's sync: every later socket it mints
-    /// answers `true` at once without a handshake.
+    /// Holds the socket open, reconnecting along §9.10's ladder, until one of
+    /// three things ends it:
+    ///
+    /// - A close 4004 or 4009 (§9.9), or a handshake refused 403 or 426
+    ///   (§9.10). Answers `true` and latches this vault's sync: every later
+    ///   socket it mints answers `true` at once, without a handshake.
+    /// - [`Self::stop`]. Answers `false`.
+    /// - A handshake refused 401 (§9.10). Answers `false` and latches nothing,
+    ///   so the next foreground's socket tries again.
     ///
     /// One run per object: a stopped object stays stopped, so mint a new one
     /// on the next foreground.

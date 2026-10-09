@@ -800,6 +800,70 @@ describe('SyncEngine', () => {
 
       vi.restoreAllMocks()
     })
+
+    // #2866: every push aborted while the popover said Synced.
+    it('#then reports device keys missing instead of idle', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      vi.spyOn(await import('./initial-seed'), 'runInitialSeed').mockImplementation(() => {})
+
+      const getSigningKeys = vi.fn().mockResolvedValue(null)
+      const deps = createMockDeps(getDb(), { getSigningKeys })
+      const engine = new SyncEngine(deps)
+
+      await engine.fullSync()
+
+      expect(engine.getStatus()).toMatchObject({
+        status: 'error',
+        errorCategory: 'device_keys_missing',
+        error: 'errors:sync.deviceKeysMissing'
+      })
+
+      // Signing in again restores the keys: the next cycle clears the error.
+      getSigningKeys.mockResolvedValue({
+        secretKey: new Uint8Array(64),
+        publicKey: new Uint8Array(32),
+        deviceId: 'device-1'
+      })
+      await engine.fullSync()
+
+      expect(engine.getStatus().status).toBe('idle')
+      expect(engine.getStatus().errorCategory).toBeUndefined()
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then start reports device keys missing for a signed-in session', async () => {
+      const deps = createMockDeps(getDb(), {
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+
+      await engine.start()
+
+      expect(engine.getStatus()).toMatchObject({
+        status: 'error',
+        errorCategory: 'device_keys_missing'
+      })
+      await engine.stop({ skipFinalPush: true })
+      // Sign-out stops the engine before deleting the keys: its last status
+      // must not be the missing-keys error.
+      expect(engine.getStatus().status).toBe('idle')
+    })
+
+    it('#then an emergency wipe ends idle, not on the error', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      ;(deps.getSigningKeys as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+
+      await engine.performEmergencyWipe()
+
+      expect(engine.getStatus().status).toBe('idle')
+    })
   })
 
   describe('#given fullSync race condition #when WS connected fires mid-sync', () => {

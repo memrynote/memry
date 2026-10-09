@@ -52,8 +52,17 @@ export function NoteTitle({
     setPickerOpen(false)
   }, [onIconChange])
 
+  // No resting fill: emoji and library icons render bare, and a custom image
+  // fills the whole tile, clipped to its squircle.
   const iconBoxClass =
-    'flex items-center justify-center shrink-0 size-14 rounded-xl bg-sidebar-terracotta/8'
+    'flex items-center justify-center shrink-0 size-14 rounded-xl overflow-hidden'
+  const icon = emoji ? (
+    <NoteIconDisplay
+      value={emoji}
+      className="text-[28px] leading-8"
+      customIconClassName="size-14 object-cover"
+    />
+  ) : null
 
   return (
     <div className={cn('relative flex items-center gap-3')}>
@@ -65,9 +74,12 @@ export function NoteTitle({
                 type="button"
                 data-testid="note-title-icon"
                 aria-label={t('tree.actions.setIcon')}
-                className={cn(iconBoxClass, 'transition-colors hover:bg-sidebar-terracotta/16')}
+                className={cn(
+                  iconBoxClass,
+                  'transition-[background-color,filter] hover:bg-sidebar-terracotta/8 hover:brightness-95'
+                )}
               >
-                <NoteIconDisplay value={emoji} className="text-[28px] leading-8" />
+                {icon}
               </button>
             </PopoverTrigger>
             <PopoverContent
@@ -88,9 +100,7 @@ export function NoteTitle({
             </PopoverContent>
           </Popover>
         ) : (
-          <div className={iconBoxClass}>
-            <NoteIconDisplay value={emoji} className="text-[28px] leading-8" />
-          </div>
+          <div className={iconBoxClass}>{icon}</div>
         ))}
 
       <div className="min-w-0 flex-1">

@@ -519,6 +519,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     tRef.current = t
   }, [t])
+  // Read when a conversion settles, not when it starts: a note's first scan
+  // runs before the setting is read.
+  const convertChecklistsRef = useRef(convertChecklists)
+  useEffect(() => {
+    convertChecklistsRef.current = convertChecklists
+  }, [convertChecklists])
 
   // Upload function — defined before editor creation so BlockNote can use it.
   //
@@ -1327,6 +1333,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // so, and says how to keep it a checkbox. After that, undo is the way.
   const showConversionHint = useCallback(
     (blockId: string) => {
+      // The hint says a new checkbox becomes a task. With conversion off only a
+      // checkbox under a task converts, so it would be false.
+      if (!convertChecklistsRef.current) return
       try {
         if (localStorage.getItem(CONVERSION_HINT_KEY)) return
         localStorage.setItem(CONVERSION_HINT_KEY, '1')

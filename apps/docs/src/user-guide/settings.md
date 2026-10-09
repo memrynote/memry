@@ -232,7 +232,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).
 
-**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note, journal entry or template stays a plain checkbox, and so does one in a template the agent applies, an inbox item it turns into a note or a file it imports, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks as it writes them, and the agent's reply lists each task it created. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
+**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note, journal entry or template stays a plain checkbox, and so does one in a template the agent applies, an inbox item it turns into a note or a file it imports, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks: the note and journal tools convert them as they write and list each task they created in the reply. A write through `vault_desktop_write` leaves its checklist items for the editor to convert when the note opens, so its reply does not list them. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
 
 ---
 
@@ -484,6 +484,10 @@ machine-local and are not synced between devices.
 The Agent Chat prompt bar can override access for one turn and can enable web search when the active
 backend supports it. Vault-only turns keep the CLI backend constrained to memrynote tools; computer
 access turns grant broader local CLI access for that turn.
+
+The built-in model connection always runs with vault tools only. Computer access and web search
+apply to the CLI backends (Claude, Codex, Antigravity); with a local or custom model selected, both
+show as unavailable in the prompt bar and the saved default is left as it is.
 
 Loopback endpoints are treated as local. Custom non-loopback endpoints require an explicit
 not-fully-local acknowledgement because prompts and tool results are sent to that server.

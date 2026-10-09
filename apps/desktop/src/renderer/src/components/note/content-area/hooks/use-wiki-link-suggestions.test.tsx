@@ -460,6 +460,34 @@ describe('useWikiLinkSuggestions', () => {
     })
   })
 
+  it('writes the path for notes that share a title, and shows their folder (#2562)', async () => {
+    mocks.listNotes.mockResolvedValue({
+      notes: [
+        { id: 'plan-work', title: 'Plan', path: 'Work/Plan.md' },
+        { id: 'plan-root', title: 'plan', path: 'plan.md' },
+        { id: 'roadmap', title: 'Roadmap', path: 'notes/Roadmap.md' }
+      ]
+    })
+    mocks.getByPath.mockResolvedValue({ content: '# Goals\n' })
+    const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+    let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('')
+    })
+    expect(items.map(({ id, target, folder }) => ({ id, target, folder }))).toEqual([
+      { id: 'plan-work', target: 'Work/Plan', folder: 'Work' },
+      { id: 'plan-root', target: '/plan', folder: '/' },
+      { id: 'roadmap', target: 'Roadmap', folder: undefined }
+    ])
+
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('Work/Plan#Go')
+    })
+    expect(mocks.getByPath).toHaveBeenCalledWith('Work/Plan.md')
+    expect(items.map((item) => item.target)).toEqual(['Work/Plan#Goals'])
+  })
+
   it('refreshes stale cache and falls back to create suggestions on list failures', async () => {
     const editor = { insertInlineContent: vi.fn() }
     const { result } = renderHook(() => useWikiLinkSuggestions(editor))

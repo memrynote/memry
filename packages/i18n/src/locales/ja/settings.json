@@ -2220,7 +2220,8 @@
         "label": "デフォルトのアクセス",
         "description": "新しいエージェントのターンで最初に使うアクセスモードを設定します。",
         "vaultOnly": "保管庫のみ",
-        "computerAccess": "コンピューターへのアクセス"
+        "computerAccess": "コンピューターへのアクセス",
+        "builtInNote": "内蔵モデル接続では常に保管庫ツールのみを使用します。"
       },
       "confirm": {
         "label": "操作の確認",

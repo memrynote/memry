@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 import { extractMarkdownHeadings, type MarkdownHeading } from '@memry/shared/markdown-headings'
-import { isBlockReference } from '@memry/shared/wiki-target'
+import { isBlockReference, noteLinkStem } from '@memry/shared/wiki-target'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
@@ -53,6 +53,23 @@ function aliasRow(target: string, alias: string): WikiLinkSuggestionItem {
     exists: true,
     type: 'alias'
   }
+}
+
+/**
+ * What a link to `note` writes: its title, or, when another note shares that
+ * title, its vault-root path stem (`Work/Plan`, `/Plan` at the root), which
+ * the resolver reads as a path (#2562).
+ */
+function linkTargetFor(note: NoteSuggestion, sharedTitles: Set<string>): string {
+  if (!sharedTitles.has(note.title.toLowerCase())) return note.title
+  const stem = noteLinkStem(note.path)
+  return stem.includes('/') ? stem : `/${stem}`
+}
+
+/** The folder a duplicate-titled row shows so the two rows can be told apart. */
+function folderOf(path: string): string {
+  const slash = path.lastIndexOf('/')
+  return slash === -1 ? '/' : path.slice(0, slash)
 }
 
 function createAudioFileBlockContent(props: {
@@ -123,6 +140,15 @@ export function useWikiLinkSuggestions(editor: any) {
       }
 
       const notes = notesCacheRef.current?.notes ?? []
+      const titleCounts = new Map<string, number>()
+      for (const note of notes) {
+        const key = note.title.toLowerCase()
+        titleCounts.set(key, (titleCounts.get(key) ?? 0) + 1)
+      }
+      const sharedTitles = new Set(
+        [...titleCounts].filter(([, count]) => count > 1).map(([key]) => key)
+      )
+      const targetOf = (note: NoteSuggestion): string => linkTargetFor(note, sharedTitles)
       const { search, note: notePart, heading, alias } = parseWikiLinkQuery(query)
 
       // `#` is a separator, not a trigger. It switches the menu to the note's
@@ -134,7 +160,8 @@ export function useWikiLinkSuggestions(editor: any) {
       // through to the note list rather than showing an empty heading menu.
       const headingTarget =
         heading !== null && !isBlockReference(heading)
-          ? notes.find((note) => note.title.toLowerCase() === notePart.toLowerCase())
+          ? (notes.find((note) => targetOf(note).toLowerCase() === notePart.toLowerCase()) ??
+            notes.find((note) => note.title.toLowerCase() === notePart.toLowerCase()))
           : undefined
 
       if (headingTarget) {
@@ -145,7 +172,7 @@ export function useWikiLinkSuggestions(editor: any) {
         // left to choose, so the menu becomes the one row that commits it.
         const exactHeading = heading ? headings.find((item) => item.text === heading) : undefined
         if (alias && exactHeading) {
-          return [aliasRow(`${headingTarget.title}#${exactHeading.text}`, alias)]
+          return [aliasRow(`${targetOf(headingTarget)}#${exactHeading.text}`, alias)]
         }
 
         if (matches.length === 0) {
@@ -166,7 +193,7 @@ export function useWikiLinkSuggestions(editor: any) {
           id: `heading:${headingTarget.id}:${index}`,
           title: match.text,
           // One raw string, exactly as a hand-typed link would be written.
-          target: `${headingTarget.title}#${match.text}`,
+          target: `${targetOf(headingTarget)}#${match.text}`,
           alias,
           exists: true,
           type: 'heading',
@@ -189,7 +216,7 @@ export function useWikiLinkSuggestions(editor: any) {
         ? filteredCanvases.find((canvas) => canvas.title.toLowerCase() === search.toLowerCase())
         : undefined
       if (alias && exactNote) {
-        return [aliasRow(exactNote.title, alias)]
+        return [aliasRow(targetOf(exactNote), alias)]
       }
       if (alias && exactCanvas) {
         return [aliasRow(exactCanvas.title, alias)]
@@ -205,10 +232,11 @@ export function useWikiLinkSuggestions(editor: any) {
       const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
         id: note.id,
         title: note.title,
-        target: note.title,
+        target: targetOf(note),
         alias,
         exists: true,
         type: 'note',
+        ...(sharedTitles.has(note.title.toLowerCase()) ? { folder: folderOf(note.path) } : {}),
         lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
         ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
         ...(note.mimeType ? { mimeType: note.mimeType } : {}),

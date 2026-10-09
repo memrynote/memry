@@ -2220,7 +2220,8 @@
         "label": "Standardåtkomst",
         "description": "Anger vilket åtkomstläge nya agentkörningar startar i.",
         "vaultOnly": "Endast valv",
-        "computerAccess": "Datoråtkomst"
+        "computerAccess": "Datoråtkomst",
+        "builtInNote": "Den inbyggda modellanslutningen använder alltid endast valvverktyg."
       },
       "confirm": {
         "label": "Bekräfta åtgärder",

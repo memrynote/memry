@@ -422,6 +422,7 @@ export interface MainIpcInvokeHandlers {
   "sync:pick-vault-folder": (...args: [Record<string, never>]) => Awaited<Promise<{ path: string | null; }> | { success: false; error: string }>
   "sync:remove-device": (...args: [{ deviceId: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }> | { success: false; error: string }>
   "sync:rename-device": (...args: [{ deviceId: string; newName: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }> | { success: false; error: string }>
+  "sync:repair-device-keys": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-sync-ops").RepairDeviceKeysResult>>
   "sync:resolve-vault-binding": (...args: [{ choice: "sync" | "merge" | "local"; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-sync-ops").ResolveVaultBindingResult> | { success: false; error: string }>
   "sync:resume": (...args: []) => Awaited<{ success: boolean; pendingCount: number; }>
   "sync:setup-first-device": (...args: [{ oauthToken: string; provider: "google"; state: string; }]) => Awaited<Promise<{ success: boolean; needsRecoverySetup: boolean; deviceId: string; needsRecoveryInput?: undefined; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId: string; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId?: undefined; }> | { success: false; error: string }>

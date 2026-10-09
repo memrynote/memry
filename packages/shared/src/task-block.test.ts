@@ -4,7 +4,9 @@ import {
   parseTaskBlockSuffix,
   scanTaskCheckboxStates,
   serializeTaskBlock,
-  stripTaskBlockSuffixes
+  serializeTaskBlockTree,
+  stripTaskBlockSuffixes,
+  type TaskNormalizableBlock
 } from './task-block'
 
 describe('scanTaskCheckboxStates', () => {
@@ -38,6 +40,15 @@ describe('scanTaskCheckboxStates', () => {
         ['parent', false],
         ['child', true]
       ])
+    )
+  })
+
+  // Enter in a task title leaves a draft task block with no id yet. Written as
+  // `- [ ]  {task:}` it put a dead marker in the file that no reader maps to a task.
+  it('writes a task block without an id as a plain checkbox line', () => {
+    expect(serializeTaskBlock({ taskId: '', title: '', checked: false })).toBe('- [ ] ')
+    expect(serializeTaskBlock({ taskId: '', title: 'Buy milk', checked: true })).toBe(
+      '- [x] Buy milk'
     )
   })
 
@@ -194,5 +205,35 @@ describe('normalizeTaskBlocks title from the source line', () => {
     const source = '```\n- [ ] Dune `fenced` x {task:t1}\n```\n- [ ] **Dune** x {task:t1}'
     const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1')], source)
     expect(titles(blocks)).toEqual(['**Dune** x'])
+  })
+})
+
+describe('serializeTaskBlockTree', () => {
+  const task = (taskId: string, parentTaskId: string, children: TaskNormalizableBlock[] = []) => ({
+    type: 'taskBlock',
+    props: { taskId, title: taskId.toUpperCase(), checked: false, parentTaskId },
+    children
+  })
+
+  it('writes every level two spaces deeper, and reads back as the same tree', () => {
+    const tree = task('a', '', [task('b', 'a', [task('c', 'b', [task('d', 'c')])]), task('e', 'a')])
+
+    const md = serializeTaskBlockTree(tree).join('\n')
+
+    expect(md).toBe(
+      [
+        '- [ ] A {task:a}',
+        '  - [ ] B {task:b}',
+        '    - [ ] C {task:c}',
+        '      - [ ] D {task:d}',
+        '  - [ ] E {task:e}'
+      ].join('\n')
+    )
+    expect([...scanTaskCheckboxStates(md).keys()]).toEqual(['a', 'b', 'c', 'd', 'e'])
+  })
+
+  it('writes a one-level subtask exactly as serializeTaskBlock does', () => {
+    const child = task('b', 'a')
+    expect(serializeTaskBlockTree(task('a', '', [child]))[1]).toBe(serializeTaskBlock(child.props))
   })
 })

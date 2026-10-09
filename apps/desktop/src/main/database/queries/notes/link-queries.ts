@@ -1,4 +1,4 @@
-import { eq, and, isNull, or, sql } from 'drizzle-orm'
+import { eq, and, isNull, or, sql, type SQL } from 'drizzle-orm'
 import {
   noteCache,
   noteLinks,
@@ -7,7 +7,7 @@ import {
   type NewNoteLink
 } from '@memry/db-schema/schema/notes-cache'
 import { listHtmlBlockText } from '@memry/app-core/html-block-text'
-import { extractWikiLinks } from '@memry/shared/wiki-target'
+import { extractWikiLinks, noteLinkStem, wikiPathStem } from '@memry/shared/wiki-target'
 import type { IndexDb } from '../../types'
 import { noteCacheExists } from './note-crud'
 import { getIncomingPropertyRefs } from './property-ref-queries'
@@ -52,16 +52,38 @@ export function getOutgoingLinks(db: IndexDb, noteId: string): NoteLink[] {
 }
 
 /**
- * A note just appeared (created, or a new file indexed) under `title`. Any
- * existing outbound link whose target was unresolved (`target_id IS NULL`)
- * because it pointed at this title before the target existed now resolves —
- * this is what makes create-from-link (and any other creation route) produce
- * a backlink retroactively instead of only for links written after the fact.
+ * The lowercased `target_title` forms a path-form link to the note at `path`
+ * can be stored under: `Folder/Note`, `Folder/Note.md`, each with or without a
+ * leading `/` (links are indexed as written).
  */
-export function backfillUnresolvedLinksByTitle(db: IndexDb, noteId: string, title: string): void {
+function pathLinkKeys(path: string): string[] {
+  const forms = [noteLinkStem(path), path].map((form) => form.toLowerCase())
+  return [...new Set(forms.flatMap((form) => [form, `/${form}`]))]
+}
+
+function targetTitleIn(keys: string[]): SQL {
+  return or(
+    ...keys.map((key) => sql`lower(${noteLinks.targetTitle}) = ${key.toLowerCase()}`)
+  ) as SQL
+}
+
+/**
+ * A note just appeared (created, or a new file indexed) under `title`, or
+ * landed at a new `path`. Any existing outbound link whose target was
+ * unresolved (`target_id IS NULL`) because it named this title or path before
+ * the target existed now resolves — this is what makes create-from-link (and
+ * any other creation route) produce a backlink retroactively instead of only
+ * for links written after the fact.
+ */
+export function backfillUnresolvedLinksByTitle(
+  db: IndexDb,
+  noteId: string,
+  title: string,
+  path: string
+): void {
   db.update(noteLinks)
     .set({ targetId: noteId })
-    .where(and(isNull(noteLinks.targetId), sql`lower(${noteLinks.targetTitle}) = lower(${title})`))
+    .where(and(isNull(noteLinks.targetId), targetTitleIn([title, ...pathLinkKeys(path)])))
     .run()
 }
 
@@ -107,7 +129,23 @@ export function unresolveLinksToNote(db: IndexDb, targetId: string): void {
   db.update(noteLinks).set({ targetId: null }).where(eq(noteLinks.targetId, targetId)).run()
 }
 
+/**
+ * The note a wiki-link note half names. A half holding `/` is a path from the
+ * vault root (`Folder/Note`, see `wikiPathStem`) and matches `note_cache.path`
+ * case-insensitively, with or without `.md`. Anything else, or a path that
+ * matches no file, is looked up by title: exact case first, then any case.
+ */
 export function resolveNoteByTitle(db: IndexDb, title: string): NoteCache | undefined {
+  const stem = wikiPathStem(title)
+  if (stem !== null) {
+    const byPath = db
+      .select()
+      .from(noteCache)
+      .where(sql`lower(${noteCache.path}) in (lower(${stem}), lower(${stem + '.md'}))`)
+      .get()
+    if (byPath) return byPath
+  }
+
   let result = db.select().from(noteCache).where(eq(noteCache.title, title)).get()
 
   if (result) {
@@ -148,6 +186,14 @@ export function resolveNotesByTitles(
     resultMap.set(title, null)
   }
 
+  const notesByPath = new Map(allNotes.map((note) => [note.path.toLowerCase(), note]))
+  for (const title of titles) {
+    const stem = wikiPathStem(title)?.toLowerCase()
+    if (stem === undefined) continue
+    const note = notesByPath.get(`${stem}.md`) ?? notesByPath.get(stem)
+    if (note) resultMap.set(title, { id: note.id, path: note.path })
+  }
+
   for (const note of allNotes) {
     if (normalizedTitles.has(note.title.toLowerCase())) {
       for (const title of titles) {
@@ -162,20 +208,21 @@ export function resolveNotesByTitles(
 }
 
 /**
- * Distinct sources whose wiki-links reach a note about to be renamed.
+ * Distinct sources whose wiki-links reach a note about to be renamed or moved.
  *
  * Resolved rows are matched by target id. Unresolved rows (`target_id` null)
  * are matched by the indexed title — the SPLIT note-half a link was stored
  * under (`extractWikiLinks`), so pass `splitWikiTarget(oldTitle).note`, not
- * the raw title — because a link written before its target was re-indexed
- * still deserves the rename-time rewrite. The rewrite itself re-checks every
+ * the raw title — or by any path form of the note's old `path`, because a
+ * link written before its target was re-indexed still deserves the rewrite. The rewrite itself re-checks every
  * occurrence, so an over-broad candidate here costs a file read, never a
  * wrong edit.
  */
 export function getInboundLinkSourceIds(
   db: IndexDb,
   targetId: string,
-  indexedTitle: string
+  indexedTitle: string,
+  oldPath: string
 ): string[] {
   return db
     .selectDistinct({ sourceId: noteLinks.sourceId })
@@ -183,10 +230,7 @@ export function getInboundLinkSourceIds(
     .where(
       or(
         eq(noteLinks.targetId, targetId),
-        and(
-          isNull(noteLinks.targetId),
-          sql`lower(${noteLinks.targetTitle}) = lower(${indexedTitle})`
-        )
+        and(isNull(noteLinks.targetId), targetTitleIn([indexedTitle, ...pathLinkKeys(oldPath)]))
       )
     )
     .all()

@@ -2220,7 +2220,8 @@
         "label": "Accès par défaut",
         "description": "Définit le mode d'accès initial des nouveaux échanges avec l'agent.",
         "vaultOnly": "Coffre uniquement",
-        "computerAccess": "Accès à l'ordinateur"
+        "computerAccess": "Accès à l'ordinateur",
+        "builtInNote": "La connexion de modèle intégrée utilise toujours uniquement les outils du coffre."
       },
       "confirm": {
         "label": "Confirmer les actions",

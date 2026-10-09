@@ -1143,3 +1143,24 @@ describe('syncReducer', () => {
     })
   })
 })
+
+// #2866: the popover offers "Sign in again" only for this category, so the
+// category must survive into state and leave with the error.
+describe('syncReducer error category', () => {
+  it('keeps the category of a status error and drops it with the error', () => {
+    const errored = syncReducer(initialState, {
+      type: 'STATUS_CHANGED',
+      status: 'error',
+      pendingCount: 2,
+      error: 'keys missing',
+      errorCategory: 'device_keys_missing'
+    })
+    expect(errored.errorCategory).toBe('device_keys_missing')
+
+    expect(syncReducer(errored, { type: 'CLEAR_ERROR' }).errorCategory).toBeNull()
+    expect(
+      syncReducer(errored, { type: 'STATUS_CHANGED', status: 'idle', pendingCount: 0 })
+        .errorCategory
+    ).toBeNull()
+  })
+})

@@ -22,7 +22,10 @@ interface IconPickerButtonProps {
 
 /**
  * A clickable icon glyph that opens the emoji/icon picker, anchored via a portal.
- * Shared by folder and note rows so their icons stay the same size and behaviour.
+ * Shared by folder, note, and canvas rows so their icons stay the same size and
+ * behaviour. The button's font size is the row's icon size: emoji, library, and
+ * custom image icons all render one em of it, the box of the built-in 16px
+ * glyphs.
  */
 export function IconPickerButton({
   children,
@@ -75,7 +78,7 @@ export function IconPickerButton({
           <button
             type="button"
             onClick={(e) => e.stopPropagation()}
-            className="flex h-5 w-5 items-center justify-center rounded"
+            className="flex h-5 w-5 items-center justify-center rounded text-base leading-none"
             aria-label={ariaLabel}
           >
             {children}

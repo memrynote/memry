@@ -130,7 +130,7 @@ describe('NoteTitle - emoji display', () => {
       <NoteTitle emoji={null} title="Test" onTitleChange={vi.fn()} />
     )
 
-    expect(container.querySelector('.bg-sidebar-terracotta\\/8')).not.toBeInTheDocument()
+    expect(container.querySelector('.size-14')).not.toBeInTheDocument()
   })
 })
 

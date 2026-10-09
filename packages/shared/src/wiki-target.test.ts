@@ -6,7 +6,9 @@ import {
   normalizeHeading,
   wikiLinkLabel,
   replaceWikiLinks,
-  resolveWikiTarget
+  resolveWikiTarget,
+  wikiPathStem,
+  noteLinkStem
 } from './wiki-target'
 
 describe('splitWikiTarget', () => {
@@ -332,5 +334,18 @@ describe('extractWikiLinks', () => {
     expect(extractWikiLinks('[['.repeat(50_000))).toEqual([])
     expect(extractWikiLinks('[[a|'.repeat(25_000) + ']')).toEqual([])
     expect(performance.now() - started).toBeLessThan(1000)
+  })
+})
+
+describe('wikiPathStem / noteLinkStem', () => {
+  it('reads a vault-root path from a note half, and nothing from a title', () => {
+    expect(wikiPathStem('Folder1/Folder2/Note')).toBe('Folder1/Folder2/Note')
+    expect(wikiPathStem(' /Folder/Note ')).toBe('Folder/Note')
+    expect(wikiPathStem('Sprint #4')).toBeNull()
+  })
+
+  it('drops only the markdown extension from a note path', () => {
+    expect(noteLinkStem('Folder/Note.md')).toBe('Folder/Note')
+    expect(noteLinkStem('Docs/spec.pdf')).toBe('Docs/spec.pdf')
   })
 })

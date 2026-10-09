@@ -346,7 +346,10 @@
         "access": "Prístup",
         "tools": "Nástroje"
       },
-      "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}"
+      "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "S týmto modelom iba nástroje trezoru"
+      }
     },
     "refPicker": {
       "noMatches": "Žiadne zhody"

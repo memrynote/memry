@@ -79,7 +79,25 @@ describe('NoteIconDisplay custom icons', () => {
     )
     const glyph = library.getByTestId('huge-icon')
     expect(glyph.getAttribute('data-name')).toBe('StarIcon')
-    expect(glyph.className).toBe('text-sm')
+    expect(glyph.className).not.toContain(FOLDER_CUSTOM_ICON_CLASS)
+  })
+})
+
+describe('NoteIconDisplay library icons', () => {
+  // Without a box the SVG falls back to its 24px default, so a library icon on
+  // a sidebar row renders larger than an emoji or custom image beside it.
+  it('sizes a library icon to the surrounding text, like emoji and custom icons', () => {
+    const { getByTestId } = render(<NoteIconDisplay value="icon:StarIcon" className="text-sm" />)
+
+    const glyph = getByTestId('huge-icon')
+    expect(glyph.className).toContain('h-[1em] w-[1em]')
+    expect(glyph.className).toContain('text-sm')
+  })
+
+  it('lets an explicit caller size replace the text-sized box', () => {
+    const { getByTestId } = render(<NoteIconDisplay value="icon:StarIcon" className="size-3.5" />)
+
+    expect(getByTestId('huge-icon').className).toBe('size-3.5')
   })
 })
 
