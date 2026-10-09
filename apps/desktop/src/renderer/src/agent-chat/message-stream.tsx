@@ -18,6 +18,8 @@ interface MessageStreamProps {
   inFlight?: boolean
   contentClassName?: string
   messageListClassName?: string
+  /** Sends a "Continue" turn; offered on the latest answer when it stopped at the step limit. */
+  onContinue?: () => void
 }
 
 function isToolMessage(message: Message): boolean {
@@ -37,10 +39,10 @@ const ToolCallMessageRow = memo(ToolCallMessage)
 const ToolResultMessageRow = memo(ToolResultMessage)
 const UserMessageRow = memo(UserMessage)
 
-function renderMessage(message: Message): React.JSX.Element | null {
+function renderMessage(message: Message, onContinue?: () => void): React.JSX.Element | null {
   if (message.role === 'user') return <UserMessageRow key={message.id} message={message} />
   if (message.role === 'assistant') {
-    return <AssistantMessageRow key={message.id} message={message} />
+    return <AssistantMessageRow key={message.id} message={message} onContinue={onContinue} />
   }
   if (message.role === 'tool_call') {
     return <ToolCallMessageRow key={message.id} message={message} />
@@ -74,19 +76,23 @@ export function MessageStream({
   messages,
   inFlight = false,
   contentClassName,
-  messageListClassName
+  messageListClassName,
+  onContinue
 }: MessageStreamProps): React.JSX.Element {
   const groups = useMemo(() => groupMessages(messages), [messages])
+  // The turn's answer is stored before its tool rows, so the latest turn's answer is
+  // the last assistant message, not the last message.
+  const continueOn = inFlight ? null : messages.findLast((message) => message.role === 'assistant')
   const renderedMessages = groups.map((group, index) => {
     const first = group[0]
-    if (group.length < 2) return renderMessage(first)
+    if (group.length < 2) return renderMessage(first, first === continueOn ? onContinue : undefined)
     return (
       <ToolActivityGroup
         key={first.id}
         messages={group}
         live={inFlight && index === groups.length - 1}
       >
-        {group.map(renderMessage)}
+        {group.map((message) => renderMessage(message))}
       </ToolActivityGroup>
     )
   })

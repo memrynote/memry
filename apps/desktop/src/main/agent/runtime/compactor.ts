@@ -70,13 +70,14 @@ function findLastCompactedIndex(messages: Message[]): number {
 }
 
 function renderForSummary(message: Message): string {
-  // Reasoning and the tools-off note are display-only. A stored tools-off note would
-  // tell later turns that tools are off after the probe passes again.
+  // Reasoning, the tools-off note and the step-limit note are display-only. A stored
+  // tools-off note would tell later turns that tools are off after the probe passes again.
   if (message.content.role === 'assistant') {
     const {
       reasoning: _reasoning,
       reasoningDurationMs: _duration,
       toolsUnavailable: _toolsUnavailable,
+      stepLimitReached: _stepLimitReached,
       ...data
     } = message.content.data
     return `[${message.role}] ${JSON.stringify(data)}`
