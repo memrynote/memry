@@ -70,6 +70,14 @@ describe('smoke-local-provider script against a fake DeepSeek server', () => {
     expect(code).toBe(1)
   }, 60_000)
 
+  it('keeps the key out of error dumps when the provider echoes it back', async () => {
+    const { code, output } = await smoke({ efforts: ['high'], echoAuth: true })
+
+    expect(output).toMatch(/^FAIL {2}accepts reasoning_effort max: /m)
+    expect(output).not.toContain(KEY)
+    expect(code).toBe(1)
+  }, 60_000)
+
   it('fails the probe and tool checks when the model cannot call tools', async () => {
     const { code, output } = await smoke({ tools: 'reject' })
 

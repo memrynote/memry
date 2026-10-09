@@ -31,6 +31,8 @@ export interface FakeDeepSeekOptions {
   efforts?: readonly string[]
   /** Text of a final answer. */
   reply?: string
+  /** Echo the request's Authorization header in error bodies, as a careless proxy might. */
+  echoAuth?: boolean
 }
 
 export interface FakeDeepSeek {
@@ -103,7 +105,8 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
     apiKey: input.apiKey ?? null,
     tools: input.tools ?? 'once',
     efforts: input.efforts ?? ['high', 'max'],
-    reply: input.reply ?? DEEPSEEK_REPLY
+    reply: input.reply ?? DEEPSEEK_REPLY,
+    echoAuth: input.echoAuth ?? false
   }
   const requests: FakeDeepSeek['requests'] = []
 
@@ -121,7 +124,8 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
       const rejected = rejectReason(body, options)
       requests.push({ body, status: rejected ? 400 : 200 })
       if (rejected) {
-        send(res, 400, { error: { message: rejected, type: 'invalid_request_error' } })
+        const auth = options.echoAuth ? ` (${req.headers.authorization})` : ''
+        send(res, 400, { error: { message: rejected + auth, type: 'invalid_request_error' } })
         return
       }
 
