@@ -40,6 +40,7 @@ fn note(id: &str) -> NewNote<'_> {
         content: "",
         tags: &[],
         properties: None,
+        emoji: None,
     }
 }
 

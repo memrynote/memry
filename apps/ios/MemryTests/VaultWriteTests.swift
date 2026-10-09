@@ -26,6 +26,7 @@ struct VaultWriteTests {
             case setFolderIcon(String, String?)
             case moveFolder(String, String?)
             case deleteFolder(String)
+            case createFromTemplate(String, String, String?)
         }
 
         let calls = Mutex([Call]())
@@ -43,6 +44,11 @@ struct VaultWriteTests {
         func create(title: String, folderPath: String?) async throws -> String {
             try record(.create(folderPath))
             return "note-new"
+        }
+
+        func createFromTemplate(templateId: String, title: String, folderPath: String?) async throws -> String {
+            try record(.createFromTemplate(templateId, title, folderPath))
+            return "note-from-template"
         }
 
         func rename(id: String, title: String) async throws { try record(.rename(id, title)) }
@@ -210,6 +216,27 @@ struct VaultWriteTests {
         failing.requestSync = { requests += 1 }
         await failing.add(at: Date(), title: nil)
         #expect(requests == 3, "a write that did not land has nothing to push")
+    }
+
+    @Test("a note from a template is written in its folder and asks for a sync pass")
+    func aNoteFromATemplateAsksForASync() async {
+        // #2923: "From template" was advertised but had no caller. It is a
+        // note write like any other, so it goes through the same owner and
+        // pushes the same way.
+        let writer = ScriptedWriter()
+        let model = model(writer: writer)
+        var requests = 0
+        model.requestSync = { requests += 1 }
+        let id = await model.createNote(fromTemplate: "meeting-notes", title: "Sync", in: "Work")
+        #expect(id == "note-from-template")
+        #expect(writer.calls.withLock { $0 } == [.createFromTemplate("meeting-notes", "Sync", "Work")])
+        #expect(requests == 1)
+
+        let failing = self.model(writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        #expect(await failing.createNote(fromTemplate: "blank", title: "", in: nil) == nil)
+        #expect(failing.writeFailure != nil)
+        #expect(requests == 1, "a write that did not land has nothing to push")
     }
 
     @Test("a delete asks for a sync pass, and a failed one does not")

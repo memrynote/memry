@@ -58,6 +58,7 @@ fn write_note(db: &Db, id: &str, title: &str, body: &str) {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         if !body.is_empty() {
@@ -297,6 +298,7 @@ fn write_linking_note(db: &Db, id: &str, title: &str, target: &str) {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         update_log::append_server_update(conn, id, 1, &link_update(id, target, target), NOW)
@@ -363,6 +365,7 @@ fn write_folder_note(db: &Db, id: &str, title: &str, folder: &str) {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         Ok(())
@@ -453,6 +456,7 @@ fn removing_a_link_removes_the_backlink() {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         update_log::append_server_update(conn, "source", 1, &link, NOW).expect("the body");

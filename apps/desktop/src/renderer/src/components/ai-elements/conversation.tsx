@@ -104,36 +104,44 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
     }
   }, [scrollRef])
 
-  // Runs on mount and on every children change — which, while a turn is
-  // running, is once per streamed token.
+  // Runs on mount, on every children change (once per streamed token while a
+  // turn runs), and whenever the content resizes in place, such as a waiting
+  // timer appearing inside a row whose message has not changed.
   useEffect(() => {
     const element = scrollRef.current
-    if (!element) return
+    if (!element) return undefined
 
-    const action = conversationScrollAction({
-      stored: storedRef.current,
-      restored: restoredRef.current
-    })
+    const applyScrollPolicy = (element: HTMLDivElement): void => {
+      const action = conversationScrollAction({
+        stored: storedRef.current,
+        restored: restoredRef.current
+      })
 
-    if (action.kind === 'none') return
+      if (action.kind === 'none') return
 
-    if (action.kind === 'stick') {
-      // Assignment rather than `scrollTo`: the browser clamps it to the
-      // reachable range exactly the same way, and it is the one form jsdom
-      // implements, so the tests around this component keep running.
-      element.scrollTop = element.scrollHeight
+      if (action.kind === 'stick') {
+        // Assignment rather than `scrollTo`: the browser clamps it to the
+        // reachable range exactly the same way, and it is the one form jsdom
+        // implements, so the tests around this component keep running.
+        element.scrollTop = element.scrollHeight
+        lastWrittenRef.current = element.scrollTop
+        return
+      }
+
+      // The transcript arrives asynchronously, so the scroller may still be too
+      // short to reach the target; the browser clamps the write, and the next
+      // batch of children gives it another go.
+      element.scrollTop = action.offset
       lastWrittenRef.current = element.scrollTop
-      return
+      if (Math.abs(element.scrollTop - action.offset) <= OFFSET_EPSILON) {
+        restoredRef.current = true
+      }
     }
 
-    // The transcript arrives asynchronously, so the scroller may still be too
-    // short to reach the target; the browser clamps the write, and the next
-    // batch of children gives it another go.
-    element.scrollTop = action.offset
-    lastWrittenRef.current = element.scrollTop
-    if (Math.abs(element.scrollTop - action.offset) <= OFFSET_EPSILON) {
-      restoredRef.current = true
-    }
+    applyScrollPolicy(element)
+    const observer = new ResizeObserver(() => applyScrollPolicy(element))
+    for (const child of Array.from(element.children)) observer.observe(child)
+    return () => observer.disconnect()
   }, [children, scrollRef])
 }
 

@@ -160,6 +160,7 @@ fn seed_note(db: &Db) {
                 content: "",
                 tags: &["shared".to_owned()],
                 properties: None,
+                emoji: None,
             },
             DEVICE,
             NOW,

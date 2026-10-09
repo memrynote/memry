@@ -85,6 +85,7 @@ fn note(data: &Connection, id: &str, title: &str, targets: &[&str], at: i64) {
         content: "",
         tags: &[],
         properties: None,
+        emoji: None,
     };
     notes::create(data, &new, DEVICE, at).expect("create the note");
     if !targets.is_empty() {

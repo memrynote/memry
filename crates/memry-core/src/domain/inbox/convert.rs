@@ -219,6 +219,7 @@ fn new_empty_note(
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         },
         device_id,
         now_ms,
