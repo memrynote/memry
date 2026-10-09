@@ -19,6 +19,7 @@ import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
+import { keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -723,7 +724,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     return 'applied'
   }
 
-  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+  applyDelete(
+    ctx: ApplyContext,
+    itemId: string,
+    clock?: VectorClock,
+    deletedAt?: number
+  ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'note', existing)) return 'skipped'
@@ -735,6 +741,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return 'skipped'
       }
     }
+
+    const absolutePath = toAbsolutePath(existing.path)
+    keepUnseenText(ctx, {
+      itemId,
+      title: `${existing.title || 'Untitled'} (kept from deleted note)`,
+      localClock: existing.clock ?? null,
+      tombstoneClock: clock,
+      deletedAt,
+      readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
+    })
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
     // per item inside a pull batch, so awaiting a LevelDB clear here would
@@ -764,7 +780,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       .all()
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
-    const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)

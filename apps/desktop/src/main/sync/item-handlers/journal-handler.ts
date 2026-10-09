@@ -37,6 +37,7 @@ import {
   removeJournalRow
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
+import { keepUnseenText } from '../keep-unseen-text'
 
 const log = createLogger('JournalHandler')
 
@@ -166,7 +167,12 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     return result
   }
 
-  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+  applyDelete(
+    ctx: ApplyContext,
+    itemId: string,
+    clock?: VectorClock,
+    deletedAt?: number
+  ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     markOwedJournalDayMergeDeleted(ctx.db, itemId)
     const existing = getNoteMetadataById(ctx.db, itemId)
@@ -191,6 +197,18 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         deleted: true
       })
       return 'applied'
+    }
+
+    const date = existing.journalDate
+    if (date) {
+      keepUnseenText(ctx, {
+        itemId,
+        title: `Journal ${date} (kept from deleted day)`,
+        localClock: existing.clock ?? null,
+        tombstoneClock: clock,
+        deletedAt,
+        readBody: () => readDayBody(date)
+      })
     }
 
     // Floated for the same reason as `noteHandler.applyDelete`: this runs per
