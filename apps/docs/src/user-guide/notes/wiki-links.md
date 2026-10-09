@@ -285,7 +285,8 @@ well. Comment syntax written inside inline code or a code block is text, so it s
 export as code, unless a comment opened earlier on the same line (see below).
 
 Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
-byte for byte. In the editor both forms show as a small muted marker, `<!---->` for an HTML
+byte for byte. A comment inside bold, italic or strikethrough text, such as
+`**a <!-- [[Topic]] --> b**`, stays inside it. In the editor both forms show as a small muted marker, `<!---->` for an HTML
 comment and `%%%%` for a `%%` comment, never as their text. A note's preview and the snippets
 in the Backlinks panel leave comments out as well, so a backlink that comes from a hidden link
 lists its note with no snippet.
