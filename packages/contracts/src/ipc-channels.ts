@@ -150,7 +150,11 @@ export const TagSchemaChannels = {
     /** Apply one tag schema command and return a fresh snapshot */
     EDIT_SCHEMA: 'tags:edit-schema',
     /** Count what a schema change would touch, before it runs */
-    PREVIEW_IMPACT: 'tags:preview-impact'
+    PREVIEW_IMPACT: 'tags:preview-impact',
+    /** Whether agent fill is on and its disclosure accepted: FieldFillStatus */
+    FILL_STATUS: 'tags:fill-status',
+    /** The inline-AI model proposes values for a note's empty fields; writes nothing */
+    FILL_FIELDS: 'tags:fill-fields'
   },
   events: {
     /** Progress of a long schema command (field rename): TagsProgressEvent */

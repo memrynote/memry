@@ -66,6 +66,7 @@ import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
 import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
 import { buildFieldGroups } from '@/features/tag-fields/build-field-groups'
 import { NoteFieldGroups } from '@/features/tag-fields/NoteFieldGroups'
+import { useNoteFieldFill } from '@/features/tag-fields/agent-fill/use-note-field-fill'
 import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
@@ -1064,6 +1065,7 @@ export function NotePage({ noteId }: NotePageProps) {
     const own = new Set(fieldGroups.rest.map((entry) => entry.name))
     return properties.filter((property) => own.has(property.name))
   }, [fieldGroups.rest, properties])
+  const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || isLocked)
   const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
   const noteBodyEmpty = !(note?.content ?? '').trim()
   const tagFieldHints = useMemo(
@@ -1935,6 +1937,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   <NoteFieldGroups
                     groups={fieldGroups.groups}
                     onFieldChange={handleSetFieldValue}
+                    {...fieldFill}
                     onOpenTag={(tag) =>
                       openSidebarItem({
                         type: 'tag',

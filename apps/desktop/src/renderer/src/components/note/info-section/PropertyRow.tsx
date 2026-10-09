@@ -46,7 +46,7 @@ import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
+export const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
   text: Type,
   number: Hash,
   checkbox: CheckSquare,

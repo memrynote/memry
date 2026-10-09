@@ -125,6 +125,12 @@ body {
   outline: none;
 }
 
+/* Agent fill: the sentence a proposed field value came from */
+::highlight(field-fill-source) {
+  background-color: color-mix(in srgb, var(--tint) 16%, transparent);
+  color: inherit;
+}
+
 /* Find in page — CSS Custom Highlight API */
 ::highlight(find-matches) {
   background-color: #fde68a;

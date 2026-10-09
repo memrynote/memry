@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
-import type { FieldGroup } from './build-field-groups'
+import type { FieldGroup, FieldSlot } from './build-field-groups'
 
 export interface NoteFieldGroupsProps {
   groups: FieldGroup[]
@@ -29,6 +29,10 @@ export interface NoteFieldGroupsProps {
   onOpenTag?: (tag: ResolvedTag) => void
   /** An extra control at the end of a group header (agent fill). */
   renderGroupAction?: (group: FieldGroup) => React.ReactNode
+  /** Replaces a slot's row when it returns a node (agent fill proposals). */
+  renderSlot?: (group: FieldGroup, slot: FieldSlot) => React.ReactNode
+  /** Below a group's rows (agent fill disclosure). */
+  renderGroupFooter?: (group: FieldGroup) => React.ReactNode
   disabled?: boolean
 }
 
@@ -50,6 +54,8 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
   onFieldChange,
   onOpenTag,
   renderGroupAction,
+  renderSlot,
+  renderGroupFooter,
   disabled
 }: NoteFieldGroupsProps) {
   const { t } = useT('notes')
@@ -93,22 +99,28 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
               </span>
             </div>
             <ul aria-label={group.tag.name}>
-              {group.slots.map((slot) => (
-                <PropertyRow
-                  key={slot.field.name}
-                  property={{
-                    id: slot.field.name,
-                    name: slot.field.name,
-                    type: slot.field.type,
-                    value: slot.value ?? null,
-                    isCustom: false
-                  }}
-                  onValueChange={(value) => onFieldChange(slot.field.name, value, slot.field.type)}
-                  relationTarget={slot.field.relation?.target}
-                  disabled={disabled}
-                />
-              ))}
+              {group.slots.map(
+                (slot) =>
+                  renderSlot?.(group, slot) ?? (
+                    <PropertyRow
+                      key={slot.field.name}
+                      property={{
+                        id: slot.field.name,
+                        name: slot.field.name,
+                        type: slot.field.type,
+                        value: slot.value ?? null,
+                        isCustom: false
+                      }}
+                      onValueChange={(value) =>
+                        onFieldChange(slot.field.name, value, slot.field.type)
+                      }
+                      relationTarget={slot.field.relation?.target}
+                      disabled={disabled}
+                    />
+                  )
+              )}
             </ul>
+            {renderGroupFooter?.(group)}
           </div>
         ))}
       </SortableContext>
