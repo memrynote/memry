@@ -34,13 +34,9 @@ describe('hash-tag-inline-plugin', () => {
       expect(matchHashTagImmediate('#')).toBeNull()
     })
 
-    it('matches hash with digit', () => {
-      expect(matchHashTagImmediate('#1')).toBe('1')
-      expect(matchHashTagImmediate('#9')).toBe('9')
-    })
-
-    it('matches hash with digit after whitespace', () => {
-      expect(matchHashTagImmediate('hello #5')).toBe('5')
+    it('never starts a tag with a digit', () => {
+      expect(matchHashTagImmediate('#1')).toBeNull()
+      expect(matchHashTagImmediate('hello #5')).toBeNull()
     })
 
     it('returns null when hash not preceded by whitespace or start', () => {
@@ -111,6 +107,16 @@ describe('hash-tag-inline-plugin', () => {
 
     it('appends underscore', () => {
       expect(extendTagName('my', '_')).toBe('my_')
+    })
+
+    it('keeps a trailing slash while the child segment is typed', () => {
+      expect(extendTagName('a', '/')).toBe('a/')
+      expect(extendTagName('a/', '2')).toBe('a/2')
+    })
+
+    it('refuses characters the grammar would not read back', () => {
+      expect(extendTagName('a/', '/')).toBeNull()
+      expect(extendTagName('a/', '-')).toBeNull()
     })
   })
 
