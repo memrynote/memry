@@ -540,8 +540,6 @@ describe('NoteBodyOutbox push record', () => {
     expect(events()).toEqual(['note-a:sent', 'note-a:rejected'])
   })
 
-  // #2778: the refused change is dropped from the queue, so only a whole-doc
-  // snapshot can still carry it, and a later accepted update does not.
   it('requests a snapshot for a refused push and records a later update as confirmed only', async () => {
     const { updates } = recordEdits(['a', 'b'])
     push.mockRejectedValueOnce(new SyncServerError('bad update', 400))

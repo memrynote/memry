@@ -14,7 +14,6 @@ import { createLogger } from '../lib/logger'
 
 const log = createLogger('NoteBodyPushRecord')
 
-/** `snapshot` is a stored whole-doc state: it confirms the body and clears a rejection. */
 export type NoteBodyPushEvent = 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected'
 
 const EVENT_COLUMNS = {
@@ -33,11 +32,11 @@ export function recordNoteBodyPush(
   db: DataDb
 ): void {
   try {
-    const set: Partial<NoteBodySyncRow> = { updatedAt: at }
+    const set: Partial<NoteBodySyncRow> = {}
     for (const column of EVENT_COLUMNS[event]) set[column] = at
     db.insert(noteBodySync)
-      .values({ noteId, updatedAt: at, ...set })
-      .onConflictDoUpdate({ target: noteBodySync.noteId, set })
+      .values({ noteId, ...set, updatedAt: at })
+      .onConflictDoUpdate({ target: noteBodySync.noteId, set: { ...set, updatedAt: at } })
       .run()
   } catch (err) {
     log.warn('Could not record a note body push', { noteId, event, error: err })

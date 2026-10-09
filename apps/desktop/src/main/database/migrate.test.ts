@@ -1425,7 +1425,6 @@ describe('0068_note_body_sync migration', () => {
   })
 })
 
-// #2778: a refusal clears only on a stored snapshot.
 describe('0071_note_body_sync_snapshot migration', () => {
   let tempDir: string
   const migrationsDir = path.join(__dirname, 'drizzle-data')

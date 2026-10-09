@@ -151,8 +151,6 @@ describe('note sync state (#2647)', () => {
     expect(state('n1')).toMatchObject({ state: 'rejected', lastRejectedAt: T0 + 2000 })
   })
 
-  // #2778: an accepted update after a refusal carries only its own change. The
-  // refused text reaches the server only with a stored whole-doc snapshot.
   it('stays rejected after a later accepted update until a snapshot is stored', () => {
     addNote('n1')
     record('n1', 'rejected', T0)

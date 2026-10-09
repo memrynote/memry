@@ -14,8 +14,8 @@
  *
  * Only a 2xx from a CRDT body route (an update push, or a snapshot of the whole
  * doc) sets the confirmed time. Only a stored whole-doc state clears a refused
- * push (#2778): the outbox dropped the refused rows, so a later update carries
- * only its own change. A record push the
+ * push (#2778): the outbox drops refused rows, so a later update carries only
+ * its own change. A record push the
  * server answers with `SYNC_REPLAY_DETECTED` touches none of this.
  *
  * Reads and writes never throw: a database that cannot be used reads as "no

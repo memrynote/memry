@@ -69,11 +69,7 @@ export interface NoteBodyOutboxDeps {
   queue: SyncQueueManager
   push: NoteBodyPushFn
   recordPush?: NoteBodyPushRecorder
-  /**
-   * Asks for a whole-doc snapshot of a note whose rows were refused and
-   * dropped (#2778): the refused text is still in the local doc, and only a
-   * snapshot carries it to the server.
-   */
+  /** Requests a whole-doc snapshot for a note whose refused rows were dropped. */
   requestSnapshot?: (noteId: string) => void
 }
 
