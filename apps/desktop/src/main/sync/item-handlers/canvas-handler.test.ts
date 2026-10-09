@@ -23,18 +23,15 @@ vi.mock('../../lib/logger', () => ({
 // ipc / sync runtime), and the unit tests must never touch real network/disk.
 // `recordAsset` (asset-store) and `readMemryAssets` (memry-assets) are left REAL
 // — they are electron-free plain DB writes / JSON parsing under test.
-const { mockBuildAssetServiceContext, mockEnsureAssetsPresent, mockReconcileCanvasAssets } =
-  vi.hoisted(() => ({
-    mockBuildAssetServiceContext: vi.fn(),
-    mockEnsureAssetsPresent: vi.fn(),
-    mockReconcileCanvasAssets: vi.fn()
-  }))
+const { mockBuildAssetServiceContext, mockEnsureAssetsPresent } = vi.hoisted(() => ({
+  mockBuildAssetServiceContext: vi.fn(),
+  mockEnsureAssetsPresent: vi.fn()
+}))
 vi.mock('../../canvas/assets/asset-service-context', () => ({
   buildAssetServiceContext: mockBuildAssetServiceContext
 }))
 vi.mock('../../canvas/assets/asset-service', () => ({
-  ensureAssetsPresent: mockEnsureAssetsPresent,
-  reconcileCanvasAssets: mockReconcileCanvasAssets
+  ensureAssetsPresent: mockEnsureAssetsPresent
 }))
 
 // Canvases are files in the vault now; point the handler at a temp folder.
@@ -182,7 +179,6 @@ describe('canvasHandler', () => {
     ctx = { db, emit: vi.fn() }
     mockBuildAssetServiceContext.mockReset().mockReturnValue(ASSET_CTX)
     mockEnsureAssetsPresent.mockReset().mockResolvedValue(undefined)
-    mockReconcileCanvasAssets.mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -966,7 +962,7 @@ describe('canvasHandler', () => {
     })
   })
 
-  describe('M5 asset ingestion / restore / GC', () => {
+  describe('M5 asset ingestion / restore', () => {
     it('#given a create carrying 2 memryAssets #then records 2 rows + restores after commit', () => {
       const a1 = asset('h1')
       const a2 = asset('h2')
@@ -1058,23 +1054,6 @@ describe('canvasHandler', () => {
       // the original must not reap an asset the conflict copy still references.
       expect(hashesReferencedByOtherCanvases(db, VAULT_ID, 'c1').has('shared')).toBe(true)
       expect(hashesReferencedByOtherCanvases(db, VAULT_ID, copy.id).has('shared')).toBe(true)
-    })
-
-    it('#given a remote delete #then GCs the canvas assets with an empty scene', () => {
-      seedCanvas(db, 'c1', sceneWithAssets('note-1', [asset('h1')]), { A: 1 })
-
-      const result = canvasHandler.applyDelete(ctx, 'c1', { A: 1, B: 2 })
-
-      expect(result).toBe('applied')
-      expect(mockReconcileCanvasAssets).toHaveBeenCalledTimes(1)
-      expect(mockReconcileCanvasAssets).toHaveBeenCalledWith(ASSET_CTX, 'c1', '')
-    })
-
-    it('#given a skipped delete (local newer) #then does NOT GC', () => {
-      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 5 })
-
-      expect(canvasHandler.applyDelete(ctx, 'c1', { A: 2 })).toBe('skipped')
-      expect(mockReconcileCanvasAssets).not.toHaveBeenCalled()
     })
 
     it('#given a pre-M5 base64 scene (no memryAssets) #then records nothing, restores nothing, never throws', () => {

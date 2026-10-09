@@ -176,6 +176,7 @@ import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
 import { listAssetsByCanvas, recordAsset } from '../canvas/assets/asset-store'
 import { removeCanvas } from '../canvas/delete'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
+import { canvasHandler } from '../sync/item-handlers/canvas-handler'
 import { CanvasFolderChannels } from '@memry/contracts/canvas-folder-api'
 import {
   registerCanvasFolderHandlers,
@@ -2021,6 +2022,39 @@ describe('vault watcher', () => {
 
       expect(restored).toHaveLength(1)
       expect(restored[0].contentHash).toBe(`hash-${canvas.id}`)
+    })
+
+    // A delete applied from a peer keeps the assets too: the server chunks stay
+    // referenced, so when the deleting device restores the canvas, every device
+    // can still download its images (#3002).
+    it('a delete applied from another device keeps its assets so a restore still downloads', async () => {
+      const { id, absolutePath } = makeCanvas('Deleted on a peer')
+      carryAsset(absolutePath, id)
+      const scene = fs.readFileSync(absolutePath, 'utf8')
+      const { db, dereference, diskPath } = withAsset(id)
+      const clock = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()!.clock
+      const ctx = { db, emit: vi.fn() }
+
+      expect(canvasHandler.applyDelete(ctx, id, { ...clock, peer: 99 })).toBe('applied')
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(fs.existsSync(absolutePath)).toBe(false)
+      expect(dereference).not.toHaveBeenCalled()
+      expect(fs.existsSync(diskPath)).toBe(true)
+
+      const restoredId = `${id}-restored`
+      const vaultId = getOrCreateVaultUuid(db)
+      const payload = {
+        id: restoredId,
+        vaultId,
+        title: 'Deleted on a peer',
+        scene,
+        clock: { peer: 1 }
+      }
+      expect(canvasHandler.applyUpsert(ctx, restoredId, payload, { peer: 1 })).toBe('applied')
+      const restored = listAssetsByCanvas(db, restoredId)
+      expect(restored).toHaveLength(1)
+      expect(restored[0].chunkHashes).toEqual(['chunk-1'])
+      expect(fs.existsSync(diskPath)).toBe(true)
     })
 
     it('logs a failure in the delayed check instead of rejecting', async () => {
