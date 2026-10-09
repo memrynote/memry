@@ -7,7 +7,13 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { getIndexDatabase } from '../../database/client'
-import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
+import {
+  deleteNoteMetadata,
+  getNoteMetadataById,
+  getNoteMetadataByPath,
+  updateNoteMetadata
+} from '@memry/storage-data'
+import { planJournalDayApply } from '@memry/domain-notes/journal'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
   extractJournalProperties,
@@ -28,6 +34,7 @@ import { belongsToOtherType } from './note-row-type'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
+import { markOwedJournalDayMergeDeleted, oweJournalDayMerge } from '../journal-day-merge'
 
 const log = createLogger('JournalHandler')
 
@@ -54,9 +61,38 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
+    const indexDb = getIndexDatabase()
+
+    // One item per day (#2939): a foreign id is never projected, and a foreign
+    // local row gives the day up to `j<date>`. Both bodies are merged after the
+    // pull by `drainJournalDayMerges`; the local row's doc is kept for that.
+    const holder = getNoteMetadataByPath(ctx.db, getJournalRelativePath(date))
+    const plan = planJournalDayApply(itemId, date, holder?.id ?? null)
+    for (const foreignId of plan.oweMerge) {
+      if (foreignId === itemId) {
+        oweJournalDayMerge(ctx.db, { foreignId, date, clock: remoteClock })
+        continue
+      }
+      // The day's file is about to be written over. Its text is kept for the
+      // drain in case the holder's doc never got a body (#2939).
+      oweJournalDayMerge(ctx.db, {
+        foreignId,
+        date,
+        clock: holder?.clock ?? null,
+        fallbackMarkdown: this.readDayBody(date)
+      })
+    }
+    if (plan.removeHolder && holder) {
+      deleteNoteMetadata(ctx.db, holder.id)
+      deleteNoteFromCache(indexDb, holder.id)
+    }
+    if (!plan.applyIncoming) {
+      log.info('Foreign journal id for a day; merging it into the day', { itemId, date })
+      return 'skipped'
+    }
+
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (existing && belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
-    const indexDb = getIndexDatabase()
 
     let mergedClock = remoteClock
     let result: ApplyResult = 'applied'
@@ -125,8 +161,18 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     return result
   }
 
+  private readDayBody(date: string): string | null {
+    try {
+      return parseJournalEntry(readJournalTextSync(date), date).content
+    } catch (error) {
+      log.warn('Could not read the day file of a foreign journal row', { date, error })
+      return null
+    }
+  }
+
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
+    markOwedJournalDayMergeDeleted(ctx.db, itemId)
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 

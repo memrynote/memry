@@ -21,6 +21,7 @@ import {
   monthActivity,
   monthDays,
   orderedWeekdays,
+  planJournalDayApply,
   resolveJournalTemplateId,
   weekdayOf,
   yearMonthStats
@@ -42,6 +43,43 @@ import {
   WEEKDAY_DATES
 } from './journal-template-cases'
 import { meta } from './shared'
+
+const D = '2026-06-09'
+const DAY_IDENTITY_CASES: ReadonlyArray<{
+  name: string
+  incomingId: string
+  date: string
+  holderId: string | null
+}> = [
+  { name: 'canonical, day empty', incomingId: `j${D}`, date: D, holderId: null },
+  { name: 'canonical, held by itself', incomingId: `j${D}`, date: D, holderId: `j${D}` },
+  {
+    name: 'canonical, held by a foreign row',
+    incomingId: `j${D}`,
+    date: D,
+    holderId: 'vcpzueguep8y'
+  },
+  { name: 'foreign, day empty', incomingId: 'vcpzueguep8y', date: D, holderId: null },
+  { name: 'foreign, held by canonical', incomingId: 'vcpzueguep8y', date: D, holderId: `j${D}` },
+  {
+    name: 'foreign, held by itself',
+    incomingId: 'vcpzueguep8y',
+    date: D,
+    holderId: 'vcpzueguep8y'
+  },
+  {
+    name: 'foreign, held by another foreign',
+    incomingId: 'vcpzueguep8y',
+    date: D,
+    holderId: 'wxudm2oo4rci'
+  },
+  {
+    name: 'canonical of another day is foreign',
+    incomingId: 'j2026-06-08',
+    date: D,
+    holderId: `j${D}`
+  }
+]
 
 export function buildJournal(): Record<string, unknown> {
   return {
@@ -95,6 +133,13 @@ export function buildJournal(): Record<string, unknown> {
         averageLevel: averageActivityLevel(rows.map((row) => row.characterCount))
       }
     }),
+    dayIdentity: DAY_IDENTITY_CASES.map((c) => ({
+      name: c.name,
+      incomingId: c.incomingId,
+      date: c.date,
+      holderId: c.holderId,
+      expected: planJournalDayApply(c.incomingId, c.date, c.holderId)
+    })),
     weekday: WEEKDAY_DATES.map((date) => ({ date, weekday: weekdayOf(date) })),
     orderedWeekdays: ([0, 1] as const).map((weekStartsOn) => ({
       weekStartsOn,

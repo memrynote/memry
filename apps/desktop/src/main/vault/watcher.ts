@@ -37,7 +37,8 @@ import {
   getNoteCacheById,
   ensureTagDefinitions,
   isJournalEntry,
-  extractDateFromPath
+  extractDateFromPath,
+  newMarkdownFileId
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
@@ -619,7 +620,7 @@ export class VaultWatcher {
     // date, and updates rather than inserts — a stat-only full save would erase
     // bookkeeping a `stat` cannot reconstruct.
     // No watcher path writes files.
-    const noteId = claimed?.id ?? generateNoteId()
+    const noteId = claimed?.id ?? newMarkdownFileId(relativePath)
     const title = extractTitleFromPath(relativePath)
     const createdAt = claimed?.createdAt ?? stats.birthtime.toISOString()
     const modifiedAt = stats.mtime.toISOString()

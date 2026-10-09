@@ -1538,6 +1538,46 @@ export class CrdtProvider {
     }
   }
 
+  /**
+   * Fold `foreignId`'s whole doc into `targetId`'s as a local edit, so it is
+   * stored, written back and pushed (#2939). Repeating it, here or on another
+   * device, changes nothing: the foreign Yjs items are already present. Resolves
+   * false when the foreign doc holds nothing.
+   *
+   * An empty foreign doc is first built from `fallbackMarkdown`, the text only
+   * this device holds. It is stored as the foreign doc's own state, never
+   * pushed under that id, so a retry folds the same items instead of minting
+   * new ones.
+   */
+  async absorbForeignDoc(
+    targetId: string,
+    foreignId: string,
+    fallbackMarkdown: string | null = null
+  ): Promise<boolean> {
+    const wasOpen = this.docs.has(foreignId)
+    let state: Uint8Array
+    try {
+      const foreign = await this.open(foreignId, undefined, { skipSeed: true })
+      if (foreign.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0 && fallbackMarkdown?.trim()) {
+        const built = new Y.Doc()
+        const { markdownToYFragment } = await loadBlockNoteConverter()
+        const path = getNoteCacheById(getIndexDatabase(), targetId)?.path
+        await markdownToYFragment(fallbackMarkdown, built.getXmlFragment(CRDT_FRAGMENT_NAME), path)
+        // Network origin: persisted, not queued for the server.
+        Y.applyUpdate(foreign, Y.encodeStateAsUpdate(built), ORIGIN_NETWORK)
+      }
+      state = Y.encodeStateAsUpdate(foreign)
+    } finally {
+      if (!wasOpen) await this.closeIfInactive(foreignId)
+    }
+    if (state.length <= 4) return false
+
+    const doc = await this.open(targetId)
+    Y.applyUpdate(doc, state, ORIGIN_LOCAL)
+    scheduleWriteback(targetId, doc, 'local')
+    return true
+  }
+
   async pushSnapshotForNote(
     noteId: string,
     options: { skipSeed?: boolean } = {}

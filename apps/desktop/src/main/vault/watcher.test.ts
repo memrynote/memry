@@ -913,8 +913,8 @@ describe('vault watcher', () => {
 
     // The renderer caches this payload as the open entry, and the journal
     // editor passes that entry's id to every task it creates. The payload has
-    // to carry the id the vault holds for the file — not the deterministic
-    // `j<date>`, and not nothing at all (#2271).
+    // to carry the id the vault holds for the file, and not nothing at all
+    // (#2271). A day file new to the vault holds its day's `j<date>` (#2939).
     const updatedCall = window.webContents.send.mock.calls.find(
       (call: unknown[]) => call[0] === JournalChannels.events.ENTRY_UPDATED
     )
@@ -925,7 +925,7 @@ describe('vault watcher', () => {
       .where(eq(noteCache.path, 'journal/2026-05-10.md'))
       .get()
     expect(emittedId).toBe(cachedJournal?.id)
-    expect(emittedId).not.toBe('j2026-05-10')
+    expect(emittedId).toBe('j2026-05-10')
 
     window.webContents.send.mockClear()
     fs.rmSync(journalPath)

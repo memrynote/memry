@@ -84,4 +84,4 @@ Journal entries sync as Yjs CRDTs (same as notes). Two devices writing on the sa
 
 A day's tags and properties changed on another device update the file on disk without touching the entry's text. To write in your journal on the phone, see [Journal on iPhone](/user-guide/journal/on-iphone).
 
-If two devices create same-date entries with **different IDs** (rare, but possible during long offline stretches), memrynote keeps both and renames one to disambiguate. See [CRDT & Notes Sync](/architecture/crdt) for the underlying behavior.
+A day has one entry on every device. A day file added to the journal folder outside memrynote (another editor, Dropbox, iCloud) joins that day's entry. Older versions gave such a file a separate ID, and that copy failed to sync to other devices. When one of those copies arrives, memrynote merges its text into the day's entry, moves its task links there, and removes the copy. See [CRDT & Notes Sync](/architecture/crdt) for the underlying behavior.

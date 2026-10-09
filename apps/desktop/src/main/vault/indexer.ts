@@ -30,7 +30,8 @@ import {
   getNoteCacheByPath,
   countNotes,
   countJournalEntries,
-  ensureTagDefinitions
+  ensureTagDefinitions,
+  newMarkdownFileId
 } from '@main/database/queries/notes'
 import { getNoteMetadataByPath } from '@memry/storage-data'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
@@ -223,7 +224,7 @@ async function indexMarkdownFile(
   } catch {
     // data DB not ready — fall back to a fresh id
   }
-  const noteId = canonical?.id ?? parsed.id
+  const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
 
   // Use syncNoteToCache for unified cache operations
   try {

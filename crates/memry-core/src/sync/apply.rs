@@ -46,12 +46,12 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{calendar_items, canvas, inbox, projects, settings, tasks};
+use crate::domain::{calendar_items, canvas, inbox, journal, projects, settings, tasks};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::clock::{ClockOrder, VectorClock, compare};
-use super::{body_debt, settings_merge, store};
+use super::{body_debt, journal_day_merge, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -249,6 +249,9 @@ fn apply_tombstone(
         }
     }
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    if item_type == journal::ITEM_TYPE {
+        journal_day_merge::mark_deleted(&txn, item_id)?;
+    }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
         // The body debt goes with the body: a pull owed before the delete
@@ -311,6 +314,7 @@ fn apply_untyped_tombstone(
     let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
     let item_types = store::item_types_for(&txn, item_id)?;
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
+    journal_day_merge::mark_deleted(&txn, item_id)?;
     for item_type in &item_types {
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }
@@ -383,6 +387,12 @@ pub fn apply_inbound_on(
     now_ms: i64,
     clock_device: Option<&str>,
 ) -> Result<ApplyOutcome, StorageError> {
+    // One journal item per day (#2939): a foreign id is owed, never stored.
+    if record.item_type == journal::ITEM_TYPE
+        && let Some(outcome) = journal_day_merge::plan_inbound(conn, record)?
+    {
+        return Ok(outcome);
+    }
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),

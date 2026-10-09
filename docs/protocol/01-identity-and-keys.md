@@ -314,3 +314,87 @@ one journal document per day merged across vaults
 (`apps/desktop/src/main/sync/crdt-legacy-partition.ts:19-32`), and it is why
 chapter 07 forbids deriving a journal's document id from its date when a record
 carries one.
+
+### 1.9.1 One journal item per day (#2939)
+
+**Normative.** A day `D` has exactly one journal item, `j<D>`. Any other
+journal id whose payload carries date `D` is **foreign**. A client MUST NOT
+project a foreign id as a row. It merges the foreign item's body into `j<D>`,
+pushes `j<D>`, and tombstones the foreign id.
+
+Desktop builds before this rule gave a day file added outside the app a note
+id (the watcher and the indexer minted one) and pushed it as a `journal`
+create. Applying such an item where `j<D>` already held the day failed on the
+day's unique path or date on every pull: desktop deferred it forever, and the
+core recorded it corrupt.
+
+**Minting.** A markdown file new to the vault whose path is a journal day gets
+`j<D>`, never a note id
+(`apps/desktop/src/main/database/queries/notes/journal-queries.ts:71-74`, used
+by `apps/desktop/src/main/vault/watcher.ts:623` and
+`apps/desktop/src/main/vault/indexer.ts:227`).
+
+**Apply.** The decision is a pure function of the incoming id, its date, and
+the id of the local row holding that day, if any
+(`packages/domain-notes/src/journal/day-identity.ts:26-37`, ported as
+`crates/memry-core/src/domain/journal_rules/day_identity.rs:22`). The `dayIdentity` section of the `journal` vector class pins it.
+
+| Incoming    | Local holder   | Action                                                                                         |
+| ----------- | -------------- | ---------------------------------------------------------------------------------------------- |
+| `j<D>`      | none or `j<D>` | ordinary apply                                                                                 |
+| `j<D>`      | foreign `H`    | owe merge of `H`; remove `H`'s row, keep its body; apply `j<D>`                                |
+| foreign `X` | anything       | owe merge of `X` (and of a foreign holder); apply nothing; the outcome is skipped, not corrupt |
+
+An owed merge records the foreign id, `D`, and the foreign item's clock, which
+the tombstone must exceed. Desktop keeps it in `sync_state` and declines the
+ref so the manifest check does not count the unprojected id as server-only
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:69-92`,
+`apps/desktop/src/main/sync/journal-day-merge.ts:54-63`). The core keeps it in
+`meta` under `journal.day_merge:<id>` (`crates/memry-core/src/sync/apply.rs:392`,
+`crates/memry-core/src/sync/journal_day_merge.rs:180`).
+
+**Merge.** After a pull run's body pass, each owed merge `F -> D` runs until it
+settles (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:189`,
+`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:486-493`,
+`apps/desktop/src/main/sync/journal-day-merge.ts:135-166`; core:
+`crates/memry-core/src/api/sync/pass.rs:135`, `crates/memry-core/src/sync/journal_day_merge.rs:246`). The core
+drains only in its steady-state pass; a first sync records owed merges and the
+next pass settles them.
+
+1. Create `j<D>` empty through the normal create path if no row holds it.
+2. Pull `F`'s server body. If it is not fully merged, `F` stays owed.
+3. Apply `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
+   stored, written back and pushed as a CRDT update for `j<D>`
+   (`apps/desktop/src/main/sync/crdt-provider.ts:1552-1579`; core:
+   `crates/memry-core/src/sync/journal_day_merge.rs:407-414`).
+4. Point task links at `F` to `j<D>`
+   (`apps/desktop/src/main/notes/runtime-effects.ts:125-131`; core: `crates/memry-core/src/sync/journal_day_merge.rs:401`).
+5. Queue `F`'s tombstone with clock `increment(F.clock, self)`, purge `F`'s
+   local doc, and drop the owed merge (core: `crates/memry-core/src/sync/journal_day_merge.rs:419`, `:488`).
+
+A tombstone for an owed `F` means another device merged it. The client marks
+the merge deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:175`,
+`apps/desktop/src/main/sync/journal-day-merge.ts:70-77`; core:
+`crates/memry-core/src/sync/apply.rs:253`, `:317`, `crates/memry-core/src/sync/journal_day_merge.rs:173`), folds in only what it
+holds of `F`'s body, queues no tombstone, and settles even when that body is
+empty.
+
+Every step converges when repeated after a crash. Two devices merging the same
+`F` at once integrate the same Yjs items, identified by `(clientID, clock)`, so
+`j<D>` holds `F`'s text once after they exchange updates. `j<D>` is never
+seeded from `F`'s markdown, which would mint new items on each device. Both
+tombstones are deletes, and §5.7 either accepts or refuses the second; `F`
+stays deleted either way. A build still editing `F` after its tombstone gets
+§5.8's delete-wins answer, and what it typed before the merge is already in
+`j<D>`. Both devices relink a task to the same list, so the field merge
+converges.
+
+A live `F` with no Yjs body stays owed. Its record's `content` is not merged, because
+every device holds it and each would mint its own items. The one exception is
+desktop's local holder: when `j<D>` takes the day from a foreign row on this
+device, desktop keeps the day file's text, and if that row's doc is empty it
+builds the doc from the text before merging
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:76-83`). Only
+that device holds the file, so no other device duplicates it. The core cannot
+parse markdown (chapter 12) and has no foreign local rows, because it mints
+only `j<D>`.

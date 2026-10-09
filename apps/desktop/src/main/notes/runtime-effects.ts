@@ -116,6 +116,20 @@ export async function unlinkTasksFromDeletedNote(noteId: string): Promise<void> 
   }
 }
 
+/**
+ * A note merged into another hands its task links to it, so a task created
+ * inside the merged note still opens the note that now holds its text
+ * (#2271, #2939). Every device that merges writes the same list, so concurrent
+ * relinks converge. Through `updateTask`, so the change syncs.
+ */
+export async function relinkTasksToMergedNote(fromId: string, toId: string): Promise<void> {
+  const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+  for (const task of domain.getLinkedTasks(fromId)) {
+    const linked = (task.linkedNoteIds ?? []).map((id) => (id === fromId ? toId : id))
+    await domain.updateTask({ id: task.id, linkedNoteIds: [...new Set(linked)] })
+  }
+}
+
 export function emitNoteAttachmentSaved(noteId: string, diskPath: string): void {
   attachmentEvents.emitSaved({ noteId, diskPath })
 }

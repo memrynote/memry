@@ -439,13 +439,12 @@ describe('indexer', () => {
       // The indexer should detect this as a journal entry based on path
     })
 
-    // The root of #2271: a journal file the scanner reaches first is cached
-    // under a fresh note id, while `readJournalEntry` always reports the
-    // deterministic `j<date>`. Anything the renderer keys off the entry id —
-    // the `linkedNoteIds` of a task created inside the day, bookmarks,
-    // backlinks, properties — resolves through this row, so the two ids have to
-    // be reconciled before the id leaves the main process.
-    it('#2271: caches a scanned journal file under a fresh note id, not j<date>', async () => {
+    // #2271 found a scanned journal file cached under a fresh note id while
+    // `readJournalEntry` reported `j<date>`, and made everything key off the id
+    // the vault holds. That fresh id then synced as a second journal for the
+    // day, which every other device failed to apply (#2939). A day file new to
+    // the vault gets its day's id, so the two ids are one.
+    it('#2939: caches a scanned journal file under j<date>, the id every device gives the day', async () => {
       fs.mkdirSync(tempVault.journalDir, { recursive: true })
       fs.writeFileSync(
         path.join(tempVault.journalDir, '2026-01-15.md'),
@@ -462,7 +461,7 @@ describe('indexer', () => {
         .get()
 
       expect(row?.date).toBe('2026-01-15')
-      expect(row?.id).not.toBe(generateJournalId('2026-01-15'))
+      expect(row?.id).toBe(generateJournalId('2026-01-15'))
     })
 
     it('T374: indexes files with duplicate legacy ids as separate notes, never writing files', async () => {

@@ -2789,6 +2789,109 @@
       "averageLevel": 2
     }
   ],
+  "dayIdentity": [
+    {
+      "name": "canonical, day empty",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": null,
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "canonical, held by itself",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "canonical, held by a foreign row",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": "vcpzueguep8y",
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": true
+      }
+    },
+    {
+      "name": "foreign, day empty",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": null,
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "foreign, held by canonical",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "foreign, held by itself",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "vcpzueguep8y",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": true
+      }
+    },
+    {
+      "name": "foreign, held by another foreign",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "wxudm2oo4rci",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y",
+          "wxudm2oo4rci"
+        ],
+        "removeHolder": true
+      }
+    },
+    {
+      "name": "canonical of another day is foreign",
+      "incomingId": "j2026-06-08",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "j2026-06-08"
+        ],
+        "removeHolder": false
+      }
+    }
+  ],
   "weekday": [
     {
       "date": "1970-01-01",

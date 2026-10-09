@@ -296,3 +296,20 @@ fn template_apply() {
         assert_eq!(actual, case["expected"], "templateApply `{}`", case["name"]);
     }
 }
+
+#[test]
+fn day_identity() {
+    for case in section("dayIdentity") {
+        let plan = journal_rules::plan_journal_day_apply(
+            str_field(&case, "incomingId"),
+            str_field(&case, "date"),
+            case["holderId"].as_str(),
+        );
+        let actual = json!({
+            "applyIncoming": plan.apply_incoming,
+            "oweMerge": plan.owe_merge,
+            "removeHolder": plan.remove_holder,
+        });
+        assert_eq!(actual, case["expected"], "dayIdentity `{}`", case["name"]);
+    }
+}

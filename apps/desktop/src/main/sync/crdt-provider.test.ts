@@ -1191,6 +1191,84 @@ describe('CrdtProvider', () => {
     })
   })
 
+  describe('a foreign journal folded into its day (#2939)', () => {
+    const bodyText = (doc: Y.Doc) => doc.getXmlFragment('prosemirror').toString()
+    const typedBody = (text: string): Uint8Array => {
+      const doc = new Y.Doc()
+      doc.getXmlFragment('prosemirror').insert(0, [new Y.XmlText(text)])
+      return Y.encodeStateAsUpdate(doc)
+    }
+
+    beforeEach(async () => {
+      const foreign = await provider.open('vcpzueguep8y', undefined, { skipSeed: true })
+      Y.applyUpdate(foreign, typedBody('typed on the other id'))
+      await provider.open('j2026-06-09', undefined, { skipSeed: true })
+      queue.enqueue.mockClear()
+    })
+
+    it('stores, pushes and writes back the foreign body as an edit of the day', async () => {
+      const merged = await provider.absorbForeignDoc('j2026-06-09', 'vcpzueguep8y')
+
+      const day = provider.getDoc('j2026-06-09')!
+      expect(merged).toBe(true)
+      expect(bodyText(day)).toContain('typed on the other id')
+      expect(queue.enqueue).toHaveBeenCalledWith('j2026-06-09', expect.any(Uint8Array))
+      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('j2026-06-09', day, 'local')
+    })
+
+    it('adds nothing the second time', async () => {
+      await provider.absorbForeignDoc('j2026-06-09', 'vcpzueguep8y')
+      const once = Y.encodeStateAsUpdate(provider.getDoc('j2026-06-09')!)
+      queue.enqueue.mockClear()
+
+      await provider.absorbForeignDoc('j2026-06-09', 'vcpzueguep8y')
+
+      expect(Y.encodeStateAsUpdate(provider.getDoc('j2026-06-09')!)).toEqual(once)
+      expect(queue.enqueue).not.toHaveBeenCalled()
+    })
+
+    it('leaves the text once when two devices merge the same foreign id', async () => {
+      const foreignState = Y.encodeStateAsUpdate(provider.getDoc('vcpzueguep8y')!)
+      await provider.absorbForeignDoc('j2026-06-09', 'vcpzueguep8y')
+      const deviceA = provider.getDoc('j2026-06-09')!
+      const deviceB = new Y.Doc()
+      Y.applyUpdate(deviceB, foreignState)
+
+      Y.applyUpdate(deviceA, Y.encodeStateAsUpdate(deviceB))
+      Y.applyUpdate(deviceB, Y.encodeStateAsUpdate(deviceA))
+
+      expect(bodyText(deviceA).split('typed on the other id')).toHaveLength(2)
+      expect(bodyText(deviceB)).toBe(bodyText(deviceA))
+    })
+
+    it('builds an empty local foreign doc from its file text once, pushing only the day', async () => {
+      mocks.markdownToYFragment.mockImplementation(
+        async (markdown: string, fragment: Y.XmlFragment) => {
+          fragment.insert(0, [new Y.XmlText(markdown)])
+          return true
+        }
+      )
+      await provider.open('wxudm2oo4rci', undefined, { skipSeed: true })
+
+      await provider.absorbForeignDoc('j2026-06-09', 'wxudm2oo4rci', 'kept from the file')
+      const once = Y.encodeStateAsUpdate(provider.getDoc('j2026-06-09')!)
+      const pushedOnce = queue.enqueue.mock.calls.length
+      await provider.absorbForeignDoc('j2026-06-09', 'wxudm2oo4rci', 'kept from the file')
+
+      expect(bodyText(provider.getDoc('j2026-06-09')!)).toContain('kept from the file')
+      expect(Y.encodeStateAsUpdate(provider.getDoc('j2026-06-09')!)).toEqual(once)
+      expect(queue.enqueue).toHaveBeenCalledTimes(pushedOnce)
+      expect(queue.enqueue).not.toHaveBeenCalledWith('wxudm2oo4rci', expect.anything())
+    })
+
+    it('reports an empty foreign doc instead of merging nothing', async () => {
+      await provider.open('wxudm2oo4rci', undefined, { skipSeed: true })
+
+      expect(await provider.absorbForeignDoc('j2026-06-09', 'wxudm2oo4rci')).toBe(false)
+      expect(queue.enqueue).not.toHaveBeenCalled()
+    })
+  })
+
   it('applies IPC sync step 2 diffs without echoing back to renderer window -1', async () => {
     createWindow(3)
     await provider.open('note-1', 3, { skipSeed: true })
