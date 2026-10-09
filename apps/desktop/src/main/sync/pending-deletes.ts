@@ -79,7 +79,7 @@ export function buildContentDeletePayload(db: DataDb, itemId: string): string | 
  * hard-deleted locally and nothing else records that the user deleted them.
  */
 export function recordPendingDelete(
-  db: DataDb,
+  db: DrizzleDb,
   type: SyncItemType,
   itemId: string,
   payload: string

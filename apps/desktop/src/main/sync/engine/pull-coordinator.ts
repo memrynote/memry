@@ -1,6 +1,4 @@
 import { createLogger } from '../../lib/logger'
-import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
 import type { RecordChangesResponse } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
@@ -17,6 +15,7 @@ import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
+import { emitInitialSyncProgress } from './initial-sync-progress'
 import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -186,6 +185,8 @@ export class PullCoordinator {
         // Records these applied off their page pull their whole bodies here: a
         // rowless feed body on that page was dropped in reliance on it (#2297).
         await this.applyCrdtBatch(runState)
+        // After the bodies: a foreign journal's day may have just arrived (#2939).
+        await this.crdtSync.mergeForeignJournalDays(credentials, runState.signal)
         if (runState.refused) {
           // The run stopped on a page it could not apply. Recording a success
           // history row and a fresh lastSyncAt here is what made a failing
@@ -341,7 +342,7 @@ export class PullCoordinator {
       }
 
       const { stop, cursorCommitted } = await this.pullChangesPage(changes, runState, nextCursor)
-      this.emitInitialSyncProgress(changes, runState.pulledCount)
+      emitInitialSyncProgress(this.ctx, changes, runState.pulledCount)
 
       if (HOLDS_CURSOR.has(stop)) {
         runState.refused = true
@@ -512,19 +513,6 @@ export class PullCoordinator {
       runState.crdtNoteIds.length = 0
       if (restoreCapacity) await restoreCapacity()
     }
-  }
-
-  private emitInitialSyncProgress(changes: RecordChangesResponse, pulledCount: number): void {
-    if (!this.ctx.fullSyncActive) return
-
-    const estimatedTotal = changes.hasMore
-      ? pulledCount + this.ctx.options.pullPageLimit
-      : pulledCount
-    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
-      phase: 'notes',
-      processedItems: pulledCount,
-      totalItems: estimatedTotal
-    } satisfies InitialSyncProgressEvent)
   }
 
   private finalizePullSuccess(runState: PullRunState): void {

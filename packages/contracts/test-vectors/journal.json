@@ -2789,6 +2789,237 @@
       "averageLevel": 2
     }
   ],
+  "dayMerge": [
+    {
+      "name": "live, body merged",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": true
+      }
+    },
+    {
+      "name": "live, body not fully pulled",
+      "state": {
+        "deleted": false,
+        "bodyPulled": false,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "wait",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, no body and no text",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": false,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "forget",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, never synced (empty clock)",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": false
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, day deleted here",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "drop",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "live, no body and no text, day deleted here",
+      "state": {
+        "deleted": false,
+        "bodyPulled": true,
+        "hasBody": false,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "forget",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, body held here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "merge",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, nothing held here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": true,
+        "hasBody": false,
+        "dayDeleted": false,
+        "clocked": true
+      },
+      "expected": {
+        "action": "forget",
+        "tombstone": false
+      }
+    },
+    {
+      "name": "deleted, day deleted here",
+      "state": {
+        "deleted": true,
+        "bodyPulled": true,
+        "hasBody": true,
+        "dayDeleted": true,
+        "clocked": true
+      },
+      "expected": {
+        "action": "drop",
+        "tombstone": false
+      }
+    }
+  ],
+  "dayIdentity": [
+    {
+      "name": "canonical, day empty",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": null,
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "canonical, held by itself",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "canonical, held by a foreign row",
+      "incomingId": "j2026-06-09",
+      "date": "2026-06-09",
+      "holderId": "vcpzueguep8y",
+      "expected": {
+        "applyIncoming": true,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": true
+      }
+    },
+    {
+      "name": "foreign, day empty",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": null,
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "foreign, held by canonical",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "foreign, held by itself",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "vcpzueguep8y",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "foreign, held by another foreign",
+      "incomingId": "vcpzueguep8y",
+      "date": "2026-06-09",
+      "holderId": "wxudm2oo4rci",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "vcpzueguep8y",
+          "wxudm2oo4rci"
+        ],
+        "removeHolder": false
+      }
+    },
+    {
+      "name": "canonical of another day is foreign",
+      "incomingId": "j2026-06-08",
+      "date": "2026-06-09",
+      "holderId": "j2026-06-09",
+      "expected": {
+        "applyIncoming": false,
+        "oweMerge": [
+          "j2026-06-08"
+        ],
+        "removeHolder": false
+      }
+    }
+  ],
   "weekday": [
     {
       "date": "1970-01-01",

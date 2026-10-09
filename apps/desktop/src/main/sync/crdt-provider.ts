@@ -1538,6 +1538,65 @@ export class CrdtProvider {
     }
   }
 
+  /** Whether `noteId`'s local doc holds any Yjs state. Never seeded. */
+  async hasDocState(noteId: string): Promise<boolean> {
+    const wasOpen = this.docs.has(noteId)
+    try {
+      const doc = await this.open(noteId, undefined, { skipSeed: true })
+      return Y.encodeStateAsUpdate(doc).length > 4
+    } finally {
+      if (!wasOpen) await this.closeIfInactive(noteId)
+    }
+  }
+
+  /**
+   * Fold `foreignId`'s whole doc into `targetId`'s as a local edit, so it is
+   * stored, written back and pushed (#2939). Repeating it, here or on another
+   * device, changes nothing: the foreign Yjs items are already present. Resolves
+   * false when the foreign doc holds nothing.
+   *
+   * The day is opened unseeded: a seed from its file would mint a second copy
+   * of text the fold carries. An empty foreign doc is first built from
+   * `fallbackMarkdown`, the text only this device holds, under `buildClientId`.
+   * That id is fixed per foreign id and device, so a rebuild after a crash
+   * mints the same items and the fold adds nothing twice. The built state is
+   * stored as the foreign doc's own, never pushed under that id.
+   */
+  async absorbForeignDoc(
+    targetId: string,
+    foreignId: string,
+    fallbackMarkdown: string | null,
+    buildClientId: number
+  ): Promise<boolean> {
+    const wasOpen = this.docs.has(foreignId)
+    let state: Uint8Array
+    try {
+      const foreign = await this.open(foreignId, undefined, { skipSeed: true })
+      if (foreign.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0 && fallbackMarkdown?.trim()) {
+        const built = new Y.Doc()
+        built.clientID = buildClientId
+        const { markdownToYFragment } = await loadBlockNoteConverter()
+        const path = getNoteCacheById(getIndexDatabase(), targetId)?.path
+        await markdownToYFragment(fallbackMarkdown, built.getXmlFragment(CRDT_FRAGMENT_NAME), path)
+        // Network origin: persisted, not queued for the server. Stored before
+        // the fold, so a retry after a crash reuses these items instead of
+        // building again from text that may have changed since.
+        const builtState = Y.encodeStateAsUpdate(built)
+        Y.applyUpdate(foreign, builtState, ORIGIN_NETWORK)
+        await this.persistence?.storeUpdate(foreignId, builtState)
+      }
+      state = Y.encodeStateAsUpdate(foreign)
+    } finally {
+      if (!wasOpen) await this.closeIfInactive(foreignId)
+    }
+    if (state.length <= 4) return false
+
+    const doc = await this.open(targetId, undefined, { skipSeed: true })
+    Y.applyUpdate(doc, state, ORIGIN_LOCAL)
+    scheduleWriteback(targetId, doc, 'local')
+    return true
+  }
+
   async pushSnapshotForNote(
     noteId: string,
     options: { skipSeed?: boolean } = {}

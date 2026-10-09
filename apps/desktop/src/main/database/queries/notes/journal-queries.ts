@@ -13,6 +13,7 @@ import {
 import type { IndexDb } from '../../types'
 import { type ActivityLevel, calculateActivityLevel } from './query-helpers'
 import { getJournalConfig } from '@main/vault/journal-config'
+import { generateNoteId } from '@main/lib/id'
 import { computeJournalStreak, utcDateKey, yearMonthStats } from '@memry/domain-notes/journal'
 import { getPropertiesForNotes } from './property-queries'
 
@@ -59,6 +60,17 @@ export function generateJournalPath(date: string): string {
 
 export function generateJournalId(date: string): string {
   return `j${date}`
+}
+
+/**
+ * The id a markdown file new to the vault gets. A journal day's id is
+ * `j<date>` on every device (protocol §1.9), so a day file added outside the
+ * app must not mint a note-style id: a second id for one day is a duplicate
+ * every other device has to merge away (#2939).
+ */
+export function newMarkdownFileId(path: string): string {
+  const date = extractDateFromPath(path)
+  return date === null ? generateNoteId() : generateJournalId(date)
 }
 
 // ============================================================================

@@ -7,7 +7,8 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { getIndexDatabase } from '../../database/client'
-import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
+import { getNoteMetadataById, getNoteMetadataByPath, updateNoteMetadata } from '@memry/storage-data'
+import { planJournalDayApply } from '@memry/domain-notes/journal'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
   extractJournalProperties,
@@ -28,6 +29,14 @@ import { belongsToOtherType } from './note-row-type'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
+import {
+  journalTombstonedPast,
+  markOwedJournalDayMergeDeleted,
+  oweJournalDayMerge,
+  readDayBody,
+  removeJournalRow
+} from '../journal-day-merge'
+import { generateJournalId } from '@memry/contracts/journal-api'
 
 const log = createLogger('JournalHandler')
 
@@ -54,9 +63,41 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
+    const indexDb = getIndexDatabase()
+
+    // One item per day (#2939): a foreign id is never projected. A foreign
+    // local row keeps the day until `j<date>` arrives or the drain sweeps it;
+    // both keep its file text first. `drainJournalDayMerges` merges the bodies.
+    const holder = getNoteMetadataByPath(ctx.db, getJournalRelativePath(date))
+    const plan = planJournalDayApply(itemId, date, holder?.id ?? null)
+    for (const foreignId of plan.oweMerge) {
+      if (foreignId === itemId) {
+        if (journalTombstonedPast(ctx.db, itemId, remoteClock)) continue
+        // Its text builds a body when it has no Yjs history (§1.9.1).
+        oweJournalDayMerge(ctx.db, {
+          foreignId,
+          date,
+          clock: remoteClock,
+          recordMarkdown: data.content || null
+        })
+        continue
+      }
+      oweJournalDayMerge(ctx.db, {
+        foreignId,
+        date,
+        clock: holder?.clock ?? null,
+        // The day's file is about to be written over.
+        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null
+      })
+    }
+    if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
+    if (!plan.applyIncoming) {
+      log.info('Foreign journal id for a day; merging it into the day', { itemId, date })
+      return 'skipped'
+    }
+
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (existing && belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
-    const indexDb = getIndexDatabase()
 
     let mergedClock = remoteClock
     let result: ApplyResult = 'applied'
@@ -127,6 +168,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
+    markOwedJournalDayMergeDeleted(ctx.db, itemId)
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 
@@ -136,6 +178,19 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         log.info('Skipping remote journal delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
+    }
+
+    // A foreign row a pre-fix build left: another device merged it into the
+    // day. Its row, doc and file stay for the drain, which folds them, unpushed
+    // edits included, into `j<date>` (#2984); a purge here would lose them.
+    if (existing.journalDate && existing.id !== generateJournalId(existing.journalDate)) {
+      oweJournalDayMerge(ctx.db, {
+        foreignId: itemId,
+        date: existing.journalDate,
+        clock: existing.clock ?? null,
+        deleted: true
+      })
+      return 'applied'
     }
 
     // Floated for the same reason as `noteHandler.applyDelete`: this runs per

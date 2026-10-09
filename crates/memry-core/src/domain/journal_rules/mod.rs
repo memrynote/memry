@@ -9,11 +9,16 @@
 //! shell formats long dates, times and weekday names). Lengths are JavaScript
 //! string lengths, UTF-16 code units.
 
+pub mod day_identity;
 pub mod preview;
 pub mod stats;
 pub mod streak;
 pub mod templates;
 
+pub use day_identity::{
+    JournalDayApplyPlan, JournalDayMergeAction, JournalDayMergeState, canonical_journal_id,
+    plan_journal_day_apply, plan_journal_day_merge,
+};
 pub use preview::{JOURNAL_PREVIEW_LENGTH, extract_journal_preview};
 pub use stats::{
     JournalDayCounts, JournalHeatmapDay, JournalMonthActivity, JournalMonthDay,

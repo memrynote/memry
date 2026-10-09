@@ -20,6 +20,7 @@
 //! | [`body_pull`]     | 07 §7.8 – §7.11        | the downward CRDT feed: bodies into `yjs_updates` |
 //! | [`body_step`]     | 07 §7.17.4             | a pass's per-note pulls, within a budget          |
 //! | [`body_debt`]     | 05 §5.11, 07 §7.13.2   | the documents owed a whole-body pull              |
+//! | [`journal_day_merge`] | 01 §1.9, #2939     | foreign journal ids merged into `j<date>`         |
 //! | [`crdt_wire`]     | 07 §7.11               | that feed's wire shapes, read tolerantly          |
 //! | [`note_body_feed`] | 07 §7.17, 05 §5.11.1   | bodies from `noteBodies`, landed with the cursor  |
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
@@ -48,6 +49,7 @@ mod feed_restart;
 pub mod field_merge;
 pub mod first_sync;
 pub mod first_sync_store;
+pub mod journal_day_merge;
 pub mod note_body_feed;
 pub mod outbox;
 pub mod policy;

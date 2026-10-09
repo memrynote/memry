@@ -296,3 +296,38 @@ fn template_apply() {
         assert_eq!(actual, case["expected"], "templateApply `{}`", case["name"]);
     }
 }
+
+#[test]
+fn day_identity() {
+    for case in section("dayIdentity") {
+        let plan = journal_rules::plan_journal_day_apply(
+            str_field(&case, "incomingId"),
+            str_field(&case, "date"),
+            case["holderId"].as_str(),
+        );
+        let actual = json!({
+            "applyIncoming": plan.apply_incoming,
+            "oweMerge": plan.owe_merge,
+            "removeHolder": plan.remove_holder,
+        });
+        assert_eq!(actual, case["expected"], "dayIdentity `{}`", case["name"]);
+    }
+}
+
+#[test]
+fn day_merge() {
+    for case in section("dayMerge") {
+        let state = &case["state"];
+        let flag = |key: &str| state[key].as_bool().expect(key);
+        let (action, tombstone) =
+            journal_rules::plan_journal_day_merge(journal_rules::JournalDayMergeState {
+                deleted: flag("deleted"),
+                body_pulled: flag("bodyPulled"),
+                has_body: flag("hasBody"),
+                day_deleted: flag("dayDeleted"),
+                clocked: flag("clocked"),
+            });
+        let actual = json!({ "action": action.as_str(), "tombstone": tombstone });
+        assert_eq!(actual, case["expected"], "dayMerge `{}`", case["name"]);
+    }
+}
