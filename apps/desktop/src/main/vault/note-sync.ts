@@ -77,9 +77,7 @@ export function learnCanonicalPropertyType(
     inferPropertyType
   )
   // `relation` has no PropertyDefinitionSchema member, so it is never
-  // persisted — it is re-derived from the value on every pass instead. A
-  // stored row changes only for the reserved `project` key: a type read off one
-  // note's value (an unquoted date) does not retype the property.
+  // persisted — it is re-derived from the value on every pass instead.
   if (
     isPersistableDefinitionType(type) &&
     (!existing || (name === PROJECT_PROPERTY_KEY && existing.type !== type))

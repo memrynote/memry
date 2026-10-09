@@ -11,7 +11,6 @@ const MIGRATION_TAG = '0025_unquoted_yaml_dates'
 
 const tempDirs: string[] = []
 
-/** The index migrations as an install that has not taken MIGRATION_TAG yet holds them. */
 function migrationsBefore(tag: string): string {
   const dir = mkdtempSync(join(tmpdir(), 'bbf43-index-migrations-'))
   tempDirs.push(dir)

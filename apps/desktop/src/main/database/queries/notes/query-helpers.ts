@@ -35,7 +35,6 @@ export function serializeValue(value: unknown): string | null {
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value)
   }
-  // Stored the way the same date quoted in the file is stored.
   if (value instanceof Date) {
     return spellYamlDate(value)
   }
