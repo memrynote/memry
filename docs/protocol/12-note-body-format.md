@@ -10,7 +10,7 @@ read by another must be byte-identical where this chapter says it is.
 
 **Normative. Desktop converts markdown in both directions, in its main process.
 The core never serialises a document to markdown, and it parses markdown in one
-module, `markdown_seed`, for the two writes of §12.1.0. Every other path carries
+module, `markdown_seed`, for the three writes of §12.1.0. Every other path carries
 markdown verbatim.**
 
 Desktop's converter is a headless BlockNote editor in the Electron main process
@@ -32,12 +32,13 @@ The directions:
 ### 12.1.0 The core's markdown seed
 
 `markdown_seed` (`crates/memry-core/src/crdt/markdown_seed/mod.rs`) builds blocks from markdown
-for two writes and no others:
+for three writes and no others:
 
-| Write                                | Entry point                                                                                                                                                         | Rule                                                                                                                                                                     |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:188`), called by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:88`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`:182-187`) |
-| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:210`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)          | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)       |
+| Write                                | Entry point                                                                                                                                                                                                                                          | Rule                                                                                                                                                                         |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:188`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:213`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`:182-187`)     |
+| a note created from a template       | `seed_document`, through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:213`), called by `create_note` in the note's create transaction (`crates/memry-core/src/domain/templates.rs:155`)                                         | seeds the new, empty body with the `{{title}}`-substituted content, the same bytes as the payload `content` and `seed_markdown`. The same empty-body rule as the journal row |
+| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:210`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)           |
 
 **The seeded document MUST be the one desktop builds from the same bytes.** Each stage of
 desktop's conversion is ported with its quirks, and
@@ -57,12 +58,19 @@ would write blocks into an empty body that desktop's next write-back puts over t
 (`crates/memry-core/src/crdt/markdown_seed/mod.rs:3-9`; JP022a in
 `specs/005-ios-journal-parity/tasks.md:390-396`).
 
-A note created from a template takes the unparsed path instead. The core replaces every
+A note created from a template is seeded for the same reason. The core replaces every
 `{{title}}` in the template's `content` with the note's title, as desktop's `applyTemplate` does
 (`apps/desktop/src/main/vault/templates.ts:352`, `packages/shared/src/template-placeholders.ts:1-3`),
-and copies the result into the payload and into `note_bodies.seed_markdown`, parsing none of it
-(`crates/memry-core/src/domain/templates.rs:4-16`, `crates/memry-core/src/domain/templates.rs:137`).
+copies the result into the payload and into `note_bodies.seed_markdown`, and seeds the document
+from the same bytes in the same transaction
+(`crates/memry-core/src/domain/templates.rs:4-19`, `crates/memry-core/src/domain/templates.rs:138-162`).
 Desktop writes that `content` as the new note's file (§12.2 carve-out A).
+
+**The race is the journal row's.** Desktop builds a document from the file only when the note's
+fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:1687-1689`). If desktop opens the
+note after the record arrives and before the seeded updates do, both devices have seeded a tree,
+and the merge holds the body twice. The window and the outcome are the same as for a journal day
+opened from a template on the phone, and neither write closes it.
 
 ### 12.1.1 Desktop's pipeline
 
@@ -184,7 +192,7 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
   the caller's `content` into the create payload unchanged
   (`crates/memry-core/src/domain/notes/mod.rs:206`), and a note made from a template carries the
   template's `content` the same way, after `{{title}}` substitution
-  (`crates/memry-core/src/domain/templates.rs:137`).
+  (`crates/memry-core/src/domain/templates.rs:138`).
   Desktop writes a new remote note's file as `serializeNote(frontmatter, data.content)`
   (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:661-675`). **So "a client that
   cannot serialise markdown cannot write a vault file" is false as stated: the invariant is

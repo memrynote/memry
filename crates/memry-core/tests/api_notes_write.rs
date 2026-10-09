@@ -472,6 +472,18 @@ fn a_note_made_from_a_template_carries_its_seed() {
     assert_eq!(note.title, "Monday");
 }
 
+/// A note's body as (block kind, text) pairs, read from its document.
+fn body_of(vault: &Vault, id: &str) -> Vec<(String, String)> {
+    vault
+        .notes()
+        .blocks(id.to_string())
+        .expect("blocks")
+        .expect("the note")
+        .into_iter()
+        .map(|b| (b.kind, b.inline.into_iter().map(|r| r.text).collect()))
+        .collect()
+}
+
 /// The template list is desktop's: the built-ins (by name) before the vault's
 /// own, and a built-in makes a note even though it never lives in the vault.
 #[test]
@@ -521,6 +533,11 @@ fn the_built_in_templates_are_listed_and_make_notes() {
             .unwrap()
             .starts_with("## Attendees")
     );
+    // §12.1.0: the document is seeded too, so the phone can read and edit
+    // the note before any desktop has seen it.
+    let body = body_of(&vault, &id);
+    assert_eq!(body[0], ("heading".to_string(), "Attendees".to_string()));
+    assert!(body.contains(&("heading".to_string(), "Action Items".to_string())));
 }
 
 /// A vault template seeds like desktop's `applyTemplate`: `{{title}}` becomes
@@ -592,6 +609,13 @@ fn vault_templates_apply_and_list_like_desktop() {
     .expect("the note payload");
     let payload: serde_json::Value = serde_json::from_str(&raw).expect("json");
     assert_eq!(payload["content"], "# Plans\n\nAbout Plans.");
+    assert_eq!(
+        body_of(&vault, &id),
+        [
+            ("heading".to_string(), "Plans".to_string()),
+            ("paragraph".to_string(), "About Plans.".to_string()),
+        ]
+    );
     assert_eq!(payload["emoji"], "🅱️");
 
     let blank = writer

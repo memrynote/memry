@@ -1,17 +1,17 @@
 //! Templates, and the note a template creates (T126, chapter 13 §13.7.6,
 //! chapter 12 §12.1.2 and §12.2, data-model §A.3).
 //!
-//! **A template body is not markdown-parsed here.** The core parses markdown
-//! only in `markdown_seed`, for a journal day and a filed inbox article
-//! (§12.1.0); a note's markdown becomes a document on desktop. Applying a
-//! template follows desktop's `applyTemplate`, with no parse:
+//! **Applying a template follows desktop's `applyTemplate`**, in one
+//! transaction:
 //!
 //! 1. the template's `content`, with `{{title}}` replaced by the note's title,
 //!    into the new note's payload `content`, which is §12.2's carve-out A —
 //!    the one path where a client's markdown reaches a vault file, because
 //!    desktop writes a remote create's `content` as the file body;
-//! 2. the same bytes into `note_bodies.seed_markdown`, which is the only copy
-//!    of what the user asked for until desktop seeds the document (§A.3);
+//! 2. the same bytes into `note_bodies.seed_markdown` (§A.3), and into the
+//!    note's document through the core's one markdown parse,
+//!    `body_write::seed_empty_body_in` (§12.1.0), so the phone can read and
+//!    edit the note before any desktop has seen it;
 //! 3. the template's `tags`, its `properties` by name and value
 //!    ([`properties_of`]), and its `icon` as the note's `emoji`.
 //!
@@ -26,6 +26,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
+use super::body_write;
 use super::notes::{
     self, NewNote, create_in, edit, insert_local, iso, next_clock, object, tombstone_local,
 };
@@ -135,7 +136,7 @@ pub fn create_note(
             // Desktop's `applyTemplate`: `{{title}}` becomes the note's title
             // and the template's icon becomes the note's.
             let content = seed.content.replace("{{title}}", request.title);
-            create_in(
+            let id = create_in(
                 tx,
                 &NewNote {
                     id: request.note_id,
@@ -148,7 +149,18 @@ pub fn create_note(
                 },
                 device_id,
                 now_ms,
-            )
+            )?;
+            // §12.1.0: the phone has no other way to build this body, and a
+            // seed-only note reads "not on this phone" and cannot be edited.
+            body_write::seed_empty_body_in(
+                tx,
+                notes::ITEM_TYPE,
+                request.note_id,
+                &content,
+                device_id,
+                now_ms,
+            )?;
+            Ok(id)
         },
     )
 }
