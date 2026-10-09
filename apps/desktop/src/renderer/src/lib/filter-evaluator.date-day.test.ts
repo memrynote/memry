@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { evaluateFilter } from './filter-evaluator'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 
@@ -16,20 +16,9 @@ const note = (due: unknown): NoteWithProperties => ({
 })
 
 describe('date filters compare date-only values as calendar days', () => {
-  const originalTz = process.env.TZ
-  beforeAll(() => {
-    process.env.TZ = 'Europe/Istanbul'
-  })
-  afterAll(() => {
-    process.env.TZ = originalTz
-  })
-
+  // Runs in the host zone; filter-date-compare.test.ts covers other zones.
   // The date picker stores the picked day as local midnight in ISO form.
   const picked = (day: number): string => new Date(2026, 9, day).toISOString()
-
-  it('runs in a UTC+3 zone', () => {
-    expect(picked(7)).toBe('2026-10-06T21:00:00.000Z')
-  })
 
   it('is matches the same day', () => {
     expect(evaluateFilter(note('2026-10-07'), `due == "${picked(7)}"`)).toBe(true)
