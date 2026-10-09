@@ -237,13 +237,16 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   // context compaction before the spawn is not the model thinking.
   const reasoningClockStart = Date.now()
   let toolsUnavailable: ToolsUnavailable | null = null
+  let stepLimitReached = false
   const displayData = (): {
     reasoning?: string
     reasoningDurationMs?: number
     toolsUnavailable?: ToolsUnavailable
+    stepLimitReached?: true
   } => ({
     ...(reasoning.trim() ? { reasoning, reasoningDurationMs } : {}),
-    ...(toolsUnavailable ? { toolsUnavailable } : {})
+    ...(toolsUnavailable ? { toolsUnavailable } : {}),
+    ...(stepLimitReached ? { stepLimitReached: true as const } : {})
   })
   let backendError: string | null = null
   let exitObserved = false
@@ -265,6 +268,10 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
           content: { role: 'assistant', data: { text: buffered, ...displayData() } }
         })
         broadcastAgentEvent({ kind: 'message_upserted', message: updated })
+        continue
+      }
+      if (event.kind === 'step_limit') {
+        stepLimitReached = true
         continue
       }
       await handleBackendEvent(event, {

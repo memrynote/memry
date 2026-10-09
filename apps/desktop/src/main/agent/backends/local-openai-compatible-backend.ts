@@ -46,6 +46,17 @@ const PROBE_DEGRADED_TTL_MS = 60_000
 // earlier pass is known for this configuration.
 const DEFAULT_TOOL_PROFILE: ToolCallProfile = { toolChoice: 'auto' }
 
+// Model calls per turn with tools. The last one runs without tools and asks for a
+// handoff, so a turn cut off at the limit still ends in an answer (AF-032).
+const STEP_LIMIT = 24
+const STEP_BUDGET_SYSTEM =
+  `You can make at most ${STEP_LIMIT} model calls in this turn, and each tool round uses one. ` +
+  'Plan the work to fit, and answer before the budget runs out.'
+const HANDOFF_SYSTEM =
+  'This is the last model call of this turn: the step limit is reached, and tools are off for this call. ' +
+  'Do not write tool calls or tool syntax. Answer in plain text with a short handoff: ' +
+  'what is done, what is left, and what the user should send to continue.'
+
 // Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
 // the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
 function toOllamaApiBaseUrl(baseUrl: string): string {
@@ -255,7 +266,16 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
           : model,
       prompt: input.prompt,
       abortSignal: controller.signal,
-      stopWhen: stepCountIs(8),
+      stopWhen: stepCountIs(STEP_LIMIT),
+      ...(tools?.kind === 'on'
+        ? {
+            system: STEP_BUDGET_SYSTEM,
+            prepareStep: ({ stepNumber }: { stepNumber: number }) =>
+              stepNumber === STEP_LIMIT - 1
+                ? { activeTools: [], system: HANDOFF_SYSTEM }
+                : undefined
+          }
+        : {}),
       ...(isOllama
         ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
         : reasoningProviderOptions(options?.reasoningEffort, settings.thinking)),
@@ -307,14 +327,21 @@ async function* mapAiSdkEvents(
   onError: (error: unknown) => void
 ): AsyncIterable<BackendEvent> {
   yield* leading
+  let finishedSteps = 0
   try {
     for await (const part of stream) {
+      if (isPart(part, 'finish-step')) finishedSteps += 1
+      if (isPart(part, 'finish') && finishedSteps >= STEP_LIMIT) yield { kind: 'step_limit' }
       const event = partToBackendEvent(part)
       if (event) yield event
     }
   } catch (error) {
     onError(error)
   }
+}
+
+function isPart(part: unknown, type: string): boolean {
+  return !!part && typeof part === 'object' && 'type' in part && part.type === type
 }
 
 function partToBackendEvent(part: unknown): BackendEvent | null {

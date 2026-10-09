@@ -159,7 +159,15 @@ describe('ConversationView', () => {
       cancelTurn: vi.fn()
     })
 
-    mockUseAgentOptional.mockReturnValue(agentWith(false, [stopped]))
+    const toolRow = {
+      ...stopped,
+      id: 'tool-1',
+      role: 'tool_result',
+      content: { role: 'tool_result', data: { ok: true } },
+      toolCallId: 'call-1',
+      createdAt: 2
+    }
+    mockUseAgentOptional.mockReturnValue(agentWith(false, [stopped, toolRow]))
     const { rerender } = render(<ConversationView conversationId="conversation-1" />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     expect(mockComposerSend).toHaveBeenCalledWith('Continue')

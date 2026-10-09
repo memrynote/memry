@@ -367,7 +367,13 @@ export const AssistantContentSchema = z.object({
       detail: z.string().nullable(),
       reason: AgentToolsOffReasonSchema.optional().catch(undefined)
     })
-    .optional()
+    .optional(),
+  /**
+   * Set when the built-in backend ended the turn at its step limit, so the chat offers
+   * Continue. Optional so older messages parse, and older apps strip it. Display only;
+   * never fed back into a prompt.
+   */
+  stepLimitReached: z.boolean().optional()
 })
 export const ToolCallStatusSchema = z.enum([
   'pending',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 import type {
   AgentAccessMode,
@@ -53,9 +53,15 @@ import {
   isCliProvider
 } from './composer-models'
 
+export interface ComposerHandle {
+  /** Sends `text` as a new turn with the current settings, leaving the draft alone. */
+  send: (text: string) => Promise<void>
+}
+
 interface ComposerProps {
   conversationId: string | null
   sourceWindowId: string | null
+  ref?: Ref<ComposerHandle>
 }
 
 const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
@@ -112,7 +118,11 @@ function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
   })
 }
 
-export function Composer({ conversationId, sourceWindowId }: ComposerProps): React.JSX.Element {
+export function Composer({
+  conversationId,
+  sourceWindowId,
+  ref
+}: ComposerProps): React.JSX.Element {
   const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
@@ -527,6 +537,24 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       setSubmitting(false)
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    send: async (text) => {
+      if (!agent || !conversationId || !sourceWindowId) return
+      try {
+        await agent.sendTurn({
+          conversationId,
+          sourceWindowId,
+          text,
+          backendOptions: backendOptions(),
+          permissions: turnPermissions(),
+          attachments: []
+        })
+      } catch {
+        // Agent context owns the user-facing error.
+      }
+    }
+  }))
 
   function cancelTurn(): void {
     if (!agent || !conversationId || !turnInFlight) return

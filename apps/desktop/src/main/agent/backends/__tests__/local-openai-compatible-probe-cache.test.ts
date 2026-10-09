@@ -135,7 +135,8 @@ describe('local provider probe cache and failure classes', () => {
 
       const first = await turn(backend)
       expect(first.tools).toBeDefined()
-      expect(first.system).toBeUndefined()
+      // Tools stay on, so the turn gets the step budget and no tools-off line.
+      expect(first.system).toMatch(/^You can make at most 24 model calls/)
       expect(first.events).not.toContainEqual(
         expect.objectContaining({ kind: 'tools_unavailable' })
       )

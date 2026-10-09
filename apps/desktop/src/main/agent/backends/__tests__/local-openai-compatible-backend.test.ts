@@ -97,11 +97,11 @@ describe('LocalOpenAICompatibleBackend', () => {
     expect(mocks.createOllama).toHaveBeenCalledWith(
       expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
     )
-    expect(mocks.stepCountIs).toHaveBeenCalledWith(8)
+    expect(mocks.stepCountIs).toHaveBeenCalledWith(24)
     expect(mocks.streamText).toHaveBeenCalledWith(
       expect.objectContaining({
         prompt: 'User: create a task',
-        stopWhen: { type: 'step-count', count: 8 },
+        stopWhen: { type: 'step-count', count: 24 },
         tools: expect.objectContaining({
           vault_create_task: expect.any(Object)
         })

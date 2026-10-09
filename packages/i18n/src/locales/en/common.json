@@ -141,6 +141,10 @@
       "providerSaid": "The provider said: {detail}",
       "wroteToolCall": "The model wrote a tool call as text, and nothing ran."
     },
+    "stepLimit": {
+      "notice": "Stopped at the step limit.",
+      "continue": "Continue"
+    },
     "enable": {
       "title": "Enable memrynote Agent",
       "description": "memrynote Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
