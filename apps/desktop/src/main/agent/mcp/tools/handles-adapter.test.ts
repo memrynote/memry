@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestIndexDb } from '@tests/utils/test-db'
 import { NoteError, NoteErrorCode } from '../../../lib/errors'
+import type {
+  AgentMcpDesktopApiRequest,
+  AgentMcpDesktopWriteOperation
+} from '@memry/contracts/agent-mcp-channels'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -174,6 +178,12 @@ const deps = {
   dataDb: {} as never,
   // Real tables, empty: reading a markdown note looks up its attachment text.
   indexDb: createTestIndexDb().db as never
+}
+
+function writesSent(): AgentMcpDesktopApiRequest[] {
+  return mocks.invokeDesktopApiFromWindow.mock.calls
+    .map((call) => call[1] as AgentMcpDesktopApiRequest)
+    .filter((request) => request.operation !== 'inbox.get')
 }
 
 describe('createVaultServiceHandles', () => {
@@ -403,7 +413,8 @@ describe('createVaultServiceHandles', () => {
       title: 'New',
       content: 'Body',
       folder: 'work',
-      tags: ['focus']
+      tags: ['focus'],
+      plainChecklists: true
     })
 
     await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
@@ -2253,7 +2264,10 @@ describe('createVaultServiceHandles', () => {
       )
 
       expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
-        { operation: 'notes.create', args: [{ title: 'Review', content: '- [ ] A {check}' }] },
+        {
+          operation: 'notes.create',
+          args: [{ title: 'Review', content: '- [ ] A', plainChecklists: true }]
+        },
         {
           operation: 'notes.update',
           args: [{ id: 'note-1', content: '- [ ] Owner\n- [ ] B {check}' }]
@@ -2337,6 +2351,96 @@ describe('createVaultServiceHandles', () => {
           args: [['/tmp/list.md'], undefined, { plainChecklists: true }]
         }
       ])
+    })
+  })
+
+  it('marks inbox links to X as twitter and other social posts as social', async () => {
+    const item = (id: string, type: string, sourceUrl: string | null) => ({
+      id,
+      type,
+      sourceUrl,
+      captureSource: null,
+      title: id,
+      content: null,
+      transcription: null,
+      excerpt: null,
+      viewedAt: null,
+      createdAt: new Date('2026-05-12T00:00:00Z')
+    })
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      list: vi.fn().mockResolvedValue({
+        items: [
+          item('x-link', 'link', 'https://mobile.twitter.com/memry/status/1'),
+          item('bad-url', 'social', 'not a url'),
+          item('other-link', 'link', 'https://example.com/post')
+        ]
+      })
+    })
+
+    const listed = await createVaultServiceHandles(deps).inbox.list({})
+
+    expect(listed.map((entry) => [entry.id, entry.visual_type])).toEqual([
+      ['x-link', 'twitter'],
+      ['bad-url', 'social'],
+      ['other-link', undefined]
+    ])
+  })
+
+  describe('checkbox lines from inbox filing, project import and templates (#2796)', () => {
+    beforeEach(() => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+    })
+
+    it('asks for plain checkbox lines when an agent files an inbox item, links it, imports into a project or creates a note', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const writes: { operation: AgentMcpDesktopWriteOperation; args: unknown[] }[] = [
+        {
+          operation: 'inbox.file',
+          args: [{ itemId: 'inbox-1', destination: { type: 'new-note' }, plainChecklists: false }]
+        },
+        { operation: 'inbox.linkToNote', args: ['inbox-1', 'note-1', ['tag']] },
+        {
+          operation: 'tasks.importFilesToProject',
+          args: [{ projectId: 'project-1', sourcePaths: ['/tmp/list.md'] }]
+        },
+        { operation: 'notes.create', args: [{ title: 'Plan', template: 'template-1' }] }
+      ]
+
+      for (const request of writes) await handles.desktop.write(request, 'window-1')
+
+      expect(writesSent()).toEqual([
+        {
+          operation: 'inbox.file',
+          args: [{ itemId: 'inbox-1', destination: { type: 'new-note' }, plainChecklists: true }]
+        },
+        {
+          operation: 'inbox.linkToNote',
+          args: ['inbox-1', 'note-1', ['tag'], { plainChecklists: true }]
+        },
+        {
+          operation: 'tasks.importFilesToProject',
+          args: [{ projectId: 'project-1', sourcePaths: ['/tmp/list.md'], plainChecklists: true }]
+        },
+        {
+          operation: 'notes.create',
+          args: [{ title: 'Plan', template: 'template-1', plainChecklists: true }]
+        }
+      ])
+    })
+
+    it('asks for plain checkbox lines in the folder template a vault_create_note body falls back to', async () => {
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+
+      await createVaultServiceHandles(deps).notes.create({
+        title: 'Plan',
+        content_markdown: '',
+        folder_path: 'work'
+      })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0]).toMatchObject({
+        folder: 'work',
+        plainChecklists: true
+      })
     })
   })
 
@@ -2481,15 +2585,42 @@ describe('createVaultServiceHandles', () => {
     it('leaves desktop API bodies for the editor to convert', async () => {
       const handles = createVaultServiceHandles(deps)
       mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
-      const request = {
-        operation: 'notes.create' as const,
-        args: [{ title: 'Review', content: '- [ ] A' }]
-      }
 
-      await handles.desktop.write(request, 'window-1')
+      await handles.desktop.write(
+        {
+          operation: 'notes.create',
+          args: [{ title: 'Review', content: '- [ ] A', plainChecklists: true }]
+        },
+        'window-1'
+      )
+      await handles.desktop.write(
+        {
+          operation: 'inbox.linkToNote',
+          args: ['inbox-1', 'note-1', [], { plainChecklists: true }]
+        },
+        'window-1'
+      )
 
-      expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('window-1', request)
+      expect(writesSent()).toEqual([
+        {
+          operation: 'notes.create',
+          args: [{ title: 'Review', content: '- [ ] A', plainChecklists: false }]
+        },
+        {
+          operation: 'inbox.linkToNote',
+          args: ['inbox-1', 'note-1', [], { plainChecklists: false }]
+        }
+      ])
       expect(taskDomain.createTask).not.toHaveBeenCalled()
+    })
+
+    it('leaves the folder template of a vault_create_note for the editor', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+
+      await handles.notes.create({ title: 'Plan', content_markdown: '', folder_path: 'work' })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0]).toMatchObject({ plainChecklists: false })
     })
 
     it('leaves template, inbox and import lines for the editor, whatever the agent passed', async () => {

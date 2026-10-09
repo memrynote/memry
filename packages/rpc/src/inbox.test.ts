@@ -55,7 +55,12 @@ describe('inboxRpc domain shape', () => {
   })
 
   it('linkToNote supplies a tags default in invokeArgs', () => {
-    expect(inboxRpc.methods.linkToNote.invokeArgs).toEqual(['itemId', 'noteId', 'tags ?? []'])
+    expect(inboxRpc.methods.linkToNote.invokeArgs).toEqual([
+      'itemId',
+      'noteId',
+      'tags ?? []',
+      'options'
+    ])
   })
 
   it('wires core events to InboxChannels.events', () => {

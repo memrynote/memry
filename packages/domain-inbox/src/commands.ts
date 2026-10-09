@@ -17,6 +17,10 @@ import type {
   TrackSuggestionFeedbackInput
 } from './types.ts'
 
+export interface PlainChecklistsOptions {
+  plainChecklists?: boolean
+}
+
 export interface CreateLinkCaptureItemInput {
   url: string
   tags?: string[]
@@ -38,8 +42,13 @@ export interface InboxCommandServices {
   queueMetadataJob(itemId: string, url: string): void
   getSuggestions(itemId: string): Promise<InboxFilingSuggestion[]>
   trackSuggestionFeedback(input: TrackSuggestionFeedbackInput): void
-  fileToFolder(itemId: string, folderPath: string, tags?: string[]): Promise<InboxFileResponse>
-  convertToNote(itemId: string, options?: { plainChecklists?: boolean }): Promise<InboxFileResponse>
+  fileToFolder(
+    itemId: string,
+    folderPath: string,
+    tags?: string[],
+    options?: PlainChecklistsOptions
+  ): Promise<InboxFileResponse>
+  convertToNote(itemId: string, options?: PlainChecklistsOptions): Promise<InboxFileResponse>
   convertToTask(
     itemId: string,
     input?: {
@@ -60,14 +69,16 @@ export interface InboxCommandServices {
   linkToNote(
     itemId: string,
     noteId: string,
-    tags?: string[]
+    tags?: string[],
+    options?: PlainChecklistsOptions
   ): Promise<{ success: boolean; error?: string }>
   linkToNotes(
     itemId: string,
     targets: FilingTarget[],
     tags?: string[],
     path?: string,
-    imageMode?: ImageFilingMode
+    imageMode?: ImageFilingMode,
+    options?: PlainChecklistsOptions
   ): Promise<{ success: boolean; error?: string; noteIds?: string[]; fellBackToLink?: boolean }>
   snoozeItem(input: SnoozeInput): { success: boolean; error?: string }
   unsnoozeItem(itemId: string): { success: boolean; error?: string }
@@ -89,7 +100,7 @@ export interface InboxCommands {
   trackSuggestion(
     input: TrackSuggestionFeedbackInput
   ): Promise<{ success: boolean; error?: string }>
-  convertToNote(itemId: string, options?: { plainChecklists?: boolean }): Promise<InboxFileResponse>
+  convertToNote(itemId: string, options?: PlainChecklistsOptions): Promise<InboxFileResponse>
   convertToTask(
     itemId: string,
     input?: {
@@ -110,7 +121,8 @@ export interface InboxCommands {
   linkToNote(
     itemId: string,
     noteId: string,
-    tags?: string[]
+    tags?: string[],
+    options?: PlainChecklistsOptions
   ): Promise<{ success: boolean; error?: string }>
   snooze(input: SnoozeInput): Promise<{ success: boolean; error?: string }>
   unsnooze(itemId: string): Promise<{ success: boolean; error?: string }>
@@ -213,13 +225,14 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
     captureVoice: (input) => services.captureVoiceItem(input),
 
     async fileItem(input) {
-      const { itemId, destination, tags, imageMode } = input
+      const { itemId, destination, tags, imageMode, plainChecklists } = input
+      const options = { plainChecklists }
 
       switch (destination.type) {
         case 'folder':
-          return services.fileToFolder(itemId, destination.path || '', tags)
+          return services.fileToFolder(itemId, destination.path || '', tags, options)
         case 'new-note':
-          return services.convertToNote(itemId)
+          return services.convertToNote(itemId, options)
         case 'note': {
           // `targets` is ordered and may contain notes that do not exist yet;
           // `noteIds`/`noteId` are the pre-#807 shapes, still accepted.
@@ -245,7 +258,8 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
             targets,
             tags,
             destination.path,
-            imageMode
+            imageMode,
+            options
           )
           // Notes created during filing only have ids afterwards, so the owner
           // comes back from the service rather than being read off the input.
@@ -296,7 +310,8 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
     convertToTask: (itemId, input) => services.convertToTask(itemId, input),
     convertToEvent: (itemId, input) => services.convertToEvent(itemId, input),
     convertToReminder: (itemId, input) => services.convertToReminder(itemId, input),
-    linkToNote: (itemId, noteId, tags) => services.linkToNote(itemId, noteId, tags),
+    linkToNote: (itemId, noteId, tags, options) =>
+      services.linkToNote(itemId, noteId, tags, options),
 
     async snooze(input) {
       if (!input.itemId || !input.snoozeUntil) {

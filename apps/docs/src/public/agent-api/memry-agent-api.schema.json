@@ -11684,6 +11684,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["title"],
@@ -15417,6 +15421,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["projectId", "sourcePaths"],
@@ -16667,6 +16675,10 @@
             "imageMode": {
               "type": "string",
               "enum": ["embed", "link"]
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["itemId", "destination"],
@@ -17048,7 +17060,7 @@
       "$id": "inbox.linkToNote",
       "type": "array",
       "minItems": 2,
-      "maxItems": 3,
+      "maxItems": 4,
       "anyOf": [
         {
           "prefixItems": [
@@ -17086,12 +17098,47 @@
           ],
           "minItems": 3,
           "maxItems": 3
+        },
+        {
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "plainChecklists": {
+                  "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          ],
+          "minItems": 4,
+          "maxItems": 4
         }
       ],
       "x-memry-kind": "desktop-operation",
       "x-memry-summary": "Append an inbox item to a note and file it there.",
       "x-memry-tool": "vault_desktop_write",
-      "x-memry-call": "inbox.linkToNote(itemId, noteId, tags?)",
+      "x-memry-call": "inbox.linkToNote(itemId, noteId, tags?, options?)",
       "x-memry-params": [
         {
           "name": "itemId",
@@ -17103,6 +17150,10 @@
         },
         {
           "name": "tags",
+          "required": false
+        },
+        {
+          "name": "options",
           "required": false
         }
       ],

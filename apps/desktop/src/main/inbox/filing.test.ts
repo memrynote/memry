@@ -1029,6 +1029,37 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
+    it('keeps checkbox lines plain when filing to a folder, if asked (#2796)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+
+      await fileToFolder(itemId, 'lists', [], { plainChecklists: true })
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk \{check\}$/m)
+    })
+
+    it('keeps the checkbox lines a link adds plain, leaving the target note\u2019s own lines alone (#2796)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Shopping',
+        content: '- [ ] Buy milk'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target',
+        content: '- [ ] Owner item',
+        path: 'notes/target.md'
+      })
+
+      await linkToNote(itemId, 'target', [], undefined, { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Buy milk \{check\}$/m)
+      expect(mockUpdateNote.mock.calls[0][0].content).toMatch(/^- \[ \] Owner item\n/)
+    })
+
     it('keeps checkbox lines plain when asked (#2759)', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'item-1',

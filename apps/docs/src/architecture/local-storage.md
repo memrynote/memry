@@ -39,9 +39,10 @@ no user keys has no YAML block at all.
   delete and polls for the vault every two seconds. When it is back the watcher restarts, since
   chokidar hears nothing after its root was moved, and rescans: an indexed file that is gone takes
   the normal delete path, a file newer than its index stamp takes the change path, and a file the
-  index does not know takes the add path (`src/main/vault/watcher.ts`). A note renamed while the
-  vault was away matches by content hash only if its new path is reached inside the rename window,
-  so in a large vault it can come back as a delete plus a new note.
+  index does not know takes the add path (`src/main/vault/watcher.ts`). The rescan lists the gone,
+  new and changed files before it starts any delete, then issues the deletes and the adds back to
+  back, so a note renamed while the vault was away matches its old id by content hash inside the
+  rename window however long the vault takes to walk.
 
 ## Derived State Projections
 
