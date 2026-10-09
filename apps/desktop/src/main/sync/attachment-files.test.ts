@@ -201,7 +201,7 @@ describe('placeDownloadedFile', () => {
     for (const name of ['photo.png', 'scan.pdf', 'old.png', 'data.txt']) {
       fs.writeFileSync(source(name), name)
     }
-    const fileNote = (id: string, name: string, attachmentId: string | null): void =>
+    const fileNote = (id: string, name: string, attachmentId: string | null): void => {
       upsertNoteMetadata(db, {
         id,
         path: `sources/${name}`,
@@ -211,6 +211,7 @@ describe('placeDownloadedFile', () => {
         createdAt: '2026-10-08T00:00:00.000Z',
         modifiedAt: '2026-10-08T00:00:00.000Z'
       })
+    }
     // Uploaded already, on its way, and indexed at startup with no upload of
     // its own: only the last still needs the embed to carry its bytes.
     fileNote('photo', 'photo.png', 'att-photo')
