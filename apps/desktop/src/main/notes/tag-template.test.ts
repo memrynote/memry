@@ -18,10 +18,13 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 const state = vi.hoisted(() => ({
   data: null as unknown,
   index: null as unknown,
-  docs: new Map<string, unknown>()
+  docs: new Map<string, unknown>(),
+  userData: ''
 }))
 
 vi.mock('electron', () => ({
+  // The store reads its config under userData: an empty dir, so no vault is current.
+  app: { getPath: () => state.userData },
   BrowserWindow: { getAllWindows: () => [] },
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
 }))
@@ -81,6 +84,7 @@ describe('a header tag with a template', () => {
     vault = createTestVault('tag-template')
     data = createTestDataDb()
     index = createTestIndexDb()
+    state.userData = path.join(vault.path, '.user-data')
     state.data = data.db
     state.index = index.db
     state.docs.clear()
