@@ -2,7 +2,10 @@ import { and, eq, inArray, like, notInArray } from 'drizzle-orm'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { rebindOfflinePayloadClocks } from '@memry/sync-client/offline-clock'
+import {
+  payloadCarriesOfflineClock,
+  rebindOfflinePayloadClocks
+} from '@memry/sync-client/offline-clock'
 import { coalesceSyncOperations } from '@memry/sync-client/queue'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
@@ -70,10 +73,13 @@ export function rebindQueuedOfflineEdits(
         // Notes and journals tick the real device or nothing
         // (`handleMissingDevice`), and a journal update needs its date.
         notInArray(syncQueue.type, ['note', 'journal']),
+        // Cheap prefilter only: a task activity body names `_offline` as its
+        // `deviceId`, which is not a clock. The clock check below decides.
         like(syncQueue.payload, '%"_offline"%')
       )
     )
     .all()
+    .filter((row) => payloadCarriesOfflineClock(row.payload))
 
   let rebound = 0
   const edits = new Map<string, QueuedRow[]>()
@@ -101,27 +107,24 @@ export function rebindQueuedOfflineEdits(
     rebound += db.transaction(() => {
       const itemRows = and(eq(syncQueue.type, type), eq(syncQueue.itemId, itemId))
       const staleIds = new Set(stale.map((row) => row.id))
-      const before = new Set(
-        db
-          .select({ id: syncQueue.id })
-          .from(syncQueue)
-          .where(itemRows)
-          .all()
-          .map((row) => row.id)
-      )
       requeue()
-      // The requeue either coalesced into an `attempts = 0` stale row,
-      // rewriting it, or inserted a new one. Any other row predates it.
-      const fresh = db
+      // Any row left for the item without an offline clock carries the
+      // current state: the requeue rewrote a stale row, inserted a new one, or
+      // coalesced into a clean pending row. The stale operations fold into it.
+      const after = db
         .select({ id: syncQueue.id, operation: syncQueue.operation, payload: syncQueue.payload })
         .from(syncQueue)
         .where(itemRows)
         .all()
-        .find(
-          (row) =>
-            (staleIds.has(row.id) || !before.has(row.id)) && !row.payload.includes('"_offline"')
-        )
+      const fresh = after.find((row) => !payloadCarriesOfflineClock(row.payload))
       if (!fresh) {
+        const untouched =
+          after.length === stale.length &&
+          stale.every((row) => after.some((a) => a.id === row.id && a.payload === row.payload))
+        if (!untouched) {
+          reportStuck(key, 'Queued offline edit re-queued still carrying an _offline clock')
+          return 0
+        }
         db.delete(syncQueue)
           .where(inArray(syncQueue.id, [...staleIds]))
           .run()

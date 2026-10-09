@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -14,6 +15,10 @@ import {
 } from '@memry/sync-client/tag-definition-sync'
 import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
+import {
+  initTaskActivitySyncService,
+  resetTaskActivitySyncService
+} from '@memry/sync-client/task-activity-sync'
 import { SyncEngine } from './engine'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { enqueueLocalSyncDelete, enqueueLocalSyncUpdate } from './local-mutations'
@@ -45,6 +50,7 @@ describe('edits made while the device id is missing (#2897)', () => {
     resetTagDefinitionSyncService()
     resetTaskSyncService()
     resetSettingsSyncManager()
+    resetTaskActivitySyncService()
     vi.restoreAllMocks()
     rebind.fail = false
   })
@@ -64,7 +70,11 @@ describe('edits made while the device id is missing (#2897)', () => {
     const tagSync = initTagDefinitionSyncService(services)
     const taskSync = initTaskSyncService(services)
     const settings = initSettingsSyncManager(services)
-    const record = (type: 'tag_definition' | 'task' | 'settings', local: object) => ({
+    const activitySync = initTaskActivitySyncService(services)
+    const record = (
+      type: 'tag_definition' | 'task' | 'settings' | 'task_activity',
+      local: object
+    ) => ({
       type,
       kind: 'record' as const,
       local: local as never,
@@ -75,7 +85,8 @@ describe('edits made while the device id is missing (#2897)', () => {
       adapters: createSyncAdapterRegistry([
         record('tag_definition', tagSync),
         record('task', taskSync),
-        record('settings', settings)
+        record('settings', settings),
+        record('task_activity', activitySync)
       ])
     }
     db.insert(tagDefinitions)
@@ -158,6 +169,7 @@ describe('edits made while the device id is missing (#2897)', () => {
       db,
       deps,
       settings,
+      activitySync,
       getSigningKeys,
       engine: new SyncEngine(deps),
       post,
@@ -237,6 +249,60 @@ describe('edits made while the device id is missing (#2897)', () => {
         .map(({ type }) => type)
         .sort()
     ).toEqual(['settings', 'task'])
+    expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
+  it('pushes a task activity row whose deviceId field is _offline (#2912)', async () => {
+    const s = await sessionWithOfflineEdits()
+    // #given — activity written while the device id was missing: activity-log
+    // stores `deviceId: '_offline'` in the row body, which is not a clock
+    s.db
+      .insert(taskActivity)
+      .values({
+        id: 'act-1',
+        taskId: 'task-1',
+        action: 'created',
+        deviceId: '_offline',
+        createdAt: new Date().toISOString()
+      } as never)
+      .run()
+    s.activitySync.enqueueCreate('act-1')
+
+    s.registerDevice()
+    s.getSigningKeys.mockResolvedValue(keys('device-1'))
+    await s.engine.push()
+
+    const activity = s.sentBodies().find(({ type }) => type === 'task_activity')
+    expect(Object.keys(activity?.body.clock ?? {})).toEqual(['device-1'])
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
+  it('folds a stale _offline create into a clean pending update and pushes a create (#2912)', async () => {
+    const s = await sessionWithOfflineEdits()
+    // #given — the offline tag row is a create that already burned an attempt,
+    // next to a clean `attempts = 0` update queued under the real device
+    s.db
+      .update(syncQueue)
+      .set({ operation: 'create', attempts: 1 })
+      .where(eq(syncQueue.type, 'tag_definition'))
+      .run()
+    s.registerDevice()
+    s.deps.queue.enqueue({
+      type: 'tag_definition',
+      itemId: 'work',
+      operation: 'update',
+      payload: JSON.stringify({ name: 'work', color: 'red', clock: { 'device-1': 2 } })
+    })
+    s.getSigningKeys.mockResolvedValue(keys('device-1'))
+
+    await s.engine.push()
+
+    const pushed = s.post.mock.calls
+      .flatMap(([, body]) => (body as { items: { type: string; operation: string }[] }).items)
+      .filter((item) => item.type === 'tag_definition')
+      .map((item) => item.operation)
+    expect(pushed).toEqual(['create'])
     expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
     expect(s.deps.queue.getSize()).toBe(0)
   })
