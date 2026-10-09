@@ -107,7 +107,7 @@ A folder can hold PDFs, images, audio, and video alongside your notes, and they 
 
 ### Tags with fields
 
-The page of a [tag with fields](/user-guide/notes/properties-tags) lists the notes that
+The page of a [tag with fields](/user-guide/notes/tags-with-fields) lists the notes that
 have the tag in their tags row, and the notes and tasks of tags that extend it (with a
 small label naming that tag). Notes that only mention the tag in their text are listed
 under **Mentioned in** below the table.

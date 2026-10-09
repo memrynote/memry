@@ -14,7 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
-- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
+- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
@@ -62,8 +62,10 @@ Renaming or merging a tag carries across your **tasks** too: a task tagged `MIT`
 keep the deleted tag. To retag a task directly, edit it in the task detail drawer.
 
 A rename or merge also updates every other tag that points at the renamed one: a tag that
-takes its fields from it, or a relation field that offers its notes. Deleting a tag leaves
-those links in place, and they work again if a tag with that name comes back.
+[extends](/user-guide/notes/tags-with-fields#extends) it, or a relation field that offers its
+notes. Deleting a tag leaves those links in place, and they work again if a tag with that
+name comes back. Renaming a tag's field is a separate action that renames a frontmatter key;
+see [Tags With Fields](/user-guide/notes/tags-with-fields#fields).
 
 ### Tag Icons
 
@@ -195,16 +197,10 @@ Files and calendar events have no frontmatter, so they keep their own **Add to p
 
 ## Tags With Fields
 
-A tag can carry fields. A note with that tag in its tags row then shows the fields as a group named after the tag, at the top of its properties panel.
-
-- **Ready-made tags.** The Tags hub offers Person, Company, Meeting and Book until you add them or click **Not now**. Adding one creates only the tag's definition, which holds its fields, template, icon and colour. If a tag of that name already exists, **Add fields** puts the fields on it and says how many notes carry it.
-- **Editing a tag.** On a tag's page, **Edit tag** opens its settings next to the table. There you can add, reorder, rename and remove fields, point a relation field at another tag, pick a template, and make the tag extend another tag. Removing a field never touches notes; their values stay as their own properties. Renaming a field renames that key in every note that has a value, with progress shown.
-- **Tagging a note.** The tag picker marks tags with fields and lists their field names. Adding one opens the properties panel. If the note is empty, the tag's template fills it, and **Undo** in the toast removes the template but keeps the tag. If the note already has text, a row offers **Add the template below your text** instead; dismissing that row is remembered for that note.
-- **Empty fields write nothing.** A field reaches the file only when you type a value. The note's other properties stay below, under **This note**.
-- **Untagging.** Removing the tag keeps every value as the note's own property. **Undo** puts the tag back.
-- **Fill from note.** With AI turned on and an [inline AI provider](/user-guide/ai/provider-setup) set up, a field group with empty fields shows **Fill from note**. The model reads that note and suggests values for the empty fields. Nothing is saved until you accept: click ✓ on one suggestion, × to drop it, **Accept all** (⌘↵), or **Dismiss**. Hovering a suggestion highlights the sentence it came from. The first time, Memry names the model and says that only this note is sent; you confirm once per device. A suggested company that has no note yet is created as a new note with that tag when you accept it.
-- **Fill empty fields.** On a tag's page, **Fill empty fields** reads the tag's notes one at a time, with progress and **Stop**, and lists what it found. **Accept all** saves everything, and **Review one by one** lets you accept or skip each note.
-- **Tasks.** A tag with fields on a task shows its fields in the task drawer, under Tags. A filled relation field appears on the task's row as a chip, for example "Waiting on Ahmet Yılmaz".
+A tag can carry fields, a template, and a table of the notes that have it. Tagging a note
+`#person` then gives it the Person fields. Tags with fields, the ready-made Person, Company,
+Meeting and Book tags, relations, extends, templates, task fields and **Fill from note** are
+covered in [Tags With Fields](/user-guide/notes/tags-with-fields).
 
 ## Tags vs Properties — When to Use Which
 

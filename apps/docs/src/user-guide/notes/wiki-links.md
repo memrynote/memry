@@ -303,7 +303,7 @@ Footnotes are not supported yet.
 
 ## People and Things in Links
 
-When a note has a [tag with fields](/user-guide/notes/properties-tags) such as `#person`
+When a note has a [tag with fields](/user-guide/notes/tags-with-fields) such as `#person`
 or `#company` in its tags row, it is drawn as one of those things wherever it appears:
 
 - A link to it shows the tag's colour and icon, or the person's initials, in front of the
