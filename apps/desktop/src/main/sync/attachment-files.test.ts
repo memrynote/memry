@@ -7,7 +7,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
-import { listPendingUploads } from './attachment-outbox'
+import { enqueueUpload, listPendingUploads } from './attachment-outbox'
 import {
   placeDownloadedFile,
   placeLinkedDownloads,
@@ -226,6 +226,56 @@ describe('placeDownloadedFile', () => {
         path.join(vaultPath, 'attachments', 'note-a', 'pasted.png')
       )
     ).toEqual([])
+  })
+
+  it('queues no upload for an embed whose file note syncs its own bytes', () => {
+    upsertNoteMetadata(db, {
+      id: 'trip',
+      path: 'notes/trip.md',
+      title: 'trip',
+      createdAt: '2026-10-08T00:00:00.000Z',
+      modifiedAt: '2026-10-08T00:00:00.000Z'
+    })
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.writeFileSync(
+      path.join(vaultPath, 'notes', 'trip.md'),
+      [
+        '![p](../sources/photo.png)',
+        '![s](../sources/scan.pdf)',
+        '![o](../sources/old.png)',
+        '![d](../sources/data.txt)'
+      ].join('\n')
+    )
+    const source = (name: string): string => path.join(vaultPath, 'sources', name)
+    fs.mkdirSync(path.join(vaultPath, 'sources'), { recursive: true })
+    for (const name of ['photo.png', 'scan.pdf', 'old.png', 'data.txt']) {
+      fs.writeFileSync(source(name), name)
+    }
+    const fileNote = (id: string, name: string, attachmentId: string | null): void => {
+      upsertNoteMetadata(db, {
+        id,
+        path: `sources/${name}`,
+        title: id,
+        fileType: name.endsWith('.pdf') ? 'pdf' : 'image',
+        attachmentId,
+        createdAt: '2026-10-08T00:00:00.000Z',
+        modifiedAt: '2026-10-08T00:00:00.000Z'
+      })
+    }
+    // Uploaded already, on its way, and indexed at startup with no upload of
+    // its own: only the last still needs the embed to carry its bytes.
+    fileNote('photo', 'photo.png', 'att-photo')
+    fileNote('scan', 'scan.pdf', null)
+    enqueueUpload(db, 'scan', source('scan.pdf'))
+    fileNote('old', 'old.png', null)
+
+    backfillUnsyncedAttachmentsWith({ db, vaultPath })
+
+    expect(
+      listPendingUploads(db)
+        .map((row) => `${row.noteId} ${path.basename(row.diskPath)}`)
+        .sort()
+    ).toEqual(['scan scan.pdf', 'trip data.txt', 'trip old.png'])
   })
 
   it('a placed and recorded file is not uploaded again', async () => {

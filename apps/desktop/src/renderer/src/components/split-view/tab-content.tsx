@@ -17,6 +17,7 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { TabErrorBoundary } from '@/components/tabs/tab-error-boundary'
 import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import { cn } from '@/lib/utils'
+import { DelayedSpinner } from '@/components/ui/spinner'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type { ViewScope } from '@memry/contracts/folder-view-api'
@@ -282,7 +283,18 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
           onCloseTab={handleCloseTab}
         >
           <TaskDetailHost>
-            <React.Suspense fallback={null}>{content}</React.Suspense>
+            {/* Every page shares this wait. A cold chunk (the note editor is ~2.5 MB)
+                can take long enough on a click to read as a dead pane; a prefetched
+                one usually lands before the spinner's delay, so launch does not flash. */}
+            <React.Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <DelayedSpinner className="size-4 text-muted-foreground" />
+                </div>
+              }
+            >
+              {content}
+            </React.Suspense>
           </TaskDetailHost>
         </TabErrorBoundary>
       </TabIdentityProvider>

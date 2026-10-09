@@ -54,6 +54,7 @@ import {
   autoOpenLastVault,
   beginVaultShutdown,
   closeVault,
+  getLaunchVaultPath,
   getStatus as getVaultStatus,
   isVaultSwitchInProgress,
   onVaultStatusChanged
@@ -105,6 +106,7 @@ import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
 import { startMainThreadStallMonitor } from './main-thread-stall'
 import { onceWindowShown, schedulePostRevealTasks } from './post-reveal'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
+import { startupVaultArgs } from '@memry/contracts/startup-vault'
 import { drainEarlyMainEvents, trackMainEvent } from './telemetry/track'
 import {
   clearCrashMarker,
@@ -816,6 +818,9 @@ function createWindow(): void {
     ...getMainWindowFrameOptions(process.platform),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      // Lets the renderer read the vault's restored tab before its first
+      // render, instead of guessing between vaults (#2066).
+      additionalArguments: startupVaultArgs(getLaunchVaultPath()),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import type { VaultStatus } from '@memry/contracts/vault-api'
+import { readStartupVaultArg } from '@memry/contracts/startup-vault'
 
 const appOnMock = vi.fn()
 const isVaultSwitchInProgressMock = vi.fn(() => false)
@@ -56,6 +57,7 @@ type StoredWindowBoundsShape = {
 const getWindowBoundsMock = vi.fn((): StoredWindowBoundsShape | null => null)
 const setWindowBoundsMock = vi.fn()
 const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
+const getLaunchVaultPathMock = vi.fn(() => null as string | null)
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
 const initializeTelemetryRuntimeMock = vi.fn(() => ({
   context: { sessionId: 'test-session' }
@@ -191,6 +193,7 @@ vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
   beginVaultShutdown: vi.fn(),
   closeVault: closeVaultMock,
+  getLaunchVaultPath: getLaunchVaultPathMock,
   getStatus: getVaultStatusMock,
   isVaultSwitchInProgress: isVaultSwitchInProgressMock,
   onVaultStatusChanged: onVaultStatusChangedMock
@@ -541,6 +544,7 @@ describe('main index phase2 exports', () => {
     getVaultsMock.mockReturnValue([])
     getWindowBoundsMock.mockReturnValue(null)
     getVaultStatusMock.mockReturnValue({ path: null })
+    getLaunchVaultPathMock.mockReturnValue(null)
     readPreferencesMock.mockReturnValue({ language: 'en' })
     isPinningDisabledMock.mockReturnValue(true)
     getPinnedCertificateHashesMock.mockReturnValue([])
@@ -898,6 +902,20 @@ describe('main index phase2 exports', () => {
         height: 900,
         show: false
       })
+    )
+  })
+
+  it("hands the launch vault to the window's preload before the vault opens", async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getLaunchVaultPathMock.mockReturnValue('/vault/My Notes')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const options = BrowserWindowMock.mock.calls[0]?.[0] as
+      { webPreferences?: { additionalArguments?: string[] } } | undefined
+    expect(readStartupVaultArg(options?.webPreferences?.additionalArguments ?? [])).toBe(
+      '/vault/My Notes'
     )
   })
 

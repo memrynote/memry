@@ -1480,13 +1480,18 @@ The mark is deliberately narrow. It fires only for the note the launch restored,
 once, and never for a note opened later in the session, so the metric cannot be inflated
 by ordinary navigation.
 
-It is absent, rather than zero, whenever the launch restored something that is not a
-note. The restored tab is read from `localStorage` because the vault path is not available
-synchronously in the renderer, and the key with the newest `savedAt` wins. A machine with
-several vaults can therefore name a note from a vault the app is not opening: the
-speculative chunk prefetch is then wasted, and the mark never fires. Absent is the correct
-reading in that case, not a failure, but it does mean a median over launches must state
-how many runs carried the mark.
+The restored tab is read from `localStorage` before React renders, from the tab-state key
+of the vault the window was created for. Main computes that vault with
+`getLaunchVaultPath()` (`main/vault/index.ts`), which makes the same choice
+`autoOpenLastVault` makes. It passes the path on the window's command line
+(`webPreferences.additionalArguments`, see `@memry/contracts/startup-vault`), and the
+preload exposes it as `window.api.vault.getStartupPath()`. Reading the path costs no IPC
+round trip, so it never waits behind main's synchronous vault open. With several vaults,
+another vault's newer tab state cannot be picked by mistake.
+
+The mark is absent, rather than zero, whenever the launch restored something that is not a
+note, or when the window opened on the vault picker. A median over launches must still
+state how many runs carried the mark.
 
 ## Login-shell PATH probe: failure classes
 

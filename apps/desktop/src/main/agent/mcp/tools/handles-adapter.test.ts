@@ -2428,6 +2428,34 @@ describe('createVaultServiceHandles', () => {
       ])
     })
 
+    it('asks for plain checkbox lines when an agent bulk files inbox items or turns one into a reminder (#2932)', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const bulkFile = {
+        itemIds: ['inbox-1', 'inbox-2'],
+        destination: { type: 'folder' as const, path: 'lists' }
+      }
+
+      await handles.desktop.write(
+        { operation: 'inbox.bulkFile', args: [{ ...bulkFile, plainChecklists: false }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        {
+          operation: 'inbox.convertToReminder',
+          args: ['inbox-1', { remindAt: '2099-01-02T09:00:00.000Z' }]
+        },
+        'window-1'
+      )
+
+      expect(writesSent()).toEqual([
+        { operation: 'inbox.bulkFile', args: [{ ...bulkFile, plainChecklists: true }] },
+        {
+          operation: 'inbox.convertToReminder',
+          args: ['inbox-1', { remindAt: '2099-01-02T09:00:00.000Z', plainChecklists: true }]
+        }
+      ])
+    })
+
     it('asks for plain checkbox lines in the folder template a vault_create_note body falls back to', async () => {
       mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
 
@@ -2681,6 +2709,20 @@ describe('createVaultServiceHandles', () => {
         },
         'window-1'
       )
+      await handles.desktop.write(
+        {
+          operation: 'inbox.bulkFile',
+          args: [{ itemIds: ['inbox-1'], destination: { type: 'folder' }, plainChecklists: true }]
+        },
+        'window-1'
+      )
+      await handles.desktop.write(
+        {
+          operation: 'inbox.convertToReminder',
+          args: ['inbox-1', { remindAt: '2099-01-02T09:00:00.000Z', plainChecklists: true }]
+        },
+        'window-1'
+      )
 
       expect(writesSent()).toEqual([
         {
@@ -2690,6 +2732,14 @@ describe('createVaultServiceHandles', () => {
         {
           operation: 'inbox.linkToNote',
           args: ['inbox-1', 'note-1', [], { plainChecklists: false }]
+        },
+        {
+          operation: 'inbox.bulkFile',
+          args: [{ itemIds: ['inbox-1'], destination: { type: 'folder' }, plainChecklists: false }]
+        },
+        {
+          operation: 'inbox.convertToReminder',
+          args: ['inbox-1', { remindAt: '2099-01-02T09:00:00.000Z', plainChecklists: false }]
         }
       ])
       expect(taskDomain.createTask).not.toHaveBeenCalled()
