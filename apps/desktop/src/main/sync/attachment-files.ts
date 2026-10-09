@@ -1,10 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 import { and, eq } from 'drizzle-orm'
-import { getNoteMetadataById } from '@memry/storage-data'
+import { getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
 import { attachmentFiles } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getFileType } from '@memry/shared/file-types'
+import { hasPendingUpload } from './attachment-outbox'
 import { STORED_PREFIX_RE } from '../vault/attachment-heal'
 import { refuseOutsideVault, resolveVaultFile, resolveVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
@@ -90,7 +91,9 @@ export function referencedVaultFiles(
  * folder scan owns this note's own folder, and a file in another note's folder
  * is that note's attachment already: queuing it here would upload a second copy
  * under a second id. Folders under `attachments/` that are not named for a note
- * hold ordinary vault files and stay in.
+ * hold ordinary vault files and stay in. A file note that has uploaded or queued
+ * its own bytes stays out (#2812). One indexed at startup has neither, since
+ * only the watcher queues a file note, so the embed still carries it.
  */
 export function embeddedFilesOutsideNoteFolders(
   db: DrizzleDb,
@@ -101,7 +104,11 @@ export function embeddedFilesOutsideNoteFolders(
 ): string[] {
   const attachmentsRoot = path.join(path.resolve(vaultPath), 'attachments') + path.sep
   return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter((file) => {
-    if (!file.startsWith(attachmentsRoot)) return true
+    if (!file.startsWith(attachmentsRoot)) {
+      const recordPath = recordPathOf(vaultPath, file)
+      const fileNote = recordPath === null ? undefined : getNoteMetadataByPath(db, recordPath)
+      return !fileNote?.attachmentId && !(fileNote && hasPendingUpload(db, fileNote.id, file))
+    }
     const folder = file.slice(attachmentsRoot.length).split(path.sep)[0]
     return folder !== noteId && !getNoteMetadataById(db, folder)
   })
