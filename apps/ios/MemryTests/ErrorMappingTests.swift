@@ -201,6 +201,10 @@ struct ErrorMappingTests {
         let limit = ErrorMapping.userFacing(AuthError.Api(source: .DeviceLimitReached(message: payload)))
         #expect(limit.code == ErrorCode("api.deviceLimitReached"))
         #expect(says(limit, "revoke a device"))
+        // The refused registration spent its setup token, so "Finish setup"
+        // would answer 401. The way back is a fresh sign-in.
+        #expect(says(limit, "sign in again"))
+        #expect(!says(limit, "finish"))
         #expect(!says(limit, "updating"))
         #expect(limit.recourse == .blocked)
     }

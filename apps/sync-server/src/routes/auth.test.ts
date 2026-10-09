@@ -1302,7 +1302,7 @@ describe('auth routes', () => {
       // device instead of reading a generic refusal.
       expect(res.status).toBe(409)
       const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe('AUTH_DEVICE_LIMIT_REACHED')
+      expect(json.error.code).toBe(ErrorCodes.AUTH_DEVICE_LIMIT_REACHED)
     })
 
     it('should reject device metadata that becomes empty after sanitization', async () => {

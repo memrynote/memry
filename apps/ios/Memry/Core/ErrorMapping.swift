@@ -264,7 +264,7 @@ enum ErrorMapping {
 
     // MARK: - Server and session
 
-    // `ApiError` has eleven variants and this function is eleven `case`s and no
+    // `ApiError` has twelve variants and this function is twelve `case`s and no
     // other branch, so its measured complexity is the size of the enum. The two
     // ways to quiet the rule are both worse: a `default:` is what the contract
     // forbids, and splitting the switch in two leaves one arm unreachable in
@@ -289,10 +289,12 @@ enum ErrorMapping {
                  "Its copy of your vault has been removed. Sign in again to use Memry here.")
         // #2944. Neither retrying nor updating frees a slot: the user revokes a
         // device from one that is signed in. Only desktop lists devices with a
-        // Revoke button, so the sentence names a computer.
+        // Revoke button, so the sentence names a computer. The refused request
+        // already spent its setup token (chapter 02 §2.3.3), so the way back is
+        // a fresh sign-in, not "Finish setup".
         case .DeviceLimitReached:
             copy("api.deviceLimitReached", "Your account is signed in on too many devices.",
-                 "On a computer signed in to Memry, open Settings, then Account, and revoke a device you no longer use. Then finish setting up this phone.")
+                 "Revoke a device you no longer use (Settings → Account → Devices on a signed-in computer). Then sign in again on this phone.")
         // spec-defect 111. The old second sentence promised that "syncing will
         // resume on its own", and the screen this error is met on most often is
         // the sign-in screen, where there is no sync to resume and nothing
