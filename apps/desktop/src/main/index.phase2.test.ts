@@ -107,10 +107,7 @@ const globalShortcutUnregisterMock = vi.fn()
 const globalShortcutUnregisterAllMock = vi.fn()
 const menuSetApplicationMenuMock = vi.fn()
 const netFetchMock = vi.fn(async () => new Response('file'))
-const getNoteCacheByIdMock = vi.fn(() => null as { path: string; title: string } | null)
-const toAbsolutePathMock = vi.fn((path: string) => path)
-const createSnapshotMock = vi.fn(() => null as unknown)
-const safeReadMock = vi.fn(async () => null as string | null)
+const createCloseSnapshotMock = vi.fn(async (_noteId: string) => false)
 const disableConsoleTransportMock = vi.fn()
 const applyPackagedLogLevelsMock = vi.fn()
 const getHeadlessCliArgsMock = vi.fn((argv: string[]) => {
@@ -319,17 +316,8 @@ vi.mock('./vault/activity-log', () => ({
   flushActivityLog: flushActivityLogMock
 }))
 
-vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: getNoteCacheByIdMock
-}))
-
 vi.mock('./vault/notes', () => ({
-  toAbsolutePath: toAbsolutePathMock,
-  createSnapshot: createSnapshotMock
-}))
-
-vi.mock('./vault/file-ops', () => ({
-  safeRead: safeReadMock
+  createCloseSnapshot: createCloseSnapshotMock
 }))
 
 vi.mock('./updater', () => ({
@@ -560,10 +548,7 @@ describe('main index phase2 exports', () => {
     computeSpkiHashFromPemMock.mockReturnValue('hash')
     getOpenNoteIdsMock.mockReturnValue([])
     getProviderDocMock.mockReturnValue(undefined)
-    getNoteCacheByIdMock.mockReturnValue(null)
-    toAbsolutePathMock.mockImplementation((filePath: string) => filePath)
-    createSnapshotMock.mockReturnValue(null)
-    safeReadMock.mockResolvedValue(null)
+    createCloseSnapshotMock.mockResolvedValue(false)
     existsSyncMock.mockReturnValue(false)
     readdirSyncMock.mockReturnValue([])
     statSyncMock.mockReturnValue({ size: 10 })
@@ -2257,19 +2242,11 @@ describe('main index phase2 exports', () => {
   it('creates close snapshots for open CRDT notes during graceful shutdown', async () => {
     vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
-    getOpenNoteIdsMock.mockReturnValue(['note-a', 'note-b', 'missing-note', 'empty-note'])
-    getNoteCacheByIdMock.mockImplementation((_db, noteId: string) => {
-      const rows: Record<string, { path: string; title: string }> = {
-        'note-a': { path: 'notes/a.md', title: 'Alpha' },
-        'note-b': { path: 'notes/b.md', title: 'Beta' },
-        'empty-note': { path: 'notes/empty.md', title: 'Empty' }
-      }
-      return rows[noteId] ?? null
+    getOpenNoteIdsMock.mockReturnValue(['failing-note', 'note-a', 'note-b'])
+    createCloseSnapshotMock.mockImplementation(async (noteId: string) => {
+      if (noteId === 'failing-note') throw new Error('unreadable')
+      return noteId === 'note-a'
     })
-    safeReadMock.mockImplementation(async (filePath: string) =>
-      filePath.includes('empty') ? null : `content for ${filePath}`
-    )
-    createSnapshotMock.mockReturnValueOnce({ id: 'snap-a' }).mockReturnValueOnce(null)
 
     await importMainModule()
     await flushReadyWork()
@@ -2284,21 +2261,11 @@ describe('main index phase2 exports', () => {
       await Promise.resolve()
     }
 
-    expect(toAbsolutePathMock).toHaveBeenCalledWith('notes/a.md')
-    expect(safeReadMock).toHaveBeenCalledWith('notes/a.md')
-    expect(createSnapshotMock).toHaveBeenCalledWith(
+    expect(createCloseSnapshotMock.mock.calls.map(([noteId]) => noteId)).toEqual([
+      'failing-note',
       'note-a',
-      'content for notes/a.md',
-      'Alpha',
-      expect.any(String)
-    )
-    expect(createSnapshotMock).toHaveBeenCalledWith(
-      'note-b',
-      'content for notes/b.md',
-      'Beta',
-      expect.any(String)
-    )
-    expect(createSnapshotMock).toHaveBeenCalledTimes(2)
+      'note-b'
+    ])
   })
 
   it('flushes pending write-backs and closes the databases before the forced exit', async () => {
