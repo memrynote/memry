@@ -18,6 +18,7 @@ export async function deleteUserData(
     db.prepare('DELETE FROM google_calendar_channels WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM crdt_updates WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM crdt_snapshots WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM crdt_sequence_floors WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM upload_sessions WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM blob_chunks WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM device_sync_state WHERE user_id = ?').bind(userId),

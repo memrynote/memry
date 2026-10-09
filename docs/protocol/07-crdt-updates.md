@@ -143,10 +143,13 @@ conforming; neither cap may be exceeded.
 
 **Normative.** The server assigns them; **a client never proposes one**. A new
 update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
-`crdt_updates` **and** `crdt_snapshots` for that document
-(`apps/sync-server/src/services/crdt.ts:139-146`, and the same union at `:99-104`
-for the current maximum), so **a snapshot consumes a sequence number in the same
-space**.
+`crdt_updates`, `crdt_snapshots` **and** `crdt_sequence_floors` for that document
+(`apps/sync-server/src/services/crdt.ts:143-151`, and the same union in
+`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260` for a snapshot's
+watermark), so **a snapshot consumes a sequence number in the same space**. The
+floor is the highest sequence number of a body the server purged on delete
+(§7.15), so a re-created document numbers on from its deleted one and sequence
+numbers for an id never move down.
 
 Every update and every snapshot write also takes a `server_cursor` from the
 user's record cursor sequence, in the same D1 batch (§7.17). `sequence_num` is
@@ -730,12 +733,39 @@ and recorded).**
 
 ## 7.15 Deleting a document — Q07.4
 
-**Normative.** Deleting a note or journal **does not delete its `crdt_updates` or
-`crdt_snapshots` rows on the server.** The only statements that remove them are
-vault deletion
-(`apps/sync-server/src/services/vault-deletion.ts:126-127`) and account deletion
-(`apps/sync-server/src/services/account-deletion.ts:19-20`). The record delete
-path (`apps/sync-server/src/services/sync.ts`) touches neither table.
+**Normative (server, #2986).** When the server accepts a `delete` of a `note` or
+`journal` record, it purges that document's body after the commit
+(`purgeDeletedDocumentBodies`,
+`apps/sync-server/src/services/document-body-purge.ts:45-127`, called from push
+Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
+document it records the highest sequence number in `crdt_sequence_floors`
+(§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
+`crdt_snapshots` rows. Then it drops every `crdt_snapshot` pack of the vault,
+resets that kind's pack watermark, and deletes the snapshot and pack objects.
+Every statement re-checks that a `note` or `journal` record for the id is
+deleted and none is live, so a re-create that commits first keeps its body. A
+purge failure never fails the push. The 6-hourly cleanup
+(`cleanupDeletedDocumentBodies`, `apps/sync-server/src/services/cleanup.ts`)
+purges the bodies of tombstones written before this rule and of pushes whose
+purge failed.
+
+The reason is the re-create. A journal day's id is `j<date>` on every device
+(chapter 01 §1.9), so a day deleted and written again reuses its id. The
+re-create's record passes delete-wins (chapter 05 §5.8), the id is no longer
+tombstoned, and a device with no local body pulls it from sequence 0. When the
+server kept the deleted body, that pull returned the deleted snapshot and
+updates, and the deleted text came back inside the new day. Packs are dropped
+whole because they are immutable, hold many notes, and an older revision of the
+purged snapshot can sit in any pack built before its last write. Compaction
+rebuilds them without the dead note. Until it does, a fresh device bootstraps
+those bodies item by item.
+
+Known gap: a compaction run that selected the old snapshot before the delete
+committed can still write its pack after the drop.
+
+Before #2986 the server kept the rows. Clients MUST NOT rely on either
+behaviour: a server from before #2986 still holds the rows, and the purge of an
+older tombstone waits for the cleanup.
 
 Consequences a conforming client MUST implement:
 

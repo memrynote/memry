@@ -31,6 +31,7 @@ import { readChangePage, type FeedSourceBuilder } from './change-feed'
 import { noteBodyFeedSource } from './crdt'
 import { reserveCursors } from './cursor'
 import { getDevice, type Device } from './device'
+import { DOCUMENT_ITEM_TYPES, purgeDeletedDocumentBodies } from './document-body-purge'
 import { adjustStorageUsed, reserveStorage } from './quota'
 
 const logger = createLogger('SyncService')
@@ -982,6 +983,26 @@ const processPushWave = async (
       await deleteBlobs(storage, replacedBlobKeys, userId)
     } catch {
       // Orphans are invisible to readers; acceptable until a sweep job exists.
+    }
+  }
+
+  // Stage 9: a deleted note or journal loses its server body (#2986), so a
+  // re-create of the id starts empty. After the commit, and never failing the
+  // push: the cleanup sweep purges whatever this misses.
+  const deletedDocuments = stored
+    .filter(
+      (entry) => entry.item.operation === 'delete' && DOCUMENT_ITEM_TYPES.has(entry.item.type)
+    )
+    .map((entry) => entry.item.id)
+  if (deletedDocuments.length > 0) {
+    try {
+      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, deletedDocuments)
+    } catch (error) {
+      logger.warn('deleted document body purge failed, left to the cleanup sweep', {
+        vaultId,
+        documents: deletedDocuments.length,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 

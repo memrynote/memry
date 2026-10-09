@@ -146,6 +146,8 @@ export const storeUpdatesWithCursor = async (
            SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
            UNION ALL
            SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
+           UNION ALL
+           SELECT floor FROM crdt_sequence_floors WHERE user_id = ? AND vault_id = ? AND note_id = ?
          )`
       )
       .bind(
@@ -160,6 +162,9 @@ export const storeUpdatesWithCursor = async (
         client?.version ?? null,
         hashes[position],
         ...cursors.cursorBinds(position),
+        userId,
+        vaultId,
+        noteId,
         userId,
         vaultId,
         noteId,
