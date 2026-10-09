@@ -80,15 +80,12 @@ struct EditableBlockView: UIViewRepresentable {
         }
         if session.pendingFocus == field.blockId, !view.isFirstResponder {
             session.pendingFocus = nil
-            let previous = session.shortcutField
-            session.shortcutField = nil
             DispatchQueue.main.async {
+                // A row a shortcut redrew takes its caret from the old row
+                // as it begins editing (`textViewDidBeginEditing`).
+                let handover = session.shortcutField?.blockId == field.blockId
                 view.becomeFirstResponder()
-                if let previous, previous !== field, previous.blockId == field.blockId {
-                    field.takeOver(from: previous)
-                } else {
-                    view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
-                }
+                if !handover { view.selectedRange = NSRange(location: view.textStorage.length, length: 0) }
             }
         }
     }
@@ -306,7 +303,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// `old`: the text view this block was edited in before a type change
     /// redrew its row. Its runs are restyled for this row; the next render
     /// draws them from the core.
-    func takeOver(from old: BlockField) {
+    private func takeOver(from old: BlockField) {
         let source = old.textView
         if source.text != textView.text {
             let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
@@ -361,6 +358,11 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     // MARK: UITextViewDelegate
 
     func textViewDidBeginEditing(_ textView: UITextView) {
+        // The old row has resigned by now, so nothing more lands in it.
+        if let old = session?.shortcutField {
+            session?.shortcutField = nil
+            if old !== self, old.blockId == blockId { takeOver(from: old) }
+        }
         session?.focusChanged(to: self)
     }
 
