@@ -397,3 +397,25 @@ test('path-form wiki-links resolve from the vault root and follow a moved note (
     app.close()
   }
 })
+
+test('folder lists hide the canvases folder, as the desktop notes tree does', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    await fs.mkdir(path.join(vaultPath, 'canvases', 'Boards'), { recursive: true })
+    await app.folders.create('Projects')
+    const note = await app.notes.create({ title: 'Loose', content: 'x' })
+
+    const listed = (await app.folders.list()).map((folder) => folder.path)
+    assert.ok(listed.includes('Projects'))
+    assert.ok(!listed.some((p) => p === 'canvases' || p.startsWith('canvases/')))
+
+    const suggested = (await app.folderView.getFolderSuggestions(note.id)).suggestions.map(
+      (s) => s.path
+    )
+    assert.ok(suggested.includes('Projects'))
+    assert.ok(!suggested.some((p) => p === 'canvases' || p.startsWith('canvases/')))
+  } finally {
+    app.close()
+  }
+})
