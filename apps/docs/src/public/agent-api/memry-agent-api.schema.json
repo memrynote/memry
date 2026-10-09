@@ -17020,6 +17020,10 @@
           "properties": {
             "remindAt": {
               "type": "string"
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["remindAt"],
@@ -17611,6 +17615,10 @@
                 "type": "string",
                 "maxLength": 50
               }
+            },
+            "plainChecklists": {
+              "description": "Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced.",
+              "type": "boolean"
             }
           },
           "required": ["itemIds", "destination"],

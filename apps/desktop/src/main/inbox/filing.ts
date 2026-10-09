@@ -1048,11 +1048,12 @@ export async function convertToEvent(
  * note-target reminder via the existing reminders service.
  *
  * @param itemId - Inbox item ID
- * @param input - Reminder timing (must be in the future)
+ * @param input - Reminder timing (must be in the future); `plainChecklists`
+ *   marks the checkbox lines the note adds
  */
 export async function convertToReminder(
   itemId: string,
-  input: { remindAt: string }
+  input: { remindAt: string } & PlainChecklistsOption
 ): Promise<{ success: boolean; noteId: string | null; error?: string }> {
   try {
     const db = requireDatabase()
@@ -1077,7 +1078,7 @@ export async function convertToReminder(
     const title = generateNoteTitle(item)
     const note = await createNoteCommand({
       title,
-      content: generateNoteContent(item),
+      content: filedNoteContent(item, input),
       tags: mergedTags,
       properties: extractItemProperties(item.metadata)
     })
@@ -1536,11 +1537,13 @@ export async function linkToNotes(
  * @param itemIds - Array of inbox item IDs
  * @param folderPath - Target folder path
  * @param tags - Additional tags to add
+ * @param options - `plainChecklists` marks the checkbox lines each note adds
  */
 export async function bulkFileToFolder(
   itemIds: string[],
   folderPath: string,
-  tags: string[] = []
+  tags: string[] = [],
+  options: PlainChecklistsOption = {}
 ): Promise<{
   success: boolean
   processedCount: number
@@ -1550,7 +1553,7 @@ export async function bulkFileToFolder(
   let processedCount = 0
 
   for (const itemId of itemIds) {
-    const result = await fileToFolder(itemId, folderPath, tags)
+    const result = await fileToFolder(itemId, folderPath, tags, options)
     if (result.success) {
       processedCount++
     } else {
