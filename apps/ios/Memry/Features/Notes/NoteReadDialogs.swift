@@ -15,6 +15,7 @@ struct NoteReadDialogs: ViewModifier {
     @Binding var moving: Bool
     @Binding var confirmingDelete: Bool
     @Binding var brokenLink: String?
+    @State private var moveFolders: [FolderSummary] = []
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.requestVaultSync) private var requestVaultSync
@@ -52,13 +53,14 @@ struct NoteReadDialogs: ViewModifier {
                 Text("It will be removed from every device signed in to this vault.")
             }
             .sheet(isPresented: $moving) {
-                NoteFolderPicker(current: model.folderPath) { folder in
+                NoteFolderPicker(current: model.folderPath, choose: { folder in
                     moving = false
                     Task {
                         await actions.move(to: folder)
                         await model.reload()
                     }
-                }
+                }, folders: moveFolders)
+                .task { moveFolders = await model.moveDestinations() }
             }
             .notePageFailureAlert(actions)
             .alert(

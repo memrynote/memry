@@ -53,6 +53,29 @@ private final class ScriptedNoteReader: NotesReading, @unchecked Sendable {
     }
 }
 
+/// A reader with scripted folders and notes, for the Move to sheet (#2909).
+private struct FolderedReader: NotesReading {
+    var configured: [FolderSummary] = []
+    var notes: [NoteSummary] = []
+    var listFails = false
+
+    func folders() async throws -> [FolderSummary] { configured }
+    func list() async throws -> [NoteSummary] {
+        if listFails { throw NotScripted() }
+        return notes
+    }
+
+    func read(id: String) async throws -> NoteDetail? { nil }
+}
+
+private func folder(_ path: String, parent: String? = nil) -> FolderSummary {
+    FolderSummary(path: path, parentPath: parent, name: path, icon: nil)
+}
+
+private func note(_ id: String, in folderPath: String?) -> NoteSummary {
+    NoteSummary(id: id, title: id, folderPath: folderPath, emoji: nil, createdAt: nil, modifiedAt: nil)
+}
+
 private func summary(_ id: String, title: String = "A note") -> NoteSummary {
     NoteSummary(id: id, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil)
 }
@@ -121,6 +144,38 @@ struct NoteReadTests {
         await model.reload()
         #expect(reader.seen.allSatisfy { $0.hasPrefix("ready/") }, "seen: \(reader.seen)")
         #expect(reader.seen.count == 1)
+    }
+
+    // MARK: Move to (#2909)
+
+    @Test("the move sheet offers configured and note-derived folders, sorted by path")
+    func theMoveSheetOffersTheTreeFolders() async {
+        let reader = FolderedReader(
+            configured: [folder("work"), folder("work/plans", parent: "work")],
+            notes: [note("n2", in: "inbox"), note("n3", in: "work")]
+        )
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["inbox", "work", "work/plans"])
+    }
+
+    @Test("folders that exist only through note paths are offered, ancestors included")
+    func noteDerivedFoldersAreOffered() async {
+        let reader = FolderedReader(notes: [note("n2", in: "a/b")])
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["a", "a/b"])
+    }
+
+    @Test("a note list that fails to read leaves the configured folders")
+    func aFailedListLeavesTheConfiguredFolders() async {
+        let reader = FolderedReader(configured: [folder("work")], listFails: true)
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        #expect(await model.moveDestinations().map(\.path) == ["work"])
+    }
+
+    @Test("a folder read that fails leaves the vault root, rather than failing the sheet")
+    func aFailedFolderReadLeavesTheRoot() async {
+        let (model, _) = makeModel(.success(nil))
+        #expect(await model.moveDestinations().isEmpty)
     }
 
     // MARK: The four outcomes, each against the other three
@@ -277,6 +332,10 @@ private enum NoteReadSources {
         featureRoot.appendingPathComponent("NotesListView.swift").path
     }
 
+    static var readDialogs: String {
+        featureRoot.appendingPathComponent("NoteReadDialogs.swift").path
+    }
+
     /// The rows moved out of `NotesListView.swift` in the line-ceiling split.
     static var notesRows: String {
         featureRoot.appendingPathComponent("NotesListRows.swift").path
@@ -324,6 +383,16 @@ struct NoteReadSourceTests {
         // registered once: a wiki link must resolve against that registration
         // rather than a second one declared inside the read screen.
         #expect(notesList.contains("open: { path.append($0) }"))
+    }
+
+    @Test(
+        "the move sheet is handed the folders the model read (#2909)",
+        .enabled(if: NoteReadSources.readable, "the checkout is not present on a device")
+    )
+    func theMoveSheetIsHandedTheFolders() throws {
+        let dialogs = try NoteReadSources.source(NoteReadSources.readDialogs)
+        #expect(dialogs.contains("folders: moveFolders"))
+        #expect(dialogs.contains("moveFolders = await model.moveDestinations()"))
     }
 
     @Test(
