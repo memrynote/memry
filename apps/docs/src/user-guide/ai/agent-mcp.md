@@ -69,6 +69,12 @@ reopen. The reasoning is stored encrypted with the reply and is only displayed: 
 back to the model in later turns or in conversation summaries. Antigravity does not report its
 reasoning, so its replies show the plain thinking indicator.
 
+If a reply has started and then nothing new arrives for 3 seconds, the thinking indicator comes
+back under the partial answer with a timer counting from the last thing received. It goes away as
+soon as more text or reasoning arrives, and when the turn ends. With reduced motion the timer still
+counts but does not animate. If you are reading at the bottom of the chat, the chat scrolls to keep
+the indicator in view; if you have scrolled up, it leaves your position alone.
+
 Unlike the other two CLIs, Antigravity has no per-run configuration flag: it reads MCP servers from
 `~/.gemini/config/mcp_config.json` and tool permissions from a project file, both at process start.
 So the first Antigravity turn registers one app-managed entry named `memry` in that file (every

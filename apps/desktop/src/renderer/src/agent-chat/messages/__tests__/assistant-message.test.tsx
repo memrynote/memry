@@ -1,5 +1,5 @@
 import type { AgentSourceRef, Message } from '@memry/contracts/ipc-agent'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -351,6 +351,41 @@ describe('AssistantMessage', () => {
     rerender(<AssistantMessage message={assistantMessage('Done.')} onContinue={onContinue} />)
     expect(screen.queryByText('Stopped at the step limit.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+  })
+
+  it('shows a waiting timer under a started answer after 3 s without a delta', () => {
+    vi.useFakeTimers()
+    try {
+      const streaming = (text: string): Message => ({
+        ...assistantMessage(text),
+        status: 'streaming'
+      })
+      const waiting = (): HTMLElement | null =>
+        screen.queryByRole('status', { name: 'Agent is thinking' })
+      const { rerender } = render(<AssistantMessage message={streaming('Handing this off.')} />)
+
+      act(() => vi.advanceTimersByTime(2900))
+      expect(waiting()).toBeNull()
+
+      act(() => vi.advanceTimersByTime(1200))
+      expect(screen.getByText('Handing this off.')).toBeInTheDocument()
+      expect(waiting()).toHaveTextContent('4.1s')
+
+      rerender(<AssistantMessage message={streaming('Handing this off. Done')} />)
+      expect(waiting()).toBeNull()
+
+      act(() => vi.advanceTimersByTime(3500))
+      expect(waiting()).toHaveTextContent('3.5s')
+
+      rerender(
+        <AssistantMessage
+          message={{ ...assistantMessage('Handing this off. Done'), status: 'completed' }}
+        />
+      )
+      expect(waiting()).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
