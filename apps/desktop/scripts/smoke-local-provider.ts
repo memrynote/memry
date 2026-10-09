@@ -37,6 +37,16 @@ function redact(text: string): string {
   return apiKey ? text.split(apiKey).join('[key]') : text
 }
 
+// Every write, not just the PASS/FAIL lines: the AI SDK dumps a failed request's error to
+// stderr, and a provider may echo the Authorization header in its error body.
+for (const stream of [process.stdout, process.stderr]) {
+  const write = stream.write.bind(stream) as (chunk: string) => boolean
+  stream.write = ((chunk: string | Uint8Array) =>
+    write(
+      redact(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString())
+    )) as typeof stream.write
+}
+
 function settings(thinking: AgentLocalThinking = 'default'): AgentLocalProviderSettings {
   return {
     preset: 'custom',
@@ -101,7 +111,7 @@ let failed = 0
 function report(name: string, problem: string | null, detail = ''): void {
   if (problem) failed += 1
   const suffix = problem ?? detail
-  console.log(`${problem ? 'FAIL' : 'PASS'}  ${name}${suffix ? `: ${redact(suffix)}` : ''}`)
+  console.log(`${problem ? 'FAIL' : 'PASS'}  ${name}${suffix ? `: ${suffix}` : ''}`)
 }
 
 async function check(
