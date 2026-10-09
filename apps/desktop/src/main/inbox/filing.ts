@@ -730,7 +730,7 @@ async function fileBinaryToFolder(
  * - Binary types (image, voice, pdf, video): Moves file directly
  *
  * @param itemId - Inbox item ID
- * @param folderPath - Target folder path (relative to vault, empty string for root)
+ * @param requestedFolder - Target folder path (relative to vault; '' or 'root' for root)
  * @param tags - Additional tags to add to the note (only for text types)
  */
 export async function fileToFolder(
@@ -1412,7 +1412,7 @@ async function linkBinaryToNotes(
  * @param itemId - Inbox item ID
  * @param noteIds - Array of target note IDs
  * @param tags - Additional tags to add to the created note (only for text types)
- * @param folderPath - Optional folder path for the created note/file
+ * @param requestedFolder - Optional folder path for the created note/file ('root' means '')
  */
 export async function linkToNotes(
   itemId: string,
