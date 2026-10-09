@@ -120,14 +120,7 @@ export function assemblePrompt(input: AssembleInput): string {
   }
 
   if (input.permissions) {
-    lines.push(
-      ...renderPermissions(
-        input.permissions,
-        toolsAvailable ? input.backend : undefined,
-        toolsAvailable
-      ),
-      ''
-    )
+    lines.push(...renderPermissions(input.permissions, input.backend, toolsAvailable), '')
   }
 
   if (input.attachments.length > 0) {
@@ -159,9 +152,9 @@ function renderPermissions(
     '# Active Permissions',
     access,
     web,
-    ...(backend && RUNTIME_LINES[backend] ? [RUNTIME_LINES[backend]] : []),
     ...(toolsAvailable
       ? [
+          ...(backend && RUNTIME_LINES[backend] ? [RUNTIME_LINES[backend]] : []),
           'Use only tools exposed by this runtime. If a requested capability is not available, say so instead of pretending it ran.'
         ]
       : [])
