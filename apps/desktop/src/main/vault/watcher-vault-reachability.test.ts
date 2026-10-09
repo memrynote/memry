@@ -183,6 +183,7 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.rmSync(abs('notes/gone.md'))
     internals().handleFileDelete(abs('notes/gone.md'))
     await vi.advanceTimersByTimeAsync(600)
+    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
     await flushProjectionEvents()
 
     expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
@@ -194,10 +195,14 @@ describe('watcher and an unreachable vault (#2785)', () => {
   it('keeps a note whose file turns unreadable and re-reads it once readable (#2764)', async () => {
     fs.chmodSync(abs('notes/kept.md'), 0o000)
     internals().handleFileDelete(abs('notes/kept.md'))
+    // A real delete in the same window shows when both have been decided.
+    fs.rmSync(abs('notes/gone.md'))
+    internals().handleFileDelete(abs('notes/gone.md'))
     await vi.advanceTimersByTimeAsync(600)
+    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
     await flushProjectionEvents()
 
-    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(syncNoteDelete).toHaveBeenCalledTimes(1)
     expect(row('note-kept')?.path).toBe('notes/kept.md')
 
     fs.chmodSync(abs('notes/kept.md'), 0o644)
@@ -206,7 +211,7 @@ describe('watcher and an unreachable vault (#2785)', () => {
     await flushProjectionEvents()
 
     expect(row('note-kept')?.contentHash).not.toBe('hash-note-kept')
-    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(syncNoteDelete).toHaveBeenCalledTimes(1)
   })
 
   it('rescans the vault when it comes back and replays what changed meanwhile', async () => {

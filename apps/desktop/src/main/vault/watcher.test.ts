@@ -307,8 +307,11 @@ describe('vault watcher', () => {
 
     window.webContents.send.mockClear()
 
+    fs.rmSync(notePath)
     await watcher.handleFileDelete(notePath)
     await vi.advanceTimersByTimeAsync(500)
+    // The delete first checks on disk that the file is really gone.
+    await vi.waitFor(() => expect(unlinkTasksFromDeletedNote).toHaveBeenCalledWith(noteId))
 
     const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
     expect(deleted).toBeUndefined()
@@ -786,8 +789,10 @@ describe('vault watcher', () => {
     fs.writeFileSync(imagePath, Buffer.from('image'))
     await watcher.handleFileAdd(imagePath)
 
+    fs.rmSync(imagePath)
     watcher.handleFileDelete(imagePath)
     await vi.advanceTimersByTimeAsync(5_000)
+    await vi.waitFor(() => expect(listActivity()).toHaveLength(2))
     await flushProjectionEvents()
 
     expect(listActivity().map((entry) => [entry.kind, entry.path])).toEqual([
@@ -923,15 +928,18 @@ describe('vault watcher', () => {
     expect(emittedId).not.toBe('j2026-05-10')
 
     window.webContents.send.mockClear()
+    fs.rmSync(journalPath)
     watcher.handleFileDelete(journalPath)
     await vi.advanceTimersByTimeAsync(500)
 
-    expect(window.webContents.send).toHaveBeenCalledWith(
-      JournalChannels.events.ENTRY_DELETED,
-      expect.objectContaining({
-        date: '2026-05-10',
-        source: 'external'
-      })
+    await vi.waitFor(() =>
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        JournalChannels.events.ENTRY_DELETED,
+        expect.objectContaining({
+          date: '2026-05-10',
+          source: 'external'
+        })
+      )
     )
   })
 
