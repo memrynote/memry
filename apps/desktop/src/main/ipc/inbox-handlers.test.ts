@@ -549,7 +549,9 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
-      expect(filingModule.fileToFolder).toHaveBeenCalledWith('item1', 'projects', undefined)
+      expect(filingModule.fileToFolder).toHaveBeenCalledWith('item1', 'projects', undefined, {
+        plainChecklists: undefined
+      })
     })
 
     it('should convert to new note', async () => {
@@ -564,7 +566,9 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
-      expect(filingModule.convertToNote).toHaveBeenCalledWith('item1')
+      expect(filingModule.convertToNote).toHaveBeenCalledWith('item1', {
+        plainChecklists: undefined
+      })
     })
 
     it('should link to existing note', async () => {

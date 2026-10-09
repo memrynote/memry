@@ -10262,16 +10262,17 @@ Create a note from markdown, in a folder, with tags and properties.
 
 `notes.create(input)` through `vault_desktop_write`; needs approval.
 
-| Argument           | Type                  | Required | Allowed values                   |
-| ------------------ | --------------------- | -------- | -------------------------------- |
-| `input`            | `object`              | yes      |                                  |
-| `input.title`      | `string`              | yes      | min length `1`; max length `200` |
-| `input.content`    | `string`              | no       | default `""`                     |
-| `input.folder`     | `string`              | no       |                                  |
-| `input.tags`       | `string[]`            | no       | max items `50`                   |
-| `input.template`   | `string`              | no       |                                  |
-| `input.properties` | `Record<string, any>` | no       |                                  |
-| `input.emoji`      | `string \| null`      | no       |                                  |
+| Argument                | Type                  | Required | Allowed values                   | Notes                                                                                                        |
+| ----------------------- | --------------------- | -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `input`                 | `object`              | yes      |                                  |                                                                                                              |
+| `input.title`           | `string`              | yes      | min length `1`; max length `200` |                                                                                                              |
+| `input.content`         | `string`              | no       | default `""`                     |                                                                                                              |
+| `input.folder`          | `string`              | no       |                                  |                                                                                                              |
+| `input.tags`            | `string[]`            | no       | max items `50`                   |                                                                                                              |
+| `input.template`        | `string`              | no       |                                  |                                                                                                              |
+| `input.properties`      | `Record<string, any>` | no       |                                  |                                                                                                              |
+| `input.emoji`           | `string \| null`      | no       |                                  |                                                                                                              |
+| `input.plainChecklists` | `boolean`             | no       |                                  | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -13115,11 +13116,12 @@ Import files from this device into the vault, linked to a project.
 
 `tasks.importFilesToProject(input)` through `vault_desktop_write`; needs approval.
 
-| Argument            | Type       | Required | Allowed values |
-| ------------------- | ---------- | -------- | -------------- |
-| `input`             | `object`   | yes      |                |
-| `input.projectId`   | `string`   | yes      |                |
-| `input.sourcePaths` | `string[]` | yes      |                |
+| Argument                | Type       | Required | Allowed values | Notes                                                                                                        |
+| ----------------------- | ---------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `input`                 | `object`   | yes      |                |                                                                                                              |
+| `input.projectId`       | `string`   | yes      |                |                                                                                                              |
+| `input.sourcePaths`     | `string[]` | yes      |                |                                                                                                              |
+| `input.plainChecklists` | `boolean`  | no       |                | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -14071,19 +14073,20 @@ File an inbox item into a folder or note.
 
 `inbox.file(input)` through `vault_desktop_write`; needs approval.
 
-| Argument                      | Type                                                                     | Required | Allowed values                     |
-| ----------------------------- | ------------------------------------------------------------------------ | -------- | ---------------------------------- |
-| `input`                       | `object`                                                                 | yes      |                                    |
-| `input.itemId`                | `string`                                                                 | yes      |                                    |
-| `input.destination`           | `object`                                                                 | yes      |                                    |
-| `input.destination.type`      | `"folder" \| "note" \| "new-note"`                                       | yes      | `"folder"`, `"note"`, `"new-note"` |
-| `input.destination.path`      | `string`                                                                 | no       |                                    |
-| `input.destination.noteId`    | `string`                                                                 | no       |                                    |
-| `input.destination.noteIds`   | `string[]`                                                               | no       |                                    |
-| `input.destination.noteTitle` | `string`                                                                 | no       | max length `200`                   |
-| `input.destination.targets`   | `({ kind: "note", noteId: string } \| { kind: "new", title: string })[]` | no       | max items `20`                     |
-| `input.tags`                  | `string[]`                                                               | no       | max items `20`                     |
-| `input.imageMode`             | `"embed" \| "link"`                                                      | no       | `"embed"`, `"link"`                |
+| Argument                      | Type                                                                     | Required | Allowed values                     | Notes                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------ | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `input`                       | `object`                                                                 | yes      |                                    |                                                                                                              |
+| `input.itemId`                | `string`                                                                 | yes      |                                    |                                                                                                              |
+| `input.destination`           | `object`                                                                 | yes      |                                    |                                                                                                              |
+| `input.destination.type`      | `"folder" \| "note" \| "new-note"`                                       | yes      | `"folder"`, `"note"`, `"new-note"` |                                                                                                              |
+| `input.destination.path`      | `string`                                                                 | no       |                                    |                                                                                                              |
+| `input.destination.noteId`    | `string`                                                                 | no       |                                    |                                                                                                              |
+| `input.destination.noteIds`   | `string[]`                                                               | no       |                                    |                                                                                                              |
+| `input.destination.noteTitle` | `string`                                                                 | no       | max length `200`                   |                                                                                                              |
+| `input.destination.targets`   | `({ kind: "note", noteId: string } \| { kind: "new", title: string })[]` | no       | max items `20`                     |                                                                                                              |
+| `input.tags`                  | `string[]`                                                               | no       | max items `20`                     |                                                                                                              |
+| `input.imageMode`             | `"embed" \| "link"`                                                      | no       | `"embed"`, `"link"`                |                                                                                                              |
+| `input.plainChecklists`       | `boolean`                                                                | no       |                                    | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 
@@ -14322,13 +14325,15 @@ Reply:
 
 Append an inbox item to a note and file it there.
 
-`inbox.linkToNote(itemId, noteId, tags?)` through `vault_desktop_write`; needs approval.
+`inbox.linkToNote(itemId, noteId, tags?, options?)` through `vault_desktop_write`; needs approval.
 
-| Argument | Type               | Required | Allowed values |
-| -------- | ------------------ | -------- | -------------- |
-| `itemId` | `string`           | yes      |                |
-| `noteId` | `string`           | yes      |                |
-| `tags`   | `string[] \| null` | no       |                |
+| Argument                  | Type               | Required | Allowed values | Notes                                                                                                        |
+| ------------------------- | ------------------ | -------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `itemId`                  | `string`           | yes      |                |                                                                                                              |
+| `noteId`                  | `string`           | yes      |                |                                                                                                              |
+| `tags`                    | `string[] \| null` | no       |                |                                                                                                              |
+| `options`                 | `object`           | no       |                |                                                                                                              |
+| `options.plainChecklists` | `boolean`          | no       |                | Set by memrynote on every agent call from the owner's agent checklist setting; a value you pass is replaced. |
 
 Example call:
 

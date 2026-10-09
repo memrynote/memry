@@ -221,7 +221,7 @@ export function createGeneratedRpcApi({
       "convertToTask": ((itemId, input) => invoke("inbox:convert-to-task", itemId, input)) as GeneratedRpcApi["inbox"]["convertToTask"],
       "convertToEvent": ((itemId, input) => invoke("inbox:convert-to-event", itemId, input)) as GeneratedRpcApi["inbox"]["convertToEvent"],
       "convertToReminder": ((itemId, input) => invoke("inbox:convert-to-reminder", itemId, input)) as GeneratedRpcApi["inbox"]["convertToReminder"],
-      "linkToNote": ((itemId, noteId, tags) => invoke("inbox:link-to-note", itemId, noteId, tags ?? [])) as GeneratedRpcApi["inbox"]["linkToNote"],
+      "linkToNote": ((itemId, noteId, tags, options) => invoke("inbox:link-to-note", itemId, noteId, tags ?? [], options)) as GeneratedRpcApi["inbox"]["linkToNote"],
       "addTag": ((itemId, tag) => invoke("inbox:add-tag", itemId, tag)) as GeneratedRpcApi["inbox"]["addTag"],
       "removeTag": ((itemId, tag) => invoke("inbox:remove-tag", itemId, tag)) as GeneratedRpcApi["inbox"]["removeTag"],
       "getTags": (() => invoke("inbox:get-tags")) as GeneratedRpcApi["inbox"]["getTags"],

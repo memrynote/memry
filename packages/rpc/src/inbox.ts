@@ -1,5 +1,5 @@
 import { InboxChannels } from '../../contracts/src/ipc-channels.ts'
-import type { PlainChecklistsOption } from '../../contracts/src/notes-api.ts'
+import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
 import {
   defineDomain,
   defineEvent,
@@ -541,10 +541,17 @@ export const inboxRpc = defineDomain({
       channel: InboxChannels.invoke.CONVERT_TO_REMINDER,
       params: ['itemId', 'input']
     }),
-    linkToNote: defineMethod<(itemId: string, noteId: string, tags?: string[]) => SuccessResponse>({
+    linkToNote: defineMethod<
+      (
+        itemId: string,
+        noteId: string,
+        tags?: string[],
+        options?: PlainChecklistsOption
+      ) => SuccessResponse
+    >({
       channel: InboxChannels.invoke.LINK_TO_NOTE,
-      params: ['itemId', 'noteId', 'tags'],
-      invokeArgs: ['itemId', 'noteId', 'tags ?? []']
+      params: ['itemId', 'noteId', 'tags', 'options'],
+      invokeArgs: ['itemId', 'noteId', 'tags ?? []', 'options']
     }),
     addTag: defineMethod<(itemId: string, tag: string) => SuccessResponse>({
       channel: InboxChannels.invoke.ADD_TAG,

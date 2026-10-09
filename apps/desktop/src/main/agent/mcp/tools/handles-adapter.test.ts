@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestIndexDb } from '@tests/utils/test-db'
 import { NoteError, NoteErrorCode } from '../../../lib/errors'
-import type { AgentMcpDesktopApiRequest } from '@memry/contracts/agent-mcp-channels'
+import type {
+  AgentMcpDesktopApiRequest,
+  AgentMcpDesktopWriteOperation
+} from '@memry/contracts/agent-mcp-channels'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -175,6 +178,13 @@ const deps = {
   dataDb: {} as never,
   // Real tables, empty: reading a markdown note looks up its attachment text.
   indexDb: createTestIndexDb().db as never
+}
+
+/** The desktop API writes sent to the window, without the read-backs that follow them. */
+function writesSent(): AgentMcpDesktopApiRequest[] {
+  return mocks.invokeDesktopApiFromWindow.mock.calls
+    .map((call) => call[1] as AgentMcpDesktopApiRequest)
+    .filter((request) => request.operation !== 'inbox.get')
 }
 
 describe('createVaultServiceHandles', () => {
@@ -404,7 +414,8 @@ describe('createVaultServiceHandles', () => {
       title: 'New',
       content: 'Body',
       folder: 'work',
-      tags: ['focus']
+      tags: ['focus'],
+      plainChecklists: true
     })
 
     await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
@@ -2351,7 +2362,7 @@ describe('createVaultServiceHandles', () => {
 
     it('asks for plain checkbox lines when an agent files an inbox item, links it, imports into a project or creates a note', async () => {
       const handles = createVaultServiceHandles(deps)
-      const writes: AgentMcpDesktopApiRequest[] = [
+      const writes: { operation: AgentMcpDesktopWriteOperation; args: unknown[] }[] = [
         {
           operation: 'inbox.file',
           args: [{ itemId: 'inbox-1', destination: { type: 'new-note' }, plainChecklists: false }]
@@ -2366,7 +2377,7 @@ describe('createVaultServiceHandles', () => {
 
       for (const request of writes) await handles.desktop.write(request, 'window-1')
 
-      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+      expect(writesSent()).toEqual([
         {
           operation: 'inbox.file',
           args: [{ itemId: 'inbox-1', destination: { type: 'new-note' }, plainChecklists: true }]
@@ -2559,7 +2570,7 @@ describe('createVaultServiceHandles', () => {
         'window-1'
       )
 
-      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+      expect(writesSent()).toEqual([
         {
           operation: 'notes.create',
           args: [{ title: 'Review', content: '- [ ] A', plainChecklists: false }]

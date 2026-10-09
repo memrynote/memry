@@ -321,6 +321,8 @@ export interface FileItemInput {
    * chosen folder (visible) and references it. Ignored for non-image types.
    */
   imageMode?: ImageFilingMode
+  /** Mark each checkbox line the filing adds with `{check}` (agent calls, #2796). */
+  plainChecklists?: boolean
 }
 
 export interface SnoozeInput {

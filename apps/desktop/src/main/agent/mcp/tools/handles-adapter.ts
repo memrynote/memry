@@ -43,7 +43,12 @@ import {
   normalizeFolderPath,
   toFolderEntry
 } from './folder-paths'
-import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
+import {
+  agentChecklistsOption,
+  createdTasksReply,
+  withAgentChecklists,
+  writeAgentBody
+} from './agent-checklists'
 import { createdFoldersReply, foldersToCreate } from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
@@ -195,7 +200,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
               title: input.title,
               content,
               folder,
-              tags: input.tags
+              tags: input.tags,
+              // An empty body takes the folder template's, which only the owner reads.
+              ...agentChecklistsOption()
             })
           }
         )
