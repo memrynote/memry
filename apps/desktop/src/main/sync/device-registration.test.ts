@@ -664,6 +664,17 @@ describe('device registration', () => {
       })
     })
 
+    it('names a foreign vault instead of offering a sync choice', async () => {
+      mocks.startSyncRuntime.mockResolvedValue(null)
+      mocks.vaultBinding.mockReturnValue({ status: 'foreign' })
+      const { repairDeviceKeys } = await importModule()
+
+      await expect(repairDeviceKeys()).resolves.toEqual({
+        status: 'sync-not-started',
+        reason: 'vault-foreign'
+      })
+    })
+
     it('signs out keeping the queue when the key is not on the account', async () => {
       mocks.getFromServer.mockResolvedValue({ devices: [] })
       const { repairDeviceKeys } = await importModule()
