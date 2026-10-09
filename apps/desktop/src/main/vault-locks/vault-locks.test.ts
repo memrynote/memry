@@ -560,6 +560,32 @@ describe('vault read-only locks (#2606)', () => {
     }
   )
 
+  it.skipIf(isWindows)(
+    'a vault copied with its data DB gets every locked file its own mode back on unlock',
+    async () => {
+      const note = addNote('note-a', 'notes/a.md', 'a\n')
+      const folderFile = path.join(vault, 'shared/doc.pdf')
+      fs.mkdirSync(path.dirname(folderFile), { recursive: true })
+      fs.writeFileSync(folderFile, 'doc')
+      for (const file of [note, folderFile]) fs.chmodSync(file, 0o664)
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: true })
+
+      for (const file of [note, folderFile]) {
+        const copy = `${file}.copy`
+        fs.copyFileSync(file, copy)
+        fs.rmSync(file, { force: true })
+        fs.renameSync(copy, file)
+      }
+      expect([note, folderFile].map(modeOf)).toEqual([0o444, 0o444])
+      await checkLockedFilesAtOpen()
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
+
+      expect([note, folderFile].map(modeOf)).toEqual([0o664, 0o664])
+    }
+  )
+
   it("locks the attachments folder the app saves a note's attachments in", async () => {
     addNote('note-a', 'notes/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
