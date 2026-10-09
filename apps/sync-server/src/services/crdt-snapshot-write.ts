@@ -232,10 +232,10 @@ const writeSnapshots = async (
     return new Map(reread.flatMap((r) => r.results ?? []).map((row) => [row.note_id, row]))
   }
 
-  // Stage 1: metadata. The watermark chunk binds the triple twice (one per
-  // UNION arm), so it is half the size of the existing-row chunk.
+  // Stage 1: metadata. The watermark chunk binds the triple three times (one
+  // per UNION arm), so it is a third of the size of the existing-row chunk.
   const existingChunks = chunk(noteIds, D1_MAX_BIND_PARAMS - 2)
-  const watermarkChunks = chunk(noteIds, Math.floor((D1_MAX_BIND_PARAMS - 4) / 2))
+  const watermarkChunks = chunk(noteIds, Math.floor((D1_MAX_BIND_PARAMS - 6) / 3))
   const metaResults = await db.batch([
     ...existingChunks.map((ids) =>
       db
@@ -254,10 +254,12 @@ const writeSnapshots = async (
              SELECT note_id, sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id IN (${placeholders})
              UNION ALL
              SELECT note_id, sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id IN (${placeholders})
+             UNION ALL
+             SELECT note_id, floor FROM crdt_sequence_floors WHERE user_id = ? AND vault_id = ? AND note_id IN (${placeholders})
            )
            GROUP BY note_id`
         )
-        .bind(userId, vaultId, ...ids, userId, vaultId, ...ids)
+        .bind(userId, vaultId, ...ids, userId, vaultId, ...ids, userId, vaultId, ...ids)
     })
   ])
   const existingByNote = new Map<string, ExistingRow>()

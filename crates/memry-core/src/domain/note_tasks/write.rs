@@ -21,7 +21,7 @@ use crate::crdt::blocks::extract_blocks;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, UpdateSink};
-use crate::crdt::{DocumentRegistry, update_log};
+use crate::crdt::{epoch, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::sync::outbox;
@@ -316,11 +316,7 @@ where
                 .push(bytes.to_vec());
         })
     };
-    let document = DocumentRegistry::new(device_id, sink).get_or_open(note_id)?;
-    for blob in update_log::load_plan(conn, note_id)?.blobs() {
-        // Durable, so the replay does not reach the sink.
-        document.apply_durable_update(blob)?;
-    }
+    let document = epoch::open_for_write(conn, device_id, note_id, sink)?;
 
     let result = plan(&document)?;
 
