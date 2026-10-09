@@ -85,9 +85,12 @@ export class NoteError extends Error {
   }
 }
 
+export const OUTSIDE_VAULT_MESSAGE_SUFFIX =
+  ' points outside the vault. Memry reads only files inside the vault.'
+
 export class OutsideVaultError extends Error {
   constructor(relativePath: string) {
-    super(`${relativePath} points outside the vault. Memry reads only files inside the vault.`)
+    super(`${relativePath}${OUTSIDE_VAULT_MESSAGE_SUFFIX}`)
     this.name = 'OutsideVaultError'
   }
 }

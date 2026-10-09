@@ -485,8 +485,9 @@ files, and drops text an earlier version read through such a symlink.
 
 Notes and journal entries follow the same rule. A note or journal file replaced by a symlink to a
 file outside the vault fails every tool that reads or edits it with the same `PERMISSION_DENIED`
-error. A canvas file replaced that way reads as not found. So `vault_read_note` never returns text
-read from outside the vault.
+error, `notes.get` through `vault_desktop_read` and `notes.update` or `properties.set` through
+`vault_desktop_write` included. A canvas file replaced that way reads as not found. So
+`vault_read_note` never returns text read from outside the vault.
 
 Claude Code, Codex, and Antigravity receive the image from the MCP server as it is. For a local or
 OpenAI-compatible provider, Memry checks once whether the model takes images, by sending it a
