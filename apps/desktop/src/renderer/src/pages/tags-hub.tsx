@@ -50,6 +50,7 @@ import {
   type TagDragSession
 } from '@/components/tags-hub/drag-session'
 import { filterHub } from '@/components/tags-hub/filter'
+import { PresetOfferStrip } from '@/features/tag-fields/hub/PresetOfferStrip'
 
 // Space picks up/drops a drag; Enter is left alone so focusing a chip and
 // pressing Enter still opens it instead of starting a drag (dnd-kit's
@@ -437,6 +438,7 @@ export function TagsHubPage(): React.JSX.Element {
                   />
                 </div>
               </div>
+              {!isSearching && <PresetOfferStrip />}
               {isSearching && !hasResults ? (
                 <div className="border-t border-border py-[22px] text-sm text-muted-foreground">
                   {t('tagsHub.search.empty')}

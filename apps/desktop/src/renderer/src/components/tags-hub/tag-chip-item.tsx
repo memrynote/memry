@@ -4,6 +4,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { cn } from '@/lib/utils'
+import { List } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
+import { tagHasFields, useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
 import type { HubTag } from '@/hooks/use-tag-categories'
 
 export interface TagChipContentProps {
@@ -26,6 +29,8 @@ export interface TagChipContentProps {
  */
 export function TagChipContent({ tag, className }: TagChipContentProps): React.JSX.Element {
   const colors = getTagColors(tag.color, tag.tag)
+  const { t } = useT('notes')
+  const hasFields = tagHasFields(useTagSchemas().data, tag.tag)
 
   return (
     <span
@@ -43,6 +48,13 @@ export function TagChipContent({ tag, className }: TagChipContentProps): React.J
         </span>
       )}
       <span className="min-w-0 truncate">{tag.tag}</span>
+      {hasFields ? (
+        <List
+          role="img"
+          aria-label={t('tagFields.hub.hasFields')}
+          className="size-3 shrink-0 opacity-70"
+        />
+      ) : null}
       <span className="text-[11px] tabular-nums opacity-55">{tag.count}</span>
     </span>
   )

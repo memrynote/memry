@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import { getI18n } from 'react-i18next'
 import type { Priority, RepeatAnchor, RepeatConfig } from '@memry/domain-tasks/parsing'
-import type { TaskFields } from '@memry/rpc/tasks'
+import type { TaskFieldValue } from '@memry/rpc/tasks'
 
 const tasksT = (): TFunction<'tasks'> | null => {
   const i18n = getI18n()
@@ -52,7 +52,9 @@ export interface Task {
   // via the global tag_definitions store.
   tags: string[]
 
-  fields?: TaskFields
+  // Field values by name. The stored map never holds null; in an edit
+  // (`Partial<Task>`) the map is a patch and a null removes the name.
+  fields?: Record<string, TaskFieldValue>
 
   // Subtasks
   parentId: string | null // ID of parent task (null if top-level)

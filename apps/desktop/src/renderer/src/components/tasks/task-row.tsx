@@ -5,6 +5,7 @@ import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { TaskTagsBadge } from '@/components/tasks/task-badges'
+import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
@@ -224,6 +225,10 @@ export const TaskRow = ({
         <>
           {task.isRepeating && task.repeatConfig && (
             <RepeatIndicator config={task.repeatConfig} size="sm" />
+          )}
+
+          {task.fields && Object.keys(task.fields).length > 0 && (
+            <TaskRelationChip tags={task.tags} fields={task.fields} />
           )}
 
           {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}

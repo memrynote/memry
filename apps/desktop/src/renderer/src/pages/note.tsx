@@ -61,6 +61,11 @@ import {
   type Note
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
+import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
+import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
+import { buildFieldGroups } from '@/features/tag-fields/build-field-groups'
+import { NoteFieldGroups } from '@/features/tag-fields/NoteFieldGroups'
+import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
@@ -376,6 +381,8 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const {
     properties,
+    values: propertyValues,
+    handleSetFieldValue,
     newlyAddedPropertyId,
     handlePropertyChange,
     handleAddProperty,
@@ -995,73 +1002,72 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   // Tag handlers
+  const canEditTags = useCallback(
+    (action: 'add' | 'remove') => {
+      if (!isDeleted) return true
+      toast.error(
+        getI18n().getFixedT(
+          null,
+          'notes'
+        )(
+          action === 'add'
+            ? 'phaseI.toasts.cannotAddTagThisNoteWasDeleted'
+            : 'phaseI.toasts.cannotRemoveTagThisNoteWasDeleted'
+        )
+      )
+      return false
+    },
+    [isDeleted]
+  )
+  const headerTagActions = useHeaderTags({
+    noteId: noteId ?? null,
+    noteTitle: note?.title ?? '',
+    headerTags: note?.headerTags ?? [],
+    values: propertyValues,
+    canEdit: () => canEditTags('add'),
+    // Properties open on their own when a note first gets a tag with fields (C2).
+    onFieldTagAdded: () => setPropertiesCollapsed(false)
+  })
+  const { addTag: addHeaderTag, removeTag: removeHeaderTag } = headerTagActions
+
   const handleAddTag = useCallback(
     async (tagId: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
-        )
-        return
-      }
-
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !note.headerTags.includes(tagToAdd.name)) {
-        try {
-          await updateNote.mutateAsync({ id: noteId, headerTags: { add: [tagToAdd.name] } })
-          // Note will be updated via TanStack Query cache invalidation
-        } catch (err) {
-          log.error('Failed to add tag:', err)
-        }
-      }
+      if (tagToAdd) await addHeaderTag(tagToAdd.name)
     },
-    [noteId, note, isDeleted, availableTags, updateNote]
+    [availableTags, addHeaderTag]
   )
 
   const handleCreateTag = useCallback(
     async (name: string, color: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
-        )
-        return
-      }
-
-      if (!note.headerTags.includes(name)) {
-        pendingTagColorsRef.current.set(name.toLowerCase(), color)
-        try {
-          await updateNote.mutateAsync({ id: noteId, headerTags: { add: [name] } })
-        } catch (err) {
-          pendingTagColorsRef.current.delete(name.toLowerCase())
-          log.error('Failed to create tag:', err)
-        }
-      }
+      pendingTagColorsRef.current.set(name.toLowerCase(), color)
+      await addHeaderTag(name)
     },
-    [noteId, note, isDeleted, updateNote]
+    [addHeaderTag]
   )
 
   const handleRemoveTag = useCallback(
     async (tagId: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotRemoveTagThisNoteWasDeleted')
-        )
-        return
-      }
-
-      try {
-        await updateNote.mutateAsync({ id: noteId, headerTags: { remove: [tagId] } })
-        // Note will be updated via TanStack Query cache invalidation
-      } catch (err) {
-        log.error('Failed to remove tag:', err)
-      }
+      if (!canEditTags('remove')) return
+      await removeHeaderTag(tagId)
     },
-    [noteId, note, isDeleted, updateNote]
+    [canEditTags, removeHeaderTag]
+  )
+
+  const { data: tagSchemas } = useTagSchemas()
+  const fieldGroups = useMemo(
+    () => buildFieldGroups(note?.headerTags ?? [], tagSchemas, propertyValues),
+    [note?.headerTags, tagSchemas, propertyValues]
+  )
+  const ownProperties = useMemo(() => {
+    const own = new Set(fieldGroups.rest.map((entry) => entry.name))
+    return properties.filter((property) => own.has(property.name))
+  }, [fieldGroups.rest, properties])
+  const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
+  const noteBodyEmpty = !(note?.content ?? '').trim()
+  const tagFieldHints = useMemo(
+    () => ({ bodyEmpty: noteBodyEmpty, tags: tagSchemas?.tags ?? {} }),
+    [noteBodyEmpty, tagSchemas]
   )
 
   // Typing a `#tag` in the body adds it to the header and deleting it removes
@@ -1895,6 +1901,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Tags: visible when tags exist */}
           <TagsRow
+            fieldHints={tagFieldHints}
             tags={headerTags}
             availableTags={availableTags}
             recentTags={recentTags}
@@ -1917,9 +1924,28 @@ export function NotePage({ noteId }: NotePageProps) {
 
           <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted || isLocked} />
 
-          {properties.length > 0 && (
+          {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
             <InfoSection
-              properties={properties}
+              properties={ownProperties}
+              fieldSlotCount={fieldSlotCount}
+              fieldGroups={
+                fieldGroups.groups.length > 0 ? (
+                  <NoteFieldGroups
+                    groups={fieldGroups.groups}
+                    onFieldChange={handleSetFieldValue}
+                    onOpenTag={(tag) =>
+                      openSidebarItem({
+                        type: 'tag',
+                        title: tag.name,
+                        path: '/tags/' + tag.name,
+                        entityId: tag.name,
+                        color: tag.color
+                      })
+                    }
+                    disabled={isDeleted || isLocked}
+                  />
+                ) : undefined
+              }
               newlyAddedPropertyId={newlyAddedPropertyId}
               isExpanded={!propertiesCollapsed}
               onToggleExpand={togglePropertiesCollapsed}
@@ -1936,7 +1962,17 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Ghost affordance: add tag/property — fades in on hover/focus, placed
               below the metadata so it never sits above the title */}
+          <TemplateOffers
+            noteId={noteId}
+            noteTitle={note.title}
+            notePath={note.path}
+            headerTags={note.headerTags}
+            getEditor={getAttachmentsEditor}
+            disabled={isDeleted || isLocked}
+          />
+
           <GhostAffordanceRow
+            tagFieldHints={tagFieldHints}
             availableTags={availableTags}
             recentTags={recentTags}
             currentTagIds={headerTags.map((t) => t.id)}

@@ -183,6 +183,11 @@ vi.mock('@/hooks/use-notes-query', () => ({
   })
 }))
 
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  resolveTag: () => null
+}))
+
 vi.mock('@/hooks/use-property-section', () => ({
   usePropertySection: ({
     onBlocked,
@@ -195,6 +200,8 @@ vi.mock('@/hooks/use-property-section', () => ({
     mocks.propertyCanEdit = canEdit
     return {
       properties: [{ id: 'p1', name: 'Status', value: 'Draft', type: 'text' }],
+      values: { Status: 'Draft' },
+      handleSetFieldValue: vi.fn(),
       newlyAddedPropertyId: null,
       handlePropertyChange: mocks.handlePropertyChange,
       handleAddProperty: mocks.handleAddProperty,

@@ -7,7 +7,7 @@
 
 import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useEffect, useRef } from 'react'
 import { getI18n } from 'react-i18next'
-import { ChevronRight, Plus, Search, X } from '@/lib/icons'
+import { ChevronRight, Pencil, Plus, Search, X } from '@/lib/icons'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { Button } from '@/components/ui/button'
@@ -53,6 +53,8 @@ import type { TagSearch } from '@memry/contracts/tag-searches-api'
 import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
 import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
 import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
+import { TagSettingsSheet } from '@/features/tag-fields/settings/TagSettingsSheet'
+import { useResolvedTag } from '@/features/tag-fields/use-tag-schemas'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
@@ -212,6 +214,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Tag scope: rename/delete dialog state (ported from tag-view.tsx)
   const [tagRenameOpen, setTagRenameOpen] = useState(false)
   const [tagDeleteOpen, setTagDeleteOpen] = useState(false)
+  const [tagSettingsOpen, setTagSettingsOpen] = useState(false)
+  const resolvedTag = useResolvedTag(scope.kind === 'tag' ? scope.tag : null)
 
   // ============================================================================
   // Phase 21: View Settings State
@@ -1012,7 +1016,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   }, [selectedRowIds])
 
   return (
-    <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
+    <div className="relative flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
       <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
         {scope.kind === 'folder' ? (
@@ -1105,6 +1109,16 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                   t('page.itemsCount', { count: totalNotes })
                 )}
               </span>
+              {resolvedTag?.hasFields && (
+                <>
+                  <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+                  <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+                    {t('tagFields.settings.headerFields', {
+                      count: resolvedTag.effectiveFields.length
+                    })}
+                  </span>
+                </>
+              )}
             </div>
           </>
         )}
@@ -1250,6 +1264,18 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             onSetViewAsDefault={handleSetViewAsDefault}
             onDeleteView={handleDeleteView}
           />
+
+          {scope.kind === 'tag' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setTagSettingsOpen(true)}
+            >
+              <Pencil className="size-3.5" />
+              {t('tagFields.settings.editTag')}
+            </Button>
+          )}
 
           {/* New Note button */}
           <button
@@ -1493,6 +1519,14 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         onMove={(...args) => void handleMoveConfirm(...args)}
         noteTitle={movingNoteTitle}
       />
+
+      {scope.kind === 'tag' && tagSettingsOpen && (
+        <TagSettingsSheet
+          key={scope.tag}
+          tag={scope.tag}
+          onClose={() => setTagSettingsOpen(false)}
+        />
+      )}
 
       {/* Tag scope: rename / delete dialogs (ported from tag-view.tsx) */}
       {scope.kind === 'tag' && (

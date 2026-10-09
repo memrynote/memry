@@ -91,6 +91,14 @@ vi.mock('@dnd-kit/core', async () => {
 const chipTitles = (): string[] =>
   screen.getAllByTitle(/\(\d+\)$/).map((el) => el.getAttribute('title') ?? '')
 
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  resolveTag: () => null,
+  tagHasFields: () => false,
+  useEditTagSchema: () => vi.fn()
+}))
+
 vi.mock('@/hooks/use-tag-categories', () => ({
   useTagCategories: mockUseTagCategories
 }))

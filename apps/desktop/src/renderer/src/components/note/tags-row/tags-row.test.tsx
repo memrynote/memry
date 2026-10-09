@@ -237,6 +237,54 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     expect(typeof callArgs[1]).toBe('string') // color
   })
 
+  it('lists a matching tag with fields first and ↵ adds it, never creating a plain tag', async () => {
+    const user = userEvent.setup()
+    const person = {
+      name: 'person',
+      key: 'person',
+      color: 'sky',
+      icon: null,
+      editable: true,
+      ownFields: [],
+      inherited: [],
+      effectiveFields: ['Company', 'Role'].map((name) => ({
+        name,
+        type: 'text' as const,
+        relation: null,
+        definedBy: 'person'
+      })),
+      hasFields: true,
+      extends: null,
+      ancestors: [],
+      template: { id: 'tpl', autofill: true, inheritedFrom: null },
+      preset: 'person' as const,
+      ownPreset: 'person' as const
+    }
+    const onAddTag = vi.fn()
+    const onCreateTag = vi.fn()
+    renderWithI18n(
+      <TagsRow
+        {...defaultProps}
+        availableTags={[
+          ...defaultProps.availableTags,
+          { id: 'person', name: 'person', color: 'sky' }
+        ]}
+        onAddTag={onAddTag}
+        onCreateTag={onCreateTag}
+        fieldHints={{ bodyEmpty: true, tags: { person } }}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /add tag/i }))
+    await user.type(screen.getByRole('textbox'), 'pers')
+
+    expect(screen.getByText('Company, Role')).toBeInTheDocument()
+    expect(screen.getByText(/Fills this empty note with the person template/)).toBeInTheDocument()
+    await user.keyboard('{enter}')
+    expect(onAddTag).toHaveBeenCalledWith('person')
+    expect(onCreateTag).not.toHaveBeenCalled()
+  })
+
   it('should close popup after selecting a tag', async () => {
     const user = userEvent.setup()
     renderWithI18n(<TagsRow {...defaultProps} />)

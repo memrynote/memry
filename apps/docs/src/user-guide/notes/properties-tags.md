@@ -193,6 +193,17 @@ Notes that were already linked to a project before this property existed get tha
 
 Files and calendar events have no frontmatter, so they keep their own **Add to project** action instead of a property — see [Projects](/user-guide/projects#linking-notes-events-and-files).
 
+## Tags With Fields
+
+A tag can carry fields. A note with that tag in its tags row then shows the fields as a group named after the tag, at the top of its properties panel.
+
+- **Ready-made tags.** The Tags hub offers Person, Company, Meeting and Book until you add them or click **Not now**. Adding one creates only the tag's definition, which holds its fields, template, icon and colour. If a tag of that name already exists, **Add fields** puts the fields on it and says how many notes carry it.
+- **Editing a tag.** On a tag's page, **Edit tag** opens its settings next to the table. There you can add, reorder, rename and remove fields, point a relation field at another tag, pick a template, and make the tag extend another tag. Removing a field never touches notes; their values stay as their own properties. Renaming a field renames that key in every note that has a value, with progress shown.
+- **Tagging a note.** The tag picker marks tags with fields and lists their field names. Adding one opens the properties panel. If the note is empty, the tag's template fills it, and **Undo** in the toast removes the template but keeps the tag. If the note already has text, a row offers **Add the template below your text** instead; dismissing that row is remembered for that note.
+- **Empty fields write nothing.** A field reaches the file only when you type a value. The note's other properties stay below, under **This note**.
+- **Untagging.** Removing the tag keeps every value as the note's own property. **Undo** puts the tag back.
+- **Tasks.** A tag with fields on a task shows its fields in the task drawer, under Tags. A filled relation field appears on the task's row as a chip, for example "Waiting on Ahmet Yılmaz".
+
 ## Tags vs Properties — When to Use Which
 
 | Need                                        | Use                   |

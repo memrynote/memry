@@ -118,6 +118,14 @@ vi.mock('@/components/folder-view/folder-emoji-chip', () => ({
   FolderEmojiChip: () => <div data-testid="folder-emoji-chip" />
 }))
 
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  resolveTag: () => null,
+  tagHasFields: () => false,
+  useEditTagSchema: () => vi.fn()
+}))
+
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     move: mocks.moveNote,

@@ -16,7 +16,12 @@ import {
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { applyTaskUpdate } from '@/contexts/tasks/apply-task-update'
-import { priorityReverseMap, toServiceRepeatConfig, toTaskUpdateInput } from './task-update-input'
+import {
+  applyFieldsPatch,
+  priorityReverseMap,
+  toServiceRepeatConfig,
+  toTaskUpdateInput
+} from './task-update-input'
 import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Tasks:Queries')
@@ -355,7 +360,11 @@ export function useTaskWorkspaceMutations() {
       // the tree redraws before the refetch lands.
       setTasks((prev) => {
         const current = prev.find((task) => task.id === taskId)
-        return current ? applyTaskUpdate(prev, { ...current, ...updates }, taskId) : prev
+        if (!current) return prev
+        const next = { ...current, ...updates }
+        // `updates.fields` is a patch, not the whole map.
+        if (updates.fields) next.fields = applyFieldsPatch(current.fields, updates.fields)
+        return applyTaskUpdate(prev, next, taskId)
       })
 
       try {

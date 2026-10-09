@@ -9,6 +9,7 @@ import {
   ReminderChannels,
   SearchChannels,
   TagsChannels,
+  PropertiesChannels,
   VaultChannels
 } from '@memry/contracts/ipc-channels'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
@@ -500,6 +501,10 @@ describe('preload api wrappers', () => {
     expectSubscribe(() => tagEvents.onTagColorUpdated(callback), TagsChannels.events.COLOR_UPDATED)
     expectSubscribe(() => tagEvents.onTagDeleted(callback), TagsChannels.events.DELETED)
     expectSubscribe(() => tagEvents.onTagNotesChanged(callback), TagsChannels.events.NOTES_CHANGED)
+    expectSubscribe(
+      () => tagEvents.onPropertyDefinitionChanged(callback),
+      PropertiesChannels.events.DEFINITION_CHANGED
+    )
   })
 
   it('routes folder, search, reminder, sync, and updater APIs', async () => {

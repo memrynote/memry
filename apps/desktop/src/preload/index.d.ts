@@ -2062,6 +2062,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagCategoriesChanged: (callback: () => void) => () => void
   onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
+  onPropertyDefinitionChanged: (callback: (event: { name: string }) => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void
