@@ -290,7 +290,8 @@ you right-click one or indent it under a task. For a single list, use one of the
 
 - **Undo right after it becomes a task.** The line goes back to a checkbox, now a plain one, and
   the task it had just become is deleted. The first time a checkbox becomes a task, a note in the
-  corner says so and offers **Keep as checkbox**, which does the same.
+  corner says so and offers **Keep as checkbox**, which does the same. With **Turn checklist items
+  into tasks** off, that note does not appear.
 - **Pick Check List from the `/` menu.** That makes a plain checkbox. Hold `Cmd`/`Ctrl` and press
   Enter on the row to get a task instead. Typing `[ ] ` is still the quick way to a task.
 - **Turn into > Checkbox** from the block menu, on any line of text. **Turn into > Task** goes

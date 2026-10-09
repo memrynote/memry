@@ -70,6 +70,7 @@ vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
   enqueueJournalUpdate: vi.fn(),
   enqueueJournalDelete: vi.fn(),
+  feedJournalBodyToCrdt: vi.fn().mockResolvedValue(undefined),
   initializeJournalCrdt: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -400,6 +401,31 @@ describe('journal-handlers', () => {
       JournalChannels.events.ENTRY_UPDATED,
       expect.objectContaining({ entry: expect.objectContaining({ id: 'cache-1' }) })
     )
+  })
+
+  // An open journal editor is bound to the entry's CRDT doc, and the update
+  // moves the index hash to the new bytes, so the watcher never feeds it. An
+  // update from outside the editor (the desktop API) stayed invisible, and the
+  // editor's next write-back put the old body back.
+  it('feeds the saved body to the entry CRDT doc so an open editor shows it', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry, content: 'Updated content' },
+      fileContent: 'serialized',
+      frontmatter: { date: baseEntry.date, tags: baseEntry.tags }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(journalVault.serializeJournalEntry as Mock).mockReturnValue('serialized')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Updated content'
+    })
+
+    expect(runtimeEffects.feedJournalBodyToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
   })
 
   it('flushes projections when update creates a missing journal entry', async () => {

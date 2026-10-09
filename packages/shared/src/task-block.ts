@@ -41,6 +41,9 @@ export interface TaskNormalizableBlock {
 export function serializeTaskBlock(props: TaskBlockProps): string {
   const check = props.checked ? 'x' : ' '
   const indent = props.parentTaskId ? '  ' : ''
+  // A draft task block has no row yet. An empty `{task:}` names nothing, so the
+  // line is written as the checkbox it is until the id lands.
+  if (!props.taskId) return `${indent}- [${check}] ${props.title}`
   return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
 }
 

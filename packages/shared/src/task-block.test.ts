@@ -43,6 +43,15 @@ describe('scanTaskCheckboxStates', () => {
     )
   })
 
+  // Enter in a task title leaves a draft task block with no id yet. Written as
+  // `- [ ]  {task:}` it put a dead marker in the file that no reader maps to a task.
+  it('writes a task block without an id as a plain checkbox line', () => {
+    expect(serializeTaskBlock({ taskId: '', title: '', checked: false })).toBe('- [ ] ')
+    expect(serializeTaskBlock({ taskId: '', title: 'Buy milk', checked: true })).toBe(
+      '- [x] Buy milk'
+    )
+  })
+
   it('tolerates other editors: any list marker, deep indent, uppercase X', () => {
     const md = ['* [X] Star {task:s1}', '+ [x] Plus {task:p1}', '      - [ ] Deep {task:d1}'].join(
       '\n'
