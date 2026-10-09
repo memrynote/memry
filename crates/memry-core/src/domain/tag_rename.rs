@@ -239,4 +239,26 @@ mod tests {
         })
         .expect("body");
     }
+
+    #[test]
+    fn rename_to_a_name_not_writable_inline_keeps_body_tags() {
+        let (db, _d) = vault("tags-rename-body-skip");
+        db.call_blocking(|c| {
+            assert!(
+                crate::domain::body_write::append_markdown(c, "n2", "Met #job.", "desk", NOW)
+                    .map_err(|e| StorageError::Failed {
+                        what: e.to_string()
+                    })?
+            );
+            rename(c, "job", "my job", "phone", NOW + 1)?;
+            let blocks = crate::domain::reads::note_blocks(c, "n2")
+                .map_err(|e| StorageError::Failed {
+                    what: e.to_string(),
+                })?
+                .expect("body");
+            assert_eq!(body_tags::extract(&blocks), vec!["job"]);
+            Ok(())
+        })
+        .expect("body");
+    }
 }

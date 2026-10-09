@@ -13,6 +13,8 @@
 //! note and journal, skipped unless its log holds the old name, edited through
 //! [`body_write`] so the update is logged and queued. The rename already moved
 //! the tag elsewhere, so a body that fails is reported on stderr and skipped.
+//! A new name the inline grammar cannot read back (`my project`, `2024`)
+//! leaves the bodies alone, as desktop's `isInlineTagName` check does.
 
 use rusqlite::Connection;
 use yrs::types::Attrs;
@@ -42,6 +44,20 @@ pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
         .map(|_| format!("{}{}", to.trim(), &tag[from.len()..]))
 }
 
+/// Whether `name` can be written as an inline `#name` and read back whole,
+/// after desktop's `INLINE_TAG_NAME` (`packages/shared/src/inline-tags.ts`).
+pub(crate) fn is_inline_tag_name(name: &str) -> bool {
+    let word = |segment: &str, first_alpha: bool| {
+        let mut chars = segment.chars();
+        chars
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || (!first_alpha && c.is_ascii_digit()))
+            && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    };
+    let mut segments = name.split('/');
+    segments.next().is_some_and(|head| word(head, true)) && segments.all(|s| word(s, false))
+}
+
 /// Renames `from` (and its children) to `to` in every live body.
 /// Never fails: see the module comment.
 pub(crate) fn rewrite_bodies(
@@ -51,6 +67,9 @@ pub(crate) fn rewrite_bodies(
     device_id: &str,
     now_ms: i64,
 ) {
+    if !is_inline_tag_name(to.trim()) {
+        return;
+    }
     let sources = match sources(conn) {
         Ok(sources) => sources,
         Err(error) => {
@@ -204,6 +223,16 @@ mod tests {
             Some("people/VIP")
         );
         assert_eq!(renamed_tag("personal", "person", "people"), None);
+    }
+
+    #[test]
+    fn inline_tag_names_match_desktop() {
+        for name in ["work", "a/b2", "x_y-z", "Area/2024"] {
+            assert!(is_inline_tag_name(name), "{name}");
+        }
+        for name in ["my project", "2024", "a/", "/a", "a//b", "-a", "ünï", ""] {
+            assert!(!is_inline_tag_name(name), "{name}");
+        }
     }
 
     #[test]
