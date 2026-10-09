@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import * as Y from 'yjs'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
@@ -13,6 +16,9 @@ import { CRDT_CHANNELS } from '@memry/contracts/ipc-crdt'
 const senderWindow = vi.hoisted(() => ({
   current: { id: 1, once: vi.fn() } as { id: number; once: ReturnType<typeof vi.fn> }
 }))
+
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-'))
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/crdt-test-userdata' },
@@ -55,7 +61,7 @@ vi.mock('../store', () => ({
   recordCrdtPersistenceOutcome: vi.fn(() => 0)
 }))
 
-vi.mock('../vault/notes', () => ({ toAbsolutePath: vi.fn() }))
+vi.mock('../vault/notes', () => ({ getVaultRoot: () => VAULT_ROOT, toAbsolutePath: vi.fn() }))
 vi.mock('../vault/file-ops', () => ({ safeRead: vi.fn() }))
 vi.mock('../vault/frontmatter', () => ({
   parseNote: vi.fn(),

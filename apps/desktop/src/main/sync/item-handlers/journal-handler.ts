@@ -1,4 +1,3 @@
-import fs from 'fs'
 import { and, isNotNull, isNull } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { JournalSyncPayloadSchema, type JournalSyncPayload } from '@memry/contracts/sync-payloads'
@@ -15,8 +14,10 @@ import {
   getJournalPath,
   getJournalRelativePath,
   parseJournalEntry,
+  readJournalTextSync,
   buildJournalEntryWrite
 } from '../../vault/journal'
+import { OutsideVaultError } from '../../lib/errors'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
@@ -74,12 +75,15 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     // Everything below stays synchronous: it runs inside the pull's page
     // transaction (#2284).
-    const { absolutePath, entry, fileContent, frontmatter } = buildJournalEntryWrite(
-      date,
-      data.content,
-      data.tags,
-      data.properties ?? undefined
-    )
+    let write: ReturnType<typeof buildJournalEntryWrite>
+    try {
+      write = buildJournalEntryWrite(date, data.content, data.tags, data.properties ?? undefined)
+    } catch (error) {
+      if (!(error instanceof OutsideVaultError)) throw error
+      log.warn('Skipping remote journal upsert: its file links outside the vault', { itemId })
+      return 'skipped'
+    }
+    const { absolutePath, entry, fileContent, frontmatter } = write
     const path = getJournalRelativePath(entry.date)
     const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
 
@@ -177,9 +181,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let content: string | null = null
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
-    const filePath = getJournalPath(cached.journalDate)
     try {
-      const raw = fs.readFileSync(filePath, 'utf-8')
+      const raw = readJournalTextSync(cached.journalDate)
       const parsed = parseJournalEntry(raw, cached.journalDate)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []

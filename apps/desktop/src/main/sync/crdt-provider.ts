@@ -40,6 +40,7 @@ import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { takeOwedFile } from './crdt-external-feed'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
+import { resolveVaultFile } from '../lib/paths'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
@@ -821,6 +822,7 @@ export class CrdtProvider {
       if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
+      if (await linksOutsideVault(noteId, cached.path)) return true
       const raw = await safeRead(toAbsolutePath(cached.path))
       if (raw === null) {
         clearOwedFileBody(noteId)
@@ -1692,6 +1694,7 @@ export class CrdtProvider {
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
+    if (await linksOutsideVault(noteId, cached.path)) return
 
     const absolutePath = toAbsolutePath(cached.path)
 
@@ -2364,6 +2367,13 @@ export class CrdtProvider {
     this.touchDoc(entry)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
+}
+
+/** A note file linked outside the vault gives the doc nothing: refuse, never follow (#2804). */
+async function linksOutsideVault(noteId: string, relativePath: string): Promise<boolean> {
+  if ((await resolveVaultFile(getVaultRoot(), relativePath)).kind !== 'outside') return false
+  log.warn('Refusing a note file that links outside the vault', { noteId })
+  return true
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

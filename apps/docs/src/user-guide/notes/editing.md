@@ -631,6 +631,11 @@ The flush on close or switch includes whatever you typed just before it, and it 
 
 You can flush manually with <kbd>⌘</kbd>+<kbd>S</kbd>. Auto-save delay is configurable in [Settings → Editor](/user-guide/settings#editor).
 
+Memry reads only files inside the vault. A note or journal file replaced by a symlink to a file
+outside the vault does not open. The error names the file. Memry does not save over it, search does
+not index it, and sync sends none of its text. The link stays as you made it. A symlink to another
+file inside the vault works as usual.
+
 ## Word Count
 
 If enabled in [Settings → Editor](/user-guide/settings#editor), word count appears in the editor footer.

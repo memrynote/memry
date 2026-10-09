@@ -40,7 +40,8 @@ vi.mock('../vault/journal', async () => {
   return {
     extractJournalProperties: (frontmatter: { properties?: Record<string, unknown> }) =>
       frontmatter.properties,
-    getJournalPath: (date: string) => path.join(h.journalDir, `${date}.md`),
+    readJournalTextSync: (date: string) =>
+      fs.readFileSync(path.join(h.journalDir, `${date}.md`), 'utf-8'),
     parseJournalEntry: (raw: string, date: string) => {
       const parsed = matter(raw)
       return { frontmatter: parsed.data, content: parsed.content.trim(), date }

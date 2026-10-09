@@ -81,7 +81,7 @@ import {
   syncFolderConfigDelete,
   syncFolderConfigDiscovered
 } from '../notes/folder-config-effects'
-import { normalizeRelativePath } from '../lib/paths'
+import { normalizeRelativePath, refuseOutsideVault } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
@@ -573,6 +573,8 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     claimed: { id: string; createdAt: string } | null
   ): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) {
       return
@@ -646,7 +648,13 @@ export class VaultWatcher {
       source: 'external'
     })
 
-    enqueueIngestBackfill({ noteId, absolutePath, relativePath, fileBytes: stats.size })
+    enqueueIngestBackfill({
+      noteId,
+      vaultPath,
+      absolutePath,
+      relativePath,
+      fileBytes: stats.size
+    })
 
     if (claimed === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
@@ -741,6 +749,7 @@ export class VaultWatcher {
     if (this.vaultPath) {
       enqueueIngestBackfill({
         noteId: id,
+        vaultPath: this.vaultPath,
         absolutePath: path.join(this.vaultPath, relativePath),
         relativePath,
         fileBytes: stats.size
@@ -867,6 +876,7 @@ export class VaultWatcher {
       if (getFileType(getExtension(absolutePath)) !== 'markdown') return
       const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
       if (!cached || !isNoteLocked(cached.id, relativePath)) return
+      await refuseOutsideVault(this.vaultPath, relativePath)
       const content = await safeRead(absolutePath)
       if (content !== null) await restoreLockedNoteFile(cached.id, content)
     } catch (err) {
@@ -883,6 +893,8 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    await refuseOutsideVault(this.vaultPath, relativePath)
     const content = await safeRead(absolutePath)
     if (!content) {
       return
