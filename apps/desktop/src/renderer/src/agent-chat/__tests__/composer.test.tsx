@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { toast } from 'sonner'
@@ -29,7 +30,7 @@ vi.mock('@/lib/voice-memo-audio', () => ({
 }))
 
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
-import { Composer } from '../composer'
+import { Composer, type ComposerHandle } from '../composer'
 
 class MockMediaRecorder {
   static isTypeSupported = vi.fn(() => true)
@@ -239,6 +240,32 @@ describe('Composer', () => {
       attachments: [],
       backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
     })
+  })
+
+  it('sends a message through its handle without touching the draft', async () => {
+    const handle = createRef<ComposerHandle>()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsModalProvider>
+          <Composer ref={handle} conversationId="conversation-1" sourceWindowId="window-1" />
+        </SettingsModalProvider>
+      </QueryClientProvider>
+    )
+    const textbox = await setPromptText('half typed')
+
+    await act(async () => {
+      await handle.current?.send('Continue')
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'Continue',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
+    })
+    expect(textbox).toHaveTextContent('half typed')
   })
 
   it('submits from pointer down on the send button', async () => {

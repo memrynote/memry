@@ -321,6 +321,38 @@ describe('AssistantMessage', () => {
     expect(screen.queryByText(/nothing ran/)).not.toBeInTheDocument()
   })
 
+  it('says the turn stopped at the step limit and continues from a button', async () => {
+    const stopped = (text: string): Message => ({
+      ...assistantMessage(text),
+      content: { role: 'assistant', data: { text, stepLimitReached: true } }
+    })
+    const onContinue = vi.fn()
+    const { rerender } = render(
+      <AssistantMessage message={stopped('Done: A. Left: B.')} onContinue={onContinue} />
+    )
+
+    expect(screen.getByText('Stopped at the step limit.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(onContinue).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/nothing ran/)).not.toBeInTheDocument()
+
+    rerender(<AssistantMessage message={stopped('Done: A. Left: B.')} />)
+    expect(screen.getByText('Stopped at the step limit.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+
+    rerender(
+      <AssistantMessage
+        message={stopped('<tool_call>{"name":"vault_get_tags"}</tool_call>')}
+        onContinue={onContinue}
+      />
+    )
+    expect(screen.getByText(/wrote a tool call as text, and nothing ran/)).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={assistantMessage('Done.')} onContinue={onContinue} />)
+    expect(screen.queryByText('Stopped at the step limit.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+  })
+
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
     const streaming = (text: string): Message => ({
       ...assistantMessage(text),

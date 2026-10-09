@@ -880,6 +880,36 @@ describe('runTurn against a stub backend', () => {
     ])
   })
 
+  it('persists that the turn stopped at the step limit', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'assistant_delta', text: 'Done: A. Left: B.' },
+        { kind: 'step_limit' },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        backendOptions: { backend: 'local_openai_compatible', model: 'deepseek-chat' }
+      }
+    )
+
+    const assistant = messages.listByConversation('conversation-1')[1]
+    expect(assistant.status).toBe('completed')
+    expect(assistant.content).toEqual({
+      role: 'assistant',
+      data: { text: 'Done: A. Left: B.', stepLimitReached: true }
+    })
+  })
+
   it('broadcasts failed tool results and ignores unknown backend events', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })
