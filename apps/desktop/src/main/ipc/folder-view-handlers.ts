@@ -42,6 +42,7 @@ import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/not
 import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
 import { defaultFieldTagView, fieldColumns, listFieldTagRows, tagItemToRow } from '../tags/objects'
 import { loadResolvedTags } from '../tags/schema/read'
+import { getPropertiesForNotes } from '../notes/store'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -76,35 +77,6 @@ function computeRelativeFolder(notePath: string, viewedFolder: string): string {
   }
 
   return '/'
-}
-
-/**
- * Batch-fetch every property value for the given notes.
- * Shared by both scopes — a tag view is worthless if its property columns
- * are blank, so tag rows go through exactly the same fetch folders use.
- */
-async function fetchPropertiesFor(
-  db: ReturnType<typeof getDataDb>,
-  noteIds: string[]
-): Promise<Map<string, Record<string, unknown>>> {
-  const propertiesMap = new Map<string, Record<string, unknown>>()
-  for (const noteId of noteIds) {
-    const propsResult = await db
-      .select({ name: noteProperties.name, value: noteProperties.value })
-      .from(noteProperties)
-      .where(eq(noteProperties.noteId, noteId))
-
-    const props: Record<string, unknown> = {}
-    propsResult.forEach((row) => {
-      try {
-        props[row.name] = row.value ? JSON.parse(row.value) : null
-      } catch {
-        props[row.name] = row.value
-      }
-    })
-    propertiesMap.set(noteId, props)
-  }
-  return propertiesMap
 }
 
 /**
@@ -346,7 +318,7 @@ export function registerFolderViewHandlers(): void {
 
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
-          const propertiesMap = await fetchPropertiesFor(db, noteIds)
+          const propertiesMap = getPropertiesForNotes(db, noteIds)
           const rows = items.map((item) => tagItemToRow(item, propertiesMap.get(item.id) ?? {}))
 
           const page = rows.slice(input.offset, input.offset + input.limit)
@@ -413,8 +385,8 @@ export function registerFolderViewHandlers(): void {
         // Batch fetch properties for all notes.
         // When input.properties is undefined, fetch ALL properties (for column flexibility)
         // When input.properties is specified, only fetch those (for optimization) —
-        // currently fetchPropertiesFor always fetches all, for simplicity.
-        const propertiesMap = await fetchPropertiesFor(db, noteIds)
+        // currently getPropertiesForNotes always fetches all, for simplicity.
+        const propertiesMap = getPropertiesForNotes(db, noteIds)
 
         // Build response
         const notesWithProps: NoteWithProperties[] = notes.map((note) => ({

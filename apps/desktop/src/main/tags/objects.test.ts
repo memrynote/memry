@@ -187,8 +187,8 @@ describe('object reads for tags with fields', () => {
     expect(result.complete).toBeUndefined()
     expect(result.notes.map((row) => row.id).sort()).toEqual(['a', 'b', 'c', 'j'])
     expect(result.notes.every((row) => row.viaTag === undefined)).toBe(true)
-    // Plain tags keep the legacy JSON.parse of stored values (unchanged output).
-    expect(result.notes.find((row) => row.id === 'a')?.properties).toEqual({ n: 123 })
+    // Typed by the stored type, as field tags read them: a text "123" stays a string.
+    expect(result.notes.find((row) => row.id === 'a')?.properties).toEqual({ n: '123' })
   })
 
   it('derives the default view and empty field columns from the schema', async () => {
