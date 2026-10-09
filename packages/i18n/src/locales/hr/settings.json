@@ -2220,7 +2220,8 @@
         "label": "Zadani pristup",
         "description": "Postavlja početni način pristupa za nove poruke agentu.",
         "vaultOnly": "Samo trezor",
-        "computerAccess": "Pristup računalu"
+        "computerAccess": "Pristup računalu",
+        "builtInNote": "Ugrađena veza s modelom uvijek koristi samo alate trezora."
       },
       "confirm": {
         "label": "Potvrda radnji",

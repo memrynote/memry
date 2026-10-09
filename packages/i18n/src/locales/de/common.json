@@ -346,7 +346,10 @@
         "access": "Zugriff",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}"
+      "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Mit diesem Modell nur Tresor-Werkzeuge"
+      }
     },
     "refPicker": {
       "noMatches": "Keine Übereinstimmungen"

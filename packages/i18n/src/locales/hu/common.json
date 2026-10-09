@@ -346,7 +346,10 @@
         "access": "Hozzáférés",
         "tools": "Eszközök"
       },
-      "modelSettingsLabel": "Ügynök modellbeállításai: {model}, {settings}"
+      "modelSettingsLabel": "Ügynök modellbeállításai: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Ezzel a modellel csak a széf eszközei"
+      }
     },
     "refPicker": {
       "noMatches": "Nincs találat"

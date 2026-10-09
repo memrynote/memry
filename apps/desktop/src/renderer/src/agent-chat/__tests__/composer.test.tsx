@@ -752,6 +752,54 @@ describe('Composer', () => {
     })
   })
 
+  it('shows computer access and web search as unavailable on the built-in backend and sends vault-only', async () => {
+    vi.mocked(window.api.agent.getPreferences).mockResolvedValue({
+      accessMode: 'computer_access',
+      toolApprovalMode: 'always_accept'
+    })
+    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: ['deepseek-chat'] })
+    renderComposer('conversation-1')
+
+    await openSettingsMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /web search/i }))
+    expect(screen.getByRole('menuitem', { name: /^access/i })).toHaveTextContent('Computer access')
+    closeMenus()
+
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'deepseek-chat' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('deepseek-chat')
+    )
+
+    await openSettingsMenu()
+    const webSearch = screen.getByRole('menuitem', { name: /web search/i })
+    expect(webSearch).toHaveAttribute('aria-disabled', 'true')
+    expect(webSearch).toHaveTextContent('Vault tools only with this model')
+    expect(screen.getByRole('switch', { name: /web search/i })).not.toBeChecked()
+    openSubmenu(screen.getByRole('menuitem', { name: /^access/i }))
+    const computerAccess = await screen.findByRole('menuitem', { name: /computer access/i })
+    expect(computerAccess).toHaveAttribute('aria-disabled', 'true')
+    expect(computerAccess).toHaveTextContent('Vault tools only with this model')
+    expect(screen.getByRole('menuitem', { name: /^access/i })).toHaveTextContent('Vault only')
+    closeMenus()
+
+    await setPromptText('read the log in Downloads')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'read the log in Downloads',
+      attachments: [],
+      backendOptions: {
+        backend: 'local_openai_compatible',
+        toolsEnabled: true,
+        model: 'deepseek-chat'
+      }
+    })
+    expect(window.api.agent.setPreferences).not.toHaveBeenCalled()
+  })
+
   it('offers Settings from the local section when no local setup exists', async () => {
     renderComposer('conversation-1')
 

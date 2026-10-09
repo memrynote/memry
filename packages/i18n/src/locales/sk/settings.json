@@ -2220,7 +2220,8 @@
         "label": "Predvolený prístup",
         "description": "Nastaví východiskový režim prístupu pre nové správy agentovi.",
         "vaultOnly": "Iba trezor",
-        "computerAccess": "Prístup k počítaču"
+        "computerAccess": "Prístup k počítaču",
+        "builtInNote": "Vstavané pripojenie k modelu vždy používa iba nástroje trezoru."
       },
       "confirm": {
         "label": "Potvrdzovať akcie",

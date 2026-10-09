@@ -485,6 +485,10 @@ The Agent Chat prompt bar can override access for one turn and can enable web se
 backend supports it. Vault-only turns keep the CLI backend constrained to memrynote tools; computer
 access turns grant broader local CLI access for that turn.
 
+The built-in model connection always runs with vault tools only. Computer access and web search
+apply to the CLI backends (Claude, Codex, Antigravity); with a local or custom model selected, both
+show as unavailable in the prompt bar and the saved default is left as it is.
+
 Loopback endpoints are treated as local. Custom non-loopback endpoints require an explicit
 not-fully-local acknowledgement because prompts and tool results are sent to that server.
 

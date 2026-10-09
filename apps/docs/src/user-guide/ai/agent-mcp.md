@@ -258,6 +258,14 @@ only** or **Computer access**, and optionally allow web search for that turn.
 backend broader local CLI access for that turn. Web search is passed through only when the selected
 backend supports it.
 
+The built-in model connection (local or custom OpenAI-compatible endpoints) has memrynote vault
+tools only: no shell, no files outside the vault, and no web search. With that backend selected,
+**Computer access** and **Web search** show as unavailable with the reason "Vault tools only with
+this model", and the turn runs vault-only with web search off. Your saved default does not change,
+so switching back to Claude, Codex, or Antigravity picks it up again. The prompt tells the model the
+same thing in its permissions section: "Runtime: built-in model connection. Tools: memrynote vault
+tools only."
+
 Claude and Codex conversations also have a per-conversation model selector. memrynote starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
 CLI for each turn. The built-in model list is only a shortcut for common CLI aliases; type a custom

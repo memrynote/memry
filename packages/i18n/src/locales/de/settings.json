@@ -2220,7 +2220,8 @@
         "label": "Standardzugriff",
         "description": "Legt den anfänglichen Zugriffsmodus für neue Anfragen an den Agenten fest.",
         "vaultOnly": "Nur Tresor",
-        "computerAccess": "Computerzugriff"
+        "computerAccess": "Computerzugriff",
+        "builtInNote": "Die integrierte Modellverbindung nutzt immer nur Tresor-Werkzeuge."
       },
       "confirm": {
         "label": "Aktionen bestätigen",

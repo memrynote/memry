@@ -2220,7 +2220,8 @@
         "label": "Varsayılan erişim",
         "description": "Yeni ajan istekleri için başlangıç erişim modunu belirler.",
         "vaultOnly": "Yalnızca kasa",
-        "computerAccess": "Bilgisayar erişimi"
+        "computerAccess": "Bilgisayar erişimi",
+        "builtInNote": "Yerleşik model bağlantısı her zaman yalnızca kasa araçlarıyla çalışır."
       },
       "confirm": {
         "label": "İşlemleri onayla",
