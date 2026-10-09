@@ -196,7 +196,7 @@ extension VaultBrowseViewModel {
         do {
             let id = try await writer.create(title: title, folderPath: folderPath)
             Log.storage.info("created a note", .count(1))
-            await reload()
+            await wrote()
             return id
         } catch {
             report(error, "a note could not be created")
@@ -208,7 +208,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.rename(id: id, title: title)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a note could not be renamed")
         }
@@ -218,7 +218,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.move(id: id, folderPath: folderPath)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a note could not be moved")
         }
@@ -228,7 +228,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.delete(id: id)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a note could not be deleted")
         }
@@ -240,7 +240,7 @@ extension VaultBrowseViewModel {
         guard let metadataWriter else { return }
         do {
             try await metadataWriter.setIcon(id: id, icon: icon)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a note icon could not be set")
         }
@@ -272,7 +272,7 @@ extension VaultBrowseViewModel {
         let path = parent.map { "\($0)/\(name)" } ?? name
         do {
             try await writer.createFolder(path: path)
-            await reload()
+            await wrote()
             return path
         } catch {
             report(error, "a folder could not be created")
@@ -285,7 +285,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.setFolderIcon(path: path, icon: icon)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a folder icon could not be set")
         }
@@ -297,7 +297,7 @@ extension VaultBrowseViewModel {
         guard !name.isEmpty, name != path.split(separator: "/").last.map(String.init) else { return }
         do {
             try await writer.renameFolder(path: path, newName: name)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a folder could not be renamed")
         }
@@ -307,7 +307,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.moveFolder(path: path, newParent: parent)
-            await reload()
+            await wrote()
         } catch {
             report(error, "a folder could not be moved")
         }
@@ -329,12 +329,21 @@ extension VaultBrowseViewModel {
                 try await writer.deleteFolder(path: path)
             }
             Log.storage.info("deleted a folder", .count(node.subtreeNotes.count))
-            await reload()
+            await wrote()
         } catch {
             report(error, "a folder could not be deleted")
-            // Some notes may already be gone; show what is true now.
-            await reload()
+            // Some notes may already be gone; push their tombstones and show
+            // what is true now.
+            await wrote()
         }
+    }
+
+    /// After a write: ask for a sync pass, then re-read the outline. The write
+    /// is only in the outbox until a pass pushes it, so a write that asked for
+    /// none waited for the next foreground and was lost with the app (#2893).
+    private func wrote() async {
+        requestSync?()
+        await reload()
     }
 
     /// A failed write says what failed and what to do next, and the outline

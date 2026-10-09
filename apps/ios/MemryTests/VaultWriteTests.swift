@@ -160,6 +160,23 @@ struct VaultWriteTests {
         #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
     }
 
+    @Test("a delete asks for a sync pass, and a failed one does not")
+    func aDeleteAsksForASync() async {
+        // The tombstone sits in the outbox until a pass pushes it. A delete
+        // that asked for none waited for the next foreground, and a phone
+        // wiped before then never told the server (#2893).
+        let model = model(writer: ScriptedWriter())
+        var requests = 0
+        model.requestSync = { requests += 1 }
+        await model.deleteNote(id: "note-0")
+        #expect(requests == 1)
+
+        let failing = self.model(writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        await failing.deleteNote(id: "note-0")
+        #expect(requests == 1, "a write that did not land has nothing to push")
+    }
+
     @Test("a screen with no writer performs no write")
     func noWriterNoWrite() async {
         // The affordances are hidden in this case, so this is the belt behind
