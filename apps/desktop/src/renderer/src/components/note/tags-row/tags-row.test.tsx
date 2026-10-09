@@ -279,7 +279,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     await user.type(screen.getByRole('textbox'), 'pers')
 
     expect(screen.getByText('Company, Role')).toBeInTheDocument()
-    expect(screen.getByText(/Fills this empty note with the person template/)).toBeInTheDocument()
+    expect(screen.getByText(/Fills this empty note with the Person template/)).toBeInTheDocument()
     await user.keyboard('{enter}')
     expect(onAddTag).toHaveBeenCalledWith('person')
     expect(onCreateTag).not.toHaveBeenCalled()

@@ -118,7 +118,8 @@ under **Mentioned in** below the table.
 - A task row edits the tag's fields on the task.
 - Grouping by a relation field titles each group with the linked note. Each group has
   **New … in …**, which creates a note with the tag and the group's value filled in.
-  Hold <kbd>⌘</kbd> while clicking it to also open the new note in a new tab.
+  Hold <kbd>⌘</kbd> while clicking it, or press <kbd>⌘</kbd><kbd>↵</kbd> on it, to also open the
+  new note in a new tab.
 - Opening the table from a count under **Linked here** adds a filter such as
   "Attendees includes Ahmet Yılmaz". Remove it with its ×, or choose **Save view** to
   keep it in the view.

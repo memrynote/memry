@@ -88,6 +88,10 @@ A relation field links to other notes, such as a meeting's Attendees. Its settin
 - **List them as**: the label on the linked note's **Linked here** panel, such as Meetings on
   a person. That list is read-only; nothing is written to the linked note.
 
+You can also drag a note from the sidebar onto a relation field. If the note does not have
+the target tag yet, Memry asks before it adds the tag to the note's header and links it. A
+field set to one link replaces its value when you pick or drop another note.
+
 The value is stored as a list of `memry://note/<id>` links, even for "one".
 
 ### Extends
