@@ -226,10 +226,11 @@ struct CoreNotesReader: NotesReading {
         return try await executor.run { try vault.notes().metadata(id: id) }
     }
 
-    /// A title lookup, then an alias pass. Blocking like its siblings.
+    /// A vault-path lookup, a title lookup, then an alias pass. Blocking like
+    /// its siblings.
     func resolveWikiTarget(_ target: String) async throws -> String? {
         let vault = vault
-        return try await executor.run { try vault.notes().resolveWikiTarget(target: target) }
+        return try await executor.run { try vault.notes().resolveWikiTarget(target: target)?.id }
     }
 
     func bookmarks() async throws -> [BookmarkEntry] {

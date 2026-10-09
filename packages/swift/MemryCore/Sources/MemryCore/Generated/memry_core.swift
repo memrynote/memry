@@ -5240,14 +5240,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func reminders(noteId: String) throws  -> [ReminderSummary]
     
     /**
-     * What a `[[wiki link]]` points at, by title and then by alias.
+     * What a `[[wiki link]]` points at: by vault path when the note half
+     * holds a `/`, then by title, then by alias, with the `#Heading` to
+     * scroll to.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
      * title rather than an id, so a link can name a note that does not exist
      * and the shell offers to create it. Nothing is created here — a reader
      * that wrote would turn scrolling past a broken link into an edit.
      */
-    func resolveWikiTarget(target: String) throws  -> String?
+    func resolveWikiTarget(target: String) throws  -> NoteLinkTarget?
     
     /**
      * One table's rows, cells and column widths, by the `blockContainer` id
@@ -5614,15 +5616,17 @@ open func reminders(noteId: String)throws  -> [ReminderSummary]  {
 }
     
     /**
-     * What a `[[wiki link]]` points at, by title and then by alias.
+     * What a `[[wiki link]]` points at: by vault path when the note half
+     * holds a `/`, then by title, then by alias, with the `#Heading` to
+     * scroll to.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
      * title rather than an id, so a link can name a note that does not exist
      * and the shell offers to create it. Nothing is created here — a reader
      * that wrote would turn scrolling past a broken link into an edit.
      */
-open func resolveWikiTarget(target: String)throws  -> String?  {
-    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func resolveWikiTarget(target: String)throws  -> NoteLinkTarget?  {
+    return try  FfiConverterOptionTypeNoteLinkTarget.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_resolve_wiki_target(
             self.uniffiCloneHandle(),
@@ -7946,9 +7950,11 @@ public protocol SearchProtocol: AnyObject, Sendable {
      * query would have returned an empty list forever and read as "no note
      * links here".
      *
-     * Matched on the **title** rather than only on a resolved id, so a link
-     * written before its target existed still counts once the target is
-     * created — which is the case `target_id` being nullable exists for.
+     * Matched on the **title** (any case) and on the note's vault-path forms
+     * (`Folder/Note`, `/Folder/Note.md`, ...) rather than only on a resolved
+     * id, so a link written before its target existed still counts once the
+     * target is created — which is the case `target_id` being nullable
+     * exists for.
      */
     func backlinks(noteId: String, order: BacklinkOrder) throws  -> [Backlink]
     
@@ -8058,9 +8064,11 @@ open class Search: SearchProtocol, @unchecked Sendable {
      * query would have returned an empty list forever and read as "no note
      * links here".
      *
-     * Matched on the **title** rather than only on a resolved id, so a link
-     * written before its target existed still counts once the target is
-     * created — which is the case `target_id` being nullable exists for.
+     * Matched on the **title** (any case) and on the note's vault-path forms
+     * (`Folder/Note`, `/Folder/Note.md`, ...) rather than only on a resolved
+     * id, so a link written before its target existed still counts once the
+     * target is created — which is the case `target_id` being nullable
+     * exists for.
      */
 open func backlinks(noteId: String, order: BacklinkOrder)throws  -> [Backlink]  {
     return try  FfiConverterSequenceTypeBacklink.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -19975,6 +19983,71 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * The note a `[[wiki link]]` opens, and the heading to scroll to.
+ */
+public struct NoteLinkTarget: Equatable, Hashable {
+    public var id: String
+    /**
+     * The `#Heading` half, `None` when there is nothing to scroll to: no `#`,
+     * a `#^block` reference, or a `#` that belongs to the title.
+     */
+    public var heading: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * The `#Heading` half, `None` when there is nothing to scroll to: no `#`,
+         * a `#^block` reference, or a `#` that belongs to the title.
+         */heading: String?) {
+        self.id = id
+        self.heading = heading
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteLinkTarget: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteLinkTarget: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteLinkTarget {
+        return
+            try NoteLinkTarget(
+                id: FfiConverterString.read(from: &buf), 
+                heading: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteLinkTarget, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.heading, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteLinkTarget_lift(_ buf: RustBuffer) throws -> NoteLinkTarget {
+    return try FfiConverterTypeNoteLinkTarget.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteLinkTarget_lower(_ value: NoteLinkTarget) -> RustBuffer {
+    return FfiConverterTypeNoteLinkTarget.lower(value)
+}
+
+
+/**
  * A note's tags and properties.
  */
 public struct NoteMetadata: Equatable, Hashable {
@@ -24142,6 +24215,10 @@ public struct WikiTargetMatch: Equatable, Hashable {
      * The journal's date, `None` for a note.
      */
     public var date: String?
+    /**
+     * The `#Heading` half to scroll to, see [`NoteLinkTarget::heading`].
+     */
+    public var heading: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -24154,10 +24231,14 @@ public struct WikiTargetMatch: Equatable, Hashable {
          */kind: String, 
         /**
          * The journal's date, `None` for a note.
-         */date: String?) {
+         */date: String?, 
+        /**
+         * The `#Heading` half to scroll to, see [`NoteLinkTarget::heading`].
+         */heading: String?) {
         self.id = id
         self.kind = kind
         self.date = date
+        self.heading = heading
     }
 
     
@@ -24178,7 +24259,8 @@ public struct FfiConverterTypeWikiTargetMatch: FfiConverterRustBuffer {
             try WikiTargetMatch(
                 id: FfiConverterString.read(from: &buf), 
                 kind: FfiConverterString.read(from: &buf), 
-                date: FfiConverterOptionString.read(from: &buf)
+                date: FfiConverterOptionString.read(from: &buf), 
+                heading: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -24186,6 +24268,7 @@ public struct FfiConverterTypeWikiTargetMatch: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.kind, into: &buf)
         FfiConverterOptionString.write(value.date, into: &buf)
+        FfiConverterOptionString.write(value.heading, into: &buf)
     }
 }
 
@@ -29416,6 +29499,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteLinkTarget: FfiConverterRustBuffer {
+    typealias SwiftType = NoteLinkTarget?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteLinkTarget.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteLinkTarget.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeNoteMetadata: FfiConverterRustBuffer {
     typealias SwiftType = NoteMetadata?
 
@@ -32707,7 +32814,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_reminders() != 16202) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 21867) {
+    if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 32390) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_table() != 23484) {
@@ -32818,7 +32925,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_backlinks() != 53743) {
+    if (uniffi_memry_core_checksum_method_search_backlinks() != 60571) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_links_from() != 32512) {

@@ -292,12 +292,14 @@ fn wiki_resolution_prefers_a_note_then_the_day_then_the_j_date_form() {
             id: "n1".to_owned(),
             kind: "note".to_owned(),
             date: None,
+            heading: None,
         })
     );
     let journal_match = Some(WikiTargetMatch {
         id: target.clone(),
         kind: "journal".to_owned(),
         date: Some(DAY.to_owned()),
+        heading: None,
     });
     assert_eq!(resolve(DAY), journal_match);
     assert_eq!(resolve(" j2099-06-15 "), journal_match);

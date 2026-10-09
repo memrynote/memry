@@ -141,13 +141,18 @@ impl Notes {
             .call_blocking(move |conn| note_meta::metadata(conn, &id))
     }
 
-    /// What a `[[wiki link]]` points at, by title and then by alias.
+    /// What a `[[wiki link]]` points at: by vault path when the note half
+    /// holds a `/`, then by title, then by alias, with the `#Heading` to
+    /// scroll to.
     ///
     /// `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
     /// title rather than an id, so a link can name a note that does not exist
     /// and the shell offers to create it. Nothing is created here — a reader
     /// that wrote would turn scrolling past a broken link into an edit.
-    pub fn resolve_wiki_target(&self, target: String) -> Result<Option<String>, StorageError> {
+    pub fn resolve_wiki_target(
+        &self,
+        target: String,
+    ) -> Result<Option<note_meta::NoteLinkTarget>, StorageError> {
         self.db
             .call_blocking(move |conn| note_meta::resolve_wiki_target(conn, &target))
     }

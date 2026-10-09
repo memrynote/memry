@@ -290,10 +290,7 @@ fn index_note(
 /// Journal sources are projected the same way: their body is a document keyed
 /// by the record id, and [`index_note`] reaches this for both types.
 ///
-/// `target_id` is resolved here rather than at query time, and left `NULL`
-/// when no note or journal day carries that title — which is how a forward reference to a
-/// note that does not exist yet survives until it is created. The title is
-/// always stored, so the link is still a link in the meantime.
+/// The rows themselves are [`super::links::write`]'s.
 fn index_links(
     data: &Connection,
     index: &Connection,
@@ -307,59 +304,7 @@ fn index_links(
     let blocks = extract_blocks(&document).map_err(|error| crdt_failed(id, error))?;
     body_tags::write(data, id, &body_tags::extract(&blocks))?;
 
-    // One row per distinct title: the primary key is (source_id, target_title)
-    // and a note linking to the same place twice is still one link between two
-    // notes. The mention count belongs to the reader, not to the edge.
-    let mut seen: BTreeSet<String> = BTreeSet::new();
-    for block in &blocks {
-        for run in &block.inline {
-            let is_link = run
-                .marks
-                .iter()
-                .any(|mark| mark == "wikiLink" || mark == "linkMention");
-            let Some(target) = run.target.as_deref().filter(|_| is_link) else {
-                continue;
-            };
-            let target = target.trim();
-            if target.is_empty() {
-                continue;
-            }
-            seen.insert(target.to_owned());
-        }
-    }
-
-    for title in seen {
-        // Resolved by title against the live notes, which is what a wiki link
-        // names (§12.3).
-        let target_id: Option<String> = data
-            .query_row(
-                "SELECT id FROM notes WHERE title = ?1 AND deleted_at IS NULL LIMIT 1",
-                params![&title],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(failed)?;
-        // No note by that title: a live journal whose date it spells, since
-        // desktop titles a journal with its date. A day created later is still
-        // found by title at query time, as a note is.
-        let target_id = match target_id {
-            Some(id) => Some(id),
-            None => match crate::domain::note_meta::journal_date_of(&title) {
-                Some((date, _)) => crate::domain::journal::live_entry(data, &date)?,
-                None => None,
-            },
-        };
-        index
-            .execute(
-                "INSERT INTO note_links (source_id, target_id, target_title)
-                 VALUES (?1, ?2, ?3)
-                 ON CONFLICT(source_id, target_title) DO UPDATE SET
-                     target_id = excluded.target_id",
-                params![id, target_id, title],
-            )
-            .map_err(failed)?;
-    }
-    Ok(())
+    super::links::write(data, index, id, &blocks)
 }
 
 /// Re-indexes one task. A task has no body document, so `description` is the

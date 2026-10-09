@@ -25,6 +25,7 @@ use rusqlite::OptionalExtension as _;
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::search::{self, HitKind, SearchHit};
+use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
 /// One search result.
@@ -132,9 +133,11 @@ impl Search {
     /// query would have returned an empty list forever and read as "no note
     /// links here".
     ///
-    /// Matched on the **title** rather than only on a resolved id, so a link
-    /// written before its target existed still counts once the target is
-    /// created — which is the case `target_id` being nullable exists for.
+    /// Matched on the **title** (any case) and on the note's vault-path forms
+    /// (`Folder/Note`, `/Folder/Note.md`, ...) rather than only on a resolved
+    /// id, so a link written before its target existed still counts once the
+    /// target is created — which is the case `target_id` being nullable
+    /// exists for.
     pub fn backlinks(
         &self,
         note_id: String,
@@ -142,11 +145,11 @@ impl Search {
     ) -> Result<Vec<Backlink>, StorageError> {
         let index = self.index.clone();
         self.data.call_blocking(move |data| {
-            let title: Option<String> = data
+            let note: Option<(String, Option<String>)> = data
                 .query_row(
-                    "SELECT title FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+                    "SELECT title, folder_path FROM notes WHERE id = ?1 AND deleted_at IS NULL",
                     rusqlite::params![&note_id],
-                    |row| row.get(0),
+                    |row| Ok((row.get(0)?, row.get(1)?)),
                 )
                 .optional()
                 .map_err(|error| StorageError::Failed {
@@ -154,21 +157,27 @@ impl Search {
                 })?;
             // No such note is an empty list rather than an error: a note that
             // is not here has nothing linking to it that this vault can name.
-            let Some(title) = title else {
+            let Some((title, folder_path)) = note else {
                 return Ok(Vec::new());
             };
+            let keys =
+                serde_json::to_string(&wiki_target::path_link_keys(folder_path.as_deref(), &title))
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })?;
 
             let sources: Vec<(String, String)> = index.call_blocking(|index| {
                 let mut statement = index
                     .prepare(
                         "SELECT source_id, target_title FROM note_links \
-                         WHERE target_id = ?1 OR target_title = ?2",
+                         WHERE target_id = ?1 OR target_title = ?2 COLLATE NOCASE \
+                           OR lower(target_title) IN (SELECT value FROM json_each(?3))",
                     )
                     .map_err(|error| StorageError::Failed {
                         what: error.to_string(),
                     })?;
                 let rows = statement
-                    .query_map(rusqlite::params![&note_id, &title], |row| {
+                    .query_map(rusqlite::params![&note_id, &title, &keys], |row| {
                         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
                     })
                     .map_err(|error| StorageError::Failed {
