@@ -356,6 +356,7 @@ struct NoteReadView: View {
                 composer: composer,
                 history: history,
                 renaming: $renaming,
+                renameDraft: $renameDraft,
                 moving: $moving,
                 confirmingDelete: $confirmingDelete,
                 choosingCover: $choosingCover,
