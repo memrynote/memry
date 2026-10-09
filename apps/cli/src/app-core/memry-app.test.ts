@@ -292,7 +292,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     baseUrl: 'http://localhost:11434/v1',
     model: '',
     apiKeyConfigured: false,
-    allowNonLoopback: false
+    allowNonLoopback: false,
+    thinking: 'default'
   })
   assert.deepEqual(
     await app.agent.setLocalProviderSettings({
@@ -305,7 +306,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
       baseUrl: 'http://localhost:1234/v1',
       model: 'qwen',
       apiKeyConfigured: false,
-      allowNonLoopback: false
+      allowNonLoopback: false,
+      thinking: 'default'
     }
   )
 

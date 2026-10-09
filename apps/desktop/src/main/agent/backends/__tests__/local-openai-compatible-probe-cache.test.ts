@@ -77,7 +77,8 @@ function backendFor(fetchImpl: ReturnType<typeof vi.fn>, apiKey = { value: 'key-
       baseUrl: 'https://api.example.test/v1',
       model: MODEL,
       apiKeyConfigured: true,
-      allowNonLoopback: true
+      allowNonLoopback: true,
+      thinking: 'default'
     }),
     getApiKey: async () => apiKey.value,
     toolBridge: { execute: vi.fn() } as never,

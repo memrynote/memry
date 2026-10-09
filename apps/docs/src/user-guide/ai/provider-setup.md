@@ -105,6 +105,20 @@ API keys are stored **locally**, in the vault, encrypted with the vault key. The
 
 Rotating a key in the provider's dashboard requires updating it here too.
 
+## Agent Chat built-in model
+
+Agent Chat's built-in model connection is configured separately, under
+[Agent Permissions](/user-guide/settings#agent-permissions). It accepts any OpenAI-compatible base
+URL, model name, and API key. Two controls change how a reasoning model such as DeepSeek thinks:
+
+- **Effort** in the prompt bar sets reasoning depth per turn. **Default** sends nothing extra;
+  **High** and **Max** send `reasoning_effort: "high"` or `"max"`.
+- **Thinking** in the connection settings. **Default** sends nothing extra; **Off** sends
+  `thinking: {"type": "disabled"}` for faster, cheaper answers.
+
+Both controls are hidden for the Ollama preset. Leave them at **Default** for a server that does not
+know these fields, since some servers reject a request with fields they do not recognise.
+
 ## Troubleshooting
 
 | Symptom                                    | Likely cause                                                         |

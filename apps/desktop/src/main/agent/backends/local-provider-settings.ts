@@ -28,6 +28,7 @@ export async function getLocalProviderSettings(): Promise<AgentLocalProviderSett
     baseUrl: local.baseUrl ?? defaults.baseUrl,
     model: local.model ?? defaults.model,
     allowNonLoopback: local.allowNonLoopback ?? false,
+    thinking: local.thinking ?? 'default',
     apiKeyConfigured: await hasLocalProviderApiKey()
   }
 }
@@ -39,13 +40,16 @@ export async function setLocalProviderSettings(
     throw new Error('Non-loopback local provider endpoints require explicit confirmation.')
   }
 
+  const agent = store.get('agent')
+  const thinking = input.thinking ?? agent.localProvider?.thinking
   store.set('agent', {
-    ...store.get('agent'),
+    ...agent,
     localProvider: {
       preset: input.preset,
       baseUrl: input.baseUrl,
       model: input.model,
-      allowNonLoopback: input.allowNonLoopback
+      allowNonLoopback: input.allowNonLoopback,
+      ...(thinking ? { thinking } : {})
     }
   })
 

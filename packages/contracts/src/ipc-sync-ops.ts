@@ -30,7 +30,7 @@ export const SYNC_OP_CHANNELS = {
 // ============================================================================
 
 /** Why sync stayed down after a device row was restored. */
-export type SyncNotStartedReason = 'vault-binding' | 'entitlement' | 'unavailable'
+export type SyncNotStartedReason = 'vault-binding' | 'vault-foreign' | 'entitlement' | 'unavailable'
 
 /**
  * Outcome of the "device keys missing" repair (#2866). `repaired`: the keychain

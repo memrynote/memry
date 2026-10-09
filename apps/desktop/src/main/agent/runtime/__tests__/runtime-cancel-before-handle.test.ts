@@ -113,7 +113,8 @@ describe('cancelling a turn before the backend produces its run handle', () => {
         baseUrl: 'http://localhost:1234/v1',
         model: MODEL,
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'default'
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never,
