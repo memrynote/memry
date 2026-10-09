@@ -278,9 +278,9 @@ export function readDayBody(date: string): string | null {
 
 /**
  * Removes a journal row from the index DB, then the data DB. The two are
- * separate databases, and the projection's own removal runs later: a kill in
- * between leaves at most an index row, which `ensureJournalDay` treats as the
- * holder and removes again.
+ * separate databases: a kill in between leaves the data row, which the next
+ * drain removes again. An index row with no data row (older builds removed
+ * the data row first) still counts as the holder in `ensureJournalDay`.
  */
 export function removeJournalRow(db: DrizzleDb, id: string): void {
   const indexDb = getIndexDatabase()

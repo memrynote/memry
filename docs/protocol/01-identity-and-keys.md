@@ -408,8 +408,9 @@ pass settles them. The decision is a pure function of five facts
 4. Otherwise make `j<D>` hold the day. A foreign local row gives the day up
    (desktop keeps its file text first), and `j<D>` is created empty through
    the normal create path. Desktop removes a row from the index database
-   before the data database, and an index row left at the day's path by a
-   kill in between still counts as the holder, so a restart converges
+   before the data database, so a kill in between leaves the data row, which
+   the next drain removes again. An index row with no data row, left by an
+   older build, still counts as the holder, so a restart converges
    (`apps/desktop/src/main/sync/journal-day-merge.ts:285`). Desktop never
    writes over a day file no row holds
    (`apps/desktop/src/main/sync/journal-day-merge.ts:293`; core:
