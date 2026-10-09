@@ -795,7 +795,7 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func requestEmailCode(email: String) async throws  -> AuthState
     
     /**
-     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
      */
     func resendEmailCode() async throws 
@@ -1311,7 +1311,7 @@ open func requestEmailCode(email: String)async throws  -> AuthState  {
 }
     
     /**
-     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
      */
 open func resendEmailCode()async throws   {
@@ -32712,7 +32712,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 19227) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 30425) {
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 4495) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_sign_out() != 30253) {

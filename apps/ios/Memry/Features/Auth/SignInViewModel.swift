@@ -165,8 +165,10 @@ final class SignInViewModel {
             return
         }
         guard await perform(.verify, { _ = try await $0.verifyEmailCode(code: digits) }) else {
-            // The core has already moved to `SignedOut`; a rejected code must
-            // not sit in the field waiting to be resubmitted.
+            // A rejected code moved the core to `SignedOut` and must not sit in
+            // the field waiting to be resubmitted. A rate-limited verify judged
+            // nothing and stays on the code screen, so the code stays (#2940).
+            if case .awaitingOtp = state { return }
             code = ""
             return
         }
