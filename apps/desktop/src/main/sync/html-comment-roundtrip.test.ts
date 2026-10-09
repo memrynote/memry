@@ -182,6 +182,27 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     }
   })
 
+  it.each([
+    ['**alpha <!-- b --> omega**', 'omega'],
+    ['*alpha %% b %% omega*', 'omega'],
+    ['**<!-- b --> omega**', 'omega'],
+    ['**alpha <!-- b -->** omega', 'alpha'],
+    ['**alpha <!-- x --><!-- y --> omega**', 'omega'],
+    ['alpha <!-- b --> **omega**', 'alpha'],
+    ['**alpha** <!-- b --> **omega**', 'alpha'],
+    ['**alpha**<!-- b -->**omega**', 'omega'],
+    ['~~alpha <!-- b --> omega~~', 'omega'],
+    ['**alpha**  \n<!-- b --> omega', 'omega'],
+    ['*alpha*  \n%% b %% omega', 'omega']
+  ])('keeps the emphasis around a comment in %s (BBF-52)', async (markdown, word) => {
+    for (const edited of [false, true]) {
+      const doc = await seed(markdown, { keepSource: false })
+      if (edited) await edit(doc, word, `${word}, edited,`)
+      const expected = edited ? markdown.replace(word, `${word}, edited,`) : markdown
+      expect(await yDocToMarkdown(doc)).toBe(expected)
+    }
+  })
+
   it('leaves a comment in a code span or a fence as code', async () => {
     const markdown = 'Use `<!-- x -->` here.\n\n```html\n<!-- y -->\n```\n'
     const doc = await seed(markdown, { keepSource: false })

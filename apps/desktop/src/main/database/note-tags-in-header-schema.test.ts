@@ -9,7 +9,7 @@ import { runIndexMigrations } from './migrate'
 
 const MIGRATIONS = path.join(__dirname, 'drizzle-index')
 
-describe('0025_note_tags_in_header migration', () => {
+describe('0026_note_tags_in_header migration', () => {
   let tempDir: string
 
   beforeEach(() => {
@@ -28,7 +28,7 @@ describe('0025_note_tags_in_header migration', () => {
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    const cutoff = journal.entries.findIndex((e) => e.tag === '0025_note_tags_in_header')
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0026_note_tags_in_header')
     expect(cutoff).toBeGreaterThanOrEqual(0)
     for (const entry of journal.entries.splice(cutoff)) {
       fs.rmSync(path.join(copy, `${entry.tag}.sql`))

@@ -34,13 +34,7 @@ import {
 } from '../services/auth'
 import { isActiveDeviceKey, listDeviceSigningKeys } from '../services/device'
 import { sendEmail } from '../services/email'
-import {
-  generateOtp,
-  storeOtp,
-  verifyOtp,
-  checkEmailRateLimit,
-  hasPendingOtp
-} from '../services/otp'
+import { generateOtp, storeOtp, verifyOtp, checkEmailRateLimit } from '../services/otp'
 import {
   getOrCreateUserByEmail,
   getUserByEmail,
@@ -239,36 +233,11 @@ auth.post('/otp/request', otpIpRateLimit, async (c) => {
 })
 
 // POST /otp/resend
+// Same as /otp/request: a resend after the pending code expired must send a
+// fresh one (#2940). /otp/request already answers every address alike, so
+// this adds no account-enumeration signal.
 auth.post('/otp/resend', otpIpRateLimit, async (c) => {
-  const body = await c.req.json()
-  const parsed = RequestOtpRequestSchema.safeParse(body)
-  if (!parsed.success) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
-  }
-
-  const { email } = parsed.data
-
-  const pending = await hasPendingOtp(c.env.DB, email)
-  if (!pending) {
-    return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
-  }
-
-  await checkEmailRateLimit(c.env.DB, email)
-
-  const code = generateOtp()
-  await storeOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
-
-  const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
-  await sendEmail(
-    email,
-    'Your MemryNote verification code',
-    html,
-    c.env.RESEND_API_KEY,
-    undefined,
-    c.env
-  )
-
-  return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
+  return handleOtpRequest(c)
 })
 
 // POST /otp/verify
@@ -593,7 +562,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const MAX_DEVICES_PER_USER = 50
   if (activeDeviceCount && activeDeviceCount.cnt >= MAX_DEVICES_PER_USER) {
     throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
+      ErrorCodes.AUTH_DEVICE_LIMIT_REACHED,
       'Maximum device limit reached. Revoke an existing device first.',
       409
     )

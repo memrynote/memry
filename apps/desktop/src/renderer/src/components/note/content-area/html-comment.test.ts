@@ -26,7 +26,7 @@ describe('htmlComment node view', () => {
     const render = () =>
       renderHtmlComment.call({ renderType: 'dom' }, { props: { source } }).dom.textContent
 
-    expect(writeHtmlCommentTokens(render)).toBe(encodeHtmlCommentToken(source))
+    expect(writeHtmlCommentTokens([], render)).toBe(encodeHtmlCommentToken(source))
     expect(render()).toBe('')
   })
 })

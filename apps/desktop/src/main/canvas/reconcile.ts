@@ -24,8 +24,12 @@
  * Deliberately additive, in BOTH directions: a row whose file is missing is
  * reported, never tombstoned, and a folder row whose directory is missing gets
  * the directory back rather than a tombstone (see `restoreMissingFolderDirs`).
- * A half-copied vault (or a Dropbox mid-sync) must not delete canvases, and a
- * real delete already goes through the app.
+ * A half-copied vault (or a Dropbox mid-sync) must not delete canvases. Deletes
+ * come from the app, or from the vault watcher while the app runs: a document
+ * removed from `canvases/`, or moved out of it (the app reads canvases only
+ * there, as it reads notes only inside the vault), becomes a canvas delete
+ * (`canvas/delete.ts`). A removal while the app is closed or the vault is
+ * unmounted is not caught yet (#2964).
  *
  * The single exception is the EMPTY directory of a folder the user already
  * deleted (see `pruneTombstonedFolderDirs`) — litter the sync apply order leaves

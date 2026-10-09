@@ -76,12 +76,16 @@ struct EditableBlockView: UIViewRepresentable {
         // change that kept the row's shape): nothing is left to focus.
         if changed, session.pendingFocus == field.blockId, view.isFirstResponder {
             session.pendingFocus = nil
+            session.shortcutField = nil
         }
         if session.pendingFocus == field.blockId, !view.isFirstResponder {
             session.pendingFocus = nil
             DispatchQueue.main.async {
+                // A row a shortcut redrew takes its caret from the old row
+                // as it begins editing (`textViewDidBeginEditing`).
+                let handover = session.shortcutField?.blockId == field.blockId
                 view.becomeFirstResponder()
-                view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+                if !handover { view.selectedRange = NSRange(location: view.textStorage.length, length: 0) }
             }
         }
     }
@@ -295,6 +299,33 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.invalidateIntrinsicContentSize()
     }
 
+    /// Takes the caret, and what was typed since this row was drawn, from
+    /// `old`: the text view this block was edited in before a type change
+    /// redrew its row. Its runs are restyled for this row; the next render
+    /// draws them from the core.
+    private func takeOver(from old: BlockField) {
+        let source = old.textView
+        if source.text != textView.text {
+            let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
+            let whole = NSRange(location: 0, length: text.length)
+            text.enumerateAttribute(.font, in: whole) { value, range, _ in
+                if (value as? UIFont) == old.style.font { text.addAttribute(.font, value: style.font, range: range) }
+            }
+            text.enumerateAttribute(.foregroundColor, in: whole) { value, range, _ in
+                if (value as? UIColor) == old.style.ink { text.addAttribute(.foregroundColor, value: style.ink, range: range) }
+            }
+            textView.attributedText = text
+            textView.typingAttributes = BlockText.baseAttributes(style)
+            base = old.base
+            dirty = old.dirty
+            old.dirty = false
+            textView.invalidateIntrinsicContentSize()
+        }
+        let caret = source.selectedRange
+        let location = min(caret.location, textView.textStorage.length)
+        textView.selectedRange = NSRange(location: location, length: min(caret.length, textView.textStorage.length - location))
+    }
+
     /// Draws each typed `[[target]]` as the link chip the commit turns it
     /// into, keeps the caret on the same text, and takes the result as the
     /// next commit's base: the block the core holds once the link lands.
@@ -327,6 +358,11 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     // MARK: UITextViewDelegate
 
     func textViewDidBeginEditing(_ textView: UITextView) {
+        // The old row has resigned by now, so nothing more lands in it.
+        if let old = session?.shortcutField {
+            session?.shortcutField = nil
+            if old !== self, old.blockId == blockId { takeOver(from: old) }
+        }
         session?.focusChanged(to: self)
     }
 

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -10,20 +10,26 @@ import { ThinkingState } from './thinking-state'
  * while the model thinks, a shimmering label sits over a viewport that grows
  * with the reasoning, then caps and keeps the newest line in view behind a soft
  * top fade. Once thinking ends it folds into a "Thought for Ns" summary the user
- * can reopen, at which point the viewport scrolls natively and the fades follow
- * the scroll position. Styles live in base.css (`.aicss-tr-*`).
+ * can reopen. Thinking that resumes later in the turn lights the header again but
+ * leaves the block folded, so the answer does not jump. The viewport always
+ * scrolls natively, and while expanded it follows new lines unless the reader
+ * scrolled up. Styles live in base.css (`.aicss-tr-*`).
  * Source: https://www.aicss.dev/components/thinking-reasoning
  */
 
 /** Viewport grows with content up to this, then scrolls. Keep in sync with base.css. */
 const MAX_H = 180
 const FADE = 16
+/** A reader further than this from the bottom has scrolled up and is not followed. */
+const FOLLOW_SLACK = 16
 
 export interface ThinkingReasoningProps {
-  /** True while the model is still thinking: the block stays open and follows the stream. */
+  /** True while the newest delta of the turn is reasoning: the header shows the live state. */
   thinking: boolean
-  /** The raw reasoning text; changes drive the follow-the-stream scroll. */
-  content: string
+  /** True while the turn runs: opening the block then jumps to the newest line. */
+  streaming: boolean
+  /** Thinking unfolds the block only before the answer starts, so the answer never jumps. */
+  answerStarted: boolean
   /** Persisted thinking time. Absent for a turn that is still streaming. */
   durationMs?: number
   thinkingLabel: string
@@ -36,7 +42,8 @@ export interface ThinkingReasoningProps {
 
 export function ThinkingReasoning({
   thinking,
-  content,
+  streaming,
+  answerStarted,
   durationMs,
   thinkingLabel,
   formatSummary,
@@ -45,8 +52,12 @@ export function ThinkingReasoning({
 }: ThinkingReasoningProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [capped, setCapped] = useState(false)
-  const [fade, setFade] = useState({ top: false, bottom: false })
+  const [fadeTop, setFadeTop] = useState(false)
+  const [fadeBottom, setFadeBottom] = useState(false)
   const viewportRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const followRef = useRef(true)
+  const syncedHeightRef = useRef(0)
 
   // A turn watched live has no persisted duration until the message completes,
   // so the summary in between is measured here, from the moment the block
@@ -64,41 +75,61 @@ export function ThinkingReasoning({
     // Wall-clock time at the moment thinking ended: not derivable from props,
     // and reading the clock during render would be impure.
     // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
-    setMeasuredMs(performance.now() - since)
+    setMeasuredMs((total) => (total ?? 0) + performance.now() - since)
   }, [thinking])
 
-  const expanded = thinking || open
-  const scrollable = !thinking && open
+  const autoExpanded = thinking && !answerStarted
+  const expanded = autoExpanded || open
+
+  const syncFade = (viewport: HTMLDivElement): void => {
+    setFadeTop(viewport.scrollTop > 1)
+    setFadeBottom(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1)
+  }
+
+  const sync = useCallback((): void => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    setCapped(viewport.scrollHeight > MAX_H + 1)
+    if (followRef.current) viewport.scrollTop = viewport.scrollHeight
+    syncedHeightRef.current = viewport.scrollHeight
+    syncFade(viewport)
+  }, [])
 
   useLayoutEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport || !expanded) return
-    setCapped(viewport.scrollHeight > MAX_H + 1)
-    if (thinking) viewport.scrollTop = viewport.scrollHeight
-  }, [content, expanded, thinking])
+    if (expanded) sync()
+  }, [expanded, sync])
 
+  // Streamdown commits new lines in a transition, after this component's
+  // effects ran, so growth is followed where it lands in the DOM.
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return undefined
+    const observer = new ResizeObserver(sync)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [sync])
+
+  // Measured against the bottom as of the last sync: a scroll event, ours or
+  // the reader's, can arrive after more lines landed but before they synced.
   const onScroll = (): void => {
     const viewport = viewportRef.current
     if (!viewport) return
-    setFade({
-      top: viewport.scrollTop > 1,
-      bottom: viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1
-    })
+    followRef.current =
+      viewport.scrollTop + viewport.clientHeight >= syncedHeightRef.current - FOLLOW_SLACK
+    syncFade(viewport)
   }
 
   const toggle = (): void => {
     const next = !open
     if (next && viewportRef.current) {
-      viewportRef.current.scrollTop = 0
-      setFade({ top: false, bottom: true })
+      followRef.current = streaming
+      if (!streaming) viewportRef.current.scrollTop = 0
     }
     setOpen(next)
   }
 
-  const showTop = scrollable ? fade.top : capped
-  const showBottom = scrollable ? fade.bottom : false
   const mask = capped
-    ? `linear-gradient(to bottom, transparent 0, #000 ${showTop ? FADE : 0}px, #000 calc(100% - ${showBottom ? FADE : 0}px), transparent 100%)`
+    ? `linear-gradient(to bottom, transparent 0, #000 ${fadeTop ? FADE : 0}px, #000 calc(100% - ${fadeBottom ? FADE : 0}px), transparent 100%)`
     : undefined
 
   const ms = durationMs ?? measuredMs
@@ -110,22 +141,20 @@ export function ThinkingReasoning({
         type="button"
         className={cn(
           'aicss-tr-header inline-flex min-h-5 items-center gap-1.5 self-start',
-          !thinking && 'is-clickable'
+          !autoExpanded && 'is-clickable'
         )}
         aria-expanded={expanded}
-        aria-label={thinking ? undefined : toggleLabel}
-        onClick={thinking ? undefined : toggle}
+        aria-label={autoExpanded ? undefined : toggleLabel}
+        onClick={autoExpanded ? undefined : toggle}
       >
         {thinking ? (
           <ThinkingState label={thinkingLabel} />
         ) : (
-          <>
-            <span className="aicss-tr-label text-[13px] font-medium leading-[18px]">
-              {formatSummary(seconds)}
-            </span>
-            <ChevronDown className="aicss-tr-chevron size-3" aria-hidden="true" />
-          </>
+          <span className="aicss-tr-label text-[13px] font-medium leading-[18px]">
+            {formatSummary(seconds)}
+          </span>
         )}
+        {!autoExpanded && <ChevronDown className="aicss-tr-chevron size-3" aria-hidden="true" />}
       </button>
 
       {/* Folded reasoning stays in the DOM for the height transition; `inert`
@@ -134,11 +163,11 @@ export function ThinkingReasoning({
         <div className="min-h-0 overflow-hidden">
           <div
             ref={viewportRef}
-            className={cn('aicss-tr-viewport mt-1.5', scrollable && 'is-scroll')}
+            className="aicss-tr-viewport is-scroll mt-1.5"
             style={{ maxHeight: MAX_H, WebkitMaskImage: mask, maskImage: mask }}
-            onScroll={scrollable ? onScroll : undefined}
+            onScroll={onScroll}
           >
-            {children}
+            <div ref={contentRef}>{children}</div>
           </div>
         </div>
       </div>

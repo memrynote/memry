@@ -3,6 +3,7 @@ import path from 'path'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../../lib/logger'
+import { refuseOutsideVault } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import {
   backfillUnresolvedLinksByTitle,
@@ -25,7 +26,8 @@ import {
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { getIndexDatabase, type IndexDb } from '../../database'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
-import { inferPropertyType, parseNote } from '../../vault/frontmatter'
+import { parseNote } from '../../vault/frontmatter'
+import { inferPropertyType } from '../../vault/property-type'
 import type { NoteProjectionRecord, ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:NoteState')
@@ -51,6 +53,7 @@ async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string
   // One handle for the size check and the read, so both see the same file.
   let file: fs.promises.FileHandle | null = null
   try {
+    await refuseOutsideVault(vaultPath, note.path)
     file = await fs.promises.open(absolutePath, 'r')
     if (classifyMarkdownStat((await file.stat()).size)) return
     raw = await file.readFile('utf-8')

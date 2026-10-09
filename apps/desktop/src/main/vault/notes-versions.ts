@@ -10,7 +10,7 @@ import fs from 'fs/promises'
 import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
-import { atomicWrite } from './file-ops'
+import { atomicWrite, safeRead } from './file-ops'
 import {
   getNoteCacheById,
   insertNoteSnapshot,
@@ -111,6 +111,16 @@ export function createSnapshot(
     reason: snapshot.reason as SnapshotReason,
     createdAt: snapshot.createdAt
   }
+}
+
+/** A version of an open note's file as the app quits. False when there is nothing new to keep. */
+export async function createCloseSnapshot(noteId: string): Promise<boolean> {
+  const cached = getNoteCacheById(getIndexDatabase(), noteId)
+  if (!cached) return false
+  await refuseOutsideVault(getVaultRoot(), cached.path)
+  const fileContent = await safeRead(toAbsolutePath(cached.path))
+  if (!fileContent) return false
+  return createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE) !== null
 }
 
 export function maybeCreateSignificantSnapshot(

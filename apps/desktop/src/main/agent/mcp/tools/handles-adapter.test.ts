@@ -165,7 +165,8 @@ vi.mock('../../../notes/runtime-effects', () => ({
 }))
 
 import { deserializeValue, serializeValue } from '../../../database/queries/notes/query-helpers'
-import { inferPropertyType, parseNote } from '../../../vault/frontmatter'
+import { parseNote } from '../../../vault/frontmatter'
+import { inferPropertyType } from '../../../vault/property-type'
 import { createVaultServiceHandles } from './handles-adapter'
 import { buildWriteTools } from './write-tools'
 
@@ -2526,6 +2527,21 @@ describe('createVaultServiceHandles', () => {
           { itemId: 'inbox-1', destination: { type: 'folder', path: 'filed' } }
         ])
       ).resolves.toMatchObject({ created_folders: ['filed'] })
+    })
+
+    it('says nothing about folders an inbox.file destination never creates (#2953)', async () => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true, noteId: 'n1' })
+
+      const replies = [
+        await desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'new-note', path: 'X/y' } }
+        ]),
+        await desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'folder', path: 'root' } }
+        ])
+      ]
+
+      for (const reply of replies) expect(reply).not.toHaveProperty('created_folders')
     })
 
     it('lists the folders notes.move made', async () => {

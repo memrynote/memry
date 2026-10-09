@@ -24,7 +24,7 @@ import {
   isIndexDatabaseInitialized
 } from '../database'
 import { createLogger } from '../lib/logger'
-import { normalizeRelativePath } from '../lib/paths'
+import { normalizeRelativePath, refuseOutsideVault, refuseOutsideVaultSync } from '../lib/paths'
 import { setVaultFileWriteGuard } from '../vault/file-ops'
 import { generateContentHash } from '../vault/frontmatter'
 import { getStatus } from '../vault/index'
@@ -121,12 +121,21 @@ export async function adoptCopiedVaultIdentities(root: string): Promise<void> {
   })
 }
 
+/** The vault root and the path under it, for the outside-link refusal before a chmod. */
+function vaultPlace(absolutePath: string): [string, string] | null {
+  const vaultPath = getStatus().path
+  return vaultPath ? [vaultPath, path.relative(vaultPath, absolutePath)] : null
+}
+
 async function changeMode(
   absolutePath: string,
   readOnly: boolean,
   asFound: boolean
 ): Promise<void> {
   try {
+    // stat and chmod follow links: a file linked outside the vault is refused, never followed.
+    const place = vaultPlace(absolutePath)
+    if (place !== null) await refuseOutsideVault(...place)
     const stats = await fs.promises.stat(absolutePath)
     const next = nextMode(absolutePath, stats, readOnly, asFound)
     if (next !== null) await fs.promises.chmod(absolutePath, next)
@@ -147,6 +156,8 @@ export async function protectFileAsFound(absolutePath: string): Promise<void> {
 
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
   try {
+    const place = vaultPlace(absolutePath)
+    if (place !== null) refuseOutsideVaultSync(...place)
     const stats = fs.statSync(absolutePath)
     const next = nextMode(absolutePath, stats, readOnly, false)
     if (next !== null) fs.chmodSync(absolutePath, next)

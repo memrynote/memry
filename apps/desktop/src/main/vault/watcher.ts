@@ -87,6 +87,8 @@ import { recordActivity, recordSkippedFile, toActivityPath } from './activity-lo
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
 import { ATTACHMENTS_DIR } from './attachments'
+import { trackExternalCanvasRemoval } from '../canvas/delete'
+import { isCanvasFilePath } from '../canvas/scene-file'
 
 const logger = createLogger('Watcher')
 
@@ -267,7 +269,11 @@ export class VaultWatcher {
 
         // For files, only watch supported file types (md, pdf, images, audio, video)
         if (stats?.isFile()) {
-          const supported = isSupportedPath(filePath)
+          // Canvas documents are watched only so a removal outside the app
+          // becomes a canvas delete (#2938); the note index never takes them.
+          const supported =
+            isSupportedPath(filePath) ||
+            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -1073,6 +1079,13 @@ export class VaultWatcher {
     try {
       const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
 
+      if (isCanvasFilePath(relativePath)) {
+        trackExternalCanvasRemoval(vaultPath, relativePath, () =>
+          this.isGoneFromVault(vaultPath, absolutePath, relativePath)
+        )
+        return
+      }
+
       const db = getIndexDatabase()
 
       // Get cached entry to get the UUID
@@ -1103,18 +1116,7 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
-          // The vault can leave inside the rename window: an unmount or a
-          // recursive delete takes the files before the database.
-          if (!isVaultReachable(vaultPath)) {
-            this.waitForVaultReturn()
-            return
-          }
-          // chokidar reports a file it cannot open (chmod 000, an antivirus
-          // lock) as unlinked. It is still there, so its note stays (#2764).
-          if (!(await isFileMissing(absolutePath))) {
-            logger.warn('Note file cannot be read; keeping the note', { path: relativePath })
-            return
-          }
+          if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
           // A locked note removed outside the app gets its locked text back
           // instead of a delete that would reach every device (#2606).
           if (
@@ -1160,6 +1162,30 @@ export class VaultWatcher {
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
+  }
+
+  /**
+   * Whether an unlinked file is really gone once its rename window closes.
+   * Note and canvas removals both pass through here.
+   */
+  private async isGoneFromVault(
+    vaultPath: string,
+    absolutePath: string,
+    relativePath: string
+  ): Promise<boolean> {
+    // The vault can leave inside the rename window: an unmount or a
+    // recursive delete takes the files before the database.
+    if (!isVaultReachable(vaultPath)) {
+      this.waitForVaultReturn()
+      return false
+    }
+    // chokidar reports a file it cannot open (chmod 000, an antivirus
+    // lock) as unlinked. It is still there, so it stays (#2764).
+    if (!(await isFileMissing(absolutePath))) {
+      logger.warn('File cannot be read; keeping it', { path: relativePath })
+      return false
+    }
+    return true
   }
 }
 

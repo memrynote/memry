@@ -394,6 +394,28 @@ describe('note derived state projector', () => {
     expect(outboundLinks('source-note')).toEqual([{ targetId: null, targetTitle: 'Plan' }])
   })
 
+  it('project keeps outbound links instead of reading a note file linked outside the vault (#2969)', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-projector-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret [[Outside Secret]]\n')
+    fs.mkdirSync(path.join(vaultDir, 'notes'), { recursive: true })
+    fs.symlinkSync(secret, path.join(vaultDir, 'notes/source.md'))
+    seedCachedNote('source-note', 'notes/source.md')
+    indexDb.db.run(sql`
+      INSERT INTO note_links (source_id, target_id, target_title)
+      VALUES (${'source-note'}, NULL, ${'Plan'})
+    `)
+
+    try {
+      const projector = createNoteDerivedStateProjector(() => vaultDir)
+      await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+
+      expect(outboundLinks('source-note')).toEqual([{ targetId: null, targetTitle: 'Plan' }])
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   it('project backfills a backlink retroactively when the linked note is created later (#2209)', async () => {
     // The master note was saved first, while "New Note" did not exist yet:
     // an unresolved outbound link, target_id null.

@@ -17,6 +17,7 @@ import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/not
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { resolveVaultFile } from '../lib/paths'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { atomicWrite, safeRead } from '../vault/file-ops'
 import { folderExists } from '../vault/folders'
@@ -81,13 +82,28 @@ function getNoteIdByPath(relativePath: string): string | null {
   return getNoteCacheByPath(getIndexDatabase(), relativePath)?.id ?? null
 }
 
+/** True, and logged, for a locked note file linked outside the vault, which is never read. */
+async function isLinkedOutside(
+  noteId: string,
+  relativePath: string,
+  root: string
+): Promise<boolean> {
+  if ((await resolveVaultFile(root, relativePath)).kind !== 'outside') return false
+  log.warn('A locked note file points outside the vault; not reading it', { noteId })
+  return true
+}
+
 /**
  * Read-only on disk with the files of its attachments folder, and its current
  * bytes as the baseline when it is a markdown note.
  */
 async function protectNoteFile(noteId: string, relativePath: string, root: string): Promise<void> {
   const absolutePath = path.join(root, relativePath)
-  if (relativePath.endsWith('.md') && !getBaseline(getDatabase(), noteId)) {
+  if (
+    relativePath.endsWith('.md') &&
+    !getBaseline(getDatabase(), noteId) &&
+    !(await isLinkedOutside(noteId, relativePath, root))
+  ) {
     const content = await safeRead(absolutePath)
     if (content !== null) {
       writeBaseline(getDatabase(), noteId, content, generateContentHash(content))
@@ -281,6 +297,7 @@ export async function checkLockedFilesAtOpen(): Promise<void> {
   for (const noteId of listBaselineNoteIds(getDatabase())) {
     const relative = notePath(noteId)
     if (relative === null || !isNoteLocked(noteId, relative)) continue
+    if (await isLinkedOutside(noteId, relative, root)) continue
     const onDisk = await safeRead(path.join(root, relative))
     await restoreLockedNoteFile(noteId, onDisk)
   }

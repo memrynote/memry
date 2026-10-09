@@ -12,16 +12,19 @@ import {
   extractProperties,
   calculateWordCount,
   generateContentHash,
-  createSnippet,
-  inferPropertyType,
-  resolvePropertyType
+  createSnippet
 } from './frontmatter'
+import { inferPropertyType, resolvePropertyType } from './property-type'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
-import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
+import {
+  isPersistableDefinitionType,
+  PROJECT_PROPERTY_KEY,
+  type PropertyType
+} from '@memry/contracts/property-types'
 import {
   deleteCanonicalNote,
   saveCanonicalNote,
@@ -76,7 +79,10 @@ export function learnCanonicalPropertyType(
   )
   // `relation` has no PropertyDefinitionSchema member, so it is never
   // persisted — it is re-derived from the value on every pass instead.
-  if (isPersistableDefinitionType(type) && existing?.type !== type) {
+  if (
+    isPersistableDefinitionType(type) &&
+    (!existing || (name === PROJECT_PROPERTY_KEY && existing.type !== type))
+  ) {
     saveCanonicalPropertyDefinition(dataDb, {
       name,
       type,

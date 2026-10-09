@@ -467,6 +467,18 @@ describe('removeFolderIfEmpty', () => {
     expect(fs.existsSync(tempVault.path)).toBe(true)
   })
 
+  it('removes a tree that another removal empties at the same time (#2948)', async () => {
+    // A remote subtree delete prunes 'a' and 'a/b' concurrently; whichever
+    // rmdir comes second finds the directory already gone.
+    fs.mkdirSync(path.join(tempVault.path, 'a', 'b'), { recursive: true })
+    fs.writeFileSync(path.join(tempVault.path, 'a', '.folder.md'), '---\nicon: x\n---\n')
+
+    const results = await Promise.allSettled([removeFolderIfEmpty('a'), removeFolderIfEmpty('a/b')])
+
+    expect(results.map((result) => result.status)).toEqual(['fulfilled', 'fulfilled'])
+    expect(fs.existsSync(path.join(tempVault.path, 'a'))).toBe(false)
+  })
+
   it('reports a folder that is already gone', async () => {
     expect(await removeFolderIfEmpty('missing')).toEqual({ removed: false, reason: 'missing' })
   })

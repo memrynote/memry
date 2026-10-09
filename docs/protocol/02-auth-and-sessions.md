@@ -6,32 +6,32 @@
 ## 2.1 The route table
 
 **Normative** (`apps/sync-server/src/routes/auth.ts`, mounted at `/auth`,
-`apps/sync-server/src/index.ts:216`):
+`apps/sync-server/src/index.ts:230`):
 
 | Method | Path                             | Auth                              | Request / response schema                                        | Line    |
 | ------ | -------------------------------- | --------------------------------- | ---------------------------------------------------------------- | ------- |
-| POST   | `/auth/otp/request`              | none, IP rate limited             | `RequestOtpRequestSchema` / `RequestOtpResponseSchema`           | `:234`  |
+| POST   | `/auth/otp/request`              | none, IP rate limited             | `RequestOtpRequestSchema` / `RequestOtpResponseSchema`           | `:231`  |
 | POST   | `/auth/otp/resend`               | none, IP rate limited             | `ResendOtpRequestSchema`                                         | `:239`  |
-| POST   | `/auth/otp/verify`               | none, IP rate limited             | `VerifyOtpRequestSchema` / `VerifyOtpResponseSchema`             | `:272`  |
-| GET    | `/auth/oauth/:provider`          | none                              | redirect to the provider                                         | `:316`  |
-| POST   | `/auth/oauth/:provider/callback` | none                              | `OAuthCallbackSchema`                                            | `:353`  |
-| POST   | `/auth/oauth/:provider/native`   | none                              | `NativeOAuthSchema`                                              | `:435`  |
-| POST   | `/auth/setup-token/renew`        | proof of the committed device key | `RenewSetupTokenRequestSchema` / `RenewSetupTokenResponseSchema` | `:508`  |
-| POST   | `/auth/devices`                  | setup token                       | `DeviceRegisterRequestSchema` / `DeviceRegisterResponseSchema`   | `:560`  |
-| GET    | `/auth/recovery-info`            | setup token                       | `{ kdfSalt, keyVerifier }`                                       | `:681`  |
-| GET    | `/auth/key-verifier`             | access token                      | `{ kdfSalt, keyVerifier }`                                       | `:703`  |
-| GET    | `/auth/recovery`                 | none, IP rate limited             | `{ kdfSalt, keyVerifier }`, possibly dummy                       | `:746`  |
-| POST   | `/auth/setup`                    | access token                      | `FirstDeviceSetupRequestSchema`                                  | `:771`  |
-| GET    | `/auth/devices`                  | access token                      | device list                                                      | `:805`  |
-| POST   | `/auth/refresh`                  | refresh token in the body         | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema`       | `:881`  |
-| POST   | `/auth/logout`                   | access token                      | —                                                                | `:925`  |
-| POST   | `/auth/email/change`             | access token                      | `EmailChangeRequestSchema`                                       | `:952`  |
-| POST   | `/auth/email/change/verify`      | access token                      | `EmailChangeVerifySchema`                                        | `:982`  |
-| POST   | `/auth/logout-all`               | access token                      | —                                                                | `:1000` |
-| DELETE | `/auth/account`                  | access token                      | `DeleteAccountRequestSchema`                                     | `:1015` |
+| POST   | `/auth/otp/verify`               | none, IP rate limited             | `VerifyOtpRequestSchema` / `VerifyOtpResponseSchema`             | `:244`  |
+| GET    | `/auth/oauth/:provider`          | none                              | redirect to the provider                                         | `:290`  |
+| POST   | `/auth/oauth/:provider/callback` | none                              | `OAuthCallbackSchema`                                            | `:327`  |
+| POST   | `/auth/oauth/:provider/native`   | none                              | `NativeOAuthSchema`                                              | `:411`  |
+| POST   | `/auth/setup-token/renew`        | proof of the committed device key | `RenewSetupTokenRequestSchema` / `RenewSetupTokenResponseSchema` | `:484`  |
+| POST   | `/auth/devices`                  | setup token                       | `DeviceRegisterRequestSchema` / `DeviceRegisterResponseSchema`   | `:536`  |
+| GET    | `/auth/recovery-info`            | setup token                       | `{ kdfSalt, keyVerifier }`                                       | `:666`  |
+| GET    | `/auth/key-verifier`             | access token                      | `{ kdfSalt, keyVerifier }`                                       | `:688`  |
+| GET    | `/auth/recovery`                 | none, IP rate limited             | `{ kdfSalt, keyVerifier }`, possibly dummy                       | `:736`  |
+| POST   | `/auth/setup`                    | access token                      | `FirstDeviceSetupRequestSchema`                                  | `:761`  |
+| GET    | `/auth/devices`                  | access token                      | device list                                                      | `:797`  |
+| POST   | `/auth/refresh`                  | refresh token in the body         | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema`       | `:903`  |
+| POST   | `/auth/logout`                   | access token                      | —                                                                | `:947`  |
+| POST   | `/auth/email/change`             | access token                      | `EmailChangeRequestSchema`                                       | `:974`  |
+| POST   | `/auth/email/change/verify`      | access token                      | `EmailChangeVerifySchema`                                        | `:1004` |
+| POST   | `/auth/logout-all`               | access token                      | —                                                                | `:1022` |
+| DELETE | `/auth/account`                  | access token                      | `DeleteAccountRequestSchema`                                     | `:1037` |
 
-`/auth/checkout-token` (`:820`) and the `/auth/billing*` family (`:831`, `:842`,
-`:863`, `:868`, `:874`) exist and are **out of scope** for this feature.
+`/auth/checkout-token` (`:812`) and the `/auth/billing*` family (`:832`, `:843`,
+`:864`, `:869`, `:879`, `:890`, `:896`) exist and are **out of scope** for this feature.
 
 ### 2.1.1 The request and response shapes this feature uses
 
@@ -44,6 +44,14 @@ here. Every field is JSON; `?` marks optional, meaning **absent**, never `null`.
 
 Request: `email` (string, an email address).
 Response: `success` (bool), `expiresIn?` (number, seconds), `message?` (string).
+
+**Normative.** The two routes share one handler
+(`apps/sync-server/src/routes/auth.ts:99-124`, `:231-242`): each mints, stores,
+and emails a fresh code under the same per-address limit, whether or not an
+earlier code is still pending, and answers every address alike. A resend after
+the earlier code expired is how a user gets a working code back on the code
+screen. Servers before this rule answered `/resend` with success and sent
+nothing once no unexpired code was pending.
 
 **`POST /auth/otp/verify`**
 
@@ -132,7 +140,7 @@ claims, all enforced (`apps/sync-server/src/lib/jwt-verify.ts:5-7`, `:30-45`):
 
 Any other algorithm, issuer, audience or `type` is rejected. Setup tokens
 additionally carry `jti`, which the client reads back out of its own token
-(`apps/desktop/src/main/sync/token-manager.ts:65-69`).
+(`apps/desktop/src/main/sync/token-manager.ts:66-69`).
 
 **JWT clock tolerance is zero** on every normal path: `jwtVerify` is called with
 no `clockTolerance` and `jose` defaults to 0
@@ -166,12 +174,12 @@ client uses against server time.
 
 The server sanitises `name` (255), `platform` (32) and `vaultId` (128) and
 rejects an empty result with `400 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:607-613`).
+(`apps/sync-server/src/routes/auth.ts:583-589`).
 
 ### 2.3.1 The challenge
 
 **Normative.** The nonce is **client-generated**, not server-issued:
-`crypto.randomUUID()` (`apps/desktop/src/main/sync/device-registration.ts:61`).
+`crypto.randomUUID()` (`apps/desktop/src/main/sync/device-registration.ts:70`).
 The signed bytes are the UTF-8 encoding of
 
 ```
@@ -179,11 +187,11 @@ The signed bytes are the UTF-8 encoding of
 ```
 
 where `jti` is the **setup token's** `jti` claim
-(`apps/desktop/src/main/sync/device-registration.ts:62-63`; recomputed
-server-side at `apps/sync-server/src/routes/auth.ts:620`). There is **no domain
+(`apps/desktop/src/main/sync/device-registration.ts:71-72`; recomputed
+server-side at `apps/sync-server/src/routes/auth.ts:596`). There is **no domain
 separation prefix and no CBOR**. The signature is Ed25519 detached, standard
 base64. A failed verification is `401 AUTH_INVALID_TOKEN`
-(`apps/sync-server/src/routes/auth.ts:621-624`).
+(`apps/sync-server/src/routes/auth.ts:597-600`).
 
 ### 2.3.2 Domain separation — Q02.2
 
@@ -195,7 +203,7 @@ separation prefix on either.
 **Disposition of Q02.2: answered — no prefix is mandated for these two contexts,
 and one is mandatory for any third.** The reason is that the signing device is
 the only party that chooses either message: `challengeNonce` is minted locally
-(`apps/desktop/src/main/sync/device-registration.ts:61`) and the CBOR payload is
+(`apps/desktop/src/main/sync/device-registration.ts:70`) and the CBOR payload is
 assembled locally from the device's own item
 (`packages/sync-client/src/push/record-encrypt.ts:59-84`), so no remote party can
 steer this key into signing bytes it did not construct. Note that the nonce is
@@ -212,18 +220,23 @@ obligation 3.
 **Normative.** `POST /auth/devices` inserts the token's `jti` into
 `consumed_setup_tokens` with `INSERT OR IGNORE`; a zero row count means the token
 was already spent and the answer is `401 AUTH_INVALID_TOKEN`
-(`apps/sync-server/src/routes/auth.ts:570-578`). The consumed record expires 300
-seconds after consumption (`:573`).
+(`apps/sync-server/src/routes/auth.ts:546-554`). The consumed record expires 300
+seconds after consumption (`:549`).
 
 A user may hold at most **50** active (non-revoked) devices; the 51st
-registration is `409 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:586-593`).
+registration is `409 AUTH_DEVICE_LIMIT_REACHED`
+(`apps/sync-server/src/routes/auth.ts:556-569`). The cap is checked after the
+token's `jti` is consumed (`:546-554`), so the refused request has spent its
+setup token and a replay answers `401 AUTH_INVALID_TOKEN`. The refusal holds
+until the user revokes a device from one that is signed in; a client says that,
+offers no retry, and the way back is a fresh sign-in. Servers before #2944 sent `409 VALIDATION_ERROR` for the same
+refusal; a client reads that as a generic refusal, as before.
 
 The server-assigned device id is a `crypto.randomUUID()`
-(`apps/sync-server/src/routes/auth.ts:626`). Registration is idempotent on
+(`apps/sync-server/src/routes/auth.ts:602`). Registration is idempotent on
 `(user_id, auth_public_key)`: a repeat registration with the same public key
 updates the row and returns the existing id rather than creating a second device
-(`apps/sync-server/src/routes/auth.ts:629-640`).
+(`apps/sync-server/src/routes/auth.ts:604-638`).
 
 ## 2.4 Native OAuth exists for the phone
 
@@ -246,7 +259,7 @@ non-renewable five-minute token
 
 A client whose user has to find a 24-word recovery phrase SHOULD commit the key:
 finding the phrase routinely outlasts five minutes
-(`apps/desktop/src/main/ipc/auth-device-handlers.ts:425-428`).
+(`apps/desktop/src/main/ipc/auth-device-handlers.ts:432-435`).
 
 ### 2.5.1 What renewal signs
 
@@ -279,10 +292,10 @@ request shape alone:
 (`packages/contracts/src/auth-api.ts:10`), `OAuthCallbackSchema` (`:46`),
 `NativeOAuthSchema` (`:59`) and `DeviceRegisterRequestSchema` (`:30`). It is
 minted by the **client**, carried into the setup token as a claim
-(`apps/sync-server/src/routes/auth.ts:296`, `:408`, `:475`), preserved across
-renewal (`:549`), and enforced on `POST /auth/devices` **only when the token
+(`apps/sync-server/src/routes/auth.ts:268`, `:382`, `:451`), preserved across
+renewal (`:525`), and enforced on `POST /auth/devices` **only when the token
 carries one**: a mismatch is `401 AUTH_INVALID_TOKEN`
-(`apps/sync-server/src/routes/auth.ts:615-618`).
+(`apps/sync-server/src/routes/auth.ts:591-594`).
 
 **What it defends.** It binds the device that redeemed a setup token to the
 browser or sheet session that obtained it. Without it, a setup token intercepted
@@ -301,18 +314,18 @@ because the token then carries a nonce and `undefined !== nonce`.
 ## 2.7 The three recovery-data routes
 
 **Normative.** `GET /auth/recovery-info` (setup token,
-`apps/sync-server/src/routes/auth.ts:681-697`) and `GET /auth/key-verifier`
-(access token, `:703`) return the identical `{ kdfSalt, keyVerifier }` payload
+`apps/sync-server/src/routes/auth.ts:666-682`) and `GET /auth/key-verifier`
+(access token, `:688`) return the identical `{ kdfSalt, keyVerifier }` payload
 for two different session states. `/recovery-info` answers
 `400 VALIDATION_ERROR` when the account has no key material yet
-(`:689-691`).
+(`:674-676`).
 
 `GET /auth/recovery` is the **unauthenticated** variant
-(`apps/sync-server/src/routes/auth.ts:746`). It always runs both the real lookup
+(`apps/sync-server/src/routes/auth.ts:736`). It always runs both the real lookup
 and a deterministic dummy computation and selects between them with one response
 shape, so that wall-clock timing and JSON serialisation are identical for an
 existing and a non-existing account
-(`apps/sync-server/src/routes/auth.ts:756-766`, rationale at `:752-755`).
+(`apps/sync-server/src/routes/auth.ts:746-756`, rationale at `:742-745`).
 
 ### 2.7.1 What a client may say to the user — Q02.3
 
@@ -336,12 +349,12 @@ instead, where the account is known and a mismatch does mean "wrong phrase".
 (`packages/contracts/src/auth-api.ts:34-37`) and is guarded by
 `WHERE ... AND kdf_salt IS NULL`, so it can only succeed once per account; a
 second call is `409 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:786-792`).
+(`apps/sync-server/src/routes/auth.ts:771-783`).
 
 A device that joined by linking MUST NOT call it: it already received the
 account's key material over the linking channel and re-posting would either fail
 with 409 or, worse, overwrite nothing while looking successful. Desktop skips it
-on that path (`apps/desktop/src/main/sync/linking-service.ts:492-512`).
+on that path (`apps/desktop/src/main/sync/linking-service.ts:493-521`).
 
 ## 2.9 Refresh tokens rotate, and reuse is a security event
 
@@ -368,7 +381,7 @@ client side treats a 401 on refresh as terminal after three attempts (§2.10).
 | ---------------------------------- | ----------------------------------------- | ----------------------------------------------- | ----- |
 | `ACCESS_TOKEN_EXPIRY_SECONDS`      | 900                                       | assumed lifetime when the server does not say   | `:14` |
 | `EXPIRY_SAFETY_MARGIN_SECONDS`     | 60                                        | a token within 60 s of `exp` counts as expired  | `:18` |
-| refresh schedule                   | `floor(expiresIn * (0.5 + rand * 0.2))` s | proactive refresh at 50 % to 70 % of life       | `:91` |
+| refresh schedule                   | `floor(expiresIn * (0.5 + rand * 0.2))` s | proactive refresh at 50 % to 70 % of life       | `:92` |
 | `REFRESH_MAX_RETRIES`              | 3                                         | non-401 failures                                | `:15` |
 | `REFRESH_BACKOFF_BASE_MS`          | 1000                                      | `base * 2^attempt`                              | `:16` |
 | `FALLBACK_RETRY_THRESHOLD_S`       | 60                                        | one late retry if this much life remains        | `:17` |
@@ -384,13 +397,13 @@ failure forces a new sign-in that the session never needed.
 **A 401 on refresh is never retried inline** and the rejection latches: the
 window blocks all refresh traffic without touching the network, and after three
 rejections the latch is permanent and the user must sign in again
-(`apps/desktop/src/main/sync/token-manager.ts:20-35`, `:123-141`). The reason is
+(`apps/desktop/src/main/sync/token-manager.ts:20-35`, `:128-160`). The reason is
 on record: roughly fifteen demand-driven callers each re-entered the refresh
 path once the access token was permanently expired, producing 58 server requests
 in 47 minutes from one install.
 
 **Refresh MUST be single-flighted across concurrent callers**
-(`apps/desktop/src/main/sync/token-manager.ts:216-222`). A conforming client that
+(`apps/desktop/src/main/sync/token-manager.ts:227-243`). A conforming client that
 does not single-flight reproduces the storm above.
 
 ### 2.10.1 What an ordinary authenticated request does on a 401
@@ -431,8 +444,8 @@ retryable there, and the replay here is not an attempt there.
 | `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:231` |
 | `ROTATION_GRACE_SECONDS`             | 10          | `apps/sync-server/src/services/auth.ts:79`  |
 | `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:80`  |
-| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:586`   |
-| `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:171`   |
+| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:562`   |
+| `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:168`   |
 
 OTP codes are stored as a hex HMAC-SHA256 under `OTP_HMAC_KEY` and compared with
 a timing-safe comparison; storing a new code marks every prior unused code for
@@ -444,7 +457,7 @@ that email as used (`apps/sync-server/src/services/otp.ts:26-58`).
 `macos | windows | linux | ios | android | web`
 (`packages/contracts/src/auth-api.ts:24`). `CLIENT_PLATFORMS`, used by the write
 gate in chapter 11, is `ios | android | desktop`
-(`packages/contracts/src/sync-api.ts:273`). **These are different lists.** A
+(`packages/contracts/src/sync-api.ts:337`). **These are different lists.** A
 phone registers as `ios` and identifies itself as `ios`, so they coincide for
 this feature, but a client MUST NOT model them as one enum: a desktop registers
 as `macos`, `windows` or `linux` and identifies itself as `desktop`.
@@ -559,3 +572,13 @@ was opened, so a late callback carrying a spent nonce cannot be honoured.
 Note the general lesson, which is why this is written out rather than left
 implied: a transition that names several causes on one line is a transition
 nobody checks has several call sites.
+
+### 2.14.2 A rate-limited verify is not a rejected code
+
+**Normative.** `POST /auth/otp/verify` sits behind the per-IP OTP limiter
+(`apps/sync-server/src/routes/auth.ts:73-77`, `:244`), which answers `429`
+before the code is looked at. That answer judged nothing: the pending code is
+still the one in the user's inbox. A client **MUST NOT** take the failure edge
+out of the awaiting-OTP state on a `429`; it stays there, keeps the entered
+code, and shows the wait from `Retry-After`. Every other verify failure still
+takes the failure edge (`crates/memry-core/src/api/auth.rs:420-427`).

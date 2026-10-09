@@ -48,6 +48,7 @@ vi.mock('chokidar', () => ({
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
   getDatabase: vi.fn(),
+  requireDatabase: vi.fn(),
   updateFtsContent: vi.fn()
 }))
 
@@ -112,13 +113,22 @@ vi.mock('../sync/crdt-feed', () => ({
 }))
 
 vi.mock('./index', () => ({
-  getConfig: vi.fn(() => baseConfig)
+  getConfig: vi.fn(() => baseConfig),
+  getStatus: vi.fn(() => ({ path: null }))
 }))
 
 vi.mock('./journal-folder-follow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./journal-folder-follow')>()),
   followJournalFolder: vi.fn()
 }))
+
+vi.mock('../canvas/scene-file', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../canvas/scene-file')>()
+  return { ...actual, readCanvasFileSync: vi.fn(actual.readCanvasFileSync) }
+})
+
+const buildAssetServiceContext = vi.hoisted(() => vi.fn((): unknown => null))
+vi.mock('../canvas/assets/asset-service-context', () => ({ buildAssetServiceContext }))
 
 const enqueueLocalSyncCreate = vi.hoisted(() => vi.fn())
 const enqueueLocalSyncDelete = vi.hoisted(() => vi.fn())
@@ -133,7 +143,7 @@ vi.mock('../telemetry/diagnostics', () => ({
   trackMainLog: vi.fn()
 }))
 
-import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
+import { getIndexDatabase, getDatabase, requireDatabase, updateFtsContent } from '../database'
 import {
   enqueueJournalCreate,
   enqueueJournalDelete,
@@ -146,7 +156,7 @@ import {
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
-import { getConfig } from './index'
+import { getConfig, getStatus } from './index'
 import { followJournalFolder } from './journal-folder-follow'
 import { safeRead } from './file-ops'
 import { scanMarkdownFile } from './file-scan'
@@ -155,6 +165,14 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 import { syncFolderConfigRename, withAppFolderChange } from '../notes/folder-config-effects'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
+import { CanvasChannels } from '@memry/contracts/canvas-api'
+import { canvases } from '@memry/db-schema/data-schema'
+import { createCanvas } from '../canvas/store'
+import { readCanvasFileSync, resolveCanvasFile } from '../canvas/scene-file'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
+import { listAssetsByCanvas, recordAsset } from '../canvas/assets/asset-store'
+import { removeCanvas } from '../canvas/delete'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -1745,6 +1763,207 @@ describe('vault watcher', () => {
 
       expect(followJournalFolder).not.toHaveBeenCalled()
       expect(enqueueJournalDelete).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('a canvas document removed outside the app (#2938)', () => {
+    async function startWatching(): Promise<(event: string, ...args: unknown[]) => void> {
+      const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+      const trigger = (event: string, ...args: unknown[]) => {
+        for (const handler of listeners.get(event) ?? []) handler(...args)
+      }
+      const mockWatcher = {
+        on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler])
+          return mockWatcher
+        }),
+        once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler])
+          return mockWatcher
+        }),
+        close: vi.fn().mockResolvedValue(undefined)
+      }
+      mockWatch.mockReturnValue(mockWatcher)
+      const startPromise = startWatcher(vault.path)
+      trigger('ready')
+      await startPromise
+      return trigger
+    }
+
+    function makeCanvas(title: string) {
+      vi.mocked(requireDatabase).mockReturnValue(asClientDb(dataDb.db) as never)
+      vi.mocked(getStatus).mockReturnValue({ path: vault.path } as never)
+      const canvas = createCanvas(
+        asClientDb(dataDb.db),
+        vault.path,
+        getOrCreateVaultUuid(asClientDb(dataDb.db)),
+        {
+          title
+        }
+      )
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, canvas.id)).get()
+      return { id: canvas.id, absolutePath: resolveCanvasFile(vault.path, row!.filePath!) }
+    }
+
+    afterEach(async () => {
+      buildAssetServiceContext.mockReturnValue(null)
+      await stopWatcher()
+    })
+
+    it('is watched, then tombstoned and queued as a canvas delete', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Board')
+
+      const ignored = mockWatch.mock.calls[0][1].ignored as (
+        filePath: string,
+        stats?: { isFile: () => boolean }
+      ) => boolean
+      expect(ignored(absolutePath, { isFile: () => true })).toBe(false)
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
+      expect(row?.deletedAt).not.toBeNull()
+      expect(window.webContents.send).toHaveBeenCalledWith(CanvasChannels.events.DELETED, { id })
+    })
+
+    async function waitOutRenameWindow(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 700))
+    }
+
+    function isLive(id: string): boolean {
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
+      return row !== undefined && row.deletedAt === null
+    }
+
+    function canvasReads(): string[] {
+      return vi
+        .mocked(readCanvasFileSync)
+        .mock.calls.map(([filePath]) => filePath)
+        .filter((filePath) => filePath.endsWith('.excalidraw'))
+    }
+
+    it('stays when the document only moved inside canvases/', async () => {
+      const trigger = await startWatching()
+      // Sorts before the moved file, so a check that reads every file reads it.
+      const other = makeCanvas('Aardvark')
+      const { id, absolutePath } = makeCanvas('Moved')
+
+      const movedPath = path.join(path.dirname(absolutePath), 'Elsewhere.excalidraw')
+      fs.renameSync(absolutePath, movedPath)
+      vi.mocked(readCanvasFileSync).mockClear()
+      trigger('unlink', absolutePath)
+      await waitOutRenameWindow()
+
+      // The check ran and read only the file no live row owns.
+      expect(canvasReads()).toEqual([movedPath])
+      expect(canvasReads()).not.toContain(other.absolutePath)
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      expect(isLive(id)).toBe(true)
+    })
+
+    it('is deleted when the document moved out of canvases/', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Moved out')
+
+      fs.renameSync(absolutePath, path.join(vault.path, 'Moved out.excalidraw'))
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      expect(isLive(id)).toBe(false)
+    })
+
+    it('stays when a moved document cannot be parsed', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Garbled')
+
+      const movedPath = path.join(path.dirname(absolutePath), 'Garbled copy.excalidraw')
+      fs.renameSync(absolutePath, movedPath)
+      fs.writeFileSync(movedPath, '{"type":"excalidraw","memry":{"id":')
+      trigger('unlink', absolutePath)
+      await waitOutRenameWindow()
+
+      expect(canvasReads()).toContain(movedPath)
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      expect(isLive(id)).toBe(true)
+    })
+
+    /** One image asset only this canvas uses, on disk and recorded with its server chunks. */
+    function withAsset(canvasId: string) {
+      const db = asClientDb(dataDb.db)
+      const dereference = vi.fn(async () => ({ ok: true }))
+      buildAssetServiceContext.mockReturnValue({
+        db,
+        vaultId: getOrCreateVaultUuid(db),
+        vaultPath: vault.path,
+        uploadAttachment: vi.fn(),
+        downloadAttachment: vi.fn(),
+        dereference,
+        markWritebackIgnored: vi.fn(),
+        trackEvent: vi.fn()
+      })
+      recordAsset(db, {
+        vaultId: getOrCreateVaultUuid(db),
+        canvasId,
+        contentHash: `hash-${canvasId}`,
+        attachmentId: 'attachment-1',
+        fileId: 'file-1',
+        filename: `hash-${canvasId}.png`,
+        mimeType: 'image/png',
+        sizeBytes: 3,
+        chunkHashes: ['chunk-1'],
+        createdAt: 1700000000000
+      })
+      const diskPath = canvasAssetDiskPath(vault.path, `hash-${canvasId}.png`)
+      fs.mkdirSync(path.dirname(diskPath), { recursive: true })
+      fs.writeFileSync(diskPath, 'png')
+      return { db, dereference, diskPath }
+    }
+
+    it('keeps its assets on disk and on the server so a restore can re-import them', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('With image')
+      const { db, dereference, diskPath } = withAsset(id)
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      expect(fs.existsSync(diskPath)).toBe(true)
+      expect(dereference).not.toHaveBeenCalled()
+      expect(listAssetsByCanvas(db, id)).toHaveLength(1)
+    })
+
+    it('an in-app delete still releases its assets', async () => {
+      const { id } = makeCanvas('Deleted in app')
+      const { db, dereference, diskPath } = withAsset(id)
+
+      expect(await removeCanvas(id, async () => {})).toBe(true)
+
+      expect(dereference).toHaveBeenCalledWith(['chunk-1'])
+      expect(fs.existsSync(diskPath)).toBe(false)
+      expect(listAssetsByCanvas(db, id)).toHaveLength(0)
+    })
+
+    it('logs a failure in the delayed check instead of rejecting', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Failing')
+      const failure = new Error('database closed')
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+      vi.mocked(getDatabase).mockImplementation(() => {
+        throw failure
+      })
+
+      await vi.waitFor(() =>
+        expect(trackMainError).toHaveBeenCalledWith('canvas', 'external_delete', failure)
+      )
+      vi.mocked(getDatabase).mockReturnValue(asClientDb(dataDb.db))
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      expect(isLive(id)).toBe(true)
     })
   })
 })

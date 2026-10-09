@@ -67,9 +67,20 @@ export async function desktopWriteFoldersToCreate(request: {
   return folder ? foldersToCreate(normalizeFolderPath(folder)) : []
 }
 
-/** Add `created_folders` to a desktop API reply once the write has landed. */
-export function withCreatedFolders(reply: unknown, folders: string[]): unknown {
-  if (folders.length === 0 || field(reply, 'success') === false) return reply
+/**
+ * Add `created_folders` to a desktop API reply once the write has landed.
+ * Keeps only the predicted folders that now exist: a new-note filing ignores
+ * its destination path, so a prediction can name a folder the write never made.
+ */
+export async function withCreatedFolders(reply: unknown, predicted: string[]): Promise<unknown> {
+  if (predicted.length === 0 || field(reply, 'success') === false) return reply
+  const vaultPath = getStatus().path
+  if (!vaultPath) return reply
+  const folders: string[] = []
+  for (const folder of predicted) {
+    if (await folderExists(path.join(vaultPath, folder))) folders.push(folder)
+  }
+  if (folders.length === 0) return reply
   const base =
     reply && typeof reply === 'object' && !Array.isArray(reply) ? reply : { result: reply }
   return { ...base, ...createdFoldersReply(folders) }
