@@ -9,15 +9,8 @@
  * @module db/queries/tag-objects
  */
 
-import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
-import {
-  noteCache,
-  noteLinks,
-  noteTags,
-  propertyDefinitions,
-  propertyRefs
-} from '@memry/db-schema/schema/notes-cache'
-import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { noteCache, noteLinks, noteTags, propertyRefs } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
 import type { VersionedMap } from '@memry/shared/versioned'
@@ -177,34 +170,6 @@ export function listTaskFieldsForTags(
     .innerJoin(tasks, eq(tasks.id, taskTags.taskId))
     .where(inArray(sql`lower(${taskTags.tag})`, lowered))
     .all()
-}
-
-/** Tag definitions that carry a schema column (plain tags have NULL). */
-export function listSchemaTagDefinitions(
-  db: DataDb
-): Array<{ name: string; color: string; icon: string | null; schema: string }> {
-  return db
-    .select({
-      name: tagDefinitions.name,
-      color: tagDefinitions.color,
-      icon: tagDefinitions.icon,
-      schema: tagDefinitions.schema
-    })
-    .from(tagDefinitions)
-    .where(isNotNull(tagDefinitions.schema))
-    .all()
-    .flatMap((row) => (row.schema === null ? [] : [{ ...row, schema: row.schema }]))
-}
-
-/** Vault-wide property name to type, from the data DB's synced definitions. */
-export function listPropertyTypes(db: DataDb): Map<string, string> {
-  return new Map(
-    db
-      .select({ name: propertyDefinitions.name, type: propertyDefinitions.type })
-      .from(propertyDefinitions)
-      .all()
-      .map((row) => [row.name, row.type])
-  )
 }
 
 export function listTaskTags(

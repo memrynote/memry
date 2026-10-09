@@ -41,7 +41,8 @@ import {
   unregisterFolderViewHandlers
 } from '../ipc/folder-view-handlers'
 import { registerTagObjectHandlers, unregisterTagObjectHandlers } from '../ipc/tag-object-handlers'
-import { buildObjectIndex, loadResolvedTags } from './objects'
+import { buildObjectIndex } from './objects'
+import { loadResolvedTags } from './schema/read'
 
 interface NoteFixture {
   id: string

@@ -403,7 +403,14 @@ describe('tags-handlers', () => {
     )
 
     unregisterTagsHandlers()
-    expect(removeHandlerCalls).toEqual(Object.values(TagsChannels.invoke))
+    // Object reads register in tag-object-handlers.ts.
+    const objectChannels: string[] = [
+      TagsChannels.invoke.SEARCH_OBJECTS,
+      TagsChannels.invoke.GET_LINKED_HERE
+    ]
+    expect(removeHandlerCalls).toEqual(
+      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.includes(channel))
+    )
   })
 })
 

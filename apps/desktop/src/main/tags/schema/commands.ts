@@ -6,20 +6,18 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type { DataDb, IndexDb } from '../../database/types'
+import { buildObjectIndex } from '../objects'
 import { addPreset, dismissPresetOffer, presetOffers, presetStripDismissed } from '../presets'
 import { addField, emitTagSchemasChanged, saveSchemaEdit } from './edit'
 import { renameField } from './field-rename'
 import { loadResolvedTags } from './read'
 
-/**
- * The one read model of tag schemas. `objects` (note id to its primary object
- * tag) is filled by the object reads (`tags/objects.ts`); empty until then.
- */
+/** The one read model of tag schemas, object identities and ready-made tag offers. */
 export function getTagSchemaSnapshot(db: DataDb, indexDb: IndexDb): TagSchemaSnapshot {
   const resolved = loadResolvedTags(db)
   return {
     tags: Object.fromEntries(resolved),
-    objects: {},
+    objects: buildObjectIndex(indexDb, resolved).objects,
     presets: presetOffers(db, indexDb, resolved),
     presetStripDismissed: presetStripDismissed(db)
   }

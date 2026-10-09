@@ -34,8 +34,6 @@ import {
   listLinkSourceIds,
   listNoteSummaries,
   listObjectHeaderRows,
-  listPropertyTypes,
-  listSchemaTagDefinitions,
   listTagRowsForNotes,
   listTaskFieldsForTags,
   listTaskTags,
@@ -43,31 +41,9 @@ import {
   type NoteSummaryRow
 } from '@main/database/queries/tag-objects'
 import type { DataDb, IndexDb } from '../database/types'
-import { descendantsOf, parseSchemaColumn, resolveTagSchemas, tagKey } from './tag-schema'
+import { descendantsOf, tagKey } from './tag-schema'
 
 export type ResolvedTags = ReadonlyMap<string, ResolvedTag>
-
-/**
- * Every tag schema, resolved. Reads tens of rows. The schema service owns the
- * snapshot; this is the same resolution for read paths that need only the model.
- */
-export function loadResolvedTags(dataDb: DataDb): Map<string, ResolvedTag> {
-  const types = listPropertyTypes(dataDb)
-  return resolveTagSchemas(
-    new Map(
-      listSchemaTagDefinitions(dataDb).map((row) => [
-        tagKey(row.name),
-        { name: row.name, color: row.color, icon: row.icon, schema: parseSchemaColumn(row.schema) }
-      ])
-    ),
-    {
-      get: (name) => {
-        const type = types.get(name)
-        return type ? { type: type as PropertyType } : undefined
-      }
-    }
-  )
-}
 
 function fieldTagKeys(resolved: ResolvedTags): string[] {
   return [...resolved.values()].filter((tag) => tag.hasFields).map((tag) => tag.key)

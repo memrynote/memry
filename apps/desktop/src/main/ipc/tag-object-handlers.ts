@@ -13,7 +13,8 @@ import {
   type SearchObjectsResponse
 } from '@memry/contracts/tag-objects-api'
 import { getIndexDatabase, requireDatabase } from '../database'
-import { getLinkedHere, loadResolvedTags, searchObjects } from '../tags/objects'
+import { getLinkedHere, searchObjects } from '../tags/objects'
+import { loadResolvedTags } from '../tags/schema/read'
 import { createValidatedHandler } from './validate'
 
 const CHANNELS = [TagsChannels.invoke.SEARCH_OBJECTS, TagsChannels.invoke.GET_LINKED_HERE]
