@@ -13298,7 +13298,8 @@
         "__schema0": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             {
               "type": "number"
@@ -13310,6 +13311,7 @@
               "type": "null"
             },
             {
+              "maxItems": 500,
               "type": "array",
               "items": {
                 "$ref": "#/$defs/__schema0"
@@ -13318,7 +13320,8 @@
             {
               "type": "object",
               "propertyNames": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               "additionalProperties": {
                 "$ref": "#/$defs/__schema0"
@@ -13617,7 +13620,8 @@
         "__schema0": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             {
               "type": "number"
@@ -13629,6 +13633,7 @@
               "type": "null"
             },
             {
+              "maxItems": 500,
               "type": "array",
               "items": {
                 "$ref": "#/$defs/__schema0"
@@ -13637,7 +13642,8 @@
             {
               "type": "object",
               "propertyNames": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               "additionalProperties": {
                 "$ref": "#/$defs/__schema0"

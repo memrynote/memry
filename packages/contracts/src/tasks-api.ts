@@ -49,18 +49,40 @@ export const RepeatConfigSchema = z.object({
   createdAt: z.string()
 })
 
+/**
+ * Size caps on field values a caller sends. They bound one task's payload,
+ * which every device stores and pushes whole: text up to 10,000 characters
+ * (a long note-like value), lists up to 500 items (relation values are arrays
+ * of `memry://` URIs), objects up to 50 keys, and 100 fields per task. Values
+ * that arrive by sync are not checked here; they are another device's data.
+ */
+export const TASK_FIELD_LIMITS = {
+  textLength: 10_000,
+  listItems: 500,
+  objectKeys: 50,
+  fieldsPerTask: 100
+} as const
+
 const TaskFieldValueSchema: z.ZodType<TaskFieldValue, TaskFieldValue> = z.lazy(() =>
   z.union([
-    z.string(),
-    z.number(),
+    z.string().max(TASK_FIELD_LIMITS.textLength),
+    z.number().finite(),
     z.boolean(),
     z.null(),
-    z.array(TaskFieldValueSchema),
-    z.record(z.string(), TaskFieldValueSchema)
+    z.array(TaskFieldValueSchema).max(TASK_FIELD_LIMITS.listItems),
+    z
+      .record(z.string().max(200), TaskFieldValueSchema)
+      .refine((value) => Object.keys(value).length <= TASK_FIELD_LIMITS.objectKeys, {
+        message: `At most ${TASK_FIELD_LIMITS.objectKeys} keys`
+      })
   ])
 )
 
-export const TaskFieldsSchema = z.record(z.string().min(1).max(200), TaskFieldValueSchema)
+export const TaskFieldsSchema = z
+  .record(z.string().min(1).max(200), TaskFieldValueSchema)
+  .refine((fields) => Object.keys(fields).length <= TASK_FIELD_LIMITS.fieldsPerTask, {
+    message: `At most ${TASK_FIELD_LIMITS.fieldsPerTask} fields`
+  })
 
 export const TaskCreateSchema = z.object({
   projectId: z.string(),
