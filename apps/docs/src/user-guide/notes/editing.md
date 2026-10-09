@@ -920,7 +920,8 @@ from the trash or a backup comes back as a new note.
 A note renamed or moved while memrynote is closed, alone or with its whole folder, keeps its
 history, tasks and links. When more than 20 files, and more than a quarter of the vault, are
 missing at once (a vault still being copied or restored, say), memrynote deletes none of them and
-checks again the next time it opens the vault.
+checks again the next time it opens the vault. Twenty or fewer missing files are always deleted,
+so in a small vault even all of its notes going missing at once syncs their deletes.
 
 ## Opening a Note Written Somewhere Else
 

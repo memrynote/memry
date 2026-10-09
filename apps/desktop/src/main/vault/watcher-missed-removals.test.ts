@@ -371,6 +371,57 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
     })
   })
 
+  /**
+   * A folder moved while closed, opened on real timers with every add made slow
+   * through the replay's own add path, so the adds run well past the 500 ms a
+   * live unlink waits for its rename. Returns how long the replay took.
+   */
+  async function openVaultWithSlowAdds(moved: number): Promise<number> {
+    vi.useRealTimers()
+    const internals = watcher as unknown as { handleFileAdd(p: string): Promise<void> }
+    const handleFileAdd = internals.handleFileAdd.bind(watcher)
+    internals.handleFileAdd = async (p: string) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000 / moved))
+      await handleFileAdd(p)
+    }
+    try {
+      await reconcileCanvasFiles(data.db as never, vault.path, VAULT_ID)
+      const started = Date.now()
+      await watcher.replayMissedRemovals()
+      const replayMs = Date.now() - started
+      await indexVault(vault.path)
+      await new Promise((resolve) => setTimeout(resolve, 700))
+      await flushProjectionEvents()
+      await drainIngestBackfill()
+      return replayMs
+    } finally {
+      internals.handleFileAdd = handleFileAdd
+    }
+  }
+
+  it('keeps the ids of a large folder moved while closed, however long the adds take', async () => {
+    for (let i = 0; i < 12; i++) await seedHashedNote(`note-${i}`, `projects/a/n${i}.md`)
+    fs.renameSync(abs('projects/a'), abs('projects/b'))
+
+    expect(await openVaultWithSlowAdds(12)).toBeGreaterThan(900)
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    for (let i = 0; i < 12; i++) expect(idAt(`projects/b/n${i}.md`)).toBe(`note-${i}`)
+  })
+
+  it('keeps the ids of a folder moved while closed past the mass-removal guard, on every open', async () => {
+    for (let i = 0; i < 25; i++) await seedHashedNote(`note-${i}`, `projects/a/n${i}.md`)
+    fs.renameSync(abs('projects/a'), abs('projects/b'))
+
+    expect(await openVaultWithSlowAdds(25)).toBeGreaterThan(900)
+    for (let i = 0; i < 25; i++) expect(idAt(`projects/b/n${i}.md`)).toBe(`note-${i}`)
+    expect(index.db.select().from(noteCache).all()).toHaveLength(26)
+
+    // The next open finds nothing missing, so no old id is left to delete.
+    await openVaultWithSlowAdds(25)
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+  })
+
   it('syncs no deletes when too many files are missing at once, and checks again next open', async () => {
     for (let i = 0; i < 30; i++) seedNote(`note-${i}`, `notes/n${i}.md`)
     for (let i = 0; i < 21; i++) fs.rmSync(abs(`notes/n${i}.md`))

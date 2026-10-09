@@ -47,6 +47,7 @@ import {
   checkForRename,
   clearAllPendingDeletes,
   hasPendingDeletes,
+  settleDeferredDeletes,
   buildStatRenameKey,
   processRename,
   type RenameMatch
@@ -417,8 +418,10 @@ export class VaultWatcher {
    * Replay what changed while the vault was away through the handlers chokidar
    * would have called. Removals go first, so a file renamed meanwhile matches
    * its pending delete by content hash when its new path is added. Both lists
-   * are gathered before any delete starts its rename window: walking a large
-   * vault outlasts the window (#2797). `withChanges` also replays edits; vault
+   * are known up front, so the deletes arm no rename window: every add gets to
+   * claim one, and only the deletes left after the last add are settled. A
+   * window would expire while a large folder move is still being added, and
+   * delete the old ids (#2797, #3013). `withChanges` also replays edits; vault
    * open leaves those to its index walk.
    */
   private async rescan(generation: number, withChanges: boolean): Promise<void> {
@@ -456,11 +459,16 @@ export class VaultWatcher {
     }
 
     if (!isCurrent()) return
-    for (const absolutePath of missing) this.handleFileDelete(absolutePath, keepUnpaired)
+    for (const absolutePath of missing) {
+      this.handleFileDelete(absolutePath, { keepUnpaired, deferred: true })
+    }
     for (const absolutePath of added) {
       if (!isCurrent()) return
       await this.handleFileAdd(absolutePath)
     }
+    // A stop meanwhile cleared the deferred deletes with the rest.
+    if (!isCurrent()) return
+    await settleDeferredDeletes()
     if (!withChanges) return
     for (const absolutePath of changed) {
       if (!isCurrent()) return
@@ -1138,9 +1146,13 @@ export class VaultWatcher {
    * Handle file deletion.
    * Tracks as pending delete to detect renames (delete + add with same UUID).
    * `keepUnpaired` still lets a rename claim the row, but a removal that
-   * pairs with nothing keeps its row and syncs no delete.
+   * pairs with nothing keeps its row and syncs no delete. `deferred` arms no
+   * rename window; the rescan settles the delete after its last add.
    */
-  private handleFileDelete(absolutePath: string, keepUnpaired = false): void {
+  private handleFileDelete(
+    absolutePath: string,
+    { keepUnpaired = false, deferred = false } = {}
+  ): void {
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1232,7 +1244,8 @@ export class VaultWatcher {
 
           await Promise.resolve()
         },
-        statKey
+        statKey,
+        deferred
       )
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
