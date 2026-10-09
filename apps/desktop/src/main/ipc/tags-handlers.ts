@@ -7,7 +7,7 @@
 
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { eq, inArray, like, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -26,7 +26,6 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@memry/contracts/tags-api'
-import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
@@ -40,16 +39,13 @@ import {
   findNotesWithTagInfo,
   pinNoteToTag,
   unpinNoteFromTag,
-  renameTag,
   deleteTag,
   removeTagFromNote,
   getOrCreateTag,
   deleteTagDefinition,
-  renameTagDefinition,
   updateTagColor,
   updateTagIcon,
-  getNoteTags,
-  getNoteCacheById
+  getNoteTags
 } from '../tags/store'
 import {
   getAllTagsWithCounts,
@@ -66,12 +62,12 @@ import {
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
-import { updateNoteCommand } from '../notes/domain'
-import { assertNoteWritable, hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { assertNoteWritable } from '../vault-locks/registry'
+import { editNoteHeaderTags, keepLockedNoteTags } from '../tags/note-tag-edits'
+import { renameTagEverywhere } from '../tags/rename-tag'
 import {
   syncMergedTagDefinitions,
   syncTagDefinitionDelete,
-  syncTagDefinitionRename,
   syncTagDefinitionUpdate,
   syncTagCategoryCreate,
   syncTagCategoryUpdate,
@@ -147,50 +143,6 @@ function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: s
     .where(eq(noteTags.tag, normalized))
     .all()
     .map((r) => r.noteId)
-}
-
-/**
- * Snapshot the index tag rows of every locked note that carries `tag` (or a
- * child of it) before a vault-wide rename, merge or delete, and put them back
- * verbatim after it. The file of a locked note is left as it is, so its index
- * rows must not change either (#2606).
- */
-function keepLockedNoteTags(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): () => void {
-  if (!hasAnyVaultLock()) return () => {}
-  const normalized = tag.toLowerCase().trim()
-  const lockedIds = indexDb
-    .selectDistinct({ noteId: noteTags.noteId })
-    .from(noteTags)
-    .where(or(eq(noteTags.tag, normalized), like(noteTags.tag, `${normalized}/%`)))
-    .all()
-    .map((row) => row.noteId)
-    .filter((noteId) => isNoteLocked(noteId))
-  if (lockedIds.length === 0) return () => {}
-  const kept = indexDb.select().from(noteTags).where(inArray(noteTags.noteId, lockedIds)).all()
-  return () => {
-    indexDb.delete(noteTags).where(inArray(noteTags.noteId, lockedIds)).run()
-    indexDb.insert(noteTags).values(kept).run()
-  }
-}
-
-/**
- * One note's part of a vault-wide tag rename, merge or delete. The header edit
- * goes through the note command, so an open editor's doc follows it instead of
- * writing the old list back. A locked note keeps its file, and a filed binary
- * has no frontmatter: the index rows the caller already rewrote are its tags.
- */
-async function editNoteHeaderTags(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  headerTags: HeaderTagEdit
-): Promise<void> {
-  const cached = getNoteCacheById(indexDb, noteId)
-  if (!cached || cached.fileType !== 'markdown') return
-  if (isNoteLocked(noteId, cached.path)) {
-    log.info('Left the tags of a locked note unchanged', { noteId })
-    return
-  }
-  await updateNoteCommand({ id: noteId, headerTags })
 }
 
 /**
@@ -296,38 +248,11 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const noteIds = getAffectedNoteIds(indexDb, input.oldName)
-
-        const restoreLockedTags = keepLockedNoteTags(indexDb, input.oldName)
-        const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
-        restoreLockedTags()
-
-        // Tasks follow the rename as they follow a merge, so a tag with
-        // fields keeps its tasks. Before the frontmatter writes below, which
-        // an app quit can interrupt.
-        commitTaskRetag(dataDb, () => mergeTagInTasks(dataDb, input.oldName, input.newName))
-
-        const oldTagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
-          .get()
-
-        renameTagDefinition(dataDb, input.oldName, input.newName)
-
-        syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
-        rewriteSchemaReferences(dataDb, input.oldName, input.newName)
-
-        await Promise.all(
-          noteIds.map((noteId) =>
-            editNoteHeaderTags(indexDb, noteId, {
-              rename: [{ from: input.oldName, to: input.newName }]
-            }).catch((err) => {
-              log.warn('Failed to update frontmatter for note', { noteId, err })
-              // DB and vault file now diverge silently; must reach Error Tracking.
-              trackMainError('tags', 'frontmatter_writeback', err)
-            })
-          )
+        const affectedNotes = await renameTagEverywhere(
+          indexDb,
+          dataDb,
+          input.oldName,
+          input.newName
         )
 
         emitTagEvent(TagsChannels.events.RENAMED, {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractInlineTagsFromMarkdown } from './inline-tags'
+import { extractInlineTagsFromMarkdown, rewriteInlineTagsInMarkdown } from './inline-tags'
 
 describe('extractInlineTagsFromMarkdown', () => {
   it('extracts a single tag', () => {
@@ -68,5 +68,28 @@ describe('extractInlineTagsFromMarkdown', () => {
 
   it('does not capture trailing slash', () => {
     expect(extractInlineTagsFromMarkdown('#movies/ rest')).toEqual(['movies'])
+  })
+})
+
+describe('rewriteInlineTagsInMarkdown', () => {
+  const rename = [{ from: 'person', to: 'people' }]
+
+  it('renames the tag and its children, whole tags only', () => {
+    expect(
+      rewriteInlineTagsInMarkdown('#person met #Person/VIP and #personal #person-x', rename)
+    ).toBe('#people met #people/VIP and #personal #person-x')
+  })
+
+  it('leaves code, mid-word hashes and other tags as written', () => {
+    const content = 'a#person `#person` #work\n```\n#person\n```\n#person'
+    expect(rewriteInlineTagsInMarkdown(content, rename)).toBe(
+      'a#person `#person` #work\n```\n#person\n```\n#people'
+    )
+  })
+
+  it('agrees with the extractor on what it renamed', () => {
+    const content = 'x `code`#person y #person/a/b'
+    const rewritten = rewriteInlineTagsInMarkdown(content, rename)
+    expect(extractInlineTagsFromMarkdown(rewritten)).toEqual(['people', 'people/a/b'])
   })
 })

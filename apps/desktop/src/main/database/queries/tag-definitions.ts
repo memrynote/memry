@@ -141,6 +141,11 @@ export function updateTagIcon(db: DataDb, name: string, icon: string | null): vo
   db.update(tagDefinitions).set({ icon }).where(eq(tagDefinitions.name, normalizedName)).run()
 }
 
+/**
+ * Moves one definition row to `newName`, or drops it when `newName` already has
+ * one (a merge: the target keeps its own). Children are separate rows; the
+ * caller moves each (`tags/rename-tag.ts`).
+ */
 export function renameTagDefinition(db: DataDb, oldName: string, newName: string): void {
   const normalizedOld = oldName.toLowerCase().trim()
   const normalizedNew = newName.toLowerCase().trim()
@@ -160,30 +165,6 @@ export function renameTagDefinition(db: DataDb, oldName: string, newName: string
       .set({ name: normalizedNew })
       .where(eq(tagDefinitions.name, normalizedOld))
       .run()
-  }
-
-  const children = db
-    .select({ name: tagDefinitions.name })
-    .from(tagDefinitions)
-    .where(like(tagDefinitions.name, `${normalizedOld}/%`))
-    .all()
-
-  for (const child of children) {
-    const newChildName = normalizedNew + child.name.slice(normalizedOld.length)
-    const existingChild = db
-      .select()
-      .from(tagDefinitions)
-      .where(eq(tagDefinitions.name, newChildName))
-      .get()
-
-    if (existingChild) {
-      db.delete(tagDefinitions).where(eq(tagDefinitions.name, child.name)).run()
-    } else {
-      db.update(tagDefinitions)
-        .set({ name: newChildName })
-        .where(eq(tagDefinitions.name, child.name))
-        .run()
-    }
   }
 }
 

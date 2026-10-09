@@ -49,8 +49,6 @@ vi.mock('@main/database/queries/notes', () => ({
   findNotesWithTagInfo: vi.fn(),
   pinNoteToTag: vi.fn(),
   unpinNoteFromTag: vi.fn(),
-  renameTag: vi.fn(),
-  renameTagDefinition: vi.fn(),
   deleteTag: vi.fn(),
   deleteTagDefinition: vi.fn(),
   removeTagFromNote: vi.fn(),
@@ -115,8 +113,12 @@ vi.mock('../tags/runtime-effects', () => ({
 
 vi.mock('../tags/schema/references', () => ({ rewriteSchemaReferences: vi.fn(() => []) }))
 
+// The rename itself is covered against real files in tags/rename-tag.test.ts.
+vi.mock('../tags/rename-tag', () => ({ renameTagEverywhere: vi.fn() }))
+
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { rewriteSchemaReferences } from '../tags/schema/references'
+import { renameTagEverywhere } from '../tags/rename-tag'
 import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tagQueries from '@main/database/queries/tags'
@@ -220,16 +222,18 @@ describe('tags-handlers', () => {
 
   it('renames, updates color, and deletes tags', async () => {
     registerTagsHandlers()
-    ;(notesQueries.renameTag as Mock).mockReturnValue(3)
+    ;(renameTagEverywhere as Mock).mockResolvedValue(3)
     const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
       oldName: 'old',
       newName: 'new'
     })
     expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
-    expect(notesQueries.renameTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
-    // A rename carries tasks and other tags' schema references along, as a merge does.
-    expect(tagQueries.mergeTagInTasks).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
-    expect(rewriteSchemaReferences).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
+    expect(renameTagEverywhere).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      'old',
+      'new'
+    )
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new' })
@@ -249,7 +253,7 @@ describe('tags-handlers', () => {
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })
     expect(notesQueries.deleteTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'new')
     // A delete leaves references dangling, so they re-resolve if the tag returns.
-    expect(rewriteSchemaReferences).toHaveBeenCalledTimes(1)
+    expect(rewriteSchemaReferences).not.toHaveBeenCalled()
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.DELETED,
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })
@@ -308,7 +312,7 @@ describe('tags-handlers', () => {
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
   })
 
-  it('rewrites each carrier header through the note command when renaming or deleting tags', async () => {
+  it('rewrites each carrier header through the note command when deleting tags', async () => {
     const indexDb = createDbMock({ allResult: [{ noteId: 'note-1' }] })
     const dataDb = createDbMock({ getResult: { name: 'old', color: 'red' } })
     ;(getIndexDatabase as Mock).mockReturnValue(indexDb)
@@ -317,23 +321,7 @@ describe('tags-handlers', () => {
       path: 'notes/a.md',
       fileType: 'markdown'
     })
-    ;(notesQueries.renameTag as Mock).mockReturnValue(1)
     registerTagsHandlers()
-
-    const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
-      oldName: ' old ',
-      newName: ' New '
-    })
-
-    expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
-    expect(fileMocks.updateNoteCommand).toHaveBeenCalledWith({
-      id: 'note-1',
-      headerTags: { rename: [{ from: ' old ', to: ' New ' }] }
-    })
-    expect(fileMocks.syncTagDefinitionRename).toHaveBeenCalledWith(' old ', ' New ', {
-      name: 'old',
-      color: 'red'
-    })
     ;(notesQueries.deleteTag as Mock).mockReturnValue(1)
 
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, ' old ')
@@ -570,8 +558,7 @@ const resettableStoreMocks = (): Mock[] =>
     notesQueries.findNotesWithTagInfo,
     notesQueries.pinNoteToTag,
     notesQueries.unpinNoteFromTag,
-    notesQueries.renameTag,
-    notesQueries.renameTagDefinition,
+    renameTagEverywhere,
     notesQueries.deleteTag,
     notesQueries.deleteTagDefinition,
     notesQueries.removeTagFromNote,
@@ -687,7 +674,7 @@ describe('tags-handlers failure envelopes', () => {
       [
         TagsChannels.invoke.RENAME_TAG,
         { oldName: 'old', newName: 'new' },
-        notesQueries.renameTag as Mock,
+        renameTagEverywhere as Mock,
         'errors:tag.renameFailed'
       ],
       [
@@ -848,7 +835,7 @@ describe('tags-handlers failure envelopes', () => {
       /Validation failed/
     )
 
-    expect(notesQueries.renameTag).not.toHaveBeenCalled()
+    expect(renameTagEverywhere).not.toHaveBeenCalled()
     expect(notesQueries.findNotesWithTagInfo).not.toHaveBeenCalled()
   })
 })
@@ -875,7 +862,7 @@ describe('tags-handlers vault-file edge cases', () => {
     // The index is already updated at this point; a missing/unreadable file on
     // disk must not be reported to the user as a failed rename/delete/merge.
     fileMocks.updateNoteCommand.mockRejectedValue(new Error('ENOENT: no such file or directory'))
-    ;(notesQueries.renameTag as Mock).mockReturnValue(2)
+    ;(renameTagEverywhere as Mock).mockResolvedValue(2)
     ;(notesQueries.deleteTag as Mock).mockReturnValue(2)
     ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
     ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })

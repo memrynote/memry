@@ -39,6 +39,11 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('../notes/domain', () => notes)
+vi.mock('../vault/notes', () => ({ getNoteById: vi.fn(async () => null) }))
+vi.mock('../sync/crdt-provider', () => ({
+  ORIGIN_LOCAL: 'local',
+  getCrdtProvider: () => ({ getDoc: () => undefined })
+}))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 vi.mock('../tags/runtime-effects', () => ({

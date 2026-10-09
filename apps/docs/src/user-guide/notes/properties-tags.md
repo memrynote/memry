@@ -47,8 +47,15 @@ Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or ope
 page and use its header menu to rename, recolor, or delete it directly. Renames apply across
 every note instantly.
 
-A rename or delete changes the `tags:` list of each note. A `#tag` written in a note's text
-stays as you wrote it, so that note keeps appearing under the old tag until you edit the text.
+A rename changes the `tags:` list of each note and every `#tag` written in the text of your
+notes and journal entries, including notes you have open. Only whole tags change: renaming
+`person` leaves `#personal` alone, and a `#tag` inside code stays as written. A delete changes
+the `tags:` list only, so a `#tag` in the text stays until you edit it.
+
+Renaming a tag renames its child tags too: `person` to `people` also turns `person/vip` into
+`people/vip`, with their colors, icons, views and fields. If the new name, or a child's new
+name, already exists, the two merge as they do with **Merge**: the existing tag keeps its color
+and fields, and the renamed tag's notes and tasks join it.
 
 Renaming or merging a tag carries across your **tasks** too: a task tagged `MIT` becomes
 `focus` when you rename `MIT` to `focus`. Deleting a tag updates your **notes** only, so tasks
