@@ -12,7 +12,6 @@ const LazyEmojiPicker = lazy(async () => ({
 }))
 
 export interface NoteTitleProps {
-  /** An object note without its own icon shows its tag's avatar or icon tile (E1). */
   noteId?: string
   emoji: string | null
   title: string

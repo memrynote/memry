@@ -5,7 +5,6 @@ import { foldTag, tagKey } from '@memry/shared/tag-fold'
 import { applyHeaderTagEdit } from '../vault/frontmatter'
 import { tagsWithFields } from './schema/read'
 
-/** The inline `#tags` a body edit added and removed, or null when it changed none. */
 export function inlineTagEditBetween(before: string, after: string): HeaderTagEdit | null {
   const beforeTags = extractInlineTagsFromMarkdown(before)
   const afterTags = extractInlineTagsFromMarkdown(after)
@@ -16,11 +15,6 @@ export function inlineTagEditBetween(before: string, after: string): HeaderTagEd
   return add.length > 0 || remove.length > 0 ? { add, remove, source: 'inline' } : null
 }
 
-/**
- * `current` after an inline-origin edit: only plain tags move between the body
- * and the header. A tag with fields typed in the text stays a mention, and
- * deleting that mention leaves a header that holds the tag alone.
- */
 export function applyInlineTagEdit(
   db: DataDb,
   current: readonly string[],

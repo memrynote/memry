@@ -22,7 +22,6 @@ use crate::domain::tag_admin::{
 };
 use crate::domain::{body_tags, tag_body_rename, tag_schema_refs, tags};
 
-/// `(from, to)` for `old` and each child of it anything holds, children first.
 fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)>, StorageError> {
     let old_key = tags::fold(old.trim());
     let mut names: Vec<String> = carriers(conn, None)?
@@ -55,8 +54,6 @@ fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)
     Ok(out)
 }
 
-/// Moves one definition: onto a free name it keeps everything but its clock;
-/// onto a name with a live definition it merges into that one.
 fn move_definition(
     conn: &Connection,
     from: &str,
@@ -199,7 +196,6 @@ mod tests {
                 live_definition(c, "career")?.expect("career")["color"],
                 json!("#ff0000")
             );
-            // `career/lead` existed: the merge keeps its own definition.
             assert_eq!(
                 live_definition(c, "career/lead")?.expect("career/lead")["color"],
                 json!("teal")

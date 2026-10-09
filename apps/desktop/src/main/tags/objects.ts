@@ -1,16 +1,3 @@
-/**
- * Read-only object queries for tags with fields.
- *
- * Membership (decisions.md "Object membership"): a note is an object of tag T
- * when T, or a tag that extends T, is in its header (`note_tags.in_header = 1`)
- * and the note is markdown and not a journal entry. The `/` hierarchy never
- * confers membership. A task's tags all count as header tags. Everything else
- * that carries T (inline-only notes, journals, binaries, `T/child` rows, inbox
- * items) lists under "Mentioned in", so no tagged item disappears.
- *
- * Plain tags (no fields, own or inherited) keep today's tag page untouched.
- */
-
 import type { NoteWithProperties, ViewConfig, ViewScope } from '@memry/contracts/folder-view-api'
 import { DEFAULT_VIEW } from '@memry/contracts/folder-view-api'
 import type { PropertyType } from '@memry/contracts/property-types'
@@ -50,19 +37,16 @@ function fieldTagKeys(resolved: ResolvedTags): string[] {
   return [...resolved.values()].filter((tag) => tag.hasFields).map((tag) => tag.key)
 }
 
-/** `tag` and every tag that extends it, when `tag` has fields; else null (plain tag). */
 function familyOf(tag: string, resolved: ResolvedTags): string[] | null {
   const key = tagKey(tag)
   if (!resolved.get(key)?.hasFields) return null
   return [key, ...descendantsOf(key, resolved)]
 }
 
-/** Root of a tag's extends chain. */
 function rootOf(key: string, resolved: ResolvedTags): string {
   return resolved.get(key)?.ancestors.at(-1) ?? key
 }
 
-/** Header-ordered member tags per note, for header rows matching `tags`. */
 function headerMembers(indexDb: IndexDb, tags: readonly string[]): Map<string, string[]> {
   const byNote = new Map<string, string[]>()
   for (const row of listObjectHeaderRows(indexDb, tags)) {
@@ -73,14 +57,6 @@ function headerMembers(indexDb: IndexDb, tags: readonly string[]): Map<string, s
   return byNote
 }
 
-// ============================================================================
-// Snapshot identity
-// ============================================================================
-
-/**
- * noteId -> primary object tag (first header tag with fields), objects only.
- * For `tags:get-schema-snapshot`'s `objects`.
- */
 export function buildObjectIndex(
   indexDb: IndexDb,
   resolved: ResolvedTags
@@ -91,16 +67,11 @@ export function buildObjectIndex(
   return { objects, complete: !hasUnresolvedTagRows(indexDb, tags) }
 }
 
-// ============================================================================
-// Tag page rows (folder-view:list-with-properties, tag scope)
-// ============================================================================
-
 function itemPath(item: TagItem): string {
   if (item.kind === 'note') return item.path ?? ''
   return item.kind === 'task' ? `/tasks/${item.id}` : `/inbox/${item.id}`
 }
 
-/** A tag page row; `properties` is filled by the caller per row kind. */
 export function tagItemToRow(
   item: TagItem,
   properties: Record<string, unknown>,
@@ -108,31 +79,21 @@ export function tagItemToRow(
 ): NoteWithProperties {
   return {
     id: item.id,
-    // Tasks and inbox items have no note path; synthesise a stable one so
-    // row identity and any path-keyed UI still work.
     path: itemPath(item),
     title: item.title,
     emoji: item.emoji,
-    // `container` is the note's parent folder or the task's project name.
     folder: item.container ?? '',
     tags: item.tags,
     created: item.created,
     modified: item.modified,
-    // TagItem carries no word count for any kind.
     wordCount: 0,
     properties,
     kind: item.kind,
-    // A tagged PDF/image is a note row too; its real type keeps its metadata
-    // cells read-only (#2073) and lets the canvas card it as a file (#2484).
     fileType: item.fileType,
     ...(viaTag ? { viaTag } : {})
   }
 }
 
-/**
- * Rows of a tag with fields, or null for a plain tag (the caller keeps
- * today's union). Objects carry typed note values and task `fields`.
- */
 export function listFieldTagRows(
   indexDb: IndexDb,
   dataDb: DataDb,
@@ -160,8 +121,6 @@ export function listFieldTagRows(
     return tags.includes(self) ? self : tags[0]
   }
 
-  // Objects reach the page through the tag or a descendant; mentions only
-  // through the tag itself (exact or `/` child), as on a plain tag's page.
   const seen = new Set<string>()
   const picked: Array<{ item: TagItem; via: string | null }> = []
   family.forEach((tag, index) => {
@@ -196,7 +155,6 @@ export function listFieldTagRows(
   }
 }
 
-/** The tag table's view when none is saved: title, the effective fields in order, modified. */
 export function defaultFieldTagView(tag: string, resolved: ResolvedTags): ViewConfig | null {
   const entry = resolved.get(tagKey(tag))
   if (!entry?.hasFields) return null
@@ -210,7 +168,6 @@ export function defaultFieldTagView(tag: string, resolved: ResolvedTags): ViewCo
   }
 }
 
-/** A tag's effective fields as column types, for fields no row has filled yet. */
 export function fieldColumns(
   tag: string,
   resolved: ResolvedTags
@@ -220,10 +177,6 @@ export function fieldColumns(
     type: field.type
   }))
 }
-
-// ============================================================================
-// Search (@ menu, relation picker)
-// ============================================================================
 
 /**
  * Lowercase with diacritics removed, so "ahm" finds "Ahmet" and "s" finds
@@ -313,10 +266,6 @@ export function searchObjects(
   return { matches, complete: !hasUnresolvedTagRows(indexDb, candidates) }
 }
 
-// ============================================================================
-// Linked here (derived inverse lists)
-// ============================================================================
-
 const byNewest = (a: NoteSummaryRow, b: NoteSummaryRow): number =>
   (b.date ?? b.modified).localeCompare(a.date ?? a.modified)
 
@@ -327,7 +276,6 @@ const toLinkedNote = (note: NoteSummaryRow): LinkedNoteItem => ({
   snippet: note.snippet
 })
 
-/** First tag, in order, whose effective fields define `field` (relation fields only when asked). */
 function fieldOwner(
   tags: readonly string[],
   field: string,
@@ -360,7 +308,6 @@ export function getLinkedHere(
   const filter = (field: string): string => `${field} contains "${uri}"`
   const groups: LinkedHereGroup[] = []
 
-  // Relation fields on notes.
   const refs = listIncomingNoteRefs(indexDb, input.noteId).filter(
     (ref) => ref.sourceNoteId !== input.noteId
   )
@@ -405,7 +352,6 @@ export function getLinkedHere(
     })
   }
 
-  // Task fields. LIKE found candidates; the live map confirms them.
   const tasks = listTasksMentioningNoteInFields(dataDb, input.noteId)
   const tagsOfTask = new Map<string, string[]>()
   for (const row of listTaskTags(
@@ -447,7 +393,6 @@ export function getLinkedHere(
     })
   }
 
-  // Wiki links in bodies (journals included).
   const mentions = listNoteSummaries(
     indexDb,
     listLinkSourceIds(indexDb, input.noteId).filter((id) => id !== input.noteId)

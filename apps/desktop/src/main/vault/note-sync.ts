@@ -148,9 +148,7 @@ export interface NoteSyncInput {
 export interface NoteMetadata {
   /** Note ID */
   id: string
-  /** Header and inline tags (case preserved, deduplicated case-insensitively) */
   tags: string[]
-  /** The frontmatter `tags:` list alone */
   headerTags: string[]
   /** Custom properties from frontmatter */
   properties: Record<string, unknown>

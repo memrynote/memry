@@ -22,7 +22,6 @@ const FILE_ICONS: Record<Exclude<NoteFileType, 'markdown'>, typeof FileText> = {
   video: Video
 }
 
-/** A note row: its object's tag icon when the note is an object (C2 bullet 4). */
 function NoteResultIcon({ noteId }: { noteId: string }): React.JSX.Element {
   const identity = useOptionalObjectIdentity(noteId)
   return identity ? <TagGlyph look={identity} className="size-4" /> : <FileText />

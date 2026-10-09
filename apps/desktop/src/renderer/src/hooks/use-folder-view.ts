@@ -147,7 +147,6 @@ interface UseFolderViewOptions {
   pageSize?: number
   /** Saved view name to activate on load, preferred over the folder default (e.g. Home widget config). */
   initialViewName?: string
-  /** A tab-local filter ANDed onto the active view's (a "Linked here" count, F1). */
   extraFilter?: string | null
 }
 
@@ -157,7 +156,6 @@ export interface FormulaInfo {
   expression: string
 }
 
-/** The header edits a table row offers: its tag chips add and remove, never rename. */
 type HeaderTagAddRemove = Pick<HeaderTagEdit, 'add' | 'remove'>
 
 /** Response from listWithProperties API */
@@ -255,7 +253,6 @@ interface UseFolderViewResult {
   removeNotesOptimistically: (noteIds: string[]) => void
   /** Update a property value on a note */
   updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
-  /** Add or remove tags in a note's header */
   updateNoteHeaderTags: (noteId: string, edit: HeaderTagAddRemove) => Promise<void>
   /**
    * Set (or clear, with `null`) the icon on each note named. Resolves to the
@@ -1196,8 +1193,6 @@ export function useFolderView({
 
   useEffect(() => {
     if (scope.kind !== 'tag') return
-    // A tag's schema edits (a renamed field renames its view columns) arrive
-    // on this signal too, so the views and columns are reread with the rows.
     const unsubscribe = onTagsChanged(() => {
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) })

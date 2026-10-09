@@ -18,7 +18,6 @@ export const tagDefinitions = sqliteTable('tag_definitions', {
   categoryId: text('category_id'),
   sortOrder: integer('sort_order').notNull().default(0),
   views: text('views'),
-  // Plain TEXT like `views`, so a bad blob cannot break selecting every tag.
   schema: text('schema')
 })
 

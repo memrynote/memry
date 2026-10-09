@@ -6,12 +6,6 @@ import { objectIdentityOf, tagSchemaQueryKey, type ObjectIdentity } from './use-
 
 const noop = (): void => {}
 
-/**
- * The schema snapshot for chrome that can render outside a QueryClient
- * (tab strip, notes tree, note title in tests and secondary windows): reads
- * the shared schema snapshot from the cache when there is a client, starts
- * the fetch once if nothing has, and is simply null without one.
- */
 export function useOptionalTagSchemaSnapshot(): TagSchemaSnapshot | undefined {
   const client = useContext(QueryClientContext)
   const subscribe = useCallback(

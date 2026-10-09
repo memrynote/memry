@@ -1,8 +1,3 @@
-/**
- * A2: a ready-made tag whose name already exists adds its fields to that tag
- * instead of creating a second one. "Use another name" puts the fields on a
- * new tag and leaves the existing one plain.
- */
 import * as React from 'react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -60,7 +55,6 @@ export function AddPresetFieldsDialog({
   const { t } = useT('notes')
   const editSchema = useEditTagSchema()
   const presets = useTagSchemas().data?.presets
-  // A relation target not added yet still draws in its ready-made look.
   const targetLook = (target: string): PresetOffer | undefined =>
     presets?.find((preset) => preset.name === target)
   const [otherName, setOtherName] = useState<string | null>(null)

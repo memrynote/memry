@@ -100,8 +100,6 @@ export function rewriteInlineTagsInMarkdown(
 ): string {
   let out = ''
   let last = 0
-  // The extractor drops code before it matches, so the character before a
-  // `#` right after a code span is whatever preceded the span.
   let before = ''
   const rewritePlain = (text: string): string => {
     let result = ''

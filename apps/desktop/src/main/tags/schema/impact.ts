@@ -1,4 +1,3 @@
-/** J1 and A2 counts: what a schema change would touch, read before anything runs. */
 import type { ImpactQuery, ImpactResult } from '@memry/contracts/tag-schema-api'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import {

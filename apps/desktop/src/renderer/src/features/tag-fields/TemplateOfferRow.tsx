@@ -1,8 +1,3 @@
-/**
- * C3: a note that already had text never gets a template pushed into it.
- * Main offers it instead, and this quiet row adds it below the text or is
- * dismissed; either way the offer is gone for this note on this device.
- */
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -22,9 +17,7 @@ export interface TemplateOffersProps {
   noteId: string
   noteTitle: string
   notePath?: string
-  /** Header tags, lowercase match; an offer for a tag no longer there is not shown. */
   headerTags: readonly string[]
-  /** The live editor; null while it mounts. */
   getEditor: () => unknown
   disabled?: boolean
 }

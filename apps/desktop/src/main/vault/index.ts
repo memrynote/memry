@@ -566,7 +566,6 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   if (isStale()) return
 
-  // After the walk, so `setEntityProperties` resolves every note it renames.
   try {
     await resumeFieldRename(dataDb)
   } catch (error) {

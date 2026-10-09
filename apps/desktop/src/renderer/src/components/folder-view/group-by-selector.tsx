@@ -45,10 +45,6 @@ interface GroupBySelectorProps {
 /** Properties that work well for grouping */
 const GROUPABLE_BUILT_IN = ['folder', 'tags', 'created', 'modified'] as const
 
-/**
- * Property types that support grouping. A relation groups by its linked
- * notes ("Meetings by company", F1); the header shows their titles.
- */
 const GROUPABLE_TYPES = new Set([
   'text',
   'select',

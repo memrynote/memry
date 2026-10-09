@@ -128,7 +128,6 @@ describe('useGraphEdits', () => {
 
   it('adds a tag through notes:update and removes it on undo', async () => {
     const { edits } = setup()
-    // `reading` is already an inline tag of the body; the graph adds it to the header.
     mocks.notesGet.mockResolvedValue({
       id: 'note-a',
       title: 'Alpha',

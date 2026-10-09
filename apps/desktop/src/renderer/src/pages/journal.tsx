@@ -320,9 +320,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entryId, toggleBookmark, selectedDate, t])
 
   const entryTags = useMemo(() => entry?.tags ?? [], [entry?.tags])
-  // The editor turns `#tag` text into a chip only for tags in this list, so it
-  // holds the body's inline tags as well as the header's, like the index list
-  // the note page passes.
   const chipTags = useMemo(
     () => [...entryTags, ...extractInlineTagsFromMarkdown(entry?.content ?? '')],
     [entryTags, entry?.content]
@@ -1100,8 +1097,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
-  // Only a change to the entry's tags is saved: a typed tag the row already
-  // holds, or a deleted one it does not, would rewrite the entry for nothing.
   const handleInlineTagsChange = useInlineTagEdits(
     useCallback(
       (edit: InlineTagEdit) => {

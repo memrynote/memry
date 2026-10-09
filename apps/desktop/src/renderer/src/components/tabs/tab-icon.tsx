@@ -148,7 +148,6 @@ const ProjectTabIcon = ({
   )
 }
 
-/** A note tab's icon: the object's tag icon when the note is an object (C2 bullet 4). */
 const NoteTabIcon = ({
   noteId,
   className,

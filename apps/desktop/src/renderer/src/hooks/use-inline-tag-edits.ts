@@ -1,13 +1,11 @@
 import { useCallback, useRef } from 'react'
 import type { InlineTagsOrigin } from '@/components/note'
 
-/** The `#tags` a body gained and lost. */
 export interface InlineTagEdit {
   add: string[]
   remove: string[]
 }
 
-/** Two unsaved edits as one: a later add cancels an earlier remove of the same tag, and the reverse. */
 export function mergeInlineTagEdits(earlier: InlineTagEdit, later: InlineTagEdit): InlineTagEdit {
   const key = (tag: string): string => tag.toLowerCase()
   const add = new Map(earlier.add.map((tag) => [key(tag), tag]))

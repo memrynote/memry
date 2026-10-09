@@ -1009,7 +1009,6 @@ export class VaultWatcher {
           id: cached.id,
           date: journalDate,
           content: parsed.content,
-          // The journal's tags row edits this list, so it holds the header alone.
           tags: syncResult.headerTags,
           wordCount: syncResult.wordCount,
           characterCount: syncResult.characterCount,

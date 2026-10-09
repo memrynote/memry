@@ -55,10 +55,6 @@ export const propertiesService = {
     return window.api.properties.set(entityId, properties)
   },
 
-  /**
-   * Set only the given keys, leaving the entity's other properties; null removes a key.
-   * Main serializes merges per entity, so concurrent single-key writes never drop each other.
-   */
   merge: (entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse> => {
     return window.api.properties.merge(entityId, values)
   },

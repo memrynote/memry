@@ -51,9 +51,6 @@ fn scan(line: &str, found: &mut Vec<String>) {
     }
 }
 
-/// The byte range of each tag name (after its `#`) in `line`, by the grammar
-/// [`extract`] reads. `before` is the character preceding `line`, for a run
-/// that continues a paragraph; `None` is the start of a line.
 pub(crate) fn tag_spans(line: &str, before: Option<char>) -> Vec<(usize, usize)> {
     let chars: Vec<(usize, char)> = line.char_indices().collect();
     let byte = |at: usize| chars.get(at).map_or(line.len(), |(offset, _)| *offset);

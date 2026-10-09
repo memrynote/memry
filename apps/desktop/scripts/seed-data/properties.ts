@@ -7,8 +7,6 @@ import { OBJECT_FIELD_DEFINITIONS } from './object-fields'
 // `.memry/properties.md` is the source of truth — PropertyDefinitionsService
 // reloads it on vault open and rebuilds the `property_definitions` table from
 // it, so a DB-only seed would be wiped the first time the vault is opened.
-// Every property type except `relation` may appear in that file; a relation
-// fails PropertyDefinitionsFileSchema and discards *every* definition in it.
 // Most seeded text/number/url props are still typed by inference from their
 // values; the tag fields of ready-made tags (./objects) are declared here.
 // ============================================================================

@@ -1,8 +1,3 @@
-/**
- * Object reads for tags with fields, through the real IPC handlers on real
- * index.db and data.db schemas.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import {
@@ -187,7 +182,6 @@ describe('object reads for tags with fields', () => {
     expect(result.complete).toBeUndefined()
     expect(result.notes.map((row) => row.id).sort()).toEqual(['a', 'b', 'c', 'j'])
     expect(result.notes.every((row) => row.viaTag === undefined)).toBe(true)
-    // Typed by the stored type, as field tags read them: a text "123" stays a string.
     expect(result.notes.find((row) => row.id === 'a')?.properties).toEqual({ n: '123' })
   })
 

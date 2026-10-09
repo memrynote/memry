@@ -1,8 +1,3 @@
-/**
- * Ready-made tags. Never created on their own: only an explicit add (offer
- * strip, A2 dialog, "first use from @") runs `addPreset`. Names are localized
- * in the app language at that moment; tag names are stored lowercase.
- */
 import type { PresetOffer } from '@memry/contracts/tag-schema-api'
 import type { PresetKey, ResolvedTag } from '@memry/contracts/tag-schema'
 import { getOrCreateTag, listTagDefinitionRows } from '@main/database/queries/tag-definitions'
@@ -42,7 +37,6 @@ function ownerOf(preset: PresetKey, resolved: ReadonlyMap<string, ResolvedTag>):
   return null
 }
 
-/** Relation-target tags adding `spec` would create, nearest first (meeting → person → company). */
 function missingTargets(
   spec: PresetSpec,
   resolved: ReadonlyMap<string, ResolvedTag>,
@@ -100,12 +94,6 @@ export function presetOffers(
   })
 }
 
-/**
- * Adds a ready-made tag, or its fields to an existing tag of that name.
- * Idempotent: a second run finds every field, the template and the preset in
- * place and writes nothing. Relation targets are added first, so a field
- * points at the tag that carries the target preset. Returns the tag key.
- */
 export async function addPreset(
   db: DataDb,
   preset: PresetKey,

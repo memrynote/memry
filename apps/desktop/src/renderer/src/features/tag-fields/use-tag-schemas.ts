@@ -1,9 +1,3 @@
-/**
- * The one renderer read of tag schemas: a snapshot of every tag with fields,
- * the ready-made tag offers and which notes are objects. Every "does this tag
- * have fields / what are they / is this note an object" question selects from
- * it. Stable exports, also used by the editor and navigation surfaces.
- */
 import { useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
@@ -19,9 +13,6 @@ export const tagSchemaQueryKey = ['tags', 'schema-snapshot'] as const
 
 const INVALIDATE_DEBOUNCE_MS = 250
 
-// One subscription for every mounted reader: tag writes, header membership
-// changes and synced definitions all emit `notes:tags-changed`; a field's type
-// or options come from the vault-wide property definition.
 let subscribers = 0
 let unsubscribe: (() => void) | null = null
 
@@ -75,19 +66,15 @@ export function useResolvedTag(tag: string | null | undefined): ResolvedTag | nu
   return resolveTag(useTagSchemas().data, tag)
 }
 
-/** True when the tag (own or inherited) carries fields. */
 export function tagHasFields(snapshot: TagSchemaSnapshot | undefined, tag: string): boolean {
   return resolveTag(snapshot, tag)?.hasFields ?? false
 }
 
 export interface ObjectIdentity {
-  /** Lowercase tag key. */
   tag: string
-  /** Display name of the tag. */
   name: string
   color: string
   icon: string | null
-  /** The tag is or extends the person preset: initials avatar; else the tag icon tile. */
   avatar: boolean
 }
 
@@ -118,7 +105,6 @@ export function useObjectIdentityLookup(): (noteId: string) => ObjectIdentity | 
   return useCallback((noteId: string) => objectIdentityOf(snapshot, noteId), [snapshot])
 }
 
-/** Run one schema command; the fresh snapshot replaces the cached one. */
 export function useEditTagSchema(): (command: TagSchemaCommand) => Promise<TagSchemaCommandResult> {
   const queryClient = useQueryClient()
   const mutation = useMutation({

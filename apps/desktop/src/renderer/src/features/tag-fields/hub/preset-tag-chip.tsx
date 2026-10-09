@@ -5,7 +5,6 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useResolvedTag } from '../use-tag-schemas'
 import { cn } from '@/lib/utils'
 
-/** Small tag chip in the tag's colour, as the hub and tags row draw it. */
 export function PresetTagChip({
   tag,
   preset,

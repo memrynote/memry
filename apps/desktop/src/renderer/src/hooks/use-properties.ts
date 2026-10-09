@@ -24,7 +24,6 @@ export interface UsePropertiesReturn {
   removeProperty: (name: string) => Promise<void>
   renameProperty: (oldName: string, newName: string) => Promise<void>
   reorderProperties: (orderedNames: string[]) => Promise<void>
-  /** Writes one key alone (null removes it); main merges, so other keys written meanwhile stay. */
   setPropertyValue: (name: string, value: unknown, type: string) => Promise<void>
   refresh: () => Promise<void>
 }

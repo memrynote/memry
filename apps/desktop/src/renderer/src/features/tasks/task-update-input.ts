@@ -65,7 +65,6 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
     linkedNoteIds: updates.linkedNoteIds,
     linkedCanvasIds: updates.linkedCanvasIds,
     tags: updates.tags,
-    // A patch: names left out keep their values, `null` removes one.
     fields: updates.fields
   }
   for (const key of Object.keys(input) as (keyof TaskUpdateInput)[]) {
@@ -74,7 +73,6 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
   return input
 }
 
-/** The task's field map after a `fields` patch: `null` removes a name. */
 export function applyFieldsPatch(
   current: UiTask['fields'],
   patch: NonNullable<UiTask['fields']>

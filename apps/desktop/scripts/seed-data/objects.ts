@@ -21,14 +21,12 @@ import { seedDateOnly, seedPastISOAt } from './date'
 import { PERSISTABLE_PROPERTY_DEFINITIONS, PROPERTY_DEFINITION_ROWS } from './properties'
 import { PROJECT_IDS, STATUS_IDS } from './tasks'
 
-// ============================================================================
 // Tags with fields: the four ready-made tags (person, company, meeting, book),
 // #employee extends #person, #delegated for tasks, and the notes and tasks
 // that use them. Schemas come from the production preset catalog and are
 // stamped with the production versioned helpers, never hand-written JSON.
 // The plain `people` / `meetings` tags stay as they are: the hub shows the
 // label-vs-tag-with-fields difference.
-// ============================================================================
 
 /** `notes:tagFields.presets.person.name` → the English string, as `addPreset` would in English. */
 function en(key: string): string {
@@ -49,10 +47,6 @@ const tagName = (spec: PresetSpec): string => en(spec.nameKey).toLowerCase()
 
 const MODIFIED = seedPastISOAt(-1, 17, 0)
 const uri = (id: string): string => `memry://note/${id}`
-
-// ---------------------------------------------------------------------------
-// Templates and schemas
-// ---------------------------------------------------------------------------
 
 const TEMPLATE_IDS = Object.fromEntries(
   PRESET_CATALOG.map((spec) => [spec.key, generateNoteId()])
@@ -159,10 +153,6 @@ export const OBJECT_TAG_DEFINITIONS: SeedTagDefinition[] = [
     })
   }
 ]
-
-// ---------------------------------------------------------------------------
-// Notes
-// ---------------------------------------------------------------------------
 
 interface ObjectNote {
   id: string
@@ -303,7 +293,6 @@ const OBJECT_NOTES: ObjectNote[] = [
     { Company: [uri(ID.initech)], Role: 'CTO', Email: 'zeynep@initech.example' },
     '## Context\nWants a self-hosted pilot.\n\n## Notes\n'
   ),
-  // Some fields stay empty on purpose: empty fields write nothing.
   person(
     ID.deniz,
     'Deniz Arslan',
@@ -387,7 +376,6 @@ const OBJECT_NOTES: ObjectNote[] = [
     { author: 'Daniel Kahneman', Shelf: 'To read' },
     '## Highlights\n\n## Thoughts\n'
   ),
-  // Inline mentions: labels, never objects. They show under "Mentioned in".
   plain(
     'Hiring plan',
     ['work'],
@@ -425,10 +413,6 @@ export const OBJECT_NOTE_METADATA: SeedNoteMetadata[] = OBJECT_NOTES.map((note) 
   createdAt: seedPastISOAt(Math.min(0, -note.daysAgo), 10, 0),
   modifiedAt: MODIFIED
 }))
-
-// ---------------------------------------------------------------------------
-// Delegated tasks with fields
-// ---------------------------------------------------------------------------
 
 const DELEGATED: Array<{ title: string; waitingOn: string; followUp: number; thread?: string }> = [
   {

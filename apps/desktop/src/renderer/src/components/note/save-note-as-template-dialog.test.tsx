@@ -28,7 +28,6 @@ beforeEach(() => {
     id: 'n1',
     title: 'Weekly review',
     content: '# Weekly review\n\nWhat went well? #mood',
-    // The body's #mood stays in the template body; only the header becomes template tags.
     tags: ['review', 'weekly', 'mood'],
     headerTags: ['review', 'review', 'weekly']
   })

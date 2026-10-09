@@ -9,11 +9,6 @@ import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service
 
 const log = createLogger('Page:FolderView')
 
-/**
- * A tag tab's icon, rename and delete actions, and its lifecycle: the tab
- * closes when its tag is renamed or deleted anywhere. `tag` is null outside
- * tag scope, where every action is a no-op.
- */
 export function useTagScopeActions(tag: string | null, totalNotes: number, closeTab: () => void) {
   const handleTagIconChange = useCallback(
     async (icon: string | null) => {

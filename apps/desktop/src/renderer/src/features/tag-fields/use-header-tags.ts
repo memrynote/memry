@@ -1,10 +1,3 @@
-/**
- * The note page's header-tag writes: add and remove through `notes:update`
- * header deltas, and what follows them. Adding a tag with fields opens the
- * properties panel; main applies the tag's template to an empty body (toast
- * with Undo) or offers it (TemplateOfferRow). Removing a tag keeps every
- * value as the note's own property; Undo re-adds the tag only.
- */
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -22,11 +15,8 @@ export interface UseHeaderTagsArgs {
   noteId: string | null
   noteTitle: string
   headerTags: readonly string[]
-  /** The note's property values, for the "N values kept" count. */
   values: Readonly<Record<string, unknown>>
-  /** False blocks the edit; the caller says why. */
   canEdit: () => boolean
-  /** A tag with fields was added: show its fields. */
   onFieldTagAdded?: (tag: string) => void
 }
 

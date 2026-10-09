@@ -40,11 +40,6 @@ export const FOLDER_VIEW_STATE_KEYS = {
    * shows the view's own layout. A lens over the active view, like the search.
    */
   chart: 'folderChart',
-  /**
-   * Tag scope only: a filter expression a "Linked here" count opened the tab
-   * with ("Attendees contains <uri>"). ANDed onto the active view until the
-   * user removes it or saves it into the view.
-   */
   linkedFilter: 'tagLinkedFilter'
 } as const
 
@@ -104,6 +99,5 @@ export const parseTagAndTags = (raw: unknown): string[] | undefined =>
     ? (raw as string[]).map((v) => v.trim())
     : undefined
 
-/** A non-empty filter expression string, else undefined. `null` = removed. */
 export const parseLinkedFilter = (raw: unknown): string | null | undefined =>
   raw === null ? null : typeof raw === 'string' && raw.trim() !== '' ? raw : undefined

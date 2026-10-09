@@ -385,7 +385,6 @@ export function registerFolderViewHandlers(): void {
         // Batch fetch properties for all notes.
         // When input.properties is undefined, fetch ALL properties (for column flexibility)
         // When input.properties is specified, only fetch those (for optimization) —
-        // currently getPropertiesForNotes always fetches all, for simplicity.
         const propertiesMap = getPropertiesForNotes(db, noteIds)
 
         // Build response
@@ -456,7 +455,6 @@ export function registerFolderViewHandlers(): void {
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
           const propCounts = await fetchPropertyCounts(db, noteIds)
-          // A tag's fields are columns even before any row fills them.
           for (const field of fieldColumns(input.scope.tag, loadResolvedTags(dataDb))) {
             if (!propCounts.has(field.name))
               propCounts.set(field.name, { count: 0, type: field.type })

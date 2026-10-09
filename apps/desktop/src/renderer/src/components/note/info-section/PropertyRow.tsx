@@ -348,11 +348,8 @@ interface PropertyRowProps {
    * focused. Receives whether the row is hovered.
    */
   renderAction?: (hovered: boolean) => React.ReactNode
-  /** A relation field's target tag: the picker lists only that tag's objects. */
   relationTarget?: string | null
-  /** False: a relation field holds one link, so a new pick replaces it. */
   relationMany?: boolean
-  /** A narrow label lane for tight panels (the task drawer, G1). */
   compact?: boolean
 }
 

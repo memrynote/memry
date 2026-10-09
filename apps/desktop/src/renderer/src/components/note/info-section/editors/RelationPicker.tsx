@@ -18,9 +18,7 @@ const GROUP_ICONS: Record<RelationKind, AppIcon> = {
 interface RelationPickerProps {
   /** Called with a `memry://<kind>/<id>` URI when a result is picked. */
   onSelect: (uri: string) => void
-  /** A relation field's target tag: only objects of that tag are offered (E2). */
   targetTag?: string | null
-  /** URIs already in the value (checked in the object picker). */
   selected?: readonly string[]
 }
 

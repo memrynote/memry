@@ -1,9 +1,3 @@
-/**
- * The one write path for `tag_definitions.schema`: ensure the definition row,
- * apply the edit, write the column, enqueue the definition (the sync service
- * ticks this device into its clock) and tell the windows. A no-op edit writes
- * and enqueues nothing.
- */
 import type { NewFieldSpec } from '@memry/contracts/tag-schema-api'
 import { PropertiesChannels } from '@memry/contracts/ipc-channels'
 import type { PropertyType } from '@memry/contracts/property-types'
@@ -47,7 +41,6 @@ export function emitTagSchemasChanged(): void {
   broadcastToAllWindows('notes:tags-changed', {})
 }
 
-/** The edit's result without writing it; throws a user-facing error for a refused edit. */
 export function planSchemaEdit(db: DataDb, key: string, edit: SchemaBodyEdit): SchemaEditResult {
   const parsed = parseSchemaColumn(readTagSchemaColumn(db, key))
   if (parsed.kind === 'unreadable') throw schemaEditFailure({ code: 'unreadable-schema' })
@@ -59,11 +52,6 @@ export function planSchemaEdit(db: DataDb, key: string, edit: SchemaBodyEdit): S
   return result
 }
 
-/**
- * Applies one edit to one tag's schema and reports whether it changed it.
- * Throws a user-facing error for an edit the schema refuses. Does not emit;
- * callers emit once per command.
- */
 export function saveSchemaEdit(db: DataDb, tag: string, edit: SchemaBodyEdit): boolean {
   const key = tagKey(tag)
   const result = planSchemaEdit(db, key, edit)
@@ -74,13 +62,10 @@ export function saveSchemaEdit(db: DataDb, tag: string, edit: SchemaBodyEdit): b
   return true
 }
 
-/** The existing spelling of a field name, case-folded across vault property names and
- * every schema's fields: one namespace. */
 export function fieldNameFor(db: DataDb, typed: string): string {
   return canonicalFieldName(typed, knownFieldNames(db)).name
 }
 
-/** Vault property names plus every field name a schema lists: one namespace. */
 function knownFieldNames(db: DataDb): string[] {
   const names = (PropertyDefinitionsService.tryGet()?.getAll() ?? []).map((d) => d.name)
   for (const tag of loadResolvedTags(db).values()) {
@@ -89,11 +74,6 @@ function knownFieldNames(db: DataDb): string[] {
   return names
 }
 
-/**
- * A non-relation field with no property definition gets one of the requested
- * type; an existing definition keeps its type. Relations get none: a property
- * definition cannot hold `relation`.
- */
 export async function ensureFieldDefinition(
   spec: NewFieldSpec & { showOnCalendar?: boolean }
 ): Promise<void> {
@@ -125,7 +105,6 @@ export async function addField(
     field: { name, relation: spec.type === 'relation' ? (spec.relation ?? null) : null },
     ...(index !== undefined ? { index } : {})
   }
-  // Refused edits leave no property definition behind.
   planSchemaEdit(db, tagKey(tag), edit)
   await ensureFieldDefinition({ ...spec, name })
   return saveSchemaEdit(db, tag, edit)

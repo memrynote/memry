@@ -45,12 +45,6 @@ function shortDate(iso: string | null): string | null {
   return new Intl.DateTimeFormat(getActiveLocale(), { month: 'short', day: 'numeric' }).format(date)
 }
 
-/**
- * D2 panel 3: hovering an object link shows who or what it is without opening
- * it. Composed from the schema snapshot, `properties:get`, `properties:resolveRefs`
- * and `tags:get-linked-here`; `notes:preview-by-title` stays as it is. Cached
- * per note and dropped when that note changes.
- */
 export function ObjectPreviewBody({
   noteId,
   title,

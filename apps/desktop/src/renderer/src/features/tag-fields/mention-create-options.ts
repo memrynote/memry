@@ -3,18 +3,12 @@ import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
 
 export type CreateOption =
   | { kind: 'tag'; tag: string; name: string; lastUsed: boolean }
-  /** A ready-made tag not added yet: picking it adds it first ("first use from @"). */
   | { kind: 'preset'; preset: PresetKey; name: string; icon: string | null; color: string }
   | { kind: 'plain' }
 
 const presetRank = (preset: PresetKey | null): number =>
   preset === null ? PRESET_KEYS.length : PRESET_KEYS.indexOf(preset)
 
-/**
- * D2 panel 1: "Create {title} as". Tags with fields, the last used first, then
- * ready-made ones in catalogue order, then the rest by name; then ready-made
- * tags not added yet; Plain note always last.
- */
 export function buildCreateOptions(
   snapshot: TagSchemaSnapshot | undefined,
   lastTag: string | null

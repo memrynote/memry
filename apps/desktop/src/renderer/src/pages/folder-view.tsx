@@ -555,8 +555,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [activeTab, closeTab])
 
-  // The tag string (not `scope`), so a new `scope` object each render does not
-  // resubscribe the tag lifecycle listeners.
   const activeTagName = scope.kind === 'tag' ? scope.tag : null
 
   // Tag scope's ANDed selection. Read straight off the scope — `TabContent`
@@ -1019,7 +1017,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
             {/* Colored tag chip (segmented for a hierarchical tag) + item count */}
             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-              {/* The tag name keeps its width; the counts after it give way first. */}
               <span
                 className="inline-flex min-w-0 max-w-56 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
                 style={{
@@ -1211,7 +1208,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] shadow-sm transition-colors hover:bg-[var(--tint-hover)]"
           >
             <Plus className="size-3.5" />
-            {/* B1/F1: a tag with fields names what it creates ("New person"). */}
             {fieldTag
               ? t('tagObjects.table.new', { tag: fieldTag.name })
               : tPhaseF('phaseF.pagesFolderView.createNewNote')}
@@ -1250,9 +1246,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         updateFilters={updateFilters}
       />
 
-      {/* Content - relative container for absolute positioned table. A tag
-          with fields gives the tables its relation pickers, task field edits
-          and "+ New … in …" group rows (F1) from the TagTableProvider around the page. */}
       <div className="flex-1 relative min-w-0">
         {/* Absolute positioned inner container isolates table width from layout */}
         <div className="absolute inset-0 overflow-hidden">

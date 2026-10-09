@@ -36,9 +36,7 @@ export type MentionSuggestionItem =
   | { kind: 'date-hint' }
   | { kind: 'note'; id: string; title: string; lastEdited?: string }
   | { kind: 'canvas'; id: string; title: string }
-  /** An object of a tag with fields, listed under its group tag (D1). */
   | { kind: 'object'; match: ObjectMatch }
-  /** Always the last row: "Create {title}" opens the type choice (D2). */
   | { kind: 'create'; title: string }
 
 export type CanvasChoiceOption = 'mention' | 'embed'
@@ -136,7 +134,6 @@ export function MentionMenu({
     <div
       className={cn(
         'mention-menu z-50 min-w-[220px] max-w-[360px] max-h-[360px] overflow-y-auto',
-        // Two-line object and create rows read at the boards' width (D1).
         (hasObjects || items.some((item) => item.kind === 'create')) && 'w-[340px]',
         'rounded-md border bg-popover text-popover-foreground text-[13px] leading-4',
         'shadow-[var(--shadow-card-hover)] animate-in fade-in-0 zoom-in-95'

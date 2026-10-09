@@ -123,7 +123,6 @@ describe('fillFields', () => {
     })
     expect(stored).toEqual(snapshot)
     expect(deps.searchObjects).toHaveBeenCalledWith('company')
-    // Only this note is sent.
     const prompt = JSON.stringify(model.doGenerateCalls[0].prompt)
     expect(prompt).toContain('elif@globex.io')
     expect(prompt).toContain('Globex')

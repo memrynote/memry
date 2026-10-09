@@ -301,11 +301,6 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
   return [...byKey.values()]
 }
 
-/**
- * The header tag list after `edit`: removes first, then renames in place, then
- * appends the adds it does not already hold. Names compare case-insensitively,
- * and a name already in the list keeps its spelling.
- */
 export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
   const key = (tag: string): string => foldTag(tag.trim())
   const removed = new Set((edit.remove ?? []).map(key))
@@ -321,10 +316,6 @@ export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEd
   return next
 }
 
-/**
- * Header tags followed by the inline tags they do not already hold, compared
- * case-insensitively; the header spelling wins.
- */
 export function mergeTagLists(header: readonly string[], inline: readonly string[]): string[] {
   const byKey = new Map<string, string>()
   for (const tag of [...header, ...inline]) {
@@ -480,10 +471,6 @@ export function writePropertiesToRoot(
   return next
 }
 
-/**
- * Set only the patched keys (null removes one). A key the patch adds takes the
- * place of the first key it removes, so a rename keeps its spot in the file.
- */
 export function patchPropertiesOnRoot(
   frontmatter: NoteFrontmatter,
   patch: Record<string, unknown>

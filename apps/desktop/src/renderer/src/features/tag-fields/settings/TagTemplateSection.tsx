@@ -21,7 +21,6 @@ interface TagTemplateSectionProps {
   label: React.ReactNode
 }
 
-/** B1 TEMPLATE: the referenced template's headings, its editor, and autofill. */
 export function TagTemplateSection({
   tagKey,
   tag,

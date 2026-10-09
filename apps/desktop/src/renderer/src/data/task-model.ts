@@ -52,8 +52,6 @@ export interface Task {
   // via the global tag_definitions store.
   tags: string[]
 
-  // Field values by name. The stored map never holds null; in an edit
-  // (`Partial<Task>`) the map is a patch and a null removes the name.
   fields?: Record<string, TaskFieldValue>
 
   // Subtasks

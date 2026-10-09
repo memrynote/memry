@@ -21,7 +21,6 @@ export interface GhostAffordanceRowProps {
   existingNames?: string[]
   disabled?: boolean
   className?: string
-  /** Mark tags with fields in the tag picker (note header only). */
   tagFieldHints?: TagFieldHints
 }
 

@@ -3,16 +3,13 @@ import { Tag } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { cn } from '@/lib/utils'
 
-/** How an object draws: the tag's colour and icon, initials for person-like tags. */
 export interface ObjectLook {
   tag: string
   color: string
   icon: string | null
-  /** The tag is or extends the person preset: initials avatar instead of an icon tile. */
   avatar: boolean
 }
 
-/** Up to two letters: the first letter of the first and last word ("Ahmet Yılmaz" → "AY"). */
 export function objectInitials(title: string): string {
   const words = title.trim().split(/\s+/u).filter(Boolean)
   if (words.length === 0) return ''
@@ -21,18 +18,12 @@ export function objectInitials(title: string): string {
   return (first + last).toLocaleUpperCase()
 }
 
-/** The tag colour as hex, through the same palette the tag chips use. */
 export function objectColor(look: Pick<ObjectLook, 'tag' | 'color'>): string {
   return getTagColors(look.color, look.tag).text
 }
 
 const ROUNDING: Record<number, string> = { 16: 'rounded', 18: 'rounded-[5px]', 40: 'rounded-lg' }
 
-/**
- * Initials on the tag colour for person-like tags, else a tinted tile with the
- * tag icon. Sizes follow the boards: 16 (rows), 18 (chips, menus), 40 (hover
- * card), 48 (object title).
- */
 export function ObjectAvatar({
   look,
   title,
@@ -88,7 +79,6 @@ export function ObjectAvatar({
   )
 }
 
-/** The tag's icon in its colour, no tile: group headers and linked rows. */
 export function TagGlyph({
   look,
   className

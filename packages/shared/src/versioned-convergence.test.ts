@@ -49,7 +49,6 @@ interface Scenario {
   edit(stored: unknown, clock: Clock, random: () => number): { stored: unknown; created: unknown }
   mergeRequeues: boolean
   rustConcurrent: 'keep-local' | 'take-remote'
-  /** Orders entries without the production code, so a broken join cannot confirm itself. */
   oracle(created: unknown[]): unknown
   empty: unknown
 }

@@ -1,8 +1,3 @@
-/**
- * Tag schema writes through the real data.db, the real tag_definition sync
- * service and queue, the real property definitions file and the real
- * templates table. Stood in for: the windows (no renderer to broadcast to).
- */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'

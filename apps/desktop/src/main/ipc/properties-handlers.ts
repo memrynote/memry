@@ -77,9 +77,6 @@ export function registerPropertiesHandlers(): void {
     )
   )
 
-  // -------------------------------------------------------------------------
-  // properties:merge - Set only the given keys; the entity's other properties stay
-  // -------------------------------------------------------------------------
   ipcMain.handle(
     PropertiesChannels.invoke.MERGE,
     createValidatedHandler(

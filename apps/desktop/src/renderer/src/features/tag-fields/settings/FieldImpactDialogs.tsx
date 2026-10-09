@@ -1,7 +1,3 @@
-/**
- * J1: the dialogs that change or drop what notes carry. Each counts what it
- * touches first (`tags:preview-impact`), and keeps every typed value.
- */
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -127,7 +123,6 @@ export function RemoveFieldDialog({
 
 interface RenameFieldDialogProps {
   field: string
-  /** Lowercase field names already on the tag, other than this one. */
   taken: ReadonlySet<string>
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -288,7 +283,6 @@ export function DeleteTagDialog({
       const result = await tagsService.deleteTag(tag)
       if (!result.success) throw new Error(result.error ?? t('tagFields.settings.errors.deleteTag'))
       toast.success(t('tagFields.settings.delete.done', { tag }))
-      // The tag page closes itself on the tag-deleted event.
       onOpenChange(false)
     } catch (err) {
       toast.error(extractErrorMessage(err, t('tagFields.settings.errors.deleteTag')))

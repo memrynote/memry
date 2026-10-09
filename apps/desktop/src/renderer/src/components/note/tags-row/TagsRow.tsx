@@ -17,7 +17,6 @@ export interface TagsRowProps {
   className?: string
   hideWhenEmpty?: boolean
   hideAddButton?: boolean
-  /** Mark tags with fields in the tag picker (note header only). */
   fieldHints?: TagFieldHints
 }
 

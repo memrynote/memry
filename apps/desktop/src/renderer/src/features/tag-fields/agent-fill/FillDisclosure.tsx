@@ -1,8 +1,3 @@
-/**
- * First-run line (I1 · 1): which model reads the note, that only this note
- * is sent (or, for a local model, that it never leaves the device), and that
- * nothing is saved until accepted.
- */
 import { useT } from '@memry/i18n/renderer'
 import { Lock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
@@ -10,7 +5,6 @@ import { Button } from '@/components/ui/button'
 interface FillDisclosureProps {
   model: string
   local: boolean
-  /** Bulk fill reads many notes, one at a time. */
   many?: boolean
   onAccept: () => void
   onDecline: () => void

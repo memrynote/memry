@@ -8,12 +8,8 @@ import { tagKey } from '@memry/shared/tag-fold'
 const log = createLogger('TagSchemaReferences')
 
 /**
- * After a tag rename or merge, points every other schema's `extends` and
- * relation `target` that named `from` at `to`, with `t + 1` on each rewritten
- * schema (§13.7.7.2), and syncs it. `to = null` clears them. A tag delete does
- * not call this: its references dangle and re-resolve if the tag returns.
  * Works on schemas this build cannot parse too, so a newer shape keeps its
- * references right. Returns the rewritten tags.
+ * references right.
  */
 export function rewriteSchemaReferences(db: DataDb, from: string, to: string | null): string[] {
   const rewritten: string[] = []

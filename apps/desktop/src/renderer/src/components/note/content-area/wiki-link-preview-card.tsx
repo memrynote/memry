@@ -34,8 +34,6 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
   const { t } = useT('notes')
   const identity = useObjectIdentity(preview?.id)
 
-  // An object (a note with a tag with fields in its header) shows who or what
-  // it is instead of its snippet. An explicit note emoji keeps today's card.
   if (preview && identity && !preview.emoji) {
     return createPortal(
       <div

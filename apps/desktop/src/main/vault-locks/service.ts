@@ -217,7 +217,6 @@ export async function setVaultLock(input: VaultLockSetInput): Promise<VaultLockS
   return broadcastLockState()
 }
 
-/** A field rename that skipped a locked note finishes once something unlocks. */
 function resumeFieldRenameAfterUnlock(): void {
   if (!isDatabaseInitialized()) return
   // Lazy: the rename pulls in the note writer, which imports this module back.

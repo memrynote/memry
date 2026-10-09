@@ -18,7 +18,7 @@ export const tagsApi = {
     invoke(TagsChannels.invoke.PIN_NOTE_TO_TAG, input),
   unpinNoteFromTag: (input: { noteId: string; tag: string }) =>
     invoke(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, input),
-  renameTag: (input: { oldName: string; newName: string }) =>
+  renameTag: (input: { oldName: string; newName: string; runId?: string }) =>
     invoke(TagsChannels.invoke.RENAME_TAG, input),
   updateTagColor: (input: { tag: string; color: string }) =>
     invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
@@ -84,7 +84,6 @@ export const tagEvents = {
   onTagsProgress: (callback: (event: TagsProgressEvent) => void): (() => void) =>
     subscribe<TagsProgressEvent>(TagSchemaChannels.events.PROGRESS, callback),
 
-  /** A vault-wide property definition changed: a field's type or options may differ. */
   onPropertyDefinitionChanged: (callback: (event: { name: string }) => void): (() => void) =>
     subscribe<{ name: string }>(PropertiesChannels.events.DEFINITION_CHANGED, callback)
 }

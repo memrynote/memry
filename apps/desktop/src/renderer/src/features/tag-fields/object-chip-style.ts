@@ -1,9 +1,3 @@
-/**
- * How an object link is painted in the editor: a node decoration's attrs, no
- * node schema change. The pill and its 18px avatar or icon tile are drawn by
- * CSS (`.wiki-link--object` in base.css) from these attributes, so the link's
- * own span keeps receiving mousedown navigation and hover.
- */
 import { loadAllIcons } from '@/lib/hugeicon-renderer'
 import { isIconValue, parseIconName } from '@/components/note/note-title/emoji-icon-utils'
 import { objectColor, objectInitials, type ObjectLook } from './object-avatar'
@@ -11,7 +5,6 @@ import { objectColor, objectInitials, type ObjectLook } from './object-avatar'
 const DEFAULT_ICON = 'Tag01Icon'
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** Icon name → serialized SVG markup drawing in `currentColor`; null when unknown. */
 const markups = new Map<string, string | null>()
 
 function iconName(icon: string | null): string | null {
@@ -32,12 +25,10 @@ function toMarkup(data: Array<[string, Record<string, string>]>): string {
   return new XMLSerializer().serializeToString(svg)
 }
 
-/** The icon as a CSS image in `color`; the tile background is layered under it. */
 function iconImage(markup: string, color: string): string {
   return `url("data:image/svg+xml,${encodeURIComponent(markup.replaceAll('currentColor', color))}")`
 }
 
-/** Loads the icons `icons` need; resolves true when any new one became available. */
 export async function loadChipIcons(icons: ReadonlyArray<string | null>): Promise<boolean> {
   const wanted = [...new Set(icons.map(iconName))].filter(
     (name): name is string => name !== null && !markups.has(name)
@@ -51,7 +42,6 @@ export async function loadChipIcons(icons: ReadonlyArray<string | null>): Promis
   return true
 }
 
-/** Decoration attrs for an object link titled `title`. */
 export function objectChipAttrs(look: ObjectLook, title: string): Record<string, string> {
   const color = objectColor(look)
   const attrs: Record<string, string> = {

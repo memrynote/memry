@@ -1,9 +1,3 @@
-/**
- * E2: a note dragged from the sidebar onto a relation field. A note that is
- * already an object of the field's target tag links at once; any other note
- * gets an offer to add the target tag to its header first, then links. A file
- * or a journal entry can never become an object, so it is refused.
- */
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -23,7 +17,6 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 
-/** True when a header tag is `target` or extends it (object membership). */
 export function isObjectOfTarget(
   headerTags: readonly string[],
   target: string,
@@ -46,7 +39,6 @@ export function useRelationDrop({
   snapshot,
   onLink
 }: {
-  /** Null: the field has no target tag, so drops are left alone. */
   targetTag: string | null | undefined
   snapshot: TagSchemaSnapshot | undefined
   onLink: (uri: string) => void

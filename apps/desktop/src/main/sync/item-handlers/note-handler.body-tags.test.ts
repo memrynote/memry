@@ -4,11 +4,6 @@
  * replaces. Without a merge, a tag that exists only as a body hashtag is wiped
  * from the second device's index on every remote update: the note silently
  * drops out of tag search and the tag hub while its file stays intact (#1471).
- * The payload's tags are the header half, so they are the rows marked
- * `in_header`; the body hashtags are not.
- *
- * These run against real note files, the real frontmatter parser and a real
- * index database, so the stored rows are the assertion.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import fs from 'fs'
@@ -65,7 +60,6 @@ import { NotesChannels } from '@memry/contracts/ipc-channels'
 const NOTE_PATH = 'n1.md'
 const REMOTE_CLOCK = { 'device-A': 1, 'device-B': 1 }
 
-/** Seeds the note with `bodyTags` already indexed, as this device last read its body. */
 function seedNote(fileContent: string, bodyTags: string[]): void {
   dataDb.db
     .insert(noteMetadata)
@@ -179,7 +173,6 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
     // #when
     noteHandler.applyUpsert(ctx, 'n1', { tags: ['work'], clock: REMOTE_CLOCK }, REMOTE_CLOCK)
 
-    // #then — one row for the shared tag, spelled as the frontmatter has it, in the header
     expect(indexRows()).toEqual([
       { tag: 'work', in_header: 1 },
       { tag: 'focus', in_header: 0 }

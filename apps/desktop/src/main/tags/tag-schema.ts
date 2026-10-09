@@ -1,8 +1,3 @@
-/**
- * Pure tag-schema model: parse the stored column, resolve every schema with
- * `extends`, and apply one edit. No database, no clock; the service in
- * `tags/schema/` owns reads and writes.
- */
 import {
   EMPTY_TAG_SCHEMA_BODY,
   TagSchemaWire,
@@ -123,10 +118,6 @@ function ancestorsOf(key: string, defs: ReadonlyMap<string, TagDefinitionInput>)
   return chain
 }
 
-/**
- * Resolves every tag whose schema column is non-NULL. Keys of `defs` are
- * lowercase tag names. An A↔B cycle resolves to A:[B], B:[A] on every device.
- */
 export function resolveTagSchemas(
   defs: ReadonlyMap<string, TagDefinitionInput>,
   propertyTypes: PropertyTypeLookup
@@ -197,7 +188,6 @@ export function resolveTagSchemas(
   return resolved
 }
 
-/** Tags that extend `tag`, transitively. */
 export function descendantsOf(tag: string, resolved: ReadonlyMap<string, ResolvedTag>): string[] {
   const key = tagKey(tag)
   return [...resolved.values()]
@@ -205,7 +195,6 @@ export function descendantsOf(tag: string, resolved: ReadonlyMap<string, Resolve
     .map((entry) => entry.key)
 }
 
-/** The first header tag, in header order, whose resolved schema has fields. */
 export function primaryObjectTag(
   headerTags: readonly string[],
   resolved: ReadonlyMap<string, ResolvedTag>
@@ -217,7 +206,6 @@ export function primaryObjectTag(
   return null
 }
 
-/** The existing spelling of a name that differs only by case, so the vault keeps one property. */
 export function canonicalFieldName(
   typed: string,
   existingPropertyNames: Iterable<string>
@@ -239,7 +227,6 @@ export type SchemaBodyEdit =
   | { kind: 'set-relation'; name: string; relation: RelationConfig | null }
   | { kind: 'remove-field'; name: string }
   | { kind: 'move-field'; name: string; toIndex: number }
-  /** `resuming`: a recorded vault-wide rename, whose target a schema may already list. */
   | { kind: 'rename-field'; from: string; to: string; resuming?: boolean }
   | { kind: 'set-template'; template: { id: string; autofill: boolean } | null }
   | { kind: 'set-extends'; parent: string | null }
@@ -268,11 +255,6 @@ function storedField(field: NewFieldBody): TagFieldStored {
     : { name: field.name.trim() }
 }
 
-/**
- * Applies one edit and stamps `t + 1` (no clock floor). An edit that changes
- * nothing returns the input with `changed: false`, so a repeated command
- * neither bumps `t` nor syncs.
- */
 export function applySchemaEdit(
   current: TagSchemaStored | null,
   edit: SchemaBodyEdit,
@@ -353,7 +335,6 @@ export function applySchemaEdit(
         if (!edit.resuming) {
           return { ok: false, error: { code: 'duplicate-field', name: to, definedBy: key } }
         }
-        // Resumed vault-wide rename: the target is already listed, so drop the old entry.
         fields.splice(at, 1)
       } else {
         fields[at] = { ...fields[at], name: to }

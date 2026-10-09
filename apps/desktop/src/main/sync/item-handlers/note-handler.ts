@@ -107,9 +107,6 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
 }
 
 /**
- * Remote frontmatter tags as the header half, and the body `#hashtags` of this
- * device's copy of the note as the inline half.
- *
  * A push payload carries frontmatter tags only, so a tag that exists solely as
  * a body hashtag never leaves the sending device. Re-deriving that half here is
  * what keeps the receiving side's replace from wiping it out of the index; the

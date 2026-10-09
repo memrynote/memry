@@ -93,9 +93,7 @@ interface TitleCellProps {
   title: string
   /** Emoji icon (optional) */
   emoji?: string | null
-  /** The row's note id: an object row draws its tag's avatar or icon. */
   noteId?: string
-  /** A child tag the row reaches a tag table through ("employee" under Person). */
   viaTag?: string
   /** Click handler (opens note) */
   onClick?: () => void
@@ -1013,7 +1011,6 @@ export const ProjectCell = memo(function ProjectCell({
 // Specialized Built-in Cells
 // ============================================================================
 
-/** An object row: initials avatar for person-like tags, else the tag's icon (B1, F1). */
 function ObjectRowIcon({
   noteId,
   title,

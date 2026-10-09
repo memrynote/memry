@@ -16,7 +16,6 @@ describe('HugeIconByName', () => {
     await waitFor(() => expect(container.querySelector('[data-icon=user]')).not.toBeNull())
     expect(container.querySelector('[data-icon=building]')).toBeNull()
 
-    // Both are cached now: switching back is synchronous and still follows the name.
     rerender(<HugeIconByName name="Building03Icon" />)
     expect(container.querySelector('[data-icon=building]')).not.toBeNull()
   })

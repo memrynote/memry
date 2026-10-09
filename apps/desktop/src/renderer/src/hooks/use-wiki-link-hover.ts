@@ -171,7 +171,6 @@ export function useWikiLinkHover(
       onNoteCreated(clearCache),
       onNoteRenamed(clearCache),
       onNoteDeleted(clearCache),
-      // An object's card reads its tags and fields; a stale entry would show the old ones.
       onNoteUpdated(clearCache)
     ]
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())

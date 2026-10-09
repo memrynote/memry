@@ -32,7 +32,6 @@ const sourceNote = (overrides: Partial<Note> = {}): Note => ({
   frontmatter: {},
   created: new Date('2026-01-01'),
   modified: new Date('2026-01-02'),
-  // The body's #kickoff is indexed with the header tags, but only the header is copied.
   tags: ['client-a', '2026', 'kickoff'],
   headerTags: ['client-a', '2026'],
   aliases: [],

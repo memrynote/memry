@@ -38,9 +38,7 @@ const KIND_ICONS: Record<RelationKind, AppIcon> = {
 interface RelationEditorProps {
   value: string[]
   onChange: (next: string[]) => void
-  /** A relation field's target tag: the picker only offers its objects. */
   targetTag?: string | null
-  /** False: a "one" relation field, where a new pick replaces the link. Default true. */
   many?: boolean
 }
 
@@ -170,8 +168,6 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
               aria-label={t('properties.relation.removeAria', { title: label })}
               className={cn(
                 'flex size-3.5 shrink-0 items-center justify-center rounded-full',
-                // An object chip reads like the boards' chips: its remove control
-                // appears on hover or keyboard focus, so a narrow drawer fits the title.
                 objectColor && 'hidden group-focus-within/chip:flex group-hover/chip:flex',
                 'transition-colors duration-150',
                 // main.css clears the global focus-visible outline, so every

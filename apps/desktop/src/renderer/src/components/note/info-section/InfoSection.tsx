@@ -25,9 +25,7 @@ import { useT } from '@memry/i18n/renderer'
 
 export interface InfoSectionProps {
   properties: Property[]
-  /** Field groups of the note's tags, shown above its own properties. */
   fieldGroups?: React.ReactNode
-  /** Slots the field groups show, counted in the header. */
   fieldSlotCount?: number
   newlyAddedPropertyId?: string | null
   isExpanded: boolean

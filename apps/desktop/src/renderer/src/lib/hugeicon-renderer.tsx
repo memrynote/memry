@@ -21,8 +21,6 @@ export function HugeIconByName({
   className?: string
 }): React.JSX.Element {
   const cached = iconCache.get(name)
-  // Keyed by name: one mounted icon can be handed another name (a tab that
-  // navigates to another note), and must not keep drawing the first one.
   const [loaded, setLoaded] = useState<{ name: string; icon: IconSvgElement } | null>(null)
   const icon = cached ?? (loaded?.name === name ? loaded.icon : null)
 

@@ -1,9 +1,3 @@
-/**
- * Template offers a note is waiting on: a tag with a template was added to a
- * note that already had text, so main offered the template instead of
- * applying it. Device-local by design (decisions.md: per device is fine);
- * adding or dismissing the offer clears it for this note.
- */
 import { useCallback, useSyncExternalStore } from 'react'
 import { createLogger } from '@/lib/logger'
 
@@ -63,7 +57,6 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Lowercase tags whose template this note is offered. */
 export function usePendingTemplateOffers(noteId: string | null): readonly string[] {
   const getSnapshot = useCallback(() => (noteId ? read(noteId) : EMPTY), [noteId])
   return useSyncExternalStore(subscribe, getSnapshot)

@@ -26,12 +26,6 @@ interface CreateMenuState {
 
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'])
 
-/**
- * D2: "Create {title} as" after the @ menu's Create row, then the object is
- * created with the tag in its header (main adds the template), linked at the
- * caret with the same [[Title]] link a pick writes, and not opened. A small
- * card takes its first two fields.
- */
 export function useMentionCreate(editor: any, containerRef: RefObject<HTMLDivElement | null>) {
   const { t } = useT('notes')
   const queryClient = useQueryClient()
@@ -123,8 +117,6 @@ export function useMentionCreate(editor: any, containerRef: RefObject<HTMLDivEle
       } else if (event.key === 'Enter' || event.key === 'Tab') {
         void commit(state.options[state.selectedIndex] ?? null)
       } else {
-        // Esc or typing on: nothing is created, and the name the @ menu
-        // stripped comes back as plain text.
         editor.insertInlineContent(state.title)
         setMenuState(null)
       }

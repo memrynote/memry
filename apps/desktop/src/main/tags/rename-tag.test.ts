@@ -1,13 +1,3 @@
-/**
- * A tag rename carries its `/` children, rewrites body `#tags` (closed notes
- * through the note command, open notes inside their live doc, journals too),
- * and merges into a name that already exists.
- *
- * Real here: the note command and file writer, the index and data databases,
- * the projections, the markdown converter, the write-back and the task retag.
- * Stood in for: the CRDT provider's doc map (held by the test), the sync queue
- * and the journal's sync/CRDT seeding.
- */
 import fs from 'fs'
 import path from 'path'
 import * as Y from 'yjs'
@@ -234,7 +224,6 @@ describe('renameTagEverywhere', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     expect(await markdownToYFragment(note.content, fragment, note.path)).toBe(true)
-    // A chip the editor made from a typed `#person`, next to the text one.
     const paragraph = fragment
       .createTreeWalker((node) => node instanceof Y.XmlElement && node.nodeName === 'paragraph')
       .next().value as Y.XmlElement
@@ -350,7 +339,6 @@ describe('renameTagEverywhere', () => {
     const note = await createNote({ title: 'Crashed', content: 'Met #person', tags: ['person'] })
     tag('person', 'rose')
     await flushProjectionEvents()
-    // An app quit after the job was recorded and before any step ran.
     setSetting(
       dataDb,
       TAG_RENAME_JOB_SETTING,
@@ -379,7 +367,6 @@ describe('renameTagEverywhere', () => {
     tag('person', 'rose')
     await flushProjectionEvents()
 
-    // The first note's progress event is the last thing the quit app did.
     await expect(
       renameTagEverywhere(index.db, dataDb, { from: 'person', to: 'people', runId: 'a' }, () => {
         throw new Error('quit')

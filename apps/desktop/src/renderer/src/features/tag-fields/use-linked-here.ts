@@ -10,11 +10,6 @@ export const linkedHereKey = (noteId: string, limit: number) =>
 
 const INVALIDATE_DELAY_MS = 250
 
-/**
- * "Linked here" of one object: relation fields that point at it, task fields
- * that point at it, and body links. Derived by main on every call; refreshed
- * (debounced) when notes, tags or tasks change.
- */
 export function useLinkedHere(
   noteId: string,
   limitPerGroup: number

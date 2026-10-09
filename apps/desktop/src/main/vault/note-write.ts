@@ -1,9 +1,3 @@
-/**
- * The pure parts of one note write (header tags, frontmatter) and the one
- * per-note queue every read-modify-write of a note file goes through.
- *
- * @module vault/note-write
- */
 import { isDeepStrictEqual } from 'util'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
@@ -23,11 +17,6 @@ export type HeaderTagChange = { added: string[]; removed: string[] } | null
 
 const noteWrites = new Map<string, Promise<unknown>>()
 
-/**
- * Runs `write` after every write queued before it for the same note. Two quick
- * edits of one note (add #a then #b, or a tag and a property) would otherwise
- * both start from the file as it was, and the later write would drop the earlier.
- */
 export function queueNoteWrite<T>(noteId: string, write: () => Promise<T>): Promise<T> {
   const run = (noteWrites.get(noteId) ?? Promise.resolve()).then(write)
   const settled = run.catch(() => {})
@@ -40,11 +29,6 @@ export function queueNoteWrite<T>(noteId: string, write: () => Promise<T>): Prom
 
 const key = foldTag
 
-/**
- * A full `tags` list from the agent API as an edit of the header. The list may
- * echo `Note.tags`, which holds the body's `#tags` too, so a tag the note only
- * mentions inline is not promoted into the header by being echoed back.
- */
 function headerTagEditToList(
   header: readonly string[],
   body: string,
@@ -59,12 +43,6 @@ function headerTagEditToList(
   }
 }
 
-/**
- * The note's header tags after an update: the explicit edit (`headerTags` or
- * the agent's `tags` list) first, then the plain `#tags` a new body added or
- * removed, as typing them in the editor does. `ignoreInlineTags` skips the
- * second step for a body Memry wrote itself (a tag template and its undo).
- */
 export function nextHeaderTags(
   db: DataDb,
   existing: { headerTags: string[]; content: string },
@@ -91,7 +69,6 @@ export function nextHeaderTags(
   return tags
 }
 
-/** What a header edit added and removed, or null when it left the list exactly as it was. */
 export function compareHeaderTags(
   before: readonly string[],
   after: readonly string[]
@@ -105,10 +82,6 @@ export function compareHeaderTags(
   }
 }
 
-/**
- * The frontmatter a note write leaves in the file, built from the file's own
- * frontmatter (never the index), and whether its block must be re-stringified.
- */
 export function nextNoteFrontmatter(
   existing: { frontmatter: NoteFrontmatter; properties: Record<string, unknown> },
   input: {
@@ -119,7 +92,6 @@ export function nextNoteFrontmatter(
   headerTags: string[],
   headerTagChange: HeaderTagChange
 ): { frontmatter: NoteFrontmatter; properties: Record<string, unknown>; edited: boolean } {
-  // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
   const merged: NoteFrontmatter = { ...existing.frontmatter, ...input.frontmatter }
   for (const [name, value] of Object.entries(input.frontmatter ?? {})) {
     if (value === null) delete merged[name]
@@ -131,7 +103,6 @@ export function nextNoteFrontmatter(
     frontmatter = replacePropertiesOnRoot(frontmatter, properties)
   }
 
-  // A `frontmatter` patch never sets `tags`, and an unchanged list keeps its bytes.
   const tagsValue =
     headerTagChange === null
       ? existing.frontmatter.tags

@@ -877,12 +877,10 @@ describe('notes operations', () => {
     })
 
     describe('header tags', () => {
-      /** The note file's frontmatter, read the way the app reads it. */
       const fileFrontmatter = (notePath: string): Record<string, unknown> =>
         parseNote(fs.readFileSync(path.join(tempVault.path, notePath), 'utf-8')).frontmatter
       const fileHeaderTags = (notePath: string): unknown => fileFrontmatter(notePath).tags
 
-      /** The note's index rows: each tag, and 1 when it sits in the header. */
       const indexedTags = async (
         id: string
       ): Promise<Array<{ tag: string; in_header: number | null }>> => {
@@ -892,7 +890,6 @@ describe('notes operations', () => {
         )
       }
 
-      /** A tag definition with one field, optionally extending another tag. */
       const defineTagWithFields = (name: string, schema: Record<string, unknown>): void => {
         dataDb.db.run(
           sql`INSERT INTO tag_definitions (name, color, schema) VALUES (${name}, 'blue', ${JSON.stringify({ t: 1, ...schema })})`

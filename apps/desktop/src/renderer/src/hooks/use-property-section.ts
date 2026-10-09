@@ -26,12 +26,7 @@ export interface UsePropertySectionResult {
   handleDeleteProperty: (propertyId: string) => void
   handlePropertyNameChange: (propertyId: string, newName: string) => void
   handlePropertyOrderChange: (newOrder: string[]) => void
-  /**
-   * A tag field's value: the first value adds the key, a change updates it,
-   * an empty value removes it. An empty slot never writes.
-   */
   handleSetFieldValue: (name: string, value: unknown, type: PropertyType) => void
-  /** The stored values by name, for field groups. */
   values: Record<string, unknown>
 }
 

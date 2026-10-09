@@ -15,7 +15,6 @@ import { createObject } from './create-object'
 const log = createLogger('ObjectRelationPicker')
 const DEBOUNCE_MS = 120
 
-/** Objects of `tag` (and the tags that extend it) matching `query`, newest activity first. */
 export function useObjectSearch(
   query: string,
   tag: string | undefined,
@@ -46,18 +45,12 @@ export function useObjectSearch(
   return state
 }
 
-/**
- * E2: a relation field with a target tag only offers notes with that tag.
- * Picking writes the same `memry://note/<id>` URI the generic picker writes;
- * "+ New {tag}" creates the object in place (with the tag and its template).
- */
 export function ObjectRelationPicker({
   targetTag,
   selected = [],
   onSelect
 }: {
   targetTag: string
-  /** URIs already in the value: shown with a check. */
   selected?: readonly string[]
   onSelect: (uri: string) => void
 }): React.JSX.Element {

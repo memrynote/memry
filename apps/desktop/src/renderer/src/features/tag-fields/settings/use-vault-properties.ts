@@ -11,15 +11,9 @@ export interface VaultProperty {
   name: string
   type: FieldType
   options: SelectOption[]
-  /** Notes in the vault with a value. */
   usage: number
 }
 
-/**
- * Every property key the vault knows: the vault-wide definitions (type and
- * options) joined with usage counts over all notes (the vault-root folder
- * scope). Reserved keys are never fields.
- */
 export function useVaultProperties(enabled: boolean): VaultProperty[] {
   const query = useQuery({
     queryKey: ['tags', 'settings', 'vault-properties'],

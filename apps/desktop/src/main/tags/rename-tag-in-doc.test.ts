@@ -1,7 +1,3 @@
-/**
- * The live-doc tag rewrite reads the same grammar as the markdown rewrite:
- * both run the shared cases in `@memry/shared` (inline-tag-rename-cases).
- */
 import * as Y from 'yjs'
 import { describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'

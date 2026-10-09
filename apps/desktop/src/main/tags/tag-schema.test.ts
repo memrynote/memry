@@ -249,7 +249,6 @@ describe('applySchemaEdit', () => {
     ).toMatchObject({
       next: { t: 3, fields: [{ name: 'Squad' }] }
     })
-    // A new rename onto a field the tag already lists would silently drop one of them.
     expect(
       applySchemaEdit(both, { kind: 'rename-field', from: 'Team', to: 'squad' }, ctx)
     ).toMatchObject({ ok: false, error: { code: 'duplicate-field', name: 'squad' } })

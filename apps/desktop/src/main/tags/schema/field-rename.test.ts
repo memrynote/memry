@@ -1,10 +1,3 @@
-/**
- * A vault-wide field rename that dies halfway is finished by the next run.
- *
- * Real here: the note writer and files, index and data databases, projections,
- * property definitions file, tasks domain, tag schemas and their sync queue.
- * Stood in for: the windows, the CRDT docs and the note sync queue.
- */
 import fs from 'fs'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -179,14 +172,12 @@ describe('renaming a field everywhere', () => {
 
     expect(getSetting(db(), FIELD_RENAME_JOB_SETTING)).toBeNull()
     expect(result).toMatchObject({ tasks: 1, skippedExisting: 1 })
-    // Renamed in place: the key keeps its position.
     const keys = Object.keys(frontmatter(first.path))
     expect(keys.indexOf('Mobile')).toBe(keys.indexOf('Role') + 1)
     expect(frontmatter(first.path)).toMatchObject({ Role: 'PM', Mobile: '111' })
     expect(frontmatter(first.path)).not.toHaveProperty('Phone')
     expect(frontmatter(second.path)).toMatchObject({ Mobile: '222', Email: 'e@x.io' })
     expect(frontmatter(second.path)).not.toHaveProperty('Phone')
-    // A note that already had the new name keeps both values: nothing is overwritten.
     expect(frontmatter(already.path)).toMatchObject({ Phone: '333', Mobile: '999' })
 
     const stored = data.db
@@ -245,7 +236,6 @@ describe('renaming a field everywhere', () => {
     expect(frontmatter(open.path)).toMatchObject({ Mobile: '111' })
     expect(frontmatter(locked.path)).toMatchObject({ Phone: '222' })
     expect(getSetting(db(), FIELD_RENAME_JOB_SETTING)).not.toBeNull()
-    // One job at a time: another rename waits for this one.
     await expect(
       renameField(db(), { from: 'Role', to: 'Title', runId: 'r2' }, () => {})
     ).rejects.toThrow(/Phone to Mobile/)

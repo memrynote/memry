@@ -2,11 +2,6 @@ import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { createNote, SELECTORS } from './utils/electron-helpers'
 
-/**
- * Typing a plain `#tag` in a note body adds it to the note's tags row and its
- * frontmatter `tags:` list, and deleting it from the body takes it out again.
- */
-
 const TAG = 'e2e-inline-car'
 
 test.describe('Inline #tag in the note body', () => {
@@ -31,7 +26,6 @@ test.describe('Inline #tag in the note body', () => {
       'the tags row shows the typed tag'
     ).toBeVisible()
 
-    // At the start of the line, away from the chip, which opens its tag page when clicked.
     await page
       .locator(SELECTORS.noteEditor)
       .first()

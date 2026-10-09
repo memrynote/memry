@@ -92,10 +92,6 @@ function queryCanvasIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.canvasId)
 }
 
-/**
- * A heal's changed fields. Leaving them out would tick all fifteen field clocks,
- * and this device would then win merges of fields it never edited.
- */
 const NO_CHANGED_FIELDS: string[] = []
 
 function plainTask(row: typeof tasks.$inferSelect | undefined) {

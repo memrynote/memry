@@ -19,7 +19,6 @@ interface ExtendsSelectProps {
   disabled: boolean
 }
 
-/** B1/H1 EXTENDS: one parent or Nothing; parents that would form a loop are greyed out. */
 export function ExtendsSelect({
   tagKey,
   tag,
@@ -56,8 +55,6 @@ export function ExtendsSelect({
           aria-label={t('tagFields.settings.sections.extends')}
         >
           {parentKey ? (
-            // A div, not the chip's own span: the trigger line-clamps a direct
-            // span child, which stacks the chip's icon over its name.
             <div className="flex min-w-0">
               <TagChip
                 name={parent?.name ?? parentKey}

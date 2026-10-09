@@ -227,11 +227,6 @@ function taskFieldRows(
   return rows
 }
 
-/**
- * A row for a value that must never be stored: `description`, or a task field
- * holding long text. Carries the character delta so the UI can say what
- * happened without the text ever reaching the database or an encrypted payload.
- */
 function lengthOnlyRow(
   taskId: string,
   action: TaskActivityAction,

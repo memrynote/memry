@@ -208,8 +208,6 @@ fn write_tags(
     Ok(())
 }
 
-/// Replaces `source` by `target` on every carrier. Returns the rewritten
-/// `(item_type, item_id)`s.
 pub(crate) fn rewrite(
     conn: &Connection,
     source: &str,

@@ -1,7 +1,3 @@
-/**
- * B1: "Edit tag" on the tag page. A right sheet beside the table (not a modal),
- * so a field change shows up as a column while the sheet stays open.
- */
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -32,7 +28,6 @@ import { tagDisplayName } from '../tag-display-name'
 const NO_CATEGORY = '__none__'
 
 interface TagSettingsSheetProps {
-  /** The tag as the page names it. */
   tag: string
   onClose: () => void
 }
@@ -171,7 +166,6 @@ interface AppearanceRowProps {
   icon: string | null
 }
 
-/** Icon, colour and category, through the same tag calls the Tags hub uses. */
 function AppearanceRow({ tag, tagKey, color, icon }: AppearanceRowProps): React.JSX.Element {
   const { t } = useT('notes')
   const { categories, reorder } = useTagCategories()

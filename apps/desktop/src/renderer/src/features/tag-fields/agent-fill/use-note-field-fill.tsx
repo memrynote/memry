@@ -1,8 +1,3 @@
-/**
- * "Fill from note" on a note's field groups (I1 · 1 and 2). The model's
- * answers are ghost values; nothing is saved until the user accepts one
- * (✓), all (⌘↵) or dismisses them.
- */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -25,7 +20,6 @@ type Phase =
   | { kind: 'review'; group: string; proposals: FieldFillProposal[]; busy: boolean }
 
 const groupKey = (group: FieldGroup): string => `${group.tag.key}:${group.via?.key ?? ''}`
-/** The header tag the group belongs to: an inherited group fills through its child. */
 const headerTagOf = (group: FieldGroup): string => (group.via ?? group.tag).key
 
 export interface NoteFieldFill {
@@ -41,7 +35,6 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
     noteId,
     phase: { kind: 'idle' }
   })
-  // Another note in this pane starts clean.
   const phase = useMemo<Phase>(
     () => (state.noteId === noteId ? state.phase : { kind: 'idle' }),
     [state, noteId]

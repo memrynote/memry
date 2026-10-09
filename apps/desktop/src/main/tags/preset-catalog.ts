@@ -1,8 +1,4 @@
 /**
- * The one list of ready-made tags. Names are keys in the `notes` namespace
- * (`tagFields.presets.*`), localized in the app language when a preset is
- * added. Pure data; the seed imports it too.
- *
  * Text-like fields get a `text` property definition. Safe for every peer that
  * syncs `property_definition`: that sync and the text/number/url file schemas
  * first shipped together (v2026-09-09).
@@ -23,7 +19,6 @@ export interface PresetSpec {
   icon: string
   color: string
   fields: PresetFieldSpec[]
-  /** Body: `## {heading}` then the hint line, per section. */
   template: { nameKey: string; sections: Array<{ headingKey: string; hintKey?: string }> }
 }
 

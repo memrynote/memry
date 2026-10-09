@@ -1,8 +1,3 @@
-/**
- * A1: the ready-made tags offer at the top of the Tags hub. Shows until the
- * user picks "Not now" (remembered in the snapshot) or every preset is added.
- * Adding creates only the tag definition; no note changes.
- */
 import * as React from 'react'
 import { useState } from 'react'
 import { toast } from 'sonner'

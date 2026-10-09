@@ -51,7 +51,6 @@ interface TiptapLike {
   off?: (event: string, handler: () => void) => void
 }
 
-/** A resolved title: the note id, `true` for a canvas, `false` for a miss. */
 type Resolution = string | boolean
 
 export function useWikiLinkBroken(
@@ -72,7 +71,6 @@ export function useWikiLinkBroken(
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    /** Lowercased title → what it resolved to. Session-scoped; note events clear it. */
     const resolvedCache = new Map<string, Resolution>()
     let lastBroken = new Set<string>()
     let lastObjectsKey = ''
@@ -148,7 +146,6 @@ export function useWikiLinkBroken(
       )
       const objectsKey = JSON.stringify([...objects])
 
-      // Unchanged sets → no dispatch: this runs behind every keystroke.
       if (
         !iconsAdded &&
         objectsKey === lastObjectsKey &&

@@ -3,7 +3,6 @@ import { FOLDER_VIEW_STATE_KEYS } from '@/pages/folder-view-state'
 
 type OpenTab = ReturnType<typeof useTabActions>['openTab']
 
-/** Opens a tag's table in a new tab, narrowed by `filter` (a removable, saveable filter). */
 export function openTagTable(openTab: OpenTab, tag: string, filter?: string): void {
   openTab(
     {

@@ -16,15 +16,9 @@ import { isRelationField } from './task-relation-chip-model'
 interface TaskFieldGroupsProps {
   tags: readonly string[]
   fields: TaskFields
-  /** A patch: name -> value, `null` removes the value. */
   onFieldsChange: (patch: TaskFields) => void
 }
 
-/**
- * The task drawer's field groups, under the Tags row. A task has no inline
- * tags, so every tag with fields brings its group. An empty slot writes
- * nothing; a value goes in only when the user sets one.
- */
 export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroupsProps) {
   const { t } = useT('notes')
   const { data: snapshot } = useTagSchemas()
@@ -137,7 +131,6 @@ function slotProperty(slot: FieldSlot): Property {
   }
 }
 
-/** A value no tag lists any more has no definition to read; draw it by its shape. */
 function inferType(value: unknown): PropertyType {
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value === 'number') return 'number'

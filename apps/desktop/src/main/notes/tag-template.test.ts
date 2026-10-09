@@ -168,7 +168,6 @@ describe('a header tag with a template', () => {
       status: 'restored'
     })
     expect(fileBody(note.path).trim()).toBe('')
-    // A token is spent once.
     expect(await undoTagTemplateCommand({ noteId: note.id, undoToken })).toEqual({
       status: 'stale'
     })

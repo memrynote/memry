@@ -3,14 +3,6 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { findInlineTags, renamedTag, type TagRename } from '@memry/shared/inline-tags'
 import { ORIGIN_LOCAL } from '../sync/crdt-provider'
 
-/**
- * Renames the body `#tags` of an open note inside its live doc, so the editor
- * and its pending edits keep their place and the change merges like typing.
- * A `hashTag` chip gets its `tag` attribute set; a `#tag` still held as text
- * is rewritten in place with its marks. Code blocks and `code`-marked text are
- * left alone, as `rewriteInlineTagsInMarkdown` leaves code in a file. Returns
- * whether anything changed.
- */
 export function renameTagsInDoc(doc: Y.Doc, renames: readonly TagRename[]): boolean {
   let changed = false
   const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
@@ -38,13 +30,6 @@ export function renameTagsInDoc(doc: Y.Doc, renames: readonly TagRename[]): bool
 
 type TextOp = { insert?: unknown; attributes?: Record<string, unknown> }
 
-/**
- * Reads the text's runs the way `rewriteInlineTagsInMarkdown` reads markdown:
- * the plain (non-code) runs joined into one string, so a tag split across a
- * bold and a plain run is one tag, and a `#` right after code sees what came
- * before the code. Each joined character maps back to its doc offset; a match
- * whose characters are not contiguous in the doc (code inside it) is skipped.
- */
 function renameTagsInText(text: Y.XmlText, renames: readonly TagRename[]): boolean {
   let joined = ''
   const at: number[] = []
@@ -52,7 +37,6 @@ function renameTagsInText(text: Y.XmlText, renames: readonly TagRename[]): boole
   let offset = 0
   for (const op of text.toDelta() as TextOp[]) {
     if (typeof op.insert !== 'string') {
-      // An embed is not whitespace: a `#` right after it starts no tag.
       joined += '\uFFFC'
       at.push(offset)
       attrsAt.push({})

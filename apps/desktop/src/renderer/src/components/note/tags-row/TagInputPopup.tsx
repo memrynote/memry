@@ -10,11 +10,8 @@ import { cn } from '@/lib/utils'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import { tagDisplayName } from '@/features/tag-fields/tag-display-name'
 
-/** The note header picker marks tags with fields and says what adding one does (C1). */
 export interface TagFieldHints {
-  /** The note body is empty, so an autofill template would fill it. */
   bodyEmpty: boolean
-  /** Resolved tags with a schema, by lowercase key (the schema snapshot). */
   tags: Readonly<Record<string, ResolvedTag>>
 }
 
@@ -68,8 +65,6 @@ export function TagInputPopup({
     return base.filter((t) => !currentTagIds.includes(t.id))
   }, [availableTags, searchQuery, currentTagIds])
 
-  // While searching, tags with fields list first as rows that name their
-  // fields; the rest stay chips. One order drives the keyboard.
   const fieldRows = useMemo(() => {
     if (!fieldHints || !searchQuery.trim()) return []
     return matchingTags.flatMap((tag) => {
@@ -84,7 +79,6 @@ export function TagInputPopup({
     return [...fieldRows.map((row) => row.tag), ...matchingTags.filter((t) => !rowIds.has(t.id))]
   }, [fieldRows, matchingTags])
   const chipTags = filteredTags.slice(fieldRows.length)
-  // The first tag with fields is preselected, as drawn; Create stays its own row.
   const activeIndex = focusedIndex === -1 && fieldRows.length > 0 ? 0 : focusedIndex
 
   const exactMatchExists = useMemo(() => {

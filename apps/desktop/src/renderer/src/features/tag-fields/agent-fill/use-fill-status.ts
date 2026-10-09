@@ -6,10 +6,6 @@ import { tagsService } from '@/services/tags-service'
 
 const FILL_STATUS_KEY = ['tags', 'fill-status'] as const
 
-/**
- * "Fill from note" exists only with AI on in the app and inline AI on with a
- * configured provider. With the agent off the action is not there at all.
- */
 export function useFillStatus(): {
   status: FieldFillStatus | null
   visible: boolean

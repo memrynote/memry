@@ -10,7 +10,6 @@ interface TagChipProps {
   className?: string
 }
 
-/** The small tinted "#company" chip the settings rows and selects draw. */
 export function TagChip({ name, color, icon, className }: TagChipProps): React.JSX.Element {
   const text = getTagColors(color, name).text
   return (

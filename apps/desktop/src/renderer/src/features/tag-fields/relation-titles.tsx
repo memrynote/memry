@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { ObjectAvatar, type ObjectLook } from './object-avatar'
 import { useObjectIdentityLookup } from './use-tag-schemas'
 
-/** Relation URIs resolved to titles; cached per value, refreshed on mount. */
 export function useResolvedRefs(uris: readonly string[]): ResolvedRelationRef[] {
   const { data } = useQuery({
     queryKey: ['tags', 'resolved-refs', ...uris],
@@ -17,10 +16,6 @@ export function useResolvedRefs(uris: readonly string[]): ResolvedRelationRef[] 
   return uris.length === 0 ? [] : (data ?? [])
 }
 
-/**
- * The object chip of the boards: a pill in 10% of the tag colour, an 18px
- * avatar or icon tile, the title in ink. An explicit note emoji wins.
- */
 export function ObjectChip({
   look,
   title,
@@ -55,7 +50,6 @@ export function ObjectChip({
   )
 }
 
-/** Chips for a relation value (quick-fields card, table cells, hover card). */
 export function RelationTitles({
   uris,
   className

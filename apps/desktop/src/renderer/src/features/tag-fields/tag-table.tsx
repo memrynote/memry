@@ -16,21 +16,10 @@ import { createObject } from './create-object'
 import { ObjectRelationPicker } from './object-relation-picker'
 import { RelationTitles, useResolvedRefs } from './relation-titles'
 
-/**
- * F1: what the folder view's table needs to know when it shows a tag with
- * fields. Provided by the tag page; absent everywhere else, so folder tables
- * and plain tags' pages stay exactly as they were.
- */
 export interface TagTableValue {
   tag: ResolvedTag
-  /** A relation column's target tag (the picker offers only its objects). */
   relationTargetOf(columnId: string): string | null
-  /** Task rows edit only the tag's fields, through tasks:update. */
   isFieldColumn(columnId: string): boolean
-  /**
-   * "+ New {tag} in {group}": creates the object with the group's value
-   * prefilled; with ⌘ held it also opens in a new tab.
-   */
   createInGroup(property: string, value: unknown, open: boolean): void
 }
 
@@ -72,7 +61,6 @@ export function TagTableProvider({
   return <TagTableContext.Provider value={value}>{children}</TagTableContext.Provider>
 }
 
-/** Writes one task field (task rows of a tag table). `undefined` clears it. */
 export async function updateTaskField(
   taskId: string,
   name: string,
@@ -82,7 +70,6 @@ export async function updateTaskField(
   if (!result.success) throw new Error(result.error)
 }
 
-/** A relation cell of a tag table: chips, and the target tag's picker on click (E2/F1). */
 export function RelationPickerCell({
   value,
   target,
@@ -140,22 +127,16 @@ export function RelationPickerCell({
   )
 }
 
-/**
- * The relation URIs a group stands for. The grouped table keys a group by the
- * stringified cell, so an array of URIs arrives comma-joined.
- */
 export function relationGroupUris(value: unknown): string[] | null {
   const parts = typeof value === 'string' ? value.split(',') : isRelationValue(value) ? value : null
   if (!parts || parts.length === 0) return null
   return parts.every((part) => parseRelationUri(part) !== null) ? parts : null
 }
 
-/** A group title: relation values read as their objects, not as URIs. */
 export function GroupValueTitle({ uris }: { uris: string[] }): React.JSX.Element {
   return <RelationTitles uris={uris} />
 }
 
-/** "+ New {tag} in {group}" on a group header of a tag table. */
 export function NewInGroupButton({
   property,
   value
@@ -192,7 +173,6 @@ function NewInGroup({
         )
       }}
       onKeyDown={(event) => {
-        // F1: ⌘↵ creates in the group and opens the new note in a tab.
         if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
         event.preventDefault()
         event.stopPropagation()
@@ -217,10 +197,6 @@ function useGroupLabel(value: unknown): string | null {
   return Array.isArray(value) ? value.map(stringifyUnknown).join(', ') : stringifyUnknown(value)
 }
 
-/**
- * F1: "Arriving from Ahmet's Meetings count adds the filter Attendees includes
- * Ahmet. It is a normal filter: remove it, or save it as a view."
- */
 export function LinkedFilterBar({
   filter,
   onRemove,
@@ -269,7 +245,6 @@ export function LinkedFilterBar({
   )
 }
 
-/** AND a linked filter onto a view's own filters (Save view). */
 export function withLinkedFilter(
   filters: FilterExpression | undefined,
   linked: string
@@ -277,10 +252,6 @@ export function withLinkedFilter(
   return filters ? { and: [filters, linked] } : linked
 }
 
-/**
- * F1: "Mentioned in · 9 notes with #meeting in their text" under a tag with
- * fields' table. Notes that carry the tag only inline are labels, not rows.
- */
 export function MentionedInSection({
   tag,
   onOpen

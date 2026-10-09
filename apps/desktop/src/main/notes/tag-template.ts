@@ -102,7 +102,6 @@ export async function applyTagTemplateAfterAdd(
   change: { requested: string[] | undefined; added: string[] },
   write: WriteNote
 ): Promise<{ note: Note; tagTemplate?: NoteTagTemplateOutcome }> {
-  // Journals never take a template.
   if (getNoteCacheById(getIndexDatabase(), note.id)?.date) return { note }
   const hit = firstTagTemplate(addedInOrder(change.requested, change.added))
   if (!hit) return { note }

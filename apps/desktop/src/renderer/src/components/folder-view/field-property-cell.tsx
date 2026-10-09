@@ -4,12 +4,6 @@ import { EditablePropertyCell } from './property-cell'
 import { isMetadataEditableRow } from './row-metadata-editability'
 import type { PropertyType } from './property-cell'
 
-/**
- * One property cell of a folder or tag table. On a tag with fields' table, a
- * relation field edits through its target tag's picker, and a task row edits
- * the tag's fields (the write goes through `tasks:update`, routed by the page).
- * Everywhere else this is today's EditablePropertyCell.
- */
 export function FieldPropertyCell({
   note,
   columnId,

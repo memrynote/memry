@@ -35,7 +35,6 @@ export const WIKI_LINK_BROKEN_PLUGIN_KEY = new PluginKey<WikiLinkBrokenPluginSta
 
 const SET_BROKEN_TARGETS_META = 'wikiLinkBrokenSet'
 
-/** Lowercased raw `target` → decoration attrs of an object link. */
 export type ObjectLinkAttrs = ReadonlyMap<string, Record<string, string>>
 
 const NO_OBJECTS: ObjectLinkAttrs = new Map()
@@ -83,7 +82,6 @@ function buildDecorations(
   return decorations.length > 0 ? DecorationSet.create(doc, decorations) : DecorationSet.empty
 }
 
-/** Hands the plugin a fresh broken set (and object links); call after each batch resolve. */
 export function setBrokenWikiTargets(
   view: EditorView,
   broken: ReadonlySet<string>,

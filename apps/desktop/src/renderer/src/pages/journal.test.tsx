@@ -623,11 +623,9 @@ describe('JournalPage', () => {
     act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenCalledWith({ add: ['life'], remove: [] })
 
-    // #when the user deletes `#draft`, which the entry's tags do not hold
     act(() => onInlineTagsChange(['work', 'life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenCalledTimes(1)
 
-    // #when the user deletes the body's `#work`
     act(() => onInlineTagsChange(['life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenLastCalledWith({ add: [], remove: ['work'] })
   })

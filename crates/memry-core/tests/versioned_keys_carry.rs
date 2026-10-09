@@ -1,9 +1,3 @@
-//! | Test                                              | Rule                     |
-//! | ------------------------------------------------- | ------------------------ |
-//! | a wholesale apply stores both keys as sent        | §13.2 rule 1, §6.3.1     |
-//! | a concurrent task merge keeps the local fields    | §6.9.2                   |
-//! | a duplicate and a next occurrence copy the fields | §13.7.3.1                |
-
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::domain::calendar::LocalDateTime;

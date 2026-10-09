@@ -25,12 +25,6 @@ type Action = (typeof ACTIONS)[number]
 const ACTIVE_CLASS = 'inline-hash-tag--active'
 const POPOVER_WIDTH = 330
 
-/**
- * C3: an inline #tag of a tag with fields is a label. Clicking it offers
- * "Make this note a {Tag}" (adds the tag to the header in one step; the inline
- * text stays), "Open #tag" and "Remove tag from text". Plain tags keep
- * today's click (open the tag page). Returns the click handler and the overlay.
- */
 export function useInlineTagObject(
   editor: any,
   containerRef: RefObject<HTMLDivElement | null>,
@@ -49,7 +43,6 @@ export function useInlineTagObject(
     setState(next)
   }, [])
 
-  /** True when the click was taken (a tag with fields, on a note that is not yet its object). */
   const onTagClick = useCallback(
     (tag: string, pill: HTMLElement): boolean => {
       const resolved = snapshot?.tags[tag.toLowerCase()]
@@ -61,8 +54,6 @@ export function useInlineTagObject(
       update({
         tag: resolved.key,
         pill,
-        // Kept inside the editor column: a chip near the end of a line would
-        // push the popover past the pane's edge.
         position: {
           x: Math.max(0, Math.min(pillRect.left - rect.left, rect.width - POPOVER_WIDTH)),
           y: pillRect.bottom - rect.top + 6
@@ -153,7 +144,6 @@ export function useInlineTagObject(
   const color = resolved ? getTagColors(resolved.color, resolved.key).text : null
   const tagName = resolved?.name ?? state?.tag ?? ''
   const label = tagDisplayName(tagName)
-  // C3: "12 companies · 3 fields" for a ready-made tag; other tags count objects.
   const plural = resolved
     ? presetPlural(resolved, (preset) => ({
         name: t(`tagFields.presets.${preset}.name`),

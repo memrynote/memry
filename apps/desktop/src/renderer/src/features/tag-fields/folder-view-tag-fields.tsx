@@ -1,8 +1,3 @@
-/**
- * What a tag with fields adds to the folder view under tag scope (B1/F1): the
- * linked filter, task field edits, the field count, Edit tag and bulk fill,
- * "Mentioned in" and the settings sheet. The page only places these.
- */
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -26,8 +21,6 @@ export function useFolderViewTagFields(scope: ViewScope) {
   const { openTab } = useTabs()
   const tag = useResolvedTag(scope.kind === 'tag' ? scope.tag : null)
   const fieldTag = tag?.hasFields ? tag : null
-  // The filter a "Linked here" count opened this tab with (F1). Tab-local and
-  // removable; Save view writes it into the view.
   const [linkedFilter, setLinkedFilter] = useTabViewState<string | null>({
     key: FOLDER_VIEW_STATE_KEYS.linkedFilter,
     defaultValue: null,
@@ -59,7 +52,6 @@ export function useFolderViewTagFields(scope: ViewScope) {
     [openTab, t]
   )
 
-  /** A task row edits the tag's fields (F1). Returns whether it took the edit. */
   const editTaskRowField = useCallback(
     (row: { id: string; kind?: string }, name: string, value: unknown, refresh: () => unknown) => {
       if (row.kind !== 'task' || !fieldTag?.effectiveFields.some((f) => f.name === name)) {

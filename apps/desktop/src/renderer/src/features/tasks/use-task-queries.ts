@@ -362,7 +362,6 @@ export function useTaskWorkspaceMutations() {
         const current = prev.find((task) => task.id === taskId)
         if (!current) return prev
         const next = { ...current, ...updates }
-        // `updates.fields` is a patch, not the whole map.
         if (updates.fields) next.fields = applyFieldsPatch(current.fields, updates.fields)
         return applyTaskUpdate(prev, next, taskId)
       })

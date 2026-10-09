@@ -1,8 +1,3 @@
-/**
- * "Fill empty fields" from a tag's table (I1 · 3): reads the tag's notes one
- * at a time with progress and Stop, then lists what it found. Nothing is
- * written until Accept all, or a row's ✓ when reviewing one by one.
- */
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'

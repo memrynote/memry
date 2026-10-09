@@ -1048,7 +1048,6 @@ describe('NotePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
     expect(mocks.renameNote).toHaveBeenCalledWith({ id: 'note-1', newTitle: 'Renamed Note' })
 
-    // The row shows the header alone: the body's #idea stays a chip in the text.
     expect(screen.getByTestId('tags-row')).toHaveTextContent(/^work$/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
@@ -1145,7 +1144,6 @@ describe('NotePage', () => {
   })
 
   it('does not write the note when opening it reports its inline tags', async () => {
-    // #given a note opened with `#work` and then `#Work` in its body (#1454)
     renderWithProviders(<NotePage noteId="note-1" />)
     await screen.findByRole('button', { name: 'Load inline tags' })
 
@@ -1156,14 +1154,12 @@ describe('NotePage', () => {
       await Promise.resolve()
     })
 
-    // #then nothing is persisted: opening a note may not modify it
     expect(mocks.updateNote).not.toHaveBeenCalledWith(
       expect.objectContaining({ headerTags: expect.anything() })
     )
   })
 
   it('removes a tag when the user deletes the inline tag the note opened with', async () => {
-    // #given a note opened with `#work` in its body, so the load report sets the baseline
     renderWithProviders(<NotePage noteId="note-1" />)
     await screen.findByRole('button', { name: 'Load inline tags' })
     fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
@@ -1171,7 +1167,6 @@ describe('NotePage', () => {
     // #when the user deletes it
     fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
 
-    // #then main is asked to take it off the header
     expect(mocks.updateNote).toHaveBeenCalledWith({
       id: 'note-1',
       headerTags: { add: [], remove: ['work'], source: 'inline' }

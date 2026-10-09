@@ -244,8 +244,6 @@ vi.mock('@/services/notes-service', () => ({
   notesService: contentAreaMocks.notesService
 }))
 
-// Object chips, the @ create menu and the inline-tag popover read the tag
-// schema snapshot; these tests have no tags with fields.
 vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
   tagSchemaQueryKey: ['tags', 'schema-snapshot'],
   useTagSchemas: () => ({ data: undefined, isLoading: false }),

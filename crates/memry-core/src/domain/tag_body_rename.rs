@@ -31,8 +31,6 @@ use crate::crdt::update_log;
 use crate::domain::notes::failed;
 use crate::domain::{body_tags, body_write, journal, notes, tags};
 
-/// The name `tag` takes when `from` is renamed to `to`, or `None` when it is
-/// neither `from` nor a child of it. A child keeps its own suffix spelling.
 pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
     let key = tags::fold(tag);
     let from = tags::fold(from.trim());
@@ -44,8 +42,6 @@ pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
         .map(|_| format!("{}{}", to.trim(), &tag[from.len()..]))
 }
 
-/// Whether `name` can be written as an inline `#name` and read back whole,
-/// after desktop's `INLINE_TAG_NAME` (`packages/shared/src/inline-tags.ts`).
 pub(crate) fn is_inline_tag_name(name: &str) -> bool {
     let word = |segment: &str, first_alpha: bool| {
         let mut chars = segment.chars();
@@ -58,8 +54,6 @@ pub(crate) fn is_inline_tag_name(name: &str) -> bool {
     segments.next().is_some_and(|head| word(head, true)) && segments.all(|s| word(s, false))
 }
 
-/// Renames `from` (and its children) to `to` in every live body.
-/// Never fails: see the module comment.
 pub(crate) fn rewrite_bodies(
     conn: &Connection,
     from: &str,
@@ -140,7 +134,6 @@ fn rewrite_source(
     Ok(())
 }
 
-/// Renames the tag in one document's body.
 pub(crate) fn rewrite_document(txn: &mut TransactionMut<'_>, from: &str, to: &str) {
     let Some(fragment) = txn.get_xml_fragment(BODY_FRAGMENT) else {
         return;
@@ -175,8 +168,6 @@ pub(crate) fn rewrite_document(txn: &mut TransactionMut<'_>, from: &str, to: &st
     }
 }
 
-/// Rewrites the `#tags` of one text run. Offsets are UTF-8 bytes, the
-/// document's offset kind.
 fn rewrite_run(txn: &mut TransactionMut<'_>, run: &XmlTextRef, from: &str, to: &str) {
     let mut edits: Vec<(u32, u32, String, Attrs)> = Vec::new();
     let mut offset = 0usize;

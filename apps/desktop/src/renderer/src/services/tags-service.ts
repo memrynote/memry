@@ -145,29 +145,18 @@ export const tagsService: TagsService = {
     return window.api.tags.reorder(payload)
   },
 
-  /** Resolved tag schemas, ready-made tag offers and object identities. */
   getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
 
-  /** Apply one tag schema command; resolves to a fresh snapshot. */
   editSchema: (command) => window.api.tags.editSchema(command),
 
-  /** Count what a schema change would touch, before it runs. */
   previewImpact: (query) => window.api.tags.previewImpact(query),
 
-  /** Whether agent fill is on, and the model its disclosure names. */
   getFillStatus: () => window.api.tags.getFillStatus(),
 
-  /** The inline-AI model proposes values for a note's empty fields; writes nothing. */
   fillFields: (input) => window.api.tags.fillFields(input),
 
-  /**
-   * Objects of tags with fields matching a query (@ menu, relation picker).
-   */
   searchObjects: (input) => window.api.tags.searchObjects(input),
 
-  /**
-   * What points at a note: relation fields, task fields, wiki links.
-   */
   getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }
 

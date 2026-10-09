@@ -12,12 +12,6 @@ const log = createLogger('NoteTagEdits')
 
 type IndexDb = ReturnType<typeof getIndexDatabase>
 
-/**
- * Snapshot the index tag rows of every locked note that carries `tag` (or a
- * child of it) before a vault-wide rename, merge or delete, and put them back
- * verbatim after it. The file of a locked note is left as it is, so its index
- * rows must not change either (#2606).
- */
 export function keepLockedNoteTags(indexDb: IndexDb, tag: string): () => void {
   if (!hasAnyVaultLock()) return () => {}
   const normalized = foldTag(tag.trim())
@@ -36,11 +30,6 @@ export function keepLockedNoteTags(indexDb: IndexDb, tag: string): () => void {
   }
 }
 
-/**
- * The markdown note `noteId` when a vault-wide tag edit may write it: a locked
- * note keeps its file, and a filed binary has no frontmatter, so for either the
- * index rows the caller already rewrote are its tags.
- */
 export function writableTagCarrier(indexDb: IndexDb, noteId: string): boolean {
   const cached = getNoteCacheById(indexDb, noteId)
   if (!cached || cached.fileType !== 'markdown') return false
@@ -51,11 +40,6 @@ export function writableTagCarrier(indexDb: IndexDb, noteId: string): boolean {
   return true
 }
 
-/**
- * One note's part of a vault-wide tag merge or delete. The header edit goes
- * through the note command, so an open editor's doc follows it instead of
- * writing the old list back.
- */
 export async function editNoteHeaderTags(
   indexDb: IndexDb,
   noteId: string,

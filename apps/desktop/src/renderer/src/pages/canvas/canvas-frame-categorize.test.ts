@@ -40,7 +40,6 @@ beforeEach(() => {
 
 describe('applyFrameBinding', () => {
   it('adds a tag to a note header and reverts against the header present at undo time', async () => {
-    // The body already mentions #health/sleep; only the header makes it the note's tag.
     mocks.noteGet.mockResolvedValueOnce({ tags: ['a', 'health/sleep'], headerTags: ['a'] })
     const outcome = await applyFrameBinding(note, tag)
     expect(mocks.noteUpdate).toHaveBeenCalledWith({
@@ -49,7 +48,6 @@ describe('applyFrameBinding', () => {
     })
     expect(outcome.status).toBe('applied')
 
-    // Someone added "b" in the meantime; undo removes only the binding's tag.
     mocks.noteGet.mockResolvedValueOnce({ headerTags: ['a', 'health/sleep', 'b'] })
     if (outcome.status === 'applied') await outcome.revert()
     expect(mocks.noteUpdate).toHaveBeenLastCalledWith({

@@ -1,7 +1,3 @@
-/**
- * A proposed value sitting in an empty field slot (I1 · 2): ghost value,
- * accept (✓) and reject (×). Hover or focus paints the source sentence.
- */
 import { useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { ResolvedField } from '@memry/contracts/tag-schema'

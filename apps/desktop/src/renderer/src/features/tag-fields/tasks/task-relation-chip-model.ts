@@ -1,7 +1,6 @@
 import type { ResolvedField } from '@memry/contracts/tag-schema'
 import type { FieldGroup } from '../build-field-groups'
 
-/** The tag's relation config makes a field a relation, whatever the definition says. */
 export function isRelationField(field: ResolvedField): boolean {
   return field.relation !== null || field.type === 'relation'
 }
@@ -9,13 +8,11 @@ export function isRelationField(field: ResolvedField): boolean {
 export interface TaskRelationChipModel {
   field: string
   uri: string
-  /** Set when the target is a note. */
   noteId: string | null
 }
 
 const NOTE_URI_PREFIX = 'memry://note/'
 
-/** The first filled relation value, in group order, the task row shows as a chip. */
 export function firstRelationChip(groups: readonly FieldGroup[]): TaskRelationChipModel | null {
   for (const group of groups) {
     for (const { field, value } of group.slots) {

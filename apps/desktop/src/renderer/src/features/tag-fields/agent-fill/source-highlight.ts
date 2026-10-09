@@ -1,7 +1,3 @@
-/**
- * Paints a proposal's source sentence in the note body with the CSS Custom
- * Highlight API, so the editor's DOM is never touched.
- */
 const HIGHLIGHT_NAME = 'field-fill-source'
 
 function findRange(root: Element, text: string): Range | null {
@@ -27,7 +23,6 @@ function findRange(root: Element, text: string): Range | null {
   return range
 }
 
-/** The note body near `from`: the nearest ancestor that holds an editor. */
 function editorNear(from: Element): Element | null {
   for (let node: Element | null = from; node; node = node.parentElement) {
     const editor = node.querySelector('.ProseMirror')

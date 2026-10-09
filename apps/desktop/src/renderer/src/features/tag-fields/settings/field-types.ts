@@ -24,7 +24,6 @@ export const FIELD_TYPE_ICONS: Record<FieldType, AppIcon> = {
   relation: ArrowUpRight
 }
 
-/** B2's order of the "New field type" group. */
 export const NEW_FIELD_TYPE_ORDER: readonly FieldType[] = [
   'text',
   'number',
@@ -37,7 +36,6 @@ export const NEW_FIELD_TYPE_ORDER: readonly FieldType[] = [
   'relation'
 ]
 
-/** i18n key of a type's label, under `tagFields.settings.types`. */
 export function fieldTypeLabelKey(type: FieldType): string {
   return `tagFields.settings.types.${type}`
 }

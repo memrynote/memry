@@ -7,11 +7,6 @@ export interface CreatedObject {
   title: string
 }
 
-/**
- * The one create flow for objects (@ menu, relation picker, tag table): a note
- * with the tag in its header. Main applies the tag's template when it has one
- * (notes:create without `template`), so every surface fills the same way.
- */
 export async function createObject(args: {
   title: string
   tag: string
@@ -27,7 +22,6 @@ export async function createObject(args: {
   return { id: result.note.id, title: result.note.title }
 }
 
-/** "First use from @": adds a ready-made tag and returns the tag key it wrote. */
 export async function addPresetTag(
   edit: (command: TagSchemaCommand) => Promise<TagSchemaCommandResult>,
   preset: PresetKey
@@ -40,7 +34,6 @@ export async function addPresetTag(
 
 const LAST_TAG_KEY = 'memry:mention-create-last-tag'
 
-/** The tag the last @ create used: it sits first, so a run of attendees is ↵ ↵ ↵. */
 export const lastCreateTag = {
   get(): string | null {
     try {

@@ -119,7 +119,6 @@ export function getOperatorsForType(type: PropertyType): Operator[] {
       return CHECKBOX_OPERATORS
     case 'select':
       return SELECT_OPERATORS
-    // A relation value is a list of memry:// URIs: contains / does not contain one.
     case 'multiselect':
     case 'relation':
       return MULTISELECT_OPERATORS

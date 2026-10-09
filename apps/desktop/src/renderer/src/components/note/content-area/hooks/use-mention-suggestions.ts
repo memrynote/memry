@@ -49,16 +49,11 @@ export interface UseMentionSuggestionsOptions {
   editorContainerRef: RefObject<HTMLDivElement | null>
   /** The spatialCanvas flag: off, the `@` menu offers no canvases at all. */
   canvasesEnabled: boolean
-  /**
-   * Opens "Create {title} as" at the caret. Absent where creating notes from
-   * the text makes no sense (template editor, agent review): no Create row.
-   */
   onCreate?: (title: string, position: { x: number; y: number }) => void
 }
 
 const OBJECT_LIMIT = 8
 
-/** Objects of tags with fields, grouped by their group tag in first-seen order (D1). */
 async function searchObjectItems(query: string): Promise<MentionSuggestionItem[]> {
   if (!query) return []
   try {
@@ -128,7 +123,6 @@ export function useMentionSuggestions(
       }
 
       const trimmed = query.trim()
-      // Objects lead the notes, so a note already listed as a person is not listed twice.
       const objectItems = await searchObjectItems(trimmed)
       const objectIds = new Set(
         objectItems.flatMap((item) => (item.kind === 'object' ? [item.match.noteId] : []))
@@ -186,7 +180,6 @@ export function useMentionSuggestions(
       // `@now` / `@no` lead the Date group with "Now" (today + current time).
       if (isNowQuery(trimmed)) dateItems.unshift({ kind: 'now' })
 
-      // Create is always the last row (D1), one ↵ away from the text.
       const createItems: MentionSuggestionItem[] =
         onCreate && trimmed ? [{ kind: 'create', title: trimmed }] : []
 
@@ -214,8 +207,6 @@ export function useMentionSuggestions(
         return
       }
       if (item.kind === 'note' || item.kind === 'object') {
-        // An object writes the same [[Title]] link as a note; the avatar chip
-        // is only how the editor draws it.
         const title = item.kind === 'object' ? item.match.title : item.title
         editor.insertInlineContent([createWikiLinkInlineContent(title, ''), ' '], {
           updateSelection: true

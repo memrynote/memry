@@ -12,10 +12,6 @@ import { ObjectAvatar, objectColor } from '../object-avatar'
 import { useObjectIdentity, useTagSchemas } from '../use-tag-schemas'
 import { firstRelationChip } from './task-relation-chip-model'
 
-/**
- * "Waiting on Ahmet Yılmaz": the first filled relation field of a task row.
- * Renders nothing when the task has none, so plain rows stay unchanged.
- */
 export function TaskRelationChip({
   tags,
   fields
@@ -38,7 +34,6 @@ export function TaskRelationChip({
   })
   if (!chip || !ref || !ref.exists) return null
 
-  // Full title, not the first name the board shows: two Ahmets stay apart.
   const title = ref.title
   return (
     <span

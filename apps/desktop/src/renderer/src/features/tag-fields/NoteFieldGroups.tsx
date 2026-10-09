@@ -1,9 +1,3 @@
-/**
- * The field groups of a note's properties panel (C2, C3, H1): one group per
- * header tag with fields, named after the tag, then its inherited groups
- * ("Person via #employee"). Empty slots are drawn from the tag and write
- * nothing until a value is typed.
- */
 import { memo } from 'react'
 import { DndContext } from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
@@ -25,14 +19,10 @@ import { tagDisplayName } from './tag-display-name'
 
 export interface NoteFieldGroupsProps {
   groups: FieldGroup[]
-  /** Undefined or empty clears the value; a first value adds the key. */
   onFieldChange: (name: string, value: unknown, type: PropertyType) => void
   onOpenTag?: (tag: ResolvedTag) => void
-  /** An extra control at the end of a group header (agent fill). */
   renderGroupAction?: (group: FieldGroup) => React.ReactNode
-  /** Replaces a slot's row when it returns a node (agent fill proposals). */
   renderSlot?: (group: FieldGroup, slot: FieldSlot) => React.ReactNode
-  /** Below a group's rows (agent fill disclosure). */
   renderGroupFooter?: (group: FieldGroup) => React.ReactNode
   disabled?: boolean
 }

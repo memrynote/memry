@@ -11,9 +11,7 @@ import { TagChip } from './TagChip'
 import { tagDisplayName } from '../tag-display-name'
 
 interface RelationFieldCardProps {
-  /** Field name, shown in the header. */
   name: string
-  /** Display name of the tag that owns the field: the inverse placeholder. */
   tagName: string
   initial: RelationConfig | null
   submitLabel: string
@@ -21,7 +19,6 @@ interface RelationFieldCardProps {
   onCancel: () => void
 }
 
-/** B2 panel 2: a relation's target tag, one or many, and its inverse label. */
 export function RelationFieldCard({
   name,
   tagName,
@@ -64,7 +61,6 @@ export function RelationFieldCard({
         <Select value={target ?? undefined} onValueChange={(value) => setTarget(value)}>
           <SelectTrigger className="h-8" aria-label={t('tagFields.settings.relation.target')}>
             {target ? (
-              // The trigger line-clamps its direct span children, which breaks the chip's flex row.
               <div className="min-w-0">
                 <TagChip
                   name={targetRow?.tag ?? target}

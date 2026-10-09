@@ -12,7 +12,6 @@ import { useOptionalObjectIdentity } from './use-optional-object-identity'
 import { openTagTable } from './open-tag-table'
 
 const NEWEST = 2
-/** "Mentioned in" expands in place up to this many rows (main caps at 500). */
 const EXPANDED = 500
 
 function shortDate(iso: string | null): string {
@@ -22,12 +21,6 @@ function shortDate(iso: string | null): string {
   return new Intl.DateTimeFormat(getActiveLocale(), { month: 'short', day: 'numeric' }).format(date)
 }
 
-/**
- * E1: on an object note, "Linked here" replaces Backlinks. Every group is read
- * from the vault on each call (meetings whose Attendees include this note,
- * tasks whose Waiting on is this note, notes that link here); nothing is
- * stored on the object. Plain notes keep `fallback` (today's Backlinks).
- */
 export function LinkedHereOrBacklinks({
   noteId,
   fallback

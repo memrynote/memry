@@ -1,7 +1,3 @@
-/**
- * updateNote's header tags against a real vault: an echoed `tags` list must not
- * promote inline mentions, and an explicit edit composes with a body's delta.
- */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'

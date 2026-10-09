@@ -344,7 +344,6 @@ export function getFileIcon(note: NoteListItem): React.ReactElement {
   }
 }
 
-/** A note's sidebar icon: the object's tag icon when the note is an object. */
 function NoteObjectIcon({
   noteId,
   fallback

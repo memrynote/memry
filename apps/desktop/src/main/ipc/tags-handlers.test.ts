@@ -113,7 +113,6 @@ vi.mock('../tags/runtime-effects', () => ({
 
 vi.mock('../tags/schema/references', () => ({ rewriteSchemaReferences: vi.fn(() => []) }))
 
-// The rename itself is covered against real files in tags/rename-tag.test.ts.
 vi.mock('../tags/rename-tag', () => ({
   renameTagEverywhere: vi.fn(),
   TagRenameInProgressError: class extends Error {}
@@ -403,7 +402,6 @@ describe('tags-handlers', () => {
     )
 
     unregisterTagsHandlers()
-    // Object reads register in tag-object-handlers.ts.
     const objectChannels: string[] = [
       TagsChannels.invoke.SEARCH_OBJECTS,
       TagsChannels.invoke.GET_LINKED_HERE

@@ -17,7 +17,6 @@ import { alternativeFieldName, findPropertyByName } from './settings-logic'
 import { useVaultProperties, type VaultProperty } from './use-vault-properties'
 
 interface AddFieldPopoverProps {
-  /** Lowercase tag key; the tag may not have a schema yet. */
   tagKey: string
   tag: ResolvedTag | null
   snapshot: TagSchemaSnapshot | undefined
@@ -33,7 +32,6 @@ function isNewFieldType(type: string): type is NewFieldSpec['type'] {
   return (NEW_FIELD_TYPES as readonly string[]).includes(type)
 }
 
-/** B2: "+ Add field": name first, then reuse a vault property or pick a type. */
 export function AddFieldPopover({
   tagKey,
   tag,
@@ -95,7 +93,6 @@ export function AddFieldPopover({
   }
 
   const reuse = (property: VaultProperty): void => {
-    // The vault-wide definition owns the type; the spec's type is ignored.
     void add({ name: property.name, type: isNewFieldType(property.type) ? property.type : 'text' })
   }
 
@@ -298,7 +295,6 @@ interface SharedMessageProps {
   locale: string
 }
 
-/** "Status already exists in this vault with Todo, In progress and Done. #client will share it with your project notes." */
 function SharedMessage({
   property,
   tagKey,

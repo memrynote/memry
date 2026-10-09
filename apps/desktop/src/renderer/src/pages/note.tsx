@@ -1027,7 +1027,6 @@ export function NotePage({ noteId }: NotePageProps) {
     headerTags: note?.headerTags ?? [],
     values: propertyValues,
     canEdit: () => canEditTags('add'),
-    // Properties open on their own when a note first gets a tag with fields (C2).
     onFieldTagAdded: () => setPropertiesCollapsed(false)
   })
   const { addTag: addHeaderTag, removeTag: removeHeaderTag } = headerTagActions
@@ -1073,8 +1072,6 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteBodyEmpty, tagSchemas]
   )
 
-  // Typing a `#tag` in the body adds it to the header and deleting it removes
-  // it again. Main applies only plain tags: a tag with fields stays a mention.
   const handleInlineTagsChange = useInlineTagEdits(
     useCallback(
       (edit: InlineTagEdit) => {

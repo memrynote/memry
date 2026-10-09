@@ -10,7 +10,6 @@ import { ObjectAvatar, type ObjectLook } from './object-avatar'
 import { ObjectRelationPicker } from './object-relation-picker'
 import { RelationTitles } from './relation-titles'
 
-/** Field types the card can take a first value for without a dedicated editor. */
 const QUICK_TYPES = new Set(['text', 'number', 'url', 'relation'])
 
 export function quickFields(fields: readonly ResolvedField[]): ResolvedField[] {
@@ -29,7 +28,6 @@ export interface QuickFieldsTarget {
 
 type Values = Record<string, string | string[]>
 
-/** Only typed values: an empty field writes nothing. */
 export function quickFieldValues(
   fields: readonly ResolvedField[],
   values: Values
@@ -47,11 +45,6 @@ export function quickFieldValues(
   return out
 }
 
-/**
- * D2 panel 2: right after an @ create, the first two fields of the new object.
- * Tab moves between them; Esc keeps the object with empty fields; ↵ writes the
- * typed values once through properties:set.
- */
 export function QuickFieldsCard({
   target,
   onClose
@@ -89,7 +82,6 @@ export function QuickFieldsCard({
       event.stopPropagation()
       onClose()
     } else if (event.key === 'Enter' && target.tagName !== 'BUTTON') {
-      // On a relation field, ↵ opens its picker (the button's own click).
       event.preventDefault()
       event.stopPropagation()
       void done()

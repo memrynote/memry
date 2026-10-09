@@ -126,9 +126,7 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
-  /** Header and inline `#tags` together. */
   tags: string[]
-  /** The frontmatter `tags:` list alone. */
   headerTags: string[]
   aliases: string[]
   wordCount: number
@@ -203,16 +201,13 @@ export interface NoteUpdateInput {
   tags?: string[]
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown>
-  /** Sets only these keys on the file's own frontmatter; null removes a key. */
   propertyPatch?: Record<string, unknown>
-  /** A body Memry wrote (tag template, undo): its `#tags` never move the header. */
   ignoreInlineTags?: boolean
   emoji?: string | null
 }
 
 export interface NoteUpdateOutcome {
   note: Note
-  /** Null when the frontmatter `tags:` list is unchanged. */
   headerTagChange: HeaderTagChange
 }
 
@@ -286,7 +281,6 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   let templateProperties: Record<string, unknown> = {}
   let templateIcon: string | null = null
 
-  // An explicit template wins, then the first given tag that names one, then the folder's.
   // Loaded lazily, like the folder and template modules below.
   let templateId = input.template
   if (!templateId && input.tags?.length) {
@@ -679,8 +673,6 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
-  // Header tags change only through an edit of the file's own `tags:` list,
-  // never by writing back the index list, which holds the body's `#tags` too.
   const headerTags = nextHeaderTags(dataDb, existing, input)
   const headerTagChange = compareHeaderTags(existing.headerTags, headerTags)
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji

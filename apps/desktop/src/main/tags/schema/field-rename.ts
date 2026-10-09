@@ -1,15 +1,3 @@
-/**
- * Vault-wide field rename (J1-2). A field name is a vault property key, so the
- * rename moves the property definition, every schema and saved tag view that
- * lists it, every note value and every task field value.
- *
- * Crash-safe: the job is recorded in data.db (`tags.fieldRenameJob`) before the
- * first step and cleared once no carrier is left to rename, and vault open or
- * unlocking a note resumes a recorded job. A locked note keeps the job
- * recorded until it is unlocked. Every step only touches carriers of the old
- * name, so a rerun finishes the job without duplicating anything. One job at a
- * time: another rename is refused while one is recorded.
- */
 import type { FieldRenameResult, TagsProgressEvent } from '@memry/contracts/tag-schema-api'
 import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { deleteSetting, getSetting, setSetting } from '@main/database/queries/settings'
@@ -68,7 +56,6 @@ function renameInViews(views: ViewConfig[], from: string, to: string): ViewConfi
   return changed ? next : null
 }
 
-/** Every schema that lists `from`, so a refused rename is refused before anything changes. */
 function schemaKeys(db: DataDb): string[] {
   return listTagDefinitionRows(db)
     .filter((row) => parseSchemaColumn(row.schema).kind === 'ok')
@@ -90,7 +77,6 @@ function renameInSchemasAndViews(db: DataDb, job: FieldRenameJob, resuming: bool
 
 const fold = (name: string): string => name.toLowerCase()
 
-/** Holds a key that is `to` and not the `from` key itself, which a case-only rename keeps. */
 function holdsTarget(keys: Iterable<string>, from: string, to: string): boolean {
   for (const key of keys) if (key !== from && fold(key) === fold(to)) return true
   return false
@@ -127,7 +113,6 @@ async function runJob(
     if (isNoteLocked(noteId)) {
       result.skippedLocked += 1
     } else {
-      // The value the file holds, not the index's copy of it.
       const note = await getNoteById(noteId)
       const properties = note ? extractProperties(note.frontmatter) : {}
       if (holdsTarget(Object.keys(properties), from, to)) {
@@ -163,10 +148,6 @@ async function runJob(
 
 let running: Promise<FieldRenameResult> | null = null
 
-/**
- * Renames field `from` to `to` everywhere. Re-running the recorded rename
- * resumes it; any other rename is refused while one is recorded.
- */
 export async function renameField(
   db: DataDb,
   job: FieldRenameJob,
@@ -189,7 +170,6 @@ export async function renameField(
   running = runJob(db, job, resuming, onProgress)
   try {
     const result = await running
-    // A locked note still holds the old name; its unlock resumes the job.
     if (result.skippedLocked === 0) deleteSetting(db, FIELD_RENAME_JOB_SETTING)
     return result
   } finally {
@@ -200,20 +180,20 @@ export async function renameField(
 function readJob(db: DataDb): FieldRenameJob | null {
   const raw = getSetting(db, FIELD_RENAME_JOB_SETTING)
   if (raw === null) return null
+  let job: Partial<FieldRenameJob> = {}
   try {
-    const job = JSON.parse(raw) as Partial<FieldRenameJob>
-    if (typeof job.from === 'string' && typeof job.to === 'string') {
-      return { from: job.from, to: job.to, runId: job.runId ?? 'resume' }
-    }
-  } catch {
-    // Falls through to the warning below.
+    job = JSON.parse(raw) as Partial<FieldRenameJob>
+  } catch (err) {
+    log.warn('Rename job setting is not JSON', { err })
+  }
+  if (typeof job?.from === 'string' && typeof job.to === 'string') {
+    return { from: job.from, to: job.to, runId: job.runId ?? 'resume' }
   }
   log.warn('Dropping an unreadable field rename job', { raw })
   deleteSetting(db, FIELD_RENAME_JOB_SETTING)
   return null
 }
 
-/** Vault open or a note unlock: finishes a recorded rename. */
 export async function resumeFieldRename(
   db: DataDb,
   onProgress: (event: TagsProgressEvent) => void = () => {}

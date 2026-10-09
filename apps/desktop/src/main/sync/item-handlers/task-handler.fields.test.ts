@@ -212,7 +212,6 @@ describe('task.fields on pull', () => {
 })
 
 describe('task push payload', () => {
-  /** `id` and `syncedAt` are the envelope keys receivers ignore (unknown-fields.ts). */
   const SENDABLE = new Set([...Object.keys(TaskSyncPayloadSchema.shape), 'id', 'syncedAt'])
 
   function seedEveryColumn(fields: VersionedMap | null): void {

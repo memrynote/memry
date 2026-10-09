@@ -55,7 +55,6 @@ describe('tagDefinitionHandler', () => {
     const result = tagDefinitionHandler.applyUpsert(
       ctx,
       'focus',
-      // No colour, which the handler defaults.
       { name: 'focus', createdAt: '2026-05-01T00:00:00.000Z' } as TagDefinitionSyncPayload,
       { 'device-b': 1 }
     )

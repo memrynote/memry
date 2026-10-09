@@ -268,7 +268,6 @@ export async function fillFields(
     const source = raw.sourceText.trim()
     proposals.push({ ...proposal, sourceText: source && body.includes(source) ? source : '' })
   }
-  // Panel order, not the model's.
   proposals.sort(
     (a, b) =>
       fields.findIndex((field) => field.name === a.field) -

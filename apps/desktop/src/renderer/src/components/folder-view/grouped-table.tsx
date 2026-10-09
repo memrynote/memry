@@ -1503,7 +1503,6 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
           </div>
         )}
 
-        {/* Tag with fields: "+ New meeting in Acme", the group's value prefilled (F1). */}
         <NewInGroupButton property={groupByProperty} value={groupValue} />
       </td>
     </tr>

@@ -38,7 +38,6 @@ import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
 
-/** Tag changes not saved yet: a new tags-row list, and the body's `#tag` changes applied on top of it. */
 interface PendingTagsEdit {
   tags?: string[]
   inlineTags?: InlineTagEdit
@@ -96,7 +95,6 @@ export interface UseJournalEntryResult {
   externalUpdateCount: number
   updateContent: (content: string) => void
   updateTags: (tags: string[]) => void
-  /** The `#tags` typed into or deleted from the body; main moves the plain ones in or out of `tags`. */
   updateInlineTags: (edit: InlineTagEdit) => void
   saveNow: () => Promise<void>
   reload: () => Promise<void>

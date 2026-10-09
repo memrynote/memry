@@ -1,4 +1,3 @@
-/** The schema snapshot and the `tags:edit-schema` command dispatcher. */
 import type {
   TagSchemaCommand,
   TagSchemaCommandResult,
@@ -12,7 +11,6 @@ import { addField, emitTagSchemasChanged, saveSchemaEdit } from './edit'
 import { renameField } from './field-rename'
 import { loadResolvedTags } from './read'
 
-/** The one read model of tag schemas, object identities and ready-made tag offers. */
 export function getTagSchemaSnapshot(db: DataDb, indexDb: IndexDb): TagSchemaSnapshot {
   const resolved = loadResolvedTags(db)
   return {

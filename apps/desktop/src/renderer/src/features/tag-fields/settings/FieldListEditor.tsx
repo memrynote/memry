@@ -46,12 +46,10 @@ interface FieldListEditorProps {
 
 type FieldAction = { kind: 'rename' | 'remove' | 'relation'; field: ResolvedField } | null
 
-/** B1/H1: inherited rows locked under their tag, own rows drag to reorder. */
 export function FieldListEditor({ tagKey, tag }: FieldListEditorProps): React.JSX.Element {
   const { t } = useT('notes')
   const editSchema = useEditTagSchema()
   const [action, setAction] = useState<FieldAction>(null)
-  // The order a drop shows until the fresh snapshot lands.
   const [pendingOrder, setPendingOrder] = useState<string[] | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),

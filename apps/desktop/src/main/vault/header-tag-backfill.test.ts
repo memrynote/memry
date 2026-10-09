@@ -119,7 +119,6 @@ describe('backfillHeaderTagFlags', () => {
     addOlderBuildNote('nte_inline', 'notes/Inline.md', ['idea'], 'Plain #idea\n')
     addOlderBuildNote('nte_scan', 'notes/scan.pdf', ['receipts'], null, 'pdf')
     addOlderBuildNote('nte_gone', 'notes/Gone.md', ['lost'], null)
-    // Rows the projector wrote since carry their flag, and the file no longer agrees.
     addOlderBuildNote('nte_current', 'notes/Current.md', [], 'No tags here\n')
     setNoteTags(index.db, 'nte_current', { header: ['kept'], inline: [] })
 

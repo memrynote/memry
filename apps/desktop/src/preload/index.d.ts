@@ -578,9 +578,6 @@ export interface PropertiesClientAPI {
    * Set properties for any entity (note or journal entry) by ID.
    */
   set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
-  /**
-   * Set only the given keys (null removes one); the entity's other properties stay.
-   */
   merge(entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse>
   /**
    * Rename a property for a specific entity (note-only scope).
@@ -924,7 +921,7 @@ export interface TagsClientAPI {
   }): Promise<GetNotesByTagResponse>
   pinNoteToTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
-  renameTag(input: { oldName: string; newName: string }): Promise<RenameTagResponse>
+  renameTag(input: { oldName: string; newName: string; runId?: string }): Promise<RenameTagResponse>
   updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
   updateTagIcon(input: { tag: string; icon: string | null }): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>

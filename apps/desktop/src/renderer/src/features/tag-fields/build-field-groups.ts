@@ -3,30 +3,20 @@ import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
 
 export interface FieldSlot {
   field: ResolvedField
-  /** Undefined: an empty slot drawn from the tag; nothing is in the file. */
   value: unknown
 }
 
 export interface FieldGroup {
-  /** The tag that defines the group's fields. */
   tag: ResolvedTag
-  /** The header tag that inherits these fields ("Person via #employee"); null for its own fields. */
   via: ResolvedTag | null
   slots: FieldSlot[]
 }
 
 export interface FieldGroups {
   groups: FieldGroup[]
-  /** Values no group shows, in their stored order: the "This note" group. */
   rest: Array<{ name: string; value: unknown }>
 }
 
-/**
- * Header tags (a note) or tags (a task), in order, to their field groups:
- * each tag with fields gives its own group, then one per ancestor, nearest
- * first. Field names are vault-wide, so a name an earlier group shows is
- * skipped, and a group left with no fields is dropped.
- */
 export function buildFieldGroups(
   tags: readonly string[],
   snapshot: TagSchemaSnapshot | undefined,
@@ -75,7 +65,6 @@ export function buildFieldGroups(
   return { groups, rest }
 }
 
-/** A value a field group counts as filled. */
 export function isFilledValue(value: unknown): boolean {
   if (value === undefined || value === null) return false
   if (typeof value === 'string') return value.trim().length > 0

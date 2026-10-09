@@ -333,7 +333,6 @@ export function registerNotesHandlers(): void {
     'errors:note.updateFailed'
   )
 
-  // notes:undo-tag-template - Empty a body a tag template filled, while untouched
   registerCommand(
     NotesChannels.invoke.UNDO_TAG_TEMPLATE,
     UndoTagTemplateSchema,

@@ -117,8 +117,6 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   )
 }))
 
-// The field groups read the tag-schema snapshot over IPC; nothing here
-// depends on them.
 vi.mock('@/features/tag-fields/tasks/TaskFieldGroup', () => ({ TaskFieldGroups: () => null }))
 
 let i18nEn: I18nInstance
