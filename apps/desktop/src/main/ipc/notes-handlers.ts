@@ -21,6 +21,7 @@ import {
   NoteGetPositionsSchema,
   SetLocalOnlySchema,
   ApplyTemplateSchema,
+  UndoTagTemplateSchema,
   NoteAppendBlocksSchema,
   NoteCarriedTasksSchema,
   NoteSimilarRequestSchema,
@@ -95,7 +96,8 @@ import {
 } from '../vault/notes'
 import {
   createNoteCommand,
-  updateNoteCommand,
+  updateNoteWithTagTemplateCommand,
+  undoTagTemplateCommand,
   renameNoteCommand,
   moveNoteCommand,
   renameFolderCommand,
@@ -317,7 +319,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.UPDATE,
     NoteUpdateSchema,
     async (input) => {
-      const note = await updateNoteCommand(input)
+      const { note, tagTemplate } = await updateNoteWithTagTemplateCommand(input)
       if (shouldEmitThrottled(`note_updated:${note.id}`)) {
         trackMainEvent('note_updated', {
           surface: 'notes',
@@ -326,8 +328,16 @@ export function registerNotesHandlers(): void {
           result: 'success'
         })
       }
-      return { success: true as const, note }
+      return { success: true as const, note, ...(tagTemplate && { tagTemplate }) }
     },
+    'errors:note.updateFailed'
+  )
+
+  // notes:undo-tag-template - Empty a body a tag template filled, while untouched
+  registerCommand(
+    NotesChannels.invoke.UNDO_TAG_TEMPLATE,
+    UndoTagTemplateSchema,
+    (input) => undoTagTemplateCommand(input),
     'errors:note.updateFailed'
   )
 

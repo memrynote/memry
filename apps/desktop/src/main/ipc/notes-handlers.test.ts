@@ -65,6 +65,7 @@ vi.mock('../notes/folder-config-effects', () => ({
 vi.mock('../notes/domain', () => ({
   createNoteCommand: vi.fn(),
   updateNoteCommand: vi.fn(),
+  updateNoteWithTagTemplateCommand: vi.fn(),
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
   renameFolderCommand: vi.fn(),
@@ -302,7 +303,7 @@ describe('notes-handlers', () => {
         title: 'Updated Title',
         content: 'Updated content'
       }
-      ;(notesDomain.updateNoteCommand as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.updateNoteWithTagTemplateCommand as Mock).mockResolvedValue({ note: mockNote })
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',
@@ -315,7 +316,7 @@ describe('notes-handlers', () => {
 
     it('should handle partial updates', async () => {
       const mockNote = { id: 'note123', title: 'Original', content: 'Updated' }
-      ;(notesDomain.updateNoteCommand as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.updateNoteWithTagTemplateCommand as Mock).mockResolvedValue({ note: mockNote })
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',
@@ -326,7 +327,9 @@ describe('notes-handlers', () => {
     })
 
     it('should return error on update failure', async () => {
-      ;(notesDomain.updateNoteCommand as Mock).mockRejectedValue(new Error('Update failed'))
+      ;(notesDomain.updateNoteWithTagTemplateCommand as Mock).mockRejectedValue(
+        new Error('Update failed')
+      )
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',

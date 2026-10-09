@@ -26,7 +26,7 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/field-tags'
+import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/inline-tags'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
@@ -291,7 +291,16 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   let templateProperties: Record<string, unknown> = {}
   let templateIcon: string | null = null
 
+  // An explicit template wins, then the first given tag that names one, then the folder's.
+  // Loaded lazily, like the folder and template modules below.
   let templateId = input.template
+  if (!templateId && input.tags?.length) {
+    const { loadResolvedTags } = await import('../tags/schema/read')
+    const resolved = loadResolvedTags(dataDb)
+    templateId = input.tags
+      .map((tag) => resolved.get(tag.toLowerCase())?.template?.id)
+      .find((id) => id !== undefined)
+  }
   if (!templateId && input.folder) {
     const { getFolderTemplate } = await import('./folders')
     templateId = (await getFolderTemplate(input.folder)) ?? undefined

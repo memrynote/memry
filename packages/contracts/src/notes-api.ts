@@ -473,6 +473,11 @@ export const SetLocalOnlySchema = z.object({
   localOnly: z.boolean()
 })
 
+export const UndoTagTemplateSchema = z.object({
+  noteId: z.string(),
+  undoToken: z.string()
+})
+
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
@@ -539,10 +544,19 @@ export interface NoteCreateResponse {
   error?: string
 }
 
+/** What adding a header tag did with that tag's template (`notes:update`). */
+export type NoteTagTemplateOutcome =
+  { kind: 'applied'; tag: string; undoToken: string } | { kind: 'offered'; tag: string }
+
 export interface NoteUpdateResponse {
   success: boolean
   note: Note | null
   error?: string
+  tagTemplate?: NoteTagTemplateOutcome
+}
+
+export interface UndoTagTemplateResponse {
+  status: 'restored' | 'stale'
 }
 
 export interface NoteListResponse {
@@ -768,6 +782,10 @@ export interface NotesHandlers {
     input: z.infer<typeof ApplyTemplateSchema>
   ) => Promise<NoteUpdateResponse>
 
+  [NotesChannels.invoke.UNDO_TAG_TEMPLATE]: (
+    input: z.infer<typeof UndoTagTemplateSchema>
+  ) => Promise<UndoTagTemplateResponse>
+
   [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
 
   /** `null` when the session is gone — after a main restart, or an eviction. */
@@ -883,4 +901,5 @@ export interface NotesClientAPI {
   openAttachmentExternal(noteId: string, url: string): Promise<void>
   renameAttachment(noteId: string, url: string, newName: string): Promise<AttachmentRenameResult>
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
+  undoTagTemplate(input: z.infer<typeof UndoTagTemplateSchema>): Promise<UndoTagTemplateResponse>
 }

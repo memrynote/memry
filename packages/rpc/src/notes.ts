@@ -23,7 +23,9 @@ import type {
   NoteTagSuggestionsResponse,
   NoteClustersResponse,
   PlainChecklistsOption,
-  HeaderTagEdit
+  HeaderTagEdit,
+  NoteTagTemplateOutcome,
+  UndoTagTemplateResponse
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -372,6 +374,7 @@ export interface NoteUpdateResponse {
   success: boolean
   note: Note | null
   error?: string
+  tagTemplate?: NoteTagTemplateOutcome
 }
 
 export interface NoteListResponse {
@@ -566,6 +569,12 @@ export const notesRpc = defineDomain({
     }),
     applyTemplate: defineMethod<(input: ApplyTemplateInput) => Promise<NoteUpdateResponse>>({
       channel: NotesChannels.invoke.APPLY_TEMPLATE,
+      params: ['input']
+    }),
+    undoTagTemplate: defineMethod<
+      (input: { noteId: string; undoToken: string }) => Promise<UndoTagTemplateResponse>
+    >({
+      channel: NotesChannels.invoke.UNDO_TAG_TEMPLATE,
       params: ['input']
     }),
     appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({
