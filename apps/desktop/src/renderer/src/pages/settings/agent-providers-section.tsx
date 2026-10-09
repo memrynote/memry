@@ -459,7 +459,7 @@ export function AgentProvidersSection({
                 >
                   <SegmentedControl<AgentLocalThinking>
                     label={t('agentProviders.fields.thinking.label')}
-                    value={settings.thinking}
+                    value={settings.thinking ?? 'default'}
                     onChange={(value) => updateSetting('thinking', value)}
                     options={[
                       { value: 'default', label: t('agentProviders.fields.thinking.default') },

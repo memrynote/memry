@@ -234,7 +234,8 @@ export const AgentLocalProviderSettingsSchema = z
     model: z.string(),
     apiKeyConfigured: z.boolean(),
     allowNonLoopback: z.boolean(),
-    thinking: AgentLocalThinkingSchema
+    // Optional so a settings shape from a build before AF-023 still parses; absent is 'default'.
+    thinking: AgentLocalThinkingSchema.optional()
   })
   .strict()
 export type AgentLocalProviderSettings = z.infer<typeof AgentLocalProviderSettingsSchema>

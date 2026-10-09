@@ -290,7 +290,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
 // DeepSeek's `thinking`, into the request body as-is.
 function reasoningProviderOptions(
   effort: LocalReasoningEffort | undefined,
-  thinking: AgentLocalThinking
+  thinking: AgentLocalThinking | undefined
 ): { providerOptions?: { 'local-openai-compatible': Record<string, JSONValue> } } {
   const fields: Record<string, JSONValue> = {
     ...(effort && effort !== 'default' ? { reasoningEffort: effort } : {}),
