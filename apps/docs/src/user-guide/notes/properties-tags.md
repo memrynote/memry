@@ -14,7 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
-- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
+- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` starts with a letter A to Z, then letters, digits, `-` or `_`, with `/` for a child tag: `#a2024` becomes a chip, `#2024` stays text. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
@@ -152,6 +152,8 @@ number, checkbox, URL, date, select, multi-select and status. A definition that 
 desktop API creates or edits is in that file as soon as the call returns. Older versions kept
 non-select definitions only in the app's database; the first time a vault opens after the update,
 they are copied into the file once, and entries the file already has are left as they are.
+If one entry in the file is malformed, the others still load and the malformed entry is kept as
+written. If the file cannot be read at all, Memry leaves it untouched until you fix it.
 The file also keeps each definition's default value and color, so both survive a restart. Older
 app versions read the file and ignore those two fields.
 Saving a note that uses a property never clears that property's options, default or color, and

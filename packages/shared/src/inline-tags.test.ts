@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractInlineTagsFromMarkdown,
+  findInlineTags,
   isInlineTagName,
+  isInlineTagPrefix,
   renamedTag,
   rewriteInlineTagsInMarkdown
 } from './inline-tags'
@@ -140,5 +142,34 @@ describe('isInlineTagName', () => {
     expect(isInlineTagName('2024')).toBe(false)
     expect(isInlineTagName('iş')).toBe(false)
     expect(isInlineTagName('a/')).toBe(false)
+  })
+})
+
+describe('findInlineTags', () => {
+  it('reads a tag only when a letter follows the #', () => {
+    expect(findInlineTags('#2024 #a2024 #_x #-x #a/2024')).toEqual([
+      { index: 6, tag: 'a2024' },
+      { index: 21, tag: 'a/2024' }
+    ])
+  })
+
+  it('reads the preceding character from before the text', () => {
+    expect(findInlineTags('#work', 'x')).toEqual([])
+    expect(findInlineTags('#work', ' ')).toEqual([{ index: 0, tag: 'work' }])
+  })
+})
+
+describe('isInlineTagPrefix', () => {
+  it('accepts a name being typed, including an open child segment', () => {
+    expect(isInlineTagPrefix('a')).toBe(true)
+    expect(isInlineTagPrefix('a/')).toBe(true)
+    expect(isInlineTagPrefix('a/2')).toBe(true)
+  })
+
+  it('rejects what can never become a tag by appending', () => {
+    expect(isInlineTagPrefix('')).toBe(false)
+    expect(isInlineTagPrefix('2')).toBe(false)
+    expect(isInlineTagPrefix('a//')).toBe(false)
+    expect(isInlineTagPrefix('a/-')).toBe(false)
   })
 })

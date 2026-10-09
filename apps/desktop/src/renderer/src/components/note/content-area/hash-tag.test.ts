@@ -68,14 +68,14 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual(['my-tag', 'my_tag'])
     })
 
-    it('extracts tags starting with a digit', () => {
-      const blocks = [textBlock([textItem('#123invalid and #valid')])]
-      expect(extractInlineTags(blocks)).toEqual(['123invalid', 'valid'])
+    it('skips tags starting with a digit, as the indexer does', () => {
+      const blocks = [textBlock([textItem('#123invalid and #valid #2024 #a2024')])]
+      expect(extractInlineTags(blocks)).toEqual(['valid', 'a2024'])
     })
 
-    it('extracts pure numeric tags', () => {
-      const blocks = [textBlock([textItem('#2024 goals')])]
-      expect(extractInlineTags(blocks)).toEqual(['2024'])
+    it('reads an existing chip the way its saved #tag text indexes', () => {
+      const blocks = [textBlock([hashTagItem('2024'), hashTagItem('ok/')])]
+      expect(extractInlineTags(blocks)).toEqual(['ok'])
     })
   })
 
