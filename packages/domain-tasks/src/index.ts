@@ -4,6 +4,7 @@ import { createTasksQueries, type TasksQueryRepository } from './queries.ts'
 export * from './types.ts'
 export * from './queries.ts'
 export * from './commands.ts'
+export * from './tree.ts'
 
 export function createTasksDomain(
   deps: CreateTasksCommandsDeps & {

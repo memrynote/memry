@@ -16,9 +16,12 @@
 //! - **Overdue leads Today and Next 7**, never Tomorrow.
 //! - **A started task** (start date not after today) is in Today whatever its
 //!   due date says, unless it is overdue — then it leads as overdue.
-//! - **Subtasks ride with a matching parent** and are never matched on their
-//!   own. The due windows re-admit a matching parent's subtasks from the whole
-//!   list, archived ones included, exactly as desktop does.
+//! - **Date views show the task, not the tree.** A dated task at any depth is
+//!   its own row when the tree places it (a root, or below one). The tree is
+//!   built over non-archived tasks, so a task under an archived or missing
+//!   parent shows nowhere. The due windows return rows only; no subtask rides
+//!   along. The sidebar's date views (`filtered`) match at any depth, then
+//!   add each match's descendants.
 //! - **Order is the input order**, which is the projection's `position` then
 //!   `id` — the order desktop's backing query returns.
 //!
@@ -40,6 +43,7 @@ use rusqlite::{Connection, params};
 use crate::api::errors::StorageError;
 use crate::domain::calendar::{CivilDate, LocalDateTime};
 use crate::domain::notes::failed;
+use crate::domain::task_tree::{TaskTree, TreeNode};
 
 /// One task as the view predicates read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,7 +105,8 @@ pub enum Selection {
     Project(String),
 }
 
-/// The Tasks page tab badges: parents only.
+/// The Tasks page tab badges. Date tabs count their list's rows; `all` and
+/// `archived` count top-level tasks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TabCounts {
     pub all: u32,
@@ -111,19 +116,55 @@ pub struct TabCounts {
     pub next7: u32,
 }
 
-/// `includeSubtasksForMatchingParents`: the matched tasks, plus every subtask
-/// of one from `all`, in `all`'s order.
-fn with_subtasks<'a>(matching: &[&'a ViewTask], all: &'a [ViewTask]) -> Vec<&'a ViewTask> {
-    let ids: HashSet<&str> = matching.iter().map(|task| task.id.as_str()).collect();
-    all.iter()
-        .filter(|task| {
-            ids.contains(task.id.as_str())
-                || task
-                    .parent_id
-                    .as_deref()
-                    .is_some_and(|parent| ids.contains(parent))
-        })
+/// `placedTasks`: non-archived tasks the tree places, roots and everything
+/// below them, in input order. A task under a missing or archived parent is
+/// neither, so no view shows it.
+fn placed(tasks: &[ViewTask]) -> Vec<&ViewTask> {
+    let live: Vec<&ViewTask> = tasks.iter().filter(|task| !task.is_archived()).collect();
+    let tree = TaskTree::build(&live);
+    let mut ids: HashSet<&str> = HashSet::new();
+    for task in &live {
+        if tree.is_root(&task.id) {
+            ids.insert(task.id.as_str());
+            ids.extend(tree.descendant_ids(&task.id));
+        }
+    }
+    tasks
+        .iter()
+        .filter(|task| !task.is_archived() && ids.contains(task.id.as_str()))
         .collect()
+}
+
+/// `includeSubtasksForMatchingParents`: the matched tasks, plus every task
+/// below one of them at any depth, from `all`, in `all`'s order.
+fn with_subtasks<'a>(matching: &[&'a ViewTask], all: &'a [ViewTask]) -> Vec<&'a ViewTask> {
+    let tree = TaskTree::build(all);
+    let mut ids: HashSet<&str> = HashSet::new();
+    for task in matching {
+        ids.insert(task.id.as_str());
+        ids.extend(tree.descendant_ids(&task.id));
+    }
+    all.iter()
+        .filter(|task| ids.contains(task.id.as_str()))
+        .collect()
+}
+
+impl TreeNode for ViewTask {
+    fn node_id(&self) -> &str {
+        &self.id
+    }
+    fn node_parent(&self) -> Option<&str> {
+        self.parent_id.as_deref()
+    }
+}
+
+impl TreeNode for &ViewTask {
+    fn node_id(&self) -> &str {
+        &self.id
+    }
+    fn node_parent(&self) -> Option<&str> {
+        self.parent_id.as_deref()
+    }
 }
 
 /// `getFilteredTasks`: a view or a project, over non-archived tasks.
@@ -155,34 +196,37 @@ pub fn filtered<'a>(
 fn view_matches(live: &[ViewTask], view: &str, now: LocalDateTime) -> HashSet<String> {
     let today = now.date();
     let week_from_now = today.add_days(7);
+    let tree = TaskTree::build(live);
     let incomplete_top: Vec<&ViewTask> = live
         .iter()
-        .filter(|task| !task.done && task.is_top_level())
+        .filter(|task| !task.done && tree.is_root(&task.id))
         .collect();
+    let incomplete_placed: Vec<&ViewTask> =
+        placed(live).into_iter().filter(|task| !task.done).collect();
     let due_day = |task: &ViewTask| task.due.map(LocalDateTime::date);
     let matching: Vec<&ViewTask> = match view {
-        "today" => incomplete_top
+        "today" => incomplete_placed
             .into_iter()
             .filter(|task| task.has_started(today) || due_day(task).is_some_and(|d| d <= today))
             .collect(),
-        "upcoming" => incomplete_top
+        "upcoming" => incomplete_placed
             .into_iter()
             .filter(|task| due_day(task).is_some_and(|d| d > today && d <= week_from_now))
             .collect(),
-        "tomorrow" => incomplete_top
+        "tomorrow" => incomplete_placed
             .into_iter()
             .filter(|task| due_day(task) == Some(today.add_days(1)))
             .collect(),
         "week" => {
             let week_end = today.end_of_week(0);
-            incomplete_top
+            incomplete_placed
                 .into_iter()
                 .filter(|task| due_day(task).is_some_and(|d| d >= today && d <= week_end))
                 .collect()
         }
         "completed" => live
             .iter()
-            .filter(|task| task.done && task.is_top_level())
+            .filter(|task| task.done && tree.is_root(&task.id))
             .collect(),
         _ => incomplete_top,
     };
@@ -192,7 +236,9 @@ fn view_matches(live: &[ViewTask], view: &str, now: LocalDateTime) -> HashSet<St
         .collect()
 }
 
-/// `getTasksInDueWindow`: one window's tasks, overdue first (Today, Next 7).
+/// `getTasksInDueWindow`: one window's rows, overdue first (Today, Next 7).
+/// A row is a placed task at any depth matched on its own dates; no
+/// descendants ride along.
 pub fn in_due_window(tasks: &[ViewTask], window: DueWindow, now: LocalDateTime) -> Vec<&ViewTask> {
     let today = now.date();
     let (first, last) = window.days();
@@ -202,8 +248,8 @@ pub fn in_due_window(tasks: &[ViewTask], window: DueWindow, now: LocalDateTime) 
 
     let mut overdue = Vec::new();
     let mut in_window = Vec::new();
-    for task in tasks {
-        if task.done || !task.is_top_level() || task.is_archived() {
+    for task in placed(tasks) {
+        if task.done {
             continue;
         }
         let due_day = task.due.map(LocalDateTime::date);
@@ -226,9 +272,8 @@ pub fn in_due_window(tasks: &[ViewTask], window: DueWindow, now: LocalDateTime) 
         }
     }
 
-    let mut result = with_subtasks(&overdue, tasks);
-    result.extend(with_subtasks(&in_window, tasks));
-    result
+    overdue.extend(in_window);
+    overdue
 }
 
 /// `getCompletedTasksInDueWindow`: done by `completedAt`, scoped by due date.
@@ -241,12 +286,10 @@ pub fn completed_in_due_window(
     let (first, last) = window.days();
     let start_ms = today.add_days(first).start_ms();
     let end_ms = today.add_days(last).end_ms();
-    tasks
-        .iter()
+    placed(tasks)
+        .into_iter()
         .filter(|task| {
             task.completed_at.is_some()
-                && !task.is_archived()
-                && task.is_top_level()
                 && task
                     .due
                     .is_some_and(|due| (start_ms..=end_ms).contains(&due.ms()))
@@ -262,16 +305,12 @@ pub fn completed_all(tasks: &[ViewTask]) -> Vec<&ViewTask> {
         .collect()
 }
 
-/// `getCompletedTodayTasks`: the Today tab's Done section.
+/// `getCompletedTodayTasks`: the Today tab's Done section, at any depth.
 pub fn completed_today(tasks: &[ViewTask], now: LocalDateTime) -> Vec<&ViewTask> {
     let today = now.date();
-    tasks
-        .iter()
-        .filter(|task| {
-            task.completed_at.is_some_and(|at| at.date() == today)
-                && !task.is_archived()
-                && task.is_top_level()
-        })
+    placed(tasks)
+        .into_iter()
+        .filter(|task| task.completed_at.is_some_and(|at| at.date() == today))
         .collect()
 }
 
@@ -290,20 +329,24 @@ pub fn scoped(tasks: &[ViewTask], project_id: Option<&str>) -> Vec<ViewTask> {
         .collect()
 }
 
-/// `getTaskTabCounts`: the badges, scoped by the project picker.
+/// `getTaskTabCounts`: the badges, scoped by the project picker. A date tab
+/// counts the rows it draws: its window over the `all` list.
 pub fn tab_counts(tasks: &[ViewTask], scope: Option<&str>, now: LocalDateTime) -> TabCounts {
     let scoped = scoped(tasks, scope);
-    let parents = |list: Vec<&ViewTask>| count(list.iter().filter(|task| task.is_top_level()));
+    let open: Vec<ViewTask> = filtered(&scoped, &Selection::View("all".into()), now)
+        .into_iter()
+        .cloned()
+        .collect();
     TabCounts {
-        all: count(filtered(&scoped, &Selection::View("all".into()), now).iter()),
+        all: count(open.iter()),
         archived: count(
             scoped
                 .iter()
                 .filter(|task| task.is_archived() && task.is_top_level()),
         ),
-        today: parents(in_due_window(&scoped, DueWindow::Today, now)),
-        tomorrow: parents(in_due_window(&scoped, DueWindow::Tomorrow, now)),
-        next7: parents(in_due_window(&scoped, DueWindow::Next7, now)),
+        today: count(in_due_window(&open, DueWindow::Today, now).iter()),
+        tomorrow: count(in_due_window(&open, DueWindow::Tomorrow, now).iter()),
+        next7: count(in_due_window(&open, DueWindow::Next7, now).iter()),
     }
 }
 
@@ -400,9 +443,15 @@ mod tests {
     }
 
     #[test]
-    fn a_subtask_is_never_matched_on_its_own() {
-        let tasks = vec![task("child", Some("gone"), Some("2026-01-14"))];
+    fn a_dated_subtask_is_its_own_row_and_an_unplaced_one_is_nowhere() {
+        let tasks = vec![
+            task("parent", None, None),
+            task("child", Some("parent"), Some("2026-01-14")),
+            task("undated", Some("parent"), None),
+            task("orphan", Some("gone"), Some("2026-01-14")),
+        ];
+        let ids = |list: Vec<&ViewTask>| list.iter().map(|t| t.id.clone()).collect::<Vec<_>>();
         let now = at("2026-01-14T12:00:00");
-        assert!(in_due_window(&tasks, DueWindow::Today, now).is_empty());
+        assert_eq!(ids(in_due_window(&tasks, DueWindow::Today, now)), ["child"]);
     }
 }

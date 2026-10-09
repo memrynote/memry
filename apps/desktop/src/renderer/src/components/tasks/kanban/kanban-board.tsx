@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 
+import { buildTaskTree } from '@memry/domain-tasks/tree'
 import { useT } from '@memry/i18n/renderer'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import type { Task } from '@/data/task-model'
@@ -48,8 +49,16 @@ export const KanbanBoard = ({
     boardRef.current?.focus()
   }, [])
 
+  // Cards are top-level tasks; a card carries its branch as progress.
   const { columns, tasksByColumn: rawTasksByColumn } = useMemo(
-    () => buildColumnConfig(tasks, projects, selectedType, selectedProjectId, sortField),
+    () =>
+      buildColumnConfig(
+        buildTaskTree(tasks).roots,
+        projects,
+        selectedType,
+        selectedProjectId,
+        sortField
+      ),
     [tasks, projects, selectedType, selectedProjectId, sortField]
   )
 

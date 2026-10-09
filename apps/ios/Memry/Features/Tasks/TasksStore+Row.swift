@@ -92,10 +92,11 @@ extension TasksStore {
         return task.sourceNoteId == nil ? 0 : 1
     }
 
-    /// Whether "Make subtask of..." applies: the core refuses to nest a task
-    /// that has subtasks of its own.
+    /// Whether the task may go under another: always with
+    /// `tasks.nestedSubtasks` on; off, only a task without subtasks (the
+    /// one-level rule).
     func rowCanBecomeSubtask(_ task: TaskItem) -> Bool {
-        subtasks(of: task.id).isEmpty
+        settings?.nestedSubtasks != false || treeChildren(of: task.id).isEmpty
     }
 
     /// The row's one VoiceOver sentence.

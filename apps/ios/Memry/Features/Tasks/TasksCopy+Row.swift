@@ -13,6 +13,11 @@ extension TasksCopy {
     static let rowDelete = "Delete"
     static let rowRescheduleTomorrow = "Reschedule to tomorrow"
 
+    // MARK: Path (`subtaskTree.openPath`)
+
+    static let pathSeparator = " › "
+    static func rowOpenPath(_ path: String) -> String { "Open \(path)" }
+
     // MARK: Move menu (`componentsTasksDragDropMoveMenu`)
 
     static let rowReschedule = "Reschedule"
@@ -29,7 +34,6 @@ extension TasksCopy {
     // MARK: More actions
 
     static let rowDuplicate = "Duplicate"
-    static let rowMakeSubtaskOf = "Make subtask of..."
     static let rowArchive = "Archive"
     static let rowUnarchive = "Unarchive"
 

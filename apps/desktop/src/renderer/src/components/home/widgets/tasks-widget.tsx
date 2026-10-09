@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { selectTasksForWidget, widgetNeedsNoteIndex } from '@/lib/home/tasks-widget-filter'
 import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
@@ -7,6 +7,9 @@ import { useSavedFilters } from '@/hooks/use-task-filters'
 import { useTabActions } from '@/contexts/tabs/context'
 import { TaskRow } from '@/components/tasks/task-row'
 import { type Project } from '@/data/tasks-data'
+import type { Task } from '@/data/task-model'
+import { DateViewContext, useDateViewValue } from '@/components/tasks/date-view-context'
+import { openTaskInTasksTab } from '@/components/tasks/task-detail-host'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -30,6 +33,13 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
     [tasks, projects, savedFilters, config, noteIndex, limit]
   )
 
+  // A subtask's path opens Tasks zoomed into its parent, with it open.
+  const openPath = useCallback(
+    (task: Task) => openTaskInTasksTab(openTab, task.id, task.projectId, task.parentId),
+    [openTab]
+  )
+  const dateView = useDateViewValue(tasks, projects, openPath)
+
   if (isLoading)
     return (
       <div className="flex flex-col gap-1" aria-busy="true" aria-label={t('state.loading')}>
@@ -50,48 +60,50 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
     return <WidgetEmptyState icon={CheckSquare} label={t('home.noTasksYet')} />
 
   return (
-    <ul className="flex flex-col gap-0.5">
-      {filtered.map((task) => {
-        const project =
-          projects.find((p) => p.id === task.projectId) ??
-          ({
-            id: task.projectId,
-            name: '',
-            color: 'var(--text-tertiary)',
-            statuses: []
-          } as unknown as Project)
+    <DateViewContext.Provider value={dateView}>
+      <ul className="flex flex-col gap-0.5">
+        {filtered.map((task) => {
+          const project =
+            projects.find((p) => p.id === task.projectId) ??
+            ({
+              id: task.projectId,
+              name: '',
+              color: 'var(--text-tertiary)',
+              statuses: []
+            } as unknown as Project)
 
-        return (
-          <WidgetRow key={task.id} data-testid="task-item" data-task-id={task.id}>
-            <TaskRow
-              task={task}
-              project={project}
-              projects={projects}
-              isCompleted={task.completedAt != null}
-              showProjectBadge
-              onToggleComplete={(id) => {
-                void updateTask(id, { completedAt: task.completedAt ? null : new Date() })
-              }}
-              onUpdateTask={(id, updates) => {
-                void updateTask(id, updates)
-              }}
-              onClick={(id) => {
-                openTab({
-                  type: 'tasks',
-                  title: task.title || t('home.widget.untitled'),
-                  icon: 'check-square',
-                  path: '/tasks',
-                  entityId: id,
-                  isPinned: false,
-                  isModified: false,
-                  isDeleted: false,
-                  isPreview: true
-                })
-              }}
-            />
-          </WidgetRow>
-        )
-      })}
-    </ul>
+          return (
+            <WidgetRow key={task.id} data-testid="task-item" data-task-id={task.id}>
+              <TaskRow
+                task={task}
+                project={project}
+                projects={projects}
+                isCompleted={task.completedAt != null}
+                showProjectBadge
+                onToggleComplete={(id) => {
+                  void updateTask(id, { completedAt: task.completedAt ? null : new Date() })
+                }}
+                onUpdateTask={(id, updates) => {
+                  void updateTask(id, updates)
+                }}
+                onClick={(id) => {
+                  openTab({
+                    type: 'tasks',
+                    title: task.title || t('home.widget.untitled'),
+                    icon: 'check-square',
+                    path: '/tasks',
+                    entityId: id,
+                    isPinned: false,
+                    isModified: false,
+                    isDeleted: false,
+                    isPreview: true
+                  })
+                }}
+              />
+            </WidgetRow>
+          )
+        })}
+      </ul>
+    </DateViewContext.Provider>
   )
 }

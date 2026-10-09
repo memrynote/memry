@@ -18,7 +18,11 @@ function buildDeps(overrides: Parameters<typeof createCommandRepository>[0] = {}
 describe('createTasksCommands — moveTask', () => {
   it('moves task with all targets, publishes changedFields, returns success', async () => {
     const moved = createTask({ projectId: 'p2', statusId: 's2', parentId: 'parent', position: 3 })
-    const deps = buildDeps({ moveTask: vi.fn(() => moved) })
+    const parent = createTask({ id: 'parent', projectId: 'p2', parentId: null })
+    const deps = buildDeps({
+      getTask: vi.fn((id: string) => (id === 'parent' ? parent : undefined)),
+      moveTask: vi.fn(() => moved)
+    })
     const commands = createTasksCommands(deps)
 
     const result = await commands.moveTask({

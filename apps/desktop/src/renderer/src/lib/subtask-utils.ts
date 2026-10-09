@@ -1,5 +1,11 @@
 import type { Task, Priority } from '@/data/task-model'
 import { generateTaskId } from '@/data/task-model'
+import {
+  buildTaskTree as buildDomainTaskTree,
+  checkParent,
+  treeParentLookup,
+  type ParentRejection
+} from '@memry/domain-tasks/tree'
 
 // ============================================================================
 // SUBTASK TYPES
@@ -69,6 +75,23 @@ export const calculateProgress = (subtasks: Task[]): SubtaskProgress => {
 }
 
 /**
+ * How much sits under `parentId`, for the delete confirmation: its direct
+ * subtasks, the tasks below those, and how many in the branch are still open.
+ */
+export const describeBranch = (
+  parentId: string | null,
+  allTasks: Task[]
+): { direct: number; deeper: number; open: number } => {
+  if (!parentId) return { direct: 0, deeper: 0, open: 0 }
+  const tree = buildDomainTaskTree(allTasks)
+  const branch = tree.descendantIds(parentId)
+  const direct = tree.childrenOf(parentId).length
+  const byId = new Map(allTasks.map((t) => [t.id, t]))
+  const open = branch.filter((id) => byId.get(id)?.completedAt === null).length
+  return { direct, deeper: branch.length - direct, open }
+}
+
+/**
  * Get the parent task for a subtask
  */
 export const getParentTask = (task: Task, allTasks: Task[]): Task | null => {
@@ -109,52 +132,41 @@ export const getAllSubtaskIds = (parentId: string, allTasks: Task[]): string[] =
 }
 
 /**
- * Check if a task can have subtasks added
- * (subtasks themselves cannot have children)
+ * Check if a task can have subtasks added. Without nested subtasks, only a
+ * top-level task can.
  */
-export const canHaveSubtasks = (task: Task): boolean => {
-  return task.parentId === null
+export const canHaveSubtasks = (task: Task, allowNested = false): boolean => {
+  return allowNested || task.parentId === null
+}
+
+const PARENT_REJECTION_MESSAGES: Record<ParentRejection, string> = {
+  self: 'A task cannot be its own parent',
+  missing: 'Parent or subtask not found',
+  'other-project': 'Subtask must belong to the same project as parent',
+  'own-branch': 'A task cannot be moved inside its own subtasks',
+  'too-deep': 'Cannot add subtasks to a subtask (no nested subtasks)'
 }
 
 /**
- * Validate subtask relationships
- * - A task cannot be its own parent
- * - Circular references are not allowed
- * - Subtasks must belong to the same project as parent
+ * Whether `subtaskId` may move under `parentId`: the domain's `checkParent`
+ * over the loaded tasks, so the renderer and main agree on the rule.
  */
 export const validateSubtaskRelationship = (
   parentId: string,
   subtaskId: string,
-  allTasks: Task[]
+  allTasks: Task[],
+  allowNested = false
 ): { valid: boolean; error?: string } => {
-  // Cannot be own parent
-  if (parentId === subtaskId) {
-    return { valid: false, error: 'A task cannot be its own parent' }
-  }
-
-  const parent = allTasks.find((t) => t.id === parentId)
   const subtask = allTasks.find((t) => t.id === subtaskId)
-
-  if (!parent || !subtask) {
-    return { valid: false, error: 'Parent or subtask not found' }
-  }
-
-  // Subtask must be in same project
-  if (parent.projectId !== subtask.projectId) {
-    return { valid: false, error: 'Subtask must belong to the same project as parent' }
-  }
-
-  // Parent cannot be a subtask itself (no nested subtasks)
-  if (parent.parentId !== null) {
-    return { valid: false, error: 'Cannot add subtasks to a subtask (no nested subtasks)' }
-  }
-
-  // Subtask cannot already have subtasks (would create nested structure)
-  if (subtask.subtaskIds.length > 0) {
-    return { valid: false, error: 'Cannot make a parent task into a subtask' }
-  }
-
-  return { valid: true }
+  if (!subtask) return { valid: false, error: PARENT_REJECTION_MESSAGES.missing }
+  const rejection = checkParent(
+    treeParentLookup(buildDomainTaskTree(allTasks)),
+    subtaskId,
+    parentId,
+    subtask.projectId,
+    allowNested
+  )
+  return rejection ? { valid: false, error: PARENT_REJECTION_MESSAGES[rejection] } : { valid: true }
 }
 
 /**
@@ -231,6 +243,8 @@ export interface SubtaskOperationResult {
 export interface CreateSubtaskOptions {
   title: string
   parentId: string
+  /** The `tasks.nestedSubtasks` setting: a subtask may then be a parent. */
+  allowNested?: boolean
   priority?: Priority
   dueDate?: Date | null
   dueTime?: string | null
@@ -248,14 +262,21 @@ export const createSubtask = (
   options: CreateSubtaskOptions,
   allTasks: Task[]
 ): SubtaskOperationResult => {
-  const { title, parentId, priority = 'none', dueDate = null, dueTime = null } = options
+  const {
+    title,
+    parentId,
+    priority = 'none',
+    dueDate = null,
+    dueTime = null,
+    allowNested = false
+  } = options
 
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
     return { success: false, error: 'Parent task not found' }
   }
 
-  if (parent.parentId !== null) {
+  if (!canHaveSubtasks(parent, allowNested)) {
     return { success: false, error: 'Cannot add subtask to another subtask' }
   }
 
@@ -275,7 +296,7 @@ export const createSubtask = (
     sourceNoteId: null,
     tags: [],
     parentId,
-    subtaskIds: [], // Subtasks cannot have children
+    subtaskIds: [],
     createdAt: new Date(),
     completedAt: null,
     archivedAt: null
@@ -304,7 +325,8 @@ export const createSubtask = (
 export const createMultipleSubtasks = (
   parentId: string,
   titles: string[],
-  allTasks: Task[]
+  allTasks: Task[],
+  allowNested = false
 ): SubtaskOperationResult => {
   if (titles.length === 0) {
     return { success: false, error: 'No titles provided' }
@@ -315,7 +337,7 @@ export const createMultipleSubtasks = (
     return { success: false, error: 'Parent task not found' }
   }
 
-  if (parent.parentId !== null) {
+  if (!canHaveSubtasks(parent, allowNested)) {
     return { success: false, error: 'Cannot add subtask to another subtask' }
   }
 
@@ -456,10 +478,11 @@ export const promoteToTask = (subtaskId: string, allTasks: Task[]): SubtaskOpera
 export const demoteToSubtask = (
   taskId: string,
   newParentId: string,
-  allTasks: Task[]
+  allTasks: Task[],
+  allowNested = false
 ): SubtaskOperationResult => {
   // Validate the relationship first
-  const validation = validateSubtaskRelationship(newParentId, taskId, allTasks)
+  const validation = validateSubtaskRelationship(newParentId, taskId, allTasks, allowNested)
   if (!validation.valid) {
     return { success: false, error: validation.error }
   }
@@ -471,11 +494,6 @@ export const demoteToSubtask = (
     return { success: false, error: 'Task or parent not found' }
   }
 
-  // Check if task already has a parent (shouldn't happen based on validation, but extra safety)
-  if (task.parentId !== null) {
-    return { success: false, error: 'Task is already a subtask' }
-  }
-
   // Update task to be subtask (inherit project from parent if different)
   const updatedTask: Task = {
     ...task,
@@ -484,7 +502,7 @@ export const demoteToSubtask = (
     statusId: newParent.statusId
   }
 
-  // Add to parent's subtaskIds
+  // Add to parent's subtaskIds, and out of the previous parent's
   const updatedParent: Task = {
     ...newParent,
     subtaskIds: [...newParent.subtaskIds, taskId]
@@ -493,6 +511,8 @@ export const demoteToSubtask = (
   const updatedTasks = allTasks.map((t) => {
     if (t.id === taskId) return updatedTask
     if (t.id === newParentId) return updatedParent
+    if (t.id === task.parentId)
+      return { ...t, subtaskIds: t.subtaskIds.filter((id) => id !== taskId) }
     return t
   })
 
@@ -622,40 +642,4 @@ export const getIncompleteSubtasks = (parentId: string, allTasks: Task[]): Task[
  */
 export const hasIncompleteSubtasks = (parentId: string, allTasks: Task[]): boolean => {
   return getIncompleteSubtasks(parentId, allTasks).length > 0
-}
-
-/**
- * Get potential parent tasks for demoting a task
- * Excludes the task itself, subtasks, and tasks that are already subtasks
- */
-export const getPotentialParents = (
-  taskId: string,
-  allTasks: Task[],
-  currentProjectId?: string
-): Task[] => {
-  const task = allTasks.find((t) => t.id === taskId)
-  if (!task) return []
-
-  return allTasks
-    .filter((t) => {
-      // Cannot be itself
-      if (t.id === taskId) return false
-      // Cannot be a subtask
-      if (t.parentId !== null) return false
-      // Cannot have subtasks already (would create deep nesting)
-      // Actually, we allow tasks with subtasks to be parents
-      // The task being demoted just becomes another sibling
-      return true
-    })
-    .sort((a, b) => {
-      // Prioritize same project
-      if (currentProjectId) {
-        const aInProject = a.projectId === currentProjectId
-        const bInProject = b.projectId === currentProjectId
-        if (aInProject && !bInProject) return -1
-        if (!aInProject && bInProject) return 1
-      }
-      // Then by recency
-      return b.createdAt.getTime() - a.createdAt.getTime()
-    })
 }

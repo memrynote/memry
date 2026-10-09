@@ -72,6 +72,12 @@ export function useTabViewState<T>({
   // that depend on `read`.
   const aliasToken = aliasKeys?.join(ALIAS_SEPARATOR) ?? ''
 
+  // The tab's stored value for this key, as written: by this hook, or by an
+  // `openTab` that merged view state into a tab that is already open.
+  const viewState = identity ? getTab?.(identity.tabId, identity.groupId)?.viewState : undefined
+  const names = aliasToken === '' ? [key] : [key, ...aliasToken.split(ALIAS_SEPARATOR)]
+  const stored = names.map((name) => viewState?.[name]).find((raw) => raw !== undefined)
+
   const read = useCallback((): T => {
     if (!identity) return defaultValue
 
@@ -101,10 +107,15 @@ export function useTabViewState<T>({
   // would inherit the previous tab's state. Adjusted directly during render
   // (not in an effect), per
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  // Also re-seed when the stored value changes under a mounted page: opening a
+  // task from Home merges `openTaskId` into the Tasks tab that is already open.
+  // A value this hook wrote itself reads back as what it already holds.
   const identityKey = identity ? `${identity.groupId}:${identity.tabId}` : ''
   const [seededFor, setSeededFor] = useState(identityKey)
-  if (seededFor !== identityKey) {
+  const [seenStored, setSeenStored] = useState(stored)
+  if (seededFor !== identityKey || seenStored !== stored) {
     setSeededFor(identityKey)
+    setSeenStored(stored)
     const seeded = read()
     valueRef.current = seeded
     setValue(seeded)

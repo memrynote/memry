@@ -227,6 +227,25 @@ pub(super) fn subtask_ids(conn: &Connection, parent_id: &str) -> Result<Vec<Stri
     Ok(ids)
 }
 
+/// Every live task below `task_id`, depth first. A parent loop (from two
+/// devices re-parenting at once) is walked once.
+pub(super) fn descendant_ids(
+    conn: &Connection,
+    task_id: &str,
+) -> Result<Vec<String>, StorageError> {
+    let mut seen = std::collections::HashSet::from([task_id.to_owned()]);
+    let mut out = Vec::new();
+    let mut stack: Vec<String> = subtask_ids(conn, task_id)?.into_iter().rev().collect();
+    while let Some(id) = stack.pop() {
+        if !seen.insert(id.clone()) {
+            continue;
+        }
+        stack.extend(subtask_ids(conn, &id)?.into_iter().rev());
+        out.push(id);
+    }
+    Ok(out)
+}
+
 /// `getNextTaskPosition(projectId, parentId)`: one past the largest position
 /// among the project's top-level tasks, or among `parent_id`'s subtasks.
 pub(super) fn next_position(

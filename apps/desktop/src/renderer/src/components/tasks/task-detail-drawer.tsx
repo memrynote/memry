@@ -6,7 +6,9 @@ import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
-import { getSubtasks } from '@/lib/subtask-utils'
+import { calculateProgress, canHaveSubtasks, getSubtasks } from '@/lib/subtask-utils'
+import { buildTaskTree } from '@memry/domain-tasks/tree'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 import {
   DatePropertyRow,
   PropertyRow,
@@ -33,7 +35,7 @@ import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
-import { ArrowUpRight, X, Plus, Trash } from '@/lib/icons'
+import { ArrowUp, ArrowUpRight, X, Plus, Trash } from '@/lib/icons'
 import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { TaskActivitySection } from '@/components/tasks/task-activity-section'
@@ -61,8 +63,14 @@ export interface TaskDetailDrawerProps {
   onNoteClick?: (noteId: string) => void
   onCanvasClick?: (canvasId: string, title: string | null) => void
   onDeleteTask?: (taskId: string) => void
+  /** Deleting a task that has subtasks: the host asks what happens to them. */
+  onDeleteParentTask?: (taskId: string) => void
   /** Shown where the drawer opens over another surface, to reach the task in Tasks. */
   onOpenInTasks?: () => void
+  /** Opens another task in this drawer: an ancestor from the path, or a subtask. */
+  onOpenTask?: (taskId: string) => void
+  /** The `tasks.nestedSubtasks` setting, where no subtask tree provider answers it. */
+  allowNestedSubtasks?: boolean
   className?: string
 }
 
@@ -93,7 +101,10 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onNoteClick,
   onCanvasClick,
   onDeleteTask,
+  onDeleteParentTask,
   onOpenInTasks,
+  onOpenTask,
+  allowNestedSubtasks = false,
   className
 }: TaskDetailDrawerProps): React.JSX.Element | null {
   const { t, i18n } = useT('tasks')
@@ -146,6 +157,26 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   )
 
   const subtasks = useMemo(() => (task ? getSubtasks(task.id, tasks) : []), [task, tasks])
+  const subtaskProgress = useMemo(
+    () => new Map(subtasks.map((sub) => [sub.id, calculateProgress(getSubtasks(sub.id, tasks))])),
+    [subtasks, tasks]
+  )
+  // Nearest last, for the path above the title.
+  const ancestors = useMemo(() => {
+    if (!task) return []
+    const byId = new Map(tasks.map((x) => [x.id, x]))
+    return buildTaskTree(tasks)
+      .ancestorIds(task.id)
+      .map((id) => byId.get(id))
+      .filter((x): x is Task => x !== undefined)
+      .reverse()
+  }, [task, tasks])
+  const subtaskTree = useSubtaskTree()
+  const canAddSubtask = task
+    ? subtaskTree
+      ? subtaskTree.canAddUnder(task.id)
+      : canHaveSubtasks(task, allowNestedSubtasks)
+    : false
 
   const { notes: noteResults, canvases: canvasResults } = useRelatedItemSearch(
     isLinkingNote,
@@ -288,8 +319,22 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       >
         {task && project && (
           <>
+            {/* ── Path: where a subtask lives; each crumb opens that ancestor ── */}
+            {ancestors.length > 0 && (
+              <TaskPathCrumbs
+                ancestors={ancestors}
+                projectName={project.name}
+                onOpenTask={onOpenTask}
+              />
+            )}
+
             {/* ── Header: editable title + close ── */}
-            <div className="flex items-center gap-2 shrink-0 py-3.5 px-5 border-b border-border">
+            <div
+              className={cn(
+                'flex items-center gap-2 shrink-0 px-5 border-b border-border',
+                ancestors.length > 0 ? 'pt-1 pb-3.5' : 'py-3.5'
+              )}
+            >
               <input
                 type="text"
                 value={task.title}
@@ -419,7 +464,11 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               subtasks={subtasks}
               statuses={project.statuses}
               onToggleComplete={onToggleComplete}
-              onAddSubtask={onAddSubtask && ((title) => onAddSubtask(task.id, title))}
+              onAddSubtask={
+                onAddSubtask && canAddSubtask ? (title) => onAddSubtask(task.id, title) : undefined
+              }
+              progressById={subtaskProgress}
+              onOpenSubtask={onOpenTask}
             />
 
             {/* ── Related ── */}
@@ -568,7 +617,12 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               {onDeleteTask && (
                 <button
                   type="button"
-                  onClick={() => setIsDeleteDialogOpen(true)}
+                  // A task with subtasks gets the host's subtask-aware confirm instead.
+                  onClick={() =>
+                    onDeleteParentTask && task.subtaskIds.length > 0
+                      ? onDeleteParentTask(task.id)
+                      : setIsDeleteDialogOpen(true)
+                  }
                   className="flex items-center gap-2 py-1.5 px-2.5 rounded-md text-[12px] leading-4 text-destructive hover:bg-destructive/10 transition-colors w-full"
                   aria-label={t('task.delete')}
                 >
@@ -604,3 +658,67 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     </motion.aside>
   )
 })
+
+/**
+ * The ancestors above the drawer title, outermost first. A long path keeps the
+ * project and the direct parent, and folds the rest into "…".
+ */
+function TaskPathCrumbs({
+  ancestors,
+  projectName,
+  onOpenTask
+}: {
+  ancestors: Task[]
+  projectName: string
+  onOpenTask?: (taskId: string) => void
+}): React.JSX.Element {
+  const { t } = useT('tasks')
+  // The drawer is narrow: the project, then the direct parent, with the middle
+  // folded into one "…" whose tooltip names it.
+  const shown = ancestors.length > 1 ? [null, ancestors[ancestors.length - 1]] : ancestors
+  const parent = ancestors[ancestors.length - 1]
+  return (
+    <nav
+      aria-label={t('subtaskTree.zoom.path')}
+      className="flex min-w-0 items-center gap-1 px-5 pt-3 text-[11px]/4 text-text-tertiary"
+      data-testid="task-path-crumbs"
+    >
+      <span className="shrink-0">{projectName}</span>
+      {shown.map((ancestor, index) => (
+        <span key={ancestor?.id ?? `fold-${index}`} className="flex min-w-0 items-center gap-1">
+          <span aria-hidden="true">›</span>
+          {ancestor === null ? (
+            <span
+              title={ancestors
+                .slice(0, -1)
+                .map((a) => a.title)
+                .join(' › ')}
+            >
+              …
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenTask?.(ancestor.id)}
+              disabled={!onOpenTask}
+              className="min-w-0 truncate rounded-sm hover:text-text-secondary disabled:hover:text-text-tertiary"
+            >
+              {ancestor.title}
+            </button>
+          )}
+        </span>
+      ))}
+      {onOpenTask && (
+        <button
+          type="button"
+          onClick={() => onOpenTask(parent.id)}
+          className="ms-auto shrink-0 rounded-sm p-0.5 hover:bg-surface-active/60 hover:text-text-secondary"
+          aria-label={t('subtaskTree.zoom.up')}
+          title={t('subtaskTree.zoom.up')}
+        >
+          <ArrowUp size={14} />
+        </button>
+      )}
+    </nav>
+  )
+}

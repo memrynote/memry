@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { convertBody, taskPlaceholder } from './convert-body.ts'
+import { convertBody as convertWith, taskPlaceholder } from './convert-body.ts'
+
+const convertBody = (source: string) => convertWith(source, { nestedSubtasks: true })
 
 describe('convertBody — markers', () => {
   it('turns `*` into a task checkbox with a placeholder', () => {
@@ -78,6 +80,18 @@ describe('convertBody — nesting', () => {
       ['t1', 't0'],
       ['t2', 't1'],
       ['t3', null]
+    ])
+  })
+
+  it('with nested subtasks off, makes a task below a subtask a top-level task', () => {
+    const result = convertWith('* Parent\n\t* Child\n\t\t* Grandchild\n\t* Second child', {
+      nestedSubtasks: false
+    })
+    expect(result.tasks.map((t) => [t.tempId, t.parentTempId])).toEqual([
+      ['t0', null],
+      ['t1', 't0'],
+      ['t2', null],
+      ['t3', 't0']
     ])
   })
 

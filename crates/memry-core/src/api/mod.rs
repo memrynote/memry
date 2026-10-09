@@ -35,6 +35,7 @@ pub mod sync;
 pub mod task_conformance;
 pub mod task_extras;
 pub mod task_records;
+pub mod task_tree;
 pub mod tasks;
 pub mod tasks_write;
 pub mod vault;

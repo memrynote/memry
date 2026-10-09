@@ -92,9 +92,11 @@ pub struct TaskViewQuery {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct TaskViewResult {
     /// The list, in order: filtered and sorted, then (on a window tab) the
-    /// window's overdue-first order. Subtasks ride with their parents.
+    /// window's overdue-first order. On a window tab every id is its own row,
+    /// at any depth; elsewhere subtasks ride with their parents.
     pub task_ids: Vec<String>,
-    /// The groups the sort field produces over the top-level rows; empty for
+    /// The groups the sort field produces over the rows (top-level ones off a
+    /// window tab); empty for
     /// `title`, `completedAt` and an unknown field.
     pub groups: Vec<TaskGroupItem>,
     /// The Done section under the list.
@@ -244,7 +246,7 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
     let visible: Vec<&task_filter::FilterTask> = task_ids
         .iter()
         .filter_map(|id| filtered_by_id.get(id.as_str()).copied())
-        .filter(|task| task.parent_id.is_none())
+        .filter(|task| window.is_some() || task.parent_id.is_none())
         .collect();
     let groups = task_filter::group_tasks_for_sort(
         &visible,

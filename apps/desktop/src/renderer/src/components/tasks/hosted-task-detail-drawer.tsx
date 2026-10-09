@@ -4,6 +4,8 @@ import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import type { Task } from '@/data/task-model'
 import { createSubtask } from '@/lib/subtask-utils'
+import { buildTaskTree } from '@memry/domain-tasks/tree'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { canvasTabData } from '@/lib/sidebar-tab-data'
 import { TaskDetailDrawer } from './task-detail-drawer'
@@ -22,6 +24,9 @@ export const HostedTaskDetailDrawer = ({
   const { t: tCommon } = useT('common')
   const { tasks, projects, addTask, updateTask, deleteTask } = useTasksContext()
   const { openTab } = useTabActions()
+  const {
+    settings: { nestedSubtasks }
+  } = useTaskPreferences()
   const task = useMemo(() => tasks.find((t) => t.id === taskId) ?? null, [tasks, taskId])
 
   const handleToggleComplete = useCallback(
@@ -39,18 +44,23 @@ export const HostedTaskDetailDrawer = ({
 
   const handleAddSubtask = useCallback(
     (parentId: string, title: string) => {
-      const result = createSubtask({ parentId, title }, tasks)
+      const result = createSubtask({ parentId, title, allowNested: nestedSubtasks }, tasks)
       if (result.success && result.newTask) void addTask(result.newTask)
     },
-    [tasks, addTask]
+    [tasks, addTask, nestedSubtasks]
   )
 
+  // The whole branch goes with the task, deepest first, so nothing is left
+  // pointing at a parent that no longer exists.
   const handleDeleteTask = useCallback(
     (id: string) => {
+      for (const descendantId of buildTaskTree(tasks).descendantIds(id).reverse()) {
+        void deleteTask(descendantId)
+      }
       void deleteTask(id)
       onClose()
     },
-    [deleteTask, onClose]
+    [tasks, deleteTask, onClose]
   )
 
   const handleNoteClick = useCallback(
@@ -84,6 +94,7 @@ export const HostedTaskDetailDrawer = ({
       onCanvasClick={handleCanvasClick}
       onDeleteTask={handleDeleteTask}
       onOpenInTasks={handleOpenInTasks}
+      allowNestedSubtasks={nestedSubtasks}
       // Above the note's outline rail (z-40), which sits at the same edge.
       className="z-40"
     />

@@ -380,13 +380,23 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('  - [x] Child {task:c1}')
   })
 
-  // A tree four levels deep, as a build with nested subtasks writes it (#2869).
+  // A tree four levels deep, as another editor or an older nested build may
+  // write it (#2869). Notes hold one level (MAX_NOTE_TASK_DEPTH), so it reads
+  // back flat under its top-level task, in order, with no line lost.
   const DEEP_TASK_TREE = [
     '- [ ] A {task:a}',
     '  - [ ] B {task:b}',
     '    - [ ] C {task:c}',
     '      - [x] D {task:d}',
     '    - [ ] E {task:e}',
+    '  - [ ] F {task:f}'
+  ].join('\n')
+  const DEEP_TASK_TREE_CAPPED = [
+    '- [ ] A {task:a}',
+    '  - [ ] B {task:b}',
+    '  - [ ] C {task:c}',
+    '  - [x] D {task:d}',
+    '  - [ ] E {task:e}',
     '  - [ ] F {task:f}'
   ].join('\n')
 
@@ -425,7 +435,7 @@ describe('blocknote-converter code block language', () => {
     expect(result?.trim()).toBe(md)
   })
 
-  it('parses a deep task tree under the parents its indent names', async () => {
+  it('parses a deep task tree flat under its top-level task, losing none', async () => {
     // #given
     const doc = new Y.Doc()
     await markdownToYFragment(DEEP_TASK_TREE, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
@@ -434,11 +444,11 @@ describe('blocknote-converter code block language', () => {
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     // #then
-    expect(taskTree(blocks ?? [])).toEqual(['a<-', 'b<a', 'c<b', 'd<c', 'e<b', 'f<a'])
+    expect(taskTree(blocks ?? [])).toEqual(['a<-', 'b<a', 'c<a', 'd<a', 'e<a', 'f<a'])
   })
 
-  it('round-trips a four-level task tree through Yjs unchanged', async () => {
-    // #given
+  it('writes subtasks below one level flat under their top-level task', async () => {
+    // #given a task tree four levels deep
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
 
@@ -447,8 +457,8 @@ describe('blocknote-converter code block language', () => {
     writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
-    // #then
-    expect(result?.trim()).toBe(DEEP_TASK_TREE)
+    // #then every line is kept, one level deep, in order: released builds read no deeper
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED)
   })
 
   it('keeps every line of a deep tree when a task inside it is renamed', async () => {
@@ -466,11 +476,11 @@ describe('blocknote-converter code block language', () => {
     const result = await yDocToMarkdown(doc)
 
     // #then
-    expect(result?.trim()).toBe(DEEP_TASK_TREE.replace('] B {', '] B renamed {'))
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED.replace('] B {', '] B renamed {'))
   })
 
-  it('saves a deep tree that arrived over Yjs without dropping a level', async () => {
-    // #given a correct tree built by a newer device, with no markdown source
+  it('saves a deep tree that arrived over Yjs flat, without dropping a task', async () => {
+    // #given a deep tree in the Y.Doc, with no markdown source
     const task = (taskId: string, parentTaskId: string, children: unknown[] = []): unknown => ({
       type: 'taskBlock',
       props: { taskId, title: taskId.toUpperCase(), checked: taskId === 'd', parentTaskId },
@@ -489,7 +499,7 @@ describe('blocknote-converter code block language', () => {
     const result = await yDocToMarkdown(doc)
 
     // #then
-    expect(result?.trim()).toBe(DEEP_TASK_TREE)
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED)
   })
 
   it('does not accumulate blank lines around inline task list items on reopen', async () => {

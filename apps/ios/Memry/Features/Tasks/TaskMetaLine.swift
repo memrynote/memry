@@ -41,6 +41,8 @@ struct TaskMeta: Equatable {
         var omitsDay = false
         /// The row may name its project (not in a project scope, not a subtask).
         var showsProject = true
+        /// The row's branch chip already counts its subtasks.
+        var omitsSubtasks = false
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -61,7 +63,7 @@ struct TaskMeta: Equatable {
         if rule != nil || isRepeating {
             items.append(.repeats(progress: TaskRepeatProgress.text(rule)))
         }
-        if subtasks.total > 0 {
+        if subtasks.total > 0, !context.omitsSubtasks {
             items.append(.subtasks(done: subtasks.done, total: subtasks.total))
         }
         if notes > 0 {

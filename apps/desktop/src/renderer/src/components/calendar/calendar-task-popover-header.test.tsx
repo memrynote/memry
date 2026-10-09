@@ -15,7 +15,8 @@ const baseProps = {
   parentTitle: null,
   projectName: 'memrynote',
   onToggleComplete: vi.fn(),
-  onOpenTask: vi.fn()
+  onOpenTask: vi.fn(),
+  onOpenParent: vi.fn()
 }
 
 describe('CalendarTaskPopoverHeader', () => {
@@ -39,6 +40,20 @@ describe('CalendarTaskPopoverHeader', () => {
       />
     )
     expect(screen.getByTestId('parent-breadcrumb')).toHaveTextContent('Q2 Planning')
+  })
+
+  it('opens the parent branch from the breadcrumb', async () => {
+    const onOpenParent = vi.fn()
+    render(
+      <CalendarTaskPopoverHeader
+        {...baseProps}
+        task={{ ...baseTask, parentId: 'p' }}
+        parentTitle="Q2 Planning"
+        onOpenParent={onOpenParent}
+      />
+    )
+    await userEvent.click(screen.getByTestId('parent-breadcrumb'))
+    expect(onOpenParent).toHaveBeenCalled()
   })
 
   it('shows strikethrough and a checked box when completed', () => {

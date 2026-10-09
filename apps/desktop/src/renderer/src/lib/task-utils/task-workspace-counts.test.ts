@@ -10,7 +10,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { Task } from '@/data/task-model'
 import type { Project, StatusType } from '@/data/tasks-data'
-import { getFilteredTasks, getTaskWorkspaceCounts, getTodayTasks, getTasksInDueWindow } from '.'
+import { getFilteredTasks, getTaskWorkspaceCounts, getTasksInDueWindow } from '.'
 import { addDays, startOfDay } from './task-date-utils'
 
 const ALL_VIEW_IDS = [
@@ -206,6 +206,27 @@ describe('getTaskWorkspaceCounts', () => {
     expectMatchesFilters(reversed)
   })
 
+  it('matches a date view at any depth among the tasks the tree places', () => {
+    const tasks = [
+      ...baselineTasks(),
+      createTask({ id: 'undated-root' }),
+      createTask({ id: 'undated-mid', parentId: 'undated-root' }),
+      createTask({ id: 'dated-leaf', parentId: 'undated-mid', dueDate: TODAY }),
+      createTask({ id: 'leaf-below', parentId: 'dated-leaf' }),
+      createTask({ id: 'archived-root', archivedAt: TODAY }),
+      createTask({ id: 'dated-unplaced', parentId: 'archived-root', dueDate: TODAY })
+    ]
+    const today = getFilteredTasks(tasks, 'today', 'view', projects).map((t) => t.id)
+    expect(today).toEqual(expect.arrayContaining(['dated-leaf', 'leaf-below']))
+    expect(today).not.toContain('dated-unplaced')
+    expect(today).not.toContain('undated-mid')
+
+    const { viewCounts } = getTaskWorkspaceCounts(tasks, projects, ALL_VIEW_IDS)
+    for (const viewId of ALL_VIEW_IDS) {
+      expect(viewCounts[viewId]).toBe(getFilteredTasks(tasks, viewId, 'view', projects).length)
+    }
+  })
+
   it('reads each task once per recompute', () => {
     const tasks = baselineTasks()
     let projectIdReads = 0
@@ -395,9 +416,6 @@ describe('tasks spanning several days', () => {
         expect(getTaskWorkspaceCounts([task], projects, ['today']).viewCounts.today).toBe(
           expected.length
         )
-        const grouped = getTodayTasks([task], projects)
-        expect(grouped.today).toEqual(day >= 7 && day <= 11 ? [task] : [])
-        expect(grouped.overdue).toEqual(day === 12 ? [task] : [])
         expect(task.statusId).toBe('doing')
       }
     } finally {
@@ -418,8 +436,9 @@ describe('tasks spanning several days', () => {
       createTask({ id: 'legacy' })
     ]
     expect(getFilteredTasks(tasks, 'today', 'view', projects)).toEqual([active, child])
-    expect(getTasksInDueWindow(tasks, projects, 'today')).toEqual([active, child])
-    expect(getTodayTasks(tasks, projects).today).toEqual([active, child])
+    // The undated child rides with its parent in the sidebar view, but is no
+    // row of the Today window.
+    expect(getTasksInDueWindow(tasks, projects, 'today')).toEqual([active])
     expect(getTaskWorkspaceCounts(tasks, projects, ['today']).viewCounts.today).toBe(2)
   })
 })

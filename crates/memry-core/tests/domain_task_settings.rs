@@ -102,6 +102,7 @@ fn a_vault_with_no_settings_reads_desktops_defaults() {
                 default_sort_order: "manual".to_owned(),
                 default_view: "all".to_owned(),
                 stale_inbox_days: 7,
+                nested_subtasks: true,
             }
         );
         assert!(payload(conn).is_none(), "a read never seeds the item");
@@ -342,4 +343,26 @@ fn the_default_view_is_local_and_never_on_the_wire() {
         Ok(())
     })
     .expect("view");
+}
+
+#[test]
+fn nested_subtasks_is_local_on_by_default_and_never_on_the_wire() {
+    let db = open("task-settings-nested");
+    db.call_blocking(|conn| {
+        seed_settings(conn, seeded());
+        let before = payload(conn);
+        assert!(task_settings::read(conn)?.nested_subtasks);
+
+        assert!(!task_settings::set_nested_subtasks(conn, false)?.nested_subtasks);
+        assert!(!task_settings::read(conn)?.nested_subtasks);
+        assert!(task_settings::set_nested_subtasks(conn, true)?.nested_subtasks);
+
+        assert_eq!(payload(conn), before, "the synced payload is untouched");
+        assert!(
+            outbox_rows(conn).is_empty(),
+            "a local setting pushes nothing"
+        );
+        Ok(())
+    })
+    .expect("nested");
 }

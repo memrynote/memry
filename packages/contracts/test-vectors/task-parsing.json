@@ -11372,6 +11372,136 @@
         "archivedAt": null
       },
       {
+        "id": "subsub-of-parent-today",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "sub-of-parent-today",
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "grandparent-undated",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": null,
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "parent-undated",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "grandparent-undated",
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "grandchild-due-today",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "parent-undated",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "sub-due-today-of-parent-today",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "parent-today",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "sub-done-due-today",
+        "projectId": "p1",
+        "statusId": "p1-done",
+        "parentId": "parent-today",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": "2026-01-14T11:00:00",
+        "archivedAt": null
+      },
+      {
+        "id": "parent-done",
+        "projectId": "p1",
+        "statusId": "p1-done",
+        "parentId": null,
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": "2026-01-13T10:00:00",
+        "archivedAt": null
+      },
+      {
+        "id": "sub-due-today-of-done",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "parent-done",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "orphan-due-today",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "gone",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "archived-parent",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": null,
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": "2026-01-13T10:00:00"
+      },
+      {
+        "id": "sub-due-today-of-archived",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "archived-parent",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "loop-a",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "loop-b",
+        "dueDate": "2026-01-14",
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
+        "id": "loop-b",
+        "projectId": "p1",
+        "statusId": "p1-todo",
+        "parentId": "loop-a",
+        "dueDate": null,
+        "startDate": null,
+        "completedAt": null,
+        "archivedAt": null
+      },
+      {
         "id": "parent-p2-tomorrow",
         "projectId": "p2",
         "statusId": "p2-todo",
@@ -11447,16 +11577,17 @@
             "started-future-due",
             "unknown-status",
             "parent-today",
-            "sub-of-parent-today",
-            "sub-done-of-parent-today",
-            "sub-archived-of-parent-today",
+            "sub-due-today-of-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-due-today-of-done",
+            "loop-a",
             "timestamp-due"
           ],
           "tomorrow": [
             "due-tomorrow",
             "unknown-project",
-            "parent-p2-tomorrow",
-            "sub-of-p2-parent"
+            "parent-p2-tomorrow"
           ],
           "next7": [
             "overdue-far",
@@ -11471,11 +11602,12 @@
             "unknown-status",
             "unknown-project",
             "parent-today",
-            "sub-of-parent-today",
-            "sub-done-of-parent-today",
-            "sub-archived-of-parent-today",
+            "sub-due-today-of-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-due-today-of-done",
+            "loop-a",
             "parent-p2-tomorrow",
-            "sub-of-p2-parent",
             "due-sunday",
             "due-saturday",
             "timestamp-due"
@@ -11483,21 +11615,26 @@
         },
         "completedInWindow": {
           "today": [
-            "done-today"
+            "done-today",
+            "sub-done-due-today"
           ],
           "tomorrow": [],
           "next7": [
             "done-today",
             "completedAt-but-todo",
+            "sub-done-due-today",
             "done-sunday"
           ]
         },
         "completedToday": [
-          "done-today"
+          "done-today",
+          "sub-done-of-parent-today",
+          "sub-done-due-today"
         ],
         "completedAll": [
           "done-today",
           "completedAt-but-todo",
+          "parent-done",
           "done-sunday"
         ],
         "views": {
@@ -11523,6 +11660,14 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-sunday",
@@ -11542,6 +11687,14 @@
             "parent-today",
             "sub-of-parent-today",
             "sub-done-of-parent-today",
+            "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "sub-due-today-of-done",
+            "loop-a",
+            "loop-b",
             "timestamp-due"
           ],
           "upcoming": [
@@ -11572,6 +11725,14 @@
             "parent-today",
             "sub-of-parent-today",
             "sub-done-of-parent-today",
+            "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "sub-due-today-of-done",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-saturday",
@@ -11580,6 +11741,8 @@
           "completed": [
             "done-today",
             "done-status-no-completedAt",
+            "parent-done",
+            "sub-due-today-of-done",
             "done-sunday"
           ],
           "bogus": [
@@ -11604,6 +11767,14 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-sunday",
@@ -11634,6 +11805,18 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "parent-done",
+            "sub-due-today-of-done",
+            "orphan-due-today",
+            "sub-due-today-of-archived",
+            "loop-a",
+            "loop-b",
             "done-sunday",
             "due-sunday",
             "due-saturday",
@@ -11650,18 +11833,18 @@
         },
         "tabCounts": {
           "*": {
-            "all": 26,
-            "archived": 2,
-            "today": 11,
+            "all": 34,
+            "archived": 3,
+            "today": 15,
             "tomorrow": 3,
-            "next7": 16
+            "next7": 20
           },
           "p1": {
-            "all": 22,
-            "archived": 2,
-            "today": 10,
+            "all": 30,
+            "archived": 3,
+            "today": 14,
             "tomorrow": 1,
-            "next7": 13
+            "next7": 17
           },
           "p2": {
             "all": 3,
@@ -11687,11 +11870,12 @@
             "unknown-status",
             "unknown-project",
             "parent-today",
-            "sub-of-parent-today",
-            "sub-done-of-parent-today",
-            "sub-archived-of-parent-today",
+            "sub-due-today-of-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-due-today-of-done",
+            "loop-a",
             "parent-p2-tomorrow",
-            "sub-of-p2-parent",
             "due-saturday",
             "timestamp-due",
             "started-no-due",
@@ -11712,11 +11896,12 @@
             "unknown-status",
             "unknown-project",
             "parent-today",
-            "sub-of-parent-today",
-            "sub-done-of-parent-today",
-            "sub-archived-of-parent-today",
+            "sub-due-today-of-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-due-today-of-done",
+            "loop-a",
             "parent-p2-tomorrow",
-            "sub-of-p2-parent",
             "due-saturday",
             "timestamp-due",
             "due-plus6",
@@ -11739,6 +11924,7 @@
         "completedAll": [
           "done-today",
           "completedAt-but-todo",
+          "parent-done",
           "done-sunday"
         ],
         "views": {
@@ -11764,6 +11950,14 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-sunday",
@@ -11787,6 +11981,14 @@
             "parent-today",
             "sub-of-parent-today",
             "sub-done-of-parent-today",
+            "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "sub-due-today-of-done",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-sunday",
@@ -11806,6 +12008,8 @@
           "completed": [
             "done-today",
             "done-status-no-completedAt",
+            "parent-done",
+            "sub-due-today-of-done",
             "done-sunday"
           ],
           "bogus": [
@@ -11830,6 +12034,14 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "loop-a",
+            "loop-b",
             "parent-p2-tomorrow",
             "sub-of-p2-parent",
             "due-sunday",
@@ -11860,6 +12072,18 @@
             "sub-of-parent-today",
             "sub-done-of-parent-today",
             "sub-due-today-of-undated",
+            "subsub-of-parent-today",
+            "grandparent-undated",
+            "parent-undated",
+            "grandchild-due-today",
+            "sub-due-today-of-parent-today",
+            "sub-done-due-today",
+            "parent-done",
+            "sub-due-today-of-done",
+            "orphan-due-today",
+            "sub-due-today-of-archived",
+            "loop-a",
+            "loop-b",
             "done-sunday",
             "due-sunday",
             "due-saturday",
@@ -11876,18 +12100,18 @@
         },
         "tabCounts": {
           "*": {
-            "all": 26,
-            "archived": 2,
-            "today": 18,
+            "all": 34,
+            "archived": 3,
+            "today": 22,
             "tomorrow": 0,
-            "next7": 17
+            "next7": 21
           },
           "p1": {
-            "all": 22,
-            "archived": 2,
-            "today": 15,
+            "all": 30,
+            "archived": 3,
+            "today": 19,
             "tomorrow": 0,
-            "next7": 14
+            "next7": 18
           },
           "p2": {
             "all": 3,

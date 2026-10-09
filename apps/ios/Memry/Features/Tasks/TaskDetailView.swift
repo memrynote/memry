@@ -244,7 +244,7 @@ struct TaskDetailMoreMenu: View {
                 Button(TasksCopy.rowDuplicate, systemImage: "plus.square.on.square", action: duplicate)
                     .accessibilityIdentifier("tasks.detail.duplicate")
                 if store.rowCanBecomeSubtask(task) {
-                    Button(TasksCopy.rowMakeSubtaskOf, systemImage: "arrow.turn.down.right") { isPickingParent = true }
+                    Button(TasksCopy.treeMoveUnder, systemImage: "arrow.turn.down.right") { isPickingParent = true }
                         .accessibilityIdentifier("tasks.detail.makeSubtask")
                 }
                 Button(TasksCopy.Detail.activity, systemImage: "clock.arrow.circlepath") { showsActivity = true }

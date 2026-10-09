@@ -104,14 +104,22 @@ export const estimateItemHeight = (
 // FLATTENING UTILITIES - FLAT LIST (All Tasks / Today Views)
 // ============================================================================
 
+/**
+ * The tasks that start a row. A tree list starts rows at the top level and
+ * nests the rest; a date view (F2) makes every task it lists a row.
+ */
+const rowTasks = (tasks: Task[], everyTaskIsARow: boolean): Task[] =>
+  everyTaskIsARow ? tasks : getTopLevelTasks(tasks)
+
 export const flattenTasksFlat = (
   tasks: Task[],
   projects: Project[],
   allTasks: Task[],
-  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[],
+  everyTaskIsARow = false
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
-  const raw = getTopLevelTasks(tasks)
+  const raw = rowTasks(tasks, everyTaskIsARow)
   const topLevelTasks = getOrderedTasks ? getOrderedTasks('flat', raw) : raw
   const projectMap = new Map(projects.map((p) => [p.id, p]))
 
@@ -212,13 +220,14 @@ export const flattenTasksGrouped = (
   collapsedGroups?: Set<string>,
   getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[],
   /** Only the `folder` and `note` grouping modes read this. */
-  noteIndex?: TaskNoteIndex
+  noteIndex?: TaskNoteIndex,
+  everyTaskIsARow = false
 ): VirtualItem[] => {
-  const topLevel = getTopLevelTasks(tasks)
-  const groups = groupTasksForSort(topLevel, sortField, sortDirection, projects, noteIndex)
+  const rows = rowTasks(tasks, everyTaskIsARow)
+  const groups = groupTasksForSort(rows, sortField, sortDirection, projects, noteIndex)
 
   if (groups.length === 0) {
-    return flattenTasksFlat(tasks, projects, allTasks, getOrderedTasks)
+    return flattenTasksFlat(tasks, projects, allTasks, getOrderedTasks, everyTaskIsARow)
   }
 
   const items: VirtualItem[] = []
@@ -241,7 +250,7 @@ export const flattenTasksGrouped = (
 
     if (isCollapsed) return
 
-    const raw = getTopLevelTasks(group.tasks)
+    const raw = rowTasks(group.tasks, everyTaskIsARow)
     const topLevelTasks = getOrderedTasks ? getOrderedTasks(group.key, raw) : raw
 
     topLevelTasks.forEach((task) => {

@@ -108,13 +108,10 @@ extension TasksCopy {
 
     // MARK: Parent picker
 
-    static let parentPickerTitle = "Make subtask of..."
+    static let parentPickerTitle = "Move under"
     static let parentPickerSearch = "Search tasks..."
     static let parentPickerSameProject = "Same Project"
     static let parentPickerOtherProjects = "Other Projects"
-    static let parentPickerNoMatches = "No tasks found matching your search"
-    static let parentPickerNoCandidates = "No available tasks to make this a subtask of"
-    static let parentPickerHasSubtasks = "Cannot make a parent task into a subtask"
 
     static func parentPickerSameProjectHeader(_ name: String?) -> String {
         name.map { "\(parentPickerSameProject) (\($0))" } ?? parentPickerSameProject

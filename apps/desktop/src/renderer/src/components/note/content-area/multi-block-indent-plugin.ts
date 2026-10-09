@@ -15,7 +15,11 @@ import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
 import { liftListItem } from '@tiptap/pm/schema-list'
 import type { EditorView } from '@tiptap/pm/view'
-import { indentTaskBlock, outdentTaskBlock } from './hooks/task-block-marquee-indent'
+import {
+  indentTaskBlock,
+  outdentTaskBlock,
+  type TaskIndentOptions
+} from './hooks/task-block-marquee-indent'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('MultiBlockIndent')
@@ -46,13 +50,21 @@ function containerPos(doc: any, id: string): number | null {
   return found
 }
 
-function moveOne(editor: any, tr: Transaction, id: string, direction: IndentDirection): boolean {
+function moveOne(
+  editor: any,
+  tr: Transaction,
+  id: string,
+  direction: IndentDirection,
+  taskOptions: TaskIndentOptions
+): boolean {
   const pos = containerPos(tr.doc, id)
   if (pos === null) return false
 
   if (editor.getBlock(id)?.type === 'taskBlock') {
     const outcome =
-      direction === 'indent' ? indentTaskBlock(editor, id) : outdentTaskBlock(editor, id)
+      direction === 'indent'
+        ? indentTaskBlock(editor, id, taskOptions)
+        : outdentTaskBlock(editor, id, taskOptions)
     if (outcome.kind === 'skipped') {
       log.debug('task block not moved', id, direction, outcome.reason)
       return false
@@ -76,7 +88,12 @@ function moveOne(editor: any, tr: Transaction, id: string, direction: IndentDire
   return liftListItem(schema.nodes.blockContainer)({ selection: tr.selection, tr } as any, () => {})
 }
 
-function moveBlocks(editor: any, ids: readonly string[], direction: IndentDirection): boolean {
+function moveBlocks(
+  editor: any,
+  ids: readonly string[],
+  direction: IndentDirection,
+  taskOptions: TaskIndentOptions
+): boolean {
   if (ids.length === 0) return false
 
   let moved = 0
@@ -84,22 +101,34 @@ function moveBlocks(editor: any, ids: readonly string[], direction: IndentDirect
     const original = tr.selection
     const ordered = direction === 'indent' ? ids : [...ids].reverse()
     for (const id of ordered) {
-      if (moveOne(editor, tr, id, direction)) moved += 1
+      if (moveOne(editor, tr, id, direction, taskOptions)) moved += 1
     }
     tr.setSelection(original.map(tr.doc, tr.mapping))
   })
   return moved > 0
 }
 
-export function indentBlocks(editor: any, ids: readonly string[]): boolean {
-  return moveBlocks(editor, ids, 'indent')
+export function indentBlocks(
+  editor: any,
+  ids: readonly string[],
+  taskOptions: TaskIndentOptions
+): boolean {
+  return moveBlocks(editor, ids, 'indent', taskOptions)
 }
 
-export function outdentBlocks(editor: any, ids: readonly string[]): boolean {
-  return moveBlocks(editor, ids, 'outdent')
+export function outdentBlocks(
+  editor: any,
+  ids: readonly string[],
+  taskOptions: TaskIndentOptions
+): boolean {
+  return moveBlocks(editor, ids, 'outdent', taskOptions)
 }
 
-export function createMultiBlockIndentPlugin(editor: any): Plugin {
+/** `taskOptions` is read at key time: the nested-subtasks setting and the note's task parents. */
+export function createMultiBlockIndentPlugin(
+  editor: any,
+  taskOptions: () => TaskIndentOptions
+): Plugin {
   return new Plugin({
     key: multiBlockIndentPluginKey,
     props: {
@@ -110,8 +139,8 @@ export function createMultiBlockIndentPlugin(editor: any): Plugin {
         const ids = selectedBlockIds(editor)
         if (ids.length < 2) return false
 
-        if (event.shiftKey) outdentBlocks(editor, ids)
-        else indentBlocks(editor, ids)
+        if (event.shiftKey) outdentBlocks(editor, ids, taskOptions())
+        else indentBlocks(editor, ids, taskOptions())
         // Consumed even when nothing moved, or the browser moves focus out.
         return true
       }

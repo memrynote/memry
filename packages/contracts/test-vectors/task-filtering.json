@@ -331,6 +331,64 @@
       "linkedNoteIds": []
     },
     {
+      "id": "p",
+      "title": "grandchild of report",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": "k",
+      "priority": "low",
+      "dueDate": null,
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [
+        "deep"
+      ],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "q",
+      "title": "loop head",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": "r",
+      "priority": "none",
+      "dueDate": "2026-01-16",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "r",
+      "title": "loop tail",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": "q",
+      "priority": "none",
+      "dueDate": null,
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [
+        "deep"
+      ],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
       "id": "m",
       "title": "monthly review",
       "description": null,
@@ -402,6 +460,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -422,6 +483,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -433,6 +497,7 @@
           "a",
           "d",
           "k",
+          "p",
           "o"
         ]
       },
@@ -442,6 +507,7 @@
           "a",
           "d",
           "k",
+          "p",
           "o"
         ]
       },
@@ -476,6 +542,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -494,6 +563,9 @@
           "h",
           "i",
           "k",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -515,6 +587,9 @@
           "i",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -545,6 +620,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -573,6 +651,8 @@
           "i",
           "j",
           "l",
+          "q",
+          "r",
           "n",
           "o"
         ]
@@ -585,6 +665,7 @@
         "expected": [
           "b",
           "d",
+          "p",
           "m"
         ]
       }
@@ -605,6 +686,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -653,6 +737,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -675,6 +762,9 @@
           "a",
           "f",
           "k",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -695,6 +785,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -720,6 +813,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -745,6 +841,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -767,6 +866,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -793,6 +895,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "n",
           "o"
         ]
@@ -812,6 +917,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -834,6 +942,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -861,6 +972,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m"
         ]
       },
@@ -879,6 +993,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -906,6 +1023,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -920,7 +1040,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -970,6 +1092,7 @@
           "a",
           "c",
           "d",
+          "q",
           "o"
         ]
       },
@@ -998,6 +1121,7 @@
           "d",
           "e",
           "f",
+          "q",
           "m",
           "n",
           "o"
@@ -1014,7 +1138,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1039,6 +1164,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1064,6 +1192,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1089,6 +1220,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1103,7 +1237,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -1153,6 +1289,7 @@
           "a",
           "c",
           "d",
+          "q",
           "o"
         ]
       },
@@ -1181,6 +1318,7 @@
           "d",
           "e",
           "f",
+          "q",
           "m",
           "n",
           "o"
@@ -1197,7 +1335,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1222,6 +1361,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1247,6 +1389,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1272,6 +1417,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1286,7 +1434,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -1302,6 +1452,7 @@
           "c",
           "d",
           "k",
+          "q",
           "o"
         ]
       },
@@ -1374,7 +1525,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1399,6 +1551,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1424,6 +1579,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1449,6 +1607,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1463,7 +1624,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -1479,6 +1642,7 @@
           "c",
           "d",
           "k",
+          "q",
           "o"
         ]
       },
@@ -1548,7 +1712,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1573,6 +1738,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1598,6 +1766,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1623,6 +1794,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1637,7 +1811,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -1655,6 +1831,7 @@
           "e",
           "f",
           "k",
+          "q",
           "n",
           "o"
         ]
@@ -1722,7 +1899,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1747,6 +1925,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1772,6 +1953,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1797,6 +1981,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1811,7 +1998,9 @@
         },
         "expected": [
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ]
       },
       {
@@ -1829,6 +2018,7 @@
           "e",
           "f",
           "k",
+          "q",
           "n",
           "o"
         ]
@@ -1896,7 +2086,8 @@
         },
         "expected": [
           "d",
-          "f"
+          "f",
+          "q"
         ]
       },
       {
@@ -1921,6 +2112,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1946,6 +2140,9 @@
           "j",
           "k",
           "l",
+          "p",
+          "q",
+          "r",
           "m",
           "n",
           "o"
@@ -1966,13 +2163,16 @@
         "a",
         "o",
         "d",
+        "q",
         "f",
         "e",
         "n",
         "m",
         "i",
         "j",
-        "l"
+        "l",
+        "p",
+        "r"
       ]
     },
     {
@@ -1981,11 +2181,14 @@
       "expected": [
         "j",
         "l",
+        "p",
+        "r",
         "i",
         "m",
         "n",
         "e",
         "f",
+        "q",
         "d",
         "a",
         "o",
@@ -2008,12 +2211,15 @@
         "d",
         "m",
         "b",
+        "p",
         "e",
         "g",
         "h",
         "i",
         "j",
         "l",
+        "q",
+        "r",
         "n"
       ]
     },
@@ -2027,8 +2233,11 @@
         "i",
         "j",
         "l",
+        "q",
+        "r",
         "n",
         "b",
+        "p",
         "d",
         "m",
         "a",
@@ -2048,6 +2257,9 @@
         "f",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o",
@@ -2075,6 +2287,9 @@
         "f",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o"
@@ -2094,6 +2309,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "n",
         "b",
         "a",
@@ -2117,6 +2335,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "n",
         "c",
         "e"
@@ -2133,6 +2354,9 @@
         "g",
         "d",
         "f",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "i",
@@ -2155,6 +2379,9 @@
         "i",
         "n",
         "m",
+        "r",
+        "q",
+        "p",
         "f",
         "d",
         "g",
@@ -2180,6 +2407,9 @@
         "h",
         "i",
         "k",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o"
@@ -2197,6 +2427,9 @@
         "h",
         "i",
         "k",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o",
@@ -2222,6 +2455,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o"
@@ -2241,6 +2477,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o",
@@ -2260,13 +2499,16 @@
         "a",
         "o",
         "d",
+        "q",
         "f",
         "e",
         "n",
         "m",
         "i",
         "j",
-        "l"
+        "l",
+        "p",
+        "r"
       ]
     },
     {
@@ -2275,11 +2517,14 @@
       "expected": [
         "j",
         "l",
+        "p",
+        "r",
         "i",
         "m",
         "n",
         "e",
         "f",
+        "q",
         "d",
         "a",
         "o",
@@ -2302,13 +2547,16 @@
         "a",
         "o",
         "d",
+        "q",
         "f",
         "e",
         "n",
         "m",
         "i",
         "j",
-        "l"
+        "l",
+        "p",
+        "r"
       ]
     },
     {
@@ -2317,11 +2565,14 @@
       "expected": [
         "j",
         "l",
+        "p",
+        "r",
         "i",
         "m",
         "n",
         "e",
         "f",
+        "q",
         "d",
         "a",
         "o",
@@ -2348,6 +2599,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o"
@@ -2369,6 +2623,9 @@
         "j",
         "k",
         "l",
+        "p",
+        "q",
+        "r",
         "m",
         "n",
         "o"
@@ -7035,14 +7292,18 @@
           "a",
           "o",
           "d",
+          "q",
           "f",
           "e",
           "n",
           "m",
           "i",
           "j",
-          "l"
+          "l",
+          "p",
+          "r"
         ],
+        "contextIds": [],
         "hasActiveFilters": false,
         "countActiveFilters": 0
       }
@@ -7074,8 +7335,14 @@
       },
       "expected": {
         "taskIds": [
+          "k",
+          "a",
           "b",
+          "p",
           "l"
+        ],
+        "contextIds": [
+          "a"
         ],
         "hasActiveFilters": true,
         "countActiveFilters": 2
@@ -7107,6 +7374,7 @@
           "e",
           "f"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7134,6 +7402,7 @@
       },
       "expected": {
         "taskIds": [],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7166,8 +7435,98 @@
           "m",
           "d"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 2
+      }
+    },
+    {
+      "name": "deep-match-keeps-ancestors",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [
+          "deep"
+        ],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "p",
+          "q",
+          "r",
+          "k",
+          "a"
+        ],
+        "contextIds": [
+          "a",
+          "k",
+          "q"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "blank-search-does-not-reach-deeper",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "  ",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "c",
+          "b",
+          "e",
+          "d",
+          "f",
+          "p",
+          "q",
+          "r",
+          "m",
+          "n",
+          "i",
+          "k",
+          "l",
+          "j",
+          "o",
+          "a"
+        ],
+        "contextIds": [],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
       }
     },
     {
@@ -7197,6 +7556,7 @@
         "taskIds": [
           "g"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7228,6 +7588,7 @@
         "taskIds": [
           "h"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7263,8 +7624,10 @@
         "taskIds": [
           "a",
           "d",
-          "k"
+          "k",
+          "p"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 3
       }
@@ -7297,6 +7660,7 @@
       },
       "expected": {
         "taskIds": [
+          "p",
           "n",
           "f",
           "a",
@@ -7304,6 +7668,7 @@
           "c",
           "k"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 2
       }
@@ -7331,7 +7696,20 @@
       },
       "expected": {
         "taskIds": [
-          "j"
+          "b",
+          "k",
+          "a",
+          "q",
+          "j",
+          "l",
+          "p",
+          "r"
+        ],
+        "contextIds": [
+          "a",
+          "b",
+          "k",
+          "q"
         ],
         "hasActiveFilters": true,
         "countActiveFilters": 3
@@ -7368,8 +7746,10 @@
           "a",
           "o",
           "d",
-          "l"
+          "l",
+          "p"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7408,12 +7788,16 @@
           "g",
           "i",
           "j",
+          "q",
           "m",
           "n",
           "o",
           "k",
-          "l"
+          "l",
+          "p",
+          "r"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
@@ -7444,6 +7828,7 @@
           "m",
           "i"
         ],
+        "contextIds": [],
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }

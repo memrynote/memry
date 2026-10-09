@@ -21,6 +21,9 @@ import { GroupHeader } from '@/components/tasks/group-header'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { TaskExpansionContext } from '@/components/tasks/subtask-tree/task-expansion-context'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { useDateView } from '@/components/tasks/date-view-context'
 import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { useDragContext } from '@/contexts/drag-context'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
@@ -196,6 +199,7 @@ const VirtualItemRenderer = memo(
             task={item.task}
             project={item.project}
             projects={projects}
+            allTasks={allTasks}
             subtasks={item.subtasks}
             progress={progress}
             isExpanded={isExpanded}
@@ -260,10 +264,20 @@ export const VirtualizedAllTasksView = ({
 }: VirtualizedAllTasksViewProps): React.JSX.Element => {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const { expandedIds, toggleExpanded } = useExpandedTasks({
+  const { expandedIds, toggleExpanded, expand } = useExpandedTasks({
     storageKey,
     persist: true
   })
+  const expansion = useMemo(
+    () => ({ expandedIds, toggle: toggleExpanded, expand }),
+    [expandedIds, toggleExpanded, expand]
+  )
+  // A filter that matches below the first level shows the match's ancestors as
+  // context; open them so the match itself is on screen.
+  const contextIds = useSubtaskTree()?.contextIds
+  useEffect(() => {
+    contextIds?.forEach(expand)
+  }, [contextIds, expand])
   const { dragState } = useDragContext()
 
   // Which groups are collapsed belongs to the tab: re-seeding `new Set(['done'])`
@@ -291,7 +305,12 @@ export const VirtualizedAllTasksView = ({
 
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  const combinedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
+  // A date view's rows leave their undated subtasks out, so a row's subtasks
+  // come from the whole task list there.
+  const dateView = useDateView()
+  const everyTaskIsARow = dateView !== null
+  const listedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
+  const combinedTasks = dateView?.tasks ?? listedTasks
 
   const noteIndex = useTaskNoteIndex(sortField === 'folder' || sortField === 'note')
 
@@ -306,13 +325,14 @@ export const VirtualizedAllTasksView = ({
           sortDirection,
           collapsedGroups,
           getOrderedTasks,
-          noteIndex
+          noteIndex,
+          everyTaskIsARow
         ),
         { sortField, projects }
       )
     }
     return annotateFlatVirtualItems(
-      flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
+      flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks, everyTaskIsARow)
     )
   }, [
     tasks,
@@ -322,21 +342,22 @@ export const VirtualizedAllTasksView = ({
     sortDirection,
     collapsedGroups,
     getOrderedTasks,
-    noteIndex
+    noteIndex,
+    everyTaskIsARow
   ])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
     if (!doneTasks || doneTasks.length === 0) return []
 
     const isCollapsed = collapsedGroups.has('done')
-    const topLevel = getTopLevelTasks(doneTasks)
+    const rows = everyTaskIsARow ? doneTasks : getTopLevelTasks(doneTasks)
 
     const header: GroupHeaderItem = {
       id: 'group-header-done',
       type: 'group-header',
       groupKey: 'done',
       label: 'Done',
-      count: topLevel.length,
+      count: rows.length,
       sortField: 'status',
       isCollapsed
     }
@@ -344,11 +365,11 @@ export const VirtualizedAllTasksView = ({
     if (isCollapsed) return [header]
 
     const doneItems = annotateFlatVirtualItems(
-      flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks),
+      flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks, everyTaskIsARow),
       { sectionId: 'done' }
     )
     return [header, ...doneItems]
-  }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks])
+  }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks, everyTaskIsARow])
 
   const allVirtualItems = useMemo(
     () => [...virtualItems, ...doneVirtualItems],
@@ -418,48 +439,50 @@ export const VirtualizedAllTasksView = ({
             position: 'relative'
           }}
         >
-          <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const item = allVirtualItems[virtualRow.index]
-              return (
-                <div
-                  key={item.id}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`
-                  }}
-                >
-                  <VirtualItemRenderer
-                    item={item}
-                    lookupContext={lookupContext}
-                    allTasks={combinedTasks}
-                    projects={projects}
-                    selectedTaskId={selectedTaskId}
-                    onToggleComplete={onToggleComplete}
-                    onUpdateTask={onUpdateTask}
-                    onToggleSubtaskComplete={onToggleSubtaskComplete}
-                    onTaskClick={onTaskClick}
-                    onNoteClick={onNoteClick}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={onToggleSelect}
-                    onShiftSelect={onShiftSelect}
-                    expandedIds={expandedIds}
-                    onToggleExpand={toggleExpanded}
-                    onAddSubtask={onAddSubtask}
-                    onReorderSubtasks={onReorderSubtasks}
-                    onToggleGroup={handleToggleGroup}
-                    showProjectBadge={showProjectBadge}
-                  />
-                </div>
-              )
-            })}
-          </SortableContext>
+          <TaskExpansionContext.Provider value={expansion}>
+            <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const item = allVirtualItems[virtualRow.index]
+                return (
+                  <div
+                    key={item.id}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                  >
+                    <VirtualItemRenderer
+                      item={item}
+                      lookupContext={lookupContext}
+                      allTasks={combinedTasks}
+                      projects={projects}
+                      selectedTaskId={selectedTaskId}
+                      onToggleComplete={onToggleComplete}
+                      onUpdateTask={onUpdateTask}
+                      onToggleSubtaskComplete={onToggleSubtaskComplete}
+                      onTaskClick={onTaskClick}
+                      onNoteClick={onNoteClick}
+                      isSelectionMode={isSelectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelect={onToggleSelect}
+                      onShiftSelect={onShiftSelect}
+                      expandedIds={expandedIds}
+                      onToggleExpand={toggleExpanded}
+                      onAddSubtask={onAddSubtask}
+                      onReorderSubtasks={onReorderSubtasks}
+                      onToggleGroup={handleToggleGroup}
+                      showProjectBadge={showProjectBadge}
+                    />
+                  </div>
+                )
+              })}
+            </SortableContext>
+          </TaskExpansionContext.Provider>
         </div>
       </div>
     </div>

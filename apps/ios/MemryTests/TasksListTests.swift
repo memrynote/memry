@@ -179,6 +179,23 @@ struct TasksListTests {
         #expect(rows == [TaskListRow(id: parent, depth: 0), TaskListRow(id: child, depth: 1)])
     }
 
+    @Test func the_list_draws_two_levels_and_pushes_deeper_branches() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project()
+        let top = try vault.task("[agent] top", project: project)
+        let one = try vault.task("[agent] one", project: project, parent: top)
+        let two = try vault.task("[agent] two", project: project, parent: one)
+        _ = try vault.task("[agent] three", project: project, parent: two)
+        await vault.store.load()
+
+        let rows = vault.store.listSections(orders: scratchOrders()).flatMap(\.rows)
+        #expect(rows == [
+            TaskListRow(id: top, depth: 0), TaskListRow(id: one, depth: 1), TaskListRow(id: two, depth: 2),
+        ])
+        #expect(vault.store.pushesBranch(two, depth: 2))
+        #expect(!vault.store.pushesBranch(one, depth: 1))
+    }
+
     @Test func the_empty_states_follow_the_tab_and_the_filters() async throws {
         let vault = try TasksTestVault()
         await vault.store.load()
@@ -277,5 +294,33 @@ struct TasksListTests {
         await vault.store.selectTab(.today)
         #expect(vault.store.activeSavedFilterId == nil)
         #expect(vault.store.state.filters == TaskFilterSpec())
+    }
+
+    @Test func a_date_window_lists_each_dated_subtask_as_its_own_row_with_its_path() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project("Launch")
+        let top = try vault.task("[agent] top", project: project)
+        let mid = try vault.task("[agent] mid", project: project, parent: top)
+        let deep = try vault.task("[agent] deep", project: project, parent: mid)
+        let leaf = try vault.task("[agent] leaf", project: project, due: "2026-01-14", parent: deep)
+        let child = try vault.task("[agent] child", project: project, due: "2026-01-14", parent: top)
+        _ = try vault.task("[agent] undated", project: project, parent: child)
+        await vault.store.load()
+        await vault.store.update { state in
+            state.tab = .today
+            state.sort = TaskSortSpec(field: "title", direction: "asc")
+        }
+
+        let rows = vault.store.listSections(orders: scratchOrders()).flatMap(\.rows)
+        // Every row the core places, flat, and nothing else: the count is the rows.
+        #expect(rows.map(\.id) == [child, leaf])
+        #expect(rows.allSatisfy { $0.depth == 0 })
+        #expect(vault.store.todayProgress?.total == 2)
+        #expect(vault.store.listCounts.open == 2)
+
+        let store = vault.store
+        #expect(store.listPath(try #require(store.items[child])) == ["Launch", "[agent] top"])
+        #expect(store.listPath(try #require(store.items[leaf])) == ["Launch", "…", "[agent] deep"])
+        #expect(store.listPath(try #require(store.items[top])) == nil)
     }
 }

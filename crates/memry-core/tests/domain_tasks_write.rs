@@ -264,12 +264,13 @@ fn create_refuses_a_parent_that_breaks_the_subtask_rules() {
             )
         };
         assert!(attempt("x1", "pa", "x1").is_err(), "its own parent");
-        assert!(attempt("x2", "pa", "s1").is_err(), "a subtask's subtask");
         assert!(attempt("x3", "pb", "t1").is_err(), "another project");
         assert!(attempt("x4", "pa", "missing").is_err(), "no such parent");
-        for id in ["x1", "x2", "x3", "x4"] {
+        for id in ["x1", "x3", "x4"] {
             assert!(outbox_ops(conn, id).is_empty(), "{id} wrote nothing");
         }
+        // Any depth: a subtask's subtask is a task like any other.
+        assert!(attempt("x2", "pa", "s1").is_ok(), "a subtask's subtask");
         Ok(())
     })
     .expect("the refusals");
@@ -341,7 +342,7 @@ fn a_project_move_resolves_the_equivalent_status_and_brings_the_subtasks() {
 }
 
 #[test]
-fn set_parent_enforces_one_level_and_one_project_and_none_promotes() {
+fn set_parent_allows_any_depth_but_not_a_loop_or_another_project() {
     let db = open("tw-parent");
     db.call_blocking(|conn| {
         seed_project(conn, "pa");
@@ -357,9 +358,12 @@ fn set_parent_enforces_one_level_and_one_project_and_none_promotes() {
         assert_eq!(t2["fieldClocks"]["parentId"], json!({"device-a": 2}));
 
         assert!(tasks::set_parent(conn, "t1", Some("t1"), DEVICE, NOW).is_err());
-        assert!(tasks::set_parent(conn, "t3", Some("t2"), DEVICE, NOW).is_err());
-        assert!(tasks::set_parent(conn, "t1", Some("t3"), DEVICE, NOW).is_err());
         assert!(tasks::set_parent(conn, "t3", Some("other"), DEVICE, NOW).is_err());
+        // t1 > t2 > t3: depth is allowed, but t1 cannot go inside its own branch.
+        tasks::set_parent(conn, "t3", Some("t2"), DEVICE, NOW + 1_500)?;
+        assert_eq!(payload_of(conn, "t3")["parentId"], json!("t2"));
+        assert!(tasks::set_parent(conn, "t1", Some("t3"), DEVICE, NOW).is_err());
+        assert_eq!(payload_of(conn, "t1")["parentId"], Value::Null);
 
         tasks::set_parent(conn, "t2", None, DEVICE, NOW + 2_000)?;
         assert_eq!(payload_of(conn, "t2")["parentId"], Value::Null);
@@ -490,12 +494,19 @@ fn reorder_writes_every_position_in_one_transaction() {
 }
 
 #[test]
-fn delete_cascades_to_subtasks_or_promotes_them() {
+fn delete_cascades_to_the_whole_branch_or_promotes_one_level() {
     let db = open("tw-delete");
     db.call_blocking(|conn| {
         seed_project(conn, "pa");
-        for (parent, children) in [("t1", ["a1", "a2"]), ("t2", ["b1", "b2"])] {
-            create(conn, parent, "pa", TaskDetails::default());
+        for (parent, children) in [
+            ("t1", ["a1", "a2"]),
+            ("t2", ["b1", "b2"]),
+            ("a1", ["a1x", "a1y"]),
+            ("b1", ["b1x", "b1y"]),
+        ] {
+            if !matches!(parent, "a1" | "b1") {
+                create(conn, parent, "pa", TaskDetails::default());
+            }
             for child in children {
                 create(
                     conn,
@@ -511,17 +522,24 @@ fn delete_cascades_to_subtasks_or_promotes_them() {
 
         let cascade =
             tasks::delete_with_subtasks(conn, "t1", SubtaskDisposal::Delete, DEVICE, NOW + 1_000)?;
-        assert_eq!(cascade.deleted, ["a1", "a2", "t1"]);
-        assert!(deleted(conn, "t1") && deleted(conn, "a1") && deleted(conn, "a2"));
-        assert_eq!(outbox_ops(conn, "a1"), ["delete"]);
+        assert_eq!(cascade.deleted, ["a1", "a1x", "a1y", "a2", "t1"]);
+        assert!(deleted(conn, "t1") && deleted(conn, "a1") && deleted(conn, "a1y"));
+        assert_eq!(outbox_ops(conn, "a1x"), ["delete"]);
+
+        // A middle task's subtasks take its place under its own parent.
+        tasks::delete_with_subtasks(conn, "b1", SubtaskDisposal::Promote, DEVICE, NOW + 500)?;
+        assert_eq!(payload_of(conn, "b1x")["parentId"], json!("t2"));
+        assert_eq!(payload_of(conn, "b1y")["parentId"], json!("t2"));
 
         let promote =
             tasks::delete_with_subtasks(conn, "t2", SubtaskDisposal::Promote, DEVICE, NOW + 1_000)?;
         assert_eq!(promote.deleted, ["t2"]);
-        assert_eq!(promote.changed_ids(), ["b1", "b2"]);
-        assert!(deleted(conn, "t2") && !deleted(conn, "b1"));
-        assert_eq!(payload_of(conn, "b1")["parentId"], Value::Null);
-        assert_eq!(outbox_ops(conn, "b1"), ["upsert"]);
+        let mut promoted = promote.changed_ids();
+        promoted.sort_unstable();
+        assert_eq!(promoted, ["b1x", "b1y", "b2"]);
+        assert!(deleted(conn, "t2") && !deleted(conn, "b2"));
+        assert_eq!(payload_of(conn, "b1x")["parentId"], Value::Null);
+        assert_eq!(outbox_ops(conn, "b2"), ["upsert"]);
         assert!(
             tasks::delete_with_subtasks(conn, "t2", SubtaskDisposal::Delete, DEVICE, NOW).is_err()
         );

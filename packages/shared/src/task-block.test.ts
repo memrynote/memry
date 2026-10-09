@@ -5,6 +5,7 @@ import {
   scanTaskCheckboxStates,
   serializeTaskBlock,
   serializeTaskBlockTree,
+  capTaskTreeDepth,
   stripTaskBlockSuffixes,
   type TaskNormalizableBlock
 } from './task-block'
@@ -215,17 +216,18 @@ describe('serializeTaskBlockTree', () => {
     children
   })
 
-  it('writes every level two spaces deeper, and reads back as the same tree', () => {
+  it('lists every task below the first level flat under its top-level task, in order', () => {
     const tree = task('a', '', [task('b', 'a', [task('c', 'b', [task('d', 'c')])]), task('e', 'a')])
 
     const md = serializeTaskBlockTree(tree).join('\n')
 
+    // Released builds read one level only; deeper lines would be misplaced or dropped.
     expect(md).toBe(
       [
         '- [ ] A {task:a}',
         '  - [ ] B {task:b}',
-        '    - [ ] C {task:c}',
-        '      - [ ] D {task:d}',
+        '  - [ ] C {task:c}',
+        '  - [ ] D {task:d}',
         '  - [ ] E {task:e}'
       ].join('\n')
     )
@@ -235,5 +237,33 @@ describe('serializeTaskBlockTree', () => {
   it('writes a one-level subtask exactly as serializeTaskBlock does', () => {
     const child = task('b', 'a')
     expect(serializeTaskBlockTree(task('a', '', [child]))[1]).toBe(serializeTaskBlock(child.props))
+  })
+})
+
+describe('capTaskTreeDepth', () => {
+  const task = (taskId: string, parentTaskId: string, children: TaskNormalizableBlock[] = []) => ({
+    type: 'taskBlock',
+    props: { taskId, title: taskId, checked: false, parentTaskId },
+    children
+  })
+  const shape = (block: TaskNormalizableBlock): unknown => ({
+    id: block.props?.taskId,
+    parent: block.props?.parentTaskId,
+    children: (block.children ?? []).map(shape)
+  })
+
+  it('lifts deeper tasks to the first level under the top-level task', () => {
+    const tree = task('a', '', [task('b', 'a', [task('c', 'b', [task('d', 'c')])]), task('e', 'a')])
+
+    expect(shape(capTaskTreeDepth(tree))).toEqual({
+      id: 'a',
+      parent: '',
+      children: ['b', 'c', 'd', 'e'].map((id) => ({ id, parent: 'a', children: [] }))
+    })
+  })
+
+  it('returns a one-level tree unchanged', () => {
+    const tree = task('a', '', [task('b', 'a'), task('c', 'a')])
+    expect(capTaskTreeDepth(tree)).toBe(tree)
   })
 })

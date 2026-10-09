@@ -16,7 +16,9 @@ const HostedTaskDetailDrawer = React.lazy(async () => ({
 export const openTaskInTasksTab = (
   openTab: OpenTab,
   taskId: string,
-  projectId?: string | null
+  projectId?: string | null,
+  /** Zooms the list into this task's branch (A2), as a subtask's path does. */
+  zoomedTaskId?: string | null
 ): void => {
   openTab({
     type: 'tasks',
@@ -30,7 +32,8 @@ export const openTaskInTasksTab = (
     viewState: {
       openTaskId: taskId,
       selectedProjectId: projectId ?? undefined,
-      activeTab: 'all'
+      activeTab: 'all',
+      ...(zoomedTaskId ? { zoomedTaskId } : {})
     }
   })
 }

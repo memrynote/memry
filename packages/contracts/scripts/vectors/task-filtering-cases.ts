@@ -167,6 +167,11 @@ export const FILTER_TASKS: readonly WireTask[] = [
     dueDate: '2026-01-13'
   }),
   t('l', { title: 'sub of b', parentId: 'b', projectId: 'p2', statusId: 'p2-todo' }),
+  // Below the first level: matches on its own only through a narrowing filter.
+  t('p', { title: 'grandchild of report', parentId: 'k', tags: ['deep'], priority: 'low' }),
+  // A parent loop: the smaller id is the top-level task.
+  t('q', { title: 'loop head', parentId: 'r', dueDate: '2026-01-16' }),
+  t('r', { title: 'loop tail', parentId: 'q', tags: ['deep'] }),
   t('m', {
     title: 'monthly review',
     dueDate: '2026-01-31',
@@ -255,6 +260,20 @@ export const FILTER_CASES: ReadonlyArray<{
     weekStartsOn: 1,
     filters: { ...defaults, repeatType: 'repeating', completion: 'all' },
     sort: { field: 'createdAt', direction: 'desc' }
+  },
+  {
+    name: 'deep-match-keeps-ancestors',
+    now: 'wednesday',
+    weekStartsOn: 1,
+    filters: { ...defaults, tags: ['deep'] },
+    sort: { field: 'title', direction: 'asc' }
+  },
+  {
+    name: 'blank-search-does-not-reach-deeper',
+    now: 'wednesday',
+    weekStartsOn: 1,
+    filters: { ...defaults, search: '  ' },
+    sort: { field: 'title', direction: 'asc' }
   },
   {
     name: 'completed-with-subtask-parent',

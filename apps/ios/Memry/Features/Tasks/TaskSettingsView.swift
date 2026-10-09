@@ -2,7 +2,8 @@ import MemryCore
 import SwiftUI
 
 // TP055. Settings > Tasks, after desktop's `pages/settings/tasks-section.tsx`:
-// default project, default sort order, default view, stale inbox threshold.
+// default project, default sort order, default view, subtasks inside
+// subtasks (local), stale inbox threshold.
 // Each change is one core write (`TaskSettingsActions.swift`); the screen
 // shows what the core answered, never its own guess.
 
@@ -23,6 +24,15 @@ struct TaskSettingsView: View {
                     TaskSettingsProjectPicker(store: store, selected: settings.defaultProjectId)
                     TaskSettingsSortPicker(store: store, selected: settings.defaultSortOrder)
                     TaskSettingsViewPicker(store: store, selected: settings.defaultView)
+                    Toggle(isOn: Binding(
+                        get: { settings.nestedSubtasks },
+                        set: { on in Task { await store.setNestedSubtasks(on) } }
+                    )) {
+                        TaskSettingsLabel(
+                            title: TasksCopy.settingsNestedSubtasks, help: TasksCopy.settingsNestedSubtasksHelp
+                        )
+                    }
+                    .accessibilityIdentifier("tasks.settings.nestedSubtasks")
                 } header: {
                     Text(TasksCopy.settingsDefaultsGroup)
                 }

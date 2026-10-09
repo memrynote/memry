@@ -15,7 +15,13 @@ import type { Task } from '@/data/task-model'
 import type { InboxItemListItem } from '@/types'
 
 const mockDnd = vi.hoisted(() => ({
-  dragEnd: null as ((event: { active: { id: string }; over: { id: string } | null }) => void) | null
+  dragEnd: null as
+    | ((event: {
+        active: { id: string }
+        over: { id: string } | null
+        delta: { x: number; y: number }
+      }) => void)
+    | null
 }))
 
 vi.mock('@dnd-kit/core', () => ({
@@ -433,15 +439,16 @@ describe('medium gap renderer surfaces', () => {
     const statuses: Status[] = [
       { id: 'todo', name: 'Todo', color: '#64748b', type: 'todo', order: 0 }
     ]
+    const subtasks = [
+      makeTask({ id: 'sub-1', title: 'First', parentId: 'parent-1' }),
+      makeTask({ id: 'sub-2', title: 'Second', parentId: 'parent-1' })
+    ]
     render(
       <SortableSubtaskList
-        parentId="parent-1"
-        parentTitle="Parent task"
+        parent={makeTask({ id: 'parent-1', title: 'Parent task' })}
+        allTasks={subtasks}
         statuses={statuses}
-        subtasks={[
-          makeTask({ id: 'sub-1', title: 'First' }),
-          makeTask({ id: 'sub-2', title: 'Second' })
-        ]}
+        subtasks={subtasks}
         onReorder={onReorder}
         onToggleComplete={onToggleComplete}
         onClick={onClick}
@@ -453,10 +460,11 @@ describe('medium gap renderer surfaces', () => {
     expect(onClick).toHaveBeenCalledWith('sub-1')
 
     act(() => {
-      mockDnd.dragEnd?.({ active: { id: 'sub-2' }, over: { id: 'sub-1' } })
-      mockDnd.dragEnd?.({ active: { id: 'sub-2' }, over: { id: 'sub-2' } })
-      mockDnd.dragEnd?.({ active: { id: 'missing' }, over: { id: 'sub-1' } })
-      mockDnd.dragEnd?.({ active: { id: 'sub-1' }, over: null })
+      const delta = { x: 0, y: 0 }
+      mockDnd.dragEnd?.({ active: { id: 'sub-2' }, over: { id: 'sub-1' }, delta })
+      mockDnd.dragEnd?.({ active: { id: 'sub-2' }, over: { id: 'sub-2' }, delta })
+      mockDnd.dragEnd?.({ active: { id: 'missing' }, over: { id: 'sub-1' }, delta })
+      mockDnd.dragEnd?.({ active: { id: 'sub-1' }, over: null, delta })
     })
     expect(onReorder).toHaveBeenCalledWith('parent-1', ['sub-2', 'sub-1'])
     expect(onReorder).toHaveBeenCalledTimes(1)

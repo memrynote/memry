@@ -362,7 +362,7 @@ describe('sanitizeBlockIds', () => {
 })
 
 describe('serializeBlocksPreservingBlanks', () => {
-  it('writes a task tree at every depth, each level two spaces deeper', async () => {
+  it('writes a deep task tree flat under its top-level task, keeping every task', async () => {
     const editor = { blocksToMarkdownLossy: vi.fn(async () => '') }
     const task = (taskId: string, parentTaskId: string, children: any[] = []): any => ({
       type: 'taskBlock',
@@ -377,13 +377,13 @@ describe('serializeBlocksPreservingBlanks', () => {
       ])
     ])
 
-    // Each task line is its own segment, as one-level subtasks always were.
+    // Each task line is its own segment; notes hold one level (MAX_NOTE_TASK_DEPTH).
     expect(markdown.split('\n').filter(Boolean)).toEqual([
       '- [ ] A {task:a}',
       '  - [ ] B {task:b}',
-      '    - [ ] C {task:c}',
-      '      - [ ] D {task:d}',
-      '    - [ ] E {task:e}',
+      '  - [ ] C {task:c}',
+      '  - [ ] D {task:d}',
+      '  - [ ] E {task:e}',
       '  - [ ] F {task:f}'
     ])
   })
