@@ -177,8 +177,8 @@ describe('HTML comments in the shared doc (AF-015)', () => {
         content: { rows: Array<{ cells: unknown[] }> }
       }
       expect(table.content.rows.map((r) => r.cells.length)).toEqual([2, 2])
-      const written = (await yDocToMarkdown(doc)).split('\n')
-      expect(written[2].replace(/ +/g, ' ')).toBe(row)
+      const written = await yDocToMarkdown(doc)
+      expect(written?.split('\n')[2].replace(/ +/g, ' ')).toBe(row)
     }
   })
 
