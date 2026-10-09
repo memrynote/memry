@@ -169,6 +169,19 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
+  it('keeps every cell of a table row a comment would cross (BBF-51)', async () => {
+    for (const row of ['| 50%% | 20%% |', '| 1 <!-- x | y --> |']) {
+      const markdown = `| a | b |\n| --- | --- |\n${row}`
+      const doc = await seed(markdown, { keepSource: false })
+      const table = (await blocksOf(doc))[0] as unknown as {
+        content: { rows: Array<{ cells: unknown[] }> }
+      }
+      expect(table.content.rows.map((r) => r.cells.length)).toEqual([2, 2])
+      const written = (await yDocToMarkdown(doc)).split('\n')
+      expect(written[2].replace(/ +/g, ' ')).toBe(row)
+    }
+  })
+
   it('leaves a comment in a code span or a fence as code', async () => {
     const markdown = 'Use `<!-- x -->` here.\n\n```html\n<!-- y -->\n```\n'
     const doc = await seed(markdown, { keepSource: false })
