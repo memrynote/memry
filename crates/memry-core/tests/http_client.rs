@@ -451,6 +451,26 @@ async fn the_two_client_policy_codes_are_their_own_outcomes() {
     assert_eq!(transport.call_count(), 1);
 }
 
+/// #2944: the device cap has a code of its own, so the shell can ask the user
+/// to revoke a device instead of showing a generic refusal.
+#[tokio::test]
+async fn the_device_limit_is_its_own_terminal_error() {
+    let transport = FakeTransport::new(vec![error_response(
+        409,
+        "AUTH_DEVICE_LIMIT_REACHED",
+        "Maximum device limit reached. Revoke an existing device first.",
+    )]);
+    let client = make_client(transport.clone(), RecordingSleeper::new());
+
+    let error = client
+        .send(ApiRequest::post("/auth/devices"))
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, ApiError::DeviceLimitReached { .. }));
+    assert_eq!(transport.call_count(), 1);
+}
+
 #[tokio::test]
 async fn a_revoked_device_is_terminal_on_any_status() {
     let transport = FakeTransport::new(vec![error_response(409, "AUTH_DEVICE_REVOKED", "gone")]);

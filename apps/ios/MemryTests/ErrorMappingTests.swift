@@ -47,6 +47,7 @@ private let ownCopy: [any Error] = [
     ApiError.Storage(what: payload),
     ApiError.Unauthorized(code: payload, message: payload),
     ApiError.DeviceRevoked(message: payload),
+    ApiError.DeviceLimitReached(message: payload),
     ApiError.RateLimited(retryAfterS: 30, message: payload),
     ApiError.WritesDisabled(message: payload),
     ApiError.UpgradeRequired(minVersion: payload, message: payload),
@@ -190,6 +191,22 @@ struct ErrorMappingTests {
         #expect(says(disk, "this phone"))
         #expect(says(offline, "offline"))
         #expect(disk != offline)
+    }
+
+    /// #2944: the device cap used to arrive as a bare 409 and read "Updating
+    /// Memry may fix it". The fix is revoking a device elsewhere, so the copy
+    /// says that and offers no retry or update.
+    @Test("the device limit asks for a device to be revoked, not an update")
+    func deviceLimitAsksToRevokeADevice() {
+        let limit = ErrorMapping.userFacing(AuthError.Api(source: .DeviceLimitReached(message: payload)))
+        #expect(limit.code == ErrorCode("api.deviceLimitReached"))
+        #expect(says(limit, "revoke a device"))
+        // The refused registration spent its setup token, so "Finish setup"
+        // would answer 401. The way back is a fresh sign-in.
+        #expect(says(limit, "sign in again"))
+        #expect(!says(limit, "finish"))
+        #expect(!says(limit, "updating"))
+        #expect(limit.recourse == .blocked)
     }
 
     /// Three distinct client policies (chapter 11): read-only,

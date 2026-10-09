@@ -224,8 +224,13 @@ was already spent and the answer is `401 AUTH_INVALID_TOKEN`
 seconds after consumption (`:573`).
 
 A user may hold at most **50** active (non-revoked) devices; the 51st
-registration is `409 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:586-593`).
+registration is `409 AUTH_DEVICE_LIMIT_REACHED`
+(`apps/sync-server/src/routes/auth.ts:593-599`). The cap is checked after the
+token's `jti` is consumed (`:577-585`), so the refused request has spent its
+setup token and a replay answers `401 AUTH_INVALID_TOKEN`. The refusal holds
+until the user revokes a device from one that is signed in; a client says that,
+offers no retry, and the way back is a fresh sign-in. Servers before #2944 sent `409 VALIDATION_ERROR` for the same
+refusal; a client reads that as a generic refusal, as before.
 
 The server-assigned device id is a `crypto.randomUUID()`
 (`apps/sync-server/src/routes/auth.ts:626`). Registration is idempotent on
@@ -439,7 +444,7 @@ retryable there, and the replay here is not an attempt there.
 | `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:231` |
 | `ROTATION_GRACE_SECONDS`             | 10          | `apps/sync-server/src/services/auth.ts:79`  |
 | `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:80`  |
-| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:586`   |
+| `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:593`   |
 | `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:171`   |
 
 OTP codes are stored as a hex HMAC-SHA256 under `OTP_HMAC_KEY` and compared with
