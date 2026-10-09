@@ -402,7 +402,6 @@ describe('attachment backfill', () => {
   })
 
   it('queues a file note indexed at startup under its own id, once', () => {
-    // Copied in while the app was closed: indexed, never offered to the server.
     const fileNote = (
       id: string,
       relative: string,
