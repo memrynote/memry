@@ -293,6 +293,13 @@ export class FullSyncRunner {
   private bootstrapPullSucceeded = false
 
   /**
+   * The latest run on this engine pulled to the head of the feed and finished
+   * without a throw. A later failed or refused run clears it, so a device whose
+   * sync broke after one good run stops counting as caught up (#3015).
+   */
+  lastRunCaughtUp = false
+
+  /**
    * Queue the one-time legacy sweep (#2297): every note owed durably, so a
    * crash mid-sweep cannot drop a note that may hold rows the feed never
    * served.
@@ -515,7 +522,9 @@ export class FullSyncRunner {
         processedItems: 0,
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
+      this.lastRunCaughtUp = pullDelivered
     } catch (error) {
+      this.lastRunCaughtUp = false
       // A first attempt that never completed a pull measured nothing
       // legitimate: abandon the window so it cannot sit open across retries
       // counting steady-state bytes against a stale t0. Once a pull HAS

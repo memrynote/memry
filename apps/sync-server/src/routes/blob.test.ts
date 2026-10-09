@@ -650,6 +650,35 @@ describe('blob routes', () => {
     expect(decrements).toHaveLength(0)
   })
 
+  // #3015: a replayed dereference must not drive ref_count below zero, and the
+  // decrement that frees a chunk gives its bytes back to the storage quota.
+  it('floors ref_count at zero and refunds a chunk freed by the dereference', async () => {
+    state.chunksByHash = {
+      h1: { id: 'chunk-h1', ref_count: 1, size_bytes: 1000 },
+      h2: { id: 'chunk-h2', ref_count: 2, size_bytes: 500 },
+      h3: { id: 'chunk-h3', ref_count: 0, size_bytes: 700 }
+    }
+    const dereference = () =>
+      app.request(
+        '/attachments/dereference',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chunkHashes: ['h1', 'h2', 'h3'] })
+        },
+        env
+      )
+
+    expect(await (await dereference()).json()).toEqual({ dereferenced: 2 })
+    expect(vi.mocked(adjustStorageUsed).mock.calls).toEqual([[env.DB, 'user-1', -1000]])
+
+    vi.mocked(adjustStorageUsed).mockClear()
+    expect(await (await dereference()).json()).toEqual({ dereferenced: 1 })
+    expect(vi.mocked(adjustStorageUsed).mock.calls).toEqual([[env.DB, 'user-1', -500]])
+    expect(state.chunksByHash.h1?.ref_count).toBe(0)
+    expect(state.chunksByHash.h3?.ref_count).toBe(0)
+  })
+
   it('rejects an empty chunkHashes array', async () => {
     const res = await app.request(
       '/attachments/dereference',

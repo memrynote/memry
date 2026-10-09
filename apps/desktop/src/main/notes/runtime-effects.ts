@@ -4,6 +4,7 @@ import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { recordLocalItemDelete } from '../sync/deleted-asset-release'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -71,6 +72,7 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
  */
 export function syncNoteDelete(noteId: string): void {
   enqueueLocalSyncDelete('note', noteId)
+  recordLocalItemDelete('note', noteId)
   void getCrdtProvider()
     ?.purge(noteId)
     .catch((error) => {

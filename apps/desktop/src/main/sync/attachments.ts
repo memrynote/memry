@@ -1206,6 +1206,28 @@ export class AttachmentSyncService {
     return null
   }
 
+  /**
+   * The server chunk hashes of an uploaded attachment, read from its signed
+   * manifest, for freeing a deleted note's attachments (#3015). An empty list
+   * means the server has no manifest for the id, so there is nothing to free.
+   * Any other failure throws, and the caller keeps the work for a later pass.
+   */
+  async chunkHashesOf(attachmentId: string): Promise<string[]> {
+    const [token, vaultKey] = await this.requireAuth()
+    let encrypted: EncryptedAttachmentManifest
+    try {
+      encrypted = await this.fetchManifest(token, attachmentId)
+    } catch (err) {
+      if (err instanceof SyncServerError && err.statusCode === 404) return []
+      throw err
+    }
+    const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
+    if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
+    const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
+    secureCleanup(fileKey)
+    return manifest.chunks.map((chunk) => chunk.encryptedHash)
+  }
+
   private async fetchManifest(
     token: string,
     attachmentId: string,
