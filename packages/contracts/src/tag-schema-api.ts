@@ -9,6 +9,9 @@ export interface PresetOffer {
   key: PresetKey
   /** Localized, lowercase: the tag `add-preset` creates now. */
   name: string
+  /** The catalogue's icon and colour, for the offer card and the @ create menu. */
+  icon: string | null
+  color: string
   fields: Array<{ name: string; type: FieldType; relationTarget: string | null }>
   templateSections: string[]
   /** `added`: a tag carries this preset; `add-fields`: a tag named `name` exists without it. */

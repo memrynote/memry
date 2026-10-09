@@ -4,7 +4,7 @@ import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
 export type CreateOption =
   | { kind: 'tag'; tag: string; name: string; lastUsed: boolean }
   /** A ready-made tag not added yet: picking it adds it first ("first use from @"). */
-  | { kind: 'preset'; preset: PresetKey; name: string }
+  | { kind: 'preset'; preset: PresetKey; name: string; icon: string | null; color: string }
   | { kind: 'plain' }
 
 const presetRank = (preset: PresetKey | null): number =>
@@ -35,6 +35,12 @@ export function buildCreateOptions(
     }))
   const presets = (snapshot?.presets ?? [])
     .filter((offer) => offer.state !== 'added')
-    .map((offer): CreateOption => ({ kind: 'preset', preset: offer.key, name: offer.name }))
+    .map((offer): CreateOption => ({
+      kind: 'preset',
+      preset: offer.key,
+      name: offer.name,
+      icon: offer.icon,
+      color: offer.color
+    }))
   return [...tags, ...presets, { kind: 'plain' }]
 }

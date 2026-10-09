@@ -79,6 +79,8 @@ export function presetOffers(
     return {
       key: spec.key,
       name,
+      icon: spec.icon,
+      color: spec.color,
       fields: spec.fields.map((field) => ({
         name: t(field.nameKey),
         type: field.type,

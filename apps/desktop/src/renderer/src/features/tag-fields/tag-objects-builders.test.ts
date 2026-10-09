@@ -38,6 +38,8 @@ function offer(key: PresetKey, state: PresetOffer['state']): PresetOffer {
   return {
     key,
     name: key,
+    icon: `icon:${key}`,
+    color: 'sky',
     fields: [],
     templateSections: [],
     state,
@@ -86,8 +88,14 @@ describe('buildCreateOptions (D2 "Create … as")', () => {
     )
     expect(options).toEqual([
       { kind: 'tag', tag: 'person', name: 'person', lastUsed: false },
-      { kind: 'preset', preset: 'meeting', name: 'meeting' },
-      { kind: 'preset', preset: 'book', name: 'book' },
+      {
+        kind: 'preset',
+        preset: 'meeting',
+        name: 'meeting',
+        icon: 'icon:meeting',
+        color: 'sky'
+      },
+      { kind: 'preset', preset: 'book', name: 'book', icon: 'icon:book', color: 'sky' },
       { kind: 'plain' }
     ])
   })

@@ -143,10 +143,14 @@ export function useMentionCreate(editor: any, containerRef: RefObject<HTMLDivEle
     }
   }, [isOpen, containerRef, commit, editor, setMenuState])
 
-  const lookOf = (option: CreateOption): ObjectLook | null =>
-    option.kind === 'tag' && snapshot?.tags[option.tag]
+  const lookOf = (option: CreateOption): ObjectLook | null => {
+    if (option.kind === 'preset') {
+      return { tag: option.name, color: option.color, icon: option.icon, avatar: false }
+    }
+    return option.kind === 'tag' && snapshot?.tags[option.tag]
       ? lookOfTag(snapshot.tags[option.tag])
       : null
+  }
 
   const overlay = (
     <>

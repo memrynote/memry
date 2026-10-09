@@ -74,7 +74,7 @@ export function PresetOfferStrip(): React.JSX.Element | null {
             key={offer.key}
             className="flex min-w-0 flex-col items-start gap-2 rounded-[10px] border border-border bg-background p-3.5"
           >
-            <PresetTagChip tag={offer.existingTag?.key ?? offer.name} preset={offer.key} />
+            <PresetTagChip tag={offer.existingTag?.key ?? offer.name} preset={offer} />
             <p className="text-[13px] text-foreground">
               {offer.fields.map((f) => f.name).join(', ')}
             </p>
