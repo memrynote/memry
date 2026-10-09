@@ -9,7 +9,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import {
   startProjectionRuntime,
@@ -58,9 +63,10 @@ describe('note readers and a note file linked outside the vault', () => {
       excludePatterns: ['.git', 'node_modules', '.trash'],
       defaultNoteFolder: 'notes',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     } satisfies VaultConfig)
-    vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db)
+    vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])

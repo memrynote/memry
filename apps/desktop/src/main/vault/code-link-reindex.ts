@@ -26,6 +26,7 @@ import { getSetting, setSetting } from '@main/database/queries/settings'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { parseNote } from './frontmatter'
+import { refuseOutsideVault } from '../lib/paths'
 import type { DataDb, IndexDb } from '../database'
 
 const logger = createLogger('CodeLinkReindex')
@@ -72,6 +73,7 @@ async function rewriteCodeLinks(input: CodeLinkReindexInput): Promise<number | n
 
     let raw: string
     try {
+      await refuseOutsideVault(vaultPath, before.path)
       raw = await readFile(path.join(vaultPath, before.path), 'utf-8')
     } catch (error) {
       logger.warn('Skipping note, file unreadable', { noteId, error })

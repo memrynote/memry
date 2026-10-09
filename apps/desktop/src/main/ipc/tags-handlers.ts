@@ -67,7 +67,8 @@ import {
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
-import { toAbsolutePath } from '../vault/notes'
+import { getVaultRoot, toAbsolutePath } from '../vault/notes'
+import { refuseOutsideVault } from '../lib/paths'
 import { parseNote, serializeUpdatedNote, type NoteFrontmatter } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
 import { assertNoteWritable, hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
@@ -188,6 +189,7 @@ async function updateNoteFrontmatterTag(
     return
   }
 
+  await refuseOutsideVault(getVaultRoot(), cached.path)
   const absolutePath = toAbsolutePath(cached.path)
   const raw = await readFile(absolutePath, 'utf-8')
   const parsed = parseNote(raw, absolutePath)

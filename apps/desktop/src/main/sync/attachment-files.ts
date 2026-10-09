@@ -6,7 +6,7 @@ import { attachmentFiles } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getFileType } from '@memry/shared/file-types'
 import { STORED_PREFIX_RE } from '../vault/attachment-heal'
-import { resolveVaultFile } from '../lib/paths'
+import { refuseOutsideVault, resolveVaultFile, resolveVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('AttachmentFiles')
@@ -154,6 +154,12 @@ export function existingFiles(files: string[]): string[] {
 function noteFilesOnDisk(db: DrizzleDb, vaultPath: string, note: AttachmentNote): string[] {
   const files = ownFolderFiles(vaultPath, note.id)
   if (!note.path.endsWith('.md')) return files
+  if (resolveVaultFileSync(vaultPath, note.path).kind === 'outside') {
+    logger.warn('Note file points outside the vault; its embeds are not counted', {
+      noteId: note.id
+    })
+    return files
+  }
   try {
     const markdown = fs.readFileSync(path.join(vaultPath, note.path), 'utf8')
     return [
@@ -368,6 +374,7 @@ async function linkedPathOf(
   if (getFileType(path.extname(name)) !== null) return null
   const note = getNoteMetadataById(db, noteId)
   if (!note?.path.endsWith('.md')) return null
+  await refuseOutsideVault(vaultPath, note.path)
   const markdown = await fs.promises.readFile(path.join(vaultPath, note.path), 'utf8')
   if (referencedVaultFiles(markdown, vaultPath, note.path, noteId).includes(path.resolve(file))) {
     return null

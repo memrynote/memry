@@ -28,7 +28,8 @@ import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
-import { emitNoteEvent, toAbsolutePath } from './notes-io'
+import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
+import { refuseOutsideVault } from '../lib/paths'
 import type { Note } from './notes-crud'
 import { assertNoteWritable } from '../vault-locks/registry'
 
@@ -191,6 +192,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
 
   assertNoteWritable(cached.id, cached.path)
 
+  await refuseOutsideVault(getVaultRoot(), cached.path)
   const absolutePath = toAbsolutePath(cached.path)
   const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
 

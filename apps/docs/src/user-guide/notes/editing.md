@@ -633,8 +633,11 @@ You can flush manually with <kbd>⌘</kbd>+<kbd>S</kbd>. Auto-save delay is conf
 
 Memry reads only files inside the vault. A note or journal file replaced by a symlink to a file
 outside the vault does not open. The error names the file. Memry does not save over it, search does
-not index it, and sync sends none of its text. The link stays as you made it. A symlink to another
-file inside the vault works as usual.
+not index it, and sync sends none of its text. Moving blocks into it or restoring one of its
+versions fails with the same error. Renaming another note does not rewrite the links in it, a tag
+rename, merge or delete skips it, its backlink excerpts stay empty, and attachments it might
+reference are kept. The link stays as you made it. A symlink to another file inside the vault works
+as usual.
 
 ## Word Count
 
