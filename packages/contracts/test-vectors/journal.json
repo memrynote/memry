@@ -2829,7 +2829,7 @@
       },
       "expected": {
         "action": "forget",
-        "tombstone": true
+        "tombstone": false
       }
     },
     {
@@ -2857,7 +2857,7 @@
       },
       "expected": {
         "action": "drop",
-        "tombstone": true
+        "tombstone": false
       }
     },
     {
@@ -2871,7 +2871,7 @@
       },
       "expected": {
         "action": "forget",
-        "tombstone": true
+        "tombstone": false
       }
     },
     {

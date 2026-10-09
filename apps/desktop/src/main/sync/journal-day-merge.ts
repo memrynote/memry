@@ -5,7 +5,8 @@
  * projects it (`journalHandler.applyUpsert`); it owes a merge here instead. The
  * drain, run after the pull's body pass, folds the foreign body into the day's
  * doc as a local edit (stored, written back, pushed) and then tombstones the
- * foreign id. Every step converges when repeated: the same Yjs items merge
+ * foreign id. Only a merge tombstones: an id this device did not fold stays
+ * live, since its text may exist only on a device that never pushed it. Every step converges when repeated: the same Yjs items merge
  * once, and a tombstone upserts by (type, id).
  *
  * Owed merges live in `sync_state`, so no migration is needed and an older
@@ -197,7 +198,11 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     // Kept before `ensureDay` writes the day file over.
     if (fallback !== null) oweJournalDayMerge(deps.db, { ...merge, fallbackMarkdown: fallback })
   }
-  fallback ??= merge.recordMarkdown ?? null
+  // A deleted id's record text was merged by the device that deleted it;
+  // building it again here would add a second copy. This device's own Yjs
+  // state and its holder file text still fold: they may never have been
+  // pushed (#2984).
+  if (!merge.deleted) fallback ??= merge.recordMarkdown ?? null
   const hasBody = bodyPulled && (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)))
   const step = planJournalDayMerge({
     deleted: merge.deleted === true,
@@ -234,7 +239,8 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       .where(eq(syncState.key, KEY_PREFIX + merge.foreignId))
       .run()
   })
-  await deps.purgeDoc(merge.foreignId)
+  // A dropped `F` stays live: its local doc may hold edits not yet pushed.
+  if (step.action !== 'drop') await deps.purgeDoc(merge.foreignId)
   log.info('Settled a foreign journal for its day', {
     ...describe(merge),
     targetId,

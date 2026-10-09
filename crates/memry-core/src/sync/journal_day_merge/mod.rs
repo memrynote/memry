@@ -1,4 +1,4 @@
-//! One journal item per day, `j<YYYY-MM-DD>` (protocol §1.9, #2939).
+//! One journal item per day, `j<YYYY-MM-DD>` (protocol §1.9.1, #2939).
 //!
 //! A journal id other than `j<D>` carrying date `D` is *foreign*. It is never
 //! projected as a row: `journal_entries.date` is `UNIQUE`, and before this
@@ -14,8 +14,8 @@
 //! - [`drain`] runs after the pass's body step. Per owed merge it asks
 //!   [`plan_journal_day_merge`] what to do: wait, forget, drop, or make sure
 //!   `j<D>` exists, relink tasks, fold the foreign Yjs state into `j<D>` as a
-//!   local edit, queue the foreign id's tombstone and purge its body. Every
-//!   step converges on a re-run.
+//!   local edit, queue the foreign id's tombstone and purge its body. Only a
+//!   merge tombstones the foreign id. Every step converges on a re-run.
 
 mod owed;
 
@@ -153,20 +153,22 @@ async fn drain_one(
     });
     match action {
         JournalDayMergeAction::Wait => return Ok(false),
-        JournalDayMergeAction::Forget | JournalDayMergeAction::Drop => {
-            // A deleted day is not re-created (#2986): the foreign id goes
-            // with it, tombstoned when it is still live.
-            let device = device_id.to_owned();
+        // Neither tombstones `F` (§1.9.1): a device that holds its text may
+        // not have pushed it.
+        JournalDayMergeAction::Forget => {
             db.call(move |conn| {
                 let tx = conn.unchecked_transaction().map_err(failed)?;
-                if tombstone {
-                    let clock = clock::increment(&merge.clock, &device);
-                    tombstone_foreign(&tx, &merge.foreign_id, &clock, now_ms())?;
-                }
                 forget(&tx, &merge.foreign_id, now_ms())?;
                 tx.commit().map_err(failed)
             })
             .await?;
+            return Ok(true);
+        }
+        // A deleted day is not re-created (#2986). `F` stays live with its
+        // row and body: only the owed merge goes.
+        JournalDayMergeAction::Drop => {
+            db.call(move |conn| drop_owed(conn, &merge.foreign_id))
+                .await?;
             return Ok(true);
         }
         JournalDayMergeAction::Merge => {}
@@ -281,12 +283,8 @@ fn settle(
     Ok(true)
 }
 
-/// The foreign id's projection, local body, body debt and owed-merge row.
-fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageError> {
-    projectors::delete(tx, ITEM_TYPE, foreign, now_ms)?;
-    update_log::purge_in(tx, foreign).map_err(crdt_failed)?;
-    body_debt::settle(tx, foreign)?;
-    tx.execute(
+fn drop_owed(conn: &Connection, foreign: &str) -> Result<(), StorageError> {
+    conn.execute(
         "DELETE FROM meta WHERE key = ?1",
         params![format!("{OWED_PREFIX}{foreign}")],
     )
@@ -294,9 +292,19 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     Ok(())
 }
 
+/// The foreign id's projection, local body, body debt and owed-merge row.
+fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageError> {
+    projectors::delete(tx, ITEM_TYPE, foreign, now_ms)?;
+    update_log::purge_in(tx, foreign).map_err(crdt_failed)?;
+    body_debt::settle(tx, foreign)?;
+    drop_owed(tx, foreign)
+}
+
 /// The record text a live foreign id with no Yjs history is built from. A
 /// deleted one was merged by the device that deleted it, which built any body
-/// it lacked; building it here too would mint a second copy.
+/// it lacked; building it here too would mint a second copy. The core keeps
+/// no day file, so a holder's unpushed text is only ever its local Yjs
+/// state, which `settle` folds whether or not `F` is deleted.
 fn build_text(merge: &OwedMerge) -> Option<&str> {
     merge
         .record_markdown

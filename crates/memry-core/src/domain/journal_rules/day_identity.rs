@@ -1,4 +1,4 @@
-//! One journal item per day (protocol §1.9, #2939). Mirrors
+//! One journal item per day (protocol §1.9.1, #2939). Mirrors
 //! `planJournalDayApply` in `packages/domain-notes/src/journal/day-identity.ts`,
 //! pinned by the `dayIdentity` section of `journal.json`.
 
@@ -49,9 +49,11 @@ pub enum JournalDayMergeAction {
     /// Stays owed: `F`'s server body has not fully arrived.
     Wait,
     /// Settles without folding: `F` holds nothing here, neither Yjs state
-    /// nor text. A live, clocked `F` is still tombstoned.
+    /// nor text. `F` is not tombstoned: a device that holds its text may not
+    /// have pushed it.
     Forget,
-    /// `j<D>` is deleted here: it is not re-created, `F` is dropped.
+    /// `j<D>` is deleted here: it is not re-created. `F` settles untouched
+    /// and stays live, so no text it holds is deleted.
     Drop,
     /// Ensure `j<D>`, relink tasks, fold `F` into it.
     Merge,
@@ -79,19 +81,20 @@ pub struct JournalDayMergeState {
 }
 
 /// `planJournalDayMerge(state)`: the action, and whether `F`'s tombstone is
-/// owed at `increment(F.clock, self)`.
+/// owed at `increment(F.clock, self)`: only when a live, clocked `F` was
+/// merged, so its text is in `j<D>` and deleting `F` hides nothing.
 pub fn plan_journal_day_merge(state: JournalDayMergeState) -> (JournalDayMergeAction, bool) {
-    let tombstone = !state.deleted && state.clocked;
     if !state.deleted && !state.body_pulled {
         return (JournalDayMergeAction::Wait, false);
     }
     if !state.has_body {
-        return (JournalDayMergeAction::Forget, tombstone);
+        return (JournalDayMergeAction::Forget, false);
     }
-    let action = if state.day_deleted {
-        JournalDayMergeAction::Drop
-    } else {
-        JournalDayMergeAction::Merge
-    };
-    (action, tombstone)
+    if state.day_deleted {
+        return (JournalDayMergeAction::Drop, false);
+    }
+    (
+        JournalDayMergeAction::Merge,
+        !state.deleted && state.clocked,
+    )
 }

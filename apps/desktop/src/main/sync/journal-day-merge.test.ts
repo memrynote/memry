@@ -242,17 +242,17 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
-  it('tombstones a live foreign id with neither body nor text, creating no day', async () => {
-    journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: '' }, { b: 1 })
+  it('leaves a live foreign id with neither body nor text live, creating no day', async () => {
+    // An update record carries `content: null`: the text may live only in an
+    // old build's day file, which a tombstone would make it delete.
+    journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: null }, { b: 2 })
 
     await drain()
 
     expect(rows()).toEqual([])
     expect(fs.existsSync(path.join(vaultPath, DAY_PATH))).toBe(false)
-    expect(journalSync.enqueueRecoveredDelete).toHaveBeenCalledWith(
-      FOREIGN,
-      JSON.stringify({ clock: { b: 1, me: 1 } })
-    )
+    expect(listPendingDeletes(ctx.db)).toEqual([])
+    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
@@ -315,7 +315,7 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
-  it('does not re-create a day deleted here; the foreign id is dropped', async () => {
+  it('does not re-create a day deleted here; the foreign id stays live with its body', async () => {
     journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: 'canonical\n' }, { c: 1 })
     // What the applier does with the day's tombstone: the row goes, its clock stays.
     deleteNoteMetadata(ctx.db, DAY)
@@ -327,10 +327,37 @@ describe('runJournalDayMerges', () => {
 
     expect(rows()).toEqual([])
     expect(provider.absorbed).toEqual([])
-    expect(listPendingDeletes(ctx.db)).toEqual([
-      { type: 'journal', itemId: FOREIGN, payload: JSON.stringify({ clock: { b: 1, me: 1 } }) }
-    ])
+    expect(listPendingDeletes(ctx.db)).toEqual([])
+    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
+    expect(textOf(FOREIGN)).toBe('written elsewhere')
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('never builds a foreign id deleted elsewhere from its record text', async () => {
+    journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { b: 1 })
+    // The deleting device already merged this text into the day.
+    journalHandler.applyDelete(ctx, FOREIGN, { b: 1, other: 1 })
+
+    await drain()
+
+    expect(provider.absorbed).toEqual([])
+    expect(rows()).toEqual([])
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('still folds the day file text of a foreign holder deleted elsewhere', async () => {
+    foreignRow({ minter: 2 })
+    journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 2 })
+    journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(provider.absorbed).toEqual([
+      { targetId: DAY, foreignId: FOREIGN, fallback: 'minted here' }
+    ])
+    expect(textOf(DAY)).toBe('minted here')
+    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
   })
 
   it('drops the owed merge with the tombstone, so a crash before the purge leaves nothing owed', async () => {

@@ -1261,6 +1261,34 @@ describe('CrdtProvider', () => {
       expect(queue.enqueue).not.toHaveBeenCalledWith('wxudm2oo4rci', expect.anything())
     })
 
+    it('stores the built foreign doc before folding it, so a retry reuses it', async () => {
+      mocks.markdownToYFragment.mockImplementation(
+        async (markdown: string, fragment: Y.XmlFragment) => {
+          fragment.insert(0, [new Y.XmlText(markdown)])
+          return true
+        }
+      )
+      await provider.open('wxudm2oo4rci', undefined, { skipSeed: true })
+      const persistence = mocks.persistenceInstances[0]
+      let stored!: () => void
+      persistence.storeUpdate.mockImplementation(
+        (id: string) =>
+          new Promise<void>((resolve) => {
+            if (id === 'wxudm2oo4rci') stored = resolve
+            else resolve()
+          })
+      )
+
+      const absorbing = provider.absorbForeignDoc('j2026-06-09', 'wxudm2oo4rci', 'from text', 7)
+      await vi.waitFor(() => expect(stored).toBeTypeOf('function'))
+      // A crash here leaves nothing folded: the day is untouched until the store lands.
+      expect(queue.enqueue).not.toHaveBeenCalledWith('j2026-06-09', expect.anything())
+      stored()
+
+      expect(await absorbing).toBe(true)
+      expect(queue.enqueue).toHaveBeenCalledWith('j2026-06-09', expect.any(Uint8Array))
+    })
+
     it('rebuilds a lost local foreign doc under the same items, adding nothing twice', async () => {
       mocks.markdownToYFragment.mockImplementation(
         async (markdown: string, fragment: Y.XmlFragment) => {

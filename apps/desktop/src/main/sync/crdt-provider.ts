@@ -1578,8 +1578,12 @@ export class CrdtProvider {
         const { markdownToYFragment } = await loadBlockNoteConverter()
         const path = getNoteCacheById(getIndexDatabase(), targetId)?.path
         await markdownToYFragment(fallbackMarkdown, built.getXmlFragment(CRDT_FRAGMENT_NAME), path)
-        // Network origin: persisted, not queued for the server.
-        Y.applyUpdate(foreign, Y.encodeStateAsUpdate(built), ORIGIN_NETWORK)
+        // Network origin: persisted, not queued for the server. Stored before
+        // the fold, so a retry after a crash reuses these items instead of
+        // building again from text that may have changed since.
+        const builtState = Y.encodeStateAsUpdate(built)
+        Y.applyUpdate(foreign, builtState, ORIGIN_NETWORK)
+        await this.persistence?.storeUpdate(foreignId, builtState)
       }
       state = Y.encodeStateAsUpdate(foreign)
     } finally {

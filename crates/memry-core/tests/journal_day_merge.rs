@@ -603,7 +603,7 @@ async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_mer
 }
 
 #[tokio::test]
-async fn a_deleted_day_is_not_recreated_and_the_foreign_id_is_dropped() {
+async fn a_deleted_day_is_not_recreated_and_the_foreign_id_stays_live() {
     let db = scratch_db("day-deleted");
     db.call_blocking(|conn| {
         let day = record(CANONICAL, &journal_payload(json!({"device-c": 1})));
@@ -633,19 +633,11 @@ async fn a_deleted_day_is_not_recreated_and_the_foreign_id_is_dropped() {
     db.call_blocking(|conn| {
         assert_eq!(day_holder(conn), None, "the day stays deleted");
         assert_eq!(text_of(conn, CANONICAL), "");
-        let queued = outbox(conn);
-        assert_eq!(
-            queued
-                .iter()
-                .map(|row| (row.0.as_str(), row.1.as_str()))
-                .collect::<Vec<_>>(),
-            vec![(FOREIGN, "delete")]
-        );
-        let tombstone = sync_items::load(conn, "journal", FOREIGN)?.expect("the tombstone row");
-        assert_eq!(
-            tombstone.payload.as_deref(),
-            Some(r#"{"clock":{"device-a":1,"device-b":1}}"#)
-        );
+        // Not tombstoned: an old build may hold text of `F` it never pushed,
+        // and a tombstone would make it delete its day file.
+        assert!(outbox(conn).is_empty(), "no tombstone for a dropped id");
+        assert!(sync_items::load(conn, "journal", FOREIGN)?.is_none());
+        assert_eq!(text_of(conn, FOREIGN), "late", "its body stays");
         Ok(())
     })
     .unwrap();
@@ -677,10 +669,13 @@ async fn a_foreign_record_this_device_already_tombstoned_is_not_owed_again() {
 }
 
 #[tokio::test]
-async fn a_live_foreign_id_with_no_body_or_text_is_tombstoned_without_a_day() {
+async fn a_live_foreign_id_with_no_body_or_text_settles_without_a_day_or_tombstone() {
     let db = scratch_db("empty-live");
+    // An update record carries `content: null`: the text lives only in an
+    // old build's day file, which a tombstone would make it delete.
     db.call_blocking(|conn| {
-        let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
+        let payload = json!({"date": DATE, "content": null, "clock": {"device-b": 2}});
+        let foreign = record(FOREIGN, &payload.to_string());
         assert_eq!(
             apply_inbound_on(conn, &foreign, 1, Some("device-a"))?,
             ApplyOutcome::Skipped
@@ -696,11 +691,10 @@ async fn a_live_foreign_id_with_no_body_or_text_is_tombstoned_without_a_day() {
     db.call_blocking(|conn| {
         assert!(journal_day_merge::owed(conn)?.is_empty());
         assert_eq!(day_holder(conn), None, "no day for nothing");
-        let queued: Vec<(String, String)> = outbox(conn)
-            .into_iter()
-            .map(|(id, op, _)| (id, op))
-            .collect();
-        assert_eq!(queued, vec![(FOREIGN.to_owned(), "delete".to_owned())]);
+        assert!(
+            outbox(conn).is_empty(),
+            "a live id it did not merge is not tombstoned"
+        );
         Ok(())
     })
     .unwrap();

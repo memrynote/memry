@@ -53,8 +53,10 @@ fn strings(value: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// Every section of `journal.json`, computed: `{ section: [expected, ...] }`
-/// in case order, each `expected` in the file's own shape.
+/// The sections of `journal.json` the app calls, computed: `{ section:
+/// [expected, ...] }` in case order, each `expected` in the file's own shape.
+/// `dayIdentity` and `dayMerge` are left out: only the core's sync calls
+/// those rules, and `tests/journal_vectors.rs` checks them.
 #[uniffi::export]
 pub fn journal_conformance(file_json: String) -> String {
     let file: Value = serde_json::from_str(&file_json).unwrap_or(Value::Null);

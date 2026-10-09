@@ -47,17 +47,21 @@ export type JournalDayMergeAction =
   | 'wait'
   /**
    * Settles without folding: `F` holds nothing here, neither Yjs state nor
-   * text. A live, clocked `F` is still tombstoned.
+   * text. `F` is not tombstoned: a device that holds its text may not have
+   * pushed it.
    */
   | 'forget'
-  /** `j<D>` is deleted on this device: it is not re-created, `F` is dropped. */
+  /**
+   * `j<D>` is deleted on this device: it is not re-created. `F` settles
+   * untouched and stays live, so no text it holds is deleted.
+   */
   | 'drop'
   /** Ensure `j<D>`, relink tasks, fold `F` into it. */
   | 'merge'
 
 export interface JournalDayMergeStep {
   action: JournalDayMergeAction
-  /** Queue `F`'s tombstone at `increment(F.clock, self)`. */
+  /** Queue `F`'s tombstone at `increment(F.clock, self)`. Only after a merge. */
   tombstone: boolean
 }
 
@@ -67,8 +71,8 @@ export interface JournalDayMergeState {
   /** `F`'s server body is fully merged locally. Not pulled, and true, when `deleted`. */
   bodyPulled: boolean
   /**
-   * `F` has a body to fold: Yjs state, or text to build it from (its record's
-   * `content`, or a local holder's day file).
+   * `F` has a body to fold: Yjs state, or text to build it from (a local
+   * holder's day file, or, while `F` is live, its record's `content`).
    */
   hasBody: boolean
   /** `j<D>` has no live row and a recorded tombstone on this device. */
@@ -80,11 +84,12 @@ export interface JournalDayMergeState {
 /**
  * The drain's decision for one owed merge, shared by desktop and the core and
  * pinned by the `dayMerge` vectors. Order: body pulled, body present, day
- * deleted, then merge. A tombstone is owed only for a live, clocked `F`.
+ * deleted, then merge. A tombstone is owed only when a live, clocked `F` was
+ * merged: its text is then in `j<D>`, so deleting `F` hides nothing.
  */
 export function planJournalDayMerge(state: JournalDayMergeState): JournalDayMergeStep {
-  const tombstone = !state.deleted && state.clocked
   if (!state.deleted && !state.bodyPulled) return { action: 'wait', tombstone: false }
-  if (!state.hasBody) return { action: 'forget', tombstone }
-  return { action: state.dayDeleted ? 'drop' : 'merge', tombstone }
+  if (!state.hasBody) return { action: 'forget', tombstone: false }
+  if (state.dayDeleted) return { action: 'drop', tombstone: false }
+  return { action: 'merge', tombstone: !state.deleted && state.clocked }
 }
