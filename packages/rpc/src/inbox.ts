@@ -339,6 +339,7 @@ export interface BulkFileInput {
     noteId?: string
   }
   tags?: string[]
+  plainChecklists?: boolean
 }
 
 export interface BulkArchiveInput {
@@ -535,7 +536,7 @@ export const inboxRpc = defineDomain({
     convertToReminder: defineMethod<
       (
         itemId: string,
-        input: { remindAt: string }
+        input: { remindAt: string } & PlainChecklistsOption
       ) => Promise<{ success: boolean; noteId: string | null; error?: string }>
     >({
       channel: InboxChannels.invoke.CONVERT_TO_REMINDER,

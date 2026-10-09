@@ -112,6 +112,7 @@ const createMockApi = () => ({
     getDefaultParent: vi.fn().mockResolvedValue('/mock/Documents/Memry'),
     getAll: vi.fn().mockResolvedValue({ vaults: [] }),
     getStatus: vi.fn().mockResolvedValue({ isOpen: false }),
+    getStartupPath: vi.fn().mockReturnValue(null),
     getConfig: vi.fn().mockResolvedValue({}),
     updateConfig: vi.fn().mockResolvedValue({ success: true }),
     close: vi.fn().mockResolvedValue({ success: true }),

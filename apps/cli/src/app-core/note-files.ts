@@ -11,7 +11,7 @@ import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
-import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import { ATTACHMENTS_DIR, normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import type { NotesService } from './notes.ts'
 
 export interface AttachmentResult {
@@ -430,12 +430,10 @@ function indexImportedMarkdown(
 
 export function createAttachmentsService({
   vaultPath,
-  config,
   notes,
   dataDb
 }: {
   vaultPath: string
-  config: VaultConfig
   notes: NotesService
   dataDb: DataDb
 }): AttachmentsService {
@@ -455,7 +453,7 @@ export function createAttachmentsService({
       }
 
       const filename = uniqueAttachmentFilename(originalName)
-      const relativePath = normalizePath(path.join(config.attachmentsFolder, noteId, filename))
+      const relativePath = normalizePath(path.join(ATTACHMENTS_DIR, noteId, filename))
       const absolutePath = path.join(vaultPath, relativePath)
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
       await fs.copyFile(sourcePath, absolutePath)
@@ -503,7 +501,7 @@ export function createAttachmentsService({
     },
 
     async list(noteId) {
-      const dir = path.join(vaultPath, config.attachmentsFolder, noteId)
+      const dir = path.join(vaultPath, ATTACHMENTS_DIR, noteId)
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
         const attachments: AttachmentInfo[] = []
@@ -513,7 +511,7 @@ export function createAttachmentsService({
           const stats = await fs.stat(absolutePath)
           attachments.push({
             filename: entry.name,
-            path: normalizePath(path.join(config.attachmentsFolder, noteId, entry.name)),
+            path: normalizePath(path.join(ATTACHMENTS_DIR, noteId, entry.name)),
             absolutePath,
             size: stats.size,
             mimeType: mimeType(entry.name),
@@ -529,7 +527,7 @@ export function createAttachmentsService({
 
     async delete(noteId, filename) {
       const safeName = path.basename(filename)
-      const absolutePath = path.join(vaultPath, config.attachmentsFolder, noteId, safeName)
+      const absolutePath = path.join(vaultPath, ATTACHMENTS_DIR, noteId, safeName)
       await fs.rm(absolutePath, { force: true })
       return true
     }

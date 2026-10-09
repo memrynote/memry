@@ -58,7 +58,7 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
-import { resolveVaultFile } from '../lib/paths'
+import { refuseOutsideVault, resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -568,6 +568,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return getNoteById(cached.id)
   }
 
+  await refuseOutsideVault(getVaultRoot(), notePath)
   const absolutePath = toAbsolutePath(notePath)
   const fileContent = await safeRead(absolutePath)
 

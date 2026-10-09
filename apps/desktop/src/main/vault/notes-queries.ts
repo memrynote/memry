@@ -23,7 +23,9 @@ import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getCanvasEdgesForEntity } from '@main/database/queries/canvas-edges'
 import { getAllTagsWithCounts } from '@main/database/queries/tags'
 import { getDatabase, getIndexDatabase } from '../database'
-import { toAbsolutePath } from './notes-io'
+import { getVaultRoot, toAbsolutePath } from './notes-io'
+import { resolveVaultFile } from '../lib/paths'
+import { createLogger } from '../lib/logger'
 import type {
   Note,
   NoteListItem,
@@ -33,6 +35,8 @@ import type {
   Backlink,
   NoteLinksResponse
 } from './notes-crud'
+
+const logger = createLogger('VaultNotesQueries')
 
 // ============================================================================
 // List
@@ -214,10 +218,16 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
       // would show the same excerpts twice under two labels, and inflate the
       // property card's mention count with matches it did not produce.
       if (!ref.via && sourceCache?.path && targetTitle) {
-        const absolutePath = toAbsolutePath(sourceCache.path)
-        const content = await safeRead(absolutePath)
-        if (content) {
-          contexts = extractAllLinkContexts(stripMarkdownComments(content), targetTitle)
+        const resolved = await resolveVaultFile(getVaultRoot(), sourceCache.path)
+        if (resolved.kind === 'outside') {
+          logger.warn('Backlink source points outside the vault; its text is not read', {
+            sourceId: ref.sourceNoteId
+          })
+        } else {
+          const content = await safeRead(toAbsolutePath(sourceCache.path))
+          if (content) {
+            contexts = extractAllLinkContexts(stripMarkdownComments(content), targetTitle)
+          }
         }
       }
 
