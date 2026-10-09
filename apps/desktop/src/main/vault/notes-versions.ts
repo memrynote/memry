@@ -117,6 +117,7 @@ export function createSnapshot(
 export async function createCloseSnapshot(noteId: string): Promise<boolean> {
   const cached = getNoteCacheById(getIndexDatabase(), noteId)
   if (!cached) return false
+  await refuseOutsideVault(getVaultRoot(), cached.path)
   const fileContent = await safeRead(toAbsolutePath(cached.path))
   if (!fileContent) return false
   return createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE) !== null

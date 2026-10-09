@@ -18,6 +18,7 @@ import {
   MAX_EMBEDDING_INPUT_LENGTH
 } from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
+import { refuseOutsideVault } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
@@ -98,6 +99,7 @@ async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): P
   if (note.fileType && note.fileType !== 'markdown') {
     return readFileTextOpening(note.id)
   }
+  await refuseOutsideVault(vaultPath, note.path)
   const raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
