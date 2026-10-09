@@ -77,7 +77,13 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     for (const foreignId of plan.oweMerge) {
       if (foreignId === itemId) {
         if (journalTombstonedPast(ctx.db, itemId, remoteClock)) continue
-        oweJournalDayMerge(ctx.db, { foreignId, date, clock: remoteClock })
+        // Its text builds a body when it has no Yjs history (§1.9.1).
+        oweJournalDayMerge(ctx.db, {
+          foreignId,
+          date,
+          clock: remoteClock,
+          recordMarkdown: data.content || null
+        })
         continue
       }
       oweJournalDayMerge(ctx.db, {

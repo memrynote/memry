@@ -2819,7 +2819,7 @@
       }
     },
     {
-      "name": "live, no body",
+      "name": "live, no body and no text",
       "state": {
         "deleted": false,
         "bodyPulled": true,
@@ -2828,8 +2828,8 @@
         "clocked": true
       },
       "expected": {
-        "action": "wait",
-        "tombstone": false
+        "action": "forget",
+        "tombstone": true
       }
     },
     {
@@ -2861,7 +2861,7 @@
       }
     },
     {
-      "name": "live, no body, day deleted here",
+      "name": "live, no body and no text, day deleted here",
       "state": {
         "deleted": false,
         "bodyPulled": true,
@@ -2870,8 +2870,8 @@
         "clocked": true
       },
       "expected": {
-        "action": "wait",
-        "tombstone": false
+        "action": "forget",
+        "tombstone": true
       }
     },
     {

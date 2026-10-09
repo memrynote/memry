@@ -353,33 +353,34 @@ the id of the local row holding that day, if any
 A foreign holder leaves its row only when `j<D>` takes the path in the same
 step, so a restart never finds a day file without a row (#2985). An owed merge
 records the foreign id, `D`, and the foreign item's clock, widened by every
-later sighting, which the tombstone must exceed. Desktop also keeps the day
-file's text when `j<D>` writes over a foreign holder's file. A foreign record
+later sighting, which the tombstone must exceed, and the foreign record's
+`content` (desktop: `recordMarkdown`; core: `record_markdown`). Desktop also
+keeps the day file's text when `j<D>` writes over a foreign holder's file. A foreign record
 whose id this device already tombstoned at or after the incoming clock owes
 nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:79`,
-`apps/desktop/src/main/sync/journal-day-merge.ts:118`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:87`). Desktop keeps
+`apps/desktop/src/main/sync/journal-day-merge.ts:125`; core:
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:84`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
 count the unprojected id as server-only
-(`apps/desktop/src/main/sync/journal-day-merge.ts:63`). The core keeps them in
+(`apps/desktop/src/main/sync/journal-day-merge.ts:68`). The core keeps them in
 `meta` under `journal.day_merge:<id>`
 (`crates/memry-core/src/sync/journal_day_merge/owed.rs:22`).
 
 **Tombstones.** A tombstone for an owed `F` means another device merged it: the
-merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:172`;
-core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:152`). A tombstone
+merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:178`;
+core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:181`). A tombstone
 for a foreign id that is a live local row keeps that row, its body and its file
 for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
-`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:184`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:128`, called from
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:190`; core:
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:157`, called from
 `crates/memry-core/src/sync/apply.rs:255`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:455`,
-`apps/desktop/src/main/sync/journal-day-merge.ts:182`; core:
+`apps/desktop/src/main/sync/journal-day-merge.ts:189`; core:
 `crates/memry-core/src/api/sync/pass.rs:135`,
-`crates/memry-core/src/sync/journal_day_merge/mod.rs:112`). The core drains
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:114`). The core drains
 only in its steady-state pass; a first sync records owed merges and the next
 pass settles them. The decision is a pure function of five facts
 (`packages/domain-notes/src/journal/day-identity.ts:79`,
@@ -389,48 +390,58 @@ pass settles them. The decision is a pure function of five facts
 1. If `F` is not deleted, pull its server body. Not fully merged: `F` stays
    owed. A deleted `F` is not pulled; the device that deleted it merged the
    server body.
-2. If `F` has no body here (no Yjs state; on desktop, no text of a local
-   holder's day file either), a live `F` stays owed and `j<D>` is not created
-   for it; a deleted `F` is forgotten.
+2. If `F` has no body here (no Yjs state, and for a live `F` no non-blank
+   text to build one from), `F` is forgotten without creating `j<D>`:
+   tombstoned when live and clocked, as in step 7.
 3. If `j<D>` has no live row and a recorded tombstone here, the day is not
    re-created (#2986). `F` is dropped: tombstoned when live, then forgotten.
 4. Otherwise make `j<D>` hold the day. A foreign local row gives the day up
    (desktop keeps its file text first), and `j<D>` is created empty through
    the normal create path. Desktop never writes over a day file no row holds
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:261`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:195`).
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:266`; core:
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:199`).
 5. Point task links at `F` to `j<D>`
    (`apps/desktop/src/main/notes/runtime-effects.ts:125`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:241`).
-6. Apply `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:242`).
+6. If `F`'s doc holds no Yjs state, build it from text first (below). Apply
+   `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
    stored, written back and pushed as a CRDT update for `j<D>`. `j<D>` is
    opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:1565`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:260`).
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:261`).
 7. When `F` is live and its clock is non-empty, queue its tombstone with clock
    `increment(F.clock, self)` and payload `{"clock": ...}`, and record that
    clock. An empty clock means the server never saw `F`, so no tombstone is
    owed. The tombstone and dropping the owed merge commit together, then
-   `F`'s local doc is purged (`apps/desktop/src/main/sync/journal-day-merge.ts:219`;
-   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:339`, `:284`).
+   `F`'s local doc is purged (`apps/desktop/src/main/sync/journal-day-merge.ts:224`;
+   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:362`, `:285`).
 
 Every step converges when repeated after a crash. Two devices merging the same
 `F` at once integrate the same Yjs items, identified by `(clientID, clock)`, so
-`j<D>` holds `F`'s text once after they exchange updates. `j<D>` is never
-seeded from `F`'s markdown, which would mint new items on each device. Both
+`j<D>` holds `F`'s text once after they exchange updates. Both
 tombstones are deletes, and §5.7 either accepts or refuses the second; `F`
 stays deleted either way. Both devices relink a task to the same list, so the
 field merge converges.
 
-A live `F` with no Yjs body stays owed and hidden. Its record's `content` is
-not merged, because every device holds it and each would mint its own items.
-The one exception is desktop's local holder: the day file's text lives on that
-device alone, and if `F`'s doc is empty desktop builds it from that text under
-a client id fixed per foreign id and device
-(`apps/desktop/src/main/sync/journal-day-merge.ts:247`), so a rebuild after a
-crash mints the same items and folds nothing twice. The core cannot parse
-markdown (chapter 12), so its foreign rows merge only through their Yjs state.
+**History from text.** A live `F` with no Yjs state has its body built from
+text: on desktop the day file's body when `F` was the local holder, else the
+record's `content`
+(`apps/desktop/src/main/sync/journal-day-merge.ts:200`; core:
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:233`). The text is
+parsed into a fresh doc under a client id fixed per foreign id and device
+(`apps/desktop/src/main/sync/journal-day-merge.ts:252`; core:
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:311`), so a rebuild after
+a crash on the same device mints the same Yjs items and folds nothing twice.
+A deleted `F` is never built from text: the device that deleted it already
+built and merged it.
 
 **Known limits.**
+
+- Two devices that build the same text-only `F` before either sees the
+  other's merge mint different Yjs items, so `j<D>` shows the text twice. The
+  copy is visible and the user can delete it. Ids are per device on purpose: a
+  client id shared across devices would let two builds that differ (another
+  converter version, other block ids) claim the same item ids for different
+  content.
 
 - A build without this rule that still holds `F` keeps editing it until it
   pulls `F`'s tombstone, or indefinitely when its record clock is ahead of the

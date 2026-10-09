@@ -19,7 +19,7 @@
 
 mod owed;
 
-use owed::owe;
+use owed::owe_holder;
 pub use owed::owed;
 pub(crate) use owed::{hold_for_merge, mark_deleted, plan_inbound};
 
@@ -29,7 +29,7 @@ use serde_json::json;
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{DocumentRegistry, update_log};
+use crate::crdt::{DocumentRegistry, markdown_seed, update_log};
 use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     JournalDayMergeAction, JournalDayMergeState, canonical_journal_id, plan_journal_day_apply,
@@ -57,6 +57,9 @@ pub struct OwedMerge {
     /// A tombstone for the foreign id already arrived: another device merged
     /// it. The body is still merged when there is one; no tombstone is queued.
     pub deleted: bool,
+    /// The foreign record's `content`. A live foreign id whose doc holds no
+    /// Yjs state gets its body built from it (§1.9.1).
+    pub record_markdown: Option<String>,
 }
 
 /// What one [`drain`] did.
@@ -64,15 +67,14 @@ pub struct OwedMerge {
 pub struct DrainReport {
     /// Foreign ids merged and tombstoned (or settled with no clock to tombstone).
     pub settled: Vec<String>,
-    /// Foreign ids still owed: body not fully fetched, no Yjs state, or a failure.
+    /// Foreign ids still owed: body not fully fetched, or a failure.
     pub owed: Vec<String>,
 }
 
 /// Settles every owed merge it can. Runs after the pass's body step.
 ///
-/// A merge stays owed when the foreign body did not fully arrive, when it has
-/// no Yjs state (the core cannot parse markdown, §12.1.2; desktop resolves
-/// it), or when a step failed. Only a local storage failure propagates.
+/// A merge stays owed when the foreign body did not fully arrive or a step
+/// failed. Only a local storage failure propagates.
 pub async fn drain(
     db: &Db,
     bodies: &BodyPull,
@@ -129,11 +131,13 @@ async fn drain_one(
         canonical.clone(),
         merge.date.clone(),
     );
+    let has_text = build_text(&merge).is_some();
     let (has_body, day_deleted) = db
         .call(move |conn| {
-            let has_body = !update_log::load_plan(conn, &foreign)
-                .map_err(crdt_failed)?
-                .is_empty();
+            let has_body = has_text
+                || !update_log::load_plan(conn, &foreign)
+                    .map_err(crdt_failed)?
+                    .is_empty();
             let day_deleted = journal::live_entry(conn, &date)?.as_deref() != Some(day.as_str())
                 && sync_items::load(conn, ITEM_TYPE, &day)?
                     .is_some_and(|row| row.deleted_at.is_some());
@@ -203,11 +207,7 @@ fn ensure_canonical(
     let plan = plan_journal_day_apply(&canonical, date, holder.as_deref());
     let tx = conn.unchecked_transaction().map_err(failed)?;
     if let (true, Some(holder)) = (plan.remove_holder, holder.as_deref()) {
-        let clock = sync_items::load(&tx, ITEM_TYPE, holder)?
-            .and_then(|row| row.clock)
-            .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok())
-            .unwrap_or_default();
-        owe(&tx, holder, date, &clock)?;
+        owe_holder(&tx, holder, date)?;
         tx.execute("DELETE FROM journal_entries WHERE id = ?1", params![holder])
             .map_err(failed)?;
         tx.execute("DELETE FROM note_tags WHERE note_id = ?1", params![holder])
@@ -230,10 +230,11 @@ fn settle(
 ) -> Result<bool, StorageError> {
     let foreign = &merge.foreign_id;
     let plan = update_log::load_plan(conn, foreign).map_err(crdt_failed)?;
-    if plan.is_empty() {
-        return Ok(false);
-    }
-    let state = folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?;
+    let state = match (plan.is_empty(), build_text(merge)) {
+        (false, _) => folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?,
+        (true, Some(markdown)) => built_state(foreign, device_id, markdown).map_err(crdt_failed)?,
+        (true, None) => return Ok(false),
+    };
 
     // Tasks linked to the foreign day follow it, each through the task
     // edit path so the change syncs. Each edit commits on its own; a re-run
@@ -291,6 +292,28 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     )
     .map_err(failed)?;
     Ok(())
+}
+
+/// The record text a live foreign id with no Yjs history is built from. A
+/// deleted one was merged by the device that deleted it, which built any body
+/// it lacked; building it here too would mint a second copy.
+fn build_text(merge: &OwedMerge) -> Option<&str> {
+    merge
+        .record_markdown
+        .as_deref()
+        .filter(|markdown| !merge.deleted && !markdown.trim().is_empty())
+}
+
+/// The foreign doc built from its record text, as one v1 update. Its client
+/// id is fixed per (foreign id, device): a retry mints the same Yjs items,
+/// which the day already holds, so nothing folds twice. Two devices build
+/// different items, so a concurrent build shows the text twice (§1.9.1).
+fn built_state(foreign_id: &str, device_id: &str, markdown: &str) -> Result<Vec<u8>, CrdtError> {
+    let sink: UpdateSink = std::sync::Arc::new(|_, _| {});
+    let author = format!("{foreign_id}\0{device_id}");
+    let document = DocumentRegistry::new(&author, sink).get_or_open(foreign_id)?;
+    markdown_seed::seed_document(&document, markdown)?;
+    document.encode_state()
 }
 
 /// Every update of the foreign doc, server then local, as one v1 update.

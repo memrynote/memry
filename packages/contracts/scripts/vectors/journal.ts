@@ -53,10 +53,13 @@ const DAY_MERGE_CASES: ReadonlyArray<{
 }> = [
   { name: 'live, body merged', state: LIVE },
   { name: 'live, body not fully pulled', state: { ...LIVE, bodyPulled: false } },
-  { name: 'live, no body', state: { ...LIVE, hasBody: false } },
+  { name: 'live, no body and no text', state: { ...LIVE, hasBody: false } },
   { name: 'live, never synced (empty clock)', state: { ...LIVE, clocked: false } },
   { name: 'live, day deleted here', state: { ...LIVE, dayDeleted: true } },
-  { name: 'live, no body, day deleted here', state: { ...LIVE, hasBody: false, dayDeleted: true } },
+  {
+    name: 'live, no body and no text, day deleted here',
+    state: { ...LIVE, hasBody: false, dayDeleted: true }
+  },
   { name: 'deleted, body held here', state: { ...LIVE, deleted: true, bodyPulled: false } },
   {
     name: 'deleted, nothing held here',

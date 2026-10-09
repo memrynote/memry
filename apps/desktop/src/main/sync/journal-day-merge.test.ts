@@ -227,15 +227,33 @@ describe('runJournalDayMerges', () => {
     expect(provider.docs.has(FOREIGN)).toBe(false)
   })
 
-  it('creates no day for a live foreign id with no body, and keeps it owed', async () => {
+  it('builds the body of a live foreign id with no Yjs history from its record text', async () => {
     journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { b: 1 })
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(provider.absorbed).toEqual([{ targetId: DAY, foreignId: FOREIGN, fallback: 'theirs\n' }])
+    expect(textOf(DAY)).toBe('theirs\n')
+    expect(journalSync.enqueueRecoveredDelete).toHaveBeenCalledWith(
+      FOREIGN,
+      JSON.stringify({ clock: { b: 1, me: 1 } })
+    )
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('tombstones a live foreign id with neither body nor text, creating no day', async () => {
+    journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: '' }, { b: 1 })
 
     await drain()
 
     expect(rows()).toEqual([])
     expect(fs.existsSync(path.join(vaultPath, DAY_PATH))).toBe(false)
-    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
-    expect(listOwedJournalDayMerges(ctx.db)).toHaveLength(1)
+    expect(journalSync.enqueueRecoveredDelete).toHaveBeenCalledWith(
+      FOREIGN,
+      JSON.stringify({ clock: { b: 1, me: 1 } })
+    )
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
   it('never writes over a day file no row holds', async () => {

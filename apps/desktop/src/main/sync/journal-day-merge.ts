@@ -44,11 +44,16 @@ export interface OwedJournalDayMerge {
   /** The foreign item's clock; its tombstone happens strictly after it. Null when it never synced. */
   clock: VectorClock | null
   /**
-   * The day file's body when a local foreign row gave the day up. Used only
-   * when that row's doc holds nothing: the text lives on this device alone, so
-   * minting items for it cannot duplicate on another device.
+   * The day file's body when a local foreign row gave the day up: this
+   * device's text, preferred over `recordMarkdown`.
    */
   fallbackMarkdown?: string | null
+  /**
+   * The foreign record's `content`. Both build the foreign doc when it holds
+   * no Yjs state. Two devices that build at once each mint their own items,
+   * so the text can show twice in the day (§1.9.1, known limits).
+   */
+  recordMarkdown?: string | null
   /** The foreign id's tombstone arrived: another device merged it already. */
   deleted?: boolean
 }
@@ -67,11 +72,13 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
       ? mergeClocks(kept.clock, merge.clock)
       : (merge.clock ?? kept?.clock ?? null)
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
+  const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
   const value = JSON.stringify({
     ...merge,
     clock,
     ...(fallbackMarkdown ? { fallbackMarkdown } : {}),
+    ...(recordMarkdown ? { recordMarkdown } : {}),
     ...(deleted ? { deleted: true } : {})
   })
   db.insert(syncState)
@@ -190,6 +197,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     // Kept before `ensureDay` writes the day file over.
     if (fallback !== null) oweJournalDayMerge(deps.db, { ...merge, fallbackMarkdown: fallback })
   }
+  fallback ??= merge.recordMarkdown ?? null
   const hasBody = bodyPulled && (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)))
   const step = planJournalDayMerge({
     deleted: merge.deleted === true,
@@ -199,9 +207,6 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     clocked: Object.keys(merge.clock ?? {}).length > 0
   })
   if (step.action === 'wait') {
-    // No body yet, or none to merge. Its text cannot be carried without
-    // minting new items, which two devices would each do, so a live id stays
-    // owed and `j<date>` is not created for it.
     log.info('Foreign journal merge waits for its body', describe(merge))
     return false
   }

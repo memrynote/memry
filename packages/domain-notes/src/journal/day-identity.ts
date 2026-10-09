@@ -43,9 +43,12 @@ export function planJournalDayApply(
 
 /** What the drain does next with one owed merge `F -> D` (§1.9.1). */
 export type JournalDayMergeAction =
-  /** Stays owed: the body has not fully arrived, or a live `F` has none. */
+  /** Stays owed: `F`'s server body has not fully arrived. */
   | 'wait'
-  /** Settles without folding or tombstoning: `F` is deleted and holds nothing here. */
+  /**
+   * Settles without folding: `F` holds nothing here, neither Yjs state nor
+   * text. A live, clocked `F` is still tombstoned.
+   */
   | 'forget'
   /** `j<D>` is deleted on this device: it is not re-created, `F` is dropped. */
   | 'drop'
@@ -63,7 +66,10 @@ export interface JournalDayMergeState {
   deleted: boolean
   /** `F`'s server body is fully merged locally. Not pulled, and true, when `deleted`. */
   bodyPulled: boolean
-  /** `F` has a body to fold: Yjs state, or desktop's local-holder file text. */
+  /**
+   * `F` has a body to fold: Yjs state, or text to build it from (its record's
+   * `content`, or a local holder's day file).
+   */
   hasBody: boolean
   /** `j<D>` has no live row and a recorded tombstone on this device. */
   dayDeleted: boolean
@@ -79,6 +85,6 @@ export interface JournalDayMergeState {
 export function planJournalDayMerge(state: JournalDayMergeState): JournalDayMergeStep {
   const tombstone = !state.deleted && state.clocked
   if (!state.deleted && !state.bodyPulled) return { action: 'wait', tombstone: false }
-  if (!state.hasBody) return { action: state.deleted ? 'forget' : 'wait', tombstone: false }
+  if (!state.hasBody) return { action: 'forget', tombstone }
   return { action: state.dayDeleted ? 'drop' : 'merge', tombstone }
 }

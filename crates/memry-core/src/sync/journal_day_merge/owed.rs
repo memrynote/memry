@@ -1,6 +1,6 @@
 //! The apply-time half of §1.9.1: which foreign ids are owed a merge, kept as
 //! one `meta` row per foreign id, `journal.day_merge:<foreignId>` =
-//! `{foreignId, date, clock, deleted}`.
+//! `{foreignId, date, clock, deleted, recordMarkdown?}`.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Value, json};
@@ -32,6 +32,7 @@ pub(crate) fn plan_inbound(
     if journal::valid_date(date).is_err() {
         return Ok(None);
     }
+    let content = payload.get("content").and_then(Value::as_str);
     let incoming_clock = payload
         .get("clock")
         .and_then(|value| serde_json::from_value::<VectorClock>(value.clone()).ok())
@@ -56,14 +57,10 @@ pub(crate) fn plan_inbound(
     for foreign_id in &plan.owe_merge {
         if *foreign_id == record.item_id {
             if !tombstoned_past(&tx, foreign_id, &incoming_clock)? {
-                owe(&tx, foreign_id, date, &incoming_clock)?;
+                owe(&tx, foreign_id, date, &incoming_clock, content)?;
             }
         } else {
-            let holder_clock = sync_items::load(&tx, ITEM_TYPE, foreign_id)?
-                .and_then(|row| row.clock)
-                .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok())
-                .unwrap_or_default();
-            owe(&tx, foreign_id, date, &holder_clock)?;
+            owe_holder(&tx, foreign_id, date)?;
         }
     }
     let removed = if plan.remove_holder {
@@ -105,20 +102,52 @@ fn tombstoned_past(
 }
 
 /// Records an owed merge. Idempotent; a second sighting widens the clock so
-/// the tombstone dominates every version seen.
+/// the tombstone dominates every version seen, and keeps the record text
+/// (`content`) the drain builds a body from when the foreign doc has none.
 pub(super) fn owe(
     conn: &Connection,
     foreign_id: &str,
     date: &str,
     seen: &VectorClock,
+    content: Option<&str>,
 ) -> Result<(), StorageError> {
     let existing = read_owed(conn, foreign_id)?;
     let clock = match &existing {
         Some(existing) => clock::merge(&existing.clock, seen),
         None => seen.clone(),
     };
-    let deleted = existing.is_some_and(|existing| existing.deleted);
-    write_owed(conn, foreign_id, date, &clock, deleted)
+    let markdown = content
+        .filter(|content| !content.trim().is_empty())
+        .map(str::to_owned)
+        .or_else(|| existing.as_ref().and_then(|e| e.record_markdown.clone()));
+    let owed = OwedMerge {
+        foreign_id: foreign_id.to_owned(),
+        date: date.to_owned(),
+        clock,
+        deleted: existing.is_some_and(|existing| existing.deleted),
+        record_markdown: markdown,
+    };
+    write_owed(conn, &owed)
+}
+
+/// Owes the merge of a foreign local holder, with the clock and `content`
+/// of its stored record.
+pub(super) fn owe_holder(
+    conn: &Connection,
+    foreign_id: &str,
+    date: &str,
+) -> Result<(), StorageError> {
+    let row = sync_items::load(conn, ITEM_TYPE, foreign_id)?;
+    let clock = row
+        .as_ref()
+        .and_then(|row| row.clock.as_deref())
+        .and_then(|text| serde_json::from_str::<VectorClock>(text).ok())
+        .unwrap_or_default();
+    let content = row
+        .and_then(|row| row.payload)
+        .and_then(|payload| serde_json::from_str::<Value>(&payload).ok())
+        .and_then(|payload| payload.get("content")?.as_str().map(str::to_owned));
+    owe(conn, foreign_id, date, &clock, content.as_deref())
 }
 
 /// A tombstone arrived for a foreign id that is a live row here (a pre-fix
@@ -142,7 +171,7 @@ pub(crate) fn hold_for_merge(
         return Ok(false);
     };
     let clock = tombstone.cloned().unwrap_or_default();
-    owe(conn, item_id, &date, &clock)?;
+    owe(conn, item_id, &date, &clock, None)?;
     mark_deleted(conn, item_id)?;
     Ok(true)
 }
@@ -151,20 +180,28 @@ pub(crate) fn hold_for_merge(
 /// the server. No-op for an id with no owed merge.
 pub(crate) fn mark_deleted(conn: &Connection, foreign_id: &str) -> Result<(), StorageError> {
     match read_owed(conn, foreign_id)? {
-        Some(owed) => write_owed(conn, foreign_id, &owed.date, &owed.clock, true),
+        Some(owed) => write_owed(
+            conn,
+            &OwedMerge {
+                deleted: true,
+                ..owed
+            },
+        ),
         None => Ok(()),
     }
 }
 
-fn write_owed(
-    conn: &Connection,
-    foreign_id: &str,
-    date: &str,
-    clock: &VectorClock,
-    deleted: bool,
-) -> Result<(), StorageError> {
-    let value =
-        json!({ "foreignId": foreign_id, "date": date, "clock": clock, "deleted": deleted });
+fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
+    let mut value = json!({
+        "foreignId": owed.foreign_id,
+        "date": owed.date,
+        "clock": owed.clock,
+        "deleted": owed.deleted,
+    });
+    if let Some(markdown) = &owed.record_markdown {
+        value["recordMarkdown"] = json!(markdown);
+    }
+    let foreign_id = &owed.foreign_id;
     conn.execute(
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -196,6 +233,10 @@ fn parse_owed(value: &str) -> Option<OwedMerge> {
             .and_then(|clock| serde_json::from_value(clock.clone()).ok())
             .unwrap_or_default(),
         deleted: value.get("deleted").and_then(Value::as_bool) == Some(true),
+        record_markdown: value
+            .get("recordMarkdown")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
     })
 }
 

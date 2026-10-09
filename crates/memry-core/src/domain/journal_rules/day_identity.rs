@@ -46,9 +46,10 @@ pub fn plan_journal_day_apply(
 /// What the drain does next with one owed merge `F -> D` (§1.9.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JournalDayMergeAction {
-    /// Stays owed: the body has not fully arrived, or a live `F` has none.
+    /// Stays owed: `F`'s server body has not fully arrived.
     Wait,
-    /// Settles without folding or tombstoning.
+    /// Settles without folding: `F` holds nothing here, neither Yjs state
+    /// nor text. A live, clocked `F` is still tombstoned.
     Forget,
     /// `j<D>` is deleted here: it is not re-created, `F` is dropped.
     Drop,
@@ -85,12 +86,7 @@ pub fn plan_journal_day_merge(state: JournalDayMergeState) -> (JournalDayMergeAc
         return (JournalDayMergeAction::Wait, false);
     }
     if !state.has_body {
-        let action = if state.deleted {
-            JournalDayMergeAction::Forget
-        } else {
-            JournalDayMergeAction::Wait
-        };
-        return (action, false);
+        return (JournalDayMergeAction::Forget, tombstone);
     }
     let action = if state.day_deleted {
         JournalDayMergeAction::Drop

@@ -230,6 +230,7 @@ async fn a_foreign_journal_for_a_held_day_is_skipped_and_owed_not_corrupt() {
                 date: DATE.to_owned(),
                 clock: clock_of([("device-b", 1)]),
                 deleted: false,
+                record_markdown: None,
             }]
         );
         Ok(())
@@ -281,6 +282,7 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
                 date: DATE.to_owned(),
                 clock: clock_of([("device-b", 2)]),
                 deleted: false,
+                record_markdown: None,
             }]
         );
         Ok(())
@@ -675,8 +677,8 @@ async fn a_foreign_record_this_device_already_tombstoned_is_not_owed_again() {
 }
 
 #[tokio::test]
-async fn an_empty_foreign_body_settles_only_once_it_is_deleted() {
-    let db = scratch_db("empty-deleted");
+async fn a_live_foreign_id_with_no_body_or_text_is_tombstoned_without_a_day() {
+    let db = scratch_db("empty-live");
     db.call_blocking(|conn| {
         let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
         assert_eq!(
@@ -687,27 +689,90 @@ async fn an_empty_foreign_body_settles_only_once_it_is_deleted() {
     })
     .unwrap();
 
-    let waiting = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
         .await
         .unwrap();
-    assert_eq!(
-        waiting.owed,
-        vec![FOREIGN.to_owned()],
-        "empty and live: left for desktop"
-    );
-
-    pull_tombstones(&db, &[FOREIGN]).await;
-    let settled = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
-        .await
-        .unwrap();
-    assert_eq!(settled.settled, vec![FOREIGN.to_owned()]);
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
     db.call_blocking(|conn| {
         assert!(journal_day_merge::owed(conn)?.is_empty());
-        assert!(
-            outbox(conn).is_empty(),
-            "no day created, no tombstone queued"
+        assert_eq!(day_holder(conn), None, "no day for nothing");
+        let queued: Vec<(String, String)> = outbox(conn)
+            .into_iter()
+            .map(|(id, op, _)| (id, op))
+            .collect();
+        assert_eq!(queued, vec![(FOREIGN.to_owned(), "delete".to_owned())]);
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// The day's body as one string: every update of `doc_id`, `prosemirror` root.
+fn body_of(conn: &Connection, doc_id: &str) -> String {
+    let doc = yrs::Doc::new();
+    let body = doc.get_or_insert_xml_fragment("prosemirror");
+    for blob in update_log::load_plan(conn, doc_id)
+        .expect("the plan")
+        .blobs()
+    {
+        doc.transact_mut()
+            .apply_update(Update::decode_v1(blob).expect("decodes"))
+            .expect("applies");
+    }
+    body.get_string(&doc.transact())
+}
+
+#[tokio::test]
+async fn a_live_foreign_id_with_text_but_no_yjs_body_is_built_into_the_day() {
+    let db = scratch_db("text-only");
+    db.call_blocking(|conn| {
+        let payload =
+            json!({"date": DATE, "content": "theirs, never opened\n", "clock": {"device-b": 1}});
+        let foreign = record(FOREIGN, &payload.to_string());
+        assert_eq!(
+            apply_inbound_on(conn, &foreign, 1, Some("device-a"))?,
+            ApplyOutcome::Skipped
         );
-        assert_eq!(day_holder(conn), None);
+        Ok(())
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn).as_deref(), Some(CANONICAL));
+        assert!(body_of(conn, CANONICAL).contains("theirs, never opened"));
+        assert!(journal_day_merge::owed(conn)?.is_empty());
+        let ops: Vec<(String, String)> = outbox(conn)
+            .into_iter()
+            .map(|(id, op, _)| (id, op))
+            .collect();
+        assert!(ops.contains(&(FOREIGN.to_owned(), "delete".to_owned())));
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_foreign_id_deleted_elsewhere_is_not_built_from_its_text_again() {
+    let db = scratch_db("text-deleted");
+    db.call_blocking(|conn| {
+        let payload = json!({"date": DATE, "content": "built there", "clock": {"device-b": 1}});
+        let foreign = record(FOREIGN, &payload.to_string());
+        apply_inbound_on(conn, &foreign, 1, Some("device-a"))?;
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones(&db, &[FOREIGN]).await;
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn), None, "the deleting device built it");
+        assert!(outbox(conn).is_empty());
         Ok(())
     })
     .unwrap();
