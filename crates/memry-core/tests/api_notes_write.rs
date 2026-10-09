@@ -476,7 +476,7 @@ fn a_note_made_from_a_template_carries_its_seed() {
 /// own, and a built-in makes a note even though it never lives in the vault.
 #[test]
 fn the_built_in_templates_are_listed_and_make_notes() {
-    let (_dir, vault) = vault("template-builtin");
+    let (dir, vault) = vault("template-builtin");
     let writer = vault
         .notes_writer(MemoryStore::registered())
         .expect("writer");
@@ -506,7 +506,7 @@ fn the_built_in_templates_are_listed_and_make_notes() {
         .create_from_template("meeting-notes".to_string(), "Sync".to_string(), None)
         .expect("create from a built-in");
     let raw = scalar(
-        &behind(&_dir),
+        &behind(&dir),
         &format!("SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = '{id}'"),
     )
     .expect("the note payload");
@@ -520,6 +520,92 @@ fn the_built_in_templates_are_listed_and_make_notes() {
             .as_str()
             .unwrap()
             .starts_with("## Attendees")
+    );
+}
+
+/// A vault template seeds like desktop's `applyTemplate`: `{{title}}` becomes
+/// the title and its icon the note's emoji. The vault's own templates follow
+/// the built-ins by name, and one carrying a built-in id is not listed.
+#[test]
+fn vault_templates_apply_and_list_like_desktop() {
+    use memry_core::domain::templates::{self, NewTemplate};
+
+    let (dir, vault) = vault("template-vault");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let device = writer.device_id();
+    behind(&dir)
+        .call_blocking(move |conn: &mut rusqlite::Connection| {
+            for (id, name, icon, content) in [
+                (
+                    "tpl-b",
+                    "beta",
+                    Some("🅱️"),
+                    "# {{title}}\n\nAbout {{title}}.",
+                ),
+                ("tpl-a", "Alpha", None, ""),
+                ("blank", "Zzz impostor", None, "not the built-in"),
+            ] {
+                templates::create(
+                    conn,
+                    &NewTemplate {
+                        id,
+                        name,
+                        description: None,
+                        icon,
+                        content,
+                    },
+                    &device,
+                    1_760_000_000_000,
+                )?
+                .acknowledge();
+            }
+            Ok(())
+        })
+        .expect("the templates");
+
+    let listed: Vec<(String, String)> = vault
+        .notes()
+        .templates()
+        .expect("templates")
+        .into_iter()
+        .map(|t| (t.id, t.name))
+        .collect();
+    assert_eq!(listed.len(), 10, "8 built-ins and 2 of the vault's own");
+    assert_eq!(listed[0], ("blank".to_string(), "Blank Note".to_string()));
+    assert_eq!(
+        listed[8..],
+        [
+            ("tpl-a".to_string(), "Alpha".to_string()),
+            ("tpl-b".to_string(), "beta".to_string()),
+        ]
+    );
+
+    let id = writer
+        .create_from_template("tpl-b".to_string(), "Plans".to_string(), None)
+        .expect("create from a vault template");
+    let raw = scalar(
+        &behind(&dir),
+        &format!("SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = '{id}'"),
+    )
+    .expect("the note payload");
+    let payload: serde_json::Value = serde_json::from_str(&raw).expect("json");
+    assert_eq!(payload["content"], "# Plans\n\nAbout Plans.");
+    assert_eq!(payload["emoji"], "🅱️");
+
+    let blank = writer
+        .create_from_template("blank".to_string(), "Empty".to_string(), None)
+        .expect("create from the built-in blank");
+    let raw = scalar(
+        &behind(&dir),
+        &format!("SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = '{blank}'"),
+    )
+    .expect("the note payload");
+    let payload: serde_json::Value = serde_json::from_str(&raw).expect("json");
+    assert_eq!(
+        payload["content"], "",
+        "the built-in wins over the colliding vault template"
     );
 }
 

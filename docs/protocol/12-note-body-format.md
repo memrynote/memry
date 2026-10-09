@@ -57,10 +57,12 @@ would write blocks into an empty body that desktop's next write-back puts over t
 (`crates/memry-core/src/crdt/markdown_seed/mod.rs:3-9`; JP022a in
 `specs/005-ios-journal-parity/tasks.md:390-396`).
 
-A note created from a template takes the verbatim path instead. The core copies the template's
-`content` into the payload and into `note_bodies.seed_markdown` and parses none of it
-(`crates/memry-core/src/domain/templates.rs:4-15`). Desktop writes that `content` as the new
-note's file (§12.2 carve-out A).
+A note created from a template takes the unparsed path instead. The core replaces every
+`{{title}}` in the template's `content` with the note's title, as desktop's `applyTemplate` does
+(`apps/desktop/src/main/vault/templates.ts:352`, `packages/shared/src/template-placeholders.ts:1-3`),
+and copies the result into the payload and into `note_bodies.seed_markdown`, parsing none of it
+(`crates/memry-core/src/domain/templates.rs:4-16`, `crates/memry-core/src/domain/templates.rs:137`).
+Desktop writes that `content` as the new note's file (§12.2 carve-out A).
 
 ### 12.1.1 Desktop's pipeline
 
@@ -180,8 +182,9 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
   push carries `content` only on `create`
   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:63`). The core puts
   the caller's `content` into the create payload unchanged
-  (`crates/memry-core/src/domain/notes/mod.rs:176`), and a note made from a template carries the
-  template's `content` the same way (`crates/memry-core/src/domain/templates.rs:126`).
+  (`crates/memry-core/src/domain/notes/mod.rs:206`), and a note made from a template carries the
+  template's `content` the same way, after `{{title}}` substitution
+  (`crates/memry-core/src/domain/templates.rs:137`).
   Desktop writes a new remote note's file as `serializeNote(frontmatter, data.content)`
   (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:661-675`). **So "a client that
   cannot serialise markdown cannot write a vault file" is false as stated: the invariant is
