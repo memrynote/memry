@@ -299,10 +299,18 @@ function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void 
 }
 
 /**
+ * A filing destination of 'root' names the same place as '', the folder
+ * picker's root entry, so it never becomes a root/ folder (#2994).
+ */
+function filingFolderPath<T extends string | undefined>(folderPath: T): T | '' {
+  return folderPath === 'root' ? '' : folderPath
+}
+
+/**
  * Ensure folder exists, create if not
  */
 async function ensureFolderExists(folderPath: string): Promise<void> {
-  if (!folderPath || folderPath === '' || folderPath === 'root') {
+  if (!folderPath) {
     return // Root folder always exists
   }
 
@@ -727,10 +735,11 @@ async function fileBinaryToFolder(
  */
 export async function fileToFolder(
   itemId: string,
-  folderPath: string,
+  requestedFolder: string,
   tags: string[] = [],
   options: PlainChecklistsOption = {}
 ): Promise<FileResponse> {
+  const folderPath = filingFolderPath(requestedFolder)
   try {
     const db = requireDatabase()
 
@@ -1409,7 +1418,7 @@ export async function linkToNotes(
   itemId: string,
   targets: FilingTarget[],
   tags: string[] = [],
-  folderPath?: string,
+  requestedFolder?: string,
   imageMode?: ImageFilingMode,
   options: PlainChecklistsOption = {}
 ): Promise<{
@@ -1419,6 +1428,7 @@ export async function linkToNotes(
   noteIds?: string[]
   fellBackToLink?: boolean
 }> {
+  const folderPath = filingFolderPath(requestedFolder)
   try {
     const db = requireDatabase()
 
