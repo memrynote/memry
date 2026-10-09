@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { foldTag } from '@memry/shared/tag-fold'
-import { toastTagRenamed } from '@/features/tag-fields/rename-toasts'
+import { renameTagWithProgress, toastTagRenamed } from '@/features/tag-fields/rename-toasts'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
@@ -37,7 +37,7 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
       if (tag === null) return
       const tSettings = getI18n().getFixedT(null, 'settings')
       try {
-        const result = await tagsService.renameTag({ oldName: tag, newName })
+        const result = await renameTagWithProgress(tag, newName)
         if (!result.success) {
           throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
         }

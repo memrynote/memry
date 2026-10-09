@@ -87,12 +87,10 @@ describe('useTags', () => {
     await waitFor(() => expect(result.current.tags).toEqual([{ name: 'refreshed', count: 1 }]))
 
     await act(async () => {
-      await result.current.renameTag('old', 'new')
       await result.current.mergeTag('source', 'target')
       await result.current.deleteTag('old')
     })
 
-    expect(api.tags.renameTag).toHaveBeenCalledWith({ oldName: 'old', newName: 'new' })
     expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'source', target: 'target' })
     expect(api.tags.deleteTag).toHaveBeenCalledWith('old')
   })

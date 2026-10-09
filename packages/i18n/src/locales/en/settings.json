@@ -1809,6 +1809,7 @@
     "toasts": {
       "renamed": "Renamed \"{oldName}\" to \"{newName}\"",
       "renameFailed": "Failed to rename tag",
+      "renaming": "Renaming #{oldName}: {done} / {total} notes",
       "renamedBodySkipped": "\"{newName}\" can't be typed as an inline tag, so #{oldName} in note text stays as written",
       "renamedSomeFailed": "Couldn't update {count, plural, one {# note} other {# notes}}. Open {count, plural, one {it} other {them}} and add the tag again",
       "deleteFailed": "Failed to delete tag",

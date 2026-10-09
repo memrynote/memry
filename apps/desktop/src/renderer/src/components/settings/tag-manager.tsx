@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/select'
 import { Search, MoreHorizontal, Pencil, Merge, Trash2, Palette, Tag } from '@/lib/icons'
 import { toast } from 'sonner'
-import { toastTagRenamed } from '@/features/tag-fields/rename-toasts'
+import { renameTagWithProgress, toastTagRenamed } from '@/features/tag-fields/rename-toasts'
 import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -49,7 +49,7 @@ import { useT } from '@memry/i18n/renderer'
 export function TagManager() {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
-  const { tags, isLoading, error, renameTag, mergeTag, deleteTag } = useTags()
+  const { tags, isLoading, error, mergeTag, deleteTag } = useTags()
   const [search, setSearch] = useState('')
   const [editingTag, setEditingTag] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -76,7 +76,7 @@ export function TagManager() {
       return
     }
     try {
-      const result = await renameTag(editingTag, newName)
+      const result = await renameTagWithProgress(editingTag, newName)
       if (result.success) {
         toastTagRenamed(result, editingTag, newName)
       } else {
@@ -88,7 +88,7 @@ export function TagManager() {
       toast.error(extractErrorMessage(err, t('tags.toasts.renameFailed')))
     }
     setEditingTag(null)
-  }, [editingTag, editValue, renameTag, t])
+  }, [editingTag, editValue, t])
 
   const handleCancelRename = useCallback(() => {
     setEditingTag(null)

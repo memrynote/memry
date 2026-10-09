@@ -63,7 +63,11 @@ export const tagsService: TagsService = {
   /**
    * Rename a tag across all notes.
    */
-  renameTag: (input: { oldName: string; newName: string }): Promise<RenameTagResponse> => {
+  renameTag: (input: {
+    oldName: string
+    newName: string
+    runId?: string
+  }): Promise<RenameTagResponse> => {
     return window.api.tags.renameTag(input)
   },
 
