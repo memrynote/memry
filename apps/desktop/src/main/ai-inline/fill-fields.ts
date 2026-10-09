@@ -40,6 +40,8 @@ export interface FillFieldsDeps {
   acceptDisclosure: () => void
   getNote: (noteId: string) => Promise<FillNote | null>
   resolved: ReadonlyMap<string, ResolvedTag>
+  /** The app locale: it decides what `1.500` or `1,5` in a number field means. */
+  locale: string
   /** Objects of a relation target tag, the same read as `tags:search-objects`. */
   searchObjects: (tag: string) => ObjectMatch[]
   /** Tests pass a mock model; production builds it from `settings`. */
@@ -101,37 +103,72 @@ const proposalSchema = z.object({
   proposals: z.array(z.object({ field: z.string(), value: z.string(), sourceText: z.string() }))
 })
 
-function describeField(field: ResolvedField, candidates: ObjectMatch[]): string {
+// Only this note is sent: a relation field asks for the name as the note
+// writes it, and the name is matched to the vault's notes here, afterwards.
+function describeField(field: ResolvedField): string {
   const parts = [`- "${field.name}" (${field.type})`]
   if (field.options?.length) {
     parts.push(`one of: ${field.options.map((option) => `"${option.value}"`).join(', ')}`)
   }
   if (field.type === 'date') parts.push('format YYYY-MM-DD')
-  if (field.type === 'relation') {
-    parts.push(`the name of a #${field.relation!.target}`)
-    if (candidates.length > 0) {
-      parts.push(`known: ${candidates.map((match) => `"${match.title}"`).join(', ')}`)
-    }
-  }
+  if (field.type === 'number') parts.push('the number as the note writes it')
+  if (field.type === 'relation') parts.push(`the name of a #${field.relation!.target}`)
   return parts.join('; ')
+}
+
+const escapeRegExp = (char: string): string => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * A number as written in `locale`: `1.500` is 1500 where `.` groups thousands
+ * and 1.5 where it is the decimal point. A form the locale does not decide (a
+ * separator that neither groups three digits nor is the locale's decimal
+ * point, like `1,5` in English) is refused, never read as 15.
+ */
+export function parseLocaleNumber(raw: string, locale: string): number | null {
+  const text = raw.replace(/[\s\u00a0\u202f]/g, '').replace(/^\u2212/, '-')
+  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6)
+  // A space group (French) was stripped with the other spaces above.
+  const group = parts.find((part) => part.type === 'group')?.value.replace(/\s/g, '') ?? ''
+  const decimal = parts.find((part) => part.type === 'decimal')?.value ?? '.'
+  const d = escapeRegExp(decimal)
+  const grouped = group
+    ? new RegExp(`^-?\\d{1,3}(?:${escapeRegExp(group)}\\d{3})+(?:${d}\\d+)?$`)
+    : null
+  const plain = new RegExp(`^-?\\d+(?:${d}\\d+)?$`)
+  if (grouped?.test(text) || plain.test(text)) {
+    const number = Number((group ? text.split(group).join('') : text).replace(decimal, '.'))
+    return Number.isFinite(number) ? number : null
+  }
+  // A `.` decimal point the locale does not use for grouping three digits (`1.5` in Turkish).
+  return /^-?\d+\.\d+$/.test(text) ? Number(text) : null
+}
+
+/** `YYYY-MM-DD` naming a real day: `2026-02-30` is refused, not rolled into March. */
+function isCalendarDate(text: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text)
+  if (!match) return false
+  const [year, month, day] = match.slice(1).map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  )
 }
 
 function toProposal(
   field: ResolvedField,
   raw: string,
-  candidates: ObjectMatch[]
+  candidates: ObjectMatch[],
+  locale: string
 ): Omit<FieldFillProposal, 'sourceText'> | null {
   const text = raw.trim()
   if (!text) return null
   switch (field.type) {
     case 'number': {
-      const number = Number(text.replace(/,/g, ''))
-      return Number.isFinite(number) ? { field: field.name, value: number, display: text } : null
+      const number = parseLocaleNumber(text, locale)
+      return number === null ? null : { field: field.name, value: number, display: text }
     }
     case 'date':
-      return /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(Date.parse(text))
-        ? { field: field.name, value: text, display: text }
-        : null
+      return isCalendarDate(text) ? { field: field.name, value: text, display: text } : null
     case 'select':
     case 'status': {
       const option = field.options?.find((o) => o.value.toLowerCase() === text.toLowerCase())
@@ -206,13 +243,13 @@ export async function fillFields(
     system: [
       'You fill empty fields of a note from what the note itself says.',
       'Propose a value only when the note states it; never guess or invent. Leave out a field the note does not answer.',
-      "Each value is plain text in the field's format. For a relation field give the name of the thing; prefer one of the known names when the note means it.",
+      "Each value is plain text in the field's format. For a relation field give the name of the thing as the note writes it.",
       'sourceText is the one sentence of the note that states the value, copied character for character.'
     ].join(' '),
     prompt: [
       `Title: ${note.title}`,
       'Fields:',
-      ...fields.map((field) => describeField(field, candidatesOf(field))),
+      ...fields.map(describeField),
       '',
       'Note:',
       body.slice(0, MAX_BODY_CHARS)
@@ -225,7 +262,7 @@ export async function fillFields(
   for (const raw of output.proposals) {
     const field = byName.get(raw.field.trim().toLowerCase())
     if (!field || taken.has(field.name)) continue
-    const proposal = toProposal(field, raw.value, candidatesOf(field))
+    const proposal = toProposal(field, raw.value, candidatesOf(field), deps.locale)
     if (!proposal) continue
     taken.add(field.name)
     const source = raw.sourceText.trim()

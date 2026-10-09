@@ -225,4 +225,28 @@ describe('a header tag with a template', () => {
 
     expect(fileBody(note.path)).toContain('Notes go here')
   })
+
+  it('keeps a tag the template body mentions out of the header, and undo keeps the header', async () => {
+    templateId = (
+      await createTemplate({ name: 'Tagged', tags: [], properties: [], content: 'Ask #followup\n' })
+    ).id
+    defineTag('meeting', true)
+    const note = await newNote('')
+    const header = (): unknown =>
+      parseNote(fs.readFileSync(path.join(vault.path, note.path), 'utf-8')).frontmatter.tags
+
+    const result = await updateNoteWithTagTemplateCommand({
+      id: note.id,
+      headerTags: { add: ['meeting'] }
+    })
+    expect(result.tagTemplate?.kind).toBe('applied')
+    expect(fileBody(note.path)).toContain('#followup')
+    expect(header()).toEqual(['meeting'])
+
+    const undoToken = result.tagTemplate?.kind === 'applied' ? result.tagTemplate.undoToken : ''
+    expect(await undoTagTemplateCommand({ noteId: note.id, undoToken })).toEqual({
+      status: 'restored'
+    })
+    expect(header()).toEqual(['meeting'])
+  })
 })

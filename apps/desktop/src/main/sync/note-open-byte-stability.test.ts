@@ -425,17 +425,13 @@ describe('repeated open -> write-back cycles converge', () => {
 })
 
 /**
- * #1454. The fixtures above pass because nothing puts a tag in the doc's tag
- * array; the app used to, and that is where the rewrite came from. Write-back
- * treats `doc.getArray('tags')` as authoritative for the file's `tags:` block
- * (`mergeFrontmatter`), and the watcher used to seed it with `syncResult.tags`
- * — the INDEX's tag list, which merges the body's `#hashtag`s in. So a note
- * whose only tag was in its body gained a frontmatter block on first open.
- *
- * These two tests pin both halves: what a seeded array does to the file, and
- * that the file's own `tags:` block round-trips through it untouched.
+ * #1454 and the doc's stale tag array. The file owns its `tags:` list. The
+ * doc's `tags` array can hold body tags (a doc an older build seeded from the
+ * index, which merges the body's `#hashtag`s in) or an old header (a header
+ * edit made while the note was closed never reaches its stored doc), and
+ * write-back must write neither over the file.
  */
-describe('the tag array decides whether opening a note rewrites its frontmatter', () => {
+describe('the tag array never rewrites the file it writes back to', () => {
   /** What `CrdtProvider.initForNote` does with the tags it is handed. */
   function seedTagArray(doc: Y.Doc, tags: string[]): void {
     const tagArray = doc.getArray('tags')
@@ -444,41 +440,40 @@ describe('the tag array decides whether opening a note rewrites its frontmatter'
     })
   }
 
-  it('a body tag in the array injects a tags: block into a file that had none', async () => {
-    // #given the note from the issue: one inline hash tag, no frontmatter
+  it('a body tag an older build put in the array does not join the header', async () => {
     const body = 'Tagged #hashtag here.'
     const absolutePath = seedVaultNote(body)
     const doc = await openNote(absolutePath)
 
-    // #when the doc is seeded the way the merged index tag list would seed it
     seedTagArray(doc, ['hashtag'])
     await runWriteback(doc)
 
-    // #then opening the note modified it. This is the mechanism #1454 removes —
-    // kept here because the fix is "never put a body tag in this array", and
-    // that is only meaningful if what the array does is on record.
-    expect(mocks.atomicWrites).toHaveLength(1)
-    const rewritten = fs.readFileSync(absolutePath, 'utf8')
-    expect(rewritten).toContain('tags:')
-    expect(rewritten).toContain('- hashtag')
-    expect(rewritten).not.toBe(body)
+    expect(mocks.atomicWrites).toEqual([])
+    expect(fs.readFileSync(absolutePath, 'utf8')).toBe(body)
+  })
+
+  it('an array left over from before a closed-note rename does not revert it', async () => {
+    const body = ['---', 'tags:', '  - renamed', '---', 'Body text.'].join('\n')
+    const absolutePath = seedVaultNote(body)
+    const doc = await openNote(absolutePath)
+
+    seedTagArray(doc, ['original'])
+    await runWriteback(doc)
+
+    expect(fs.readFileSync(absolutePath, 'utf8')).toContain('- renamed')
+    expect(fs.readFileSync(absolutePath, 'utf8')).not.toContain('original')
   })
 
   it('a tags: block the file already declares survives a round trip unwritten', async () => {
-    // #given a note that declares its own tags — the array is seeded from the
-    // frontmatter, which is exactly what it holds after the fix
     // No blank line after the closing `---`: that is the form `serializeNote`
     // writes, and this test is about tags, not about frontmatter spacing.
     const body = ['---', 'tags:', '  - Declared', '---', 'Tagged #hashtag here.'].join('\n')
     const absolutePath = seedVaultNote(body)
     const doc = await openNote(absolutePath)
 
-    // #when
     seedTagArray(doc, ['Declared'])
     await runWriteback(doc)
 
-    // #then nothing was written: the declared tag is already in the file, and
-    // the body tag never entered the array to be promoted
     expect(mocks.atomicWrites).toEqual([])
     expect(fs.readFileSync(absolutePath, 'utf8')).toBe(body)
   })

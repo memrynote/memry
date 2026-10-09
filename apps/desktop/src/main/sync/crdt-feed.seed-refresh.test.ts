@@ -21,7 +21,7 @@ vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local'
 }))
 
-import { replaceNoteBodyInCrdt } from './crdt-feed'
+import { replaceDocBody, replaceNoteBodyInCrdt } from './crdt-feed'
 
 async function seed(markdown: string): Promise<Y.Doc> {
   const doc = new Y.Doc()
@@ -95,5 +95,34 @@ describe('replaceNoteBodyInCrdt seed-parity (#1959)', () => {
     const writtenBack = await yDocToMarkdown(doc)
     expect(writtenBack).toContain('Hello plain world.')
     expect(writtenBack).not.toContain('{++')
+  })
+
+  it("empties a body to the editor's empty document, which writes back as the empty body", async () => {
+    const doc = await seed('# Heading\n\nSome text')
+    getDoc.mockReturnValue(doc)
+
+    expect(await replaceNoteBodyInCrdt('n1', '')).toBe(true)
+
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const containers = fragment
+      .toArray()
+      .flatMap((group) => (group instanceof Y.XmlElement ? group.toArray() : []))
+    expect(containers).toHaveLength(1)
+    const block = containers[0] as Y.XmlElement
+    expect(block.getAttribute('id')).toMatch(/\S/)
+    expect((block.firstChild as Y.XmlElement).nodeName).toBe('paragraph')
+    // The empty file's body, so the write-back has nothing to write.
+    expect(await yDocToMarkdown(doc)).toBe('')
+  })
+
+  it('leaves a body typed into after the caller read it', async () => {
+    const doc = await seed('')
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const seen = fragment.toJSON()
+    await markdownToYFragment('Typed meanwhile', fragment)
+
+    expect(await replaceDocBody(doc, 'n1', '## Agenda', undefined, seen)).toBe(false)
+    expect(await yDocToMarkdown(doc)).toContain('Typed meanwhile')
+    expect(await yDocToMarkdown(doc)).not.toContain('Agenda')
   })
 })

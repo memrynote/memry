@@ -480,6 +480,29 @@ export function writePropertiesToRoot(
   return next
 }
 
+/**
+ * Set only the patched keys (null removes one). A key the patch adds takes the
+ * place of the first key it removes, so a rename keeps its spot in the file.
+ */
+export function patchPropertiesOnRoot(
+  frontmatter: NoteFrontmatter,
+  patch: Record<string, unknown>
+): NoteFrontmatter {
+  const entries = Object.entries(patch).filter(([name, v]) => !isReservedFrontmatterKey(name, v))
+  const added = entries.filter(([name, v]) => v !== null && !Object.hasOwn(frontmatter, name))
+  const next: NoteFrontmatter = {}
+  let placed = false
+  for (const [name, value] of Object.entries(frontmatter)) {
+    const patched = entries.find(([key]) => key === name)
+    if (patched?.[1] === null) {
+      if (!placed) for (const [key, v] of added) next[key] = v
+      placed = true
+    } else next[name] = patched ? patched[1] : value
+  }
+  if (!placed) for (const [key, v] of added) next[key] = v
+  return next
+}
+
 /** Replace the current property record while keeping tags and aliases. */
 export function replacePropertiesOnRoot(
   frontmatter: NoteFrontmatter,

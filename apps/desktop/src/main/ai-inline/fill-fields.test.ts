@@ -4,7 +4,7 @@ import { MockLanguageModelV3 } from 'ai/test'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 import type { ResolvedField, ResolvedTag } from '@memry/contracts/tag-schema'
 import type { ObjectMatch } from '@memry/contracts/tag-objects-api'
-import { fillFields, type FillFieldsDeps, type FillNote } from './fill-fields'
+import { fillFields, parseLocaleNumber, type FillFieldsDeps, type FillNote } from './fill-fields'
 
 function field(name: string, type: ResolvedField['type'], target?: string): ResolvedField {
   return {
@@ -89,6 +89,7 @@ function setup(overrides: Partial<FillFieldsDeps> = {}, note?: Partial<FillNote>
     acceptDisclosure: vi.fn(),
     getNote: vi.fn(async () => stored),
     resolved: new Map([['person', person]]),
+    locale: 'en',
     searchObjects: vi.fn(() => [globex]),
     model,
     ...overrides
@@ -126,6 +127,25 @@ describe('fillFields', () => {
     const prompt = JSON.stringify(model.doGenerateCalls[0].prompt)
     expect(prompt).toContain('elif@globex.io')
     expect(prompt).toContain('Globex')
+  })
+
+  it('never sends the titles of other notes to the model', async () => {
+    const other: ObjectMatch = { ...globex, noteId: 'n-initech', title: 'Initech Holdings' }
+    const { deps, model } = setup({ searchObjects: vi.fn(() => [globex, other]) })
+
+    await fillFields(deps, { noteId: 'n1' })
+
+    expect(JSON.stringify(model.doGenerateCalls[0].prompt)).not.toContain('Initech')
+  })
+
+  it('refuses a date that is not a real day', async () => {
+    const dated = { ...person, effectiveFields: [field('Met', 'date')] }
+    const { deps } = setup({
+      resolved: new Map([['person', dated]]),
+      model: modelReturning({ proposals: [{ field: 'Met', value: '2026-02-30', sourceText: '' }] })
+    })
+
+    expect(await fillFields(deps, { noteId: 'n1' })).toEqual({ kind: 'proposals', proposals: [] })
   })
 
   it('skips a filled field and offers to create an unknown relation target', async () => {
@@ -177,5 +197,22 @@ describe('fillFields', () => {
 
     expect(await fillFields(deps, { noteId: 'n1' })).toEqual({ kind: 'proposals', proposals: [] })
     expect(model.doGenerateCalls).toHaveLength(0)
+  })
+})
+
+describe('parseLocaleNumber', () => {
+  it('reads a number the way the locale writes it', () => {
+    expect(parseLocaleNumber('1,500', 'en')).toBe(1500)
+    expect(parseLocaleNumber('1,234.5', 'en')).toBe(1234.5)
+    expect(parseLocaleNumber('1.500', 'tr')).toBe(1500)
+    expect(parseLocaleNumber('1,5', 'tr')).toBe(1.5)
+    expect(parseLocaleNumber('1.5', 'tr')).toBe(1.5)
+    expect(parseLocaleNumber('-42', 'en')).toBe(-42)
+  })
+
+  it('refuses a form the locale does not decide instead of reading 1,5 as 15', () => {
+    expect(parseLocaleNumber('1,5', 'en')).toBeNull()
+    expect(parseLocaleNumber('12,34,5', 'en')).toBeNull()
+    expect(parseLocaleNumber('about 3', 'en')).toBeNull()
   })
 })

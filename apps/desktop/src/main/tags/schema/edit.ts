@@ -47,7 +47,8 @@ export function emitTagSchemasChanged(): void {
   broadcastToAllWindows('notes:tags-changed', {})
 }
 
-function planSchemaEdit(db: DataDb, key: string, edit: SchemaBodyEdit): SchemaEditResult {
+/** The edit's result without writing it; throws a user-facing error for a refused edit. */
+export function planSchemaEdit(db: DataDb, key: string, edit: SchemaBodyEdit): SchemaEditResult {
   const parsed = parseSchemaColumn(readTagSchemaColumn(db, key))
   if (parsed.kind === 'unreadable') throw schemaEditFailure({ code: 'unreadable-schema' })
   const result = applySchemaEdit(parsed.kind === 'ok' ? parsed.schema : null, edit, {

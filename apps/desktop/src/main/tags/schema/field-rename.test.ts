@@ -30,7 +30,11 @@ import {
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 
-const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
+const state = vi.hoisted(() => ({
+  data: null as unknown,
+  index: null as unknown,
+  locked: new Set<string>()
+}))
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] },
@@ -44,6 +48,10 @@ vi.mock('../../database/client', async (importOriginal) => ({
 vi.mock('../../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local',
   getCrdtProvider: () => ({ getDoc: () => undefined, recordOwedFullState: vi.fn() })
+}))
+vi.mock('../../vault-locks/registry', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../vault-locks/registry')>()),
+  isNoteLocked: (noteId: string) => state.locked.has(noteId)
 }))
 vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../notes/runtime-effects')>()),
@@ -77,6 +85,7 @@ beforeEach(async () => {
   index = createTestIndexDb()
   state.data = data.db
   state.index = index.db
+  state.locked.clear()
   vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
     isOpen: true,
     path: vault.path,
@@ -195,5 +204,69 @@ describe('renaming a field everywhere', () => {
     expect(JSON.parse(schema!.schema!).fields).toEqual([{ name: 'Mobile' }])
     expect(PropertyDefinitionsService.get().get('Phone')).toBeUndefined()
     expect(PropertyDefinitionsService.get().get('Mobile')).toMatchObject({ type: 'text' })
+  })
+
+  async function personWithPhone(): Promise<void> {
+    await runTagSchemaCommand(
+      db(),
+      index.db as never,
+      { kind: 'add-field', tag: 'person', field: { name: 'Phone', type: 'text' } },
+      () => {}
+    )
+  }
+
+  it('refuses a rename onto a field the same tag already lists, and changes nothing', async () => {
+    await personWithPhone()
+    await runTagSchemaCommand(
+      db(),
+      index.db as never,
+      { kind: 'add-field', tag: 'person', field: { name: 'Mobile', type: 'text' } },
+      () => {}
+    )
+    const note = await noteWith('Ahmet', { Phone: '111' })
+
+    await expect(
+      renameField(db(), { from: 'Phone', to: 'Mobile', runId: 'r1' }, () => {})
+    ).rejects.toThrow(/already has a field named "Mobile"/)
+    expect(frontmatter(note.path)).toMatchObject({ Phone: '111' })
+    expect(getSetting(db(), FIELD_RENAME_JOB_SETTING)).toBeNull()
+  })
+
+  it('keeps the job for a locked note and finishes it once the note is unlocked', async () => {
+    await personWithPhone()
+    const open = await noteWith('Ahmet', { Phone: '111' })
+    const locked = await noteWith('Elif', { Phone: '222' })
+    state.locked.add(locked.id)
+
+    const result = await renameField(db(), { from: 'Phone', to: 'Mobile', runId: 'r1' }, () => {})
+    await flushProjectionEvents()
+
+    expect(result).toMatchObject({ notes: 1, skippedLocked: 1 })
+    expect(frontmatter(open.path)).toMatchObject({ Mobile: '111' })
+    expect(frontmatter(locked.path)).toMatchObject({ Phone: '222' })
+    expect(getSetting(db(), FIELD_RENAME_JOB_SETTING)).not.toBeNull()
+    // One job at a time: another rename waits for this one.
+    await expect(
+      renameField(db(), { from: 'Role', to: 'Title', runId: 'r2' }, () => {})
+    ).rejects.toThrow(/Phone to Mobile/)
+
+    state.locked.clear()
+    expect(await resumeFieldRename(db())).toMatchObject({ notes: 1, skippedLocked: 0 })
+    await flushProjectionEvents()
+    expect(frontmatter(locked.path)).toMatchObject({ Mobile: '222' })
+    expect(frontmatter(locked.path)).not.toHaveProperty('Phone')
+    expect(getSetting(db(), FIELD_RENAME_JOB_SETTING)).toBeNull()
+  })
+
+  it('renames a field to a new spelling of the same name', async () => {
+    await personWithPhone()
+    const note = await noteWith('Ahmet', { Role: 'PM', Phone: '111' })
+
+    const result = await renameField(db(), { from: 'Phone', to: 'phone', runId: 'r1' }, () => {})
+    await flushProjectionEvents()
+
+    expect(result).toMatchObject({ notes: 1, skippedExisting: 0 })
+    expect(Object.keys(frontmatter(note.path))).toEqual(['tags', 'Role', 'phone'])
+    expect(frontmatter(note.path)).toMatchObject({ phone: '111' })
   })
 })

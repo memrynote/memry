@@ -76,7 +76,11 @@ options. Adding a field whose name already exists as a property asks whether to 
   relation) or reuses an existing property. Adding a field rewrites no files.
 - **Remove** takes the field off the tag. Notes keep their values as their own properties.
 - **Rename** renames the key in every note and task that has a value, and in every other tag
-  that lists the field, with progress shown. Other Markdown apps see the new name too.
+  that lists the field, with progress shown. Other Markdown apps see the new name too. A tag
+  that already has a field with the new name refuses the rename. A locked note keeps the old
+  name until you unlock it, and the rename then finishes there. A note that already has a value
+  under the new name keeps both. The message at the end counts both kinds. One rename runs at a
+  time.
 
 ### Relations
 
@@ -108,9 +112,11 @@ there**. A child without its own template uses its parent's.
 A tag can point at one of your [templates](/user-guide/templates). With **Fill empty notes when
 they get #tag** on:
 
-- Adding the tag to an empty note fills it with the template. The toast has **Undo**, which
-  removes the template text and keeps the tag. If you edited the note in the meantime, the
-  template stays.
+- Adding the tag to an empty note fills it with the template. If you type in the note at
+  that moment, your text wins and you get the offer below instead. The toast has **Undo**,
+  which removes the template text and keeps the tag. If you edited the note in the meantime,
+  the template stays. A `#tag` written in the template stays in the text and is not added to
+  the note's tags row.
 - Adding the tag to a note that already has text shows a row offering **Add the Person template
   below your text**. Dismissing it is remembered for that note.
 
@@ -150,9 +156,13 @@ for the empty fields.
 - Nothing is saved until you accept. Click ✓ on one suggestion, × to drop it, **Accept all**
   (<kbd>⌘</kbd><kbd>↵</kbd>), or **Dismiss**.
 - Hovering a suggestion highlights the sentence it came from.
-- A suggested relation value with no note yet, such as a new company, is created as a note
-  with the target tag when you accept it.
-- The first time, Memry names the model and says that only this note is sent. With a local
+- A suggested relation value is matched to your notes with the target tag by name. A name with
+  no note yet, such as a new company, is created as a note with that tag when you accept it.
+- Numbers are read the way your app language writes them, so `1.500` is one thousand five
+  hundred in Turkish. A number your language does not decide, like `1,5` in English, is not
+  suggested.
+- The first time, Memry names the model and says that only this note is sent. The titles of
+  your other notes are never sent. With a local
   model, it says nothing leaves the device. You confirm once per device.
 
 On a tag's page, **Fill empty fields** reads the tag's notes one at a time, with progress and

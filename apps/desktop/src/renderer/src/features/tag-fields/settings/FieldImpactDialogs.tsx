@@ -178,13 +178,17 @@ export function RenameFieldDialog({
     setProgress({ runId: id, done: 0, total: impact?.notes ?? 0 })
     try {
       const result = await editSchema({ kind: 'rename-field', from: field, to: trimmed, runId: id })
-      toast.success(
-        t('tagFields.settings.rename.done', {
-          from: field,
-          to: trimmed,
-          count: (result.rename?.notes ?? 0) + (result.rename?.tasks ?? 0)
-        })
-      )
+      const locked = result.rename?.skippedLocked ?? 0
+      const existing = result.rename?.skippedExisting ?? 0
+      const values = {
+        from: field,
+        to: trimmed,
+        count: (result.rename?.notes ?? 0) + (result.rename?.tasks ?? 0),
+        locked,
+        existing
+      }
+      if (locked + existing > 0) toast.warning(t('tagFields.settings.rename.skipped', values))
+      else toast.success(t('tagFields.settings.rename.done', values))
       setProgress(null)
       onOpenChange(false)
     } catch (err) {

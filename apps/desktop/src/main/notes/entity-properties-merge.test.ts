@@ -17,7 +17,7 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as vaultIndex from '../vault/index'
 import * as database from '../database'
-import { createNote } from '../vault/notes'
+import { createNote, updateNote } from '../vault/notes'
 import { mergeEntityProperties, getEntityPropertiesRecord } from './entity-properties'
 
 vi.mock('electron', () => {
@@ -103,5 +103,31 @@ describe('mergeEntityProperties', () => {
     await mergeEntityProperties(note.id, { role: null })
 
     expect(getEntityPropertiesRecord(note.id)).toEqual({ status: 'draft' })
+  })
+
+  it('keeps a key an external editor wrote that the index has not seen yet', async () => {
+    const note = await createNote({ title: 'Linus', content: 'Body.', properties: { a: 'one' } })
+    const file = path.join(vault.path, note.path)
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^a: one$/m, 'a: one\nb: two'))
+
+    await mergeEntityProperties(note.id, { c: 'three' })
+
+    const raw = fs.readFileSync(file, 'utf8')
+    expect(raw).toMatch(/^a: one$/m)
+    expect(raw).toMatch(/^b: two$/m)
+    expect(raw).toMatch(/^c: three$/m)
+  })
+
+  it('keeps a header tag edit that races a property merge', async () => {
+    const note = await createNote({ title: 'Ken', content: 'Body.', properties: { a: 'one' } })
+
+    await Promise.all([
+      updateNote({ id: note.id, headerTags: { add: ['person'] } }),
+      mergeEntityProperties(note.id, { c: 'three' })
+    ])
+
+    const raw = fs.readFileSync(path.join(vault.path, note.path), 'utf8')
+    expect(raw).toMatch(/^c: three$/m)
+    expect(raw).toMatch(/person/)
   })
 })

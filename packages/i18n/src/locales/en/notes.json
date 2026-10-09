@@ -1894,7 +1894,8 @@
         "progress": "Renaming in notes",
         "confirm": "Rename",
         "taken": "This tag already has {name}.",
-        "done": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}."
+        "done": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}.",
+        "skipped": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}. {locked, plural, =0 {} one {# locked note finishes when it is unlocked.} other {# locked notes finish when they are unlocked.}} {existing, plural, =0 {} one {# note already had {to} and keeps both.} other {# notes already had {to} and keep both.}}"
       },
       "delete": {
         "button": "Delete tag",

@@ -239,7 +239,8 @@ export type SchemaBodyEdit =
   | { kind: 'set-relation'; name: string; relation: RelationConfig | null }
   | { kind: 'remove-field'; name: string }
   | { kind: 'move-field'; name: string; toIndex: number }
-  | { kind: 'rename-field'; from: string; to: string }
+  /** `resuming`: a recorded vault-wide rename, whose target a schema may already list. */
+  | { kind: 'rename-field'; from: string; to: string; resuming?: boolean }
   | { kind: 'set-template'; template: { id: string; autofill: boolean } | null }
   | { kind: 'set-extends'; parent: string | null }
   | {
@@ -349,6 +350,9 @@ export function applySchemaEdit(
       if (at === -1) return { ok: true, next: base, changed: false }
       const clash = fields.findIndex((f, i) => i !== at && fold(f.name) === fold(to))
       if (clash !== -1) {
+        if (!edit.resuming) {
+          return { ok: false, error: { code: 'duplicate-field', name: to, definedBy: key } }
+        }
         // Resumed vault-wide rename: the target is already listed, so drop the old entry.
         fields.splice(at, 1)
       } else {

@@ -1690,7 +1690,8 @@
         "progress": "Notlarda yeniden adlandırılıyor",
         "confirm": "Yeniden adlandır",
         "taken": "Bu etiket zaten {name} alanına sahip.",
-        "done": "{from}, {count} öğede {to} olarak yeniden adlandırıldı."
+        "done": "{from}, {count} öğede {to} olarak yeniden adlandırıldı.",
+        "skipped": "{from}, {count} öğede {to} olarak yeniden adlandırıldı. {locked, plural, =0 {} other {Kilitli # not, kilidi açılınca tamamlanır.}} {existing, plural, =0 {} other {# notta zaten {to} vardı; ikisi de korunur.}}"
       },
       "delete": {
         "button": "Etiketi sil",

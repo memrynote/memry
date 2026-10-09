@@ -340,6 +340,7 @@
     "relationTargetRequired": "Choose which tag this relation points to",
     "editFailed": "Could not change the tag's fields",
     "previewFailed": "Could not count what this change affects",
-    "snapshotFailed": "Could not load tag fields"
+    "snapshotFailed": "Could not load tag fields",
+    "renameRunning": "Another field rename is still finishing ({from} to {to}). Try again once it is done."
   }
 }

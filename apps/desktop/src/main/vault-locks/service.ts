@@ -197,7 +197,17 @@ export async function setVaultLock(input: VaultLockSetInput): Promise<VaultLockS
 
   invalidateVaultLocks()
   await reconcileLockedFiles(input.kind === 'folder' && !input.locked ? target : undefined)
+  if (!input.locked) resumeFieldRenameAfterUnlock()
   return broadcastLockState()
+}
+
+/** A field rename that skipped a locked note finishes once something unlocks. */
+function resumeFieldRenameAfterUnlock(): void {
+  if (!isDatabaseInitialized()) return
+  // Lazy: the rename pulls in the note writer, which imports this module back.
+  void import('../tags/schema/field-rename')
+    .then(({ resumeFieldRename }) => resumeFieldRename(getDatabase()))
+    .catch((err) => log.warn('Resuming a field rename after an unlock failed', { error: err }))
 }
 
 /** A lock record from another device landed: refresh, re-protect, tell the windows. */
@@ -206,6 +216,7 @@ export function onRemoteVaultLockApplied(folderUnlocked?: string): void {
   void reconcileLockedFiles(folderUnlocked)
     .catch((err) => log.warn('Reconciling locked files after a remote lock failed', { error: err }))
     .finally(() => broadcastLockState())
+  resumeFieldRenameAfterUnlock()
 }
 
 /**

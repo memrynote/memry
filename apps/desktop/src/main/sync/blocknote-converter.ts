@@ -533,6 +533,14 @@ function ensureBlockIds(blocks: Block[]): void {
   }
 }
 
+/**
+ * BlockNote's empty document: the one empty paragraph, with its default props,
+ * that a fresh editor holds. An open editor always holds at least one block.
+ */
+export function emptyDocumentBlocks(): Block[] {
+  return getEditor().editor.document.map((block) => ({ ...block, id: crypto.randomUUID() }))
+}
+
 export function blocksToYFragment(blocks: Block[], fragment: Y.XmlFragment): boolean {
   try {
     const editor = getEditor()

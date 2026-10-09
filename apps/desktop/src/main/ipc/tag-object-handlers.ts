@@ -21,6 +21,7 @@ import type * as FillFields from '../ai-inline/fill-fields'
 import { fieldFillStatus } from '../ai-inline/fill-fields-status'
 import { getIndexDatabase, requireDatabase } from '../database'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { store } from '../store'
 import { getNoteById } from '../vault/notes-crud'
 import { readAIInlineSettings } from './ai-inline-handlers'
@@ -108,6 +109,7 @@ function registerTagFillHandlers(): void {
               }
             },
             resolved,
+            locale: getMainI18n().language,
             searchObjects: (tag) =>
               searchObjects(indexDb, resolved, { query: '', tag, limit: 50 }).matches
           },

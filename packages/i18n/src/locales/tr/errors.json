@@ -331,6 +331,7 @@
     "relationTargetRequired": "Bu ilişkinin hangi etikete bağlanacağını seçin",
     "editFailed": "Etiketin alanları değiştirilemedi",
     "previewFailed": "Bu değişikliğin neyi etkileyeceği sayılamadı",
-    "snapshotFailed": "Etiket alanları yüklenemedi"
+    "snapshotFailed": "Etiket alanları yüklenemedi",
+    "renameRunning": "Başka bir alan yeniden adlandırması hâlâ sürüyor ({from} → {to}). Bitince yeniden dene."
   }
 }

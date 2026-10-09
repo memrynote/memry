@@ -8,7 +8,6 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { isDeepStrictEqual } from 'util'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
@@ -16,17 +15,19 @@ import {
   serializeNote,
   serializeUpdatedNote,
   extractTags,
-  applyHeaderTagEdit,
-  normalizePropertiesToRoot,
-  replacePropertiesOnRoot,
   writePropertiesToRoot,
-  propertiesToWrite,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/inline-tags'
+import {
+  compareHeaderTags,
+  nextHeaderTags,
+  nextNoteFrontmatter,
+  queueNoteWrite,
+  type HeaderTagChange
+} from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
@@ -202,24 +203,17 @@ export interface NoteUpdateInput {
   tags?: string[]
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown>
+  /** Sets only these keys on the file's own frontmatter; null removes a key. */
+  propertyPatch?: Record<string, unknown>
+  /** A body Memry wrote (tag template, undo): its `#tags` never move the header. */
+  ignoreInlineTags?: boolean
   emoji?: string | null
-}
-
-/** A replacement `tags:` list as the delta that turns `current` into it. */
-function headerTagEditToList(current: string[], next: string[]): HeaderTagEdit {
-  const fold = (tags: string[]): Set<string> => new Set(tags.map((tag) => tag.toLowerCase()))
-  const have = fold(current)
-  const want = fold(next)
-  return {
-    add: next.filter((tag) => !have.has(tag.toLowerCase())),
-    remove: current.filter((tag) => !want.has(tag.toLowerCase()))
-  }
 }
 
 export interface NoteUpdateOutcome {
   note: Note
   /** Null when the frontmatter `tags:` list is unchanged. */
-  headerTagChange: { added: string[]; removed: string[] } | null
+  headerTagChange: HeaderTagChange
 }
 
 /**
@@ -653,19 +647,8 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // Update
 // ============================================================================
 
-// One read-modify-write of a note's file at a time. Two quick edits of the same
-// note (add #a, then add #b, or a tag and a property) would otherwise both
-// start from the file as it was, and the later write would drop the earlier one.
-const noteWrites = new Map<string, Promise<unknown>>()
-
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  const write = (noteWrites.get(input.id) ?? Promise.resolve()).then(() => writeNote(input))
-  const settled = write.catch(() => {})
-  noteWrites.set(input.id, settled)
-  void settled.then(() => {
-    if (noteWrites.get(input.id) === settled) noteWrites.delete(input.id)
-  })
-  return write
+  return queueNoteWrite(input.id, () => writeNote(input))
 }
 
 async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
@@ -698,81 +681,29 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const newContent = input.content ?? existing.content
   // Header tags change only through an edit of the file's own `tags:` list,
   // never by writing back the index list, which holds the body's `#tags` too.
-  // A new body moves its added and removed plain `#tags` in and out of the
-  // header, as typing them in the editor does.
-  const headerTagEdit =
-    input.headerTags ??
-    (input.tags ? headerTagEditToList(existing.headerTags, input.tags) : null) ??
-    (input.content === undefined ? null : inlineTagEditBetween(existing.content, input.content))
-  const headerTags = !headerTagEdit
-    ? existing.headerTags
-    : headerTagEdit.source === 'inline'
-      ? applyInlineTagEdit(dataDb, existing.headerTags, headerTagEdit)
-      : applyHeaderTagEdit(existing.headerTags, headerTagEdit)
+  const headerTags = nextHeaderTags(dataDb, existing, input)
   const headerTagChange = compareHeaderTags(existing.headerTags, headerTags)
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
 
-  if (input.content !== undefined && input.content !== existing.content) {
-    logger.info('updateNote: content changed, attempting snapshot', { noteId: input.id })
-    try {
-      const absolutePath = toAbsolutePath(existing.path)
-      const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
-      const snap = maybeCreateSignificantSnapshot(
-        input.id,
-        currentFileContent,
-        existing.content,
-        newContent,
-        existing.title
-      )
-      if (snap) {
-        logger.info('updateNote: snapshot created', { noteId: input.id, snapshotId: snap.id })
-      } else {
-        logger.info('updateNote: snapshot skipped (below threshold)', { noteId: input.id })
-      }
-    } catch (err) {
-      logger.error('Failed to read current file for snapshot:', err)
-    }
-  } else if (input.content !== undefined) {
-    logger.info('updateNote: content unchanged, skipping snapshot', { noteId: input.id })
-  }
-
-  // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
-  const mergedFrontmatter: NoteFrontmatter = {
-    ...existing.frontmatter,
-    ...input.frontmatter
-  }
-  for (const [name, value] of Object.entries(input.frontmatter ?? {})) {
-    if (value === null) delete mergedFrontmatter[name]
-  }
-  let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
-
-  const newProperties = propertiesToWrite(input.properties, existing, newFrontmatter)
-
-  if (input.properties !== undefined) {
-    newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
-  }
-
-  // A `frontmatter` patch never sets `tags`, and an unchanged list keeps its bytes.
-  const tagsValue =
-    headerTagChange === null
-      ? existing.frontmatter.tags
-      : headerTags.length > 0
-        ? headerTags
-        : undefined
-  if (tagsValue === undefined) delete newFrontmatter.tags
-  else newFrontmatter.tags = tagsValue
-
-  // Re-stringify when a caller changed frontmatter or when normalizing a
-  // legacy nested property block. Otherwise the raw block stays byte-identical.
-  const frontmatterEdited =
-    !isDeepStrictEqual(newFrontmatter, existing.frontmatter) ||
-    headerTagChange !== null ||
-    (input.properties !== undefined && !isDeepStrictEqual(input.properties, existing.properties)) ||
-    (input.frontmatter !== undefined &&
-      !isDeepStrictEqual({ ...existing.frontmatter, ...input.frontmatter }, existing.frontmatter))
-
   const absolutePath = toAbsolutePath(existing.path)
   const currentRaw = await safeRead(absolutePath)
+  if (currentRaw !== null && input.content !== undefined && input.content !== existing.content) {
+    const snap = maybeCreateSignificantSnapshot(
+      input.id,
+      currentRaw,
+      existing.content,
+      newContent,
+      existing.title
+    )
+    logger.info('updateNote: body changed', { noteId: input.id, snapshotId: snap?.id ?? null })
+  }
+
+  const {
+    frontmatter: newFrontmatter,
+    properties: newProperties,
+    edited: frontmatterEdited
+  } = nextNoteFrontmatter(existing, input, headerTags, headerTagChange)
+
   let fileContent: string
   if (currentRaw === null) {
     fileContent = serializeNote(newFrontmatter, newContent)
@@ -879,20 +810,6 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   }
 
   return { note, headerTagChange }
-}
-
-/** What a header edit added and removed, or null when it left the list exactly as it was. */
-function compareHeaderTags(
-  before: readonly string[],
-  after: readonly string[]
-): NoteUpdateOutcome['headerTagChange'] {
-  if (after.length === before.length && after.every((tag, i) => tag === before[i])) return null
-  const holds = (list: readonly string[], tag: string): boolean =>
-    list.some((held) => held.toLowerCase() === tag.toLowerCase())
-  return {
-    added: after.filter((tag) => !holds(before, tag)),
-    removed: before.filter((tag) => !holds(after, tag))
-  }
 }
 
 // ============================================================================
