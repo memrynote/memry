@@ -15,6 +15,14 @@ export function isInlineTagName(name: string): boolean {
 }
 
 /**
+ * Whether `name` is a tag still being typed: a whole tag name, or one with an
+ * open `/` child segment that the next character can complete.
+ */
+export function isInlineTagPrefix(name: string): boolean {
+  return isInlineTagName(name.endsWith('/') ? name.slice(0, -1) : name)
+}
+
+/**
  * A `#` starts a tag only at the start of the text or after whitespace.
  * `preceding` is the character before the `#`, or `''` at the start.
  */

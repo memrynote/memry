@@ -3,9 +3,10 @@ import { Fragment } from '@tiptap/pm/model'
 import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { isInlineTagPrefix } from '@memry/shared/inline-tags'
 
 const PLUGIN_KEY = new PluginKey('hashTagInline')
-const HASH_TAG_IMMEDIATE = /(^|[\s\ufffc])#([a-zA-Z0-9])$/
+const HASH_TAG_IMMEDIATE = /(^|[\s\ufffc])#([a-zA-Z])$/
 const TAG_CHAR_PATTERN = /^[a-zA-Z0-9_\-/]$/
 const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_\-/]+)$/
 
@@ -24,8 +25,10 @@ export function isTagChar(char: string): boolean {
   return TAG_CHAR_PATTERN.test(char)
 }
 
-export function extendTagName(currentTag: string, chars: string): string {
-  return currentTag + chars
+/** The chip's tag with `chars` typed after it, or null when the grammar would not read it back. */
+export function extendTagName(currentTag: string, chars: string): string | null {
+  const next = currentTag + chars
+  return isInlineTagPrefix(next) ? next : null
 }
 
 export function shrinkTagName(currentTag: string): string | null {
@@ -128,6 +131,7 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
 
         const currentTag = nodeAtPos.attrs.tag as string
         const newTag = extendTagName(currentTag, trailing.chars)
+        if (newTag === null) return null
         const color = getTagColor(newTag)
         const newNode = hashTagNodeType.create({ tag: newTag, color })
 

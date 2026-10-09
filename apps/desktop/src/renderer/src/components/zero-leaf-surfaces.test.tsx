@@ -184,6 +184,9 @@ describe('zero-covered leaf surfaces', () => {
     expect(matchHashTagBeforeCursor('Plan #Work-2026 ')).toBe('Work-2026')
     expect(matchHashTagBeforeCursor('Plan #x ')).toBeNull()
     expect(matchHashTagBeforeCursor('Plan #bad. ')).toBeNull()
+    expect(matchHashTagBeforeCursor('Plan #2024 ')).toBeNull()
+    expect(matchHashTagBeforeCursor('Plan #a2024 ')).toBe('a2024')
+    expect(matchHashTagBeforeCursor('Plan #a//b ')).toBeNull()
 
     const plugin = createHashTagSpacePlugin((tag) => `color:${tag}`)
     expect(plugin.key).toContain('hashTagSpaceComplete')
