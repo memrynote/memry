@@ -1149,6 +1149,37 @@ describe('vault watcher', () => {
     expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id, { deferSnapshot: true })
   })
 
+  it('neither indexes nor feeds the CRDT a note swapped for a link outside the vault', async () => {
+    const notePath = createTestNote(vault, { title: 'swapped', content: 'Vault body' })
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    watcher.onError = vi.fn()
+    await watcher.handleFileAdd(notePath)
+    const before = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/swapped.md'))
+      .get()
+    const outside = fs.mkdtempSync(path.join(path.dirname(vault.path), 'watcher-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret.')
+    fs.unlinkSync(notePath)
+    fs.symlinkSync(secret, notePath)
+    window.webContents.send.mockClear()
+    replaceNoteBodyInCrdt.mockClear()
+
+    await watcher.handleFileChange(notePath)
+
+    const after = indexDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
+    expect(after?.contentHash).toBe(before?.contentHash)
+    expect(replaceNoteBodyInCrdt).not.toHaveBeenCalled()
+    expect(JSON.stringify(window.webContents.send.mock.calls)).not.toContain('Outside secret')
+    expect(watcher.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('points outside the vault') })
+    )
+    fs.rmSync(outside, { recursive: true, force: true })
+  })
+
   it('leaves a note that has no persisted doc to its markdown seed', async () => {
     const notePath = createTestNote(vault, { title: 'never-opened', content: 'Old body' })
 
@@ -1273,6 +1304,30 @@ describe('vault watcher', () => {
         changes: expect.objectContaining({ wordCount: 3 })
       })
     )
+  })
+
+  it('backfills nothing from a new note file that links outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(path.dirname(vault.path), 'watcher-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret words')
+    const notePath = path.join(vault.path, 'notes', 'linked.md')
+    fs.symlinkSync(secret, notePath)
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+    window.webContents.send.mockClear()
+
+    await drainIngestBackfill()
+
+    const row = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/linked.md'))
+      .get()
+    expect(row?.contentHash ?? null).toBeNull()
+    expect(row?.snippet ?? null).toBeNull()
+    expect(JSON.stringify(window.webContents.send.mock.calls)).not.toContain('Outside secret')
+    fs.rmSync(outside, { recursive: true, force: true })
   })
 
   // The watcher never sees the attachments folder, so the body that embeds a

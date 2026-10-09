@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => {
     // Per-run temp dir, assigned once the real fs is importable (below). A
     // fixed name in a world-writable dir is a symlink-swap target.
     userDataDir: '',
+    vaultRoot: '',
     // The open vault's identity — what the CRDT store is scoped to. null for
     // `dataDb` means no vault is open, which must defer the store init.
     dataDb: {} as object | null,
@@ -225,6 +226,7 @@ vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => mocks.vaultRoot,
   toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
 }))
 
@@ -297,6 +299,7 @@ import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
+mocks.vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-vault-'))
 
 const VAULT_UUID = mocks.vaultUuid
 /** Where the store lands now that it is scoped to the open vault. */
@@ -2144,6 +2147,31 @@ describe('CrdtProvider', () => {
     expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
     expect(provider.getDoc('log-dump')?.getXmlFragment('prosemirror').length).toBe(0)
+  })
+
+  it('neither seeds nor reads a note swapped for a link outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret.')
+    fs.mkdirSync(path.join(mocks.vaultRoot, 'notes'), { recursive: true })
+    fs.symlinkSync(secret, path.join(mocks.vaultRoot, 'notes', 'Swapped.md'))
+    mocks.toAbsolutePath.mockImplementation((p: string) => path.join(mocks.vaultRoot, p))
+    mocks.safeRead.mockImplementation(async (file: string) => fs.readFileSync(file, 'utf-8'))
+    await provider.open('swapped', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'swapped',
+      path: 'notes/Swapped.md',
+      fileType: 'markdown'
+    })
+    mocks.markdownToYFragment.mockClear()
+
+    await provider.seedFromMarkdownPublic('swapped')
+    await provider.takeFileAfterMerge('swapped', provider.getDoc('swapped')!)
+
+    expect(mocks.safeRead).not.toHaveBeenCalled()
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+    expect(provider.getDoc('swapped')?.getXmlFragment('prosemirror').length).toBe(0)
+    fs.rmSync(outside, { recursive: true, force: true })
   })
 
   it('refuses a file over the byte ceiling without reading it', async () => {

@@ -6,7 +6,8 @@ import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import { toAbsolutePath } from '../../vault/notes'
+import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
+import { refuseOutsideVaultSync } from '../../lib/paths'
 import { parseNote } from '../../vault/frontmatter'
 import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
@@ -58,6 +59,7 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
   let cover: NoteCoverSync | null | undefined
   const absolutePath = toAbsolutePath(cached.path)
   try {
+    refuseOutsideVaultSync(getVaultRoot(), cached.path)
     const raw = fs.readFileSync(absolutePath, 'utf-8')
     const parsed = parseNote(raw)
     content = operation === 'create' ? parsed.content : null
@@ -103,6 +105,7 @@ export function settlePushedNoteCover(db: DrizzleDb, itemId: string): void {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached) return null
     try {
+      refuseOutsideVaultSync(getVaultRoot(), cached.path)
       return parseNote(fs.readFileSync(toAbsolutePath(cached.path), 'utf-8')).frontmatter
     } catch {
       return null

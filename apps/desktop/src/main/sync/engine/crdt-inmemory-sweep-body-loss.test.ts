@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import os from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
@@ -27,6 +28,9 @@ const h = vi.hoisted(() => ({
   versionsThrow: false,
   canonical: null as null | Record<string, unknown>
 }))
+
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-'))
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', getVersion: () => '0.0.0' },
@@ -116,7 +120,7 @@ vi.mock('@memry/storage-data', () => ({
 }))
 
 vi.mock('../../vault/notes', () => ({
-  getVaultRoot: () => '/vault',
+  getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   maybeCreateSignificantSnapshot: () => null,
   createSnapshot: (_noteId: string, fileContent: string) => {
