@@ -63,6 +63,7 @@ import {
   portableCanvasFolder,
   resolveCanvasFile
 } from './scene-file'
+import { releaseRemovedCanvasPaths } from './store'
 
 const log = createLogger('CanvasFolderStore')
 
@@ -732,6 +733,7 @@ export async function deleteCanvasFolder(
       })
     }
   }
+  releaseRemovedCanvasPaths(db, vaultPath, deletedCanvasIds)
 
   return deletedCanvasIds
 }

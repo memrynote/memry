@@ -143,12 +143,10 @@ including its open tab, which closes on those devices too. On those other
 devices the file is removed outright; only the device you deleted from keeps a
 copy in its trash.
 
-That trash copy is a copy of the **file**, not an undo. Putting it back in your
-vault does not bring the canvas back into memrynote: the delete is what every
-device now agrees on, and a file reappearing must not overrule it — otherwise a
-removal that failed on one machine would resurrect the canvas everywhere. To get
-the drawing back, open the restored file in an Excalidraw editor and copy it into
-a new canvas.
+To undo a delete, put the file or folder back in `canvases/` from your trash.
+memrynote picks it up the next time it opens the vault, as a new canvas: the
+delete has already reached your other devices, so the restored board syncs to
+them as a new one. Its images come back with it.
 
 ## Next steps
 

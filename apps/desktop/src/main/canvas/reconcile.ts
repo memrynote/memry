@@ -29,7 +29,8 @@
  * removed from `canvases/`, or moved out of it (the app reads canvases only
  * there, as it reads notes only inside the vault), becomes a canvas delete
  * (`canvas/delete.ts`). A removal while the app is closed or the vault is
- * unmounted is not caught yet (#2964).
+ * unmounted is not caught yet (#2964). A deleted canvas's document that comes
+ * back is adopted as a new canvas (#3002).
  *
  * The single exception is the EMPTY directory of a folder the user already
  * deleted (see `pruneTombstonedFolderDirs`) — litter the sync apply order leaves
@@ -59,6 +60,8 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { enqueueLocalSyncUpdate } from '../sync/local-mutations'
 import { rewriteCanvasEdges } from './edge-index'
 import { extractEntityRefsFromScene } from './scene-refs'
+import { recordAsset } from './assets/asset-store'
+import { readMemryAssets } from './assets/memry-assets'
 import { decryptCanvasLibraryItemForVault, decryptCanvasSceneForVault } from './encryption'
 import { folderSegments, isDescendantFolder, MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
 import { readCanvasLibrary, writeCanvasLibrary } from './library-file'
@@ -79,6 +82,7 @@ import {
   withCanvasMeta,
   writeCanvasFileSync
 } from './scene-file'
+import { releaseRemovedCanvasPaths } from './store'
 import { getLegacyCanvasVaultKey } from './vault-key'
 
 const log = createLogger('CanvasReconcile')
@@ -464,26 +468,31 @@ export async function reconcileCanvasFiles(
   }
 
   // ---- 3. adopt files this index has never seen ----------------------------
-  const indexed = db.select({ id: canvases.id, filePath: canvases.filePath }).from(canvases).all()
+  // A tombstone whose document is gone gives up its path, so a document put
+  // back there later is a restore. Catches tombstones from a peer's delete and
+  // from builds before #3002. The vault is mounted: its data.db just opened.
+  releaseRemovedCanvasPaths(db, vaultPath)
+  const indexed = db
+    .select({ id: canvases.id, filePath: canvases.filePath, deletedAt: canvases.deletedAt })
+    .from(canvases)
+    .all()
+  const live = indexed.filter((row) => row.deletedAt === null)
   // Which file each id is currently bound to. Kept up to date through the loop
   // so the duplicate check below sees the binding this very run just made.
-  const boundPathById = new Map<string, string | null>(indexed.map((row) => [row.id, row.filePath]))
+  const boundPathById = new Map<string, string | null>(live.map((row) => [row.id, row.filePath]))
+  // Every id, tombstones included: an adopted file never takes a deleted id.
   const knownIds = new Set(indexed.map((row) => row.id))
   // Keyed case- and Unicode-insensitively: macOS hands back decomposed (NFD)
   // filenames for the composed (NFC) name we wrote, and both macOS and Windows
   // are case-insensitive. Comparing raw strings would make every vault open
   // rediscover the same documents as new.
   //
-  // TOMBSTONED rows are in here on purpose, which is what makes a deleted canvas
-  // stay deleted when its document comes back. Two situations put a file at a
-  // tombstoned row's path and nothing here can tell them apart: the user
-  // restoring it from the OS trash, and a removal that FAILED —
-  // `deleteCanvasFileSync` is total, a peer's `applyDelete` removes the document
-  // the same way on every other device, and a cloud client can re-materialize a
-  // file mid-sync. Adopting would resurrect the canvas fleet-wide off a failed
-  // unlink. The folder half has a second signal to separate the two (does a live
-  // canvas row still own a document in there?); the canvas half has only the
-  // file, so the delete wins. The delete confirmation says so.
+  // A tombstone that still has a path still owns the document there: its
+  // removal failed (a refused trash, a locked file), and adopting it would undo
+  // the delete on every device. A tombstone whose document was confirmed gone
+  // has no path (`releaseRemovedCanvasPaths`), so a document restored there is
+  // adopted as a NEW canvas, the way a restored note file gets a fresh id
+  // (#3002). The old id stays a tombstone, so no device has to undo a delete.
   const knownPaths = new Set(
     indexed
       .map((row) => row.filePath)
@@ -510,7 +519,7 @@ export async function reconcileCanvasFiles(
     const boundPath = meta ? (boundPathById.get(meta.id) ?? null) : null
     const boundFileStillThere =
       boundPath !== null && existsSync(resolveCanvasFile(vaultPath, boundPath))
-    if (meta && knownIds.has(meta.id) && !boundFileStillThere) {
+    if (meta && boundPathById.has(meta.id) && !boundFileStillThere) {
       // Same canvas, moved or renamed outside the app — re-point the index
       // instead of minting a duplicate. The folder comes along: a drag into
       // (or out of) a subfolder in Finder is a real move, and a row left
@@ -526,7 +535,8 @@ export async function reconcileCanvasFiles(
 
     // A duplicate takes a NEW id: what the user has is two documents, and
     // adopting the second one under a fresh identity is the only outcome that
-    // keeps both editable and both syncable.
+    // keeps both editable and both syncable. So does a deleted canvas's
+    // document: its id is a tombstone.
     const id = meta && !knownIds.has(meta.id) ? meta.id : generateId()
     const title = titleFromPath(filePath)
     db.insert(canvases)
@@ -565,6 +575,13 @@ export async function reconcileCanvasFiles(
           updatedAt: meta?.updatedAt ?? now
         })
       )
+    }
+
+    // Images resolve through `canvas_assets` rows keyed by canvas id, so the
+    // scene's own asset sidecar has to be indexed for the id it now has. A
+    // deleted canvas's asset files and server refs are kept for this (#2960).
+    for (const descriptor of readMemryAssets(content)) {
+      recordAsset(db, { ...descriptor, vaultId, canvasId: id, createdAt: now })
     }
 
     for (const ref of extractEntityRefsFromScene(stripCanvasMeta(content))) {

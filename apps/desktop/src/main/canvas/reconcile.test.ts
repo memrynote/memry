@@ -40,6 +40,7 @@ const { deleteCanvasFolder, listCanvasFolders, renameCanvasFolder, setCanvasFold
 
 const MIGRATIONS = [
   '0035_spatial_canvas.sql',
+  '0036_canvas_assets.sql',
   '0038_canvas_library_items.sql',
   '0045_canvas_files.sql',
   '0048_canvas_folders.sql',
@@ -364,40 +365,148 @@ describe('adoption', () => {
   })
 
   /**
-   * **A deleted canvas stays deleted, even if its document comes back.**
-   *
-   * The delete is what every device now agrees on; the file is the truth for
-   * INK, not for existence-after-a-delete. Two situations put a document back at
-   * a tombstoned row's path and they are indistinguishable from here:
-   *
-   * - the user restored it from the OS trash, meaning to undo;
-   * - a removal FAILED. `deleteCanvasFileSync` is total (a locked file on
-   *   Windows, a refused unlink), a peer's `canvasHandler.applyDelete` removes
-   *   the document on every other device the same way, and a cloud client can
-   *   re-materialize a file mid-sync.
-   *
-   * Adopting would therefore resurrect the canvas fleet-wide off a failed
-   * unlink, and there is no second signal to tell the cases apart — the folder
-   * half has one ("does a LIVE canvas row still own a document in here?"); the
-   * canvas half has only the file itself. So the delete wins, and the delete
-   * confirmation says exactly that instead of promising a restore.
+   * A deleted canvas's document that comes back (Trash, backup, iCloud) is
+   * adopted as a NEW canvas, the way a restored note file gets a fresh id
+   * (#3002). The old id stays a tombstone, so the delete other devices already
+   * applied is never undone; the new id reaches them as a create.
    */
-  it('leaves a deleted canvas deleted when its document reappears', async () => {
-    const dropped = createCanvas(db, vault, 'vault-1', { title: 'Dropped' })
-    const restored: { path: string; content: string }[] = []
-    await deleteCanvas(db, vault, dropped.id, async (abs) => {
-      restored.push({ path: abs, content: fs.readFileSync(abs, 'utf8') })
-      fs.rmSync(abs)
+  async function deleteExternally(title: string): Promise<{ id: string; content: string }> {
+    const canvas = createCanvas(db, vault, 'vault-1', { title })
+    const abs = path.join(vault, CANVAS_DIR, `${title}.excalidraw`)
+    const content = fs.readFileSync(abs, 'utf8')
+    // What the watcher's external delete does: the file is already gone, so
+    // there is nothing to trash (`removeCanvas(id, noop, { keepAssets: true })`).
+    fs.rmSync(abs)
+    await deleteCanvas(db, vault, canvas.id, async () => {})
+    return { id: canvas.id, content }
+  }
+
+  it('brings a canvas restored to its old path back under a new id', async () => {
+    const dropped = await deleteExternally('Dropped')
+    fs.writeFileSync(path.join(vault, CANVAS_DIR, 'Dropped.excalidraw'), dropped.content)
+
+    const result = await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    expect(result.adopted).toBe(1)
+    const listed = listCanvases(db, 'vault-1')
+    expect(listed).toHaveLength(1)
+    const revived = listed[0]
+    expect(revived.id).not.toBe(dropped.id)
+    expect(revived.title).toBe('Dropped')
+    const rows = db.select().from(schema.canvases).all()
+    expect(rows.find((row) => row.id === dropped.id)?.deletedAt).not.toBeNull()
+    // Null clock: seedUnclocked pushes it as a create on the next sync.
+    expect(rows.find((row) => row.id === revived.id)?.clock).toBeNull()
+    const onDisk = fs.readFileSync(path.join(vault, CANVAS_DIR, 'Dropped.excalidraw'), 'utf8')
+    expect(readCanvasMeta(onDisk)?.id).toBe(revived.id)
+    expect(getCanvas(db, vault, revived.id)?.unreadable).toBeFalsy()
+  })
+
+  it('brings a canvas restored under a different name back under a new id', async () => {
+    const dropped = await deleteExternally('Dropped')
+    fs.writeFileSync(path.join(vault, CANVAS_DIR, 'Dropped copy.excalidraw'), dropped.content)
+
+    const result = await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    expect(result.adopted).toBe(1)
+    const listed = listCanvases(db, 'vault-1')
+    expect(listed.map((c) => c.title)).toEqual(['Dropped copy'])
+    expect(listed[0].id).not.toBe(dropped.id)
+    const tombstone = db
+      .select()
+      .from(schema.canvases)
+      .all()
+      .find((row) => row.id === dropped.id)
+    expect(tombstone?.deletedAt).not.toBeNull()
+    // Confirmed gone at delete time, so it no longer owns the old path.
+    expect(tombstone?.filePath).toBeNull()
+  })
+
+  it('re-imports the images a restored canvas carries', async () => {
+    const asset = {
+      fileId: 'file-1',
+      attachmentId: 'att-1',
+      contentHash: 'hash-1',
+      chunkHashes: ['chunk-1'],
+      mimeType: 'image/png',
+      sizeBytes: 3,
+      filename: 'hash-1.png'
+    }
+    const canvas = createCanvas(db, vault, 'vault-1', { title: 'Pictures' })
+    const abs = path.join(vault, CANVAS_DIR, 'Pictures.excalidraw')
+    const withAssets = withCanvasMeta(
+      JSON.stringify({ ...JSON.parse(SCENE), memryAssets: [asset] }),
+      { id: canvas.id, createdAt: 1, updatedAt: 2 }
+    )
+    fs.writeFileSync(abs, withAssets)
+    // The row an external delete keeps (#2960).
+    db.insert(schema.canvasAssets)
+      .values({ ...asset, vaultId: 'vault-1', canvasId: canvas.id, createdAt: 1 })
+      .run()
+    fs.rmSync(abs)
+    await deleteCanvas(db, vault, canvas.id, async () => {})
+    fs.writeFileSync(abs, withAssets)
+
+    await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    const revivedId = listCanvases(db, 'vault-1')[0].id
+    const rows = db.select().from(schema.canvasAssets).all()
+    expect(rows.find((row) => row.canvasId === revivedId)).toMatchObject({
+      ...asset,
+      vaultId: 'vault-1'
     })
-    // The user drags the file back out of the trash, to where it was.
-    fs.writeFileSync(restored[0].path, restored[0].content)
+  })
+
+  it('brings back the canvases of a folder restored from the trash', async () => {
+    const plan = createCanvas(db, vault, 'vault-1', { title: 'Plan', folder: 'Work' })
+    const dir = path.join(vault, CANVAS_DIR, 'Work')
+    const trashed = path.join(vault, 'trashed-Work')
+    await deleteCanvasFolder(db, vault, 'vault-1', 'Work', async (abs) => {
+      fs.renameSync(abs, trashed)
+    })
+    fs.renameSync(trashed, dir)
+
+    const result = await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    expect(result.adopted).toBe(1)
+    const listed = listCanvases(db, 'vault-1')
+    expect(listed.map((c) => [c.title, c.folder])).toEqual([['Plan', 'Work']])
+    expect(listed[0].id).not.toBe(plan.id)
+    expect(listCanvasFolders(db, 'vault-1').map((folder) => folder.path)).toEqual(['Work'])
+  })
+
+  it('keeps a deleted canvas deleted when iCloud evicted its leftover document', async () => {
+    // The removal failed, then iCloud swapped the leftover for a placeholder
+    // (#3004). Evicted is not gone: when it downloads again, the tombstone
+    // still owns it, so the delete stands.
+    const dropped = createCanvas(db, vault, 'vault-1', { title: 'Dropped' })
+    await deleteCanvas(db, vault, dropped.id, async () => {})
+    const abs = path.join(vault, CANVAS_DIR, 'Dropped.excalidraw')
+    const placeholder = path.join(vault, CANVAS_DIR, '.Dropped.excalidraw.icloud')
+    fs.renameSync(abs, placeholder)
+    await reconcileCanvasFiles(db, vault, 'vault-1')
+    fs.renameSync(placeholder, abs)
 
     const result = await reconcileCanvasFiles(db, vault, 'vault-1')
 
     expect(result.adopted).toBe(0)
     expect(listCanvases(db, 'vault-1')).toHaveLength(0)
-    expect(db.select().from(schema.canvases).all()).toHaveLength(1)
-    expect(db.select().from(schema.canvases).all()[0].deletedAt).not.toBeNull()
+  })
+
+  it('brings back a document restored after an older build deleted it', async () => {
+    // Tombstones written before #3002 keep their path; the open releases it
+    // once the document is gone, and a later restore comes back.
+    const dropped = await deleteExternally('Dropped')
+    db.update(schema.canvases)
+      .set({ filePath: `${CANVAS_DIR}/Dropped.excalidraw` })
+      .run()
+    await reconcileCanvasFiles(db, vault, 'vault-1')
+    fs.writeFileSync(path.join(vault, CANVAS_DIR, 'Dropped.excalidraw'), dropped.content)
+
+    const result = await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    expect(result.adopted).toBe(1)
+    expect(listCanvases(db, 'vault-1').map((c) => c.title)).toEqual(['Dropped'])
   })
 
   it('still counts a live canvas whose document vanished alongside a deleted one', async () => {
