@@ -140,7 +140,8 @@
       "archivedAt": null,
       "isRepeating": false,
       "tags": [
-        "home"
+        "home",
+        "İş"
       ],
       "sourceNoteId": null,
       "linkedNoteIds": []
@@ -159,7 +160,9 @@
       "completedAt": null,
       "archivedAt": null,
       "isRepeating": false,
-      "tags": [],
+      "tags": [
+        "ΟΔΟΣ"
+      ],
       "sourceNoteId": null,
       "linkedNoteIds": [
         "n-standup",
@@ -719,6 +722,16 @@
           "missing"
         ],
         "expected": []
+      },
+      {
+        "tags": [
+          "iş",
+          "οδος"
+        ],
+        "expected": [
+          "b",
+          "c"
+        ]
       }
     ],
     "statuses": [

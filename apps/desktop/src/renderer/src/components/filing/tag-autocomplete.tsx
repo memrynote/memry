@@ -3,6 +3,7 @@
  * Inline tag input with dropdown showing AI suggestions, matching tags, and create option.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Hash, Plus, X } from '@/lib/icons'
 
@@ -15,7 +16,7 @@ import { useT } from '@memry/i18n/renderer'
 
 function getColorForTag(tagName: string): string {
   // Case-insensitive: #Work and #work fall back to the same color
-  const name = tagName.toLowerCase()
+  const name = foldTag(tagName)
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -125,10 +126,7 @@ export const TagAutocomplete = ({
 
   // Saved color + icon per tag name, so suggestions and selected pills reflect
   // the user's chosen color/icon rather than a hashed default.
-  const metaByName = useMemo(
-    () => new Map(tagDefs.map((d) => [d.name.toLowerCase(), d])),
-    [tagDefs]
-  )
+  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [foldTag(d.name), d])), [tagDefs])
 
   const trimmedInput = inputValue.trim()
 
@@ -142,7 +140,7 @@ export const TagAutocomplete = ({
   }, [trimmedInput])
 
   const hasTagCi = useCallback(
-    (name: string) => tags.some((t) => t.toLowerCase() === name.toLowerCase()),
+    (name: string) => tags.some((t) => foldTag(t) === foldTag(name)),
     [tags]
   )
 
@@ -170,7 +168,7 @@ export const TagAutocomplete = ({
     () =>
       trimmedInput
         ? hasTagCi(trimmedInput) ||
-          matchingTags.some((t) => t.name.toLowerCase() === trimmedInput.toLowerCase())
+          matchingTags.some((t) => foldTag(t.name) === foldTag(trimmedInput))
         : true,
     [trimmedInput, hasTagCi, matchingTags]
   )
@@ -230,7 +228,7 @@ export const TagAutocomplete = ({
   const addTag = useCallback(
     (tag: string): void => {
       const trimmed = tag.trim()
-      if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      if (trimmed && !tags.some((t) => foldTag(t) === foldTag(trimmed))) {
         onTagsChange([...tags, trimmed])
       }
       setInputValue('')
@@ -373,7 +371,7 @@ export const TagAutocomplete = ({
         {itemsToShow.map((tag, i) => {
           const idx = aiCount + i
           const colors = getTagColors(tag.color ?? '', tag.name)
-          const icon = metaByName.get(tag.name.toLowerCase())?.icon
+          const icon = metaByName.get(foldTag(tag.name))?.icon
           return (
             <button
               key={tag.name}
@@ -499,7 +497,7 @@ export const TagAutocomplete = ({
             aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
           >
             {tags.map((tag) => {
-              const def = metaByName.get(tag.toLowerCase())
+              const def = metaByName.get(foldTag(tag))
               return (
                 <TagPill
                   key={tag}
@@ -561,7 +559,7 @@ export const TagAutocomplete = ({
           aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
         >
           {tags.map((tag) => {
-            const def = metaByName.get(tag.toLowerCase())
+            const def = metaByName.get(foldTag(tag))
             return <TagPill key={tag} tag={tag} color={def?.color} icon={def?.icon} />
           })}
           {renderInput(

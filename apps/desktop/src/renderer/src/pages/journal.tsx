@@ -5,6 +5,7 @@
  * Day context (calendar + tasks) available via global Day Panel
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import {
   useCallback,
   useEffect,
@@ -532,7 +533,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag.toLowerCase(), t.color)
+      map.set(foldTag(t.tag), t.color)
     }
     // Just-created tags aren't in allAvailableTags until reindex+refetch;
     // without this the editor pill falls back to the hashed default color
@@ -545,7 +546,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
+      if (t.icon) map.set(foldTag(t.tag), t.icon)
     }
     return map
   }, [allAvailableTags])
@@ -554,9 +555,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color:
-        tagColorMap.get(tagName.toLowerCase()) ?? pendingTagColors.get(tagName.toLowerCase()) ?? '',
-      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
+      color: tagColorMap.get(foldTag(tagName)) ?? pendingTagColors.get(foldTag(tagName)) ?? '',
+      icon: tagIconMap.get(foldTag(tagName)) ?? null
     }))
   }, [entry?.tags, tagColorMap, tagIconMap, pendingTagColors])
 
@@ -1080,7 +1080,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const handleCreateTag = useCallback(
     (name: string, color: string) => {
-      setPendingTagColors((prev) => new Map(prev).set(name.toLowerCase(), color))
+      setPendingTagColors((prev) => new Map(prev).set(foldTag(name), color))
       const currentTags = entryTags
       if (!currentTags.includes(name)) {
         updateTags([...currentTags, name])
@@ -1101,7 +1101,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     useCallback(
       (edit: InlineTagEdit) => {
         const holds = (tag: string): boolean =>
-          entryTags.some((held) => held.toLowerCase() === tag.toLowerCase())
+          entryTags.some((held) => foldTag(held) === foldTag(tag))
         const add = edit.add.filter((tag) => !holds(tag))
         const remove = edit.remove.filter(holds)
         if (add.length > 0 || remove.length > 0) updateInlineTags({ add, remove })

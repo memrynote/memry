@@ -1,3 +1,5 @@
+import { foldTag } from '@memry/shared/tag-fold'
+
 /**
  * Multi-tag (AND) selection logic for a tag-scoped folder view.
  *
@@ -16,7 +18,7 @@
 
 /** Case- and whitespace-folded comparison key for a tag. */
 export function tagKey(tag: string): string {
-  return tag.trim().toLowerCase()
+  return foldTag(tag.trim())
 }
 
 /** Whether `tag` is already among the ANDed tags. */

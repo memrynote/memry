@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * NotePage Component
@@ -693,7 +694,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag.toLowerCase(), t.color)
+      map.set(foldTag(t.tag), t.color)
     }
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
@@ -709,7 +710,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
+      if (t.icon) map.set(foldTag(t.tag), t.icon)
     }
     return map
   }, [allAvailableTags])
@@ -719,10 +720,10 @@ export function NotePage({ noteId }: NotePageProps) {
       id: tagName,
       name: tagName,
       color:
-        tagColorMap.get(tagName.toLowerCase()) ??
-        pendingTagColorsRef.current.get(tagName.toLowerCase()) ??
+        tagColorMap.get(foldTag(tagName)) ??
+        pendingTagColorsRef.current.get(foldTag(tagName)) ??
         '',
-      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
+      icon: tagIconMap.get(foldTag(tagName)) ?? null
     }))
   }, [note?.headerTags, tagColorMap, tagIconMap])
 
@@ -1041,7 +1042,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const handleCreateTag = useCallback(
     async (name: string, color: string) => {
-      pendingTagColorsRef.current.set(name.toLowerCase(), color)
+      pendingTagColorsRef.current.set(foldTag(name), color)
       await addHeaderTag(name)
     },
     [addHeaderTag]

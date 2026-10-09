@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -22,9 +23,9 @@ export function isObjectOfTarget(
   target: string,
   snapshot: TagSchemaSnapshot | undefined
 ): boolean {
-  const key = target.toLowerCase()
+  const key = foldTag(target)
   return headerTags.some((name) => {
-    const tag = name.trim().toLowerCase()
+    const tag = foldTag(name.trim())
     return tag === key || (snapshot?.tags[tag]?.ancestors.includes(key) ?? false)
   })
 }

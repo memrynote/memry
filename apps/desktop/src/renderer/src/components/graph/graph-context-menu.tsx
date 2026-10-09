@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Focus,
@@ -444,7 +445,7 @@ function TagPicker({
       .slice(0, MAX_PICKER_RESULTS)
   }, [graph, nodeTags, typed])
 
-  const showCreate = typedValid && !suggestions.some((tag) => tag.toLowerCase() === typed)
+  const showCreate = typedValid && !suggestions.some((tag) => foldTag(tag) === foldTag(typed))
 
   return (
     <PickerShell
@@ -453,7 +454,7 @@ function TagPicker({
       onChange={setQuery}
       onBack={onBack}
       onSubmit={() => {
-        const exact = suggestions.find((tag) => tag.toLowerCase() === typed)
+        const exact = suggestions.find((tag) => foldTag(tag) === foldTag(typed))
         if (exact) onPick(exact)
         else if (typedValid) onPick(typed)
         else if (suggestions[0]) onPick(suggestions[0])

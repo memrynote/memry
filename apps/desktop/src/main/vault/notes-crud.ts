@@ -6,6 +6,7 @@
  * @module vault/notes-crud
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import path from 'path'
 import fs from 'fs/promises'
 import { shell } from 'electron'
@@ -287,7 +288,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     const { loadResolvedTags } = await import('../tags/schema/read')
     const resolved = loadResolvedTags(dataDb)
     templateId = input.tags
-      .map((tag) => resolved.get(tag.toLowerCase())?.template?.id)
+      .map((tag) => resolved.get(foldTag(tag))?.template?.id)
       .find((id) => id !== undefined)
   }
   if (!templateId && input.folder) {

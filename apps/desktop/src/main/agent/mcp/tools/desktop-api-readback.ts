@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import type {
   AgentMcpDesktopApiRequest,
   AgentMcpDesktopReadOperation,
@@ -44,7 +45,7 @@ function findIn(
 const equals = (value: unknown) => (entryValue: unknown) => entryValue === value
 
 // The tag writers match a name trimmed and case-insensitively; so does the read-back.
-const tagName = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : value)
+const tagName = (value: unknown) => (typeof value === 'string' ? foldTag(value.trim()) : value)
 
 const propertyDefinition = (args: Args) =>
   findIn(call('notes.getPropertyDefinitions'), null, 'name', equals(args[0]))

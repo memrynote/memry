@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Hash } from '@/lib/icons'
@@ -29,7 +30,7 @@ export const TagsChip = ({
   const { t } = useT('tasks')
   const { tags: tagDefs } = useNoteTagsQuery({ enabled: tags.length > 0 })
   const colorByName = useMemo(
-    () => new Map(tagDefs.map((def) => [def.tag.toLowerCase(), def.color ?? ''])),
+    () => new Map(tagDefs.map((def) => [foldTag(def.tag), def.color ?? ''])),
     [tagDefs]
   )
 
@@ -55,7 +56,7 @@ export const TagsChip = ({
           ) : (
             <span className="flex items-center gap-1.5">
               {visible.map((tag) => {
-                const colors = getTagColors(colorByName.get(tag.toLowerCase()) ?? '', tag)
+                const colors = getTagColors(colorByName.get(foldTag(tag)) ?? '', tag)
                 return (
                   <span key={tag} className="flex min-w-0 items-center gap-1">
                     <span

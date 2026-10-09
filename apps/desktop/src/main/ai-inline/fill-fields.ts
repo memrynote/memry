@@ -5,6 +5,7 @@
  * through the normal property path.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, Output, type LanguageModel } from 'ai'
 import { z } from 'zod'
@@ -81,9 +82,9 @@ export function emptyFieldsOf(
 ): ResolvedField[] {
   const seen = new Set<string>()
   const fields: ResolvedField[] = []
-  const onlyKey = only?.trim().toLowerCase()
+  const onlyKey = only ? foldTag(only.trim()) : undefined
   for (const name of note.headerTags) {
-    const tag = resolved.get(name.trim().toLowerCase())
+    const tag = resolved.get(foldTag(name.trim()))
     if (!tag?.hasFields) continue
     if (onlyKey && tag.key !== onlyKey && !tag.ancestors.includes(onlyKey)) continue
     for (const field of tag.effectiveFields) {

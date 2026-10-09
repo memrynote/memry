@@ -1175,6 +1175,10 @@ importers:
         version: link:../typescript-config
 
   packages/domain-tasks:
+    dependencies:
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

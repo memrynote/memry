@@ -1,3 +1,5 @@
+import { foldTag } from '@memry/shared/tag-fold'
+
 /**
  * The one tag/chip palette every Memry surface paints from.
  *
@@ -57,10 +59,13 @@ export const COLOR_ROWS = [
  * `COLOR_NAMES` in insertion order — is part of the wire contract: two devices
  * that fold the same name differently disagree about the colour of a tag no
  * `tag_definition` row covers. Hashes the lowercased name, because tag identity
- * is case-insensitive and `#Work` and `#work` are one tag.
+ * Hashes the tag fold (`@memry/shared/tag-fold`, protocol §13.7.7), because
+ * every spelling of one tag (`#Work`/`#work`, `#İş`/`#iş`) must share a colour.
+ * The fold equals `toLowerCase` except for `İ`, `ς` and a dot above after `i`,
+ * so only tags containing those changed colour when the hash moved to the fold.
  */
 export function defaultTagColorName(tagName: string): string {
-  const name = tagName.toLowerCase()
+  const name = foldTag(tagName)
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) | 0

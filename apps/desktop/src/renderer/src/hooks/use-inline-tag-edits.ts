@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useRef } from 'react'
 import type { InlineTagsOrigin } from '@/components/note'
 
@@ -7,7 +8,7 @@ export interface InlineTagEdit {
 }
 
 export function mergeInlineTagEdits(earlier: InlineTagEdit, later: InlineTagEdit): InlineTagEdit {
-  const key = (tag: string): string => tag.toLowerCase()
+  const key = (tag: string): string => foldTag(tag)
   const add = new Map(earlier.add.map((tag) => [key(tag), tag]))
   const remove = new Map(earlier.remove.map((tag) => [key(tag), tag]))
   for (const tag of later.add) {

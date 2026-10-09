@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useCallback, useMemo } from 'react'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
@@ -68,7 +69,7 @@ export function TagInputPopup({
   const fieldRows = useMemo(() => {
     if (!fieldHints || !searchQuery.trim()) return []
     return matchingTags.flatMap((tag) => {
-      const resolved = fieldHints.tags[tag.name.toLowerCase()]
+      const resolved = fieldHints.tags[foldTag(tag.name)]
       return resolved?.hasFields ? [{ tag, resolved }] : []
     })
   }, [fieldHints, searchQuery, matchingTags])
@@ -82,8 +83,8 @@ export function TagInputPopup({
   const activeIndex = focusedIndex === -1 && fieldRows.length > 0 ? 0 : focusedIndex
 
   const exactMatchExists = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    return availableTags.some((tag) => tag.name.toLowerCase() === query)
+    const query = foldTag(searchQuery.trim())
+    return availableTags.some((tag) => foldTag(tag.name) === query)
   }, [availableTags, searchQuery])
 
   const filteredRecentTags = useMemo(

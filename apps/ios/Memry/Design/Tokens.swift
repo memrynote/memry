@@ -600,15 +600,37 @@ enum Tokens {
 
         /// `defaultTagColorName`, byte for byte: JavaScript's `hash * 31 +
         /// charCodeAt` over UTF-16 units with 32-bit wrap, then
-        /// `Math.abs(hash) % 20`. Two devices that fold a name differently
-        /// disagree about the colour of every tag nobody picked one for.
+        /// `Math.abs(hash) % 20`, over the tag fold (protocol §13.7.7). Two
+        /// devices that fold a name differently disagree about the colour of
+        /// every tag nobody picked one for.
         static func defaultName(for tag: String) -> String {
             var hash: Int32 = 0
-            for unit in tag.lowercased().utf16 {
+            for unit in fold(tag).utf16 {
                 hash = hash &* 31 &+ Int32(unit)
             }
             let index = Int(Int64(hash).magnitude % UInt64(names.count))
             return names[index]
+        }
+
+        /// `foldTag` (`packages/shared/src/tag-fold.ts`): each scalar on its
+        /// own, `İ` to `i`, `ς` to `σ`, a dot above after an `i` dropped, the
+        /// rest lowercased. Pinned by `Tokens` colour literals shared with
+        /// `tag-colors.test.ts`.
+        private static func fold(_ tag: String) -> String {
+            var out = ""
+            var afterI = false
+            for scalar in tag.unicodeScalars {
+                if afterI && scalar == "\u{0307}" { continue }
+                let folded: String
+                switch scalar {
+                case "\u{0130}": folded = "i"
+                case "\u{03C2}": folded = "\u{03C3}"
+                default: folded = String(scalar).lowercased()
+                }
+                out += folded
+                afterI = folded == "i"
+            }
+            return out
         }
 
         private static func rgbColor(_ rgb: UInt32) -> Color {

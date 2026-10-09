@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * Folder View Hook
@@ -1183,7 +1184,7 @@ export function useFolderView({
     if (scope.kind !== 'tag') return
     const currentTag = scope.tag
     const unsubscribe = onTagNotesChanged((event) => {
-      if (event.tag.toLowerCase() === currentTag.toLowerCase()) {
+      if (foldTag(event.tag) === foldTag(currentTag)) {
         void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
       }
     })

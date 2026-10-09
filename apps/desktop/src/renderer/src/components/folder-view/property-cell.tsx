@@ -11,6 +11,7 @@
  * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
@@ -1227,7 +1228,7 @@ export const TagsCell = memo(function TagsCell({
         <MeasuredTagPill
           key={tag}
           tag={tag}
-          meta={tagMetaMap?.get(tag.toLowerCase())}
+          meta={tagMetaMap?.get(foldTag(tag))}
           onTagClick={onTagClick}
           onTagRemove={onTagRemove}
           offscreen={i >= visible}
@@ -1254,7 +1255,7 @@ export const TagsCell = memo(function TagsCell({
                 <MeasuredTagPill
                   key={tag}
                   tag={tag}
-                  meta={tagMetaMap?.get(tag.toLowerCase())}
+                  meta={tagMetaMap?.get(foldTag(tag))}
                   onTagClick={onTagClick}
                   onTagRemove={onTagRemove}
                 />

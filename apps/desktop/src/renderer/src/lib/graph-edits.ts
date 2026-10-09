@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import type Graph from 'graphology'
 import { formatRelationUri, isRelationValue } from '@memry/contracts/relation-uri'
 
@@ -126,6 +127,6 @@ export function relationLinksOf(graph: Graph, nodeId: string): GraphRelationLink
 
 /** Case-insensitive tag membership, matching how tags are compared on disk. */
 export function hasTag(tags: string[], tag: string): boolean {
-  const needle = tag.toLowerCase()
-  return tags.some((t) => t.toLowerCase() === needle)
+  const needle = foldTag(tag)
+  return tags.some((t) => foldTag(t) === needle)
 }

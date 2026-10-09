@@ -15,6 +15,7 @@ use super::config::{
 };
 use super::{FilterProject, FilterTask, Priority, StatusType, find_status};
 use crate::domain::calendar::{CivilDate, LocalDateTime};
+use crate::domain::tags::fold;
 use crate::domain::task_tree::{TaskTree, TreeNode};
 
 /// `filterBySearch`: case-insensitive substring of the title or description.
@@ -59,16 +60,14 @@ pub fn filter_by_priorities<'a>(
     })
 }
 
-/// `filterByTags`: any tag matches, case-insensitively.
+/// `filterByTags`: any tag matches, by tag identity (the §13.7.7 fold).
 pub fn filter_by_tags<'a>(tasks: &[&'a FilterTask], tags: &[String]) -> Vec<&'a FilterTask> {
     if tags.is_empty() {
         return tasks.to_vec();
     }
-    let selected: HashSet<String> = tags.iter().map(|tag| tag.to_lowercase()).collect();
+    let selected: HashSet<String> = tags.iter().map(|tag| fold(tag)).collect();
     keep(tasks, |task| {
-        task.tags
-            .iter()
-            .any(|tag| selected.contains(&tag.to_lowercase()))
+        task.tags.iter().any(|tag| selected.contains(&fold(tag)))
     })
 }
 

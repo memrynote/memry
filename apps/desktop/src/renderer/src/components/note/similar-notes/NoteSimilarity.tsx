@@ -6,6 +6,7 @@
  * feature on) would otherwise add to an already large component.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import type { SimilarNoteItem } from '@memry/contracts/notes-api'
@@ -174,7 +175,7 @@ export function NoteSuggestedTags({
     <SuggestedTagsRow
       suggestions={suggestions}
       onAccept={(tag) => {
-        if (disabled || tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) {
+        if (disabled || tags.some((existing) => foldTag(existing) === foldTag(tag))) {
           return
         }
         onAccept(tag)

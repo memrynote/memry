@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
@@ -364,5 +365,5 @@ function summarizeRepeat(cfg: RepeatConfig | null, t: (key: string) => string): 
 }
 
 function normalizeTagName(tag: string): string {
-  return tag.replace(/^#/, '').toLowerCase()
+  return foldTag(tag.replace(/^#/, ''))
 }

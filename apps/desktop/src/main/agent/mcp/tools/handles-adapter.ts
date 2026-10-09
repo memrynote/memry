@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
@@ -524,10 +525,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const domain = createTaskDomain(dataDb)
         const task = domain.getTask(id)
         if (!task) throw new Error(`Task not found: ${id}`)
-        const normalized = tag.toLowerCase()
+        const normalized = foldTag(tag)
         const result = await domain.updateTask({
           id,
-          tags: (task.tags ?? []).filter((existing) => existing.toLowerCase() !== normalized)
+          tags: (task.tags ?? []).filter((existing) => foldTag(existing) !== normalized)
         })
         if (!result.success) throw new Error(result.error ?? 'Failed to remove task tag')
       }

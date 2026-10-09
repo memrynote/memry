@@ -9,6 +9,7 @@
  * Lists (tags) union instead of overriding.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { startOfDay } from '@/lib/task-utils'
 import { findQuickAddSpans } from '@/lib/quick-add-parser'
 import type { ParsedQuickAdd, QuickAddSpanKind } from '@/lib/quick-add-parser'
@@ -71,7 +72,7 @@ const unionTags = (first: string[], second: string[]): string[] => {
   const seen = new Set<string>()
   const result: string[] = []
   for (const tag of [...first, ...second]) {
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (seen.has(key)) continue
     seen.add(key)
     result.push(tag)

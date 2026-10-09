@@ -51,11 +51,11 @@ const PALETTE: [&str; 20] = [
 ];
 
 /// `defaultTagColorName`: JS `hash * 31 + charCodeAt` over UTF-16 with 32-bit
-/// wrap, then `Math.abs(hash) % 20`. Hashes `to_lowercase`, not the fold,
-/// because desktop hashes `toLowerCase()` (`packages/contracts/src/tag-colors.ts`).
+/// wrap, then `Math.abs(hash) % 20`. Hashes the §13.7.7 fold, as desktop
+/// does (`packages/contracts/src/tag-colors.ts`).
 pub fn default_color(tag: &str) -> &'static str {
     let mut hash: i32 = 0;
-    for unit in tag.to_lowercase().encode_utf16() {
+    for unit in tags::fold(tag).encode_utf16() {
         hash = hash.wrapping_mul(31).wrapping_add(i32::from(unit));
     }
     PALETTE[(i64::from(hash).unsigned_abs() % 20) as usize]

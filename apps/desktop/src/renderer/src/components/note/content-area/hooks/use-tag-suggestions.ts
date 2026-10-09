@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
 import { registerEditorPlugin } from '../register-editor-plugin'
@@ -44,7 +45,7 @@ export function useTagSuggestions({
     // Fall back to a deterministic palette color derived from the tag name
     // (instead of a flat grey) when the tag has no explicit color yet.
     // Maps are keyed by lowercase; tag identity is case-insensitive.
-    return tagColorMapRef.current?.get(tag.toLowerCase()) || defaultTagColorName(tag)
+    return tagColorMapRef.current?.get(foldTag(tag)) || defaultTagColorName(tag)
   }, [])
 
   // Register hashTag inline plugin on editor's tiptap instance
@@ -69,7 +70,7 @@ export function useTagSuggestions({
 
     state.doc.descendants((node: any, pos: number) => {
       if (node.type.name === 'hashTag') {
-        const tagKey = (node.attrs.tag as string).toLowerCase()
+        const tagKey = foldTag(node.attrs.tag as string)
         const correctColor =
           tagColorMap.get(tagKey) || defaultTagColorName(node.attrs.tag as string)
         const correctIcon = tagIconMap?.get(tagKey) ?? ''
@@ -127,7 +128,7 @@ export function useTagSuggestions({
       const oldNode = tiptap.state.doc.nodeAt(nodePos)
       if (!oldNode || oldNode.type.name !== 'hashTag') return
 
-      const icon = tagIconMapRef.current?.get(tag.toLowerCase()) ?? ''
+      const icon = tagIconMapRef.current?.get(foldTag(tag)) ?? ''
       const newNode = hashTagNodeType.create({ tag, color, icon })
       const tr = tiptap.state.tr.replaceWith(nodePos, nodePos + oldNode.nodeSize, newNode)
       tiptap.view.dispatch(tr)

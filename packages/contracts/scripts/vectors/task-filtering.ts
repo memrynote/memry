@@ -107,7 +107,7 @@ function build() {
       priorities,
       expected: ids(filterByPriorities(tasks, priorities as TaskFilters['priorities']))
     })),
-    tags: [[], ['work'], ['WORK', 'home'], ['missing']].map((tags) => ({
+    tags: [[], ['work'], ['WORK', 'home'], ['missing'], ['iş', 'οδος']].map((tags) => ({
       tags,
       expected: ids(filterByTags(tasks, tags))
     })),

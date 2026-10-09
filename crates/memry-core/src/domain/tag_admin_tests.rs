@@ -64,6 +64,12 @@ fn the_default_colour_matches_the_contract_hash() {
     // tag-colors.ts: defaultTagColorName('work') and ('ideas').
     assert!(PALETTE.contains(&default_color("work")));
     assert_eq!(default_color("Work"), default_color("work"));
+    // Literals pinned against tag-colors.test.ts: the hash runs over the fold.
+    assert_eq!(default_color("Work"), "coral");
+    assert_eq!(default_color("İş"), "emerald");
+    assert_eq!(default_color("iş"), "emerald");
+    assert_eq!(default_color("ΟΔΟΣ"), "cyan");
+    assert_eq!(default_color("οδοσ"), "cyan");
 }
 
 #[test]

@@ -30,6 +30,7 @@
  * @module main/import/_shared/checklist-tasks
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { parseTaskBlockSuffix } from '@memry/shared/task-block'
 import { hasPlainCheckboxMarker, PLAIN_CHECKBOX_MARKER } from '@memry/shared/plain-checkbox'
@@ -78,7 +79,7 @@ function tagsForCreate(tags: string[]): string[] {
   const byKey = new Map<string, string>()
   for (const tag of tags) {
     if (tag.length > TAG_MAX_LENGTH) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()].slice(0, TAG_MAX_COUNT)

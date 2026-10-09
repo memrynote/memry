@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { type Block } from '@blocknote/core'
 import { createHashTagSpec } from '@memry/editor-schema/inline'
 import { findInlineTags } from '@memry/shared/inline-tags'
@@ -147,7 +148,7 @@ function splitTextWithHashTags(
   let lastIndex = 0
 
   for (const { index, tag: tagName } of findInlineTags(text)) {
-    const normalizedTag = tagName.toLowerCase()
+    const normalizedTag = foldTag(tagName)
     if (!noteTags.has(normalizedTag)) continue
 
     if (index > lastIndex) {
@@ -334,7 +335,7 @@ export function extractInlineTags(blocks: Block[]): string[] {
   const tagsByKey = new Map<string, string>()
 
   function addTag(tag: string): void {
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
   }
 

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { createPortal } from 'react-dom'
 import { DelayedSpinner } from '@/components/ui/spinner'
 import { memo, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
@@ -267,7 +268,7 @@ function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
   const byKey = new Map<string, string>()
   for (const tag of [...obsidianTags, ...parsedTags]) {
     if (tag.length > TAG_MAX_LENGTH) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()].slice(0, TAG_MAX_COUNT)

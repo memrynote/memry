@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
@@ -59,7 +60,7 @@ export function resolveTag(
   tag: string | null | undefined
 ): ResolvedTag | null {
   if (!snapshot || !tag) return null
-  return snapshot.tags[tag.trim().toLowerCase()] ?? null
+  return snapshot.tags[foldTag(tag.trim())] ?? null
 }
 
 export function useResolvedTag(tag: string | null | undefined): ResolvedTag | null {

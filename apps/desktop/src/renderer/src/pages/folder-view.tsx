@@ -5,6 +5,7 @@
  * Supports multiple views, filtering, and sorting.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useEffect, useRef } from 'react'
 import { ChevronRight, Plus, Search, X } from '@/lib/icons'
 
@@ -381,7 +382,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
+      map.set(foldTag(tag.tag), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])
@@ -398,7 +399,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // and the hierarchy segments for a nested tag like "araba/lastik".
   const tagRow =
     scope.kind === 'tag'
-      ? allTags.find((row) => row.tag.toLowerCase() === scope.tag.toLowerCase())
+      ? allTags.find((row) => foldTag(row.tag) === foldTag(scope.tag))
       : undefined
   const tagResolvedColor = tagRow?.color ?? ''
   const tagIcon = tagRow?.icon ?? null
@@ -482,7 +483,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Handle clicking a tag
   const handleTagClick = useCallback(
     (tag: string): void => {
-      const color = tagMetaMap.get(tag.toLowerCase())?.color ?? ''
+      const color = tagMetaMap.get(foldTag(tag))?.color ?? ''
       openSidebarItem({
         type: 'tag',
         title: tag,
@@ -570,7 +571,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       const [primary, ...rest] = search.tags
       if (!primary) return
       // Same primary tag: swap the extras in place, no navigation.
-      if (activeTagName && primary.toLowerCase() === activeTagName.toLowerCase()) {
+      if (activeTagName && foldTag(primary) === foldTag(activeTagName)) {
         setAndTags(rest)
         return
       }

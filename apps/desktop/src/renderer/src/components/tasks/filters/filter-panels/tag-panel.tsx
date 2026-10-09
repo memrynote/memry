@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useMemo } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -43,7 +44,7 @@ export function TagPanel({
     const counts = new Map<string, number>()
     for (const task of tasks) {
       for (const tag of task.tags) {
-        const key = tag.toLowerCase()
+        const key = foldTag(tag)
         counts.set(key, (counts.get(key) ?? 0) + 1)
       }
     }
@@ -84,9 +85,9 @@ export function TagPanel({
       />
       <div className="flex flex-col p-1">
         {filteredTags.map((def) => {
-          const checked = selectedTags.some((x) => x.toLowerCase() === def.tag.toLowerCase())
+          const checked = selectedTags.some((x) => foldTag(x) === foldTag(def.tag))
           const colors = getTagColors(def.color, def.tag)
-          const count = countsByTag.get(def.tag.toLowerCase()) ?? 0
+          const count = countsByTag.get(foldTag(def.tag)) ?? 0
           return (
             <button
               key={def.tag}

@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useRef } from 'react'
 import { X } from '@/lib/icons'
 
@@ -105,7 +106,7 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
 
   const addTag = (tag: string): void => {
     const trimmedTag = tag.trim()
-    if (trimmedTag && !tags.some((t) => t.toLowerCase() === trimmedTag.toLowerCase())) {
+    if (trimmedTag && !tags.some((t) => foldTag(t) === foldTag(trimmedTag))) {
       onTagsChange([...tags, trimmedTag])
     }
     setInputValue('')
