@@ -301,8 +301,7 @@ A `%%` with no partner is plain text.
 
 On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
 ``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
-so the export reads ``Sale 50d` [[X]]`` and the leftover backtick turns `[[X]]` into code, not a
-link. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
+so the export reads ``Sale 50d` [[X]]``, with a stray backtick. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
 
 ### Footnotes
 
