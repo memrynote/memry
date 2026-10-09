@@ -105,6 +105,24 @@ Some fields (e.g. created date) are read-only.
 
 A folder can hold PDFs, images, audio, and video alongside your notes, and they get their own rows in the table. Tags and properties live in a note's frontmatter, which only Markdown files have, so those cells are read-only on an attachment row: existing tags still display, but there is no remove control and the value cannot be edited. Renaming, moving, and opening an attachment work as usual.
 
+### Tags with fields
+
+The page of a [tag with fields](/user-guide/notes/properties-tags) lists the notes that
+have the tag in their tags row, and the notes and tasks of tags that extend it (with a
+small label naming that tag). Notes that only mention the tag in their text are listed
+under **Mentioned in** below the table.
+
+- A relation cell, such as a meeting's Company, opens a picker that offers only notes
+  with the field's target tag, and can create one in place. A filter on a relation
+  field picks its value the same way.
+- A task row edits the tag's fields on the task.
+- Grouping by a relation field titles each group with the linked note. Each group has
+  **New … in …**, which creates a note with the tag and the group's value filled in.
+  Hold <kbd>⌘</kbd> while clicking it to also open the new note in a new tab.
+- Opening the table from a count under **Linked here** adds a filter such as
+  "Attendees includes Ahmet Yılmaz". Remove it with its ×, or choose **Save view** to
+  keep it in the view.
+
 ## Bulk Operations
 
 Select rows with checkboxes for:
