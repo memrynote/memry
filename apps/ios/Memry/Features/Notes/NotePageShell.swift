@@ -270,6 +270,12 @@ final class NotePageActions {
 
     var canWrite: Bool { writer != nil }
 
+    /// The failed action the note screen raises as an alert (#2879).
+    var failure: UserFacingError? {
+        guard case let .failed(error) = status, error.isUserVisible else { return nil }
+        return error
+    }
+
     func rename(to title: String) async {
         guard let writer else { return }
         await run { try await writer.rename(id: noteId, title: title) }
