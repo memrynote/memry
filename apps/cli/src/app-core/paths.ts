@@ -15,6 +15,9 @@ export interface VaultConfig {
  */
 export const ATTACHMENTS_DIR = 'attachments'
 
+/** Canvas scenes live here, as on desktop (`CANVAS_DIR`); the notes tree hides it. */
+export const CANVAS_DIR = 'canvases'
+
 export const defaultVaultConfig: VaultConfig = {
   excludePatterns: ['.git', 'node_modules', '.trash', '.obsidian', '.memry'],
   defaultNoteFolder: '',
