@@ -124,3 +124,19 @@ describe('stripMarkdownComments', () => {
     expect(stripMarkdownComments('A\r\n%%\r\n[[X]]\r\n%%\r\nB')).toBe('A\r\n\r\nB')
   })
 })
+
+describe('an inline <!-- before a fenced block', () => {
+  const inlineThenFence = ['a <!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
+
+  it('does not close on a --> inside the fence', () => {
+    expect(blankMarkdownCode(inlineThenFence)).toBe(
+      ['a <!--', '', '', '', 'After [[After]]'].join('\n')
+    )
+    expect(stripMarkdownComments(inlineThenFence)).toBe(inlineThenFence)
+  })
+
+  it('still lets an HTML-block comment run through a fence to its -->', () => {
+    const block = ['<!--', '```', 'x --> y', '```', 'After [[After]]'].join('\n')
+    expect(stripMarkdownComments(block)).toBe(' y\n```\nAfter [[After]]')
+  })
+})
