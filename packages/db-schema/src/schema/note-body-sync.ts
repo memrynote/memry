@@ -10,7 +10,10 @@
  * A row is written when a body push starts and when it ends, and when the server
  * stores a snapshot of the whole doc. Only a 2xx answer from a CRDT body route
  * (updates or snapshot) sets `last_confirmed_at`; a record push the server
- * calls a replay never does. A row whose note is gone is never read.
+ * calls a replay never does. Only a stored whole-doc state sets
+ * `last_snapshot_at`, and only that clears a rejection (#2778): a later update
+ * carries its own change, not the refused one. A row whose note is gone is
+ * never read.
  *
  * @module db/schema/note-body-sync
  */
@@ -32,6 +35,9 @@ export const noteBodySync = sqliteTable('note_body_sync', {
 
   /** Epoch milliseconds the server last refused a body push for good; its changes were dropped. */
   lastRejectedAt: integer('last_rejected_at'),
+
+  /** Epoch milliseconds the server last stored this note's whole doc state. */
+  lastSnapshotAt: integer('last_snapshot_at'),
 
   /** Epoch milliseconds of the latest write to this row. */
   updatedAt: integer('updated_at').notNull()

@@ -56,18 +56,25 @@ export type NoteBodyFullStateReader = (noteId: string) => Promise<Uint8Array | n
 
 /**
  * What happened to a note's body push (#2647): `sent` when it starts,
- * `confirmed` when the server stored it, `failed` when it will be retried,
- * `rejected` when its rows were dropped unsent.
+ * `confirmed` when the server stored updates, `snapshot` when it stored the
+ * whole doc state, `failed` when it will be retried, `rejected` when its rows
+ * were dropped unsent.
  */
 export type NoteBodyPushRecorder = (
   noteId: string,
-  event: 'sent' | 'confirmed' | 'failed' | 'rejected'
+  event: 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected'
 ) => void
 
 export interface NoteBodyOutboxDeps {
   queue: SyncQueueManager
   push: NoteBodyPushFn
   recordPush?: NoteBodyPushRecorder
+  /**
+   * Asks for a whole-doc snapshot of a note whose rows were refused and
+   * dropped (#2778): the refused text is still in the local doc, and only a
+   * snapshot carries it to the server.
+   */
+  requestSnapshot?: (noteId: string) => void
 }
 
 interface NoteBodyFlush {
@@ -225,7 +232,7 @@ export class NoteBodyOutbox {
       .then((pushed) => {
         this.deps.queue.removeNoteBodyRows(flush.rowIds)
         this.deferredFlushes.delete(noteId)
-        if (pushed) this.deps.recordPush?.(noteId, 'confirmed')
+        if (pushed) this.deps.recordPush?.(noteId, fullState ? 'snapshot' : 'confirmed')
       })
       .catch((err) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
@@ -313,7 +320,9 @@ export class NoteBodyOutbox {
       return
     }
     if (!this.paused) log.error('Failed to push CRDT body updates', { noteId, error: err })
-    if (nonRetryable) this.deps.queue.removeNoteBodyRows(rowIds)
+    if (!nonRetryable) return
+    this.deps.queue.removeNoteBodyRows(rowIds)
+    this.deps.requestSnapshot?.(noteId)
   }
 }
 

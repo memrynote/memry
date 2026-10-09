@@ -8,19 +8,21 @@
  * @module sync/note-body-push-record
  */
 
-import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
+import { noteBodySync, type NoteBodySyncRow } from '@memry/db-schema/schema/note-body-sync'
 import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('NoteBodyPushRecord')
 
-export type NoteBodyPushEvent = 'sent' | 'confirmed' | 'failed' | 'rejected'
+/** `snapshot` is a stored whole-doc state: it confirms the body and clears a rejection. */
+export type NoteBodyPushEvent = 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected'
 
-const EVENT_COLUMN = {
-  sent: 'lastSentAt',
-  confirmed: 'lastConfirmedAt',
-  failed: 'lastFailedAt',
-  rejected: 'lastRejectedAt'
+const EVENT_COLUMNS = {
+  sent: ['lastSentAt'],
+  confirmed: ['lastConfirmedAt'],
+  snapshot: ['lastConfirmedAt', 'lastSnapshotAt'],
+  failed: ['lastFailedAt'],
+  rejected: ['lastRejectedAt']
 } as const
 
 /** Record what the note body outbox did with a note's body. */
@@ -31,10 +33,11 @@ export function recordNoteBodyPush(
   db: DataDb
 ): void {
   try {
-    const column = EVENT_COLUMN[event]
+    const set: Partial<NoteBodySyncRow> = { updatedAt: at }
+    for (const column of EVENT_COLUMNS[event]) set[column] = at
     db.insert(noteBodySync)
-      .values({ noteId, [column]: at, updatedAt: at })
-      .onConflictDoUpdate({ target: noteBodySync.noteId, set: { [column]: at, updatedAt: at } })
+      .values({ noteId, updatedAt: at, ...set })
+      .onConflictDoUpdate({ target: noteBodySync.noteId, set })
       .run()
   } catch (err) {
     log.warn('Could not record a note body push', { noteId, event, error: err })

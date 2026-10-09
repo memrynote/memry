@@ -656,7 +656,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const noteBodyOutbox = new NoteBodyOutbox({
         queue,
         push: pushNoteBody,
-        recordPush: (noteId, event) => recordNoteBodyPush(noteId, event, Date.now(), db)
+        recordPush: (noteId, event) => recordNoteBodyPush(noteId, event, Date.now(), db),
+        requestSnapshot: (noteId) => snapshotScheduler.request(noteId)
       })
 
       // `engine` is referenced lazily: nothing invokes these fns between
@@ -669,7 +670,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
-        onStored: (noteId) => recordNoteBodyPush(noteId, 'confirmed', Date.now(), db),
+        onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
@@ -703,7 +704,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
         onPushed: (noteId, pushed) => {
-          recordNoteBodyPush(noteId, 'confirmed', Date.now(), db)
+          recordNoteBodyPush(noteId, 'snapshot', Date.now(), db)
           return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
         },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
