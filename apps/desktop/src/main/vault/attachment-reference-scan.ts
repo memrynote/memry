@@ -95,8 +95,6 @@ export function findNotesReferencingAttachment(
   const referencedBy: string[] = []
   for (const row of rows) {
     if (row.id === options?.excludeNoteId) continue
-    // The linked text may be the note's own body moved elsewhere, so the scan
-    // cannot prove the file unreferenced and the caller keeps it.
     if (resolveVaultFileSync(vaultPath, row.path).kind === 'outside') {
       logger.warn('A note links outside the vault; treating the file as shared', {
         noteId: row.id

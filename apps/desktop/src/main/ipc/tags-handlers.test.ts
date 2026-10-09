@@ -91,8 +91,6 @@ vi.mock('../vault/notes', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: fileMocks.toAbsolutePath
 }))
-// The vault here is a fake, so the outside-link refusal is a no-op; tags-handlers-outside-link.test.ts
-// covers it against a real vault.
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/paths')>()),
   refuseOutsideVault: async () => undefined

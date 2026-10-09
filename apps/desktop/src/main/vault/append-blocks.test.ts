@@ -55,8 +55,6 @@ vi.mock('./notes-io', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: vi.fn((p: string) => `/vault/${p}`)
 }))
-// The vault here is a fake, so the outside-link refusal is a no-op; notes-outside-link.test.ts
-// covers it against a real vault.
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/paths')>()),
   refuseOutsideVault: async () => undefined

@@ -1,10 +1,3 @@
-/**
- * Note readers outside the open, edit and sync paths (#2936). A note file
- * swapped for a symlink to a file outside the vault is refused the way
- * `getNoteById` refuses it (#2789): the outside text never reaches a vault
- * file, a snapshot or a reply, and the link is left as the user made it. The
- * vault, both databases and the projector are real.
- */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'

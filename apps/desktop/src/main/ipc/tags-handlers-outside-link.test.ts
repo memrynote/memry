@@ -1,9 +1,3 @@
-/**
- * A vault-wide tag rename, merge or delete over a note file swapped for a
- * symlink to a file outside the vault (#2936): the linked note is skipped and
- * logged, the outside text never lands in a vault file, and the other notes
- * still get the change. The vault and both databases are real.
- */
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
