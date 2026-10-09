@@ -139,7 +139,17 @@ export const tagsService: TagsService = {
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse> => {
     return window.api.tags.reorder(payload)
-  }
+  },
+
+  /**
+   * Objects of tags with fields matching a query (@ menu, relation picker).
+   */
+  searchObjects: (input) => window.api.tags.searchObjects(input),
+
+  /**
+   * What points at a note: relation fields, task fields, wiki links.
+   */
+  getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }
 
 // ============================================================================

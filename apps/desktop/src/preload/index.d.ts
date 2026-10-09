@@ -91,6 +91,7 @@ import type {
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type {
   CustomIcon,
@@ -919,6 +920,12 @@ export interface TagsClientAPI {
     tags?: TagAssignment[]
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse>
+  searchObjects(input: {
+    query: string
+    tag?: string
+    limit?: number
+  }): Promise<SearchObjectsResponse>
+  getLinkedHere(input: { noteId: string; limitPerGroup?: number }): Promise<GetLinkedHereResponse>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType

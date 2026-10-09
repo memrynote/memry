@@ -10,6 +10,7 @@ import { registerJournalHandlers, unregisterJournalHandlers } from './journal-ha
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+import { registerTagObjectHandlers, unregisterTagObjectHandlers } from './tag-object-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
@@ -126,6 +127,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register tags handlers
   registerTagsHandlers()
+  registerTagObjectHandlers()
 
   // Register inbox handlers
   registerInboxHandlers()
@@ -226,6 +228,7 @@ export function unregisterAllHandlers(): void {
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
   unregisterTagsHandlers()
+  unregisterTagObjectHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
   unregisterCalendarHandlers()

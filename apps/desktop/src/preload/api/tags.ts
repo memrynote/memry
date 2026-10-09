@@ -32,7 +32,11 @@ export const tagsApi = {
   reorder: (input: {
     tags?: { tag: string; categoryId: string | null; sortOrder: number }[]
     categories?: { id: string; sortOrder: number }[]
-  }) => invoke(TagsChannels.invoke.REORDER, input)
+  }) => invoke(TagsChannels.invoke.REORDER, input),
+  searchObjects: (input: { query: string; tag?: string; limit?: number }) =>
+    invoke(TagsChannels.invoke.SEARCH_OBJECTS, input),
+  getLinkedHere: (input: { noteId: string; limitPerGroup?: number }) =>
+    invoke(TagsChannels.invoke.GET_LINKED_HERE, input)
 }
 
 export const tagEvents = {

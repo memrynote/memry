@@ -122,7 +122,11 @@ export const TagsChannels = {
     /** Delete a tag category (its tags become uncategorized) */
     DELETE_CATEGORY: 'tags:delete-category',
     /** Apply a drag result: tag assignments and/or category order, in one transaction */
-    REORDER: 'tags:reorder'
+    REORDER: 'tags:reorder',
+    /** Objects of tags with fields matching a query (@ menu, relation picker) */
+    SEARCH_OBJECTS: 'tags:search-objects',
+    /** What points at a note: relation fields, task fields, wiki links */
+    GET_LINKED_HERE: 'tags:get-linked-here'
   },
   events: {
     /** Tag was renamed */
