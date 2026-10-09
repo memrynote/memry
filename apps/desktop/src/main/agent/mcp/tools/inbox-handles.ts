@@ -1,11 +1,3 @@
-/**
- * Inbox section of the vault service handles.
- *
- * Split out of handles-adapter.ts, which is at its max-lines ceiling.
- *
- * @module agent/mcp/tools/inbox-handles
- */
-
 import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import { assertSuccess } from './assert-success'
 import type { InboxSummary, VaultServiceHandles } from './handles'

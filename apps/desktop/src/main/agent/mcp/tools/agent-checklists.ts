@@ -34,7 +34,6 @@ function agentChecklistsBecomeTasks(): boolean {
   return getEditorSettings().convertAgentChecklistsToTasks
 }
 
-/** The option an owner that builds an agent's body from stored data takes. */
 export function agentChecklistsOption(): PlainChecklistsOption {
   return { plainChecklists: !agentChecklistsBecomeTasks() }
 }

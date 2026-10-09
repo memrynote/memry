@@ -201,7 +201,6 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
               content,
               folder,
               tags: input.tags,
-              // An empty body takes the folder template's, which only the owner reads.
               ...agentChecklistsOption()
             })
           }

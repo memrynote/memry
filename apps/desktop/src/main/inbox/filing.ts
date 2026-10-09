@@ -515,7 +515,6 @@ export function generateNoteContent(item: InboxItemRow): string {
   }
 }
 
-/** The body a filed item's note gets, its checkbox lines marked plain when asked. */
 function filedNoteContent(item: InboxItemRow, options: PlainChecklistsOption): string {
   const content = generateNoteContent(item)
   return options.plainChecklists ? markAddedChecklistLinesPlain(content) : content

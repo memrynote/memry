@@ -180,7 +180,6 @@ const deps = {
   indexDb: createTestIndexDb().db as never
 }
 
-/** The desktop API writes sent to the window, without the read-backs that follow them. */
 function writesSent(): AgentMcpDesktopApiRequest[] {
   return mocks.invokeDesktopApiFromWindow.mock.calls
     .map((call) => call[1] as AgentMcpDesktopApiRequest)
