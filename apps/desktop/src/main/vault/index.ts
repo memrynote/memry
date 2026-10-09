@@ -1329,6 +1329,22 @@ export async function reindex(): Promise<void> {
 }
 
 /**
+ * The vault a main window created now will show: the open vault (a macOS dock
+ * reopen), or else the one autoOpenLastVault is about to open. It mirrors
+ * autoOpenLastVault's choice, so change the two together.
+ */
+export function getLaunchVaultPath(): string | null {
+  if (currentStatus.isOpen) return currentStatus.path
+
+  const testVaultPath = process.env.TEST_VAULT_PATH
+  if (testVaultPath && process.env.NODE_ENV === 'test') return testVaultPath
+  if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return null
+
+  const lastVault = getCurrentVaultPath()
+  return lastVault && isVaultInitialized(lastVault) ? lastVault : null
+}
+
+/**
  * Auto-open the last vault on app start
  * In test mode (TEST_VAULT_PATH env var), opens the test vault instead
  */

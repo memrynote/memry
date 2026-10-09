@@ -64,6 +64,7 @@
     "./settings-schemas": "./src/settings-schemas.ts",
     "./settings-sync": "./src/settings-sync.ts",
     "./sidebar-sort": "./src/sidebar-sort.ts",
+    "./startup-vault": "./src/startup-vault.ts",
     "./strict-schema": "./src/strict-schema.ts",
     "./sync-api": "./src/sync-api.ts",
     "./sync-socket": "./src/sync-socket.ts",

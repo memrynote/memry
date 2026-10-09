@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { Spinner } from '@/components/ui/spinner'
+import { DelayedSpinner } from '@/components/ui/spinner'
 import { memo, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
@@ -3401,26 +3401,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 // CONTENT AREA (outer wrapper with Yjs collaboration)
 // =============================================================================
 
-/** A binding that settles faster than this never shows the spinner. */
-const PENDING_SPINNER_DELAY_MS = 150
-
 /**
  * The wait for the note's binding. Usually a few frames, but right after a
  * vault switch main is still starting up and it can run past a second: a
  * blank pane then reads as an empty note, so a spinner comes in after a beat.
  */
 function ContentAreaPending({ className }: { className?: string }) {
-  const [showSpinner, setShowSpinner] = useState(false)
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSpinner(true), PENDING_SPINNER_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [])
   return (
     <div className={cn('content-area h-full flex flex-col', className)}>
       <div className="flex flex-1 items-center justify-center rounded-md animate-pulse bg-muted/10 motion-reduce:animate-none">
-        {showSpinner && (
-          <Spinner className="size-4 text-muted-foreground animate-in fade-in duration-150 motion-reduce:animate-none" />
-        )}
+        <DelayedSpinner className="size-4 text-muted-foreground" />
       </div>
     </div>
   )
