@@ -43,15 +43,119 @@ export function createHtmlCommentContent(source: string) {
 
 let markdownWrites = 0
 
+type Styles = Record<string, unknown>
+type InlineItem = {
+  type: string
+  text?: string
+  styles?: Styles
+  props?: Styles
+  content?: unknown
+}
+type BlockItem = { content?: unknown; children?: BlockItem[] }
+
+function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): InlineItem | undefined {
+  let at = index + step
+  while (items[at]?.type === 'htmlComment') at += step
+  return items[at]?.type === 'text' ? items[at] : undefined
+}
+
 /**
- * Runs a blocks-to-markdown serialization with every comment written as its
- * token. The scope is synchronous: whatever `serialize` exports after it
- * returns writes nothing for the node.
+ * The marks a comment sat inside (BBF-52). The node holds no marks, so
+ * `**a <!-- b --> c**` reads back as bold `a `, the comment, bold ` c`, and the
+ * serializer closed the bold before the comment and reopened it on ` c`, which
+ * CommonMark does not read as bold. A mark both neighbours hold, or one a
+ * neighbour holds on a whitespace edge next to the comment, is one the comment
+ * was inside, since emphasis neither opens before nor closes after whitespace.
+ * Never `code`: a comment inside a code span would come back as code text.
  */
-export function writeHtmlCommentTokens<T>(serialize: () => T): T {
+function enclosingMarks(left: InlineItem | undefined, right: InlineItem | undefined): Styles {
+  const leftOpen = /\s$/.test(left?.text ?? '')
+  const rightOpen = /^\s/.test(right?.text ?? '')
+  const marks: Styles = {}
+  for (const name of new Set([
+    ...Object.keys(left?.styles ?? {}),
+    ...Object.keys(right?.styles ?? {})
+  ])) {
+    const inLeft = left?.styles?.[name] === true
+    const inRight = right?.styles?.[name] === true
+    if (
+      name !== 'code' &&
+      ((inLeft && inRight) || (inLeft && leftOpen) || (inRight && rightOpen))
+    ) {
+      marks[name] = true
+    }
+  }
+  return marks
+}
+
+function sameStyles(a: Styles = {}, b: Styles = {}): boolean {
+  const keys = Object.keys(a)
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key])
+}
+
+/**
+ * Each comment inside marks turned into its token as a text run holding them,
+ * joined to the neighbours with the same marks. The serializer writes each run
+ * as its own emphasis, so a run of its own would still close the bold.
+ */
+function commentsInMarks(items: InlineItem[]): InlineItem[] {
+  const out: InlineItem[] = []
+  items.forEach((item, index) => {
+    let next = item
+    if (Array.isArray(item.content)) next = { ...item, content: commentsInMarks(item.content) }
+    else if (item.type === 'htmlComment') {
+      const marks = enclosingMarks(textNeighbour(items, index, -1), textNeighbour(items, index, 1))
+      if (Object.keys(marks).length > 0) {
+        next = {
+          type: 'text',
+          text: encodeHtmlCommentToken(String(item.props?.source ?? '')),
+          styles: marks
+        }
+      }
+    }
+    const last = out.at(-1)
+    if (last?.type === 'text' && next.type === 'text' && sameStyles(last.styles, next.styles)) {
+      out[out.length - 1] = { ...last, text: `${last.text}${next.text}` }
+    } else out.push(next)
+  })
+  return out
+}
+
+// A table cell is a bare inline array in the legacy shape and `{ content }` in BlockNote 0.47+.
+function cellWithCommentsInMarks(cell: unknown): unknown {
+  if (Array.isArray(cell)) return commentsInMarks(cell)
+  const content = (cell as { content?: unknown } | null)?.content
+  return Array.isArray(content) ? { ...(cell as object), content: commentsInMarks(content) } : cell
+}
+
+function blocksWithCommentsInMarks(blocks: BlockItem[]): BlockItem[] {
+  return blocks.map((block) => {
+    const next = { ...block }
+    const table = block.content as { type?: string; rows: Array<{ cells: unknown[] }> } | undefined
+    if (Array.isArray(block.content)) next.content = commentsInMarks(block.content)
+    else if (table?.type === 'tableContent') {
+      next.content = {
+        ...table,
+        rows: table.rows.map((row) => ({ ...row, cells: row.cells.map(cellWithCommentsInMarks) }))
+      }
+    }
+    if (block.children) next.children = blocksWithCommentsInMarks(block.children)
+    return next
+  })
+}
+
+/**
+ * Runs a blocks-to-markdown serialization of `blocks` with every comment
+ * written as its token, inside the marks it sat in. The scope is synchronous:
+ * whatever `serialize` exports after it returns writes nothing for the node.
+ */
+export function writeHtmlCommentTokens<B, T>(blocks: B[], serialize: (blocks: B[]) => T): T {
+  // SAFETY: only `content` and `children` are read and replaced, with values of
+  // the same shape, so every other field of `B` passes through as it was.
+  const marked = blocksWithCommentsInMarks(blocks as BlockItem[]) as B[]
   markdownWrites++
   try {
-    return serialize()
+    return serialize(marked)
   } finally {
     markdownWrites--
   }

@@ -187,7 +187,7 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     ['*alpha %% b %% omega*', 'omega'],
     ['**<!-- b --> omega**', 'omega'],
     ['**alpha <!-- b -->** omega', 'alpha'],
-    ['**alpha *x <!-- b --> y* omega**', 'omega'],
+    ['**alpha <!-- x --><!-- y --> omega**', 'omega'],
     ['alpha <!-- b --> **omega**', 'alpha'],
     ['**alpha** <!-- b --> **omega**', 'alpha']
   ])('keeps the emphasis around a comment in %s (BBF-52)', async (markdown, word) => {

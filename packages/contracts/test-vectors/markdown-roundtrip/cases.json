@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 147,
+    "exportedCaseCount": 149,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 157,
+    "caseCount": 159,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1030,6 +1030,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "1984b2970036d2f7876e8d10310faa37fe7b9c82f9b02ea8b90e818cee7bddb7"
+    },
+    {
+      "name": "comment inside bold (BBF-52)",
+      "markdown": "**a <!-- b [[Alpha]] --> c**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9258c74314683795ece520dd417fe51b67fd3bc651f56b15dcdc295e81fb9d3d"
+    },
+    {
+      "name": "obsidian comment inside italic (BBF-52)",
+      "markdown": "*a %% b %% c*",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5eac671d8d755839da7d918dd20cadca830fdb7fc424d409a97592580a0bdfea"
     },
     {
       "name": "obsidian comment inside a line",
