@@ -2511,6 +2511,87 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  describe('folders a desktop API write creates (#2800)', () => {
+    const desktopWrite = (operation: AgentMcpDesktopWriteOperation, args: unknown[]) =>
+      buildWriteTools(createVaultServiceHandles(deps), async () => ({ approved: true }))
+        .find((tool) => tool.name === 'vault_desktop_write')!
+        .handler({ operation, args }, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+
+    // The write itself creates the folders, as the renderer's command does.
+    function landWriteInto(folder: string, reply: unknown = { success: true }) {
+      mocks.invokeDesktopApiFromWindow.mockImplementation(async () => {
+        fs.mkdirSync(path.join(vaultPath, folder), { recursive: true })
+        return reply
+      })
+    }
+
+    it('lists the folders notes.create made, shallowest first', async () => {
+      landWriteInto('work/q3/plans')
+
+      await expect(
+        desktopWrite('notes.create', [{ title: 'Plan', folder: 'work/q3/plans' }])
+      ).resolves.toMatchObject({ created_folders: ['work/q3', 'work/q3/plans'] })
+    })
+
+    it('lists the default note folder when a folderless notes.create made it', async () => {
+      fs.rmSync(path.join(vaultPath, 'notes'), { recursive: true })
+      landWriteInto('notes')
+
+      await expect(desktopWrite('notes.create', [{ title: 'Plan' }])).resolves.toMatchObject({
+        created_folders: ['notes']
+      })
+    })
+
+    it('lists the target folder notes.importFiles made', async () => {
+      landWriteInto('imports/batch', { success: true, imported: 1 })
+
+      await expect(
+        desktopWrite('notes.importFiles', [['/tmp/a.md'], 'imports/batch'])
+      ).resolves.toMatchObject({ imported: 1, created_folders: ['imports', 'imports/batch'] })
+    })
+
+    it('lists the folder inbox.file made for a folder destination', async () => {
+      landWriteInto('filed')
+
+      await expect(
+        desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'folder', path: 'filed' } }
+        ])
+      ).resolves.toMatchObject({ created_folders: ['filed'] })
+    })
+
+    it('lists the folders notes.move made', async () => {
+      landWriteInto('archive/2026')
+
+      await expect(desktopWrite('notes.move', ['note-1', '/archive/2026/'])).resolves.toMatchObject(
+        { created_folders: ['archive/2026'] }
+      )
+    })
+
+    it('says nothing about folders when every folder already existed', async () => {
+      landWriteInto('work')
+
+      const replies = [
+        await desktopWrite('notes.create', [{ title: 'Plan', folder: 'work' }]),
+        await desktopWrite('notes.importFiles', [['/tmp/a.md'], 'work']),
+        await desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'folder', path: 'work' } }
+        ]),
+        await desktopWrite('notes.move', ['note-1', 'work'])
+      ]
+
+      for (const reply of replies) expect(reply).not.toHaveProperty('created_folders')
+    })
+
+    it('says nothing about folders when the write was refused', async () => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: false, error: 'No vault' })
+
+      await expect(
+        desktopWrite('notes.create', [{ title: 'Plan', folder: 'new' }])
+      ).resolves.not.toHaveProperty('created_folders')
+    })
+  })
+
   describe('checkbox lines an agent writes, with agent conversion on', () => {
     beforeEach(() => {
       mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: true })

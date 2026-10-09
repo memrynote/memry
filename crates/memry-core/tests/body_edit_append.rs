@@ -215,6 +215,7 @@ fn seed_note(conn: &Connection, id: &str, specs: &[Spec]) {
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         },
         DEVICE,
         NOW,

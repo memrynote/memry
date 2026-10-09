@@ -1,7 +1,10 @@
 import { access } from 'node:fs/promises'
 import path from 'node:path'
 
-import { getStatus } from '../../../vault'
+import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
+
+import { getConfig, getStatus } from '../../../vault'
+import { normalizeFolderPath } from './folder-paths'
 import type { CreatedFoldersReply } from './handles'
 
 async function folderExists(absolutePath: string): Promise<boolean> {
@@ -33,4 +36,41 @@ export async function foldersToCreate(folder: string): Promise<string[]> {
 
 export function createdFoldersReply(folders: string[]): CreatedFoldersReply {
   return folders.length > 0 ? { created_folders: folders } : {}
+}
+
+function field(value: unknown, key: string): unknown {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined
+}
+
+const stringOr = (value: unknown, fallback: string) =>
+  typeof value === 'string' && value ? value : fallback
+
+/**
+ * The vault-relative folder a desktop API write lands in, when the write
+ * creates it. A note or import without a folder goes to the default note
+ * folder; a move to '' goes to the vault root. An inbox filing without a path
+ * routes by item type, so only a named path is predicted.
+ */
+const WRITE_FOLDERS: Partial<Record<AgentMcpDesktopWriteOperation, (args: unknown[]) => string>> = {
+  'notes.create': ([input]) => stringOr(field(input, 'folder'), getConfig().defaultNoteFolder),
+  'notes.importFiles': ([, targetFolder]) => stringOr(targetFolder, getConfig().defaultNoteFolder),
+  'notes.move': ([, newFolder]) => stringOr(newFolder, ''),
+  'inbox.file': ([input]) => stringOr(field(field(input, 'destination'), 'path'), '')
+}
+
+/** Read before a desktop API write: the folders, shallowest first, it would create. */
+export async function desktopWriteFoldersToCreate(request: {
+  operation: AgentMcpDesktopWriteOperation
+  args: unknown[]
+}): Promise<string[]> {
+  const folder = WRITE_FOLDERS[request.operation]?.(request.args)
+  return folder ? foldersToCreate(normalizeFolderPath(folder)) : []
+}
+
+/** Add `created_folders` to a desktop API reply once the write has landed. */
+export function withCreatedFolders(reply: unknown, folders: string[]): unknown {
+  if (folders.length === 0 || field(reply, 'success') === false) return reply
+  const base =
+    reply && typeof reply === 'object' && !Array.isArray(reply) ? reply : { result: reply }
+  return { ...base, ...createdFoldersReply(folders) }
 }

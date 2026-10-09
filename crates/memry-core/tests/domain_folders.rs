@@ -46,6 +46,7 @@ fn note_in(
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         },
         DEVICE,
         NOW,

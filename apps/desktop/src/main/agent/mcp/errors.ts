@@ -2,7 +2,7 @@ import {
   VAULT_LOCKED_FOLDER_MESSAGE,
   VAULT_LOCKED_NOTE_MESSAGE
 } from '@memry/contracts/vault-locks-api'
-import { OutsideVaultError } from '../../lib/errors'
+import { OUTSIDE_VAULT_MESSAGE_SUFFIX, OutsideVaultError } from '../../lib/errors'
 
 export type AgentToolErrorCode = 'NOT_FOUND' | 'PERMISSION_DENIED' | 'VALIDATION' | 'INTERNAL'
 
@@ -24,16 +24,23 @@ export interface McpErrorContent {
   content: Array<{ type: 'text'; text: string }>
 }
 
-/** A refusal because the owner locked the target: the fixed lock text, as a permission error. */
-export function isVaultLockRefusalMessage(message: string): boolean {
-  return message === VAULT_LOCKED_NOTE_MESSAGE || message === VAULT_LOCKED_FOLDER_MESSAGE
+/**
+ * A refusal the agent reports as a permission error: the fixed lock text, or the
+ * OutsideVaultError text, which may arrive as a plain string from the renderer.
+ */
+export function isVaultRefusalMessage(message: string): boolean {
+  return (
+    message === VAULT_LOCKED_NOTE_MESSAGE ||
+    message === VAULT_LOCKED_FOLDER_MESSAGE ||
+    message.endsWith(OUTSIDE_VAULT_MESSAGE_SUFFIX)
+  )
 }
 
 export function toAgentToolError(err: unknown): AgentToolError {
   if (err instanceof AgentToolError) return err
   if (
     err instanceof OutsideVaultError ||
-    (err instanceof Error && isVaultLockRefusalMessage(err.message))
+    (err instanceof Error && isVaultRefusalMessage(err.message))
   ) {
     return new AgentToolError('PERMISSION_DENIED', err.message)
   }

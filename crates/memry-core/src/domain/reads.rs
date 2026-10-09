@@ -43,6 +43,7 @@ use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 use crate::domain::body_tags::ALL_NOTE_TAGS;
+use crate::domain::template_admin;
 
 /// The device id the read-only document registry runs under.
 ///
@@ -252,12 +253,24 @@ pub struct TemplateSummary {
     pub icon: Option<String>,
 }
 
-/// Every live template, by name.
+/// Every template a note can be made from, as desktop's `listTemplates`
+/// lists them: the built-ins by name, then the vault's own by name. A synced
+/// template whose id collides with a built-in is skipped; the built-in wins.
 pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError> {
+    let mut built_ins: Vec<TemplateSummary> = template_admin::BUILT_INS
+        .iter()
+        .map(|b| TemplateSummary {
+            id: b.id.to_owned(),
+            name: b.name.to_owned(),
+            description: Some(b.description.to_owned()),
+            icon: Some(b.icon.to_owned()),
+        })
+        .collect();
+    built_ins.sort_by_key(|t| t.name.to_lowercase());
     let mut statement = conn
         .prepare(
             "SELECT id, name, description, icon FROM templates \
-             WHERE deleted_at IS NULL ORDER BY name, id",
+             WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE, id",
         )
         .map_err(failed)?;
     let rows = statement
@@ -270,7 +283,13 @@ pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError
             })
         })
         .map_err(failed)?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+    for row in rows {
+        let template = row.map_err(failed)?;
+        if !template_admin::is_built_in(&template.id) {
+            built_ins.push(template);
+        }
+    }
+    Ok(built_ins)
 }
 
 /// One reminder (N804, §13.7.12).

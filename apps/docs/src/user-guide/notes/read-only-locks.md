@@ -69,7 +69,8 @@ Memry also marks the file of every locked note read-only on disk, together with 
 attachments folder, so most editors and command-line tools refuse to save over them. A file moved
 into a locked folder, a locked note renamed, a locked file replaced from outside Memry, and a file
 added to a locked note's attachments folder from outside Memry or by sync are read-only again as
-soon as Memry sees the change. Unlocking gives each file back the permissions it had before the
+soon as Memry sees the change. While any lock exists, Memry creates the vault's `attachments`
+folder if it is missing, so attachments added to it later are covered too. Unlocking gives each file back the permissions it had before the
 lock. A file replaced from outside while locked, even by one that is already read-only, keeps the
 permissions of the new file when unlocked, never those of the file it replaced. A vault copied or
 restored to another disk together with its `.memry` folder is not treated as replaced: when every
