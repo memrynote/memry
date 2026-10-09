@@ -895,6 +895,11 @@ existing vault lists every note straight away, from the filename and timestamps 
 note is opened, its file is left exactly as its author wrote it — a background sync round that
 touches that note skips the save rather than replacing bytes nobody here has looked at.
 
+A note whose file is still there but cannot be read, for example after `chmod 000` or while
+antivirus holds it, is not treated as deleted. The note stays in the list and on your other
+devices, a save names the note in a notice, and your edit stays open. Once the file can be read
+again, memrynote picks it up and your next edit saves as usual.
+
 ## Opening a Note Written Somewhere Else
 
 Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it
