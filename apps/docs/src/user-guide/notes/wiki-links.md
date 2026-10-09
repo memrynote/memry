@@ -282,7 +282,7 @@ the note's outgoing links and on the graph.
 
 Neither comment appears in a PDF or HTML export, and the links inside them are left out as
 well. Comment syntax written inside inline code or a code block is text, so it stays in the
-export as code.
+export as code, unless a comment opened earlier on the same line (see below).
 
 Both forms are kept when you edit the note in memrynote and when memrynote rewrites the file,
 byte for byte. In the editor both forms show as a small muted marker, `<!---->` for an HTML
@@ -298,6 +298,11 @@ Text between two `%%` in prose is a comment, even across paragraphs, so `A 50%% 
 later `B 20%% tax` hide everything between them. A `%%` in a code block, or in inline code on
 a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
 A `%%` with no partner is plain text.
+
+On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
+``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
+so the export reads ``Sale 50d` [[X]]`` and the leftover backtick turns `[[X]]` into code, not a
+link. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
 
 ### Footnotes
 
