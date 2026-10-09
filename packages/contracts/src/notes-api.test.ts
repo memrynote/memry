@@ -186,10 +186,10 @@ describe('NoteUpdateSchema', () => {
       }
     })
 
-    it('drops a whole tag list, so no caller can write the header as one', () => {
+    it('keeps a whole tag list for agent callers that replace the tags row', () => {
       const result = NoteUpdateSchema.safeParse({ id: 'note-123', tags: ['work', 'inline'] })
       expect(result.success).toBe(true)
-      if (result.success) expect(result.data).toEqual({ id: 'note-123' })
+      if (result.success) expect(result.data).toEqual({ id: 'note-123', tags: ['work', 'inline'] })
     })
 
     it('should accept null emoji (to remove emoji)', () => {
