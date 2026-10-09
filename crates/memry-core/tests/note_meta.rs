@@ -64,6 +64,7 @@ fn write_note(
             content: "",
             tags,
             properties: properties.as_ref(),
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         Ok(())
@@ -124,6 +125,7 @@ fn write_in(db: &Db, id: &str, title: &str, folder: Option<&str>, file_type: &st
             content: "",
             tags: &[],
             properties: None,
+            emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         // Nothing in the write surface creates an attachment note; desktop does.

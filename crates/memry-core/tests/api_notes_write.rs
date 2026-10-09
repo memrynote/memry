@@ -454,9 +454,9 @@ fn a_note_made_from_a_template_carries_its_seed() {
 
     // Readable through the surface a shell has.
     let listed = vault.notes().templates().expect("templates");
-    assert_eq!(listed.len(), 1);
-    assert_eq!(listed[0].name, "Meeting");
-    assert_eq!(listed[0].icon.as_deref(), Some("📋"));
+    let mine = listed.last().expect("the vault's template");
+    assert_eq!(mine.name, "Meeting");
+    assert_eq!(mine.icon.as_deref(), Some("📋"));
 
     let id = writer
         .create_from_template("tpl-1".to_string(), "Monday".to_string(), None)
@@ -470,6 +470,57 @@ fn a_note_made_from_a_template_carries_its_seed() {
         .find(|note| note.id == id)
         .expect("the note");
     assert_eq!(note.title, "Monday");
+}
+
+/// The template list is desktop's: the built-ins (by name) before the vault's
+/// own, and a built-in makes a note even though it never lives in the vault.
+#[test]
+fn the_built_in_templates_are_listed_and_make_notes() {
+    let (_dir, vault) = vault("template-builtin");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+
+    let listed: Vec<String> = vault
+        .notes()
+        .templates()
+        .expect("templates")
+        .into_iter()
+        .map(|t| t.id)
+        .collect();
+    assert_eq!(
+        listed,
+        [
+            "blank",
+            "daily-reflection",
+            "daily-standup",
+            "gratitude-journal",
+            "meeting-notes",
+            "morning-pages",
+            "project-brief",
+            "weekly-review",
+        ]
+    );
+
+    let id = writer
+        .create_from_template("meeting-notes".to_string(), "Sync".to_string(), None)
+        .expect("create from a built-in");
+    let raw = scalar(
+        &behind(&_dir),
+        &format!("SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = '{id}'"),
+    )
+    .expect("the note payload");
+    let payload: serde_json::Value = serde_json::from_str(&raw).expect("json");
+    assert_eq!(payload["title"], "Sync");
+    assert_eq!(payload["emoji"], "📝");
+    assert_eq!(payload["tags"], serde_json::json!(["meeting"]));
+    assert_eq!(payload["properties"]["status"], "scheduled");
+    assert!(
+        payload["content"]
+            .as_str()
+            .unwrap()
+            .starts_with("## Attendees")
+    );
 }
 
 /// A reminder is readable against the note it points at.

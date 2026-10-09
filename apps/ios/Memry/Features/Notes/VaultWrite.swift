@@ -204,6 +204,27 @@ extension VaultBrowseViewModel {
         }
     }
 
+    /// Creates a note from a template (desktop's "From template") and returns
+    /// its id, or `nil` when the write failed. Same folder rule and same sync
+    /// request as ``createNote(in:title:)``.
+    func createNote(fromTemplate templateId: String, title: String, in folderPath: String?) async
+        -> String?
+    {
+        guard let writer else { return nil }
+        let folderPath = folderPath ?? LocalSettings.shared.newNotesFolder
+        do {
+            let id = try await writer.createFromTemplate(
+                templateId: templateId, title: title, folderPath: folderPath
+            )
+            Log.storage.info("created a note from a template", .count(1))
+            await wrote()
+            return id
+        } catch {
+            report(error, "a note could not be created from a template")
+            return nil
+        }
+    }
+
     func renameNote(id: String, to title: String) async {
         guard let writer else { return }
         do {
