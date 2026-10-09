@@ -850,8 +850,9 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   `created_folders`, shallowest first, when the folder they wrote into did not exist yet. So do the
   `vault_desktop_write` operations `notes.create`, `notes.importFiles`, `notes.move` and
   `inbox.file` with a destination `path`. They list only folders that exist once the write lands,
-  so a `new-note` destination, which ignores `path`, lists none. The field is absent when every
-  folder already existed.
+  so a `new-note` destination, which ignores `path`, lists none. An `inbox.file` `path` of `root`
+  files to the same place as an empty `path`, the vault root by default, and lists none. The field
+  is absent when every folder already existed.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.
