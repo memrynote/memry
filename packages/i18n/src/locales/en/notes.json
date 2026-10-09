@@ -725,8 +725,7 @@
     "hint": "Tags shared by the notes most similar to this one. Nothing is added until you pick one.",
     "acceptAria": "Add tag {tag}",
     "support": "{count, plural, one {Used on # similar note} other {Used on # similar notes}}",
-    "dismiss": "Hide suggested tags",
-    "failed": "Could not add the tag"
+    "dismiss": "Hide suggested tags"
   },
   "comments": {
     "railAria": "Comments",

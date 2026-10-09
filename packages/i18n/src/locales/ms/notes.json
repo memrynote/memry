@@ -615,8 +615,7 @@
     "hint": "Teg yang dikongsi oleh nota yang paling serupa dengan nota ini. Tiada apa-apa ditambah sehingga anda memilih satu.",
     "acceptAria": "Tambah teg {tag}",
     "support": "{count, plural, other {Digunakan pada # nota serupa}}",
-    "dismiss": "Sembunyikan teg dicadangkan",
-    "failed": "Tidak dapat menambah teg"
+    "dismiss": "Sembunyikan teg dicadangkan"
   },
   "comments": {
     "railAria": "Komen",

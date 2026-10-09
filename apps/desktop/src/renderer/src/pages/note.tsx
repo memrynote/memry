@@ -1926,7 +1926,12 @@ export function NotePage({ noteId }: NotePageProps) {
             disabled={isLocked}
           />
 
-          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted || isLocked} />
+          <NoteSuggestedTags
+            noteId={noteId}
+            tags={note.tags}
+            disabled={isDeleted || isLocked}
+            onAccept={(tag) => void addHeaderTag(tag)}
+          />
 
           {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
             <InfoSection

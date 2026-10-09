@@ -615,8 +615,7 @@
     "hint": "Tagi wspólne dla notatek najbardziej podobnych do tej. Nic nie zostanie dodane, dopóki nie wybierzesz tagu.",
     "acceptAria": "Dodaj tag {tag}",
     "support": "{count, plural, one {Użyty w # podobnej notatce} few {Użyty w # podobnych notatkach} many {Użyty w # podobnych notatkach} other {Użyty w # podobnej notatki}}",
-    "dismiss": "Ukryj sugerowane tagi",
-    "failed": "Nie udało się dodać tagu"
+    "dismiss": "Ukryj sugerowane tagi"
   },
   "comments": {
     "railAria": "Komentarze",

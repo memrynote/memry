@@ -615,8 +615,7 @@
     "hint": "Bu nota en çok benzeyen notların ortak etiketleri. Siz birini seçene kadar hiçbir şey eklenmez.",
     "acceptAria": "{tag} etiketini ekle",
     "support": "{count, plural, one {# benzer notta kullanılıyor} other {# benzer notta kullanılıyor}}",
-    "dismiss": "Önerilen etiketleri gizle",
-    "failed": "Etiket eklenemedi"
+    "dismiss": "Önerilen etiketleri gizle"
   },
   "comments": {
     "railAria": "Yorumlar",

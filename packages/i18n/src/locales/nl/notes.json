@@ -615,8 +615,7 @@
     "hint": "Tags van de notities die het meest op deze lijken. Er wordt niets toegevoegd tot je er een kiest.",
     "acceptAria": "Tag {tag} toevoegen",
     "support": "{count, plural, one {Gebruikt in # vergelijkbare notitie} other {Gebruikt in # vergelijkbare notities}}",
-    "dismiss": "Voorgestelde tags verbergen",
-    "failed": "Kan de tag niet toevoegen"
+    "dismiss": "Voorgestelde tags verbergen"
   },
   "comments": {
     "railAria": "Opmerkingen",

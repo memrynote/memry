@@ -615,8 +615,7 @@
     "hint": "Tagger som brukes i notatene som ligner mest på dette. Ingenting legges til før du velger en.",
     "acceptAria": "Legg til taggen {tag}",
     "support": "{count, plural, one {Brukt i # lignende notat} other {Brukt i # lignende notater}}",
-    "dismiss": "Skjul foreslåtte tagger",
-    "failed": "Kunne ikke legge til taggen"
+    "dismiss": "Skjul foreslåtte tagger"
   },
   "comments": {
     "railAria": "Kommentarer",

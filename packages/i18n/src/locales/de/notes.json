@@ -615,8 +615,7 @@
     "hint": "Tags, die die ähnlichsten Notizen gemeinsam haben. Es wird nichts hinzugefügt, bis du eines auswählst.",
     "acceptAria": "Tag {tag} hinzufügen",
     "support": "{count, plural, one {Verwendet in # ähnlichen Notiz} other {Verwendet in # ähnlichen Notizen}}",
-    "dismiss": "Vorgeschlagene Tags ausblenden",
-    "failed": "Das Tag konnte nicht hinzugefügt werden"
+    "dismiss": "Vorgeschlagene Tags ausblenden"
   },
   "comments": {
     "railAria": "Kommentare",

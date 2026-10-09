@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   tagSuggestions: [] as unknown[],
   spatialCanvas: true,
   openTab: vi.fn(),
-  mutateAsync: vi.fn(),
   addItemsToCanvas: vi.fn(),
   listCanvases: vi.fn(),
   toastSuccess: vi.fn(),
@@ -35,9 +34,6 @@ vi.mock('@/hooks/use-feature-flags', () => ({
   useFeatureFlags: () => ({ flags: { spatialCanvas: mocks.spatialCanvas } })
 }))
 vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab: mocks.openTab }) }))
-vi.mock('@/hooks/use-notes-query', () => ({
-  useNoteMutations: () => ({ updateNote: { mutateAsync: mocks.mutateAsync } })
-}))
 vi.mock('@/pages/canvas/canvas-write', () => ({ addItemsToCanvas: mocks.addItemsToCanvas }))
 vi.mock('@/services/canvas-service', () => ({ canvasService: { list: mocks.listCanvases } }))
 vi.mock('@/components/note/content-area/wiki-link', () => ({
@@ -148,27 +144,22 @@ describe('NoteSuggestedTags', () => {
     mocks.tagSuggestions = [{ tag: 'sleep', confidence: 0.6, support: 2 }]
   })
 
-  it('adds a picked tag through the note update path', async () => {
-    mocks.mutateAsync.mockResolvedValue({ success: true })
-    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} />)
+  it('hands a picked tag to the header-tag owner', async () => {
+    const onAccept = vi.fn()
+    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} onAccept={onAccept} />)
     await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.acceptAria:sleep' }))
-    expect(mocks.mutateAsync).toHaveBeenCalledWith({ id: 'a', headerTags: { add: ['sleep'] } })
+    expect(onAccept).toHaveBeenCalledWith('sleep')
   })
 
   it('hides for tagged notes and once dismissed', async () => {
-    const { unmount } = render(<NoteSuggestedTags noteId="a" tags={['x']} disabled={false} />)
+    const { unmount } = render(
+      <NoteSuggestedTags noteId="a" tags={['x']} disabled={false} onAccept={vi.fn()} />
+    )
     expect(screen.queryByTestId('suggested-tags')).not.toBeInTheDocument()
     unmount()
 
-    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} />)
+    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} onAccept={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.dismiss' }))
     expect(screen.queryByTestId('suggested-tags')).not.toBeInTheDocument()
-  })
-
-  it('surfaces a failed write', async () => {
-    mocks.mutateAsync.mockRejectedValue(new Error('nope'))
-    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} />)
-    await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.acceptAria:sleep' }))
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
   })
 })

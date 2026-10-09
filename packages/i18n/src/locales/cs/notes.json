@@ -615,8 +615,7 @@
     "hint": "Štítky z poznámek, které se této nejvíce podobají. Nic se nepřidá, dokud některý nevyberete.",
     "acceptAria": "Přidat štítek {tag}",
     "support": "{count, plural, one {Použito u # podobné poznámky} few {Použito u # podobných poznámek} other {Použito u # podobných poznámek}}",
-    "dismiss": "Skrýt navrhované štítky",
-    "failed": "Štítek se nepodařilo přidat"
+    "dismiss": "Skrýt navrhované štítky"
   },
   "comments": {
     "railAria": "Komentáře",

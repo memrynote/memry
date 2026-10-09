@@ -615,8 +615,7 @@
     "hint": "Značky, ktoré majú poznámky najpodobnejšie tejto. Nič sa nepridá, kým niektorú nevyberiete.",
     "acceptAria": "Pridať značku {tag}",
     "support": "{count, plural, one {Použité v # podobnej poznámke} few {Použité v # podobných poznámkach} other {Použité v # podobných poznámkach}}",
-    "dismiss": "Skryť navrhované značky",
-    "failed": "Značku sa nepodarilo pridať"
+    "dismiss": "Skryť navrhované značky"
   },
   "comments": {
     "railAria": "Komentáre",
