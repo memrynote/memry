@@ -482,6 +482,8 @@ machine-local and are not synced between devices.
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually
 - **API Key** — optional, stored in the OS keychain
+- **Thinking** — **Default** or **Off**; Off asks DeepSeek-style models to skip thinking. Hidden for
+  the Ollama preset
 - **Test Connection** — checks the endpoint and selected model
 - **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled, and forces a fresh check when the cached verdict is stale
 

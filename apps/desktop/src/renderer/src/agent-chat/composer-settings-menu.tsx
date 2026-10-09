@@ -6,7 +6,8 @@ import {
   type AgentBackendModelOption,
   type AgentCliBackendId,
   type CodexReasoningEffort,
-  type ClaudeEffort
+  type ClaudeEffort,
+  type LocalReasoningEffort
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
@@ -83,6 +84,26 @@ export const codexReasoningOptions: Array<ReasoningOption<CodexReasoningEffort>>
   }
 ]
 
+export const localReasoningOptions: Array<ReasoningOption<LocalReasoningEffort>> = [
+  {
+    value: 'default',
+    labelKey: 'agentChat.composer.localSettings.reasoning.defaultLabel',
+    summaryKey: 'agentChat.composer.localSettings.reasoning.default'
+  },
+  {
+    value: 'high',
+    labelKey: 'agentChat.composer.localSettings.reasoning.high',
+    summaryKey: 'agentChat.composer.localSettings.reasoning.high'
+  },
+  {
+    value: 'max',
+    labelKey: 'agentChat.composer.localSettings.reasoning.max',
+    summaryKey: 'agentChat.composer.localSettings.reasoning.max'
+  }
+]
+
+export type ReasoningValue = ClaudeEffort | CodexReasoningEffort | LocalReasoningEffort
+
 interface ComposerSettingsMenuProps {
   ariaLabel: string
   summaryLabel: string
@@ -95,8 +116,8 @@ interface ComposerSettingsMenuProps {
   effectiveLocalModel: string | null
   showEffort: boolean
   effortSummary: string
-  reasoningOptions: ReadonlyArray<ReasoningOption<ClaudeEffort | CodexReasoningEffort>>
-  selectedReasoningValue: ClaudeEffort | CodexReasoningEffort
+  reasoningOptions: ReadonlyArray<ReasoningOption<ReasoningValue>>
+  selectedReasoningValue: ReasoningValue
   currentModelValueLabel: string
   claudeAvailable: boolean
   codexAvailable: boolean
@@ -118,7 +139,7 @@ interface ComposerSettingsMenuProps {
   onToggleWebSearch: () => void
   onToggleIncludeCurrentNote: () => void
   onSelectAccessMode: (mode: AgentAccessMode) => void
-  onSelectReasoning: (value: ClaudeEffort | CodexReasoningEffort) => void
+  onSelectReasoning: (value: ReasoningValue) => void
   onSelectCliModel: (backend: AgentCliBackendId, model: string) => void
   onSelectLocalModel: (model: string) => void
   onOpenProviderSettings: () => void

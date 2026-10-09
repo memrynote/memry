@@ -130,6 +130,13 @@ export function effectiveTurnPermissions(
 export const AgentLocalProviderPresetSchema = z.enum(['ollama', 'lm_studio', 'llama_cpp', 'custom'])
 export type AgentLocalProviderPreset = z.infer<typeof AgentLocalProviderPresetSchema>
 
+// Only values proven on DeepSeek's API (AF-023). `default` sends no field, because other
+// OpenAI-compatible servers may reject fields they do not know.
+export const LocalReasoningEffortSchema = z.enum(['default', 'high', 'max'])
+export type LocalReasoningEffort = z.infer<typeof LocalReasoningEffortSchema>
+export const AgentLocalThinkingSchema = z.enum(['default', 'off'])
+export type AgentLocalThinking = z.infer<typeof AgentLocalThinkingSchema>
+
 export const AgentBackendOptionsSchema = z
   .discriminatedUnion('backend', [
     z
@@ -159,7 +166,8 @@ export const AgentBackendOptionsSchema = z
       .object({
         backend: z.literal('local_openai_compatible'),
         model: z.string().min(1).optional(),
-        toolsEnabled: z.boolean().optional()
+        toolsEnabled: z.boolean().optional(),
+        reasoningEffort: LocalReasoningEffortSchema.optional()
       })
       .strict()
   ])
@@ -225,7 +233,9 @@ export const AgentLocalProviderSettingsSchema = z
     baseUrl: z.string().url(),
     model: z.string(),
     apiKeyConfigured: z.boolean(),
-    allowNonLoopback: z.boolean()
+    allowNonLoopback: z.boolean(),
+    // Optional so a settings shape from a build before AF-023 still parses; absent is 'default'.
+    thinking: AgentLocalThinkingSchema.optional()
   })
   .strict()
 export type AgentLocalProviderSettings = z.infer<typeof AgentLocalProviderSettingsSchema>
@@ -237,7 +247,9 @@ export const AgentLocalProviderSettingsUpdateSchema = z
     model: z.string(),
     allowNonLoopback: z.boolean(),
     apiKey: z.string().optional().nullable(),
-    clearApiKey: z.boolean().optional()
+    clearApiKey: z.boolean().optional(),
+    // Absent keeps the stored value, so a caller that predates the field cannot reset it.
+    thinking: AgentLocalThinkingSchema.optional()
   })
   .strict()
 export type AgentLocalProviderSettingsUpdate = z.infer<

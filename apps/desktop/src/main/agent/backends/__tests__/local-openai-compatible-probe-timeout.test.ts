@@ -37,7 +37,8 @@ describe('LocalOpenAICompatibleBackend tool probe on a hung server', () => {
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: MODEL,
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'default'
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never,

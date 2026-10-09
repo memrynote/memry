@@ -98,6 +98,8 @@ export interface AgentStoreData {
     baseUrl?: string
     model?: string
     allowNonLoopback?: boolean
+    /** Absent in stores written before AF-023; reads as 'default'. */
+    thinking?: 'default' | 'off'
   }
 }
 

@@ -4,9 +4,11 @@ import {
   type AgentBackendOptions,
   type AgentBackendStatus,
   type AgentLocalProviderProbeResult,
-  type AgentLocalProviderSettings
+  type AgentLocalProviderSettings,
+  type AgentLocalThinking,
+  type LocalReasoningEffort
 } from '@memry/contracts/ipc-agent'
-import { stepCountIs, streamText, wrapLanguageModel } from 'ai'
+import { type JSONValue, stepCountIs, streamText, wrapLanguageModel } from 'ai'
 
 import type { BackendEvent } from '../cli/types'
 import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
@@ -256,7 +258,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       stopWhen: stepCountIs(8),
       ...(isOllama
         ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
-        : {}),
+        : reasoningProviderOptions(options?.reasoningEffort, settings.thinking)),
       ...(tools?.kind === 'on' && input.writeGrant
         ? {
             tools: createAiSdkToolSet(this.deps.toolBridge, {
@@ -281,6 +283,22 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       cleanup: async () => {}
     }
   }
+}
+
+// Fields go out only for a non-default pick, because other OpenAI-compatible servers
+// may reject fields they do not know. The provider copies unknown keys, such as
+// DeepSeek's `thinking`, into the request body as-is.
+function reasoningProviderOptions(
+  effort: LocalReasoningEffort | undefined,
+  thinking: AgentLocalThinking | undefined
+): { providerOptions?: { 'local-openai-compatible': Record<string, JSONValue> } } {
+  const fields: Record<string, JSONValue> = {
+    ...(effort && effort !== 'default' ? { reasoningEffort: effort } : {}),
+    ...(thinking === 'off' ? { thinking: { type: 'disabled' } } : {})
+  }
+  return Object.keys(fields).length > 0
+    ? { providerOptions: { 'local-openai-compatible': fields } }
+    : {}
 }
 
 async function* mapAiSdkEvents(
