@@ -72,9 +72,9 @@ written as `[[Roadmap]]`. Typing `#` after a path lists that note's headings.
 Moving a note to another folder, or renaming a folder, updates every path link that points
 into it. Links written by title do not change, because the title stays the same.
 
-::: warning Older versions and iPhone
-An older desktop version and the iPhone app read a path link as a title, so they show it as
-a broken link. The file is not changed.
+::: warning Older versions
+An older desktop or iPhone version reads a path link as a title, so it shows it as a broken
+link. The file is not changed.
 :::
 
 ## Following a Link
