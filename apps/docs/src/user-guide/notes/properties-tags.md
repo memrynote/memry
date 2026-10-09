@@ -54,7 +54,8 @@ the `tags:` list only, so a `#tag` in the text stays until you edit it.
 
 If the new name can't be typed as a `#tag` (it has a space, starts with a digit, or uses a
 letter outside A to Z), the rename still changes the `tags:` lists, but `#tags` in the text
-keep the old name, and Memry tells you so. A rename runs one note at a time; if Memry quits
+keep the old name, and Memry tells you so. A rename runs one note at a time, and a toast
+counts the notes as it goes; if Memry quits
 partway, it finishes the rename the next time the vault opens, and it doesn't start another
 rename until then. If a note can't be updated, Memry tells you how many were skipped.
 
