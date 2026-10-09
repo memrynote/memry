@@ -89,4 +89,22 @@ describe('createCloseSnapshot', () => {
     expect(await notes.createCloseSnapshot(note.id)).toBe(false)
     expect(storedContents(note.id)).toEqual([])
   })
+
+  it('refuses a note file linked outside the vault and keeps nothing from it (#2969)', async () => {
+    const note = await createNote('Linked')
+    const outside = fs.mkdtempSync(path.join(path.dirname(vault.path), 'notes-close-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, 'Outside secret\n')
+    fs.unlinkSync(path.join(vault.path, note.path))
+    fs.symlinkSync(secret, path.join(vault.path, note.path))
+
+    try {
+      await expect(notes.createCloseSnapshot(note.id)).rejects.toThrow(
+        `${note.path} points outside the vault. Memry reads only files inside the vault.`
+      )
+      expect(storedContents(note.id)).toEqual([])
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
 })
