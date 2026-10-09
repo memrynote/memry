@@ -1318,6 +1318,22 @@ describe('Inbox Filing Operations', () => {
   })
 
   describe('convertToReminder', () => {
+    it('keeps checkbox lines plain in the note a reminder creates, if asked (#2932)', async () => {
+      seedInboxItems(testDb.db, [
+        { id: 'item-1', type: 'note', title: 'Shopping', content: '- [ ] Buy milk' },
+        { id: 'item-2', type: 'note', title: 'Errands', content: '- [ ] Post office' }
+      ])
+      const remindAt = '2099-01-02T09:00:00.000Z'
+
+      await convertToReminder('item-1', { remindAt, plainChecklists: true })
+      await convertToReminder('item-2', { remindAt })
+
+      expect(mockCreateNote.mock.calls.map((call) => call[0].content)).toEqual([
+        expect.stringMatching(/^- \[ \] Buy milk \{check\}$/m),
+        expect.stringMatching(/^- \[ \] Post office$/m)
+      ])
+    })
+
     it('creates a note and a note-target reminder, files as reminder', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'reminder-source',
@@ -1863,6 +1879,20 @@ describe('Inbox Filing Operations', () => {
   // bulkFileToFolder
   // ==========================================================================
   describe('bulkFileToFolder', () => {
+    it('keeps checkbox lines plain when bulk filing to a folder, if asked (#2932)', async () => {
+      seedInboxItems(testDb.db, [
+        { id: 'item-1', type: 'note', title: 'Shopping', content: '- [ ] Buy milk' },
+        { id: 'item-2', type: 'note', title: 'Errands', content: '- [x] Post office' }
+      ])
+
+      await bulkFileToFolder(['item-1', 'item-2'], 'lists', [], { plainChecklists: true })
+
+      expect(mockCreateNote.mock.calls.map((call) => call[0].content)).toEqual([
+        expect.stringMatching(/^- \[ \] Buy milk \{check\}$/m),
+        expect.stringMatching(/^- \[x\] Post office \{check\}$/m)
+      ])
+    })
+
     it('should file multiple items to same folder', async () => {
       seedInboxItems(testDb.db, [
         { id: 'item-1', title: 'Item 1' },
