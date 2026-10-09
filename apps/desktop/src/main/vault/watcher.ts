@@ -1184,6 +1184,17 @@ export class VaultWatcher {
       logger.warn('File cannot be read; keeping it', { path: relativePath })
       return false
     }
+    // iCloud Drive before macOS 14 evicts a file under "Optimize Mac Storage"
+    // by swapping it for a hidden `.<name>.icloud` placeholder. The file is
+    // still in the vault, just not downloaded, so it stays (#3004).
+    const placeholder = path.join(
+      path.dirname(absolutePath),
+      `.${path.basename(absolutePath)}.icloud`
+    )
+    if (!(await isFileMissing(placeholder))) {
+      logger.info('File evicted to iCloud; keeping it', { path: relativePath })
+      return false
+    }
     return true
   }
 }

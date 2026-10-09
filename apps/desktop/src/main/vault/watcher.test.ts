@@ -1836,6 +1836,21 @@ describe('vault watcher', () => {
       return row !== undefined && row.deletedAt === null
     }
 
+    it('stays when iCloud evicted it to a .icloud placeholder (#3004)', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Evicted')
+
+      fs.renameSync(
+        absolutePath,
+        path.join(path.dirname(absolutePath), `.${path.basename(absolutePath)}.icloud`)
+      )
+      trigger('unlink', absolutePath)
+      await waitOutRenameWindow()
+
+      expect(isLive(id)).toBe(true)
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+    })
+
     function canvasReads(): string[] {
       return vi
         .mocked(readCanvasFileSync)
