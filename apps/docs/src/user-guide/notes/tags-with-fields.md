@@ -114,6 +114,9 @@ they get #tag** on:
 - Adding the tag to a note that already has text shows a row offering **Add the Person template
   below your text**. Dismissing it is remembered for that note.
 
+This works however the tag is added: from the tags row, from **Make this note a Person** on an
+inline tag, or by accepting a suggested tag.
+
 ### Deleting a tag
 
 **Delete tag** removes the tag from every note's tags row and removes its fields and template.
