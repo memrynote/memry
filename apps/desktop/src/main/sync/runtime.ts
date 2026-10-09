@@ -911,8 +911,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       await engine.start()
       log.info('Sync runtime started')
       attachmentUploadRedriver.start(() => network.online)
-      // After the first sync, so the live-reference check sees what peers did.
-      deletedAssetReleaseRunner.start()
+      // Each pass waits for a full sync this session, so the live-reference
+      // check sees what peers did.
+      deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))

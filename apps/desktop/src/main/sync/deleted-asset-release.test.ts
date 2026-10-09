@@ -23,6 +23,11 @@ import {
 import { dereferenceChunks } from '../canvas/assets/attachment-dereference'
 import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-asset-release'
 
+const warn = vi.hoisted(() => vi.fn())
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() })
+}))
+
 const DAY = 24 * 60 * 60 * 1000
 const VAULT_ID = 'vault-1'
 
@@ -95,7 +100,7 @@ async function canvasWithImage(title: string, bytes: string) {
   const scene = JSON.stringify({ type: 'excalidraw', files: { 'file-1': { dataURL: ref } } })
   const saved = updateCanvas(db, vaultPath, canvas.id, { scene })
   expect(saved.ok).toBe(true)
-  return { id: canvas.id, file: decodeURIComponent(new URL(ref).pathname) }
+  return { id: canvas.id, ref, file: decodeURIComponent(new URL(ref).pathname) }
 }
 
 async function deleteCanvasHere(id: string): Promise<void> {
@@ -176,6 +181,34 @@ describe('deleted canvas assets', () => {
     ).toHaveLength(1)
   })
 
+  it('keeps the chunk link for an image a canvas restored under a new id still shows', async () => {
+    const { id, ref } = await canvasWithImage('Old', 'shared')
+    await deleteCanvasHere(id)
+    // Restored from the OS trash (#3012): a new id, the same scene, no asset rows.
+    const restored = createCanvas(db, vaultPath, VAULT_ID, { title: 'Restored' })
+    const scene = JSON.stringify({ type: 'excalidraw', files: { 'file-1': { dataURL: ref } } })
+    expect(updateCanvas(db, vaultPath, restored.id, { scene }).ok).toBe(true)
+
+    advance(31)
+    expect(await release()).toBe(1)
+    expect(dereferenced).toEqual([])
+
+    // The restored canvas uploads the image again: it reuses the stored chunks,
+    // so dropping it later frees them instead of leaking them.
+    await uploadCanvasAsset(
+      assetCtx(),
+      restored.id,
+      'file-1',
+      'image/png',
+      new TextEncoder().encode('shared')
+    )
+    expect(uploads).toBe(1)
+    expect(
+      db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, restored.id)).get()
+        ?.chunkHashes
+    ).toEqual(['chunk-1'])
+  })
+
   it('keeps an image another canvas deleted inside the grace period still holds', async () => {
     const first = await canvasWithImage('First', 'shared')
     const second = await canvasWithImage('Second', 'shared')
@@ -243,6 +276,30 @@ describe('deleted note attachments', () => {
     expect(chunkLookups).toEqual(['a-1'])
     expect(dereferenced).toEqual([['chunk-of-a-1']])
     expect(releaseRows()).toEqual([])
+  })
+
+  it('names the attachment whose manifest cannot be read, and retries later', async () => {
+    insertNote('gone', ['a-bad'])
+    recordDeletedItemAssets(db, 'note', 'gone', now)
+    db.delete(noteMetadata).where(eq(noteMetadata.id, 'gone')).run()
+    advance(31)
+
+    const settled = await releaseExpiredDeletedAssets({
+      db,
+      vaultPath,
+      now: () => now,
+      chunkHashesOf: async () => {
+        throw new Error('manifest signer revoked')
+      },
+      dereference,
+      markWritebackIgnored: () => {}
+    })
+    expect(settled).toBe(0)
+    expect(releaseRows()).toHaveLength(1)
+    expect(warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ attachmentId: 'a-bad' })
+    )
   })
 
   it('frees nothing for a note that is live again', async () => {

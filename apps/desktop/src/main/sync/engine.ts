@@ -641,6 +641,18 @@ export class SyncEngine extends SyncEventEmitter {
     }
   }
 
+  /**
+   * True once a full sync delivered this session and sync is neither paused nor
+   * offline: only then does local state reflect what peers did.
+   */
+  isCaughtUpWithServer(): boolean {
+    return (
+      this.fullSyncRunner.completedThisSession &&
+      !this.stateManager.isPaused() &&
+      this.ctx.deps.network.online
+    )
+  }
+
   // --- Status & control ---
 
   getStatus(): GetSyncStatusResult {

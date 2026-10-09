@@ -292,6 +292,9 @@ export class FullSyncRunner {
    */
   private bootstrapPullSucceeded = false
 
+  /** A run on this engine pulled to the head of the feed and finished without a throw. */
+  completedThisSession = false
+
   /**
    * Queue the one-time legacy sweep (#2297): every note owed durably, so a
    * crash mid-sweep cannot drop a note that may hold rows the feed never
@@ -515,6 +518,7 @@ export class FullSyncRunner {
         processedItems: 0,
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
+      if (pullDelivered) this.completedThisSession = true
     } catch (error) {
       // A first attempt that never completed a pull measured nothing
       // legitimate: abandon the window so it cannot sit open across retries

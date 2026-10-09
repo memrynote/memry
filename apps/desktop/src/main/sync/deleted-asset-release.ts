@@ -27,7 +27,7 @@
  */
 
 import { rm } from 'node:fs/promises'
-import { and, eq, gt, inArray, isNull, lte } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNull, lte, ne } from 'drizzle-orm'
 import { canvasAssets, canvases, deletedAssetReleases, noteMetadata } from '@memry/db-schema'
 import { getDatabase, type DataDb } from '../database'
 import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
@@ -199,7 +199,27 @@ async function releaseCanvas(
   const chunkHashes = freed.flatMap((row) => row.chunkHashes)
   if (chunkHashes.length > 0 && !(await deps.dereference(chunkHashes)).ok) return false
 
-  db.delete(canvasAssets).where(eq(canvasAssets.canvasId, canvasId)).run()
+  // A kept row stays while no other canvas has a row for its hash: it is then
+  // the one local hash-to-chunks link for an image a live scene still shows (a
+  // canvas restored under a new id has no rows of its own), and a later upload
+  // of that image reuses the chunks instead of leaking them.
+  for (const row of rows) {
+    const keep =
+      !freed.includes(row) &&
+      !db
+        .select({ id: canvasAssets.canvasId })
+        .from(canvasAssets)
+        .where(
+          and(eq(canvasAssets.contentHash, row.contentHash), ne(canvasAssets.canvasId, canvasId))
+        )
+        .get()
+    if (keep) continue
+    db.delete(canvasAssets)
+      .where(
+        and(eq(canvasAssets.canvasId, canvasId), eq(canvasAssets.contentHash, row.contentHash))
+      )
+      .run()
+  }
   for (const row of freed) {
     // The file is shared by content; another canvas's row keeps it on disk.
     const shared = db
@@ -240,7 +260,12 @@ async function releaseNote(
   const chunkHashes: string[] = []
   for (const id of attachmentIds) {
     if (kept.attachmentIds.has(id)) continue
-    chunkHashes.push(...(await deps.chunkHashesOf(id)))
+    try {
+      chunkHashes.push(...(await deps.chunkHashesOf(id)))
+    } catch (err) {
+      log.warn("Could not read a deleted note's attachment manifest", { attachmentId: id, err })
+      return false
+    }
   }
   if (chunkHashes.length === 0) return true
   return (await deps.dereference(chunkHashes)).ok

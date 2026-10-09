@@ -44,7 +44,7 @@ Deleting the whole canvas keeps its images for 30 days, as deleting a note
 keeps its attachments, so a canvas put back from the trash in that time still
 shows them everywhere. After 30 days, the device you deleted the canvas on
 releases the stored copies of images that no other canvas or note still uses,
-and they stop counting against your storage quota (1 GiB or 10 GiB, depending on
+once it has synced with your other devices and sync isn't paused, and they stop counting against your storage quota (1 GiB or 10 GiB, depending on
 your plan). A canvas put back after that can come back with missing images.
 An image you delete from a board is released right away, unless another canvas
 still uses it, or a deleted canvas that can still be put back does.
