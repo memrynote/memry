@@ -430,12 +430,10 @@ function indexImportedMarkdown(
 
 export function createAttachmentsService({
   vaultPath,
-  config,
   notes,
   dataDb
 }: {
   vaultPath: string
-  config: VaultConfig
   notes: NotesService
   dataDb: DataDb
 }): AttachmentsService {
