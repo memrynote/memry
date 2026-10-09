@@ -1126,7 +1126,6 @@ async function closeOpenVault(): Promise<void> {
 
   // Stop file watcher
   await stopWatcher()
-  await watchLockedAttachments(null)
   timer.mark('watcher')
 
   await stopProjectionRuntime({ drain: true })
@@ -1157,6 +1156,8 @@ async function closeOpenVault(): Promise<void> {
     indexTotal: undefined,
     error: null
   })
+  // After the status drops the path, so a lock reconcile still running cannot start it again.
+  await watchLockedAttachments(null)
 }
 
 async function startVaultAgentServices(): Promise<void> {
