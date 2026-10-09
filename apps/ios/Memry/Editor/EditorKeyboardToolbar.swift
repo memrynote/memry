@@ -393,8 +393,9 @@ private struct EditorSuggestionList: View {
 
     /// A note row shows the note's emoji, as the notes list does.
     private func emoji(for item: EditorSuggestion) -> String? {
-        guard case let .note(title, _) = item.kind else { return nil }
-        return session.icons[title.lowercased()]
+        // The target is a title or a path stem; its last segment is the title.
+        guard case let .note(target, _) = item.kind else { return nil }
+        return session.icons[String(target.split(separator: "/").last ?? "").lowercased()]
     }
 
     var body: some View {

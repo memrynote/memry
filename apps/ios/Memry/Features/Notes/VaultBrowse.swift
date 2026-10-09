@@ -55,10 +55,10 @@ protocol NotesReading: Sendable {
     func metadata(id: String) async throws -> NoteMetadata?
     /// What a `[[wiki link]]` points at.
     ///
-    /// - Returns: `nil` for a link naming no note. That is a **broken link,
+    /// - Returns: the note and the `#Heading` to scroll to, or `nil` for a link naming no note. That is a **broken link,
     ///   not a failure** — a link carries a title, so it can name a note that
     ///   does not exist, and the screen says so rather than showing an error.
-    func resolveWikiTarget(_ target: String) async throws -> String?
+    func resolveWikiTarget(_ target: String) async throws -> NoteLinkTarget?
     /// The same note's body as blocks, for rendering rather than previewing.
     ///
     /// - Returns: `nil` for "no such note", exactly as `read` does. An **empty
@@ -228,9 +228,9 @@ struct CoreNotesReader: NotesReading {
 
     /// A vault-path lookup, a title lookup, then an alias pass. Blocking like
     /// its siblings.
-    func resolveWikiTarget(_ target: String) async throws -> String? {
+    func resolveWikiTarget(_ target: String) async throws -> NoteLinkTarget? {
         let vault = vault
-        return try await executor.run { try vault.notes().resolveWikiTarget(target: target)?.id }
+        return try await executor.run { try vault.notes().resolveWikiTarget(target: target) }
     }
 
     func bookmarks() async throws -> [BookmarkEntry] {

@@ -17,9 +17,9 @@ private struct WikiReader: NotesReading {
     func list() async throws -> [NoteSummary] { [] }
     func read(id: String) async throws -> NoteDetail? { nil }
 
-    func resolveWikiTarget(_ target: String) async throws -> String? {
+    func resolveWikiTarget(_ target: String) async throws -> NoteLinkTarget? {
         if failure { throw StorageError.Failed(what: "the index is locked") }
-        return notes[target]
+        return notes[target].map { NoteLinkTarget(id: $0, heading: nil) }
     }
 }
 

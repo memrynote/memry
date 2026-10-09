@@ -93,7 +93,7 @@ struct DateMentionSheet: View {
 /// Linking to another note (N602), from the page menu. The same rows as the
 /// `[[` menu, including desktop's create row for a title nothing carries.
 struct WikiLinkSheet: View {
-    let titles: [String]
+    let notes: [WikiLinkNote]
     let insert: (EditorSuggestion.Kind) -> Void
     let cancel: () -> Void
 
@@ -104,11 +104,18 @@ struct WikiLinkSheet: View {
             List {
                 TextField("Search notes", text: $query)
                     .accessibilityLabel("Search notes")
-                ForEach(EditorSuggestions.wiki(query: query, titles: titles)) { item in
+                ForEach(EditorSuggestions.wiki(query: query, notes: notes)) { item in
                     Button {
                         insert(item.kind)
                     } label: {
-                        Label(item.title, systemImage: item.symbol)
+                        Label {
+                            Text(item.title)
+                            if let subtitle = item.subtitle {
+                                Text(subtitle).foregroundStyle(Tokens.Text.secondary.color)
+                            }
+                        } icon: {
+                            Image(systemName: item.symbol)
+                        }
                     }
                 }
             }

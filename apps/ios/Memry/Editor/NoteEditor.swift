@@ -543,7 +543,7 @@ struct NoteEditingBridge {
     @MainActor
     init(
         model: NoteEditorViewModel,
-        titles: [String] = [],
+        linkNotes: [WikiLinkNote] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
         didChange: @escaping () async -> Void
@@ -551,7 +551,7 @@ struct NoteEditingBridge {
         session = model.session
         session.model = model
         session.reload = didChange
-        session.titles = titles
+        session.linkNotes = linkNotes
         session.icons = icons
         session.titleExists = titleExists
     }
