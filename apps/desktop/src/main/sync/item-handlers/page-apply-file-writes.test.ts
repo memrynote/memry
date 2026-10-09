@@ -313,6 +313,45 @@ describe('property definition upsert inside a page transaction (#2896)', () => {
     expect(fs.readFileSync(propertiesFile, 'utf-8')).toContain('purple')
   })
 
+  it('keeps the device-local calendar flag of a pulled date definition', async () => {
+    fs.writeFileSync(
+      propertiesFile,
+      '---\nproperties:\n  Due:\n    type: date\n    showOnCalendar: true\n---\n'
+    )
+    await PropertyDefinitionsService.get().reload()
+    const page = beginPageApply(asSyncDb(testDb.db))
+
+    propertyDefinitionHandler.applyUpsert(
+      { db: page.db, emit: vi.fn() },
+      'Due',
+      { name: 'Due', type: 'date', color: 'rose' },
+      { 'device-a': 3 }
+    )
+    page.commit()
+    await page.flushFiles()
+    await PropertyDefinitionsService.get().reload()
+
+    expect(PropertyDefinitionsService.get().get('Due')).toMatchObject({
+      showOnCalendar: true,
+      color: 'rose'
+    })
+  })
+
+  it('writes nothing for a pulled relation definition', () => {
+    const before = fs.readFileSync(propertiesFile, 'utf-8')
+    const page = beginPageApply(asSyncDb(testDb.db))
+
+    propertyDefinitionHandler.applyUpsert(
+      { db: page.db, emit: vi.fn() },
+      'Links',
+      { name: 'Links', type: 'relation' },
+      { 'device-a': 1 }
+    )
+    page.commit()
+
+    expect(fs.readFileSync(propertiesFile, 'utf-8')).toBe(before)
+  })
+
   it('still lets a local file edit win over an unchanged row', async () => {
     await PropertyDefinitionsService.get().reload()
     fs.writeFileSync(
