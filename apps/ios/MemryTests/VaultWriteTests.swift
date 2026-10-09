@@ -59,6 +59,20 @@ struct VaultWriteTests {
             try record(.moveFolder(path, newParent))
         }
         func deleteFolder(path: String) async throws { try record(.deleteFolder(path)) }
+        func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
+            if let failure { throw failure }
+            return true
+        }
+        func duplicate(id: String, title: String) async throws -> String? {
+            if let failure { throw failure }
+            return "note-copy"
+        }
+        func addReminder(noteId: String, remindAt: String, title: String?) async throws -> String {
+            if let failure { throw failure }
+            return "reminder-1"
+        }
+        func dismissReminder(id: String) async throws { if let failure { throw failure } }
+        func snoozeReminder(id: String, until: String) async throws { if let failure { throw failure } }
     }
 
     /// A fixed vault: `Work` has a config row, `Work/Drafts` does not, and
@@ -158,6 +172,44 @@ struct VaultWriteTests {
         }
         #expect(!actions.deleted, "a failed delete must leave the note open")
         #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
+    }
+
+    @Test("every note page action that lands asks for a sync pass")
+    func notePageActionsAskForASync() async {
+        // Rename and move asked for none and waited for the next foreground
+        // (#2910); favorite, duplicate and delete asked from their buttons.
+        let actions = NotePageActions(noteId: "n", writer: ScriptedWriter())
+        var requests = 0
+        actions.requestSync = { requests += 1 }
+        await actions.rename(to: "New")
+        await actions.move(to: "Work")
+        await actions.toggleFavorite()
+        _ = await actions.duplicate(title: "copy")
+        await actions.delete()
+        #expect(requests == 5)
+
+        let failing = NotePageActions(noteId: "n", writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+        failing.requestSync = { requests += 1 }
+        await failing.rename(to: "New")
+        #expect(requests == 5, "a write that did not land has nothing to push")
+    }
+
+    @Test("every reminder write that lands asks for a sync pass")
+    func reminderWritesAskForASync() async {
+        let reminders = NoteRemindersViewModel(noteId: "n", reader: TreeReader(), writer: ScriptedWriter())
+        var requests = 0
+        reminders.requestSync = { requests += 1 }
+        await reminders.add(at: Date(), title: nil)
+        await reminders.snooze("reminder-1", until: Date())
+        await reminders.dismiss("reminder-1")
+        #expect(requests == 3)
+
+        let failing = NoteRemindersViewModel(
+            noteId: "n", reader: TreeReader(), writer: ScriptedWriter(failure: StorageError.Failed(what: "x"))
+        )
+        failing.requestSync = { requests += 1 }
+        await failing.add(at: Date(), title: nil)
+        #expect(requests == 3, "a write that did not land has nothing to push")
     }
 
     @Test("a delete asks for a sync pass, and a failed one does not")

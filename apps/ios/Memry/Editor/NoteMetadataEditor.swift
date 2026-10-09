@@ -559,6 +559,11 @@ final class NoteMetadataViewModel {
 
     private(set) var status: Status = .idle
 
+    /// The vault's debounced sync request, asked after every write that
+    /// lands. Set by the note page (`NotePageSync`); the journal day leaves it
+    /// `nil` because its writer is `JournalStore`, which asks for itself.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+
     init(noteId: String, writer: (any NoteMetadataWriting)?) {
         self.noteId = noteId
         self.writer = writer
@@ -730,6 +735,7 @@ final class NoteMetadataViewModel {
         do {
             try await work()
             status = .idle
+            requestSync?()
         } catch {
             Log.storage.error("a metadata write did not land")
             status = .failed(ErrorMapping.userFacing(error))
