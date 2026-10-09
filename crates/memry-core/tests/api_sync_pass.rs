@@ -567,6 +567,7 @@ async fn a_rate_limited_body_step_still_pushes_and_the_next_pass_resumes_from_th
                     content: "",
                     tags: &[],
                     properties: None,
+                    emoji: None,
                 },
                 "device-local",
                 1_760_000_000_000,

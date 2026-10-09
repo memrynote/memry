@@ -91,6 +91,7 @@ struct FolderScreen: View {
     @AppStorage("notes.folderGrouping") private var grouping: FolderNoteGrouping = .none
     @State private var isNamingFolder = false
     @State private var draftName = ""
+    @State private var isPickingTemplate = false
 
     var body: some View {
         Group {
@@ -110,12 +111,16 @@ struct FolderScreen: View {
                                 newFolder: {
                                     draftName = ""
                                     isNamingFolder = true
-                                }
+                                },
+                                fromTemplate: { isPickingTemplate = true }
                             )
                             .padding(.horizontal, Tokens.Space.inset)
                             .padding(.bottom, Tokens.Space.medium)
                         }
                     }
+                    .fromTemplateSheet(
+                        isPresented: $isPickingTemplate, browse: model, folderPath: route.path, open: openNote
+                    )
                     .alert("New folder", isPresented: $isNamingFolder) {
                         TextField("Name", text: $draftName)
                         Button("Create") {

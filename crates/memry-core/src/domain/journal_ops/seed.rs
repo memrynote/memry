@@ -12,22 +12,16 @@
 //! the phone would seed it later, and a day holding only `seed_markdown`
 //! would be unwritable there.
 
-use std::sync::{Arc, Mutex, PoisonError};
-
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
-use crate::crdt::errors::CrdtError;
-use crate::crdt::markdown_seed::{body_is_empty, seed_document};
-use crate::crdt::registry::UpdateSink;
-use crate::crdt::{DocumentRegistry, update_log};
 use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     JournalTemplateFormatted, JournalTemplateProperty, JournalTemplateSettings,
-    JournalTemplateSource, apply_journal_template, js_trim, resolve_journal_template_id,
+    JournalTemplateSource, apply_journal_template, resolve_journal_template_id,
 };
-use crate::domain::{notes, settings, templates};
+use crate::domain::{body_write, notes, settings, templates};
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
 
@@ -115,7 +109,7 @@ pub fn open_day_from_template(
     sync_items::apply_local_edit_in(&tx, ITEM_TYPE, &id, &changes, now_ms)?;
     outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
     notes::seed_body(&tx, &id, &applied.content, now_ms)?;
-    seed_body_document(&tx, &id, &applied.content, device_id, now_ms)?;
+    body_write::seed_empty_body_in(&tx, ITEM_TYPE, &id, &applied.content, device_id, now_ms)?;
     tx.commit().map_err(notes::failed)?;
 
     Ok(if opened.revived {
@@ -189,58 +183,4 @@ fn merged_properties(
         properties.insert(property.name.clone(), property.value.clone());
     }
     Some(Value::Object(properties))
-}
-
-/// Seeds the day's document from `markdown` when its body is empty, and
-/// queues the update with its log row, inside `tx`.
-fn seed_body_document(
-    tx: &Connection,
-    id: &str,
-    markdown: &str,
-    device_id: &str,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    if js_trim(markdown).is_empty() {
-        return Ok(());
-    }
-    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| {
-            authored
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push(bytes.to_vec());
-        })
-    };
-    let document = DocumentRegistry::new(device_id, sink)
-        .get_or_open(id)
-        .map_err(crdt_failed)?;
-    for blob in update_log::load_plan(tx, id).map_err(crdt_failed)?.blobs() {
-        document.apply_durable_update(blob).map_err(crdt_failed)?;
-    }
-    if !body_is_empty(&document).map_err(crdt_failed)? {
-        return Ok(());
-    }
-    seed_document(&document, markdown).map_err(crdt_failed)?;
-
-    let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
-    for update in updates {
-        update_log::append_local_update_in(tx, id, &update, now_ms).map_err(crdt_failed)?;
-        outbox::enqueue(
-            tx,
-            &outbox::Change::crdt_update(ITEM_TYPE, id, update),
-            now_ms,
-        )?;
-    }
-    Ok(())
-}
-
-fn crdt_failed(error: CrdtError) -> StorageError {
-    match error {
-        CrdtError::Storage { source } => source,
-        other => StorageError::Failed {
-            what: other.to_string(),
-        },
-    }
 }

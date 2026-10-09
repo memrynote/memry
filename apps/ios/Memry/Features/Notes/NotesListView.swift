@@ -53,6 +53,7 @@ struct NotesListView: View {
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
     @State private var isNamingFolder = false
     @State private var draftFolderName = ""
+    @State private var isPickingTemplate = false
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
 
@@ -168,11 +169,15 @@ struct NotesListView: View {
                             newFolder: {
                                 draftFolderName = ""
                                 isNamingFolder = true
-                            }
+                            },
+                            fromTemplate: { isPickingTemplate = true }
                         )
                         .padding(.horizontal, Tokens.Space.inset)
                         .padding(.bottom, Tokens.Space.medium)
                     }
+                }
+                .fromTemplateSheet(isPresented: $isPickingTemplate, browse: model, folderPath: nil) {
+                    path.append(NoteRoute(id: $0))
                 }
                 .alert("New folder", isPresented: $isNamingFolder) {
                     TextField("Name", text: $draftFolderName)

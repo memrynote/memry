@@ -87,6 +87,8 @@ pub struct NewNote<'a> {
     /// rather than an empty object: §13.4 makes those different writes, and a
     /// note that has never had a property has not cleared one.
     pub properties: Option<&'a Object>,
+    /// The note's icon. `None` leaves the key absent.
+    pub emoji: Option<&'a str>,
 }
 
 /// Creates a note, its payload and its body row.
@@ -213,6 +215,9 @@ pub(crate) fn create_in(
     }
     if let Some(properties) = note.properties.filter(|values| !values.is_empty()) {
         payload.insert("properties".to_owned(), Value::Object(properties.clone()));
+    }
+    if let Some(emoji) = note.emoji {
+        payload.insert("emoji".to_owned(), json!(emoji));
     }
     let stored = insert_local(tx, ITEM_TYPE, note.id, payload, now_ms)?;
     seed_body(tx, note.id, note.content, now_ms)?;

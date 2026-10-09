@@ -1,26 +1,22 @@
 //! Templates, and the note a template creates (T126, chapter 13 §13.7.6,
 //! chapter 12 §12.1.2 and §12.2, data-model §A.3).
 //!
-//! **A template body is not markdown-parsed here.** The core parses markdown
-//! only in `markdown_seed`, for a journal day and a filed inbox article
-//! (§12.1.0); a note's markdown becomes a document on desktop. So applying a
-//! template is three verbatim copies and no parse:
+//! **Applying a template follows desktop's `applyTemplate`**, in one
+//! transaction:
 //!
-//! 1. the template's `content` into the new note's payload `content`, which is
-//!    §12.2's carve-out A — the one path where a client's markdown reaches a
-//!    vault file, because desktop writes a remote create's `content` as the
-//!    file body;
-//! 2. the same bytes into `note_bodies.seed_markdown`, which is the only copy
-//!    of what the user asked for until desktop seeds the document (§A.3);
-//! 3. the template's `tags` onto the note.
+//! 1. the template's `content`, with `{{title}}` replaced by the note's title,
+//!    into the new note's payload `content`, which is §12.2's carve-out A —
+//!    the one path where a client's markdown reaches a vault file, because
+//!    desktop writes a remote create's `content` as the file body;
+//! 2. the same bytes into `note_bodies.seed_markdown` (§A.3), and into the
+//!    note's document through the core's one markdown parse,
+//!    `body_write::seed_empty_body_in` (§12.1.0), so the phone can read and
+//!    edit the note before any desktop has seen it;
+//! 3. the template's `tags`, its `properties` by name and value
+//!    ([`properties_of`]), and its `icon` as the note's `emoji`.
 //!
-//! **Template `properties` are deliberately not applied.** §13.7.6 requires
-//! the field to stay a `TemplatePropertySchema[]` and says note creation
-//! throws otherwise, but no chapter states that element's shape or how it maps
-//! onto `note.properties` — which §13.7.1 marks free-form, values only. Copying
-//! it blind would write a shape no reader here can check, so the array rides
-//! in the template payload untouched and nothing is projected onto the note.
-//! Recorded as a gap rather than guessed.
+//! The built-ins (`template_admin::BUILT_INS`) live in code, as on desktop,
+//! and seed a note the same way.
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
@@ -30,9 +26,11 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
+use super::body_write;
 use super::notes::{
     self, NewNote, create_in, edit, insert_local, iso, next_clock, object, tombstone_local,
 };
+use super::template_admin::BUILT_INS;
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "template";
@@ -135,19 +133,34 @@ pub fn create_note(
         now_ms,
         |tx| {
             let seed = seed_of(tx, request.template_id)?;
-            create_in(
+            // Desktop's `applyTemplate`: `{{title}}` becomes the note's title
+            // and the template's icon becomes the note's.
+            let content = seed.content.replace("{{title}}", request.title);
+            let id = create_in(
                 tx,
                 &NewNote {
                     id: request.note_id,
                     title: request.title,
                     folder_path: request.folder_path,
-                    content: &seed.content,
+                    content: &content,
                     tags: &seed.tags,
                     properties: Some(&seed.properties),
+                    emoji: seed.icon.as_deref(),
                 },
                 device_id,
                 now_ms,
-            )
+            )?;
+            // §12.1.0: the phone has no other way to build this body, and a
+            // seed-only note reads "not on this phone" and cannot be edited.
+            body_write::seed_empty_body_in(
+                tx,
+                notes::ITEM_TYPE,
+                request.note_id,
+                &content,
+                device_id,
+                now_ms,
+            )?;
+            Ok(id)
         },
     )
 }
@@ -157,6 +170,7 @@ pub(crate) struct Seed {
     pub(crate) content: String,
     pub(crate) tags: Vec<String>,
     pub(crate) properties: Object,
+    pub(crate) icon: Option<String>,
 }
 
 /// Reads them from the template's **stored payload**, never from its
@@ -165,7 +179,22 @@ pub(crate) struct Seed {
 /// Every failure here is an error and none is a silent default: a template
 /// whose `content` is not a string would otherwise produce an empty note and
 /// look like the user's own doing.
+///
+/// A built-in lives in code, not in the vault (desktop
+/// `vault/built-in-templates.ts`), so it is read from there.
 pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
+    if let Some(b) = BUILT_INS.iter().find(|b| b.id == template_id) {
+        let properties =
+            serde_json::from_str::<Value>(b.properties).map_err(|_| StorageError::Failed {
+                what: format!("built-in template {template_id}: `properties` is not JSON"),
+            })?;
+        return Ok(Seed {
+            content: b.content.to_owned(),
+            tags: b.tags.iter().map(|t| (*t).to_owned()).collect(),
+            properties: properties_of(template_id, &object(json!({ "properties": properties })))?,
+            icon: Some(b.icon.to_owned()),
+        });
+    }
     let Some(row) = sync_items::load(tx, ITEM_TYPE, template_id)? else {
         return Err(StorageError::Failed {
             what: format!("no template {template_id}"),
@@ -211,6 +240,11 @@ pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, Storag
         content,
         tags,
         properties: properties_of(template_id, stored.object())?,
+        icon: stored
+            .object()
+            .get("icon")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
     })
 }
 
