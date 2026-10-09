@@ -68,7 +68,9 @@ export function replaceMarkdownComments(
 
 /**
  * `<!--` is CommonMark raw HTML: it ends at the first `-->`, code or not, and
- * runs to the end of the note when none follows. `%%` is Obsidian prose
+ * runs to the end of the note when none follows. An inline `<!--`, with text
+ * before it on its line, sits in a paragraph that a fence interrupts, so when
+ * a fence comes before its `-->` it is text (BBF-46). `%%` is Obsidian prose
  * syntax: on a later line only a `%%` outside code closes it, and with no
  * such partner it is text.
  */
@@ -141,8 +143,9 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           i = end
           continue
         }
-        const later = findLaterClose(lines, index, form)
-        if (form.proseOnly && !later) {
+        const inline = !closesComment && line.slice(0, at).trim() !== ''
+        const later = findLaterClose(lines, index, form, inline)
+        if (later === 'text' || (form.proseOnly && !later)) {
           result += line.slice(i, at + form.open.length)
           i = at + form.open.length
           continue
@@ -191,17 +194,22 @@ interface CommentClose {
 /**
  * The close of a comment left open at the end of line `index`. A `%%` comment
  * skips fenced blocks and code spans, so a fence inside it is read whole and
- * the fence state after it is the state before it.
+ * the fence state after it is the state before it. An `inline` `<!--` is
+ * `'text'` when a fence opens before its close.
  */
 function findLaterClose(
   lines: readonly string[],
   index: number,
-  form: CommentForm
-): CommentClose | null {
+  form: CommentForm,
+  inline: boolean
+): CommentClose | 'text' | null {
   const fence = createFenceTracker()
   for (let next = index + 1; next < lines.length; next++) {
     const line = lines[next]
-    if (form.proseOnly && fence.consume(withoutCr(line))) continue
+    if (fence.consume(withoutCr(line))) {
+      if (form.proseOnly) continue
+      if (inline) return 'text'
+    }
     const at = form.proseOnly ? indexOutsideCodeSpans(line, form.close) : line.indexOf(form.close)
     if (at !== -1) return { line: next, end: at + form.close.length }
   }

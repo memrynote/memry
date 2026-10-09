@@ -299,6 +299,11 @@ later `B 20%% tax` hide everything between them. A `%%` in a code block, or in i
 a later line, never closes a comment, so `50%% off` above a batch file's `%%i` hides nothing.
 A `%%` with no partner is plain text.
 
+An HTML comment that opens after other text on its line, such as `a <!--`, ends before a code
+block that starts below it. If its `-->` is inside that code block, the `<!--` is plain text
+and the code block stays code. An HTML comment that starts its line runs to the first `-->`,
+code blocks included.
+
 On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
 ``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
 so the export reads ``Sale 50d` [[X]]``, with a stray backtick. Write `50%` instead of `50%%`, or put the first `%%` in inline code too.
