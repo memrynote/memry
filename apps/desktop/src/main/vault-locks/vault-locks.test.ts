@@ -734,6 +734,10 @@ describe('vault read-only locks (#2606)', () => {
  * the lock asks for, whatever platform runs the test.
  */
 describe('read-only attribute modes (#2606)', () => {
+  beforeEach(() => {
+    state.vaultPath = ''
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
