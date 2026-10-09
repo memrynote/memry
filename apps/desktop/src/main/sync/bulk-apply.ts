@@ -612,6 +612,15 @@ function fsyncDirectory(dir: string): void {
   }
 }
 
+/**
+ * Whether a crashed page apply left note writes for `replayBulkApplyJournal`.
+ * Until it runs, a committed row can lack its file without the user removing
+ * it, so the vault-open removal scan waits (#3013).
+ */
+export function hasBulkApplyJournal(): boolean {
+  return fs.existsSync(journalPath())
+}
+
 function removeJournal(): void {
   try {
     fs.unlinkSync(journalPath())

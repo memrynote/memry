@@ -88,8 +88,10 @@ import { recordActivity, recordSkippedFile, toActivityPath } from './activity-lo
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
 import { ATTACHMENTS_DIR } from './attachments'
-import { trackExternalCanvasRemoval } from '../canvas/delete'
-import { isCanvasFilePath } from '../canvas/scene-file'
+import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
+import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
+import { hasBulkApplyJournal } from '../sync/bulk-apply'
+import { isGoneFromDisk } from './gone-from-disk'
 
 const logger = createLogger('Watcher')
 
@@ -181,16 +183,6 @@ function isJournalPath(relativePath: string): boolean {
  */
 function extractJournalDate(relativePath: string): string {
   return extractDateFromPath(relativePath) ?? ''
-}
-
-async function isFileMissing(absolutePath: string): Promise<boolean> {
-  try {
-    await fs.stat(absolutePath)
-    return false
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
-    return code === 'ENOENT' || code === 'ENOTDIR'
-  }
 }
 
 async function isModifiedSince(absolutePath: string, indexedAt: string): Promise<boolean> {
@@ -423,12 +415,8 @@ export class VaultWatcher {
     const isCurrent = (): boolean => this.generation === generation
     const db = getIndexDatabase()
 
-    const missing: string[] = []
-    for (const row of getAllNoteRefRows(db)) {
-      if (!isCurrent()) return
-      const absolutePath = path.join(vaultPath, row.path)
-      if (await isFileMissing(absolutePath)) missing.push(absolutePath)
-    }
+    const missing = await this.collectMissedRemovals(vaultPath, isCurrent)
+    if (missing === null) return
 
     const added: string[] = []
     const changed: string[] = []
@@ -454,6 +442,60 @@ export class VaultWatcher {
       if (!isCurrent()) return
       await this.handleFileChange(absolutePath)
     }
+  }
+
+  /**
+   * Vault open: a note or canvas removed while the app was closed gets the
+   * delete a live unlink would have given it (#3013). `ignoreInitial` keeps
+   * chokidar quiet about those, so the indexed rows are checked against disk.
+   * Called once the open's index walk is done.
+   */
+  async replayMissedRemovals(): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    const generation = this.generation
+    const isCurrent = (): boolean => this.generation === generation
+    const missing = await this.collectMissedRemovals(vaultPath, isCurrent)
+    if (missing === null) return
+    for (const absolutePath of missing) this.handleFileDelete(absolutePath)
+  }
+
+  /**
+   * Indexed notes and live canvases whose file is gone from the vault, as
+   * absolute paths for `handleFileDelete`. Null when the watcher moved on to
+   * another vault meanwhile.
+   *
+   * Two kinds of row can lack a file without having lost one, and are left out:
+   * - A synced attachment note this device never downloaded (auto-download
+   *   off, or still queued) has no file yet. Its row says so with no size.
+   * - A crashed sync apply leaves note files the bulk-apply journal writes on
+   *   the next pull. While the journal is there, nothing is collected.
+   */
+  private async collectMissedRemovals(
+    vaultPath: string,
+    isCurrent: () => boolean
+  ): Promise<string[] | null> {
+    if (hasBulkApplyJournal()) {
+      logger.info('Unflushed sync writes are pending; skipping the removal scan')
+      return []
+    }
+    const indexDb = getIndexDatabase()
+    const missing: string[] = []
+    for (const row of getAllNoteRefRows(indexDb)) {
+      if (!isCurrent()) return null
+      const absolutePath = path.join(vaultPath, row.path)
+      if (!(await isGoneFromDisk(absolutePath))) continue
+      const cached = getNoteCacheById(indexDb, row.id)
+      if (cached && cached.fileType !== 'markdown' && !cached.fileSize) continue
+      missing.push(absolutePath)
+    }
+    for (const row of liveCanvasPaths(getDatabase())) {
+      if (!isCurrent()) return null
+      if (!row.filePath) continue
+      const absolutePath = resolveCanvasFile(vaultPath, row.filePath)
+      if (await isGoneFromDisk(absolutePath)) missing.push(absolutePath)
+    }
+    return isCurrent() ? missing : null
   }
 
   // ==========================================================================
@@ -1179,24 +1221,13 @@ export class VaultWatcher {
       this.waitForVaultReturn()
       return false
     }
-    // chokidar reports a file it cannot open (chmod 000, an antivirus
-    // lock) as unlinked. It is still there, so it stays (#2764).
-    if (!(await isFileMissing(absolutePath))) {
-      logger.warn('File cannot be read; keeping it', { path: relativePath })
-      return false
+    // chokidar reports a file it cannot open (chmod 000, an antivirus lock)
+    // as unlinked (#2764), and iCloud evicts to a placeholder (#3004).
+    const gone = await isGoneFromDisk(absolutePath)
+    if (!gone) {
+      logger.info('Unlinked file is still in the vault; keeping it', { path: relativePath })
     }
-    // iCloud Drive before macOS 14 evicts a file under "Optimize Mac Storage"
-    // by swapping it for a hidden `.<name>.icloud` placeholder. The file is
-    // still in the vault, just not downloaded, so it stays (#3004).
-    const placeholder = path.join(
-      path.dirname(absolutePath),
-      `.${path.basename(absolutePath)}.icloud`
-    )
-    if (!(await isFileMissing(placeholder))) {
-      logger.info('File evicted to iCloud; keeping it', { path: relativePath })
-      return false
-    }
-    return true
+    return gone
   }
 }
 

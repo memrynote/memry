@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => ({
   startProjectionRuntime: vi.fn(),
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
+  replayMissedRemovals: vi.fn(async () => {}),
   rebuildProjections: vi.fn(),
   detectCorruption: vi.fn(),
   trackMainError: vi.fn(),
@@ -171,7 +172,10 @@ vi.mock('../database/queries/settings', () => ({
 vi.mock('./watcher', () => ({
   startWatcher: (...args: unknown[]) => mocks.startWatcher(...args),
   stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args),
-  getWatcher: () => ({ isWatching: () => mocks.watcherRunning })
+  getWatcher: () => ({
+    isWatching: () => mocks.watcherRunning,
+    replayMissedRemovals: () => mocks.replayMissedRemovals()
+  })
 }))
 
 vi.mock('./journal-format-migration', () => ({
@@ -761,11 +765,11 @@ describe('vault lifecycle', () => {
     expect(result.success).toBe(true)
     expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
     await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
-    expect(mocks.reconcileProjections).not.toHaveBeenCalled()
+    expect(mocks.replayMissedRemovals).not.toHaveBeenCalled()
 
     finishLockCheck()
 
-    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+    await vi.waitFor(() => expect(mocks.replayMissedRemovals).toHaveBeenCalled())
   })
 
   it('still prunes missing files when the locked-file check fails (#2606)', async () => {
@@ -773,7 +777,7 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/locked-failed' })
 
-    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+    await vi.waitFor(() => expect(mocks.replayMissedRemovals).toHaveBeenCalled())
   })
 
   it('does not reset a current index and reports no recovery on a fast open', async () => {

@@ -24,8 +24,6 @@
  * asked for.
  */
 
-import { statSync } from 'fs'
-import path from 'path'
 import { and, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import {
   canvasAssets,
@@ -44,6 +42,7 @@ import type { DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import { resolveVaultFileSync } from '../lib/paths'
+import { isGoneFromDisk } from '../vault/gone-from-disk'
 import { clearCanvasEdges, rewriteCanvasEdges } from './edge-index'
 import { storedFolderPath } from './folder-lookup'
 import { normalizeFolder, normalizeStoredFolder } from './folder-paths'
@@ -478,7 +477,7 @@ export async function deleteCanvas(
       deleteCanvasFileSync(absolutePath)
     }
   }
-  releaseRemovedCanvasPaths(db, vaultPath, [id])
+  await releaseRemovedCanvasPaths(db, vaultPath, [id])
   return true
 }
 
@@ -491,12 +490,15 @@ export async function deleteCanvas(
  * file behind, and reconcile must not adopt it back. Once the document is
  * confirmed gone, a file that later appears at that path is a restore
  * (Trash, backup, iCloud), and reconcile adopts it as a new canvas, as a
- * restored note file gets a new id (#3002). Only ENOENT/ENOTDIR count as gone,
- * as for a note; any other failure keeps the path. So does an iCloud
- * `.<name>.icloud` placeholder: the file is evicted, not gone (#3004), and
- * the watcher's `isGoneFromVault` keeps it the same way.
+ * restored note file gets a new id (#3002). Gone is `isGoneFromDisk`, the
+ * check a note's removal uses: an unreadable file or an iCloud placeholder
+ * keeps the path.
  */
-export function releaseRemovedCanvasPaths(db: DataDb, vaultPath: string, ids?: string[]): number {
+export async function releaseRemovedCanvasPaths(
+  db: DataDb,
+  vaultPath: string,
+  ids?: string[]
+): Promise<number> {
   const rows = db
     .select({ id: canvases.id, filePath: canvases.filePath })
     .from(canvases)
@@ -509,23 +511,8 @@ export function releaseRemovedCanvasPaths(db: DataDb, vaultPath: string, ids?: s
     )
     .all()
   let released = 0
-  const isMissing = (absolutePath: string): boolean => {
-    try {
-      statSync(absolutePath)
-      return false
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
-      return code === 'ENOENT' || code === 'ENOTDIR'
-    }
-  }
   for (const row of rows) {
-    const absolutePath = resolveCanvasFile(vaultPath, row.filePath!)
-    if (!isMissing(absolutePath)) continue
-    const placeholder = path.join(
-      path.dirname(absolutePath),
-      `.${path.basename(absolutePath)}.icloud`
-    )
-    if (!isMissing(placeholder)) continue
+    if (!(await isGoneFromDisk(resolveCanvasFile(vaultPath, row.filePath!)))) continue
     db.update(canvases).set({ filePath: null }).where(eq(canvases.id, row.id)).run()
     released += 1
   }

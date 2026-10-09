@@ -25,12 +25,12 @@
  * reported, never tombstoned, and a folder row whose directory is missing gets
  * the directory back rather than a tombstone (see `restoreMissingFolderDirs`).
  * A half-copied vault (or a Dropbox mid-sync) must not delete canvases. Deletes
- * come from the app, or from the vault watcher while the app runs: a document
- * removed from `canvases/`, or moved out of it (the app reads canvases only
- * there, as it reads notes only inside the vault), becomes a canvas delete
- * (`canvas/delete.ts`). A removal while the app is closed or the vault is
- * unmounted is not caught yet (#2964). A deleted canvas's document that comes
- * back is adopted as a new canvas (#3002).
+ * come from the app, or from the vault watcher: a document removed from
+ * `canvases/`, or moved out of it (the app reads canvases only there, as it
+ * reads notes only inside the vault), becomes a canvas delete
+ * (`canvas/delete.ts`). One removed while the app was closed reaches the same
+ * path through the watcher's `replayMissedRemovals` at open (#3013). A deleted
+ * canvas's document that comes back is adopted as a new canvas (#3002).
  *
  * The single exception is the EMPTY directory of a folder the user already
  * deleted (see `pruneTombstonedFolderDirs`) — litter the sync apply order leaves
@@ -470,8 +470,8 @@ export async function reconcileCanvasFiles(
   // ---- 3. adopt files this index has never seen ----------------------------
   // A tombstone whose document is gone gives up its path, so a document put
   // back there later is a restore. Catches tombstones from a peer's delete and
-  // from builds before #3002. The vault is mounted: its data.db just opened.
-  releaseRemovedCanvasPaths(db, vaultPath)
+  // from builds before #3002.
+  await releaseRemovedCanvasPaths(db, vaultPath)
   const indexed = db
     .select({ id: canvases.id, filePath: canvases.filePath, deletedAt: canvases.deletedAt })
     .from(canvases)

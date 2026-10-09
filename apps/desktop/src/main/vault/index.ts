@@ -575,6 +575,15 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   await lockedFilesChecked
   if (isStale()) return
 
+  // After the walk, so every row the scan checks is the index's final word.
+  // Ahead of the projections, which no longer drop a missing file's row.
+  void getWatcher()
+    .replayMissedRemovals()
+    .catch((error) => {
+      logger.error('Replaying removals made while the app was closed failed:', error)
+      trackMainError('vault', 'replay_missed_removals', error)
+    })
+
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
     .catch((error) => {

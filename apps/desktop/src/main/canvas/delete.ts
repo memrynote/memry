@@ -98,7 +98,7 @@ function findLiveCanvasIdAtPath(db: DataDb, relativePath: string): string | null
   )
 }
 
-function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | null }> {
+export function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | null }> {
   return db
     .select({ id: canvases.id, filePath: canvases.filePath })
     .from(canvases)

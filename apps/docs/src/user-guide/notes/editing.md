@@ -910,6 +910,13 @@ antivirus holds it, is not treated as deleted. The note stays in the list and on
 devices, a save names the note in a notice, and your edit stays open. Once the file can be read
 again, memrynote picks it up and your next edit saves as usual.
 
+Deleting a note's file outside memrynote deletes the note, and the delete syncs to your other
+devices. That holds for a file deleted while memrynote is closed too: the delete happens the
+next time it opens the vault. A file iCloud offloaded to save space (on macOS 12 and 13 it leaves
+a hidden `.icloud` file in its place) is not deleted, nor is an attachment this device has not
+downloaded yet; once the offloaded file is deleted as well, so is the note. A note file put back
+from the trash or a backup comes back as a new note.
+
 ## Opening a Note Written Somewhere Else
 
 Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it
