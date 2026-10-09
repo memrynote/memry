@@ -519,6 +519,15 @@ describe('vault read-only locks (#2606)', () => {
     }
   )
 
+  it('watching the attachments of a vault folder that went away does not recreate it', async () => {
+    const gone = path.join(vault, 'gone-vault')
+
+    await watchLockedAttachments(path.join(gone, 'attachments'))
+    await watchLockedAttachments(null)
+
+    expect(fs.existsSync(gone)).toBe(false)
+  })
+
   it.skipIf(isWindows)(
     'a reconcile still running when the vault closes does not watch attachments again',
     async () => {
