@@ -545,7 +545,8 @@ service) or an exemption naming why the type has no usable dirty marker. Clock-l
 stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
 device id never reaches the wire. A queued `_offline` create or update whose service queues nothing
 fresh at rebind (the row is gone or no longer syncs) is dropped and logged, so the queue drains;
-queued deletes are always rebound, never dropped. Exempt types (settings, tag definitions and categories, folder
+queued deletes are always rebound, never dropped. Only a `clock` or `fieldClocks` entry counts as
+`_offline`; a task activity row's `deviceId` field may read `_offline` and is pushed as is. Exempt types (settings, tag definitions and categories, folder
 configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
 wait for its per-type rollout (#2301); agent chat has no local push path.
 
