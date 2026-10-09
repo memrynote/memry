@@ -89,7 +89,9 @@ your other devices like one made in the app, except that the board's images
 stay in your vault so the file can bring them back if you restore it. Moving a file out of `canvases/`
 counts as deleting it, because memrynote only reads canvases from that folder.
 A file deleted while memrynote is closed, or while the vault's drive is
-disconnected, is not deleted from memrynote yet.
+disconnected, is not deleted from memrynote yet. A deleted canvas's file put
+back into `canvases/` (from your trash or a backup) comes back as a new canvas
+the next time memrynote opens the vault, images included.
 
 Because your vault is the only store, the drawing engine's own **Open** and
 **Save to...** actions are hidden for _boards_: they would write a copy outside

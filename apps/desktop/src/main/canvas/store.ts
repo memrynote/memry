@@ -24,7 +24,9 @@
  * asked for.
  */
 
-import { and, count, desc, eq, isNull } from 'drizzle-orm'
+import { statSync } from 'fs'
+import path from 'path'
+import { and, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import {
   canvasAssets,
   canvases,
@@ -476,7 +478,58 @@ export async function deleteCanvas(
       deleteCanvasFileSync(absolutePath)
     }
   }
+  releaseRemovedCanvasPaths(db, vaultPath, [id])
   return true
+}
+
+/**
+ * Clears `file_path` on tombstones whose document is gone, and returns how
+ * many.
+ *
+ * A tombstone that keeps its path still owns the document there: a removal
+ * that failed (a refused trash, a locked file) leaves the deleted canvas's
+ * file behind, and reconcile must not adopt it back. Once the document is
+ * confirmed gone, a file that later appears at that path is a restore
+ * (Trash, backup, iCloud), and reconcile adopts it as a new canvas, as a
+ * restored note file gets a new id (#3002). Only ENOENT/ENOTDIR count as gone,
+ * as for a note; any other failure keeps the path. So does an iCloud
+ * `.<name>.icloud` placeholder: the file is evicted, not gone (#3004), and
+ * the watcher's `isGoneFromVault` keeps it the same way.
+ */
+export function releaseRemovedCanvasPaths(db: DataDb, vaultPath: string, ids?: string[]): number {
+  const rows = db
+    .select({ id: canvases.id, filePath: canvases.filePath })
+    .from(canvases)
+    .where(
+      and(
+        isNotNull(canvases.deletedAt),
+        isNotNull(canvases.filePath),
+        ids ? inArray(canvases.id, ids) : undefined
+      )
+    )
+    .all()
+  let released = 0
+  const isMissing = (absolutePath: string): boolean => {
+    try {
+      statSync(absolutePath)
+      return false
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      return code === 'ENOENT' || code === 'ENOTDIR'
+    }
+  }
+  for (const row of rows) {
+    const absolutePath = resolveCanvasFile(vaultPath, row.filePath!)
+    if (!isMissing(absolutePath)) continue
+    const placeholder = path.join(
+      path.dirname(absolutePath),
+      `.${path.basename(absolutePath)}.icloud`
+    )
+    if (!isMissing(placeholder)) continue
+    db.update(canvases).set({ filePath: null }).where(eq(canvases.id, row.id)).run()
+    released += 1
+  }
+  return released
 }
 
 export function listCanvases(db: DataDb, vaultId: string): CanvasSummary[] {

@@ -1,5 +1,5 @@
 /**
- * The one canvas delete: asset GC, tombstone, sync, renderer event. The app's
+ * The one canvas delete: tombstone, sync, renderer event. The app's
  * delete and a document removed outside the app (the vault watcher's unlink,
  * the same path a note's removal takes) both end here, so every device hears
  * about either (#2938).
@@ -15,8 +15,6 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackPendingDelete } from '../vault/rename-tracker'
-import { reconcileCanvasAssets } from './assets/asset-service'
-import { buildAssetServiceContext } from './assets/asset-service-context'
 import {
   canvasPathKey,
   listCanvasFiles,
@@ -32,18 +30,13 @@ const log = createLogger('CanvasDelete')
 
 export async function removeCanvas(
   id: string,
-  trash: (absolutePath: string) => Promise<void>,
-  { keepAssets = false }: { keepAssets?: boolean } = {}
+  trash: (absolutePath: string) => Promise<void>
 ): Promise<boolean> {
   const { db, vaultPath } = getCanvasContext()
 
-  // GC this canvas's assets before the row is tombstoned (the other-canvas
-  // union keeps assets shared with surviving canvases). Reads the
-  // canvas_assets rows, so it must run before soft-delete/sync-delete.
-  const assetCtx = keepAssets ? null : buildAssetServiceContext()
-  if (assetCtx) {
-    await reconcileCanvasAssets(assetCtx, id, '')
-  }
+  // The canvas's asset files and server refs are kept, like a deleted note's
+  // attachments (`deleteNoteCommand` only trashes the .md): a document put
+  // back from the Trash re-imports its images on the next reconcile (#3002).
 
   const success = await deleteCanvas(db, vaultPath, id, trash)
   if (success) {
@@ -79,10 +72,8 @@ export function trackExternalCanvasRemoval(
       // The app or a sync apply moved it meanwhile and re-pointed the row.
       if (findLiveCanvasIdAtPath(db, relativePath) !== id) return
       if (mayStillHoldCanvas(db, vaultPath, id)) return
-      // The document is already gone, so there is nothing to trash. Keep the
-      // asset files and server refs: a document restored from the Trash or a
-      // backup must be able to re-import its images (#2938).
-      await removeCanvas(id, async () => {}, { keepAssets: true })
+      // The document is already gone, so there is nothing to trash.
+      await removeCanvas(id, async () => {})
     } catch (error) {
       log.error('Failed to delete a canvas removed outside the app; keeping it', {
         id,
