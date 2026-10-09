@@ -1,4 +1,7 @@
 import * as Y from 'yjs'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { MARKDOWN_SOURCE_MAP, writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
@@ -8,6 +11,9 @@ const restoreThrows = vi.hoisted(() => ({ left: 0 }))
 // A build before #2741 parsed every note this way: no comment was masked, so
 // BlockNote dropped each one, and the doc it seeded holds none.
 const parseBefore2741 = vi.hoisted(() => ({ on: false }))
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
+
 vi.mock('@memry/shared/html-comments', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@memry/shared/html-comments')>()
   return {
@@ -73,7 +79,7 @@ vi.mock('../vault/notes-io', () => ({
 vi.mock('../vault/notes', async () => {
   const versions = await import('../vault/notes-versions')
   return {
-    getVaultRoot: () => '/vault',
+    getVaultRoot: () => VAULT_ROOT,
     toAbsolutePath: (relative: string) => `/vault/${relative}`,
     createSnapshot: versions.createSnapshot,
     maybeCreateSignificantSnapshot: versions.maybeCreateSignificantSnapshot

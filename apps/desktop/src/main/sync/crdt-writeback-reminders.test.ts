@@ -1,4 +1,7 @@
 import * as Y from 'yjs'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reminders } from '@memry/db-schema/schema/reminders'
@@ -30,6 +33,9 @@ const mocks = vi.hoisted(() => ({
   reminderSync: null as { enqueueCreate(id: string): void; enqueueUpdate(id: string): void } | null,
   markdown: ''
 }))
+
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
@@ -63,7 +69,7 @@ vi.mock('../vault/file-ops', () => ({
   deleteFile: vi.fn(async () => {})
 }))
 vi.mock('../vault/notes', () => ({
-  getVaultRoot: () => '/vault',
+  getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   maybeCreateSignificantSnapshot: () => null
 }))

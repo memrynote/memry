@@ -17,6 +17,7 @@ vi.mock('../../database/client', () => ({
 }))
 
 vi.mock('../../vault/notes', () => ({
+  getVaultRoot: () => handles.vault,
   toAbsolutePath: (relativePath: string) => path.join(handles.vault, relativePath)
 }))
 

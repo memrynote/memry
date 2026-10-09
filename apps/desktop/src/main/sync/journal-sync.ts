@@ -1,10 +1,9 @@
-import fs from 'fs'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { JournalSyncPayload } from '@memry/contracts/sync-payloads'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { createLogger } from '../lib/logger'
-import { extractJournalProperties, getJournalPath, parseJournalEntry } from '../vault/journal'
+import { extractJournalProperties, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 
 const log = createLogger('JournalSync')
 
@@ -68,9 +67,8 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
     let content: string | null = null
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
-    const filePath = getJournalPath(date)
     try {
-      const raw = fs.readFileSync(filePath, 'utf-8')
+      const raw = readJournalTextSync(date)
       const parsed = parseJournalEntry(raw, date)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []

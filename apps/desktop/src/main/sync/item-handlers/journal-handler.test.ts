@@ -61,6 +61,7 @@ vi.mock('@memry/domain-notes', () => ({
 vi.mock('../../vault/journal', () => ({
   extractJournalProperties: vi.fn(() => ({ Mood: 'focused' })),
   getJournalPath: vi.fn(() => journalFilePath),
+  readJournalTextSync: vi.fn(() => fs.readFileSync(journalFilePath, 'utf-8')),
   getJournalRelativePath: vi.fn((date: string) => `journals/${date}.md`),
   parseJournalEntry: vi.fn((_raw: string, date: string) => ({
     content: 'parsed content',

@@ -67,7 +67,7 @@ describe('a synced note whose file links outside the vault', () => {
       id: 'n1',
       path: 'notes/n1.md',
       title: 'n1',
-      fileType: 'markdown',
+      fileType: 'markdown' as const,
       createdAt: '2026-01-01T00:00:00.000Z',
       modifiedAt: '2026-01-01T00:00:00.000Z'
     }

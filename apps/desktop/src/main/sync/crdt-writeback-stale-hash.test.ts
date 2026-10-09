@@ -1,4 +1,7 @@
 import * as Y from 'yjs'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
@@ -8,6 +11,9 @@ const h = vi.hoisted(() => ({
   store: new Map<string, Uint8Array[]>(),
   contentHash: (_raw: string): string => ''
 }))
+
+// A real, empty folder: the outside-vault check resolves every read against it.
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', getVersion: () => '0.0.0' },
@@ -62,7 +68,7 @@ vi.mock('@main/database/queries/notes', () => ({
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => undefined }))
 
 vi.mock('../vault/notes', () => ({
-  getVaultRoot: () => '/vault',
+  getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   maybeCreateSignificantSnapshot: () => null
 }))

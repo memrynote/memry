@@ -19,7 +19,7 @@ import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './f
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { OutsideVaultError, VaultError, VaultErrorCode } from '../lib/errors'
-import { resolveVaultFile } from '../lib/paths'
+import { refuseOutsideVaultSync, resolveVaultFile } from '../lib/paths'
 import {
   generateJournalId,
   calculateActivityLevel,
@@ -248,6 +248,16 @@ async function readJournalText(date: string): Promise<string | null> {
 }
 
 /**
+ * The entry file's text for the sync paths, which cannot await. Throws ENOENT
+ * for a missing file, as `fs.readFileSync` does, and `OutsideVaultError` for a
+ * file linked outside the vault.
+ */
+export function readJournalTextSync(date: string): string {
+  refuseOutsideVaultSync(getVaultPath(), getContentStore().getJournalRelativePath(date))
+  return fs.readFileSync(getJournalPath(date), 'utf-8')
+}
+
+/**
  * The entry file's frontmatter as parsed and its body after the frontmatter,
  * byte for byte, or null if there is no file.
  */
@@ -341,7 +351,7 @@ export function buildJournalEntryWrite(
   const absolutePath = getJournalPath(date)
   let previousFile: string | null = null
   try {
-    previousFile = fs.readFileSync(absolutePath, 'utf-8')
+    previousFile = readJournalTextSync(date)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
