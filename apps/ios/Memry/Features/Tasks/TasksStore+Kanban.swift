@@ -96,13 +96,13 @@ extension TasksStore {
 
     // MARK: Cards
 
-    /// The board's cards: the page's rows, then its Done section, so the done
-    /// column holds completed tasks (desktop's `kanbanTasks`).
+    /// The board's cards: the core's tree roots over the page's rows and its
+    /// Done section, so subtasks ride on their parent's card and the done
+    /// column holds completed tasks (desktop's `buildTaskTree(tasks).roots`).
     func kanbanTasks() -> [TaskItem] {
         guard let result else { return [] }
-        var seen = Set<String>()
-        return (result.taskIds + result.doneIds).compactMap { id in
-            guard seen.insert(id).inserted, let task = items[id], task.archivedAt == nil else { return nil }
+        return result.cardIds.compactMap { id in
+            guard let task = items[id], task.archivedAt == nil else { return nil }
             return task
         }
     }
@@ -163,7 +163,7 @@ extension TasksStore {
         return buckets
     }
 
-    /// A card the core's groups do not cover (a subtask, a completed task):
+    /// A card the core's groups do not cover (a completed task):
     /// the relative day its due badge shows.
     private func kanbanFallbackBucket(_ task: TaskItem) -> String {
         guard let due = task.dueDate,

@@ -17,7 +17,7 @@
 //! `YYYY-MM-DDTHH:MM:SS`; stored instants (`completedAt`, `createdAt`) are the
 //! core's UTC clock, as desktop writes them.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use rusqlite::{Connection, params};
@@ -34,6 +34,7 @@ use crate::domain::task_filter::{
     TaskFilters, TaskNoteInfo, TaskSort,
 };
 use crate::domain::task_records::{self, TaskRecord};
+use crate::domain::task_tree::TaskTree;
 use crate::domain::task_views::{self, DueWindow, Selection, ViewTask};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -101,6 +102,10 @@ pub struct TaskViewResult {
     pub groups: Vec<TaskGroupItem>,
     /// The Done section under the list.
     pub done_ids: Vec<String>,
+    /// The kanban cards: the tree's roots over the rows and the Done section,
+    /// in that order (desktop `buildTaskTree(tasks).roots`). A subtask rides
+    /// on its parent's card; one under a parent outside the set shows nowhere.
+    pub card_ids: Vec<String>,
     pub counts: TaskTabCounts,
     /// Rows before the filter bar, and after it (for the "filters hid
     /// everything" empty state).
@@ -273,6 +278,21 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
             _ => task_views::completed_all(&scoped_views),
         }
     };
+    let done_ids: Vec<String> = done.into_iter().map(|task| task.id.clone()).collect();
+    let mut seen = HashSet::new();
+    let board: Vec<ViewTask> = task_ids
+        .iter()
+        .chain(&done_ids)
+        .filter(|id| seen.insert(id.as_str()))
+        .filter_map(|id| by_id.get(id.as_str()))
+        .map(|task| task.view_task())
+        .collect();
+    let tree = TaskTree::build(&board);
+    let card_ids = board
+        .iter()
+        .filter(|task| tree.is_root(&task.id))
+        .map(|task| task.id.clone())
+        .collect();
     let counts = task_views::tab_counts(&view_tasks, scope, now);
     let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
 
@@ -281,7 +301,8 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
         total_count: count(base.len()),
         task_ids,
         groups,
-        done_ids: done.into_iter().map(|task| task.id.clone()).collect(),
+        done_ids,
+        card_ids,
         counts: TaskTabCounts {
             all: counts.all,
             archived: counts.archived,
