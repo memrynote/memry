@@ -60,6 +60,7 @@ import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-do
 import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
+import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
   initTagDefinitionSyncService,
@@ -301,6 +302,7 @@ function resetSyncServiceSingletons(): void {
   // The re-drivers only make sense while a runtime is up to serve them.
   stopAttachmentDownloadRedriver()
   attachmentUploadRedriver.stop()
+  deletedAssetReleaseRunner.stop()
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -909,6 +911,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       await engine.start()
       log.info('Sync runtime started')
       attachmentUploadRedriver.start(() => network.online)
+      // After the first sync, so the live-reference check sees what peers did.
+      deletedAssetReleaseRunner.start()
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))

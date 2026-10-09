@@ -127,12 +127,12 @@ An unresolvable signer device is a hard failure, not a fallback
 | POST   | `/sync/attachments/upload/:session_id/complete`           | `:440` |
 | GET    | `/sync/attachments/upload/:session_id`                    | `:563` |
 | DELETE | `/sync/attachments/upload/:session_id`                    | `:581` |
-| POST   | `/sync/attachments/dereference`                           | `:654` |
-| POST   | `/sync/attachments/presign-batch`                         | `:703` |
-| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:764` |
-| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:785` |
-| GET    | `/sync/attachments/:attachment_id/manifest`               | `:816` |
-| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:831` |
+| POST   | `/sync/attachments/dereference`                           | `:661` |
+| POST   | `/sync/attachments/presign-batch`                         | `:714` |
+| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:775` |
+| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:796` |
+| GET    | `/sync/attachments/:attachment_id/manifest`               | `:827` |
+| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:842` |
 
 ### 14.5.1 The minimal read-only route set — Q14.1
 
@@ -140,13 +140,13 @@ An unresolvable signer device is a hard failure, not a fallback
 
 | Route                                                    | Why                                                                                 |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `GET /sync/attachments/:attachment_id/manifest` (`:816`) | the only way to learn a file's chunk list and get its wrapped key                   |
-| `POST /sync/attachments/presign-batch` (`:703`)          | one call issues up to 1024 presigned GETs (`packages/contracts/src/blob-api.ts:62`) |
-| `GET /sync/attachments/chunks/:chunk_hash` (`:785`)      | the proxied fallback when presign is unavailable (§14.6)                            |
+| `GET /sync/attachments/:attachment_id/manifest` (`:827`) | the only way to learn a file's chunk list and get its wrapped key                   |
+| `POST /sync/attachments/presign-batch` (`:714`)          | one call issues up to 1024 presigned GETs (`packages/contracts/src/blob-api.ts:62`) |
+| `GET /sync/attachments/chunks/:chunk_hash` (`:796`)      | the proxied fallback when presign is unavailable (§14.6)                            |
 
 It needs **none** of the upload session routes, **not** `dereference` (§14.8),
 and **not** `/sync/blob/:blob_key`, which addresses record payload blobs rather
-than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:764`) is
+than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:775`) is
 optional and is an existence probe, not a requirement.
 
 **Disposition of Q14.1: answered (three routes).**
@@ -185,7 +185,7 @@ requests per 60 s (`apps/sync-server/src/routes/blob.ts:120-124`).
 **attachment ids** (`packages/contracts/src/sync-payloads.ts:266`; chapter 13
 §13.7.1). An attachment id is exactly the `:attachment_id` path parameter of
 `GET /sync/attachments/:attachment_id/manifest`
-(`apps/sync-server/src/routes/blob.ts:816`) and the `id` field inside the
+(`apps/sync-server/src/routes/blob.ts:827`) and the `id` field inside the
 manifest itself (`packages/sync-client/src/push/attachment-manifest.ts:27`).
 
 The resolution chain is therefore:
@@ -222,12 +222,19 @@ against `manifest.size` under-counts.
 
 `POST /sync/attachments/dereference` is how chunk bytes are garbage collected: a
 client that removes an attachment reference tells the server the chunks are no
-longer needed (`apps/sync-server/src/routes/blob.ts:654`).
+longer needed (`apps/sync-server/src/routes/blob.ts:661`).
 
 **A read-only client never dereferences, and never calling it is safe.** It
 cannot leak quota, because quota is consumed by **uploads**, and a read-only
 client performs none: it never calls `upload/initiate`, so it never reserves a
 byte. Dereferencing is the writer's obligation for bytes the writer uploaded.
+
+A dereference lowers `blob_chunks.ref_count` by one and never below zero, so
+a replayed request lowers nothing twice. The decrement that takes a chunk to
+zero refunds its `size_bytes` to `users.storage_used`, because the upload
+charged it and the sweep below refunds nothing (#3015). The desktop frees a
+deleted note's or canvas's chunks this way 30 days after the delete
+(`apps/desktop/src/main/sync/deleted-asset-release.ts`).
 
 A dereference only lowers `blob_chunks.ref_count`; the scheduled
 `cleanupOrphanedBlobChunks` sweep reaps rows at `ref_count <= 0`. It deletes a

@@ -14,6 +14,7 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
+import { recordLocalItemDelete } from '../sync/deleted-asset-release'
 import { trackMainEvent } from '../telemetry/track'
 import { createLogger } from '../lib/logger'
 
@@ -97,4 +98,5 @@ export function syncCanvasUpdate(canvasId: string, scene?: string): boolean {
 
 export function syncCanvasDelete(canvasId: string): void {
   enqueueLocalSyncDelete('canvas', canvasId)
+  recordLocalItemDelete('canvas', canvasId)
 }

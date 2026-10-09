@@ -44,7 +44,15 @@ const createStatement = (sql: string, state: MockDbState) => {
     first: vi.fn(async () => {
       if (sql.includes('FROM users u')) return state.entitlementRow?.() ?? null
       if (sql.includes('FROM upload_sessions')) return state.session ?? null
-      if (sql.includes('SELECT id, ref_count FROM blob_chunks')) {
+      if (sql.includes('UPDATE blob_chunks SET ref_count = ref_count - 1')) {
+        const row = Object.values(state.chunksByHash ?? {}).find(
+          (chunk) => chunk?.id === stmt.bindings[0]
+        )
+        if (!row || (row.ref_count as number) <= 0) return null
+        row.ref_count = (row.ref_count as number) - 1
+        return { ref_count: row.ref_count }
+      }
+      if (sql.includes('SELECT id, ref_count, size_bytes FROM blob_chunks')) {
         const hash = stmt.bindings[2] as string | undefined
         return (hash === undefined ? undefined : state.chunksByHash?.[hash]) ?? null
       }

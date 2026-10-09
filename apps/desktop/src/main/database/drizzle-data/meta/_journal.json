@@ -505,6 +505,13 @@
       "when": 1788695559433,
       "tag": "0071_note_body_sync_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1791581370084,
+      "tag": "0072_deleted_asset_releases",
+      "breakpoints": true
     }
   ]
 }
