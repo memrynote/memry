@@ -372,6 +372,11 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     'Failed to update vault sync'
   )
 
+  ipcMain.handle(SYNC_CHANNELS.REPAIR_DEVICE_KEYS, async () => {
+    const { repairDeviceKeys } = await import('../sync/device-registration')
+    return repairDeviceKeys()
+  })
+
   ipcMain.handle(SYNC_CHANNELS.EMERGENCY_WIPE, async () => {
     const engine = resolveSyncEngine()
     if (engine) {
@@ -398,6 +403,7 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.RESUME)
   ipcMain.removeHandler(SYNC_CHANNELS.CHECK_DEVICE_STATUS)
   ipcMain.removeHandler(SYNC_CHANNELS.EMERGENCY_WIPE)
+  ipcMain.removeHandler(SYNC_CHANNELS.REPAIR_DEVICE_KEYS)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_VAULT_BINDING)
   ipcMain.removeHandler(SYNC_CHANNELS.RESOLVE_VAULT_BINDING)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)

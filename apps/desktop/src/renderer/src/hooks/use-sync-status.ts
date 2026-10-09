@@ -37,6 +37,8 @@ interface SyncStatusResult extends SyncStatusDisplay {
   error: string | null
   conflicts: Array<{ itemId: string; itemType: string; detectedAt: number }>
   sessionExpired: boolean
+  /** Pushes abort until signing in again re-runs device key setup (#2866). */
+  deviceKeysMissing: boolean
   clockSkewDetected: boolean
   initialSyncProgress: { current: number; total: number } | null
   syncActivity: SyncActivityInfo
@@ -106,12 +108,14 @@ export function useSyncStatus(): SyncStatusResult {
     lastSyncAt,
     pendingCount,
     error,
+    errorCategory,
     conflicts,
     sessionExpired,
     clockSkewDetected,
     initialSyncProgress,
     syncActivity
   } = state
+  const deviceKeysMissing = status === 'error' && errorCategory === 'device_keys_missing'
 
   const { data: localOnlyData } = useQuery({
     queryKey: ['notes', 'localOnlyCount'],
@@ -157,12 +161,16 @@ export function useSyncStatus(): SyncStatusResult {
       }
     }
 
+    if (deviceKeysMissing) {
+      return { ...STATUS_MAP.error, label: t('account.sync.statuses.deviceKeysMissing') }
+    }
+
     const nextDisplay = STATUS_MAP[status] ?? FALLBACK_DISPLAY
     return {
       ...nextDisplay,
       label: t(nextDisplay.labelKey)
     }
-  }, [status, pendingCount, syncActivity, t])
+  }, [status, pendingCount, syncActivity, deviceKeysMissing, t])
 
   const lastSyncLabel = useMemo(
     () =>
@@ -185,6 +193,7 @@ export function useSyncStatus(): SyncStatusResult {
     error,
     conflicts,
     sessionExpired,
+    deviceKeysMissing,
     clockSkewDetected,
     initialSyncProgress,
     syncActivity,

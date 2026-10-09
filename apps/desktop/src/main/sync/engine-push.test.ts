@@ -55,6 +55,63 @@ describe('SyncEngine', () => {
     })
   })
 
+  // #2866: the repair must not cost a task edit made while keys were missing.
+  describe('#given a task edited while device keys are missing #when the keys are repaired', () => {
+    it('#then the queued edit is pushed', async () => {
+      const getSigningKeys = vi.fn().mockResolvedValue(null)
+      const deps = createMockDeps(getDb(), { getSigningKeys })
+      const engine = new SyncEngine(deps)
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-offline',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Edited without keys' })
+      })
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-offline',
+          type: 'task',
+          operation: 'update',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 2 }
+        },
+        sizeBytes: 100
+      })
+      const mockPost = vi.fn().mockResolvedValue({
+        accepted: ['task-offline'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(mockPost)
+
+      await engine.push()
+      expect(mockPost).not.toHaveBeenCalled()
+      expect(deps.queue.getPendingCount()).toBe(1)
+      expect(engine.getStatus().errorCategory).toBe('device_keys_missing')
+
+      getSigningKeys.mockResolvedValue({
+        secretKey: new Uint8Array(64),
+        publicKey: new Uint8Array(32),
+        deviceId: 'device-1'
+      })
+      await engine.push()
+
+      expect(mockPost.mock.calls[0].slice(0, 2)).toEqual([
+        '/sync/push',
+        expect.objectContaining({ items: [expect.objectContaining({ id: 'task-offline' })] })
+      ])
+      expect(deps.queue.getPendingCount()).toBe(0)
+      expect(engine.getStatus().status).toBe('idle')
+
+      vi.restoreAllMocks()
+    })
+  })
+
   // #2283
   describe('#given a peer range is unpulled #when this device pushes one item (accepted 1, cursor delta 7)', () => {
     it('#then the next pull still starts below the peer range', async () => {

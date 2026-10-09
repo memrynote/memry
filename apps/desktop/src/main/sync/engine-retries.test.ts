@@ -114,14 +114,18 @@ describe('SyncEngine', () => {
   })
 
   describe('#given unregistered device on startup #when start() called', () => {
-    it('#then sets idle state without connecting WS or syncing', async () => {
+    // Not idle (#2866): idle reads as Synced while every push aborts.
+    it('#then reports device keys missing without connecting WS or syncing', async () => {
       const deps = createMockDeps(getDb(), {
         getSigningKeys: vi.fn().mockResolvedValue(null)
       })
       const engine = new SyncEngine(deps)
       await engine.start()
 
-      expect(engine.currentState).toBe('idle')
+      expect(engine.getStatus()).toMatchObject({
+        status: 'error',
+        errorCategory: 'device_keys_missing'
+      })
       expect(deps.ws.connect).not.toHaveBeenCalled()
       await engine.stop()
     })
@@ -136,7 +140,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine(deps)
       await engine.start()
 
-      expect(engine.currentState).toBe('idle')
+      expect(engine.currentState).toBe('error')
       expect(deps.ws.connect).not.toHaveBeenCalled()
       await engine.stop()
     })
