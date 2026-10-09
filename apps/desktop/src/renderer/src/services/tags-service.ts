@@ -148,7 +148,17 @@ export const tagsService: TagsService = {
   editSchema: (command) => window.api.tags.editSchema(command),
 
   /** Count what a schema change would touch, before it runs. */
-  previewImpact: (query) => window.api.tags.previewImpact(query)
+  previewImpact: (query) => window.api.tags.previewImpact(query),
+
+  /**
+   * Objects of tags with fields matching a query (@ menu, relation picker).
+   */
+  searchObjects: (input) => window.api.tags.searchObjects(input),
+
+  /**
+   * What points at a note: relation fields, task fields, wiki links.
+   */
+  getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }
 
 // ============================================================================

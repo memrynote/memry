@@ -7905,6 +7905,7 @@ The notes in a folder or tag scope with the values of the properties asked for.
 | `options.properties` | `string[]`                                                                             | no       |                                              |
 | `options.limit`      | `integer`                                                                              | no       | min `1`; max `1000`; default `500`           |
 | `options.offset`     | `integer`                                                                              | no       | min `0`; max `9007199254740991`; default `0` |
+| `options.rows`       | `"objects" \| "mentions"`                                                              | no       | `"objects"`, `"mentions"`                    |
 
 Example call:
 

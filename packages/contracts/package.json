@@ -71,6 +71,7 @@
     "./tag-schema": "./src/tag-schema.ts",
     "./tag-searches-api": "./src/tag-searches-api.ts",
     "./tags-api": "./src/tags-api.ts",
+    "./tag-objects-api": "./src/tag-objects-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./telemetry-api": "./src/telemetry-api.ts",
     "./templates-api": "./src/templates-api.ts",

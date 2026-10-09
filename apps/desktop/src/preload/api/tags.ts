@@ -40,7 +40,11 @@ export const tagsApi = {
   }) => invoke(TagsChannels.invoke.REORDER, input),
   getSchemaSnapshot: () => invoke(TagSchemaChannels.invoke.GET_SCHEMA_SNAPSHOT),
   editSchema: (command: TagSchemaCommand) => invoke(TagSchemaChannels.invoke.EDIT_SCHEMA, command),
-  previewImpact: (query: ImpactQuery) => invoke(TagSchemaChannels.invoke.PREVIEW_IMPACT, query)
+  previewImpact: (query: ImpactQuery) => invoke(TagSchemaChannels.invoke.PREVIEW_IMPACT, query),
+  searchObjects: (input: { query: string; tag?: string; limit?: number }) =>
+    invoke(TagsChannels.invoke.SEARCH_OBJECTS, input),
+  getLinkedHere: (input: { noteId: string; limitPerGroup?: number }) =>
+    invoke(TagsChannels.invoke.GET_LINKED_HERE, input)
 }
 
 export const tagEvents = {

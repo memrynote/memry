@@ -40,6 +40,13 @@ import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/fold
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
+import {
+  defaultFieldTagView,
+  fieldColumns,
+  listFieldTagRows,
+  loadResolvedTags,
+  tagItemToRow
+} from '../tags/objects'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -232,7 +239,11 @@ export function registerFolderViewHandlers(): void {
       const views = await readScopedViews(input.scope)
 
       if (!views || views.length === 0) {
-        return { views: [DEFAULT_VIEW], defaultIndex: 0 }
+        const fieldView =
+          input.scope.kind === 'tag'
+            ? defaultFieldTagView(input.scope.tag, loadResolvedTags(getDatabase()))
+            : null
+        return { views: [fieldView ?? DEFAULT_VIEW], defaultIndex: 0 }
       }
 
       const defaultIndex = views.findIndex((v) => v.default) ?? 0
@@ -321,36 +332,27 @@ export function registerFolderViewHandlers(): void {
             return { notes: [], total: 0, hasMore: false }
           }
 
+          const fieldRows = listFieldTagRows(
+            db,
+            dataDb,
+            loadResolvedTags(dataDb),
+            input.scope,
+            input.rows
+          )
+          if (fieldRows) {
+            const page = fieldRows.rows.slice(input.offset, input.offset + input.limit)
+            return {
+              notes: page,
+              total: fieldRows.rows.length,
+              hasMore: input.offset + page.length < fieldRows.rows.length,
+              complete: fieldRows.complete
+            }
+          }
+
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
           const propertiesMap = await fetchPropertiesFor(db, noteIds)
-
-          const rows: NoteWithProperties[] = items.map((item) => ({
-            id: item.id,
-            // Tasks and inbox items have no note path; synthesise a stable one so
-            // row identity and any path-keyed UI still work.
-            path:
-              item.kind === 'note'
-                ? (item.path ?? '')
-                : item.kind === 'task'
-                  ? `/tasks/${item.id}`
-                  : `/inbox/${item.id}`,
-            title: item.title,
-            emoji: item.emoji,
-            // `container` is the note's parent folder or the task's project name.
-            folder: item.container ?? '',
-            tags: item.tags,
-            created: item.created,
-            modified: item.modified,
-            // TagItem carries no word count for any kind.
-            wordCount: 0,
-            properties: propertiesMap.get(item.id) ?? {},
-            kind: item.kind,
-            // A tagged PDF/image is a note row too; its real type keeps its
-            // metadata cells read-only (#2073) and lets the canvas card it as
-            // a file rather than a note (#2484).
-            fileType: item.fileType
-          }))
+          const rows = items.map((item) => tagItemToRow(item, propertiesMap.get(item.id) ?? {}))
 
           const page = rows.slice(input.offset, input.offset + input.limit)
           return {
@@ -487,6 +489,11 @@ export function registerFolderViewHandlers(): void {
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
           const propCounts = await fetchPropertyCounts(db, noteIds)
+          // A tag's fields are columns even before any row fills them.
+          for (const field of fieldColumns(input.scope.tag, loadResolvedTags(dataDb))) {
+            if (!propCounts.has(field.name))
+              propCounts.set(field.name, { count: 0, type: field.type })
+          }
 
           // Formulas live in `.folder.md`, which a tag has no equivalent of.
           return {
