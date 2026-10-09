@@ -13,6 +13,7 @@ import {
   createJournalFrontmatter,
   readJournalEntry,
   readJournalFile,
+  readJournalTextSync,
   writeJournalEntry,
   writeJournalEntryWithContent,
   buildJournalEntryWrite,
@@ -454,6 +455,8 @@ Today I worked on tests.`
 
         await expect(readJournalEntry('2026-01-15')).rejects.toThrow(refusal)
         await expect(readJournalFile('2026-01-15')).rejects.toThrow(refusal)
+        expect(() => readJournalTextSync('2026-01-15')).toThrow(refusal)
+        expect(() => buildJournalEntryWrite('2026-01-15', null, ['synced'])).toThrow(refusal)
       } finally {
         fs.rmSync(outside, { recursive: true, force: true })
       }

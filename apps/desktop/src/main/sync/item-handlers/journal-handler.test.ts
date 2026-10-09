@@ -11,6 +11,7 @@ import { getBaseline, writeBaseline } from '../../vault-locks/store'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { journalHandler } from './journal-handler'
+import { OutsideVaultError } from '../../lib/errors'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const {
@@ -219,6 +220,31 @@ describe('journalHandler', () => {
     )
 
     expect(mockBuildJournalEntryWrite).toHaveBeenCalledWith('2099-06-01', null, ['g0'], undefined)
+  })
+
+  it('skips an entry whose file links outside the vault and writes nothing', () => {
+    mockGetNoteMetadataById.mockReturnValue(undefined)
+    mockBuildJournalEntryWrite.mockImplementation(() => {
+      throw new OutsideVaultError('journals/2026-05-10.md')
+    })
+    const ctx = makeCtx()
+
+    expect(
+      journalHandler.applyUpsert(
+        ctx,
+        'journal-1',
+        { date: '2026-05-10', content: null, tags: ['remote'] },
+        { 'device-a': 1 }
+      )
+    ).toBe('skipped')
+
+    expect(mockSaveCanonicalNote).not.toHaveBeenCalled()
+    expect(mockSyncNoteToCache).not.toHaveBeenCalled()
+    expect(mockWriteSyncedNoteFile).not.toHaveBeenCalled()
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      'Skipping remote journal upsert: its file links outside the vault',
+      { itemId: 'journal-1' }
+    )
   })
 
   it('applies a delete without reading the tombstone body at all', async () => {
