@@ -24,6 +24,13 @@ describe('export-utils', () => {
     expect(html).not.toContain('wiki-link&quot;')
   })
 
+  it('markdownToHtml keeps link syntax in an indented code block as written (BBF-68)', () => {
+    const html = markdownToHtml('Intro [[Intro]]\n\n    [[Indented]]\n\n\tsee [[Tabbed]]\n')
+    expect(html).toContain('<span class="wiki-link">Intro</span>')
+    expect(html).toContain('<pre><code>[[Indented]]\n\nsee [[Tabbed]]\n</code></pre>')
+    expect(html).not.toContain('wiki-link&quot;')
+  })
+
   it('markdownToHtml leaves HTML and %% comments out, links inside them included', () => {
     const markdown = [
       '<!-- hidden [[Alpha]] -->',

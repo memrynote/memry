@@ -6,7 +6,7 @@ import type { TestDatabaseResult } from '@tests/utils/test-db'
 import { asClientDb, createTestDataDb, createTestIndexDb } from '@tests/utils/test-db'
 import { getOutgoingLinks, insertNoteCache, setNoteLinks } from '@main/database/queries/notes'
 import { saveExtractedPart } from '@main/database/queries/extracted-text'
-import { getSetting } from '@main/database/queries/settings'
+import { getSetting, setSetting } from '@main/database/queries/settings'
 import { CODE_LINK_REINDEX_KEY, reindexCodeLinks } from './code-link-reindex'
 
 describe('reindexCodeLinks', () => {
@@ -78,6 +78,17 @@ describe('reindexCodeLinks', () => {
     writeFileSync(
       path.join(vaultPath, 'notes/Docs.md'),
       ['---', 'id: nte_docs', '---', '```', '[[Example]]', '```', 'See [[Guide]].', ''].join('\r\n')
+    )
+
+    expect(await run()).toBe(1)
+    expect(linksOf('nte_docs')).toEqual([['Guide', 'nte_guide']])
+  })
+
+  it('reruns on a vault the first pass finished, for an indented code block (BBF-68)', async () => {
+    setSetting(asClientDb(data.db), 'codeLinkReindexV1', 'done')
+    writeFileSync(
+      path.join(vaultPath, 'notes/Docs.md'),
+      '---\nid: nte_docs\n---\nSee [[Guide]].\n\n    [[Example]]\n'
     )
 
     expect(await run()).toBe(1)

@@ -235,6 +235,32 @@ describe('extractWikiLinks', () => {
     expect(links).toEqual(['Other'])
   })
 
+  it('extractWikiLinks skips an indented code block (BBF-68)', () => {
+    const links = extractWikiLinks(
+      'Intro [[Intro]]\n\n    [[Indented]]\n\n\t[[Tabbed]]\n\nOut [[Out]]'
+    )
+    expect(links).toEqual(['Intro', 'Out'])
+  })
+
+  it('extractWikiLinks reads indented lines that are not code (BBF-68)', () => {
+    const links = extractWikiLinks(
+      [
+        'Para [[A]]',
+        '    continued [[B]]',
+        '',
+        '- item [[C]]',
+        '',
+        '    item paragraph [[D]]',
+        '    - nested [[E]]',
+        '',
+        '1. step [[F]]',
+        '',
+        '    more [[G]]'
+      ].join('\n')
+    )
+    expect(links).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G'])
+  })
+
   it('extractWikiLinks reads links inside a footnote definition (BBF-24)', () => {
     const links = extractWikiLinks(
       'Claim[^1].\n\n[^1]: From [[Source]] and\n    [[Second Source]].'
