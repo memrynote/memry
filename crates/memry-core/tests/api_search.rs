@@ -354,6 +354,84 @@ fn a_link_written_before_its_target_existed_still_counts() {
     );
 }
 
+fn write_folder_note(db: &Db, id: &str, title: &str, folder: &str) {
+    db.call_blocking(|conn: &mut Connection| {
+        let note = NewNote {
+            id,
+            title,
+            folder_path: Some(folder),
+            content: "",
+            tags: &[],
+            properties: None,
+        };
+        notes::create(conn, &note, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the write");
+}
+
+fn backlink_sources(vault: &Vault, id: &str) -> Vec<String> {
+    vault
+        .search()
+        .expect("search")
+        .backlinks(id.to_string(), BacklinkOrder::Title)
+        .expect("backlinks")
+        .into_iter()
+        .map(|link| link.source_id)
+        .collect()
+}
+
+/// `[[Folder/Note#Heading]]` is a link to the note at that path, which is
+/// the one desktop's graph and backlinks name: two notes share the title, so
+/// the title alone could not say which.
+#[test]
+fn a_path_link_is_a_backlink_of_the_note_at_that_path() {
+    let (db, vault) = vault("backlinks-path");
+    write_folder_note(&db, "work", "Plan", "Work");
+    write_folder_note(&db, "home", "Plan", "Home");
+    write_linking_note(&db, "source", "Inbox", "work/PLAN.md#Goals");
+    vault
+        .search()
+        .expect("search")
+        .reindex()
+        .expect("the reindex");
+
+    assert_eq!(backlink_sources(&vault, "work"), vec!["source"]);
+    assert!(backlink_sources(&vault, "home").is_empty());
+}
+
+/// A path link written before the note existed counts once it does, as a
+/// title link does.
+#[test]
+fn a_path_link_written_before_its_target_existed_still_counts() {
+    let (db, vault) = vault("backlinks-path-forward");
+    write_linking_note(&db, "source", "Inbox", "/Work/Plan");
+    vault
+        .search()
+        .expect("search")
+        .reindex()
+        .expect("the reindex");
+    write_folder_note(&db, "work", "Plan", "Work");
+
+    assert_eq!(backlink_sources(&vault, "work"), vec!["source"]);
+}
+
+/// Desktop resolves a link's title in any case, so `[[cardamom]]` is a
+/// backlink of `Cardamom` there and must be here.
+#[test]
+fn a_title_link_in_another_case_is_still_a_backlink() {
+    let (db, vault) = vault("backlinks-case");
+    write_note(&db, "target", "Cardamom", "the spice itself");
+    write_linking_note(&db, "source", "Groceries", "cardamom#Uses");
+    vault
+        .search()
+        .expect("search")
+        .reindex()
+        .expect("the reindex");
+
+    assert_eq!(backlink_sources(&vault, "target"), vec!["source"]);
+}
+
 /// A note that stopped linking somewhere really stops: the projection deletes
 /// the source's rows before inserting, so an edit that removed a link does not
 /// leave a backlink behind.

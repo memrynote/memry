@@ -34,6 +34,7 @@ use crate::api::errors::StorageError;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
+use super::notes::link_rewrite::{self, LinkNames, Renamed};
 use super::notes::{self, failed, iso, object, stamp, tombstone_local};
 use super::recreate::write_over_tombstone;
 use serde_json::json;
@@ -241,8 +242,19 @@ fn relocate(
     }
 
     let mut moved = Vec::new();
+    let mut renamed = Vec::new();
     for (note_id, folder_path) in notes_within(&tx, from)? {
         let target = rewritten(&folder_path, from, to);
+        if let Some(names) = LinkNames::of(&tx, &note_id)? {
+            renamed.push(Renamed {
+                note_id: note_id.clone(),
+                to: LinkNames {
+                    folder: Some(target.clone()),
+                    ..names.clone()
+                },
+                from: names,
+            });
+        }
         let mut changes = stamp(&tx, notes::ITEM_TYPE, &note_id, device_id, now_ms)?;
         changes.push(("folderPath", Change::set(target)));
         sync_items::apply_local_edit_in(&tx, notes::ITEM_TYPE, &note_id, &changes, now_ms)?;
@@ -255,6 +267,9 @@ fn relocate(
     }
 
     tx.commit().map_err(failed)?;
+    // After the commit, as a note rename does: the links follow a folder that
+    // really moved, and a link that fails to follow does not unmove it.
+    link_rewrite::rewrite_inbound(conn, &renamed, device_id, now_ms);
     Ok(Relocation {
         from: from.to_owned(),
         to: to.to_owned(),

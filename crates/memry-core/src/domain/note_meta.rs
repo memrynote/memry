@@ -25,7 +25,7 @@ use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
-use crate::domain::{notes, properties, tags};
+use crate::domain::{notes, properties, tags, wiki_target};
 
 /// One property on a note: its name, its value, and the type the vault
 /// declared for it.
@@ -250,76 +250,29 @@ fn aliases(conn: &Connection, id: &str) -> Result<Vec<String>, StorageError> {
     }
 }
 
+/// The note a `[[wiki link]]` opens, and the heading to scroll to.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NoteLinkTarget {
+    pub id: String,
+    /// The `#Heading` half, `None` when there is nothing to scroll to: no `#`,
+    /// a `#^block` reference, or a `#` that belongs to the title.
+    pub heading: Option<String>,
+}
+
 /// Resolves what a `[[wiki link]]` points at.
 ///
-/// Chapter 12 §12.3: a wiki link carries a **title**, not an id, so resolving
-/// it is a lookup and the answer can be "nothing" — desktop calls that a broken
-/// link and offers to create the note. The same three outcomes exist here:
+/// Chapter 12 §12.3: a wiki link carries a **title** or, when it holds a `/`,
+/// a vault path, not an id, so resolving it is a lookup and the answer can be
+/// "nothing" — desktop calls that a broken link and offers to create the note.
+/// See [`wiki_target`] for the path, title, alias and heading rules.
 ///
-///   * a live note whose title matches, case-insensitively;
-///   * failing that, a live note that lists the target among its aliases;
-///   * otherwise `None`, which is a broken link and **not** an error.
-///
-/// Ties are broken by id so two runs answer the same note. Nothing is created,
-/// because a reader that wrote would turn scrolling past a broken link into an
-/// edit.
+/// Nothing is created, because a reader that wrote would turn scrolling past a
+/// broken link into an edit.
 pub fn resolve_wiki_target(
     conn: &Connection,
     target: &str,
-) -> Result<Option<String>, StorageError> {
-    let wanted = target.trim();
-    if wanted.is_empty() {
-        return Ok(None);
-    }
-    let mut statement = conn
-        .prepare(
-            "SELECT id FROM notes WHERE deleted_at IS NULL \
-             AND title = ?1 COLLATE NOCASE ORDER BY id LIMIT 1",
-        )
-        .map_err(failed)?;
-    let by_title: Option<String> =
-        statement
-            .query_row([wanted], |row| row.get(0))
-            .or_else(|error| match error {
-                rusqlite::Error::QueryReturnedNoRows => Ok(None),
-                other => Err(failed(other)),
-            })?;
-    if by_title.is_some() {
-        return Ok(by_title);
-    }
-
-    // The alias pass. `aliases` is JSON text in the projection rather than its
-    // own table, so the match is done in Rust against the parsed array — a
-    // `LIKE` over the raw JSON would match a note whose alias merely contains
-    // the target.
-    let mut statement = conn
-        .prepare(
-            "SELECT id, aliases FROM notes \
-             WHERE deleted_at IS NULL AND aliases IS NOT NULL ORDER BY id",
-        )
-        .map_err(failed)?;
-    let rows = statement
-        .query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })
-        .map_err(failed)?;
-    for row in rows {
-        let (id, raw) = row.map_err(failed)?;
-        let Ok(Value::Array(items)) = serde_json::from_str::<Value>(&raw) else {
-            // A malformed `aliases` on some other note is not this link's
-            // problem: skipping it resolves against the notes that are
-            // readable rather than failing the whole lookup.
-            continue;
-        };
-        if items
-            .iter()
-            .filter_map(Value::as_str)
-            .any(|alias| alias.trim().eq_ignore_ascii_case(wanted))
-        {
-            return Ok(Some(id));
-        }
-    }
-    Ok(None)
+) -> Result<Option<NoteLinkTarget>, StorageError> {
+    Ok(wiki_target::resolve(conn, target)?.map(|(id, heading)| NoteLinkTarget { id, heading }))
 }
 
 /// What a `[[wiki link]]` resolved to: a note, or a journal day.
@@ -331,6 +284,8 @@ pub struct WikiTargetMatch {
     pub kind: String,
     /// The journal's date, `None` for a note.
     pub date: Option<String>,
+    /// The `#Heading` half to scroll to, see [`NoteLinkTarget::heading`].
+    pub heading: Option<String>,
 }
 
 /// [`resolve_wiki_target`], then the journal.
@@ -344,11 +299,12 @@ pub fn resolve_wiki_target_kind(
     conn: &Connection,
     target: &str,
 ) -> Result<Option<WikiTargetMatch>, StorageError> {
-    if let Some(id) = resolve_wiki_target(conn, target)? {
+    if let Some(found) = resolve_wiki_target(conn, target)? {
         return Ok(Some(WikiTargetMatch {
-            id,
+            id: found.id,
             kind: "note".to_owned(),
             date: None,
+            heading: found.heading,
         }));
     }
     let Some((date, id_form)) = journal_date_of(target) else {
@@ -363,6 +319,7 @@ pub fn resolve_wiki_target_kind(
         id,
         kind: "journal".to_owned(),
         date: Some(date),
+        heading: None,
     }))
 }
 

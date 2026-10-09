@@ -29,8 +29,8 @@ final class EditorSession {
     @ObservationIgnored weak var model: NoteEditorViewModel?
     /// Re-reads the page after a write (`didChange`).
     @ObservationIgnored var reload: () async -> Void = {}
-    /// Titles for the `[[` and `@` menus, most recently modified first.
-    @ObservationIgnored var titles: [String] = []
+    /// Notes for the `[[` and `@` menus, most recently modified first.
+    @ObservationIgnored var linkNotes: [WikiLinkNote] = []
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
     @ObservationIgnored var icons: [String: String] = [:]
     @ObservationIgnored var titleExists: ((String) -> Bool)?
@@ -315,8 +315,8 @@ final class EditorSession {
             let leftWiki: Bool = if case .wiki = trigger { next == nil } else { false }
             trigger = next
             suggestions = switch next {
-            case let .wiki(_, query): EditorSuggestions.wiki(query: query, titles: titles)
-            case let .mention(_, query): EditorSuggestions.mention(query: query, titles: titles)
+            case let .wiki(_, query): EditorSuggestions.wiki(query: query, notes: linkNotes)
+            case let .mention(_, query): EditorSuggestions.mention(query: query, titles: linkNotes.map(\.title))
             case let .slash(_, query): slashSuggestions(query: query)
             case nil: []
             }

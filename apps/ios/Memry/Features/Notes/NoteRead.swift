@@ -271,9 +271,12 @@ final class NoteReadViewModel {
     private(set) var vaultNotes: [NoteSummary] = [] {
         didSet {
             vaultTitles = Set(vaultNotes.map { $0.title.lowercased() })
+            vaultPaths = Set(vaultNotes.map { WikiTarget.pathKey(of: WikiLinkNote(title: $0.title, folderPath: $0.folderPath)) })
         }
     }
     private(set) var vaultTitles: Set<String> = []
+    /// Each note's case-folded `folder/title` path, for path-form links.
+    private(set) var vaultPaths: Set<String> = []
 
     /// Every tag's chosen colour, lowercased name to palette name or hex, so
     /// a chip is the colour desktop draws it. Empty until read, which draws

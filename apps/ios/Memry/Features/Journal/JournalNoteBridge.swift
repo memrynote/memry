@@ -109,7 +109,7 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
     func folders() async throws -> [FolderSummary] { try await reader?.folders() ?? [] }
     func list() async throws -> [NoteSummary] { try await reader?.list() ?? [] }
 
-    func resolveWikiTarget(_ target: String) async throws -> String? {
+    func resolveWikiTarget(_ target: String) async throws -> NoteLinkTarget? {
         try await reader?.resolveWikiTarget(target)
     }
 
