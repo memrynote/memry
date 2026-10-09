@@ -488,7 +488,7 @@ describe('AssistantMessage', () => {
     it('leaves a reader who scrolled up where they are, and follows again at the bottom', async () => {
       const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
       rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
-      const { el, grow } = stubViewport(container)
+      const { el, setHeight, grow } = stubViewport(container)
       await userEvent.click(toggle())
 
       el.scrollTop = 100
@@ -496,7 +496,9 @@ describe('AssistantMessage', () => {
       grow(900)
       expect(el.scrollTop).toBe(100)
 
+      // The reader reaches the bottom they saw just as more lines land.
       el.scrollTop = 720
+      setHeight(1000)
       fireEvent.scroll(el)
       grow(1000)
       expect(el.scrollTop).toBe(820)
