@@ -19,7 +19,7 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { incrementClock } from '@memry/sync-core'
-import { planJournalDayMerge, type JournalDayMergeStep } from '@memry/domain-notes/journal'
+import { planJournalDayMerge } from '@memry/domain-notes/journal'
 import { readTombstoneClock, recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { compare as compareClocks, merge as mergeClocks } from '@memry/sync-client/vector-clock'
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
@@ -33,19 +33,13 @@ import { createJournalEntry } from '../journal/create-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
-import { getCrdtProvider } from './crdt-provider'
+import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
 import { getJournalSyncService } from './journal-sync'
 import { recordPendingDelete } from './pending-deletes'
 
 const log = createLogger('JournalDayMerge')
 
 const KEY_PREFIX = 'journalDayMerge:'
-
-/**
- * The size of `Y.encodeStateAsUpdate` for a doc with no items and no deletes.
- * A longer update means the doc holds state, which may be text.
- */
-const EMPTY_DOC_UPDATE_BYTES = 4
 
 export interface OwedJournalDayMerge {
   foreignId: string
@@ -239,13 +233,8 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     await deps.ensureDay(merge.date)
     await deps.relinkTasks(merge.foreignId, targetId)
     if (!(await deps.absorbBody(targetId, merge.foreignId, fallback))) {
-      // Text typed into the open day and deleted again leaves nothing to fold;
-      // owed, it would retry on every drain (#3019).
-      if (deps.holdsTextNow(merge.foreignId, merge.date)) {
-        log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
-        return false
-      }
-      return settle(deps, merge, targetId, { action: 'forget', tombstone: false })
+      log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
+      return false
     }
   }
 
@@ -261,15 +250,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     }
     deps.removeRow(merge.foreignId)
   }
-  return settle(deps, merge, targetId, step)
-}
 
-async function settle(
-  deps: JournalDayMergeDeps,
-  merge: OwedJournalDayMerge,
-  targetId: string,
-  step: JournalDayMergeStep
-): Promise<boolean> {
   // The tombstone and dropping the owed merge commit together, before the
   // purge: a restart in between leaves either both or neither (#2985).
   deps.db.transaction(() => {

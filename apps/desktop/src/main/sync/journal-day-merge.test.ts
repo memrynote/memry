@@ -382,20 +382,6 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
-  it('forgets a holder whose text was typed and deleted again before the fold', async () => {
-    foreignRow({ minter: 2 }, { body: '', indexed: true })
-    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
-    typed(FOREIGN, 'typed')
-    // Deleted after the drain saw a body: the fold finds nothing (#3019).
-    provider.duringHasBody = () => provider.docs.delete(FOREIGN)
-
-    await drain()
-
-    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
-    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
-    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
-  })
-
   it('does not forget a blank holder whose day file gains text during the drain', async () => {
     foreignRow({ minter: 2 }, { body: '', indexed: true })
     expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
