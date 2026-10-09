@@ -38,6 +38,7 @@ pub mod saved_filters;
 pub mod search;
 pub mod settings;
 pub mod tag_admin;
+pub mod tag_schema_refs;
 pub mod tags;
 pub mod task_activity;
 pub mod task_filter;

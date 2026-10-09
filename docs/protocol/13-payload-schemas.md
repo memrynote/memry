@@ -443,6 +443,33 @@ column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`):
 a wholesale apply stores it verbatim, and a concurrent tag definition takes the
 remote payload (chapter 06 §6.8), which a desktop then heals.
 
+#### 13.7.7.2 Reference rewrite
+
+A rename or merge of tag `from` into `to` MUST rewrite every other live
+definition whose `schema` names `from`
+(`packages/contracts/src/tag-schema.ts:155-181`,
+`crates/memry-core/src/domain/tag_schema_refs.rs:25-66`). **Normative**:
+
+- Names compare trimmed and lowercased. `extends` equal to `from` becomes `to`,
+  trimmed and lowercased; each `fields` entry that is an object whose
+  `relation` is an object whose `target` equals `from` gets `target` set the
+  same way. Every other key at every depth, and every other entry, is kept.
+- `to` equal to `from` after folding, or nothing naming `from`, is no rewrite:
+  the stored schema is left as it is.
+- Otherwise the new `t` is the old `t` (an integer `>= 0`, else 0) plus 1, so
+  the rewrite wins the §6.11 join against the value it replaces. The rewritten
+  definition is written and pushed like any other definition edit
+  (`crates/memry-core/src/domain/tag_admin.rs:366`, `:386`).
+- The rule accepts `to = null` (the reference becomes `null`), but **a tag
+  delete does not invoke it**: references to a deleted tag stay, and resolve
+  again if the tag returns. A reader MUST tolerate an `extends` or `target`
+  naming a tag with no live definition.
+
+The shared vectors are `packages/contracts/test-vectors/tag-schema-refs.json`
+(`packages/contracts/scripts/vectors/tag-schema-refs.ts`), verified by
+`packages/contracts/src/__tests__/tag-schema-refs.test.ts` and
+`crates/memry-core/tests/tag_schema_refs_vectors.rs`.
+
 ### 13.7.8 `tag_category` — `:332-339`
 
 `name` and `sortOrder` **required**; `clock`, `createdAt`, `updatedAt`,

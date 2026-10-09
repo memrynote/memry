@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
-use crate::domain::{body_tags, tags, tasks};
+use crate::domain::{body_tags, tag_schema_refs, tags, tasks};
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -363,6 +363,7 @@ pub fn rename(
         }
         delete_definition(conn, &old_id, device_id, now_ms)?;
     }
+    tag_schema_refs::rewrite_definitions(conn, old, Some(new), device_id, now_ms)?;
     Ok(count)
 }
 
@@ -382,6 +383,7 @@ pub fn merge(
     let count = rewrite(conn, source, Some(target), device_id, now_ms)?;
     delete_definition(conn, &definition_id(source), device_id, now_ms)?;
     upsert_definition(conn, target, None, Vec::new(), device_id, now_ms)?;
+    tag_schema_refs::rewrite_definitions(conn, source, Some(target), device_id, now_ms)?;
     Ok(count)
 }
 

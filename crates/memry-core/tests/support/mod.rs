@@ -55,6 +55,9 @@ pub fn vector_file(name: &str) -> Json {
         "versioned-values" => {
             include_str!("../../../../packages/contracts/test-vectors/versioned-values.json")
         }
+        "tag-schema-refs" => {
+            include_str!("../../../../packages/contracts/test-vectors/tag-schema-refs.json")
+        }
         "pack-container" => {
             include_str!("../../../../packages/contracts/test-vectors/pack-container.json")
         }

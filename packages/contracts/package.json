@@ -90,6 +90,7 @@
     "./test-vectors/cbor-canonical.json": "./test-vectors/cbor-canonical.json",
     "./test-vectors/compression.json": "./test-vectors/compression.json",
     "./test-vectors/field-merge.json": "./test-vectors/field-merge.json",
+    "./test-vectors/tag-schema-refs.json": "./test-vectors/tag-schema-refs.json",
     "./test-vectors/pack-container.json": "./test-vectors/pack-container.json",
     "./test-vectors/payload-schemas.json": "./test-vectors/payload-schemas.json",
     "./test-vectors/device-linking.json": "./test-vectors/device-linking.json",
