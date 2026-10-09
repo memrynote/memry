@@ -1,7 +1,9 @@
 /**
  * A vault that goes away for a moment (drive unplugged, folder renamed) makes
  * chokidar report every file as unlinked. None of that may become a delete,
- * and the vault is rescanned once it is back (#2785).
+ * and the vault is rescanned once it is back (#2785). A file that turns
+ * unreadable (chmod 000, an antivirus lock) is reported the same way while it
+ * is still there, and must not become a delete either (#2764).
  *
  * @module vault/watcher-vault-reachability.test
  */
@@ -69,6 +71,7 @@ import { VaultWatcher } from './watcher'
 interface WatcherInternals {
   vaultPath: string | null
   handleFileDelete(p: string): void
+  handleFileAdd(p: string): Promise<void>
 }
 
 function fakeChokidar(): { close: ReturnType<typeof vi.fn> } {
@@ -186,6 +189,24 @@ describe('watcher and an unreachable vault (#2785)', () => {
     expect(syncNoteDelete).toHaveBeenCalledTimes(1)
     expect(row('note-gone')).toBeNull()
     expect(row('note-kept')?.path).toBe('notes/kept.md')
+  })
+
+  it('keeps a note whose file turns unreadable and re-reads it once readable (#2764)', async () => {
+    fs.chmodSync(abs('notes/kept.md'), 0o000)
+    internals().handleFileDelete(abs('notes/kept.md'))
+    await vi.advanceTimersByTimeAsync(600)
+    await flushProjectionEvents()
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(row('note-kept')?.path).toBe('notes/kept.md')
+
+    fs.chmodSync(abs('notes/kept.md'), 0o644)
+    fs.writeFileSync(abs('notes/kept.md'), 'edited while unreadable\n')
+    await internals().handleFileAdd(abs('notes/kept.md'))
+    await flushProjectionEvents()
+
+    expect(row('note-kept')?.contentHash).not.toBe('hash-note-kept')
+    expect(syncNoteDelete).not.toHaveBeenCalled()
   })
 
   it('rescans the vault when it comes back and replays what changed meanwhile', async () => {
