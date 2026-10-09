@@ -34,6 +34,7 @@ const runtimeMocks = vi.hoisted(() => {
     static instances: NoteBodyOutbox[] = []
     onBatch: (noteId: string, updates: Uint8Array[]) => Promise<void>
     readFullState: ((noteId: string) => Promise<Uint8Array | null>) | null = null
+    requestSnapshot?: (noteId: string) => void
     start = vi.fn()
     pause = vi.fn()
     resume = vi.fn()
@@ -41,8 +42,12 @@ const runtimeMocks = vi.hoisted(() => {
     enableFullStateFlush = vi.fn((reader: (noteId: string) => Promise<Uint8Array | null>) => {
       this.readFullState = reader
     })
-    constructor(deps: { push: (noteId: string, updates: Uint8Array[]) => Promise<void> }) {
+    constructor(deps: {
+      push: (noteId: string, updates: Uint8Array[]) => Promise<void>
+      requestSnapshot?: (noteId: string) => void
+    }) {
       this.onBatch = deps.push
+      this.requestSnapshot = deps.requestSnapshot
       NoteBodyOutbox.instances.push(this)
     }
   }
@@ -936,6 +941,26 @@ describe('sync runtime', () => {
     await stopPromise
 
     expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
+  })
+
+  it('sends a whole-doc snapshot for a note whose body push was refused', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const outbox = runtimeMocks.NoteBodyOutbox.instances[0]
+
+    vi.useFakeTimers()
+    try {
+      outbox.requestSnapshot?.('note-1')
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+
+      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(['note-1'], {
+        skipSeed: true
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
   })
 
   it('defers CRDT snapshot pushes instead of re-uploading after every batch', async () => {
