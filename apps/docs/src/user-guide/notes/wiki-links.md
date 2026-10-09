@@ -311,7 +311,8 @@ so the export reads ``Sale 50d` [[X]]``, with a stray backtick. Write `50%` inst
 
 In a table row, a comment ends inside its own cell. A `%%` or `<!--` whose partner sits past the
 next `|` is plain text, so `| 50%% | 20%% |` keeps both cells. A `|` inside `[[Topic|alias]]` does
-not end the cell, so `| %% [[Topic|alias]] %% |` is still one comment.
+not end the cell, so `| %% [[Topic|alias]] %% |` is still one comment. The note's snippet in tab
+hover cards and note lists keeps those cells too.
 
 ### Footnotes
 
