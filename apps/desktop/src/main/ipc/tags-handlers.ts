@@ -79,6 +79,7 @@ import {
   commitTaskRetag
 } from '../tags/runtime-effects'
 import { getMainI18n } from '../lib/main-i18n'
+import { rewriteSchemaReferences } from '../tags/schema/references'
 
 const log = createLogger('TagsHandlers')
 
@@ -301,6 +302,11 @@ export function registerTagsHandlers(): void {
         const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
         restoreLockedTags()
 
+        // Tasks follow the rename as they follow a merge, so a tag with
+        // fields keeps its tasks. Before the frontmatter writes below, which
+        // an app quit can interrupt.
+        commitTaskRetag(dataDb, () => mergeTagInTasks(dataDb, input.oldName, input.newName))
+
         const oldTagSnapshot = dataDb
           .select()
           .from(tagDefinitions)
@@ -310,6 +316,7 @@ export function registerTagsHandlers(): void {
         renameTagDefinition(dataDb, input.oldName, input.newName)
 
         syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
+        rewriteSchemaReferences(dataDb, input.oldName, input.newName)
 
         await Promise.all(
           noteIds.map((noteId) =>
@@ -512,6 +519,7 @@ export function registerTagsHandlers(): void {
         getOrCreateTag(dataDb, normalizedTarget)
 
         syncMergedTagDefinitions(normalizedSource, normalizedTarget, sourceSnapshot)
+        rewriteSchemaReferences(dataDb, normalizedSource, normalizedTarget)
 
         await Promise.all(
           noteResult.noteIds.map((noteId) =>

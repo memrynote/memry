@@ -113,7 +113,10 @@ vi.mock('../tags/runtime-effects', () => ({
   commitTaskRetag: fileMocks.commitTaskRetag
 }))
 
+vi.mock('../tags/schema/references', () => ({ rewriteSchemaReferences: vi.fn(() => []) }))
+
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+import { rewriteSchemaReferences } from '../tags/schema/references'
 import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tagQueries from '@main/database/queries/tags'
@@ -224,6 +227,9 @@ describe('tags-handlers', () => {
     })
     expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
     expect(notesQueries.renameTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
+    // A rename carries tasks and other tags' schema references along, as a merge does.
+    expect(tagQueries.mergeTagInTasks).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
+    expect(rewriteSchemaReferences).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new' })
@@ -242,6 +248,8 @@ describe('tags-handlers', () => {
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })
     expect(notesQueries.deleteTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'new')
+    // A delete leaves references dangling, so they re-resolve if the tag returns.
+    expect(rewriteSchemaReferences).toHaveBeenCalledTimes(1)
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.DELETED,
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })
@@ -389,6 +397,7 @@ describe('tags-handlers', () => {
     // #2301 review A-3/B-5: the retag commits with its tasks' sync intents,
     // before the note frontmatter writes an app quit could interrupt.
     expect(fileMocks.commitTaskRetag).toHaveBeenCalledTimes(1)
+    expect(rewriteSchemaReferences).toHaveBeenCalledWith(expect.any(Object), 'source', 'target')
     expect(fileMocks.commitTaskRetag.mock.invocationCallOrder[0]).toBeLessThan(
       fileMocks.updateNoteCommand.mock.invocationCallOrder[0]
     )

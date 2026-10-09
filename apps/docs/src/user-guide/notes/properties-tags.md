@@ -50,9 +50,13 @@ every note instantly.
 A rename or delete changes the `tags:` list of each note. A `#tag` written in a note's text
 stays as you wrote it, so that note keeps appearing under the old tag until you edit the text.
 
-Renaming or deleting a tag currently updates your **notes** only — tasks keep the original
-tag, so a task tagged `MIT` stays `MIT` even after you rename that tag. **Merging** two tags
-does carry across tasks. To retag a task directly, edit it in the task detail drawer.
+Renaming or merging a tag carries across your **tasks** too: a task tagged `MIT` becomes
+`focus` when you rename `MIT` to `focus`. Deleting a tag updates your **notes** only, so tasks
+keep the deleted tag. To retag a task directly, edit it in the task detail drawer.
+
+A rename or merge also updates every other tag that points at the renamed one: a tag that
+takes its fields from it, or a relation field that offers its notes. Deleting a tag leaves
+those links in place, and they work again if a tag with that name comes back.
 
 ### Tag Icons
 
