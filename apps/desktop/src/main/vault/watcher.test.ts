@@ -122,6 +122,11 @@ vi.mock('./journal-folder-follow', async (importOriginal) => ({
   followJournalFolder: vi.fn()
 }))
 
+vi.mock('../canvas/scene-file', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../canvas/scene-file')>()
+  return { ...actual, readCanvasFileSync: vi.fn(actual.readCanvasFileSync) }
+})
+
 const enqueueLocalSyncCreate = vi.hoisted(() => vi.fn())
 const enqueueLocalSyncDelete = vi.hoisted(() => vi.fn())
 vi.mock('../sync/local-mutations', () => ({
@@ -160,7 +165,7 @@ import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { canvases } from '@memry/db-schema/data-schema'
 import { createCanvas } from '../canvas/store'
-import { resolveCanvasFile } from '../canvas/scene-file'
+import { readCanvasFileSync, resolveCanvasFile } from '../canvas/scene-file'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 describe('vault watcher', () => {
@@ -1787,18 +1792,73 @@ describe('vault watcher', () => {
       expect(window.webContents.send).toHaveBeenCalledWith(CanvasChannels.events.DELETED, { id })
     })
 
+    async function waitOutRenameWindow(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 700))
+    }
+
+    function isLive(id: string): boolean {
+      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
+      return row !== undefined && row.deletedAt === null
+    }
+
+    function canvasReads(): string[] {
+      return vi
+        .mocked(readCanvasFileSync)
+        .mock.calls.map(([filePath]) => filePath)
+        .filter((filePath) => filePath.endsWith('.excalidraw'))
+    }
+
     it('stays when the document only moved inside canvases/', async () => {
       const trigger = await startWatching()
+      // Sorts before the moved file, so a check that reads every file reads it.
+      const other = makeCanvas('Aardvark')
       const { id, absolutePath } = makeCanvas('Moved')
 
       const movedPath = path.join(path.dirname(absolutePath), 'Elsewhere.excalidraw')
       fs.renameSync(absolutePath, movedPath)
+      vi.mocked(readCanvasFileSync).mockClear()
       trigger('unlink', absolutePath)
-      await new Promise((resolve) => setTimeout(resolve, 700))
+      await waitOutRenameWindow()
 
+      // The check ran and read only the file no live row owns.
+      expect(canvasReads()).toEqual([movedPath])
+      expect(canvasReads()).not.toContain(other.absolutePath)
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
-      const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
-      expect(row?.deletedAt).toBeNull()
+      expect(isLive(id)).toBe(true)
+    })
+
+    it('stays when a moved document cannot be parsed', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Garbled')
+
+      const movedPath = path.join(path.dirname(absolutePath), 'Garbled copy.excalidraw')
+      fs.renameSync(absolutePath, movedPath)
+      fs.writeFileSync(movedPath, '{"type":"excalidraw","memry":{"id":')
+      trigger('unlink', absolutePath)
+      await waitOutRenameWindow()
+
+      expect(canvasReads()).toContain(movedPath)
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      expect(isLive(id)).toBe(true)
+    })
+
+    it('logs a failure in the delayed check instead of rejecting', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('Failing')
+      const failure = new Error('database closed')
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+      vi.mocked(getDatabase).mockImplementation(() => {
+        throw failure
+      })
+
+      await vi.waitFor(() =>
+        expect(trackMainError).toHaveBeenCalledWith('canvas', 'external_delete', failure)
+      )
+      vi.mocked(getDatabase).mockReturnValue(asClientDb(dataDb.db))
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
+      expect(isLive(id)).toBe(true)
     })
   })
 })

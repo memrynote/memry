@@ -10,8 +10,11 @@
 import { isNull } from 'drizzle-orm'
 import { CanvasChannels, type CanvasDeletedEvent } from '@memry/contracts/canvas-api'
 import { canvases } from '@memry/db-schema/data-schema'
-import type { DataDb } from '../database'
+import { getDatabase, type DataDb } from '../database'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackPendingDelete } from '../vault/rename-tracker'
 import { reconcileCanvasAssets } from './assets/asset-service'
 import { buildAssetServiceContext } from './assets/asset-service-context'
 import {
@@ -24,6 +27,8 @@ import {
 import { deleteCanvas } from './store'
 import { syncCanvasDelete } from './sync-bridge'
 import { getCanvasContext } from './vault-key'
+
+const log = createLogger('CanvasDelete')
 
 export async function removeCanvas(
   id: string,
@@ -49,30 +54,97 @@ export async function removeCanvas(
 }
 
 /**
+ * A canvas document unlinked outside the app becomes a canvas delete once the
+ * rename window closes and the document is shown to be gone. The tombstone
+ * syncs to every device and GCs the canvas's assets, so every doubt keeps the
+ * canvas. `isGone` is the watcher's check that the file is really missing from
+ * a reachable vault, shared with a note's removal.
+ */
+export function trackExternalCanvasRemoval(
+  vaultPath: string,
+  relativePath: string,
+  isGone: () => Promise<boolean>
+): void {
+  // The app's own delete tombstones the row before the file goes, so its
+  // unlink finds nothing here.
+  const id = findLiveCanvasIdAtPath(getDatabase(), relativePath)
+  if (!id) return
+  // No content hash: a canvas move never reaches `checkForRename`, so the
+  // window only lets the move's `add` land before the checks below run.
+  trackPendingDelete(id, '', relativePath, async () => {
+    try {
+      if (!(await isGone())) return
+      const db = getDatabase()
+      // The app or a sync apply moved it meanwhile and re-pointed the row.
+      if (findLiveCanvasIdAtPath(db, relativePath) !== id) return
+      if (mayStillHoldCanvas(db, vaultPath, id)) return
+      // The document is already gone, so there is nothing to trash.
+      await removeCanvas(id, async () => {})
+    } catch (error) {
+      log.error('Failed to delete a canvas removed outside the app; keeping it', {
+        id,
+        path: relativePath,
+        error
+      })
+      trackMainError('canvas', 'external_delete', error)
+    }
+  })
+}
+
+/**
  * The live canvas whose document is at this vault-relative path. Matched case-
  * and Unicode-insensitively, like reconcile: macOS reports NFD names for the
- * NFC path we stored. The app's own delete tombstones the row before the file
- * goes, so its unlink finds nothing here.
+ * NFC path we stored.
  */
-export function findLiveCanvasIdAtPath(db: DataDb, relativePath: string): string | null {
+function findLiveCanvasIdAtPath(db: DataDb, relativePath: string): string | null {
   const key = canvasPathKey(relativePath)
-  const row = db
+  return (
+    liveCanvasPaths(db).find((row) => row.filePath && canvasPathKey(row.filePath) === key)?.id ??
+    null
+  )
+}
+
+function liveCanvasPaths(db: DataDb): Array<{ id: string; filePath: string | null }> {
+  return db
     .select({ id: canvases.id, filePath: canvases.filePath })
     .from(canvases)
     .where(isNull(canvases.deletedAt))
     .all()
-    .find((candidate) => candidate.filePath && canvasPathKey(candidate.filePath) === key)
-  return row?.id ?? null
 }
 
 /**
- * Whether a document carrying this canvas id is still in `canvases/`. A canvas
- * moved or renamed in Finder unlinks its old path but stays the same canvas;
- * the next vault-open reconcile re-points the row to where it went.
+ * Whether a document in `canvases/` may still be this canvas: moved or renamed
+ * in Finder, it unlinks its old path but stays the same canvas, and the next
+ * vault-open reconcile re-points the row to it. Only files no live row owns
+ * are read, since a moved document sits at a path nobody owns yet; that is
+ * usually zero or one read. A file that cannot be read or parsed counts as
+ * this canvas: only a positive absence of the id deletes it.
  */
-export function canvasDocumentExists(vaultPath: string, id: string): boolean {
-  return listCanvasFiles(vaultPath).some((filePath) => {
-    const content = readCanvasFileSync(resolveCanvasFile(vaultPath, filePath))
-    return content !== null && readCanvasMeta(content)?.id === id
-  })
+function mayStillHoldCanvas(db: DataDb, vaultPath: string, id: string): boolean {
+  const owned = new Set(
+    liveCanvasPaths(db)
+      .map((row) => row.filePath)
+      .filter((filePath): filePath is string => Boolean(filePath))
+      .map(canvasPathKey)
+  )
+  return listCanvasFiles(vaultPath)
+    .filter((filePath) => !owned.has(canvasPathKey(filePath)))
+    .some((filePath) => {
+      let content: string | null
+      try {
+        content = readCanvasFileSync(resolveCanvasFile(vaultPath, filePath))
+      } catch (error) {
+        log.warn('Canvas file cannot be read; keeping the removed canvas', { id, filePath, error })
+        return true
+      }
+      // Gone between the listing and the read.
+      if (content === null) return false
+      try {
+        JSON.parse(content)
+      } catch {
+        log.warn('Canvas file cannot be parsed; keeping the removed canvas', { id, filePath })
+        return true
+      }
+      return readCanvasMeta(content)?.id === id
+    })
 }

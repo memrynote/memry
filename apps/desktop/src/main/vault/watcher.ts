@@ -86,7 +86,7 @@ import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
-import { canvasDocumentExists, findLiveCanvasIdAtPath, removeCanvas } from '../canvas/delete'
+import { trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath } from '../canvas/scene-file'
 
 const logger = createLogger('Watcher')
@@ -1079,7 +1079,9 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
 
       if (isCanvasFilePath(relativePath)) {
-        this.handleCanvasFileDelete(vaultPath, absolutePath, relativePath)
+        trackExternalCanvasRemoval(vaultPath, relativePath, () =>
+          this.isGoneFromVault(vaultPath, absolutePath, relativePath)
+        )
         return
       }
 
@@ -1183,34 +1185,6 @@ export class VaultWatcher {
       return false
     }
     return true
-  }
-
-  /**
-   * A canvas document removed outside the app is a canvas delete, after the
-   * same rename window and checks a note's removal gets (#2938).
-   */
-  private handleCanvasFileDelete(
-    vaultPath: string,
-    absolutePath: string,
-    relativePath: string
-  ): void {
-    const id = findLiveCanvasIdAtPath(getDatabase(), relativePath)
-    if (!id) return
-    // No content hash: a canvas move never reaches `checkForRename`, so the
-    // window only lets the move's `add` land before the checks below run.
-    trackPendingDelete(id, '', relativePath, async () => {
-      if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
-      // The app or a sync apply moved it meanwhile and re-pointed the row.
-      if (findLiveCanvasIdAtPath(getDatabase(), relativePath) !== id) return
-      // Moved or renamed outside the app: still the same canvas.
-      if (canvasDocumentExists(vaultPath, id)) return
-      // The document is already gone, so there is nothing to trash.
-      try {
-        await removeCanvas(id, async () => {})
-      } catch (error) {
-        this.onError?.(error instanceof Error ? error : new Error(String(error)))
-      }
-    })
   }
 }
 
