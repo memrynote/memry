@@ -393,7 +393,9 @@ const reasonSyncDidNotStart = async (): Promise<SyncNotStartedReason> => {
     import('./vault-account-binding'),
     import('../billing/entitlement-cache')
   ])
-  if (getVaultBindingState().status !== 'bound') return 'vault-binding'
+  // 'unknown' means the account was unreachable, not a vault choice to make.
+  const binding = getVaultBindingState().status
+  if (binding !== 'bound' && binding !== 'unknown') return 'vault-binding'
   if (getCachedEntitlement()?.isPaid === false) return 'entitlement'
   return 'unavailable'
 }
