@@ -146,7 +146,7 @@ function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
 /**
  * Runs a blocks-to-markdown serialization of `blocks` with every comment
  * written as its token, inside the marks it sat in, and each run of emphasis
- * written as one span (`./emphasis-runs`). The scope is synchronous: whatever
+ * written as one span. The scope is synchronous: whatever
  * `serialize` exports after it returns writes nothing for the node.
  */
 export function writeHtmlCommentTokens<B>(blocks: B[], serialize: (blocks: B[]) => string): string

@@ -1060,7 +1060,7 @@
       "sha256": "982c1ffb7ad859a49b41693d9a8e7fdceb0e895a47d67ee5934d00083da7a42e"
     },
     {
-      "name": "bold run past a code span (BBF-62)",
+      "name": "bold stops at a code span (BBF-62)",
       "markdown": "**`a` x `c`**",
       "canonical": "`a` **x** `c`",
       "pending": null,

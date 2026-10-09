@@ -1,18 +1,10 @@
 /**
- * Emphasis written as one span per run of marks (BBF-62).
- *
  * BlockNote's markdown export wraps every text run in its own marks, so
  * `**alpha *x y* omega**` (bold `alpha `, bold italic `x y`, bold ` omega`)
  * came back as `**alpha** ***x y***** omega**`: the bold closed and reopened
  * around the italic, and ` omega` reopened on a space, which CommonMark does
  * not read as emphasis. A bold run that starts with a space after a code span
- * broke the same way: `**`a` x `c`**` became `` `a`** x** `c` ``.
- *
- * Before the export, each run of neighbouring items holding a mark loses that
- * mark and sits between two tokens; after it, each token pair becomes one pair
- * of delimiters around the run, with the whitespace on its edges outside. The
- * mark spanning the most items opens first, ties in BlockNote's own order, so
- * a lone bold italic run still writes `***x***`.
+ * broke the same way: `` **`a` x `c`** `` became `` `a`** x** `c` `` (BBF-62).
  */
 
 type Styles = Record<string, unknown>
@@ -28,8 +20,7 @@ const DELIMITERS = { bold: '**', italic: '*', strike: '~~' } as const
 export type EmphasisMark = keyof typeof DELIMITERS
 const MARKS = Object.keys(DELIMITERS) as EmphasisMark[]
 
-// Drawn once per process, like the comment token's word (BBF-30), so note
-// text does not hold a token. A token never leaves the write that made it.
+// Per process, so note text does not hold a token (BBF-30).
 const PROCESS_WORD = String.fromCharCode(
   ...crypto.getRandomValues(new Uint8Array(12)).map((byte) => 65 + (byte % 26))
 )
@@ -73,6 +64,7 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[])
   let at = 0
   while (at < items.length) {
     let best: { mark: EmphasisMark; length: number } | null = null
+    // Ties keep BlockNote's own nesting order, so a lone `***x***` is unchanged.
     for (const mark of MARKS) {
       const length = runLength(items, at, mark)
       if (length > 0 && length > (best?.length ?? 0)) best = { mark, length }
@@ -97,7 +89,7 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[])
   return out
 }
 
-/** Each token pair in `markdown` turned into its delimiters. Pairs nest, so one pass with a stack. */
+/** Each token pair in `markdown` turned into its delimiters. */
 export function restoreEmphasisRuns(markdown: string, marks: EmphasisMark[]): string {
   const open: string[] = ['']
   let last = 0

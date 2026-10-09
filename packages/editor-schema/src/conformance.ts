@@ -778,8 +778,7 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'italic nested in bold (BBF-62)', markdown: '**alpha *x y* omega**' },
   { name: 'bold nested in italic (BBF-62)', markdown: '*alpha **x** omega*' },
   {
-    // Code holds no other mark, so the bold covers only ` x `.
-    name: 'bold run past a code span (BBF-62)',
+    name: 'bold stops at a code span (BBF-62)',
     markdown: '**`a` x `c`**',
     canonical: '`a` **x** `c`'
   },

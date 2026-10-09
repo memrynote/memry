@@ -705,7 +705,7 @@ as one emphasis per text run. The mark spanning the most items opens first, ties
 in the order `bold, italic, strike`. A link counts as holding a mark when all
 of its text does. `code` holds no other mark, so ``**`a` x `c`**`` reads back
 as bold `x` only and is written `` `a` **x** `c` ``
-(`packages/editor-schema/src/inline/emphasis-runs.ts:67`, `:96`).
+(`packages/editor-schema/src/inline/emphasis-runs.ts:62`, `:93`).
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 
