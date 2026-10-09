@@ -11800,6 +11800,14 @@
               },
               "additionalProperties": false
             },
+            "tags": {
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              }
+            },
             "frontmatter": {
               "type": "object",
               "propertyNames": {

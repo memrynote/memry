@@ -965,6 +965,18 @@ describe('notes operations', () => {
         expect(fileHeaderTags(created.path)).toEqual(['car', 'meeting'])
       })
 
+      it('replaces the header with a full tags list from the agent API, never adding body #tags', async () => {
+        const created = await notes.createNote({
+          title: 'Agent Tags',
+          content: 'Body with #idea',
+          tags: ['old', 'Keep']
+        })
+
+        await notes.updateNote({ id: created.id, tags: ['keep', 'new'] })
+
+        expect(fileHeaderTags(created.path)).toEqual(['Keep', 'new'])
+      })
+
       it('leaves the file as it is when a note with #tags is opened', async () => {
         const created = await notes.createNote({
           title: 'Open Only',

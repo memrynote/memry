@@ -196,6 +196,12 @@ export const NoteUpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   content: z.string().optional(),
   headerTags: HeaderTagEditSchema.optional(),
+  /**
+   * Shipped agent API contract: the whole `tags:` list. Main turns it into a
+   * header delta against the file's own list, so it replaces the header and
+   * never promotes inline tags. Ignored when `headerTags` is set.
+   */
+  tags: z.array(z.string().max(50)).max(50).optional(),
   frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields; never `tags`
   emoji: z.string().nullable().optional() // Emoji icon for visual identification
 })

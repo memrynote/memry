@@ -10335,6 +10335,7 @@ Change a note’s title, content, tags, properties or emoji.
 | `input.headerTags.rename[].from` | `string`              | yes      | min length `1`; max length `50`  |
 | `input.headerTags.rename[].to`   | `string`              | yes      | min length `1`; max length `50`  |
 | `input.headerTags.source`        | `"inline"`            | no       | `"inline"`                       |
+| `input.tags`                     | `string[]`            | no       | max items `50`                   |
 | `input.frontmatter`              | `Record<string, any>` | no       |                                  |
 | `input.emoji`                    | `string \| null`      | no       |                                  |
 

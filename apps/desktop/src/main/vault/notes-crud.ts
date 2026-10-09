@@ -197,9 +197,22 @@ export interface NoteUpdateInput {
   title?: string
   content?: string
   headerTags?: HeaderTagEdit
+  /** Full replacement list from the shipped agent API (`NoteUpdateSchema.tags`). */
+  tags?: string[]
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown>
   emoji?: string | null
+}
+
+/** A replacement `tags:` list as the delta that turns `current` into it. */
+function headerTagEditToList(current: string[], next: string[]): HeaderTagEdit {
+  const fold = (tags: string[]): Set<string> => new Set(tags.map((tag) => tag.toLowerCase()))
+  const have = fold(current)
+  const want = fold(next)
+  return {
+    add: next.filter((tag) => !have.has(tag.toLowerCase())),
+    remove: current.filter((tag) => !want.has(tag.toLowerCase()))
+  }
 }
 
 export interface NoteUpdateOutcome {
@@ -677,6 +690,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   // header, as typing them in the editor does.
   const headerTagEdit =
     input.headerTags ??
+    (input.tags ? headerTagEditToList(existing.headerTags, input.tags) : null) ??
     (input.content === undefined ? null : inlineTagEditBetween(existing.content, input.content))
   const headerTags = !headerTagEdit
     ? existing.headerTags
