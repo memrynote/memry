@@ -420,7 +420,7 @@ describe('AssistantMessage', () => {
 
     function stubViewport(container: HTMLElement): {
       el: HTMLElement
-      setHeight: (h: number) => void
+      landUnobserved: (h: number) => void
       grow: (h: number) => void
     } {
       const el = container.querySelector<HTMLElement>('.aicss-tr-viewport')
@@ -434,16 +434,16 @@ describe('AssistantMessage', () => {
         get: () => top,
         set: (v: number) => (top = Math.max(0, Math.min(v, height - 180)))
       })
-      const setHeight = (h: number): void => {
+      const landUnobserved = (h: number): void => {
         height = h
       }
       const grow = (h: number): void => {
-        setHeight(h)
+        landUnobserved(h)
         act(() => {
           for (const callback of observers) callback([], {} as ResizeObserver)
         })
       }
-      return { el, setHeight, grow }
+      return { el, landUnobserved, grow }
     }
 
     it('puts the header back into its live state without unfolding the block', () => {
@@ -471,12 +471,11 @@ describe('AssistantMessage', () => {
     it('keeps the newest line of an opened block in view as reasoning grows', async () => {
       const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
       rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
-      const { el, setHeight, grow } = stubViewport(container)
+      const { el, landUnobserved, grow } = stubViewport(container)
       await userEvent.click(toggle())
       expect(el.scrollTop).toBe(320)
 
-      // The echo of that scroll arrives after the next lines already landed.
-      setHeight(548)
+      landUnobserved(548)
       fireEvent.scroll(el)
       grow(548)
       expect(el.scrollTop).toBe(368)
@@ -488,7 +487,7 @@ describe('AssistantMessage', () => {
     it('leaves a reader who scrolled up where they are, and follows again at the bottom', async () => {
       const { container, rerender } = render(<AssistantMessage message={turn('', 'Step one.')} />)
       rerender(<AssistantMessage message={turn('Answer', 'Step one.')} />)
-      const { el, setHeight, grow } = stubViewport(container)
+      const { el, landUnobserved, grow } = stubViewport(container)
       await userEvent.click(toggle())
 
       el.scrollTop = 100
@@ -496,9 +495,8 @@ describe('AssistantMessage', () => {
       grow(900)
       expect(el.scrollTop).toBe(100)
 
-      // The reader reaches the bottom they saw just as more lines land.
       el.scrollTop = 720
-      setHeight(1000)
+      landUnobserved(1000)
       fireEvent.scroll(el)
       grow(1000)
       expect(el.scrollTop).toBe(820)

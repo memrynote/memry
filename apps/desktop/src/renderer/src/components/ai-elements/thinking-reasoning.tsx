@@ -57,8 +57,7 @@ export function ThinkingReasoning({
   const viewportRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const followRef = useRef(true)
-  /** Content height at the last sync: what the reader has seen of the bottom. */
-  const seenHeightRef = useRef(0)
+  const syncedHeightRef = useRef(0)
 
   // A turn watched live has no persisted duration until the message completes,
   // so the summary in between is measured here, from the moment the block
@@ -74,8 +73,7 @@ export function ThinkingReasoning({
     if (since === null) return
     thinkingSinceRef.current = null
     // Wall-clock time at the moment thinking ended: not derivable from props,
-    // and reading the clock during render would be impure. A turn can think in
-    // several spans, so the summary adds them up.
+    // and reading the clock during render would be impure.
     // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
     setMeasuredMs((total) => (total ?? 0) + performance.now() - since)
   }, [thinking])
@@ -93,7 +91,7 @@ export function ThinkingReasoning({
     if (!viewport) return
     setCapped(viewport.scrollHeight > MAX_H + 1)
     if (followRef.current) viewport.scrollTop = viewport.scrollHeight
-    seenHeightRef.current = viewport.scrollHeight
+    syncedHeightRef.current = viewport.scrollHeight
     syncFade(viewport)
   }, [])
 
@@ -117,7 +115,7 @@ export function ThinkingReasoning({
     const viewport = viewportRef.current
     if (!viewport) return
     followRef.current =
-      viewport.scrollTop + viewport.clientHeight >= seenHeightRef.current - FOLLOW_SLACK
+      viewport.scrollTop + viewport.clientHeight >= syncedHeightRef.current - FOLLOW_SLACK
     syncFade(viewport)
   }
 
