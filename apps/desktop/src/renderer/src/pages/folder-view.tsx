@@ -99,7 +99,6 @@ import {
   updateTaskField,
   withLinkedFilter
 } from '@/features/tag-fields/tag-table'
-import { useResolvedTag } from '@/features/tag-fields/use-tag-schemas'
 import type { TaskFieldValue } from '@memry/contracts/tasks-api'
 
 const log = createLogger('Page:FolderView')

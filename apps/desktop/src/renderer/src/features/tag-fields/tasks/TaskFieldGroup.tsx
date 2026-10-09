@@ -61,6 +61,7 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
               key={slot.field.name}
               property={slotProperty(slot)}
               onValueChange={(next) => write(slot.field.name, slot.value, next)}
+              relationTarget={slot.field.relation?.target}
             />
           ))}
         </FieldGroupCard>

@@ -104,6 +104,7 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
                     isCustom: false
                   }}
                   onValueChange={(value) => onFieldChange(slot.field.name, value, slot.field.type)}
+                  relationTarget={slot.field.relation?.target}
                   disabled={disabled}
                 />
               ))}

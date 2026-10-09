@@ -66,6 +66,7 @@ interface PropertyValueRendererProps {
   autoOpen?: boolean
   onValueChange: (value: unknown) => void
   onEndEdit: () => void
+  relationTarget?: string | null
 }
 
 function PropertyValueDisplay({ property }: { property: Property }) {
@@ -271,7 +272,8 @@ function PropertyValueRenderer({
   isEditing,
   autoOpen,
   onValueChange,
-  onEndEdit
+  onEndEdit,
+  relationTarget
 }: PropertyValueRendererProps) {
   if (property.type === 'checkbox') {
     return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
@@ -294,7 +296,7 @@ function PropertyValueRenderer({
 
   if (property.type === 'relation') {
     const val = Array.isArray(property.value) ? (property.value as string[]) : []
-    return <RelationEditor value={val} onChange={onValueChange} />
+    return <RelationEditor value={val} onChange={onValueChange} targetTag={relationTarget} />
   }
 
   if (property.type === 'date') {
@@ -337,6 +339,8 @@ interface PropertyRowProps {
    * focused. Receives whether the row is hovered.
    */
   renderAction?: (hovered: boolean) => React.ReactNode
+  /** A relation field's target tag: the picker lists only that tag's objects. */
+  relationTarget?: string | null
 }
 
 export function PropertyRow({
@@ -347,7 +351,8 @@ export function PropertyRow({
   disabled,
   autoFocus = false,
   isSortable = false,
-  renderAction
+  renderAction,
+  relationTarget
 }: PropertyRowProps) {
   const { t } = useT('notes')
   const { isEnabled, setEnabled } = useCalendarProperties()
@@ -555,6 +560,7 @@ export function PropertyRow({
           autoOpen={autoFocus && isAlwaysInteractive}
           onValueChange={onValueChange}
           onEndEdit={handleEndEdit}
+          relationTarget={relationTarget}
         />
       </div>
 
