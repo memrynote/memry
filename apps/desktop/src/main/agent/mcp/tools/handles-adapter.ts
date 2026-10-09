@@ -49,7 +49,12 @@ import {
   withAgentChecklists,
   writeAgentBody
 } from './agent-checklists'
-import { createdFoldersReply, foldersToCreate } from './created-folders'
+import {
+  createdFoldersReply,
+  desktopWriteFoldersToCreate,
+  foldersToCreate,
+  withCreatedFolders
+} from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { readNoteRetried } from './note-read'
@@ -667,7 +672,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return writeAndReadBack(
+        const createdFolders = await desktopWriteFoldersToCreate(input)
+        const reply = await writeAndReadBack(
           input,
           async (request) =>
             agentDesktopReply(
@@ -677,6 +683,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             ),
           (entityId) => noteFileFrontmatter(indexDb, entityId)
         )
+        return withCreatedFolders(reply, createdFolders)
       }
     },
     windows: {

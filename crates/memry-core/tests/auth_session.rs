@@ -12,7 +12,7 @@ use http_fakes::*;
 use memry_core::api::auth::{
     AuthEvent, AuthProvider, AuthSession, AuthState, DeviceDescriptor, transition,
 };
-use memry_core::api::errors::AuthError;
+use memry_core::api::errors::{ApiError, AuthError};
 use memry_core::crypto::sodium;
 use memry_core::protocol::auth::{
     DevicePlatform, REFRESH_REJECT_BACKOFF_MS, TokenClaims, TokenManager, device_challenge_message,
@@ -353,6 +353,37 @@ async fn a_rejected_code_returns_to_signed_out() {
         .unwrap_err();
 
     assert_eq!(session.state(), AuthState::SignedOut);
+}
+
+/// #2940: a 429 on verify judged no code, so the sign-in stays on the code
+/// screen. Taking the failure edge sent the user back to the email screen
+/// with a still-valid code in their inbox.
+#[tokio::test]
+async fn a_rate_limited_verify_keeps_the_code_pending() {
+    let limited = response_with_header(
+        429,
+        r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+        ("retry-after", "3600"),
+    );
+    let transport = FakeTransport::new(vec![response(200, r#"{"success":true}"#), limited]);
+    let session = session(transport, FakeSecureStore::new());
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    let error = session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        error,
+        AuthError::Api {
+            source: ApiError::RateLimited { .. }
+        }
+    ));
+    assert!(matches!(session.state(), AuthState::AwaitingOtp { .. }));
 }
 
 #[tokio::test]

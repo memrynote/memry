@@ -336,6 +336,7 @@ import {
   emitIndexRecovered,
   emitVaultError,
   getAllVaults,
+  getLaunchVaultPath,
   getConfig,
   getStatus,
   isVaultSwitchInProgress,
@@ -414,6 +415,7 @@ describe('vault lifecycle', () => {
   afterEach(async () => {
     await closeVault()
     delete process.env.TEST_VAULT_PATH
+    vi.unstubAllEnvs()
   })
 
   it('opens a healthy vault, stores it, emits status, and starts runtimes', async () => {
@@ -1501,6 +1503,43 @@ describe('vault lifecycle', () => {
     expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(2)
     expect(mocks.startAgent).toHaveBeenCalledTimes(2)
     expect(mocks.currentVaultPath).toBe('/vault/two')
+  })
+
+  // The window is created with getLaunchVaultPath() before autoOpenLastVault
+  // runs, and the renderer restores that vault's tabs (#2066). They must agree.
+  it.each([
+    { name: 'the last vault', lastVault: '/vault/last', initialized: true, env: {} },
+    {
+      name: 'no vault when the last one is gone',
+      lastVault: '/vault/gone',
+      initialized: false,
+      env: {}
+    },
+    { name: 'no vault on a first launch', lastVault: null, initialized: true, env: {} },
+    {
+      name: 'the E2E vault',
+      lastVault: '/vault/last',
+      initialized: true,
+      env: { TEST_VAULT_PATH: '/vault/e2e' }
+    },
+    {
+      name: 'no vault when the picker is forced',
+      lastVault: '/vault/last',
+      initialized: true,
+      env: { MEMRY_FORCE_VAULT_PICKER: '1' }
+    }
+  ])('names the vault autoOpenLastVault opens: $name', async ({ lastVault, initialized, env }) => {
+    mocks.currentVaultPath = lastVault
+    mocks.isVaultInitialized.mockReturnValue(initialized)
+    for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value)
+
+    const launchVault = getLaunchVaultPath()
+    await autoOpenLastVault()
+
+    const status = getStatus()
+    expect(launchVault).toBe(status.isOpen ? status.path : null)
+    // A window recreated later (macOS dock reopen) names the vault now open.
+    expect(getLaunchVaultPath()).toBe(launchVault)
   })
 
   it('auto-opens the test vault and emits explicit progress/error events', async () => {

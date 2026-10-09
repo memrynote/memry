@@ -480,7 +480,8 @@ export const BulkFileSchema = z.object({
     path: z.string().optional(),
     noteId: z.string().optional()
   }),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  ...PlainChecklistsOptionSchema.shape
 })
 
 export const BulkArchiveSchema = z.object({

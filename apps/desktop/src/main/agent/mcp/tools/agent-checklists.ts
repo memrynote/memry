@@ -72,7 +72,9 @@ const DESKTOP_BUILT_BODIES: Partial<Record<DesktopOperation, WithOption>> = {
   'notes.create': intoInput,
   'notes.applyTemplate': intoInput,
   'inbox.convertToNote': ([itemId], option) => [itemId, option],
+  'inbox.convertToReminder': ([itemId, input], option) => [itemId, ...intoInput([input], option)],
   'inbox.file': intoInput,
+  'inbox.bulkFile': intoInput,
   'inbox.linkToNote': ([itemId, noteId, tags], option) => [itemId, noteId, tags, option],
   'notes.importFiles': ([sourcePaths, targetFolder], option) => [sourcePaths, targetFolder, option],
   'tasks.importFilesToProject': intoInput

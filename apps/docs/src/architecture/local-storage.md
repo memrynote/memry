@@ -111,6 +111,12 @@ folder and date format, and attachments folder. `getConfig()` reads it on most v
 per-note sync handler — so the parsed result is cached per vault in the main process rather than
 re-read and re-parsed on every call.
 
+The config's `attachmentsFolder` field is kept so older builds can read the file, but nothing
+uses it. Desktop and the CLI always keep attachments in `attachments/<noteId>/`
+(`ATTACHMENTS_DIR`), and the indexer, the watcher and the folder tree skip that folder. A vault
+whose config names another folder keeps its files there; that folder is indexed like any other
+vault folder.
+
 The cache is validated against the file itself, not against a list of known writers:
 
 - Every read stats `config.json` and reuses the cached value only when the **inode, size and

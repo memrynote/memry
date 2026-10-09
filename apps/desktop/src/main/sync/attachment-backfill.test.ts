@@ -154,6 +154,23 @@ describe('attachment backfill', () => {
     ).toEqual([picture, pdf].sort())
   })
 
+  it('queues no embed of a note file linked outside the vault (#2936)', () => {
+    addNote('note-o')
+    writeVaultFile('docs/spec.pdf')
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-backfill-outside-'))
+    const secret = path.join(outside, 'private.md')
+    fs.writeFileSync(secret, '<!-- file:{"url":"../docs/spec.pdf","name":"spec.pdf"} -->')
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.symlinkSync(secret, path.join(vaultPath, 'notes', 'note-o.md'))
+
+    try {
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+      expect(listPendingUploads(db)).toEqual([])
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   it('queues an embed added to a note that a previous pass found without one', () => {
     addNote('note-h')
     writeNote('note-h', 'plain text, nothing embedded')

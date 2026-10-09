@@ -193,7 +193,6 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const versions = createVersionsService({ vaultPath, indexDb: databases.indexDb, notes })
   const attachments = createAttachmentsService({
     vaultPath,
-    config,
     notes,
     dataDb: databases.dataDb
   })

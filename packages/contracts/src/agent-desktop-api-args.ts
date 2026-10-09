@@ -513,7 +513,10 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
       location: z.string().nullable().optional()
     })
   },
-  'inbox.convertToReminder': { itemId: text, input: z.object({ remindAt: z.string() }) },
+  'inbox.convertToReminder': {
+    itemId: text,
+    input: z.object({ remindAt: z.string(), ...PlainChecklistsOptionSchema.shape })
+  },
   'inbox.linkToNote': {
     itemId: text,
     noteId: text,

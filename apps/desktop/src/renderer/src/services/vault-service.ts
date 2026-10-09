@@ -46,6 +46,13 @@ export const vaultService: VaultClientAPI = {
   },
 
   /**
+   * The vault this window was created for, read synchronously. Null on the picker.
+   */
+  getStartupPath: (): string | null => {
+    return window.api.vault.getStartupPath()
+  },
+
+  /**
    * Get current vault configuration.
    */
   getConfig: (): Promise<VaultConfig> => {

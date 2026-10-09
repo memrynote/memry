@@ -986,3 +986,37 @@ test('graph draws an edge for a link in a note HTML block that the desktop app r
 
   app.close()
 })
+
+test('saves attachments in attachments/<noteId>/ whatever attachmentsFolder says, like desktop', async () => {
+  const vaultPath = await makeVault()
+  await fs.mkdir(path.join(vaultPath, '.memry'), { recursive: true })
+  await fs.writeFile(
+    path.join(vaultPath, '.memry', 'config.json'),
+    JSON.stringify({ attachmentsFolder: 'files' }),
+    'utf-8'
+  )
+  const app = await createMemryApp({ vaultPath })
+  const note = await app.notes.create({ title: 'Has file', content: 'Body' })
+  const source = path.join(vaultPath, 'sample.txt')
+  await fs.writeFile(source, 'attachment body', 'utf-8')
+
+  const attachment = await app.attachments.add(note.id, source)
+
+  assert.equal(attachment.path, `attachments/${note.id}/${attachment.filename}`)
+  assert.equal(
+    await fs.readFile(
+      path.join(vaultPath, 'attachments', note.id, attachment.filename ?? ''),
+      'utf-8'
+    ),
+    'attachment body'
+  )
+  assert.equal((await app.attachments.list(note.id))[0]?.path, attachment.path)
+  assert.equal(await app.attachments.delete(note.id, attachment.filename ?? ''), true)
+  assert.deepEqual(await app.attachments.list(note.id), [])
+  await app.folders.create('files')
+  assert.deepEqual(
+    (await app.folders.list()).map((folder) => folder.path),
+    ['files']
+  )
+  app.close()
+})

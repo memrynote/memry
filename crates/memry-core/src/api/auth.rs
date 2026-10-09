@@ -372,7 +372,7 @@ impl AuthSession {
         }
     }
 
-    /// Asks for the same code again. Not a state transition: chapter 02 §2.11
+    /// Asks for a fresh code. Not a state transition: chapter 02 §2.11
     /// caps it at three per ten minutes and the state is unchanged either way.
     pub async fn resend_email_code(&self) -> Result<(), AuthError> {
         let email = {
@@ -419,6 +419,7 @@ impl AuthSession {
 
         let response = match AuthRoutes::verify_otp(&self.http, &request).await {
             Ok(response) => response,
+            Err(error @ ApiError::RateLimited { .. }) => return Err(error.into()), // #2940
             Err(error) => {
                 self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
                 return Err(error.into());

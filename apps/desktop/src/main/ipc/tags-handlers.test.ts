@@ -88,7 +88,12 @@ vi.mock('@main/database/queries/tag-categories', () => ({
 }))
 
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: () => '/vault',
   toAbsolutePath: fileMocks.toAbsolutePath
+}))
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  refuseOutsideVault: async () => undefined
 }))
 
 vi.mock('../vault/frontmatter', () => ({

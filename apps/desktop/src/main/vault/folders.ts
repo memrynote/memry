@@ -7,7 +7,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync } from 'fs'
+import { existsSync, type Dirent } from 'fs'
 import matter from 'gray-matter'
 import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
@@ -294,10 +294,23 @@ interface FolderTreeScan {
   retained: string | null
 }
 
+function isNotFound(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT'
+}
+
 async function scanFolderTree(absDir: string): Promise<FolderTreeScan> {
   const scan: FolderTreeScan = { dirs: [], disposableFiles: [], retained: null }
   const visit = async (dir: string): Promise<void> => {
-    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+    let entries: Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch (error) {
+      // A subfolder removed since its parent was read is already gone. Only a
+      // missing root makes the whole folder `missing`.
+      if (dir !== absDir && isNotFound(error)) return
+      throw error
+    }
+    for (const entry of entries) {
       const entryPath = path.join(dir, entry.name)
       if (entry.isDirectory()) {
         await visit(entryPath)
@@ -323,6 +336,9 @@ async function scanFolderTree(absDir: string): Promise<FolderTreeScan> {
  * Nothing is deleted when the scan finds a retained file, and directories go
  * with `rmdir`, which refuses a non-empty directory, so a file written between
  * the scan and the removal survives with its folder.
+ *
+ * Another prune, the watcher, or a file manager can remove part of the tree
+ * while this runs. A file or directory that is already gone counts as removed.
  */
 export async function removeFolderIfEmpty(folderPath: string): Promise<RemoveEmptyFolderResult> {
   const vaultPath = getVaultPath()
@@ -352,6 +368,12 @@ export async function removeFolderIfEmpty(folderPath: string): Promise<RemoveEmp
   }
 
   for (const file of scan.disposableFiles) await fs.rm(file, { force: true })
-  for (const dir of scan.dirs) await fs.rmdir(dir)
+  for (const dir of scan.dirs) {
+    try {
+      await fs.rmdir(dir)
+    } catch (error) {
+      if (!isNotFound(error)) throw error
+    }
+  }
   return { removed: true }
 }
