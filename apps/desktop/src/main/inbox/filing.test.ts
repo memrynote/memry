@@ -394,6 +394,28 @@ describe('Inbox Filing Operations', () => {
       expect(mockCreateFolder).not.toHaveBeenCalled()
     })
 
+    it("files a text item to 'root' where an empty path goes, not into a root/ folder (#2994)", async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', title: 'Test Item' })
+
+      const result = await fileToFolder(itemId, 'root')
+
+      expect(result.success).toBe(true)
+      expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: undefined }))
+    })
+
+    it("files a binary item to 'root' at the vault root, not into a root/ folder (#2994)", async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-1', type: 'image', title: 'Screenshot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-1/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'root')
+
+      expect(result).toEqual({ success: true, filedTo: 'Screenshot.png' })
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/image-1/screenshot.png',
+        '/mock-vault/Screenshot.png'
+      )
+    })
+
     it('should move binary attachments directly into the target folder', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'image-1',
@@ -1535,6 +1557,19 @@ describe('Inbox Filing Operations', () => {
       await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }], [], 'references')
 
       expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'references' }))
+    })
+
+    it("treats a 'root' folder like an empty one when linking (#2994)", async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', title: 'Test Item' })
+      mockGetNoteById.mockResolvedValue({
+        id: 'note-1',
+        content: '# Note 1',
+        path: 'notes/note1.md'
+      })
+
+      await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }], [], 'root')
+
+      expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: undefined }))
     })
 
     it('should link binary items by moving the attachment and updating target notes', async () => {
