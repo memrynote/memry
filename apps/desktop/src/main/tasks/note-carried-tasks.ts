@@ -23,8 +23,13 @@ import {
   noteCacheExists
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
+import { OutsideVaultError } from '../lib/errors'
+import { createLogger } from '../lib/logger'
+import { refuseOutsideVault } from '../lib/paths'
 import { safeRead } from '../vault/file-ops'
-import { toAbsolutePath } from '../vault/notes-io'
+import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
+
+const log = createLogger('NoteCarriedTasks')
 
 export interface CarrierNote {
   id: string
@@ -56,8 +61,16 @@ export function selectCarriedTaskIds(notes: CarrierNote[], deps: CarriedTaskDeps
 
 // A file over the note byte ceiling opens read-only and never reaches the
 // editor, so no task line in it was ever converted. Skipping it keeps a
-// multi-hundred-MB log out of a main-process string.
+// multi-hundred-MB log out of a main-process string. A file linked outside
+// the vault is never read: its task ids are not this note's.
 async function readCarrierMarkdown(relativePath: string): Promise<string | null> {
+  try {
+    await refuseOutsideVault(getVaultRoot(), relativePath)
+  } catch (error) {
+    if (!(error instanceof OutsideVaultError)) throw error
+    log.warn('Skipped carried tasks of a note file', { error: error.message })
+    return null
+  }
   const absolutePath = toAbsolutePath(relativePath)
   const stats = await fs.stat(absolutePath).catch(() => null)
   if (!stats || classifyMarkdownStat(stats.size)) return null
