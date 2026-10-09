@@ -7,6 +7,7 @@ import type { Project } from '@/data/tasks-data'
 import {
   DateViewContext,
   TaskPathTitle,
+  nestUnlisted,
   useDateViewValue,
   type DateViewValue
 } from './date-view-context'
@@ -74,5 +75,29 @@ describe('TaskPathTitle', () => {
     expect(screen.getByTestId('task-path')).toHaveTextContent('Website relaunch › Launch checklist')
     expect(openPath).toHaveBeenCalledWith(subtask)
     expect(onRowClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('nestUnlisted', () => {
+  it('drops listed rows from every branch, at any depth', () => {
+    const withChildren = (t: Task, subtaskIds: string[]): Task => ({ ...t, subtaskIds })
+    const nested = nestUnlisted(
+      [
+        withChildren(task('parent'), ['child', 'undated']),
+        withChildren(task('child', 'parent'), ['grandchild']),
+        withChildren(task('undated', 'parent'), ['deep']),
+        task('grandchild', 'child'),
+        task('deep', 'undated')
+      ],
+      new Set(['parent', 'child', 'grandchild', 'deep'])
+    )
+
+    expect(Object.fromEntries(nested.map((t) => [t.id, t.subtaskIds]))).toEqual({
+      parent: ['undated'],
+      child: [],
+      undated: [],
+      grandchild: [],
+      deep: []
+    })
   })
 })
