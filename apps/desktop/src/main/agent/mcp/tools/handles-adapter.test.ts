@@ -2588,6 +2588,21 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toMatchObject({ created_folders: ['filed'] })
     })
 
+    it('says nothing about folders an inbox.file destination never creates (#2953)', async () => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true, noteId: 'n1' })
+
+      const replies = [
+        await desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'new-note', path: 'X/y' } }
+        ]),
+        await desktopWrite('inbox.file', [
+          { itemId: 'inbox-1', destination: { type: 'folder', path: 'root' } }
+        ])
+      ]
+
+      for (const reply of replies) expect(reply).not.toHaveProperty('created_folders')
+    })
+
     it('lists the folders notes.move made', async () => {
       landWriteInto('archive/2026')
 
