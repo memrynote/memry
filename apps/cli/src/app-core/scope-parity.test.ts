@@ -426,7 +426,6 @@ async function listFolderPaths(journal: { folder: string; showInSidebar: boolean
   await fs.writeFile(
     path.join(vaultPath, '.memry', 'config.json'),
     JSON.stringify({
-      defaultNoteFolder: '',
       journalFolder: journal.folder,
       journalShowInSidebar: journal.showInSidebar
     })
@@ -463,5 +462,28 @@ test('folder lists hide only a nested journal folder subtree, not its parent', a
     assert.ok(paths.includes('Notes'))
     assert.ok(paths.includes('Notes/Ideas'))
     assert.ok(!paths.some((p) => p === 'Notes/Daily' || p.startsWith('Notes/Daily/')))
+  }
+})
+
+test('config updates to one vault do not leak into the next vault opened in the process', async () => {
+  const first = await createMemryApp({ vaultPath: await makeVault() })
+  try {
+    await first.vault.updateConfig({ defaultNoteFolder: 'leaked' })
+  } finally {
+    first.close()
+  }
+
+  const vaultPath = await makeVault()
+  await fs.mkdir(path.join(vaultPath, '.memry'), { recursive: true })
+  await fs.writeFile(
+    path.join(vaultPath, '.memry', 'config.json'),
+    JSON.stringify({ journalFolder: 'journal' })
+  )
+  const second = await createMemryApp({ vaultPath })
+  try {
+    assert.equal(second.vault.config().defaultNoteFolder, '')
+    await assert.rejects(fs.access(path.join(vaultPath, 'leaked')))
+  } finally {
+    second.close()
   }
 })
