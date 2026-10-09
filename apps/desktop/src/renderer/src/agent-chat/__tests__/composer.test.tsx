@@ -798,6 +798,33 @@ describe('Composer', () => {
     })
   })
 
+  it('sends the saved built-in depth before the settings menu was ever opened', async () => {
+    localStorage.setItem(
+      'memry:agent-model-preference',
+      JSON.stringify({
+        provider: 'local_openai_compatible',
+        models: {},
+        efforts: { local_openai_compatible: 'max' },
+        localModel: 'deepseek-chat'
+      })
+    )
+    renderComposer('conversation-1')
+
+    await setPromptText('plan my week')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backendOptions: {
+          backend: 'local_openai_compatible',
+          toolsEnabled: true,
+          reasoningEffort: 'max',
+          model: 'deepseek-chat'
+        }
+      })
+    )
+  })
+
   it('shows computer access and web search as unavailable on the built-in backend and sends vault-only', async () => {
     vi.mocked(window.api.agent.getPreferences).mockResolvedValue({
       accessMode: 'computer_access',
