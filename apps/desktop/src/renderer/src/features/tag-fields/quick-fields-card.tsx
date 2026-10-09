@@ -83,15 +83,16 @@ export function QuickFieldsCard({
   }
 
   const onKeyDown = (event: React.KeyboardEvent): void => {
+    // Keys from the relation picker's portal bubble here through React; the
+    // picker owns those.
+    const target = event.target as HTMLElement
+    if (event.defaultPrevented || !event.currentTarget.contains(target)) return
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
       onClose()
-    } else if (
-      event.key === 'Enter' &&
-      !event.defaultPrevented &&
-      event.currentTarget.contains(event.target as Node)
-    ) {
+    } else if (event.key === 'Enter' && target.tagName !== 'BUTTON') {
+      // On a relation field, ↵ opens its picker (the button's own click).
       event.preventDefault()
       event.stopPropagation()
       void done()

@@ -135,6 +135,8 @@ export function MentionMenu({
     <div
       className={cn(
         'mention-menu z-50 min-w-[220px] max-w-[360px] max-h-[360px] overflow-y-auto',
+        // Two-line object and create rows read at the boards' width (D1).
+        (hasObjects || items.some((item) => item.kind === 'create')) && 'w-[340px]',
         'rounded-md border bg-popover text-popover-foreground text-[13px] leading-4',
         'shadow-[var(--shadow-card-hover)] animate-in fade-in-0 zoom-in-95'
       )}

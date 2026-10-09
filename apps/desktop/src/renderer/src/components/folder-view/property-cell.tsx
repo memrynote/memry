@@ -45,6 +45,8 @@ import { propertiesService } from '@/services/properties-service'
 import type { RelationKind, ResolvedRelationRef } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
 import { useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { ObjectAvatar, TagGlyph } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { useTabs } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
 import { ProjectIcon } from '@/components/tasks/project-icon'
@@ -91,6 +93,10 @@ interface TitleCellProps {
   title: string
   /** Emoji icon (optional) */
   emoji?: string | null
+  /** The row's note id: an object row draws its tag's avatar or icon. */
+  noteId?: string
+  /** A child tag the row reaches a tag table through ("employee" under Person). */
+  viaTag?: string
   /** Click handler (opens note) */
   onClick?: () => void
   /** Query to highlight in title */
@@ -1007,6 +1013,25 @@ export const ProjectCell = memo(function ProjectCell({
 // Specialized Built-in Cells
 // ============================================================================
 
+/** An object row: initials avatar for person-like tags, else the tag's icon (B1, F1). */
+function ObjectRowIcon({
+  noteId,
+  title,
+  fallback
+}: {
+  noteId?: string
+  title: string
+  fallback: React.JSX.Element
+}): React.JSX.Element {
+  const identity = useOptionalObjectIdentity(noteId)
+  if (!identity) return fallback
+  return identity.avatar ? (
+    <ObjectAvatar look={identity} title={title} size={20} />
+  ) : (
+    <TagGlyph look={identity} className="size-4" />
+  )
+}
+
 /**
  * T049: Title cell - emoji + title, clickable
  * Single click opens note in permanent tab
@@ -1014,6 +1039,8 @@ export const ProjectCell = memo(function ProjectCell({
 export const TitleCell = memo(function TitleCell({
   title,
   emoji,
+  noteId,
+  viaTag,
   onClick,
   highlightQuery,
   className
@@ -1036,12 +1063,21 @@ export const TitleCell = memo(function TitleCell({
         {emoji ? (
           <NoteIconDisplay value={emoji} className="size-5 text-sm" />
         ) : (
-          <FileText className="size-5 text-muted-foreground" />
+          <ObjectRowIcon
+            noteId={noteId}
+            title={title}
+            fallback={<FileText className="size-5 text-muted-foreground" />}
+          />
         )}
       </span>
       <span className="truncate font-medium group-hover:underline">
         {highlightQuery ? highlightText(title, highlightQuery) : title}
       </span>
+      {viaTag && (
+        <span className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+          {viaTag}
+        </span>
+      )}
     </button>
   )
 })

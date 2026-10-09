@@ -1604,7 +1604,7 @@
       "removeFilter": "Filtreyi kaldır",
       "shown": "{shown} / {total}",
       "saveView": "Görünümü kaydet",
-      "mentionedMeta": "{count, plural, one {Metninde #{tag} geçen # not} other {Metninde #{tag} geçen # not}}",
+      "mentionedMeta": "{count, plural, one {Metninde '#'{tag} geçen # not} other {Metninde '#'{tag} geçen # not}}",
       "saveFailed": "Alan kaydedilemedi",
       "created": "{title} oluşturuldu"
     }

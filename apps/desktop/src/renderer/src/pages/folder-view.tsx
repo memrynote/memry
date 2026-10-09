@@ -144,10 +144,27 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   })
 
   const handleObjectCreated = useCallback(
-    (_id: string, title: string) => {
+    (id: string, title: string, open: boolean) => {
+      if (open) {
+        openTab(
+          {
+            type: 'note',
+            title,
+            icon: 'file-text',
+            path: `/notes/${id}`,
+            entityId: id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          },
+          { forceNew: true }
+        )
+        return
+      }
       toast.success(t('tagObjects.table.created', { title }))
     },
-    [t]
+    [openTab, t]
   )
 
   // Tag with fields: the filter a "Linked here" count opened this tab with

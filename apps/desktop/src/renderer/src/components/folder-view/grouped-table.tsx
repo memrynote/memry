@@ -13,8 +13,11 @@
  */
 
 import { FieldPropertyCell } from './field-property-cell'
-import { isRelationValue } from '@memry/contracts/relation-uri'
-import { GroupValueTitle, NewInGroupButton } from '@/features/tag-fields/tag-table'
+import {
+  GroupValueTitle,
+  NewInGroupButton,
+  relationGroupUris
+} from '@/features/tag-fields/tag-table'
 import { useMemo, useCallback, useState, useRef, memo } from 'react'
 import {
   useReactTable,
@@ -470,6 +473,8 @@ export function GroupedTable({
         <TitleCell
           title={note.title}
           emoji={note.emoji}
+          noteId={note.kind === 'task' || note.kind === 'inbox' ? undefined : note.id}
+          viaTag={note.viaTag}
           onClick={() => onNoteOpen?.(note.id)}
           highlightQuery={highlightQuery}
         />
@@ -1385,6 +1390,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
   const { t: tPhaseF } = useT('notes')
   const isExpanded = row.getIsExpanded()
   const groupValue = row.groupingValue
+  const groupUris = relationGroupUris(groupValue)
   const subRows = row.subRows
   const count = subRows.length
 
@@ -1462,8 +1468,8 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
           {getColumnLabel(groupByProperty)}:
         </span>
-        {isRelationValue(groupValue) && groupValue.length > 0 ? (
-          <GroupValueTitle value={groupValue} />
+        {groupUris ? (
+          <GroupValueTitle uris={groupUris} />
         ) : (
           <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
         )}

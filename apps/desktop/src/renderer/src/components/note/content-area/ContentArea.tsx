@@ -796,7 +796,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Hook #4: Tag suggestions + inline plugin
   const { onTagClick: onInlineObjectTagClick, overlay: inlineTagObjectOverlay } =
-    useInlineTagObject(editor, editorContainerRef, runSideEffects && !review ? noteId : undefined)
+    useInlineTagObject(editor, editorContainerRef, runSideEffects ? noteId : undefined)
   const { handleTagSuggestionSelect } = useTagSuggestions({
     editor,
     editorContainerRef,
@@ -1177,9 +1177,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onInsertDate: insertDatePill,
     editorContainerRef,
     canvasesEnabled: isFeatureEnabled('spatialCanvas'),
-    // Creating notes from the text: off in the template editor (no side
-    // effects) and in agent review.
-    onCreate: runSideEffects && !review ? openMentionCreate : undefined
+    // Creating notes from the text: off where this editor runs no side
+    // effects (template editor, agent review, a sibling editor of the note).
+    onCreate: runSideEffects ? openMentionCreate : undefined
   })
   const MentionSuggestionMenu = useCallback(
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {

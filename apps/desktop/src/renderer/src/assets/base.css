@@ -3887,7 +3887,8 @@ del.bn-inline-content {
   inline-size: 18px;
   block-size: 18px;
   margin-inline-end: 5px;
-  vertical-align: -4px;
+  vertical-align: middle;
+  translate: 0 -1px;
   border-radius: 5px;
   font-size: 8px;
   font-weight: 600;

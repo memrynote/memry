@@ -439,6 +439,8 @@ export function FolderTableView({
         <TitleCell
           title={note.title}
           emoji={note.emoji}
+          noteId={note.kind === 'task' || note.kind === 'inbox' ? undefined : note.id}
+          viaTag={note.viaTag}
           onClick={() => onNoteOpen?.(note.id)}
           highlightQuery={highlightQuery}
         />

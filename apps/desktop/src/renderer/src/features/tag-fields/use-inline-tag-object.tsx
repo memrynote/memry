@@ -22,6 +22,7 @@ interface PopoverState {
 const ACTIONS = ['make', 'open', 'remove'] as const
 type Action = (typeof ACTIONS)[number]
 const ACTIVE_CLASS = 'inline-hash-tag--active'
+const POPOVER_WIDTH = 330
 
 /**
  * C3: an inline #tag of a tag with fields is a label. Clicking it offers
@@ -59,7 +60,12 @@ export function useInlineTagObject(
       update({
         tag: resolved.key,
         pill,
-        position: { x: pillRect.left - rect.left, y: pillRect.bottom - rect.top + 6 },
+        // Kept inside the editor column: a chip near the end of a line would
+        // push the popover past the pane's edge.
+        position: {
+          x: Math.max(0, Math.min(pillRect.left - rect.left, rect.width - POPOVER_WIDTH)),
+          y: pillRect.bottom - rect.top + 6
+        },
         selectedIndex: 0
       })
       return true

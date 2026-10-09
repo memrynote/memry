@@ -1808,7 +1808,7 @@
       "removeFilter": "Remove filter",
       "shown": "{shown} of {total}",
       "saveView": "Save view",
-      "mentionedMeta": "{count, plural, one {# note with #{tag} in its text} other {# notes with #{tag} in their text}}",
+      "mentionedMeta": "{count, plural, one {# note with '#'{tag} in its text} other {# notes with '#'{tag} in their text}}",
       "saveFailed": "Could not save the field",
       "created": "Created {title}"
     }

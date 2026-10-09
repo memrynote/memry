@@ -5,7 +5,7 @@ import { useT } from '@memry/i18n/renderer'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import type { FilterExpression } from '@memry/contracts/folder-view-api'
 import type { TaskFieldValue } from '@memry/contracts/tasks-api'
-import { isRelationValue } from '@memry/contracts/relation-uri'
+import { isRelationValue, parseRelationUri } from '@memry/contracts/relation-uri'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -27,8 +27,11 @@ export interface TagTableValue {
   relationTargetOf(columnId: string): string | null
   /** Task rows edit only the tag's fields, through tasks:update. */
   isFieldColumn(columnId: string): boolean
-  /** "+ New {tag} in {group}": creates the object with the group's value prefilled. */
-  createInGroup(property: string, value: unknown): void
+  /**
+   * "+ New {tag} in {group}": creates the object with the group's value
+   * prefilled; with ⌘ held it also opens in a new tab.
+   */
+  createInGroup(property: string, value: unknown, open: boolean): void
 }
 
 const TagTableContext = createContext<TagTableValue | null>(null)
@@ -52,14 +55,14 @@ export function TagTableProvider({
       tag,
       relationTargetOf: (columnId) => byName.get(columnId)?.relation?.target ?? null,
       isFieldColumn: (columnId) => byName.has(columnId),
-      createInGroup: (property, groupValue) => {
+      createInGroup: (property, groupValue, open) => {
         const title = t('tagObjects.table.untitled', { tag: tag.name })
         const properties =
           groupValue === null || groupValue === undefined || groupValue === ''
             ? undefined
             : { [property]: groupValue }
         createObject({ title, tag: tag.key, properties })
-          .then((created) => onCreated(created.id, created.title, false))
+          .then((created) => onCreated(created.id, created.title, open))
           .catch((error: unknown) =>
             toast.error(extractErrorMessage(error, t('tagObjects.create.failed')))
           )
@@ -137,10 +140,19 @@ export function RelationPickerCell({
   )
 }
 
+/**
+ * The relation URIs a group stands for. The grouped table keys a group by the
+ * stringified cell, so an array of URIs arrives comma-joined.
+ */
+export function relationGroupUris(value: unknown): string[] | null {
+  const parts = typeof value === 'string' ? value.split(',') : isRelationValue(value) ? value : null
+  if (!parts || parts.length === 0) return null
+  return parts.every((part) => parseRelationUri(part) !== null) ? parts : null
+}
+
 /** A group title: relation values read as their objects, not as URIs. */
-export function GroupValueTitle({ value }: { value: unknown }): React.JSX.Element | null {
-  if (!isRelationValue(value) || value.length === 0) return null
-  return <RelationTitles uris={value} />
+export function GroupValueTitle({ uris }: { uris: string[] }): React.JSX.Element {
+  return <RelationTitles uris={uris} />
 }
 
 /** "+ New {tag} in {group}" on a group header of a tag table. */
@@ -173,7 +185,11 @@ function NewInGroup({
       data-testid="new-in-group"
       onClick={(event) => {
         event.stopPropagation()
-        table.createInGroup(property, value)
+        table.createInGroup(
+          property,
+          relationGroupUris(value) ?? value,
+          event.metaKey || event.ctrlKey
+        )
       }}
       className="ms-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
     >
@@ -186,7 +202,7 @@ function NewInGroup({
 }
 
 function useGroupLabel(value: unknown): string | null {
-  const uris = isRelationValue(value) ? value : null
+  const uris = relationGroupUris(value)
   const refs = useResolvedRefs(uris ?? [])
   if (uris) return refs.map((ref) => ref.title).join(', ') || null
   if (value === null || value === undefined || value === '') return null
