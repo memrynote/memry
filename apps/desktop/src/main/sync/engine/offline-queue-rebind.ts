@@ -42,9 +42,12 @@ const reportedStuck = new Set<string>()
  * - settings rebind their field clocks and re-queue their current state.
  *
  * When the service queues nothing fresh (its row is gone or `shouldSkip`
- * rejects it, or the type has no local adapter), the `_offline` rows stay
- * queued and are logged once per session. The push holds them back
- * (`PushCoordinator.holdBackOfflineClocks`), so they never reach the wire.
+ * rejects it), nothing is left to push: the `_offline` create/update rows are
+ * dropped and logged, so the queue drains (#2912). When the type has no local
+ * adapter the rows stay queued, logged once per session, and the push holds
+ * them back (`PushCoordinator.holdBackOfflineClocks`) so they never reach the
+ * wire. Deletes are never dropped. The caller only runs this once the device
+ * row matches the signing keys, so a row dropped here could not be rebound.
  *
  * Returns the number of queue rows rebound.
  */
@@ -119,7 +122,13 @@ export function rebindQueuedOfflineEdits(
             (staleIds.has(row.id) || !before.has(row.id)) && !row.payload.includes('"_offline"')
         )
       if (!fresh) {
-        reportStuck(key, 'Queued offline edit left queued; its service queued nothing fresh')
+        db.delete(syncQueue)
+          .where(inArray(syncQueue.id, [...staleIds]))
+          .run()
+        log.warn('Dropped queued offline edit; its item is gone or no longer syncs', {
+          item: key,
+          rows: staleIds.size
+        })
         return 0
       }
       const leftover = stale.filter((row) => row.id !== fresh.id)

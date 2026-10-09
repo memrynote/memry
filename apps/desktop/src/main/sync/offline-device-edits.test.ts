@@ -221,6 +221,26 @@ describe('edits made while the device id is missing (#2897)', () => {
     expect(s.deps.queue.getSize()).toBe(0)
   })
 
+  it('drops a queued offline edit whose item is gone, so the queue drains (#2912)', async () => {
+    const s = await sessionWithOfflineEdits()
+    // #given — the tag row is gone (removed without queueing its own delete)
+    s.db.delete(tagDefinitions).where(eq(tagDefinitions.name, 'work')).run()
+
+    s.registerDevice()
+    s.getSigningKeys.mockResolvedValue(keys('device-1'))
+    await s.engine.push()
+
+    // #then — the other two go out, the orphaned update is dropped, nothing is pending
+    expect(
+      s
+        .sentBodies()
+        .map(({ type }) => type)
+        .sort()
+    ).toEqual(['settings', 'task'])
+    expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
   describe('the push holds back _offline clocks when the rebind cannot run', () => {
     it('while the signing keys name a device the device row does not (#2866 repair window)', async () => {
       const s = await sessionWithOfflineEdits()
