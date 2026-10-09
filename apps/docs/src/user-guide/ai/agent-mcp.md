@@ -293,11 +293,12 @@ worked and every chat turn repeats it:
   probe saw the model call tools the native way. Only the names
   of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
-The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
-up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
-API key re-checks immediately, and an unreachable provider is never remembered — start your local
-server and the next message picks it up. If you swap the model behind an unchanged configuration,
-press **Probe Tools** in Settings to force a fresh check.
+The probe costs a couple of model generations, so memrynote runs it once and keeps the verdict until
+you change the preset, base URL, model, or API key, or restart the app. An unreachable provider is
+never remembered: start your local server and the next message picks it up. A temporary provider
+error during the tool check (network failure, timeout, rate limit, or a 5xx server error) does not
+turn tools off. That message keeps its tools, and the next message checks again. If you swap the
+model behind an unchanged configuration, press **Probe Tools** in Settings to force a fresh check.
 
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
