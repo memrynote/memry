@@ -220,7 +220,8 @@ describe('Composer', () => {
       baseUrl: 'http://localhost:11434/v1',
       model: '',
       apiKeyConfigured: false,
-      allowNonLoopback: false
+      allowNonLoopback: false,
+      thinking: 'default'
     })
     vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: [] })
   })
@@ -749,6 +750,51 @@ describe('Composer', () => {
       text: 'summarize offline',
       attachments: [],
       backendOptions: { backend: 'local_openai_compatible', toolsEnabled: true, model: 'llama3' }
+    })
+  })
+
+  it('offers Default, High and Max depth for an OpenAI-compatible endpoint and sends the pick', async () => {
+    vi.mocked(window.api.agent.getLocalProviderSettings).mockResolvedValue({
+      preset: 'custom',
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      apiKeyConfigured: true,
+      allowNonLoopback: true,
+      thinking: 'default'
+    })
+    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: ['deepseek-chat'] })
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'deepseek-chat' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent(
+        'deepseek-chat · Default depth'
+      )
+    )
+
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
+    expect(await screen.findByRole('menuitem', { name: 'Default' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'High' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Low' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Max' }))
+    closeMenus()
+
+    await setPromptText('plan my week')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'plan my week',
+      attachments: [],
+      backendOptions: {
+        backend: 'local_openai_compatible',
+        toolsEnabled: true,
+        reasoningEffort: 'max',
+        model: 'deepseek-chat'
+      }
     })
   })
 

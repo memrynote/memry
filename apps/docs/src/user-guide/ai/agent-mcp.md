@@ -250,7 +250,9 @@ reasoning effort. The microphone dictates a prompt by voice, and the arrow sends
 
 The provider is pinned per conversation; changing it after messages exist updates the conversation
 and records the switch in the chat history. Claude and Codex expose prompt-time reasoning effort
-settings, with provider-specific settings shown only for the active provider. The permissions menu
+settings, with provider-specific settings shown only for the active provider. The built-in model
+connection offers **Default**, **High**, and **Max** depth for any preset except Ollama; see
+[Provider Setup](/user-guide/ai/provider-setup#agent-chat-built-in-model). The permissions menu
 starts from your default Agent Permissions setting, then lets you send a single turn as **Vault
 only** or **Computer access**, and optionally allow web search for that turn.
 

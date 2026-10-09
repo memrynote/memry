@@ -33,7 +33,8 @@ describe('LocalOpenAICompatibleBackend provider errors', () => {
         baseUrl: 'http://127.0.0.1:18631/v1',
         model: MODEL,
         apiKeyConfigured: false,
-        allowNonLoopback: false
+        allowNonLoopback: false,
+        thinking: 'default'
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never

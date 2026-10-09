@@ -2295,6 +2295,12 @@
         "label": "Model",
         "description": "Pick a returned model or enter one manually."
       },
+      "thinking": {
+        "label": "Thinking",
+        "description": "Off asks DeepSeek-style models to skip thinking for faster, cheaper answers.",
+        "default": "Default",
+        "off": "Off"
+      },
       "apiKey": {
         "label": "API key",
         "description": "Optional credential stored in the OS keychain.",

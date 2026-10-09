@@ -350,6 +350,14 @@
           "extraHigh": "Extra High"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Default",
+          "default": "Default depth",
+          "high": "High",
+          "max": "Max"
+        }
+      },
       "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
       "permissions": {
         "label": "Permissions",

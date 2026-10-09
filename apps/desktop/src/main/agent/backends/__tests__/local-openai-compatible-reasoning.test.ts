@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type {
+  AgentBackendOptions,
   AgentLocalProviderSettings,
   AgentLocalThinking,
   LocalReasoningEffort
 } from '@memry/contracts/ipc-agent'
 
+import type { TurnWriteGrant } from '../../turn-grants'
 import { LocalOpenAICompatibleBackend } from '../local-openai-compatible-backend'
 
 function settings(thinking: AgentLocalThinking): AgentLocalProviderSettings {
@@ -45,14 +47,17 @@ async function recordedBody(input: {
     getApiKey: async () => 'sk-test',
     toolBridge: { execute: vi.fn() } as never
   })
+  const options: AgentBackendOptions = {
+    backend: 'local_openai_compatible',
+    toolsEnabled: false,
+    ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {})
+  }
   const run = await backend.runTurn({
     conversationId: 'conversation-1',
+    writeGrant: 'turn-grant-1' as TurnWriteGrant,
+    windowId: 'window-1',
     prompt: 'User: hi',
-    options: {
-      backend: 'local_openai_compatible',
-      toolsEnabled: false,
-      ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {})
-    }
+    options
   })
   for await (const event of run.events) void event
   expect(await run.waitExit()).toBe(0)

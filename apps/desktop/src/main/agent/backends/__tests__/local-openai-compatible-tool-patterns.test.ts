@@ -122,7 +122,8 @@ async function runTagsTurn(pattern: ProviderPattern): Promise<{
       baseUrl: 'https://provider.test/v1',
       model: MODEL,
       apiKeyConfigured: true,
-      allowNonLoopback: true
+      allowNonLoopback: true,
+      thinking: 'default'
     }),
     getApiKey: async () => 'sk-test',
     toolBridge: { execute } as never

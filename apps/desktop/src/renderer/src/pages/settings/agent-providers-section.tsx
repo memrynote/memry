@@ -4,6 +4,7 @@ import type {
   AgentBackendStatus,
   AgentCliBackendId,
   AgentLocalProviderPreset,
+  AgentLocalThinking,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
   AgentPreferences,
@@ -137,6 +138,7 @@ export function AgentProvidersSection({
             baseUrl: settings.baseUrl,
             model: settings.model,
             allowNonLoopback: settings.allowNonLoopback,
+            thinking: settings.thinking,
             apiKey: apiKey || undefined
           })
           setSettings(saved)
@@ -450,6 +452,22 @@ export function AgentProvidersSection({
                   className="h-7 w-48 font-mono text-xs"
                 />
               </FieldRow>
+              {settings.preset !== 'ollama' && (
+                <FieldRow
+                  label={t('agentProviders.fields.thinking.label')}
+                  hint={t('agentProviders.fields.thinking.description')}
+                >
+                  <SegmentedControl<AgentLocalThinking>
+                    label={t('agentProviders.fields.thinking.label')}
+                    value={settings.thinking}
+                    onChange={(value) => updateSetting('thinking', value)}
+                    options={[
+                      { value: 'default', label: t('agentProviders.fields.thinking.default') },
+                      { value: 'off', label: t('agentProviders.fields.thinking.off') }
+                    ]}
+                  />
+                </FieldRow>
+              )}
               <FieldRow label={t('agentProviders.status.label')}>
                 {busy === 'save' || busy === 'test' ? (
                   <span className="text-xs/4 text-muted-foreground">

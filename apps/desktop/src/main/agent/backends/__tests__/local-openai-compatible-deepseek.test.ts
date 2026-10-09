@@ -121,7 +121,8 @@ describe('LocalOpenAICompatibleBackend against a DeepSeek-style provider', () =>
         baseUrl: 'https://deepseek.test/v1',
         model: MODEL,
         apiKeyConfigured: true,
-        allowNonLoopback: true
+        allowNonLoopback: true,
+        thinking: 'default'
       }),
       getApiKey: async () => 'sk-test',
       toolBridge: { execute } as never
