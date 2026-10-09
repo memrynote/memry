@@ -504,6 +504,21 @@ describe('vault read-only locks (#2606)', () => {
   )
 
   it.skipIf(isWindows)(
+    'an attachment added after the attachments folder is first created is read-only',
+    async () => {
+      addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+
+      const added = path.join(vault, 'attachments/note-a/late.png')
+      fs.mkdirSync(path.dirname(added), { recursive: true })
+      fs.writeFileSync(added, 'bytes')
+      fs.chmodSync(added, 0o644)
+
+      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
+    }
+  )
+
+  it.skipIf(isWindows)(
     'unlocking a file replaced while locked gives it its own mode, not the replaced one',
     async () => {
       const seenLive = path.join(vault, 'shared/live.pdf')
