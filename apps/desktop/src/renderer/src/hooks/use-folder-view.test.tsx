@@ -651,6 +651,20 @@ describe('useFolderView', () => {
     await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
   })
 
+  it('rereads the views and columns on tags-changed, so a renamed field heads its column', async () => {
+    const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(window.api.folderView.getViews).toHaveBeenCalledTimes(1)
+    expect(window.api.folderView.getAvailableProperties).toHaveBeenCalledTimes(1)
+
+    act(() => emitTagsChanged())
+
+    await waitFor(() => expect(window.api.folderView.getViews).toHaveBeenCalledTimes(2))
+    expect(window.api.folderView.getAvailableProperties).toHaveBeenCalledTimes(2)
+  })
+
   it('does not subscribe to tag events under folder scope', async () => {
     renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()

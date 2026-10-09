@@ -1196,7 +1196,11 @@ export function useFolderView({
 
   useEffect(() => {
     if (scope.kind !== 'tag') return
+    // A tag's schema edits (a renamed field renames its view columns) arrive
+    // on this signal too, so the views and columns are reread with the rows.
     const unsubscribe = onTagsChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) })
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
     })
     return unsubscribe
