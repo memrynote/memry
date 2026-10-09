@@ -775,6 +775,19 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' },
   { name: 'comment inside bold (BBF-52)', markdown: '**a <!-- b [[Alpha]] --> c**' },
   { name: 'obsidian comment inside italic (BBF-52)', markdown: '*a %% b %% c*' },
+  { name: 'italic nested in bold (BBF-62)', markdown: '**alpha *x y* omega**' },
+  { name: 'bold nested in italic (BBF-62)', markdown: '*alpha **x** omega*' },
+  {
+    // Code holds no other mark, so the bold covers only ` x `.
+    name: 'bold run past a code span (BBF-62)',
+    markdown: '**`a` x `c`**',
+    canonical: '`a` **x** `c`'
+  },
+  { name: 'bold run past a link (BBF-62)', markdown: '**[a](https://example.com) x c**' },
+  {
+    name: 'comment after a link inside bold (BBF-62)',
+    markdown: '**[l](https://example.com) <!-- b --> c**'
+  },
   { name: 'obsidian comment inside a line', markdown: 'Tail %% [[Topic]] secret %% end.' },
   { name: 'obsidian block comment', markdown: '%%\nblock [[Other]] secret\n%%\n\nText' },
   { name: 'obsidian comment in a code span stays code', markdown: 'Use `%% x %%` here.' },
