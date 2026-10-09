@@ -25,6 +25,8 @@ vi.mock('fs/promises', () => ({
   readFile
 }))
 
+vi.mock('../../lib/paths', () => ({ refuseOutsideVault: async () => undefined }))
+
 vi.mock('@main/database/queries/settings', () => ({
   getSetting,
   setSetting

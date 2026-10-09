@@ -160,11 +160,8 @@ import {
 } from './shutdown-sequence'
 import { flushActivityLog } from './vault/activity-log'
 import { getValidAccessToken } from './sync/token-manager'
-import { getNoteCacheById } from '@main/database/queries/notes'
-import { closeAllDatabases, getIndexDatabase } from './database/client'
-import { toAbsolutePath, createSnapshot } from './vault/notes'
-import { safeRead } from './vault/file-ops'
-import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
+import { closeAllDatabases } from './database/client'
+import { createCloseSnapshot } from './vault/notes'
 import {
   SettingsChannels,
   InboxChannels,
@@ -2290,18 +2287,11 @@ async function createCloseSnapshots(): Promise<void> {
     const openNoteIds = provider.getOpenNoteIds()
     if (openNoteIds.length === 0) return
 
-    const indexDb = getIndexDatabase()
     let created = 0
 
     for (const noteId of openNoteIds) {
       try {
-        const cached = getNoteCacheById(indexDb, noteId)
-        if (!cached) continue
-        const absolutePath = toAbsolutePath(cached.path)
-        const fileContent = await safeRead(absolutePath)
-        if (!fileContent) continue
-        const result = createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE)
-        if (result) created++
+        if (await createCloseSnapshot(noteId)) created++
       } catch (err) {
         shutdownLog.error('close snapshot failed', { noteId, error: err })
       }

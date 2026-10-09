@@ -636,7 +636,9 @@ outside the vault does not open. The error names the file. Memry does not save o
 not index it, and sync sends none of its text. Moving blocks into it or restoring one of its
 versions fails with the same error. Renaming another note does not rewrite the links in it, a tag
 rename, merge or delete skips it, its backlink excerpts stay empty, and attachments it might
-reference are kept. The link stays as you made it. A symlink to another file inside the vault works
+reference are kept. Deleting a task that came from it leaves the file alone, quitting keeps no
+version of it, and a lock on it keeps no copy of its text. Semantic search and its outgoing links do
+not read it either. The link stays as you made it. A symlink to another file inside the vault works
 as usual.
 
 ## Word Count

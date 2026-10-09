@@ -669,6 +669,45 @@ describe('search projector', () => {
     expect(searchHeron()).toEqual([])
   })
 
+  describe('a note file linked outside the vault (#2969)', () => {
+    let outside: string
+
+    beforeEach(() => {
+      seedMarkdownNote('note-1', 'notes/searchable.md', 'Vault body', ['alpha'])
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-search-outside-'))
+      const secret = path.join(outside, 'private.md')
+      fs.writeFileSync(secret, 'Outside quokkasecret body\n')
+      const notePath = path.join(vaultDir, 'notes/searchable.md')
+      fs.rmSync(notePath)
+      fs.symlinkSync(secret, notePath)
+    })
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true })
+    })
+
+    const indexedSecret = (): Array<{ id: string }> =>
+      indexDb.db.all(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'quokkasecret'`)
+
+    it('rebuild leaves its text out of the index', async () => {
+      await createSearchProjector(() => vaultDir).rebuild()
+      expect(indexedSecret()).toEqual([])
+    })
+
+    it('reconcile leaves its text out of the index', async () => {
+      await createSearchProjector(() => vaultDir).reconcile()
+      expect(indexedSecret()).toEqual([])
+    })
+
+    it('attachment text leaves its text out of the index', async () => {
+      await createSearchProjector(() => vaultDir).project({
+        type: 'note.text-extracted',
+        noteId: 'note-1'
+      })
+      expect(indexedSecret()).toEqual([])
+    })
+  })
+
   it('finds a note by the text read out of an image in its attachments folder', async () => {
     seedMarkdownNote('note-1', 'notes/searchable.md', 'Body about the meeting', ['alpha'])
     indexDb.db.run(sql`
