@@ -126,13 +126,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     : Promise.resolve()
 
   const promptContext = buildPromptContext()
+  const toolsAvailable = (await backend.turnHasTools?.(input.backendOptions)) ?? true
   const prompt = assemblePrompt({
     history,
     userMessage: input.text,
     attachments: input.attachments,
     permissions,
     backend: input.backendOptions.backend,
-    context: promptContext
+    context: promptContext,
+    toolsAvailable
   })
 
   let compactedPrompt = prompt
@@ -164,7 +166,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         attachments: input.attachments,
         permissions,
         backend: input.backendOptions.backend,
-        context: promptContext
+        context: promptContext,
+        toolsAvailable
       })
     }
   } catch (error) {
