@@ -71,7 +71,10 @@ into a locked folder, a locked note renamed, a locked file replaced from outside
 added to a locked note's attachments folder from outside Memry or by sync are read-only again as
 soon as Memry sees the change. Unlocking gives each file back the permissions it had before the
 lock. A file replaced from outside while locked, even by one that is already read-only, keeps the
-permissions of the new file when unlocked, never those of the file it replaced.
+permissions of the new file when unlocked, never those of the file it replaced. A vault copied or
+restored to another disk together with its `.memry` folder is not treated as replaced: when every
+locked file in it is still exactly as the lock left it, unlocking gives each one its old permissions
+back.
 
 If a locked markdown note is changed or deleted anyway, Memry keeps the changed text as a version
 in the note's [version history](./version-history), writes the locked text back, and tells you which

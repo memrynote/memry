@@ -25,7 +25,7 @@ import { getStatus } from '../vault/index'
 import { createSnapshot } from '../vault/notes-versions'
 import { getAttachmentsRoot, getNoteAttachmentsDir } from '../vault/attachments'
 import { watchLockedAttachments } from './attachment-watch'
-import { protectFileAsFound, releaseLockedFile } from './files'
+import { adoptCopiedVaultIdentities, protectFileAsFound, releaseLockedFile } from './files'
 import {
   getVaultLockState,
   hasAnyVaultLock,
@@ -264,6 +264,7 @@ export async function restoreLockedNoteFile(
 export async function checkLockedFilesAtOpen(): Promise<void> {
   const root = vaultPath()
   if (!root || !isDatabaseInitialized()) return
+  await adoptCopiedVaultIdentities(root)
   for (const noteId of listBaselineNoteIds(getDatabase())) {
     const relative = notePath(noteId)
     if (relative === null || !isNoteLocked(noteId, relative)) continue
