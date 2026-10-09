@@ -21,7 +21,8 @@ import {
   relationLinksOf,
   type GraphRelationLink
 } from '@/lib/graph-edits'
-import { isValidTagName, normalizeTagName } from '@/lib/tag-utils'
+import { isInlineTagName } from '@memry/shared/inline-tags'
+import { normalizeTagName } from '@/lib/tag-utils'
 import { PINNED_ATTRIBUTE } from '@/lib/graph-physics'
 
 export interface ContextMenuState {
@@ -431,7 +432,7 @@ function TagPicker({
   const { t } = useT('graph')
   const [query, setQuery] = useState('')
   const typed = normalizeTagName(query)
-  const typedValid = isValidTagName(typed) && !hasTag(nodeTags, typed)
+  const typedValid = isInlineTagName(typed) && !hasTag(nodeTags, typed)
 
   // Every tag already in the vault graph, so the common case needs no typing.
   const suggestions = useMemo(() => {

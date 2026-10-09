@@ -175,3 +175,42 @@ export const PropertyDefinitionsFileSchema = z.object({
 })
 
 export type PropertyDefinitionsFileData = z.infer<typeof PropertyDefinitionsFileSchema>
+
+export interface ParsedPropertyDefinitionEntries {
+  valid: PropertyDefinitionsFileData['properties']
+  /** Entries this build cannot parse, to be written back verbatim. */
+  unparsed: Map<string, unknown>
+  /** True when a `relation` entry was dropped and the file needs a rewrite. */
+  healed: boolean
+}
+
+/**
+ * The `.memry/properties.md` `properties` map, parsed one entry at a time, or
+ * null when the map itself is not an object. An entry that fails the schema is
+ * kept verbatim in `unparsed` so one bad or newer definition never costs the
+ * vault the rest. A `relation` entry is dropped instead (`healed`): older
+ * builds wrote synced relations here, and older builds reject the whole file
+ * on one. Desktop and the CLI both rewrite the file through this parser.
+ */
+export function parsePropertyDefinitionEntries(
+  properties: unknown
+): ParsedPropertyDefinitionEntries | null {
+  const result: ParsedPropertyDefinitionEntries = {
+    valid: {},
+    unparsed: new Map(),
+    healed: false
+  }
+  if (properties === undefined || properties === null) return result
+  if (typeof properties !== 'object' || Array.isArray(properties)) return null
+  for (const [name, entry] of Object.entries(properties)) {
+    const type = (entry as { type?: PropertyType } | null)?.type
+    if (type && !isPersistableDefinitionType(type)) {
+      result.healed = true
+      continue
+    }
+    const parsed = PropertyDefinitionSchema.safeParse(entry)
+    if (parsed.success) result.valid[name] = parsed.data
+    else result.unparsed.set(name, entry)
+  }
+  return result
+}

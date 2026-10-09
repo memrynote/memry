@@ -12,7 +12,8 @@ import React, { useMemo, useState } from 'react'
 import { Command } from 'cmdk'
 import { useT } from '@memry/i18n/renderer'
 import { Hash, Tag, X } from '@/lib/icons'
-import { isValidTagName, normalizeTagName, sanitizeTagInput } from '@/lib/tag-utils'
+import { isInlineTagName } from '@memry/shared/inline-tags'
+import { normalizeTagName, sanitizeTagInput } from '@/lib/tag-utils'
 import { bindingLabel, sameBinding, type FrameBinding } from './canvas-frame-binding'
 import { useFrameBindingChoices } from './use-frame-binding-choices'
 
@@ -53,7 +54,7 @@ export function CanvasFrameBindingDialog({
 
   const typedTag = useMemo(() => {
     const candidate = normalizeTagName(sanitizeTagInput(query.trim()))
-    if (!isValidTagName(candidate)) return null
+    if (!isInlineTagName(candidate)) return null
     return tags.some((tag) => foldTag(tag) === foldTag(candidate)) ? null : candidate
   }, [query, tags])
 
