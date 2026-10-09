@@ -69,8 +69,9 @@ export function replaceMarkdownComments(
 /**
  * `<!--` is CommonMark raw HTML: it ends at the first `-->`, code or not, and
  * runs to the end of the note when none follows. An inline `<!--`, with text
- * before it on its line, sits in a paragraph that a fence interrupts, so when
- * a fence comes before its `-->` it is text (BBF-46). `%%` is Obsidian prose
+ * before it on its line or on the line where an earlier comment closes, sits
+ * in a paragraph that a fence interrupts, so when a fence comes before its
+ * `-->` it is text (BBF-46, BBF-57). `%%` is Obsidian prose
  * syntax: on a later line only a `%%` outside code closes it, and with no
  * such partner it is text.
  */
@@ -151,7 +152,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           i = end
           continue
         }
-        const inline = !closesComment && line.slice(0, at).trim() !== ''
+        const inline = closesComment || line.slice(0, at).trim() !== ''
         const later = findLaterClose(lines, index, form, inline)
         if (later === 'text' || (form.proseOnly && !later)) {
           result += line.slice(i, at + form.open.length)
