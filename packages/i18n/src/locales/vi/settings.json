@@ -2220,7 +2220,8 @@
         "label": "Quyền truy cập mặc định",
         "description": "Đặt chế độ truy cập ban đầu cho các lượt tác nhân mới.",
         "vaultOnly": "Chỉ trong kho",
-        "computerAccess": "Truy cập máy tính"
+        "computerAccess": "Truy cập máy tính",
+        "builtInNote": "Kết nối mô hình tích hợp luôn chỉ dùng công cụ kho."
       },
       "confirm": {
         "label": "Xác nhận hành động",

@@ -2220,7 +2220,8 @@
         "label": "Acceso predeterminado",
         "description": "Define el modo de acceso inicial de los nuevos turnos del agente.",
         "vaultOnly": "Solo la bóveda",
-        "computerAccess": "Acceso al equipo"
+        "computerAccess": "Acceso al equipo",
+        "builtInNote": "La conexión de modelo integrada siempre usa solo herramientas de la bóveda."
       },
       "confirm": {
         "label": "Confirmar acciones",

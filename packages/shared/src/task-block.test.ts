@@ -222,6 +222,7 @@ describe('serializeTaskBlockTree', () => {
         '  - [ ] E {task:e}'
       ].join('\n')
     )
+    expect([...scanTaskCheckboxStates(md).keys()]).toEqual(['a', 'b', 'c', 'd', 'e'])
   })
 
   it('writes a one-level subtask exactly as serializeTaskBlock does', () => {

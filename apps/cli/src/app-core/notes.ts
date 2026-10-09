@@ -34,8 +34,12 @@ import {
   writeMarkdownNote
 } from '@memry/app-core/markdown'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
-import { resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
-import { rewriteWikiLinksForRename } from '@memry/shared/rewrite-wiki-links'
+import {
+  noteLinkStem,
+  resolveWikiTarget as resolveTargetWith,
+  wikiPathStem
+} from '@memry/shared/wiki-target'
+import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 
 interface NoteMetadataRow {
   id: string
@@ -179,19 +183,19 @@ function saveMetadata(
   })
 }
 
-// Rename-time vault-wide wiki-link repair (#1711/#1720), mirroring the
-// desktop's rename-link-rewrite: wiki-links address notes by TITLE, so a
-// rename silently disconnects every inbound `[[Old Title]]` unless the stale
-// title is rewritten in every source body — the renamed note's own self-links
-// included. A source that fails to read is skipped: the rename itself already
+// Rename- and move-time vault-wide wiki-link repair (#1711/#1720), mirroring
+// the desktop's rename-link-rewrite: wiki-links address notes by title or by
+// path, so a rename or move silently disconnects every inbound `[[Old Title]]`
+// or `[[Folder/Old]]` unless it is rewritten in every source body — the
+// note's own self-links included. A source that fails to read is skipped: the rename itself already
 // happened, and repairing nine of ten links beats unwinding it over one
 // unreadable file.
-async function rewriteInboundLinksForRename(input: {
+async function rewriteInboundLinks(input: {
   vaultPath: string
   dataDb: DataDb
   renamedId: string
-  oldTitle: string
-  newTitle: string
+  from: WikiLinkNames
+  to: WikiLinkNames
 }): Promise<void> {
   const rows = [
     ...listNoteMetadata(input.dataDb, { limit: 10000 }),
@@ -211,10 +215,10 @@ async function rewriteInboundLinksForRename(input: {
       continue
     }
     const parsed = parseMarkdownNote(raw)
-    const rewritten = rewriteWikiLinksForRename(
+    const rewritten = rewriteWikiLinksToNote(
       parsed.content,
-      input.oldTitle,
-      input.newTitle,
+      input.from,
+      input.to,
       otherNoteWithTitleExists
     )
     if (rewritten === null) continue
@@ -236,9 +240,23 @@ async function rewriteInboundLinksForRename(input: {
   }
 }
 
+/**
+ * The note a wiki-link target names: by vault-root path when it holds a `/`
+ * (`Folder/Note`, case-insensitive), else by title. Mirrors desktop's
+ * `resolveNoteByTitle`.
+ */
 function metadataByTitle(db: DataDb, title: string): NoteMetadataRow | undefined {
   const rows = listNoteMetadata(db, { limit: 10000 })
+  const stem = wikiPathStem(title)?.toLowerCase()
+  const byPath =
+    stem === undefined
+      ? undefined
+      : rows.find((row) => {
+          const rowPath = row.path.toLowerCase()
+          return rowPath === stem || rowPath === `${stem}.md`
+        })
   return (
+    byPath ??
     rows.find((row) => row.title === title) ??
     rows.find((row) => row.title.toLowerCase() === title.toLowerCase())
   )
@@ -378,12 +396,12 @@ export function createNotesService({
         journalDate: row.journalDate
       })
       if (renamedFromTitle) {
-        await rewriteInboundLinksForRename({
+        await rewriteInboundLinks({
           vaultPath,
           dataDb,
           renamedId: row.id,
-          oldTitle: renamedFromTitle,
-          newTitle: nextTitle
+          from: { title: renamedFromTitle, pathStem: noteLinkStem(row.path) },
+          to: { title: nextTitle, pathStem: noteLinkStem(nextPath) }
         })
       }
       return readNote(vaultPath, {
@@ -442,6 +460,15 @@ export function createNotesService({
         modifiedAt: now,
         journalDate: row.journalDate
       })
+      if (nextPath !== row.path) {
+        await rewriteInboundLinks({
+          vaultPath,
+          dataDb,
+          renamedId: row.id,
+          from: { title: row.title, pathStem: noteLinkStem(row.path) },
+          to: { title: row.title, pathStem: noteLinkStem(nextPath) }
+        })
+      }
       return readNote(vaultPath, { ...row, path: nextPath, modifiedAt: now })
     },
 

@@ -169,7 +169,8 @@ export function analyzeTaskIntents(
   const walk = (
     list: TaskIntentBlock[],
     parentTaskBlock: TaskIntentBlock | null,
-    parentIsPlain = false
+    parentIsPlain = false,
+    underTask = false
   ): void => {
     for (const [index, b] of list.entries()) {
       if (isTaskBlock(b) && b.props?.taskId) {
@@ -189,10 +190,11 @@ export function analyzeTaskIntents(
           }
         }
 
-        // With nested subtasks off, only a top-level task parents: deeper
-        // checkboxes are not marked as subtask candidates of a subtask.
-        const passAsParent = options.nestedSubtasks || parentTaskBlock === null ? b : null
-        if (b.children?.length) walk(b.children, passAsParent)
+        // With nested subtasks off, only a task with no task above it parents.
+        // A task nested deeper (written by a newer build) must not pass itself
+        // down either, or its children would be re-parented to it in the DB.
+        const passAsParent = options.nestedSubtasks || !underTask ? b : null
+        if (b.children?.length) walk(b.children, passAsParent, false, true)
         continue
       }
 
@@ -257,7 +259,7 @@ export function analyzeTaskIntents(
         }
       }
 
-      if (b.children?.length) walk(b.children, null, isPlainCheckbox(b))
+      if (b.children?.length) walk(b.children, null, isPlainCheckbox(b), underTask)
     }
   }
 

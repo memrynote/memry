@@ -272,7 +272,7 @@ export function AgentProvidersSection({
       >
         <SettingRow
           label={t('agentProviders.v2.permissions.access')}
-          description={t('agentProviders.permissions.access.description')}
+          description={`${t('agentProviders.permissions.access.description')} ${t('agentProviders.permissions.access.builtInNote')}`}
         >
           <SegmentedControl<AgentAccessMode>
             label={t('agentProviders.v2.permissions.access')}

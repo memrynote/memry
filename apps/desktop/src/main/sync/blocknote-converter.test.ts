@@ -380,6 +380,34 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('  - [x] Child {task:c1}')
   })
 
+  // A tree four levels deep, as another editor or an older nested build may
+  // write it (#2869). Notes hold one level (MAX_NOTE_TASK_DEPTH), so it reads
+  // back flat under its top-level task, in order, with no line lost.
+  const DEEP_TASK_TREE = [
+    '- [ ] A {task:a}',
+    '  - [ ] B {task:b}',
+    '    - [ ] C {task:c}',
+    '      - [x] D {task:d}',
+    '    - [ ] E {task:e}',
+    '  - [ ] F {task:f}'
+  ].join('\n')
+  const DEEP_TASK_TREE_CAPPED = [
+    '- [ ] A {task:a}',
+    '  - [ ] B {task:b}',
+    '  - [ ] C {task:c}',
+    '  - [x] D {task:d}',
+    '  - [ ] E {task:e}',
+    '  - [ ] F {task:f}'
+  ].join('\n')
+
+  type TaskTreeBlock = { type: string; props: Record<string, unknown>; children: TaskTreeBlock[] }
+  const taskTree = (blocks: unknown[]): string[] =>
+    (blocks as TaskTreeBlock[]).flatMap((block) =>
+      block.type === 'taskBlock'
+        ? [`${block.props.taskId}<${block.props.parentTaskId || '-'}`, ...taskTree(block.children)]
+        : []
+    )
+
   it('writes an existing one-level task body back byte-identical', async () => {
     // #given a body as builds before nested subtasks wrote it
     const md = [
@@ -407,33 +435,71 @@ describe('blocknote-converter code block language', () => {
     expect(result?.trim()).toBe(md)
   })
 
+  it('parses a deep task tree flat under its top-level task, losing none', async () => {
+    // #given
+    const doc = new Y.Doc()
+    await markdownToYFragment(DEEP_TASK_TREE, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #then
+    expect(taskTree(blocks ?? [])).toEqual(['a<-', 'b<a', 'c<a', 'd<a', 'e<a', 'f<a'])
+  })
+
   it('writes subtasks below one level flat under their top-level task', async () => {
-    // #given a task tree three levels deep in the Y.Doc
-    const md = [
-      '- [ ] Parent {task:p1}',
-      '  - [ ] Child {task:c1}',
-      '    - [x] Grandchild {task:g1}',
-      '      - [ ] Great-grandchild {task:gg1}',
-      '  - [ ] Second child {task:c2}'
-    ].join('\n')
+    // #given a task tree four levels deep
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
 
     // #when
-    await markdownToYFragment(md, fragment)
+    await markdownToYFragment(DEEP_TASK_TREE, fragment)
     writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then every line is kept, one level deep, in order: released builds read no deeper
-    expect(result?.trim()).toBe(
-      [
-        '- [ ] Parent {task:p1}',
-        '  - [ ] Child {task:c1}',
-        '  - [x] Grandchild {task:g1}',
-        '  - [ ] Great-grandchild {task:gg1}',
-        '  - [ ] Second child {task:c2}'
-      ].join('\n')
-    )
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED)
+  })
+
+  it('keeps every line of a deep tree when a task inside it is renamed', async () => {
+    // #given the tree as the editor holds it, with B renamed
+    const source = new Y.Doc()
+    await markdownToYFragment(DEEP_TASK_TREE, source.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const blocks = (await yFragmentToBlocks(
+      source.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )) as unknown as TaskTreeBlock[]
+    blocks[0].children[0].props.title = 'B renamed'
+    const doc = new Y.Doc()
+    blocksToYFragment(blocks as unknown as Block[], doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED.replace('] B {', '] B renamed {'))
+  })
+
+  it('saves a deep tree that arrived over Yjs flat, without dropping a task', async () => {
+    // #given a deep tree in the Y.Doc, with no markdown source
+    const task = (taskId: string, parentTaskId: string, children: unknown[] = []): unknown => ({
+      type: 'taskBlock',
+      props: { taskId, title: taskId.toUpperCase(), checked: taskId === 'd', parentTaskId },
+      children
+    })
+    const blocks = [
+      task('a', '', [
+        task('b', 'a', [task('c', 'b', [task('d', 'c')]), task('e', 'b')]),
+        task('f', 'a')
+      ])
+    ]
+    const doc = new Y.Doc()
+    blocksToYFragment(blocks as Block[], doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result?.trim()).toBe(DEEP_TASK_TREE_CAPPED)
   })
 
   it('does not accumulate blank lines around inline task list items on reopen', async () => {

@@ -346,7 +346,10 @@
         "access": "Åtkomst",
         "tools": "Verktyg"
       },
-      "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}"
+      "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "Endast valvverktyg med den här modellen"
+      }
     },
     "refPicker": {
       "noMatches": "Inga träffar"

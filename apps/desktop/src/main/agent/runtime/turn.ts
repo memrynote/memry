@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
-import type { AgentBackendOptions, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
+import {
+  effectiveTurnPermissions,
+  type AgentBackendOptions,
+  type AgentTurnPermissions
+} from '@memry/contracts/ipc-agent'
 
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 
@@ -73,7 +77,10 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     .filter((message) => message.role !== 'tool_call')
   const existingConversation = deps.conversations.getById(input.conversationId)
   const backend = deps.backends.get(input.backendOptions.backend)
-  const permissions = input.permissions ?? DEFAULT_TURN_PERMISSIONS
+  const permissions = effectiveTurnPermissions(
+    input.backendOptions.backend,
+    input.permissions ?? DEFAULT_TURN_PERMISSIONS
+  )
   // agent_chat_started keys on this heuristic; revisit if a user-facing rename path is added
   const shouldGenerateTitle =
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
@@ -124,6 +131,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     userMessage: input.text,
     attachments: input.attachments,
     permissions,
+    backend: input.backendOptions.backend,
     context: promptContext
   })
 
@@ -155,6 +163,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         userMessage: input.text,
         attachments: input.attachments,
         permissions,
+        backend: input.backendOptions.backend,
         context: promptContext
       })
     }

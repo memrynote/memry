@@ -1,5 +1,6 @@
 /**
- * Carry the index rows of a moved folder's contents to their new paths.
+ * Carry the index rows of a moved folder's contents to their new paths, and
+ * re-point path-form wiki-links to them.
  *
  * @module vault/folder-move-index
  */
@@ -16,6 +17,8 @@ import { flushProjectionEvents } from '../projections'
 import { syncFileToCache, syncNoteStatToCache } from './note-sync'
 import { clearPendingDelete } from './rename-tracker'
 import { emitNoteEvent } from './notes-io'
+import { rewriteInboundWikiLinks } from './rename-link-rewrite'
+import { noteLinkStem } from '@memry/shared/wiki-target'
 
 /** A note whose index row `renameFolder` moved along with its folder. */
 export interface FolderMovedNote {
@@ -91,6 +94,18 @@ export async function moveIndexedNotesWithFolder(
     clearPendingDelete(note.id)
     emitNoteEvent(NotesChannels.events.MOVED, {
       id: note.id,
+      oldPath: note.oldPath,
+      newPath: note.newPath
+    })
+  }
+
+  // Path links (`[[Old/Note]]`) name the folder that just moved.
+  for (const note of moved) {
+    const title = getNoteCacheById(db, note.id)?.title ?? ''
+    await rewriteInboundWikiLinks({
+      noteId: note.id,
+      from: { title, pathStem: noteLinkStem(note.oldPath) },
+      to: { title, pathStem: noteLinkStem(note.newPath) },
       oldPath: note.oldPath,
       newPath: note.newPath
     })

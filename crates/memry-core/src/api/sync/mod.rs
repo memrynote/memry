@@ -76,11 +76,14 @@ use crate::sync::first_sync::{
 };
 use crate::sync::first_sync_store::read_meta;
 use crate::sync::pull::PullLoop;
+use crate::sync::socket_run::TerminalLatch;
 
 mod attachments_io;
 mod pass;
+mod realtime;
 
 pub use pass::SyncPassSummary;
+pub use realtime::{RealtimeListener, VaultRealtime};
 
 use attachments_io::*;
 
@@ -284,6 +287,9 @@ pub struct VaultSync {
     /// database: attachment bytes live in `images/` as sandbox files rather
     /// than as blobs (data-model §A.4).
     directory: String,
+    /// §9.9's 4004/4009 latch, here rather than on the socket because the
+    /// shell mints a socket per foreground (#2798).
+    realtime_latch: Arc<TerminalLatch>,
 }
 
 impl VaultSync {
@@ -298,6 +304,7 @@ impl VaultSync {
             db,
             session,
             directory,
+            realtime_latch: Arc::default(),
         }
     }
 

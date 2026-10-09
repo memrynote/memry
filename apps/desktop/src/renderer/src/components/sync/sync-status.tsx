@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { Cloud, CloudOff, RefreshCw, Settings } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,7 @@ import { SidebarMenuButton } from '@/components/ui/sidebar'
 import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
 import { useT } from '@memry/i18n/renderer'
 import { useSyncOptional } from '@/contexts/sync-context'
+import { useAuth } from '@/contexts/auth-context'
 import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
 const log = createLogger('SyncStatus')
@@ -155,6 +157,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     conflicts,
     error,
     sessionExpired,
+    deviceKeysMissing,
     clockSkewDetected,
     initialSyncProgress,
     syncActivity,
@@ -164,6 +167,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     clearError,
     clearConflicts
   } = useSyncStatus()
+  const { resetAuthState } = useAuth()
 
   const isSyncing = status === 'syncing'
   const isOffline = status === 'offline'
@@ -178,6 +182,33 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
       await triggerSync()
     } catch (err) {
       log.error('Manual sync trigger failed', err)
+    }
+  }
+
+  // Main restores the device row when the keychain key is still registered,
+  // and otherwise signs out keeping queued changes (#2866). Never logout():
+  // that drops the sync queue and the vault key.
+  const [repairing, setRepairing] = useState(false)
+  const handleRepairDeviceKeys = async (): Promise<void> => {
+    if (repairing) return
+    setRepairing(true)
+    try {
+      const result = await window.api.syncOps.repairDeviceKeys()
+      if (result.status === 'repaired') return
+      if (result.status === 'sync-not-started') {
+        toast.info(tPhaseF(`phaseF.componentsSyncSyncStatus.syncNotStarted.${result.reason}`), {
+          duration: 10000
+        })
+        return
+      }
+      resetAuthState()
+      toast.info(tPhaseF('phaseF.componentsSyncSyncStatus.signInToRepair'), { duration: 10000 })
+      onOpenSettings()
+    } catch (err) {
+      log.error('Device key repair failed', err)
+      toast.error(tPhaseF('phaseF.componentsSyncSyncStatus.repairFailed'))
+    } finally {
+      setRepairing(false)
     }
   }
 
@@ -328,22 +359,34 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           onOpenSettings={onOpenSettings}
         >
           <div className="flex items-center gap-1 px-2 py-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={
-                error
-                  ? () => {
-                      clearError()
-                      void handleSync()
-                    }
-                  : () => void handleSync()
-              }
-              disabled={isSyncing || isOffline}
-              className="h-7 text-xs"
-            >
-              {error ? 'Retry' : 'Sync Now'}
-            </Button>
+            {deviceKeysMissing ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleRepairDeviceKeys()}
+                disabled={repairing}
+                className="h-7 text-xs"
+              >
+                {tPhaseF('phaseF.componentsSyncSyncStatus.repairDeviceKeys')}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={
+                  error
+                    ? () => {
+                        clearError()
+                        void handleSync()
+                      }
+                    : () => void handleSync()
+                }
+                disabled={isSyncing || isOffline}
+                className="h-7 text-xs"
+              >
+                {error ? 'Retry' : 'Sync Now'}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

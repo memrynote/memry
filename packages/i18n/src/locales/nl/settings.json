@@ -2220,7 +2220,8 @@
         "label": "Standaardtoegang",
         "description": "Bepaalt met welke toegang nieuwe agentbeurten starten.",
         "vaultOnly": "Alleen kluis",
-        "computerAccess": "Computertoegang"
+        "computerAccess": "Computertoegang",
+        "builtInNote": "De ingebouwde modelverbinding gebruikt altijd alleen kluistools."
       },
       "confirm": {
         "label": "Acties bevestigen",

@@ -2220,7 +2220,8 @@
         "label": "默认访问权限",
         "description": "设置智能体新一轮对话的初始访问模式。",
         "vaultOnly": "仅限仓库",
-        "computerAccess": "计算机访问"
+        "computerAccess": "计算机访问",
+        "builtInNote": "内置模型连接始终仅使用仓库工具。"
       },
       "confirm": {
         "label": "确认操作",

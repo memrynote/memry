@@ -2220,7 +2220,8 @@
         "label": "기본 액세스",
         "description": "새 에이전트 턴을 시작할 때의 액세스 모드를 설정합니다.",
         "vaultOnly": "볼트만",
-        "computerAccess": "컴퓨터 액세스"
+        "computerAccess": "컴퓨터 액세스",
+        "builtInNote": "내장 모델 연결은 항상 볼트 도구만 사용합니다."
       },
       "confirm": {
         "label": "동작 확인",

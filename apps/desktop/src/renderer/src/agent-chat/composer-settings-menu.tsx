@@ -1,11 +1,12 @@
 import { Fragment, useState } from 'react'
 
-import type {
-  AgentAccessMode,
-  AgentBackendModelOption,
-  AgentCliBackendId,
-  CodexReasoningEffort,
-  ClaudeEffort
+import {
+  AGENT_BACKEND_CAPABILITIES,
+  type AgentAccessMode,
+  type AgentBackendModelOption,
+  type AgentCliBackendId,
+  type CodexReasoningEffort,
+  type ClaudeEffort
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
@@ -191,6 +192,7 @@ function customModelBackendFor(
 const sectionLabelClass =
   'px-2 pb-0.5 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
 const valueClass = 'ms-auto text-muted-foreground'
+const reasonClass = 'block text-[11px] leading-4 text-muted-foreground'
 const selectedCheck = <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
 
 export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JSX.Element {
@@ -207,6 +209,12 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
     setOpen(false)
     setModelQuery('')
   }
+
+  const capabilities = AGENT_BACKEND_CAPABILITIES[props.selectedProvider]
+  const accessMode = capabilities.computerAccess ? props.accessMode : 'vault_only'
+  const unavailableReason = (
+    <span className={reasonClass}>{t('agentChat.composer.unavailable.vaultToolsOnly')}</span>
+  )
 
   const normalizedQuery = modelQuery.trim().toLowerCase()
   const localModelIds = props.localModelIds.filter((id) => matchesQuery(normalizedQuery, id))
@@ -254,15 +262,19 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-56 border-border/60 p-1.5">
         <DropdownMenuItem
+          disabled={!capabilities.webSearch}
           onSelect={(event) => {
             event.preventDefault()
             props.onToggleWebSearch()
           }}
           className="justify-between gap-6"
         >
-          <span>{t('agentChat.composer.webSearch.label')}</span>
+          <span>
+            {t('agentChat.composer.webSearch.label')}
+            {!capabilities.webSearch && unavailableReason}
+          </span>
           <Switch
-            checked={props.webSearchEnabled}
+            checked={capabilities.webSearch && props.webSearchEnabled}
             tabIndex={-1}
             className="pointer-events-none"
             aria-label={t('agentChat.composer.webSearch.label')}
@@ -288,7 +300,7 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
           <DropdownMenuSubTrigger>
             <span>{t('agentChat.composer.permissions.access')}</span>
             <span className={valueClass}>
-              {props.accessMode === 'vault_only'
+              {accessMode === 'vault_only'
                 ? t('agentChat.composer.access.vaultOnly')
                 : t('agentChat.composer.access.computerAccess')}
             </span>
@@ -301,16 +313,20 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
               }}
             >
               <span>{t('agentChat.composer.access.vaultOnly')}</span>
-              {props.accessMode === 'vault_only' && selectedCheck}
+              {accessMode === 'vault_only' && selectedCheck}
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={!capabilities.computerAccess}
               onSelect={(event) => {
                 event.preventDefault()
                 props.onSelectAccessMode('computer_access')
               }}
             >
-              <span>{t('agentChat.composer.access.computerAccess')}</span>
-              {props.accessMode === 'computer_access' && selectedCheck}
+              <span>
+                {t('agentChat.composer.access.computerAccess')}
+                {!capabilities.computerAccess && unavailableReason}
+              </span>
+              {accessMode === 'computer_access' && selectedCheck}
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

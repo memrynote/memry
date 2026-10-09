@@ -326,4 +326,37 @@ describe('SyncStateManager', () => {
       )
     })
   })
+
+  // #2866
+  describe('#given device keys missing', () => {
+    it('#then a successful key read mid-cycle leaves syncing alone', () => {
+      mgr.setDeviceKeysMissing(true)
+      expect(ctx.state).toBe('error')
+      mgr.setState('syncing')
+
+      mgr.setDeviceKeysMissing(false)
+
+      expect(ctx.state).toBe('syncing')
+    })
+
+    it('#then keys returning clears only its own error', () => {
+      mgr.setDeviceKeysMissing(true)
+      ctx.lastErrorInfo = { category: 'server_error', message: 'boom', retryable: true }
+
+      mgr.setDeviceKeysMissing(false)
+
+      expect(ctx.state).toBe('error')
+      expect(ctx.lastErrorInfo?.category).toBe('server_error')
+    })
+
+    it('#then idle at the end of a cycle reports the error', () => {
+      mgr.setDeviceKeysMissing(true)
+      mgr.setState('syncing')
+
+      mgr.setState('idle')
+
+      expect(ctx.state).toBe('error')
+      expect(ctx.lastErrorInfo?.category).toBe('device_keys_missing')
+    })
+  })
 })

@@ -11,7 +11,9 @@
       "containerPath": "container:Memry.xcodeproj",
       "identifier": "F0000001",
       "name": "Memry"
-    }
+    },
+    "testTimeoutsEnabled": true,
+    "defaultTestExecutionTimeAllowance": 120
   },
   "testTargets": [
     {

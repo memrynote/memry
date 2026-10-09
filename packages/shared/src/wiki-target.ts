@@ -51,6 +51,28 @@ export function splitWikiTarget(target: string): WikiTargetParts {
 }
 
 /**
+ * The vault-relative stem a path-form note half names, or `null` for a title.
+ *
+ * A title is a file's basename, so it never holds `/`; any `/` makes the half a
+ * path from the vault root (`[[Folder/Note]]`, as Obsidian writes when two
+ * notes share a name). One leading `/` is tolerated. Paths never resolve
+ * relative to the linking note's folder.
+ */
+export function wikiPathStem(noteHalf: string): string | null {
+  const half = noteHalf.trim()
+  if (!half.includes('/')) return null
+  return half.startsWith('/') ? half.slice(1) : half
+}
+
+/**
+ * The stem a path-form link uses for the note at a vault-relative path: the
+ * path without `.md`. Other files keep their extension (`Docs/spec.pdf`).
+ */
+export function noteLinkStem(path: string): string {
+  return path.replace(/\.md$/i, '')
+}
+
+/**
  * Whether a heading half is really a block reference (`[[Note#^block-id]]`).
  *
  * Block references need a persistent `^id` on every block, serialized to

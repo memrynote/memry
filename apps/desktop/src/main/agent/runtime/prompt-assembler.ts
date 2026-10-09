@@ -1,4 +1,4 @@
-import type { AgentTurnPermissions } from '@memry/contracts/ipc-agent'
+import type { AgentBackendId, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
 
 import type { Message, MessageAttachment } from '../storage/types'
 
@@ -66,7 +66,12 @@ export interface AssembleInput {
   userMessage: string
   attachments: MessageAttachment[]
   permissions?: AgentTurnPermissions
+  backend?: AgentBackendId
   context?: PromptContext
+}
+
+const RUNTIME_LINES: Partial<Record<AgentBackendId, string>> = {
+  local_openai_compatible: 'Runtime: built-in model connection. Tools: memrynote vault tools only.'
 }
 
 export function assemblePrompt(input: AssembleInput): string {
@@ -87,7 +92,7 @@ export function assemblePrompt(input: AssembleInput): string {
   }
 
   if (input.permissions) {
-    lines.push(...renderPermissions(input.permissions), '')
+    lines.push(...renderPermissions(input.permissions, input.backend), '')
   }
 
   if (input.attachments.length > 0) {
@@ -102,7 +107,10 @@ export function assemblePrompt(input: AssembleInput): string {
   return lines.join('\n')
 }
 
-function renderPermissions(permissions: AgentTurnPermissions): string[] {
+function renderPermissions(
+  permissions: AgentTurnPermissions,
+  backend: AgentBackendId | undefined
+): string[] {
   const access =
     permissions.accessMode === 'computer_access'
       ? 'Computer access requested for this turn.'
@@ -115,6 +123,7 @@ function renderPermissions(permissions: AgentTurnPermissions): string[] {
     '# Active Permissions',
     access,
     web,
+    ...(backend && RUNTIME_LINES[backend] ? [RUNTIME_LINES[backend]] : []),
     'Use only tools exposed by this runtime. If a requested capability is not available, say so instead of pretending it ran.'
   ]
 }

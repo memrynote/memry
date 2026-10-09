@@ -21,12 +21,29 @@ export const SYNC_OP_CHANNELS = {
   CHECK_DEVICE_STATUS: 'sync:check-device-status',
   EMERGENCY_WIPE: 'sync:emergency-wipe',
   GET_VAULT_BINDING: 'sync:get-vault-binding',
-  RESOLVE_VAULT_BINDING: 'sync:resolve-vault-binding'
+  RESOLVE_VAULT_BINDING: 'sync:resolve-vault-binding',
+  REPAIR_DEVICE_KEYS: 'sync:repair-device-keys'
 } as const
 
 // ============================================================================
 // Types
 // ============================================================================
+
+/** Why sync stayed down after a device row was restored. */
+export type SyncNotStartedReason = 'vault-binding' | 'entitlement' | 'unavailable'
+
+/**
+ * Outcome of the "device keys missing" repair (#2866). `repaired`: the keychain
+ * key is still registered, the device row was restored and the runtime is up.
+ * `sync-not-started`: the row was restored but a sync gate kept the runtime
+ * down. `sign-in-required`: the device was signed out with its queued changes
+ * kept, and signing in again (possibly with the recovery phrase) sets up new
+ * keys.
+ */
+export type RepairDeviceKeysResult =
+  | { status: 'repaired' }
+  | { status: 'sync-not-started'; reason: SyncNotStartedReason }
+  | { status: 'sign-in-required' }
 
 export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error' | 'local_only'
 
@@ -58,6 +75,10 @@ export type SyncErrorCategory =
   // (SYNC_INVALID_SIGNATURE) and no retry can ever succeed. Only
   // re-registration fixes it.
   | 'device_key_mismatch'
+  // A signed-in session with no usable signing key or current-device row, so
+  // every push aborts before it is sent (#2866). Only signing in again, which
+  // re-runs device key setup, fixes it.
+  | 'device_keys_missing'
   // The refresh token or vault master key exists on this device but could not
   // be read from the OS keychain / safeStorage this run (locked keyring, Secret
   // Service not up yet). Sync is paused and retries; nothing was signed out.

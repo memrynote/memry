@@ -25,7 +25,8 @@ import {
   atomicWrite
 } from './file-ops'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
-import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
+import { rewriteInboundWikiLinks } from './rename-link-rewrite'
+import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
@@ -130,15 +131,16 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   // back to the bottom of a hand-ordered folder (#1646).
   carryPositionToPath(getDatabase(), existing.path, newRelativePath)
 
-  // Wiki-links address this note by its old title; every inbound `[[Old]]` in
-  // the vault is re-pointed now, or it rots into a duplicate-creating link
-  // (#1711). Applies to binary vault items too — `[[some-pdf]]` is title-based
-  // the same way. Runs after the cache sync above so the rewrite reads this
-  // note's new identity.
-  await rewriteInboundWikiLinksForRename({
+  // Wiki-links address this note by its old title or path; every inbound
+  // `[[Old]]` and `[[Folder/Old]]` in the vault is re-pointed now, or it rots
+  // into a duplicate-creating link (#1711). Applies to binary vault items too —
+  // `[[some-pdf]]` is title-based the same way. Runs after the cache sync above
+  // so the rewrite reads this note's new identity.
+  await rewriteInboundWikiLinks({
     noteId: id,
-    oldTitle: existing.title,
-    newTitle,
+    from: { title: existing.title, pathStem: noteLinkStem(existing.path) },
+    to: { title: newTitle, pathStem: noteLinkStem(newRelativePath) },
+    oldPath: existing.path,
     newPath: newRelativePath
   })
 
@@ -260,6 +262,15 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       await feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
     }
   }
+
+  // Path links (`[[Old/Folder/Note]]`) name the old folder; re-point them.
+  await rewriteInboundWikiLinks({
+    noteId: id,
+    from: { title: existing.title, pathStem: noteLinkStem(existing.path) },
+    to: { title: existing.title, pathStem: noteLinkStem(newRelativePath) },
+    oldPath: existing.path,
+    newPath: newRelativePath
+  })
 
   // The old row can never be reached again — it is keyed by a path nothing
   // holds now — and leaving it would hand its slot to the next note created

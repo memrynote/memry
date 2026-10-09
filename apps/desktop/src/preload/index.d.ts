@@ -80,7 +80,9 @@ import type {
   CrdtWriteBackFailedEvent
 } from '@memry/contracts/ipc-crdt'
 import type {
+  RepairDeviceKeysResult,
   ResolveVaultBindingResult,
+  SyncErrorCategory,
   VaultBindingChoice,
   VaultBindingState
 } from '@memry/contracts/ipc-sync-ops'
@@ -1729,6 +1731,7 @@ interface SyncOpsClientAPI {
     lastSyncAt?: number
     pendingCount: number
     error?: string
+    errorCategory?: SyncErrorCategory
     offlineSince?: number
   }>
   triggerSync: () => Promise<{
@@ -1783,6 +1786,7 @@ interface SyncOpsClientAPI {
   getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
+  repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
 }
 
 // Crypto API

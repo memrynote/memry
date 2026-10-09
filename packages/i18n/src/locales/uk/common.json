@@ -346,7 +346,10 @@
         "access": "Доступ",
         "tools": "Інструменти"
       },
-      "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}"
+      "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}",
+      "unavailable": {
+        "vaultToolsOnly": "З цією моделлю лише інструменти сховища"
+      }
     },
     "refPicker": {
       "noMatches": "Немає збігів"

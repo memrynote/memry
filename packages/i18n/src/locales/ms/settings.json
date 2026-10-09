@@ -2220,7 +2220,8 @@
         "label": "Akses lalai",
         "description": "Menetapkan mod akses permulaan untuk giliran ejen baharu.",
         "vaultOnly": "Bilik kebal sahaja",
-        "computerAccess": "Akses komputer"
+        "computerAccess": "Akses komputer",
+        "builtInNote": "Sambungan model terbina dalam sentiasa menggunakan alat bilik kebal sahaja."
       },
       "confirm": {
         "label": "Sahkan tindakan",

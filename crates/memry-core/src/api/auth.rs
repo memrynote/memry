@@ -185,7 +185,7 @@ struct PendingSignIn {
 #[derive(uniffi::Object)]
 pub struct AuthSession {
     http: Arc<HttpClient>,
-    tokens: Arc<TokenManager>,
+    pub(crate) tokens: Arc<TokenManager>,
     pub(crate) store: Arc<dyn SecureStore>,
     device: DeviceDescriptor,
     state: Mutex<AuthState>,

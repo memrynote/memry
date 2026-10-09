@@ -275,6 +275,7 @@ final class TasksStore {
     // MARK: Sync
 
     private var syncTask: Task<Void, Never>?
+    private var syncAgain = false
     /// Finished passes, so a screen showing synced data can re-read after each.
     private(set) var syncPasses = 0
     /// Told when a pass ends (`true` = it reached the server). Settings keeps
@@ -294,7 +295,13 @@ final class TasksStore {
 
     /// Pull then push now (pull-to-refresh, foreground).
     func sync() async {
-        guard let filler, !isSyncing else { return }
+        guard let filler else { return }
+        // A pass already running may have pulled before the change that asked
+        // for this one, so run again once it ends rather than drop the ask.
+        guard !isSyncing else {
+            syncAgain = true
+            return
+        }
         isSyncing = true
         defer { isSyncing = false }
         do {
@@ -310,6 +317,10 @@ final class TasksStore {
         }
         await refresh()
         syncPasses += 1
+        if syncAgain {
+            syncAgain = false
+            scheduleSync()
+        }
     }
 
     // MARK: Clock

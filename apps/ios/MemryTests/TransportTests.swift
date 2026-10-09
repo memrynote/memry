@@ -131,7 +131,7 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 /// specific bug this seam's enum was shaped to prevent, and a test that only
 /// asserted `#expect(throws:)` would pass under every one of those collapses.
 enum TransportErrorKind: String, Sendable {
-    case offline, timeout, tls, cancelled, failed, socketClosed, notATransportError
+    case offline, timeout, tls, cancelled, failed, socketClosed, handshakeRejected, notATransportError
 
     init(_ error: any Error) {
         switch error as? TransportError {
@@ -141,6 +141,7 @@ enum TransportErrorKind: String, Sendable {
         case .Cancelled: self = .cancelled
         case .Failed: self = .failed
         case .SocketClosed: self = .socketClosed
+        case .HandshakeRejected: self = .handshakeRejected
         case nil: self = .notATransportError
         }
     }

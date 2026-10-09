@@ -362,6 +362,32 @@ describe('sanitizeBlockIds', () => {
 })
 
 describe('serializeBlocksPreservingBlanks', () => {
+  it('writes a deep task tree flat under its top-level task, keeping every task', async () => {
+    const editor = { blocksToMarkdownLossy: vi.fn(async () => '') }
+    const task = (taskId: string, parentTaskId: string, children: any[] = []): any => ({
+      type: 'taskBlock',
+      props: { taskId, title: taskId.toUpperCase(), checked: false, parentTaskId },
+      children
+    })
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      task('a', '', [
+        task('b', 'a', [task('c', 'b', [task('d', 'c')]), task('e', 'b')]),
+        task('f', 'a')
+      ])
+    ])
+
+    // Each task line is its own segment; notes hold one level (MAX_NOTE_TASK_DEPTH).
+    expect(markdown.split('\n').filter(Boolean)).toEqual([
+      '- [ ] A {task:a}',
+      '  - [ ] B {task:b}',
+      '  - [ ] C {task:c}',
+      '  - [ ] D {task:d}',
+      '  - [ ] E {task:e}',
+      '  - [ ] F {task:f}'
+    ])
+  })
+
   it('serializes task blocks, embeds, callouts, blank paragraphs, and content groups', async () => {
     const editor = {
       // No per-type branch: a callout reaches the serializer as a paragraph

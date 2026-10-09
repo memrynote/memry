@@ -370,3 +370,30 @@ test('moving a note re-points relative attachment refs, matching desktop moveNot
     app.close()
   }
 })
+
+test('path-form wiki-links resolve from the vault root and follow a moved note (#2562)', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    const work = await app.notes.create({ title: 'Plan', content: '', folder: 'Work' })
+    const home = await app.notes.create({ title: 'Plan', content: '', folder: 'Home' })
+    const source = await app.notes.create({
+      title: 'Source',
+      content: 'See [[home/plan#Goals|the plan]] and [[Plan]].'
+    })
+
+    assert.equal((await app.notes.resolveByTitle('Home/Plan'))?.id, home.id)
+    assert.equal((await app.notes.resolveByTitle('/work/PLAN.md'))?.id, work.id)
+    assert.equal(await app.notes.resolveByTitle('Nowhere/Plan'), null)
+    const heading = await app.notes.resolveWikiTarget('Home/Plan#Goals')
+    assert.equal(heading?.id, home.id)
+    assert.equal(heading?.heading, 'Goals')
+
+    await app.notes.move(home.id, 'Archive')
+
+    const after = await fs.readFile(path.join(vaultPath, source.path), 'utf-8')
+    assert.ok(after.includes('See [[Archive/Plan#Goals|the plan]] and [[Plan]].'))
+  } finally {
+    app.close()
+  }
+})

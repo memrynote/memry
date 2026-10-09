@@ -23,7 +23,11 @@ import {
   type LinkingRequestEvent,
   type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
-import type { VaultBindingChoice, VaultBindingState } from '@memry/contracts/ipc-sync-ops'
+import type {
+  SyncErrorCategory,
+  VaultBindingChoice,
+  VaultBindingState
+} from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
 import type { SyncStatus } from '@/sync/collaboration-status'
 
@@ -75,6 +79,7 @@ interface SyncState {
   lastSyncAt: number | null
   pendingCount: number
   error: string | null
+  errorCategory: SyncErrorCategory | null
   offlineSince: number | null
   uploadProgress: Record<string, ProgressEntry> | null
   downloadProgress: Record<string, ProgressEntry> | null
@@ -93,6 +98,7 @@ type SyncAction =
       lastSyncAt?: number
       pendingCount: number
       error?: string
+      errorCategory?: SyncErrorCategory
       offlineSince?: number
     }
   | { type: 'PAUSED'; pendingCount: number }
@@ -117,6 +123,7 @@ export const initialState: SyncState = {
   lastSyncAt: null,
   pendingCount: 0,
   error: null,
+  errorCategory: null,
   offlineSince: null,
   uploadProgress: null,
   downloadProgress: null,
@@ -181,6 +188,7 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         lastSyncAt: action.lastSyncAt ?? state.lastSyncAt,
         pendingCount: action.pendingCount,
         error: action.error ?? null,
+        errorCategory: action.errorCategory ?? null,
         offlineSince: action.offlineSince ?? null,
         initialSyncProgress: transferEnded ? null : state.initialSyncProgress,
         syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
@@ -201,6 +209,7 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
       return {
         ...state,
         error: null,
+        errorCategory: null,
         status: state.status === 'error' ? 'idle' : state.status
       }
     case 'UPLOAD_PROGRESS':
@@ -372,6 +381,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           lastSyncAt: status.lastSyncAt,
           pendingCount: status.pendingCount,
           error,
+          errorCategory: status.errorCategory,
           offlineSince: status.offlineSince
         })
       } catch {
@@ -414,6 +424,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           lastSyncAt: event.lastSyncAt,
           pendingCount: event.pendingCount,
           error,
+          errorCategory: event.errorCategory,
           offlineSince: event.offlineSince
         })
         if (event.errorCategory === 'storage_quota_exceeded') {

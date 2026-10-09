@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 import Speech
 import SwiftUI
 
@@ -22,6 +23,14 @@ struct InboxTranscription: Sendable {
     )
 }
 
+/// What `InboxTranscriber.recognize` holds and cancels: the speech task, or a
+/// test's stand-in.
+protocol InboxRecognitionTask: AnyObject {
+    func cancel()
+}
+
+extension SFSpeechRecognitionTask: InboxRecognitionTask {}
+
 enum InboxTranscriber {
     static var isAvailable: Bool {
         guard let recognizer = SFSpeechRecognizer() else { return false }
@@ -36,19 +45,83 @@ enum InboxTranscriber {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
-        return await withCheckedContinuation { continuation in
-            var finished = false
+        return await recognize(timeout: timeout) { finish in
             recognizer.recognitionTask(with: request) { result, error in
-                guard !finished else { return }
                 if let result, result.isFinal {
-                    finished = true
                     let text = result.bestTranscription.formattedString
-                    continuation.resume(returning: text.isEmpty ? nil : text)
+                    finish(text.isEmpty ? nil : text)
                 } else if error != nil {
-                    finished = true
-                    continuation.resume(returning: nil)
+                    finish(nil)
                 }
             }
+        }
+    }
+
+    /// Longer than on-device recognition of a 300 s memo takes; past it the
+    /// memo is marked failed and offers Retry instead of staying pending.
+    static let timeout: Duration = .seconds(600)
+
+    /// Runs one recognition and returns its transcript exactly once: on the
+    /// first `finish`, on `timeout`, or when the caller is cancelled. `start`
+    /// returns the task, which is held until then so iOS cannot drop it
+    /// mid-recognition, and cancelled once the result is in (#2864).
+    static func recognize(
+        timeout: Duration,
+        start: (@escaping @Sendable (String?) -> Void) -> any InboxRecognitionTask
+    ) async -> String? {
+        let pending = PendingRecognition()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pending.begin(continuation)
+                let task = start { pending.finish($0) }
+                pending.hold(task)
+                Task {
+                    try? await Task.sleep(for: timeout)
+                    pending.finish(nil)
+                }
+            }
+        } onCancel: {
+            pending.finish(nil)
+        }
+    }
+
+    /// The one continuation and task of a recognition, guarded so the
+    /// recognizer's callback queue, the timeout and cancellation can race.
+    private final class PendingRecognition: Sendable {
+        private struct State {
+            var continuation: CheckedContinuation<String?, Never>?
+            var task: (any InboxRecognitionTask)?
+            var result: String??
+        }
+
+        private let state = OSAllocatedUnfairLock(uncheckedState: State())
+
+        func begin(_ continuation: CheckedContinuation<String?, Never>) {
+            let early = state.withLockUnchecked { state -> String?? in
+                if state.result == nil { state.continuation = continuation }
+                return state.result
+            }
+            if let early { continuation.resume(returning: early) }
+        }
+
+        func hold(_ task: any InboxRecognitionTask) {
+            let done = state.withLockUnchecked { state -> Bool in
+                if state.result == nil { state.task = task }
+                return state.result != nil
+            }
+            if done { task.cancel() }
+        }
+
+        func finish(_ text: String?) {
+            let taken = state.withLockUnchecked { state -> (CheckedContinuation<String?, Never>?, (any InboxRecognitionTask)?)? in
+                guard state.result == nil else { return nil }
+                state.result = .some(text)
+                defer { state.continuation = nil; state.task = nil }
+                return (state.continuation, state.task)
+            }
+            guard let taken else { return }
+            taken.1?.cancel()
+            taken.0?.resume(returning: text)
         }
     }
 
