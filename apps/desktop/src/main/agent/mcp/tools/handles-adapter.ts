@@ -683,7 +683,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             ),
           (entityId) => noteFileFrontmatter(indexDb, entityId)
         )
-        return withCreatedFolders(reply, createdFolders)
+        return await withCreatedFolders(reply, createdFolders)
       }
     },
     windows: {

@@ -49,18 +49,13 @@ const stringOr = (value: unknown, fallback: string) =>
  * The vault-relative folder a desktop API write lands in, when the write
  * creates it. A note or import without a folder goes to the default note
  * folder; a move to '' goes to the vault root. An inbox filing without a path
- * routes by item type, so only a named path is predicted. A new-note filing
- * ignores the path, and filing treats 'root' as the vault root.
+ * routes by item type, so only a named path is predicted.
  */
 const WRITE_FOLDERS: Partial<Record<AgentMcpDesktopWriteOperation, (args: unknown[]) => string>> = {
   'notes.create': ([input]) => stringOr(field(input, 'folder'), getConfig().defaultNoteFolder),
   'notes.importFiles': ([, targetFolder]) => stringOr(targetFolder, getConfig().defaultNoteFolder),
   'notes.move': ([, newFolder]) => stringOr(newFolder, ''),
-  'inbox.file': ([input]) => {
-    const destination = field(input, 'destination')
-    const folder = stringOr(field(destination, 'path'), '')
-    return field(destination, 'type') === 'new-note' || folder === 'root' ? '' : folder
-  }
+  'inbox.file': ([input]) => stringOr(field(field(input, 'destination'), 'path'), '')
 }
 
 /** Read before a desktop API write: the folders, shallowest first, it would create. */
@@ -72,9 +67,20 @@ export async function desktopWriteFoldersToCreate(request: {
   return folder ? foldersToCreate(normalizeFolderPath(folder)) : []
 }
 
-/** Add `created_folders` to a desktop API reply once the write has landed. */
-export function withCreatedFolders(reply: unknown, folders: string[]): unknown {
-  if (folders.length === 0 || field(reply, 'success') === false) return reply
+/**
+ * Add `created_folders` to a desktop API reply once the write has landed.
+ * Keeps only the predicted folders that now exist: a new-note filing ignores
+ * its destination path, so a prediction can name a folder the write never made.
+ */
+export async function withCreatedFolders(reply: unknown, predicted: string[]): Promise<unknown> {
+  if (predicted.length === 0 || field(reply, 'success') === false) return reply
+  const vaultPath = getStatus().path
+  if (!vaultPath) return reply
+  const folders: string[] = []
+  for (const folder of predicted) {
+    if (await folderExists(path.join(vaultPath, folder))) folders.push(folder)
+  }
+  if (folders.length === 0) return reply
   const base =
     reply && typeof reply === 'object' && !Array.isArray(reply) ? reply : { result: reply }
   return { ...base, ...createdFoldersReply(folders) }
