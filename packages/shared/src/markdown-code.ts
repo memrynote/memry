@@ -127,6 +127,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       continue
     }
 
+    const tableRow = TABLE_ROW_LINE.test(line)
     let i = 0
     while (i < line.length) {
       const tick = line.indexOf('`', i)
@@ -136,6 +137,13 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       if (opened && (tick === -1 || opened.at < tick)) {
         const { form, at } = opened
         const close = line.indexOf(form.close, at + form.open.length)
+        // GFM splits a row into cells before it reads inline syntax, so a
+        // comment in a cell ends in that cell or is text (BBF-51).
+        if (tableRow && (close === -1 || close > cellPipe(line, at))) {
+          result += line.slice(i, at + form.open.length)
+          i = at + form.open.length
+          continue
+        }
         if (close !== -1) {
           const end = close + form.close.length
           const wholeLine = !closesComment && !line.slice(0, at).trim() && !line.slice(end).trim()
@@ -184,6 +192,31 @@ function nextCommentOpen(line: string, from: number): { form: CommentForm; at: n
     if (at !== -1 && (!best || at < best.at)) best = { form, at }
   }
   return best
+}
+
+/** Same row test as `escapeWikiLinkPipesInTableRows`: both ends are pipes. */
+const TABLE_ROW_LINE = /^\s*\|.*\|\s*$/
+
+/**
+ * The next unescaped `|` after `from` that ends a cell, or the line's length.
+ * A pipe inside `[[target|alias]]` is part of the link.
+ */
+function cellPipe(line: string, from: number): number {
+  let depth = 0
+  for (let i = from; i < line.length; i++) {
+    if (line[i] === '\\') {
+      i++
+    } else if (line.startsWith('[[', i)) {
+      depth++
+      i++
+    } else if (depth > 0 && line.startsWith(']]', i)) {
+      depth--
+      i++
+    } else if (line[i] === '|' && depth === 0) {
+      return i
+    }
+  }
+  return line.length
 }
 
 interface CommentClose {
