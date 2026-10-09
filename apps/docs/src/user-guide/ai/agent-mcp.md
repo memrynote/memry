@@ -266,7 +266,7 @@ tools only: no shell, no files outside the vault, and no web search. With that b
 this model", and the turn runs vault-only with web search off. Your saved default does not change,
 so switching back to Claude, Codex, or Antigravity picks it up again. The prompt tells the model the
 same thing in its permissions section: "Runtime: built-in model connection. Tools: memrynote vault
-tools only."
+tools only." [Agent Backends](/user-guide/ai/agent-backends) lists what each backend can reach.
 
 Claude and Codex conversations also have a per-conversation model selector. memrynote starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
