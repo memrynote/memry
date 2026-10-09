@@ -24,7 +24,7 @@ MEMRY_SMOKE_API_KEY=<your key> \
 pnpm --filter @memry/desktop smoke:local-provider
 ```
 
-The script runs the app's own capability probe, one vault tool round trip and a reasoning check, then sends each optional field the app can add to a request (`reasoning_effort` `high` and `max`, `thinking` disabled). It prints `PASS` or `FAIL` for each check and exits 1 when any check fails. It never prints the key. A failure means a DeepSeek user would hit it in this build, so fix it before releasing. The same script works against any OpenAI-compatible endpoint.
+The script runs the app's own capability probe, one vault tool round trip and a reasoning check, then sends each optional field the app can add to a request (`reasoning_effort` `high` and `max`, `thinking` disabled). It prints `PASS` or `FAIL` for each check and exits 1 when any check fails. It never prints the key: every output line, including an error the provider sends back, has the key replaced with `[key]`. A failure means a DeepSeek user would hit it in this build, so fix it before releasing. The same script works against any OpenAI-compatible endpoint.
 
 ## Running a release
 
