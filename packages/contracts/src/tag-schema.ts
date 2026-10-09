@@ -18,6 +18,7 @@
  * relation's config lives on the tag, because property definitions cannot hold
  * `relation` (older desktops wipe `.memry/properties.md` on an unknown type).
  */
+import { tagKey } from '@memry/shared/tag-fold'
 import { z } from 'zod'
 import type { PropertyType, SelectOption } from './property-types'
 
@@ -141,7 +142,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function sameTag(value: unknown, key: string): boolean {
-  return typeof value === 'string' && value.trim().toLowerCase() === key
+  return typeof value === 'string' && tagKey(value) === key
 }
 
 /**
@@ -157,8 +158,8 @@ export function rewriteSchemaReference(
   from: string,
   to: string | null
 ): Record<string, unknown> | null {
-  const fromKey = from.trim().toLowerCase()
-  const toKey = to === null ? null : to.trim().toLowerCase()
+  const fromKey = tagKey(from)
+  const toKey = to === null ? null : tagKey(to)
   if (toKey === fromKey) return null
   let changed = false
   const next: Record<string, unknown> = { ...schema }

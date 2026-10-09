@@ -4,7 +4,7 @@
  * A note is an object of a tag only through a header row: `in_header = 1` on a
  * markdown, non-journal note. A NULL flag (an older build's row, not backfilled
  * yet) never counts, and callers report the read as incomplete while one
- * remains. The `note_tags.tag` column is NOCASE, so `IN` matches any casing.
+ * remains. Tags match by identity (`tag-match.ts`), in any spelling.
  *
  * @module db/queries/tag-objects
  */
@@ -13,10 +13,10 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { noteCache, noteLinks, noteTags, propertyRefs } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
-import { foldTag } from '@memry/shared/tag-fold'
 import type { VersionedMap } from '@memry/shared/versioned'
 import type { FileType } from '@memry/shared/file-types'
 import type { DataDb, IndexDb } from '../types'
+import { tagIn } from './tag-match'
 
 const objectRow = and(
   eq(noteTags.inHeader, true),
@@ -34,7 +34,7 @@ export function listObjectHeaderRows(
     .select({ noteId: noteTags.noteId, tag: noteTags.tag })
     .from(noteTags)
     .innerJoin(noteCache, eq(noteCache.id, noteTags.noteId))
-    .where(and(objectRow, inArray(noteTags.tag, [...tags])))
+    .where(and(objectRow, tagIn(noteTags.tag, tags)))
     .orderBy(noteTags.noteId, noteTags.position)
     .all()
 }
@@ -47,11 +47,7 @@ export function hasUnresolvedTagRows(db: IndexDb, tags: readonly string[]): bool
     .from(noteTags)
     .innerJoin(noteCache, eq(noteCache.id, noteTags.noteId))
     .where(
-      and(
-        isNull(noteTags.inHeader),
-        eq(noteCache.fileType, 'markdown'),
-        inArray(noteTags.tag, [...tags])
-      )
+      and(isNull(noteTags.inHeader), eq(noteCache.fileType, 'markdown'), tagIn(noteTags.tag, tags))
     )
     .limit(1)
     .get()
@@ -158,19 +154,17 @@ export function listTasksMentioningNoteInFields(db: DataDb, noteId: string): Tas
     .all()
 }
 
-/** Tasks carrying one of `tags` exactly (case-insensitive), with their field maps. */
+/** Tasks carrying one of `tags` (any spelling), with their field maps. */
 export function listTaskFieldsForTags(
   db: DataDb,
   tags: readonly string[]
 ): Array<{ id: string; tag: string; fields: VersionedMap | null }> {
   if (tags.length === 0) return []
-  // SQLite `lower()` folds ASCII only, as `foldTag` does.
-  const lowered = tags.map(foldTag)
   return db
     .select({ id: tasks.id, tag: taskTags.tag, fields: tasks.fields })
     .from(taskTags)
     .innerJoin(tasks, eq(tasks.id, taskTags.taskId))
-    .where(inArray(sql`lower(${taskTags.tag})`, lowered))
+    .where(tagIn(taskTags.tag, tags))
     .all()
 }
 

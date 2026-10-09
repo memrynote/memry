@@ -1,9 +1,11 @@
-import { count, eq, like } from 'drizzle-orm'
+import { count } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { tagKey } from '@memry/shared/tag-fold'
 import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../../lib/logger'
 import { trackMainEvent } from '../../telemetry/track'
 import type { DataDb } from '../types'
+import { tagIs, tagUnder } from './tag-match'
 import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 
 const logger = createLogger('TagDefinitions')
@@ -45,12 +47,10 @@ export function getOrCreateTag(
   categoryId: string | null
   sortOrder: number
 } {
-  const normalizedName = name.toLowerCase().trim()
-
   const existing = db
     .select()
     .from(tagDefinitions)
-    .where(eq(tagDefinitions.name, normalizedName))
+    .where(tagIs(tagDefinitions.name, name.trim()))
     .get()
 
   if (existing) {
@@ -71,10 +71,9 @@ export function getOrCreateTag(
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
   const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
 
-  // Stored with the caller's casing, matched without it. `name` is the primary
-  // key under COLLATE NOCASE (see nocase.ts), so `Reading` and `reading` are
-  // still the same row and every `eq(name, lowercased)` lookup keeps working;
-  // the row just remembers how the tag was first written. For a tag that no
+  // Stored with the caller's casing, matched without it: every lookup compares
+  // `tag_fold(name)` (tag-match.ts), so `Ünal` and `ünal` are one row; the row
+  // just remembers how the tag was first written. For a tag that no
   // note uses yet — one created from the tag hub — this row is the only place
   // the display name exists, since `getAllTagsWithCounts` otherwise takes it
   // from usage. Only inserts are affected: an existing row's casing is never
@@ -91,6 +90,11 @@ export function getOrCreateTag(
   })
 
   return { name: displayName, color, icon: null, categoryId: null, sortOrder: 0 }
+}
+
+/** The definition row for `tag`, in any spelling. */
+export function findTagDefinition(db: DrizzleDb, tag: string) {
+  return db.select().from(tagDefinitions).where(tagIs(tagDefinitions.name, tag.trim())).get()
 }
 
 export function getAllTagDefinitions(db: DataDb): {
@@ -117,10 +121,7 @@ export function getAllTagDefinitions(db: DataDb): {
 }
 
 export function setTagCategory(db: DataDb, name: string, categoryId: string | null): void {
-  db.update(tagDefinitions)
-    .set({ categoryId })
-    .where(eq(tagDefinitions.name, name.toLowerCase().trim()))
-    .run()
+  db.update(tagDefinitions).set({ categoryId }).where(tagIs(tagDefinitions.name, name.trim())).run()
 }
 
 /**
@@ -129,16 +130,14 @@ export function setTagCategory(db: DataDb, name: string, categoryId: string | nu
  * becomes authored and starts outranking auto-minted colours on other devices.
  */
 export function updateTagColor(db: DataDb, name: string, color: string): void {
-  const normalizedName = name.toLowerCase().trim()
   db.update(tagDefinitions)
     .set({ color, colorAuthored: true })
-    .where(eq(tagDefinitions.name, normalizedName))
+    .where(tagIs(tagDefinitions.name, name.trim()))
     .run()
 }
 
 export function updateTagIcon(db: DataDb, name: string, icon: string | null): void {
-  const normalizedName = name.toLowerCase().trim()
-  db.update(tagDefinitions).set({ icon }).where(eq(tagDefinitions.name, normalizedName)).run()
+  db.update(tagDefinitions).set({ icon }).where(tagIs(tagDefinitions.name, name.trim())).run()
 }
 
 /**
@@ -147,23 +146,22 @@ export function updateTagIcon(db: DataDb, name: string, icon: string | null): vo
  * caller moves each (`tags/rename-tag.ts`).
  */
 export function renameTagDefinition(db: DataDb, oldName: string, newName: string): void {
-  const normalizedOld = oldName.toLowerCase().trim()
-  const normalizedNew = newName.toLowerCase().trim()
+  const normalizedNew = tagKey(newName)
 
-  if (normalizedOld === normalizedNew) return
+  if (tagKey(oldName) === normalizedNew) return
 
   const existingNew = db
     .select()
     .from(tagDefinitions)
-    .where(eq(tagDefinitions.name, normalizedNew))
+    .where(tagIs(tagDefinitions.name, normalizedNew))
     .get()
 
   if (existingNew) {
-    db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedOld)).run()
+    db.delete(tagDefinitions).where(tagIs(tagDefinitions.name, oldName.trim())).run()
   } else {
     db.update(tagDefinitions)
       .set({ name: normalizedNew })
-      .where(eq(tagDefinitions.name, normalizedOld))
+      .where(tagIs(tagDefinitions.name, oldName.trim()))
       .run()
   }
 }
@@ -173,13 +171,10 @@ export function deleteTagDefinition(
   name: string,
   options: { cascade?: boolean } = {}
 ): void {
-  const normalizedName = name.toLowerCase().trim()
-  db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).run()
+  db.delete(tagDefinitions).where(tagIs(tagDefinitions.name, name.trim())).run()
 
   if (options.cascade) {
-    db.delete(tagDefinitions)
-      .where(like(tagDefinitions.name, `${normalizedName}/%`))
-      .run()
+    db.delete(tagDefinitions).where(tagUnder(tagDefinitions.name, name.trim())).run()
   }
 }
 
@@ -195,7 +190,7 @@ export function readTagViews(db: DrizzleDb, tag: string): ViewConfig[] | null {
   const row = db
     .select({ views: tagDefinitions.views })
     .from(tagDefinitions)
-    .where(eq(tagDefinitions.name, tag))
+    .where(tagIs(tagDefinitions.name, tag))
     .get()
 
   if (!row?.views) return null
@@ -212,7 +207,7 @@ export function readTagViews(db: DrizzleDb, tag: string): ViewConfig[] | null {
 export function writeTagViews(db: DrizzleDb, tag: string, views: ViewConfig[] | null): void {
   db.update(tagDefinitions)
     .set({ views: views === null ? null : JSON.stringify(views) })
-    .where(eq(tagDefinitions.name, tag))
+    .where(tagIs(tagDefinitions.name, tag))
     .run()
 }
 
@@ -220,9 +215,7 @@ export function ensureTagDefinitions(
   db: DataDb,
   tags: string[]
 ): { name: string; color: string }[] {
-  const normalized = Array.from(
-    new Set(tags.map((tag) => tag.toLowerCase().trim()).filter(Boolean))
-  )
+  const normalized = Array.from(new Set(tags.map(tagKey).filter(Boolean)))
 
   return normalized.map((tag) => getOrCreateTag(db, tag))
 }
@@ -247,11 +240,11 @@ export function readTagSchemaColumn(db: DrizzleDb, tag: string): string | null {
     db
       .select({ schema: tagDefinitions.schema })
       .from(tagDefinitions)
-      .where(eq(tagDefinitions.name, tag))
+      .where(tagIs(tagDefinitions.name, tag))
       .get()?.schema ?? null
   )
 }
 
 export function writeTagSchemaColumn(db: DrizzleDb, tag: string, schema: string): void {
-  db.update(tagDefinitions).set({ schema }).where(eq(tagDefinitions.name, tag)).run()
+  db.update(tagDefinitions).set({ schema }).where(tagIs(tagDefinitions.name, tag)).run()
 }

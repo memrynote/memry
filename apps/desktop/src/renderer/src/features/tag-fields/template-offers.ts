@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback, useSyncExternalStore } from 'react'
 import { createLogger } from '@/lib/logger'
 
@@ -37,12 +38,12 @@ function write(noteId: string, tags: readonly string[]): void {
 export const templateOffers = {
   pending: read,
   mark(noteId: string, tag: string): void {
-    const key = tag.toLowerCase()
+    const key = tagKey(tag)
     const current = read(noteId)
     if (!current.includes(key)) write(noteId, [...current, key])
   },
   resolve(noteId: string, tag: string): void {
-    const key = tag.toLowerCase()
+    const key = tagKey(tag)
     const current = read(noteId)
     if (current.includes(key))
       write(

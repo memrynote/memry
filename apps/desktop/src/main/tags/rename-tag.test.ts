@@ -282,24 +282,25 @@ describe('renameTagEverywhere', () => {
     ).toEqual(['people', 'people/vip'])
   })
 
-  it('keeps a non-ASCII child suffix whole and leaves other non-ASCII spellings alone', async () => {
+  it('renames every spelling of a non-ASCII tag and keeps child suffixes whole', async () => {
     const note = await createNote({
       title: 'Turkish',
       content: 'Plain body',
-      tags: ['İş', 'İş/alt', 'iş']
+      tags: ['İş', 'İş/alt', 'iş', 'Ünal/Proje']
     })
     tag('İş', 'rose')
     tag('İş/alt', 'amber')
     await flushProjectionEvents()
 
-    await rename('İş', 'Work')
+    await rename('iş', 'Work')
+    await rename('ünal', 'Kişi')
 
-    expect(read(note.path).frontmatter.tags).toEqual(['Work', 'Work/alt', 'iş'])
+    expect(read(note.path).frontmatter.tags).toEqual(['Work', 'Work/alt', 'Kişi/Proje'])
     expect(
       getNoteTags(index.db, note.id)
         .map((t) => t.toLowerCase())
         .sort()
-    ).toEqual(['iş', 'work', 'work/alt'])
+    ).toEqual(['kişi/proje', 'work', 'work/alt'])
     expect(definition('work')).toMatchObject({ color: 'rose' })
     expect(definition('work/alt')).toMatchObject({ color: 'amber' })
   })

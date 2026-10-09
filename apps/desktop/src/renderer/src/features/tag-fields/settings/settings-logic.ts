@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
 import { tagDisplayName } from '../tag-display-name'
 
@@ -6,8 +7,8 @@ export function isExtendsCandidateDisabled(
   tag: string,
   candidate: string
 ): boolean {
-  const key = tag.toLowerCase()
-  const candidateKey = candidate.toLowerCase()
+  const key = tagKey(tag)
+  const candidateKey = tagKey(candidate)
   if (candidateKey === key) return true
   return snapshot?.tags[candidateKey]?.ancestors.includes(key) ?? false
 }

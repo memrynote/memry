@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
+import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -45,7 +46,7 @@ export function useInlineTagObject(
 
   const onTagClick = useCallback(
     (tag: string, pill: HTMLElement): boolean => {
-      const resolved = snapshot?.tags[tag.toLowerCase()]
+      const resolved = snapshot?.tags[tagKey(tag)]
       const container = containerRef.current
       if (!noteId || !resolved?.hasFields || !container) return false
       if (snapshot?.objects[noteId] === resolved.key) return false

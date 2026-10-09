@@ -9,8 +9,9 @@ import { taskTags } from '@memry/db-schema/schema/task-relations'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { plainVersionedMap, type JsonValue } from '@memry/shared/versioned'
 import type { DataDb, IndexDb } from '../types'
+import { tagIn } from './tag-match'
 
-/** Notes whose header carries one of `tags` (lowercase), markdown, not journals. */
+/** Notes whose header carries one of `tags` (any spelling), markdown, not journals. */
 export function headerObjectNoteIds(db: IndexDb, tags: readonly string[]): string[] {
   if (tags.length === 0) return []
   return db
@@ -19,7 +20,7 @@ export function headerObjectNoteIds(db: IndexDb, tags: readonly string[]): strin
     .innerJoin(noteCache, eq(noteCache.id, noteTags.noteId))
     .where(
       and(
-        inArray(noteTags.tag, [...tags]),
+        tagIn(noteTags.tag, tags),
         eq(noteTags.inHeader, true),
         eq(noteCache.fileType, 'markdown'),
         isNull(noteCache.date)
@@ -68,7 +69,7 @@ export function taskIdsWithTags(db: DataDb, tags: readonly string[]): string[] {
   return db
     .selectDistinct({ taskId: taskTags.taskId })
     .from(taskTags)
-    .where(inArray(taskTags.tag, [...tags]))
+    .where(tagIn(taskTags.tag, tags))
     .all()
     .map((row) => row.taskId)
 }

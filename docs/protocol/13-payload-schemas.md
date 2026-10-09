@@ -402,21 +402,49 @@ neither list is a wire constraint on the other.
   an object is joined by chapter 06 §6.11 on every apply path rather than by the
   document gate** (§13.7.7.1).
 
-- **A tag name has two keys.** Which spellings are one tag on an item is
-  decided by an ASCII-only case fold: `A`-`Z` lowercased, every other character
-  kept, as SQLite `COLLATE NOCASE` compares the tag columns
-  (`packages/shared/src/tag-fold.ts:17-19`,
-  `crates/memry-core/src/domain/tags.rs:57-64`,
-  `packages/db-schema/src/schema/notes-cache.ts:59`). `Ünal` and `ünal` are two
-  tags, and `İş/alt` is a child of `İş`. A definition's `name`, its sync id and
-  the names in `schema` (§13.7.7.2) are the trimmed name lowercased in full, as
-  shipped (`packages/shared/src/tag-fold.ts:21-23`,
-  `apps/desktop/src/main/database/queries/tag-definitions.ts:48`,
-  `crates/memry-core/src/domain/tag_admin.rs:63-65`). The fold never changes a
-  name's length, so a rename cuts a child's suffix from its own spelling at the
-  parent's length (`packages/shared/src/inline-tags.ts:79-88`); a full
-  lowercase can (`İ` becomes two UTF-16 units), so a client MUST NOT cut a
-  carrier's spelling at the length of a definition key.
+- **A tag name has one identity, the tag fold**
+  (`packages/shared/src/tag-fold.ts:25-36`,
+  `crates/memry-core/src/domain/tags.rs:60-87`). **Normative**: each Unicode
+  scalar folds on its own, with no locale and no context. `İ` (U+0130) folds to
+  `i`; `ς` (U+03C2) folds to `σ`; a U+0307 directly after a scalar that folded
+  to `i` is dropped; every other scalar takes its Unicode lowercase mapping. So
+  `Ünal`, `ünal` and `ÜNAL` are one tag, `İş`, `iş`, `IŞ` and `i̇ş` (U+0307)
+  are one tag, `ΟΔΟΣ`, `οδος` and `οδοσ` are one tag, and `ı` stays apart from
+  `i` and `ß` from `ss`. For every string `fold(fold(s))` and
+  `fold(lowercase(s))` equal `fold(s)`, so a key an older build stored as the
+  full lowercase still folds to the same tag. Spellings that fold equal are one
+  tag on an item, in a definition's `name`, and in the names in `schema`
+  (§13.7.7.2); a definition's key is the trimmed name, folded
+  (`packages/shared/src/tag-fold.ts:42-44`,
+  `crates/memry-core/src/domain/tag_admin.rs:65-67`). The vectors are
+  `packages/contracts/test-vectors/tag-fold.json`
+  (`packages/contracts/scripts/vectors/tag-fold.ts`), verified by
+  `packages/contracts/src/__tests__/tag-fold.test.ts` and
+  `crates/memry-core/tests/tag_fold_vectors.rs`.
+- SQLite `COLLATE NOCASE` on the tag columns folds `A`-`Z` only, so a client
+  MUST NOT decide tag identity with it; both clients register a `tag_fold`
+  SQL function and compare through it
+  (`apps/desktop/src/main/database/sqlite-functions.ts:31-33`,
+  `apps/desktop/src/main/database/queries/tag-match.ts:13-41`,
+  `crates/memry-core/src/storage/connection.rs:140-150`).
+- A fold can change a name's length, so a client MUST NOT cut a carrier's
+  spelling at the length of a folded name; a rename keeps a child's suffix by
+  `/` segment (`packages/shared/src/tag-fold.ts:51-54`).
+- A definition's sync id stays the name its row was first stored under, which
+  may keep the typed spelling (`Ünal`). Builds before this rule could hold two
+  live definitions that now fold equal. A client MUST read one of them, the
+  survivor: the higher `schema.t` (none below 0), then the older `createdAt`,
+  then the smaller id by UTF-16 code unit
+  (`apps/desktop/src/main/tags/converge-identity.ts:43-50`,
+  `crates/memry-core/src/domain/tag_admin.rs:82-128`). Desktop deletes the
+  others on vault open, after copying into the survivor any icon, category,
+  views or authored colour it lacks, and pushes the deletes
+  (`apps/desktop/src/main/tags/converge-identity.ts:70-106`,
+  `apps/desktop/src/main/vault/index.ts:571`). Every device picks the same
+  survivor from the same rows, so devices converge on one id. An older build
+  that still compares ASCII-only can mint a plain definition under its own
+  spelling again; the next open merges it back, and since the survivor keeps
+  the higher schema and every authored field nothing is lost.
 
 #### 13.7.7.1 `schema`
 
@@ -442,7 +470,7 @@ One versioned object holding the tag's fields, template, parent and preset
 - `fields` is ordered. `name` is a vault property key, and **its type is owned
   by the vault-wide property definition** (§13.7.9): this payload carries no
   type, so no new `property_definition.type` value is introduced. `relation`
-  present marks a relation field: `target` (a lowercase tag name, or `null` for
+  present marks a relation field: `target` (a definition key, or `null` for
   any note), `many`, and `inverse` (the label of the list derived on the
   target, which is never stored on the target).
 - `template` names a `template` item (§13.7.6) and whether to apply it to a note
@@ -469,8 +497,8 @@ definition whose `schema` names `from`
 (`packages/contracts/src/tag-schema.ts:155-181`,
 `crates/memry-core/src/domain/tag_schema_refs.rs:25-66`). **Normative**:
 
-- Names compare trimmed and lowercased. `extends` equal to `from` becomes `to`,
-  trimmed and lowercased; each `fields` entry that is an object whose
+- Names compare by definition key (trimmed, then the tag fold, §13.7.7).
+  `extends` equal to `from` becomes `to`'s key; each `fields` entry that is an object whose
   `relation` is an object whose `target` equals `from` gets `target` set the
   same way. Every other key at every depth, and every other entry, is kept.
 - `to` equal to `from` after folding, or nothing naming `from`, is no rewrite:

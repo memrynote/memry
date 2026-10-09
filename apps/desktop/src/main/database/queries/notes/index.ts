@@ -38,12 +38,14 @@ export {
   renameTag,
   deleteTag,
   removeTagFromNote,
+  noteIdsWithTag,
   type NoteTagSet,
   type NoteWithTagInfo
 } from './tag-queries'
 
 export {
   getOrCreateTag,
+  findTagDefinition,
   getAllTagDefinitions,
   updateTagColor,
   updateTagIcon,

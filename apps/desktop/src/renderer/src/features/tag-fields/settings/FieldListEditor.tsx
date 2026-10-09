@@ -1,3 +1,4 @@
+import { tagKey as keyOf } from '@memry/shared/tag-fold'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -233,7 +234,7 @@ function FieldRow({ field, locked, dragHandle, menu }: FieldRowProps): React.JSX
   const { tags } = useNoteTagsQuery()
   const Icon = FIELD_TYPE_ICONS[field.type]
   const target = field.relation?.target ?? null
-  const targetRow = target ? tags.find((row) => row.tag.toLowerCase() === target) : undefined
+  const targetRow = target ? tags.find((row) => keyOf(row.tag) === keyOf(target)) : undefined
 
   return (
     <div

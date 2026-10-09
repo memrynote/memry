@@ -2,12 +2,13 @@
 //! `ipc/tags-handlers.ts`: list with counts, rename, merge, delete, colour and
 //! icon. Rename, which carries `/` children along, is [`super::tag_rename`].
 //!
-//! Tags are matched with [`tags::same_tag`] (ASCII fold, `COLLATE NOCASE`).
+//! Tags are matched with [`tags::same_tag`] (§13.7.7 tag identity).
 //! A rename or merge rewrites every live note, journal entry and task carrying
 //! the tag, each through its own writer so each ticks the clock its type
 //! merges on ([`tags::set`] for the document types, [`tasks::set_tags`] for
 //! tasks) and each lands in the outbox. The `tag_definition` item (id = the
-//! lowercased, trimmed name, as desktop keys it) is moved the way desktop's
+//! trimmed name, folded: [`definition_id`]; older desktops keyed it by the
+//! lowercased name, so lookups go through [`definitions`], never the id) is moved the way desktop's
 //! `syncTagDefinitionRename` / `syncMergedTagDefinitions` move it: the old id
 //! is tombstoned and the new one created carrying the old colour and icon.
 
@@ -50,7 +51,8 @@ const PALETTE: [&str; 20] = [
 ];
 
 /// `defaultTagColorName`: JS `hash * 31 + charCodeAt` over UTF-16 with 32-bit
-/// wrap, then `Math.abs(hash) % 20`.
+/// wrap, then `Math.abs(hash) % 20`. Hashes `to_lowercase`, not the fold,
+/// because desktop hashes `toLowerCase()` (`packages/contracts/src/tag-colors.ts`).
 pub fn default_color(tag: &str) -> &'static str {
     let mut hash: i32 = 0;
     for unit in tag.to_lowercase().encode_utf16() {
@@ -59,9 +61,91 @@ pub fn default_color(tag: &str) -> &'static str {
     PALETTE[(i64::from(hash).unsigned_abs() % 20) as usize]
 }
 
-/// The definition id desktop uses: lowercased and trimmed.
+/// The id a new definition is written under: the tag's key.
 pub fn definition_id(tag: &str) -> String {
-    tag.trim().to_lowercase()
+    tags::tag_key(tag)
+}
+
+/// One live `tag_definition`, as the reads need it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Definition {
+    pub id: String,
+    pub color: String,
+    pub icon: Option<String>,
+    schema_t: Option<f64>,
+    created_at: Option<i64>,
+}
+
+/// Whether `a` survives `b` among definitions whose ids fold equal, as
+/// desktop's merge picks: higher schema `t`, then older `createdAt`, then the
+/// smaller id by UTF-16 code unit.
+fn survives(a: &Definition, b: &Definition) -> bool {
+    let t = |d: &Definition| d.schema_t.unwrap_or(f64::NEG_INFINITY);
+    let created = |d: &Definition| d.created_at.unwrap_or(i64::MAX);
+    t(a).total_cmp(&t(b))
+        .reverse()
+        .then_with(|| created(a).cmp(&created(b)))
+        .then_with(|| a.id.encode_utf16().cmp(b.id.encode_utf16()))
+        .is_lt()
+}
+
+/// Every live definition by key, one per key. Two whose ids fold equal
+/// (`ünal` and `Ünal`, `i̇ş` and `iş`) are one tag; the survivor answers for it
+/// and desktop deletes the other.
+pub fn definitions(conn: &Connection) -> Result<BTreeMap<String, Definition>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT d.name, d.color, d.icon, d.created_at,
+                    CASE WHEN json_type(s.payload, '$.schema.t') IN ('integer', 'real')
+                         THEN json_extract(s.payload, '$.schema.t') END
+               FROM tag_definitions d
+               LEFT JOIN sync_items s ON s.item_type = ?1 AND s.item_id = d.name
+                AND json_valid(s.payload)
+              WHERE d.deleted_at IS NULL",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([DEFINITION_TYPE], |row| {
+            Ok(Definition {
+                id: row.get(0)?,
+                color: row.get(1)?,
+                icon: row.get(2)?,
+                created_at: row.get(3)?,
+                schema_t: row.get(4)?,
+            })
+        })
+        .map_err(failed)?;
+    let mut out: BTreeMap<String, Definition> = BTreeMap::new();
+    for row in rows {
+        let definition = row.map_err(failed)?;
+        let key = tags::tag_key(&definition.id);
+        if out.get(&key).is_none_or(|kept| survives(&definition, kept)) {
+            out.insert(key, definition);
+        }
+    }
+    Ok(out)
+}
+
+/// The surviving live definition's id for `tag`, if any.
+pub(crate) fn definition_for(conn: &Connection, tag: &str) -> Result<Option<String>, StorageError> {
+    Ok(definitions(conn)?.remove(&tags::tag_key(tag)).map(|d| d.id))
+}
+
+/// Every live definition id for `tag`: all of them answer to one tag.
+fn definition_ids(conn: &Connection, tag: &str) -> Result<Vec<String>, StorageError> {
+    let key = tags::tag_key(tag);
+    let mut statement = conn
+        .prepare("SELECT name FROM tag_definitions WHERE deleted_at IS NULL")
+        .map_err(failed)?;
+    let ids = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(ids
+        .into_iter()
+        .filter(|id| tags::tag_key(id) == key)
+        .collect())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,11 +168,11 @@ pub fn list(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
         .into_iter()
         .chain(body_tags::carriers(conn)?);
     for (item_type, item_id, tag) in all {
-        if !counted.insert((item_id, tags::fold(&tag))) {
+        if !counted.insert((item_id, tags::tag_key(&tag))) {
             continue;
         }
         let entry = by_fold
-            .entry(tags::fold(&tag))
+            .entry(tags::tag_key(&tag))
             .or_insert_with(|| TagSummary {
                 name: tag.clone(),
                 color: None,
@@ -103,32 +187,17 @@ pub fn list(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
             _ => entry.tasks += 1,
         }
     }
-    let mut statement = conn
-        .prepare("SELECT name, color, icon FROM tag_definitions WHERE deleted_at IS NULL")
-        .map_err(failed)?;
-    let rows = statement
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ))
-        })
-        .map_err(failed)?;
-    for row in rows {
-        let (name, color, icon) = row.map_err(failed)?;
-        let entry = by_fold
-            .entry(tags::fold(&name))
-            .or_insert_with(|| TagSummary {
-                name: name.clone(),
-                color: None,
-                icon: None,
-                notes: 0,
-                journals: 0,
-                tasks: 0,
-            });
-        entry.color = color;
-        entry.icon = icon;
+    for (key, definition) in definitions(conn)? {
+        let entry = by_fold.entry(key).or_insert_with(|| TagSummary {
+            name: definition.id.clone(),
+            color: None,
+            icon: None,
+            notes: 0,
+            journals: 0,
+            tasks: 0,
+        });
+        entry.color = Some(definition.color);
+        entry.icon = definition.icon;
     }
     let mut out: Vec<TagSummary> = by_fold.into_values().collect();
     out.sort_by(|a, b| {
@@ -262,22 +331,22 @@ pub(crate) fn live_definition(conn: &Connection, id: &str) -> Result<Option<Valu
     Ok(row.payload.and_then(|raw| serde_json::from_str(&raw).ok()))
 }
 
-pub(crate) fn delete_definition(
+/// Tombstones every live definition of `tag`, under any id that folds to it.
+pub(crate) fn delete_definitions(
     conn: &Connection,
-    id: &str,
+    tag: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    if live_definition(conn, id)?.is_none() {
-        return Ok(());
+    for id in definition_ids(conn, tag)? {
+        outbox::commit(
+            conn,
+            &outbox::Change::delete(DEFINITION_TYPE, &id),
+            now_ms,
+            |tx| tombstone_local(tx, DEFINITION_TYPE, &id, device_id, now_ms),
+        )?
+        .acknowledge();
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(DEFINITION_TYPE, id),
-        now_ms,
-        |tx| tombstone_local(tx, DEFINITION_TYPE, id, device_id, now_ms),
-    )?
-    .acknowledge();
     Ok(())
 }
 
@@ -290,13 +359,13 @@ pub(crate) fn upsert_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let id = definition_id(name);
-    if live_definition(conn, &id)?.is_some() {
+    if let Some(id) = definition_for(conn, name)? {
         if !changes.is_empty() {
             edit(conn, DEFINITION_TYPE, &id, changes, device_id, now_ms)?.acknowledge();
         }
         return Ok(());
     }
+    let id = definition_id(name);
     let mut payload = template.cloned().unwrap_or_else(|| json!({}));
     let map = payload
         .as_object_mut()
@@ -354,7 +423,7 @@ pub fn merge(
         return Err(refuse("merge needs two different tags"));
     }
     let count = item_count(rewrite(conn, source, Some(target), device_id, now_ms)?.len());
-    delete_definition(conn, &definition_id(source), device_id, now_ms)?;
+    delete_definitions(conn, source, device_id, now_ms)?;
     upsert_definition(conn, target, None, Vec::new(), device_id, now_ms)?;
     tag_schema_refs::rewrite_definitions(conn, source, Some(target), device_id, now_ms)?;
     Ok(count)
@@ -368,7 +437,7 @@ pub fn delete(
     now_ms: i64,
 ) -> Result<u32, StorageError> {
     let count = item_count(rewrite(conn, tag, None, device_id, now_ms)?.len());
-    delete_definition(conn, &definition_id(tag), device_id, now_ms)?;
+    delete_definitions(conn, tag, device_id, now_ms)?;
     Ok(count)
 }
 
@@ -413,131 +482,5 @@ pub fn set_icon(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::storage::repositories::InboundRecord;
-    use crate::storage::{Db, open_data, test_support::temp_dir};
-
-    const NOW: i64 = 1_760_000_000_000;
-
-    fn seed(db: &Db, item_type: &str, id: &str, payload: &str) {
-        db.call_blocking(|conn| {
-            sync_items::apply_remote(
-                conn,
-                &InboundRecord {
-                    item_type: item_type.into(),
-                    item_id: id.into(),
-                    payload_json: payload.into(),
-                    server_cursor: Some(1),
-                    signer_device_id: Some("desk".into()),
-                    updated_at: NOW,
-                    deleted_at: None,
-                },
-                NOW,
-            )?;
-            Ok(())
-        })
-        .expect("seed");
-    }
-
-    fn vault(label: &str) -> (Db, crate::storage::test_support::TempDir) {
-        let dir = temp_dir(label);
-        let db = open_data(&dir.path().join("data.db")).expect("open");
-        seed(
-            &db,
-            "note",
-            "n1",
-            r#"{"title":"a","tags":["Job","ideas"],"clock":{"desk":1}}"#,
-        );
-        seed(
-            &db,
-            "note",
-            "n2",
-            r#"{"title":"b","tags":["work","JOB"],"clock":{"desk":1}}"#,
-        );
-        seed(
-            &db,
-            "journal",
-            "j1",
-            r#"{"date":"2026-09-24","tags":["job"],"clock":{"desk":1}}"#,
-        );
-        seed(
-            &db,
-            "tag_definition",
-            "job",
-            r##"{"name":"job","color":"#ff0000","icon":"💼","clock":{"desk":1}}"##,
-        );
-        (db, dir)
-    }
-
-    fn tags_of(db: &Db, item_type: &str, id: &str) -> Vec<String> {
-        db.call_blocking(|conn| current_tags(conn, item_type, id))
-            .expect("tags")
-    }
-
-    #[test]
-    fn the_default_colour_matches_the_contract_hash() {
-        // tag-colors.ts: defaultTagColorName('work') and ('ideas').
-        assert!(PALETTE.contains(&default_color("work")));
-        assert_eq!(default_color("Work"), default_color("work"));
-    }
-
-    #[test]
-    fn list_counts_every_carrier_case_insensitively_and_reads_definitions() {
-        let (db, _d) = vault("tags-list");
-        let listed = db.call_blocking(|c| list(c)).expect("list");
-        let job = listed
-            .iter()
-            .find(|t| tags::same_tag(&t.name, "job"))
-            .expect("job");
-        assert_eq!((job.notes, job.journals, job.tasks), (2, 1, 0));
-        assert_eq!(job.color.as_deref(), Some("#ff0000"));
-    }
-
-    #[test]
-    fn merge_into_an_existing_tag_dedupes_and_counts_items() {
-        let (db, _d) = vault("tags-merge");
-        let count = db
-            .call_blocking(|c| merge(c, "job", "Work", "phone", NOW + 1))
-            .expect("merge");
-        assert_eq!(count, 3);
-        // n2 had both: one `work`, spelled as it already was.
-        assert_eq!(tags_of(&db, "note", "n2"), vec!["work"]);
-        assert_eq!(tags_of(&db, "note", "n1"), vec!["Work", "ideas"]);
-        db.call_blocking(|c| {
-            assert!(live_definition(c, "job")?.is_none());
-            assert!(live_definition(c, "work")?.is_some());
-            Ok(())
-        })
-        .expect("defs");
-        assert!(
-            db.call_blocking(|c| merge(c, "work", "WORK", "phone", NOW + 2))
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn delete_removes_it_everywhere_and_colour_icon_create_a_definition() {
-        let (db, _d) = vault("tags-delete");
-        let count = db
-            .call_blocking(|c| delete(c, "JOB", "phone", NOW + 1))
-            .expect("delete");
-        assert_eq!(count, 3);
-        assert_eq!(tags_of(&db, "note", "n2"), vec!["work"]);
-        db.call_blocking(|c| {
-            set_color(c, "ideas", "sage", "phone", NOW + 2)?;
-            set_icon(c, "ideas", Some("💡"), "phone", NOW + 3)?;
-            let def = live_definition(c, "ideas")?.expect("ideas");
-            assert_eq!(def["color"], json!("sage"));
-            assert_eq!(def["colorAuthored"], json!(true));
-            assert_eq!(def["icon"], json!("💡"));
-            set_icon(c, "ideas", None, "phone", NOW + 4)?;
-            assert_eq!(
-                live_definition(c, "ideas")?.expect("ideas")["icon"],
-                Value::Null
-            );
-            Ok(())
-        })
-        .expect("defs");
-    }
-}
+#[path = "tag_admin_tests.rs"]
+mod tests;

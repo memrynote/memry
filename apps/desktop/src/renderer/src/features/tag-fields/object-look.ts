@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback } from 'react'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
@@ -12,7 +13,7 @@ export function lookOfTagKey(
   snapshot: TagSchemaSnapshot | undefined,
   tag: string | null | undefined
 ): ObjectLook | null {
-  const resolved = tag ? snapshot?.tags[tag.toLowerCase()] : undefined
+  const resolved = tag ? snapshot?.tags[tagKey(tag)] : undefined
   return resolved ? lookOfTag(resolved) : null
 }
 

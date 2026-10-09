@@ -10,6 +10,7 @@ use serde_json::{Map, Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::notes::{edit, failed};
 use crate::domain::tag_admin::DEFINITION_TYPE;
+use crate::domain::tags;
 use crate::storage::repositories::Change;
 
 const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
@@ -17,7 +18,7 @@ const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
 fn same_tag(value: Option<&Value>, key: &str) -> bool {
     value
         .and_then(Value::as_str)
-        .is_some_and(|name| name.trim().to_lowercase() == key)
+        .is_some_and(|name| tags::tag_key(name) == key)
 }
 
 /// The rewritten schema with `t + 1`, or `None` when nothing names `from` (or
@@ -27,8 +28,8 @@ pub fn rewrite_schema_reference(
     from: &str,
     to: Option<&str>,
 ) -> Option<Map<String, Value>> {
-    let from_key = from.trim().to_lowercase();
-    let to_key = to.map(|t| t.trim().to_lowercase());
+    let from_key = tags::tag_key(from);
+    let to_key = to.map(tags::tag_key);
     if to_key.as_deref() == Some(from_key.as_str()) {
         return None;
     }

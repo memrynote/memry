@@ -1,10 +1,11 @@
-import { eq, and, inArray } from 'drizzle-orm'
+import { and, inArray } from 'drizzle-orm'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
-import { foldTag } from '@memry/shared/tag-fold'
+import { foldTag, tagKey } from '@memry/shared/tag-fold'
 import type { TagWithCount } from '@memry/contracts/tags-api'
 import { getAllTags, getAllTagDefinitions, getOrCreateTag, deleteTagDefinition } from './notes'
 import { getAllTaskTags } from './tasks'
+import { tagIs } from './tag-match'
 
 type IndexDb = Parameters<typeof getAllTags>[0]
 type DataDb = Parameters<typeof getAllTaskTags>[0]
@@ -40,16 +41,16 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   const taskCounts = getAllTaskTags(dataDb)
   const definitions = getAllTagDefinitions(dataDb)
 
-  // Identity is case-insensitive (lowercase key); display name keeps the
-  // first-seen casing from actual usage
-  const colorMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.color]))
-  const iconMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.icon]))
-  const categoryIdMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.categoryId]))
-  const sortOrderMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.sortOrder]))
+  // Identity is the tag key (`tagKey`); display name keeps the first-seen
+  // casing from actual usage
+  const colorMap = new Map(definitions.map((d) => [tagKey(d.name), d.color]))
+  const iconMap = new Map(definitions.map((d) => [tagKey(d.name), d.icon]))
+  const categoryIdMap = new Map(definitions.map((d) => [tagKey(d.name), d.categoryId]))
+  const sortOrderMap = new Map(definitions.map((d) => [tagKey(d.name), d.sortOrder]))
   const merged = new Map<string, TagWithCount>()
 
   for (const { tag, count } of noteCounts) {
-    const key = tag.toLowerCase().trim()
+    const key = tagKey(tag)
     const existing = merged.get(key)
     if (existing) {
       existing.count += count
@@ -66,7 +67,7 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   }
 
   for (const { tag, count } of taskCounts) {
-    const key = tag.toLowerCase().trim()
+    const key = tagKey(tag)
     const existing = merged.get(key)
     if (existing) {
       existing.count += count
@@ -98,7 +99,7 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   // authored ones are listed at zero; the rest are still collected.
   const registered: TagWithCount[] = []
   for (const def of definitions) {
-    if (merged.has(def.name.toLowerCase())) continue
+    if (merged.has(tagKey(def.name))) continue
     if (!isAuthored(def)) {
       deleteTagDefinition(dataDb, def.name)
       continue
@@ -135,7 +136,7 @@ export function mergeTagInNotes(
   const sourceRows = indexDb
     .select({ noteId: noteTags.noteId })
     .from(noteTags)
-    .where(eq(noteTags.tag, normalizedSource))
+    .where(tagIs(noteTags.tag, source))
     .all()
 
   if (sourceRows.length === 0) {
@@ -148,7 +149,7 @@ export function mergeTagInNotes(
     indexDb
       .select({ noteId: noteTags.noteId })
       .from(noteTags)
-      .where(and(eq(noteTags.tag, normalizedTarget), inArray(noteTags.noteId, sourceNoteIds)))
+      .where(and(tagIs(noteTags.tag, trimmedTarget), inArray(noteTags.noteId, sourceNoteIds)))
       .all()
       .map((r) => r.noteId)
   )
@@ -157,7 +158,7 @@ export function mergeTagInNotes(
   if (duplicateNoteIds.length > 0) {
     indexDb
       .delete(noteTags)
-      .where(and(eq(noteTags.tag, normalizedSource), inArray(noteTags.noteId, duplicateNoteIds)))
+      .where(and(tagIs(noteTags.tag, source), inArray(noteTags.noteId, duplicateNoteIds)))
       .run()
   }
 
@@ -166,7 +167,7 @@ export function mergeTagInNotes(
     indexDb
       .update(noteTags)
       .set({ tag: trimmedTarget })
-      .where(and(eq(noteTags.tag, normalizedSource), inArray(noteTags.noteId, remainingNoteIds)))
+      .where(and(tagIs(noteTags.tag, source), inArray(noteTags.noteId, remainingNoteIds)))
       .run()
   }
 
@@ -189,7 +190,7 @@ export function mergeTagInTasks(
   const sourceRows = dataDb
     .select({ taskId: taskTags.taskId })
     .from(taskTags)
-    .where(eq(taskTags.tag, normalizedSource))
+    .where(tagIs(taskTags.tag, source))
     .all()
 
   if (sourceRows.length === 0) {
@@ -202,7 +203,7 @@ export function mergeTagInTasks(
     dataDb
       .select({ taskId: taskTags.taskId })
       .from(taskTags)
-      .where(and(eq(taskTags.tag, normalizedTarget), inArray(taskTags.taskId, sourceTaskIds)))
+      .where(and(tagIs(taskTags.tag, trimmedTarget), inArray(taskTags.taskId, sourceTaskIds)))
       .all()
       .map((r) => r.taskId)
   )
@@ -211,7 +212,7 @@ export function mergeTagInTasks(
   if (duplicateTaskIds.length > 0) {
     dataDb
       .delete(taskTags)
-      .where(and(eq(taskTags.tag, normalizedSource), inArray(taskTags.taskId, duplicateTaskIds)))
+      .where(and(tagIs(taskTags.tag, source), inArray(taskTags.taskId, duplicateTaskIds)))
       .run()
   }
 
@@ -220,7 +221,7 @@ export function mergeTagInTasks(
     dataDb
       .update(taskTags)
       .set({ tag: trimmedTarget })
-      .where(and(eq(taskTags.tag, normalizedSource), inArray(taskTags.taskId, remainingTaskIds)))
+      .where(and(tagIs(taskTags.tag, source), inArray(taskTags.taskId, remainingTaskIds)))
       .run()
   }
 

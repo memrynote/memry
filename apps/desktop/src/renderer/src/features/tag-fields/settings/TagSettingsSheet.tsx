@@ -1,3 +1,4 @@
+import { tagKey as keyOf } from '@memry/shared/tag-fold'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -34,11 +35,11 @@ interface TagSettingsSheetProps {
 
 export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React.JSX.Element {
   const { t } = useT('notes')
-  const tagKey = tag.trim().toLowerCase()
+  const tagKey = keyOf(tag)
   const { data: snapshot } = useTagSchemas()
   const resolved = resolveTag(snapshot, tagKey)
   const { tags: allTags } = useNoteTagsQuery()
-  const row = allTags.find((candidate) => candidate.tag.toLowerCase() === tagKey)
+  const row = allTags.find((candidate) => keyOf(candidate.tag) === tagKey)
   const color = row?.color ?? resolved?.color ?? ''
   const icon = row?.icon ?? resolved?.icon ?? null
   const tint = getTagColors(color, tagKey).text
@@ -170,7 +171,7 @@ function AppearanceRow({ tag, tagKey, color, icon }: AppearanceRowProps): React.
   const { t } = useT('notes')
   const { categories, reorder } = useTagCategories()
   const category = categories.find((candidate) =>
-    candidate.tags.some((row) => row.tag.toLowerCase() === tagKey)
+    candidate.tags.some((row) => keyOf(row.tag) === tagKey)
   )
 
   const run = async (

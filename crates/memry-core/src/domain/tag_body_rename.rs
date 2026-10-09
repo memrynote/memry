@@ -32,14 +32,15 @@ use crate::domain::notes::failed;
 use crate::domain::{body_tags, body_write, journal, notes, tags};
 
 pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
-    let key = tags::fold(tag);
-    let from = tags::fold(from.trim());
-    if key == from {
+    let from = tags::tag_key(from);
+    if tags::fold(tag) == from {
         return Some(to.trim().to_owned());
     }
-    key.strip_prefix(&from)
-        .filter(|rest| rest.starts_with('/'))
-        .map(|_| format!("{}{}", to.trim(), &tag[from.len()..]))
+    // Segment-wise, never at `from.len()`: the fold can change length.
+    let depth = from.split('/').count();
+    let segments: Vec<&str> = tag.split('/').collect();
+    (segments.len() > depth && tags::fold(&segments[..depth].join("/")) == from)
+        .then(|| format!("{}/{}", to.trim(), segments[depth..].join("/")))
 }
 
 pub(crate) fn is_inline_tag_name(name: &str) -> bool {
@@ -114,11 +115,10 @@ fn rewrite_source(
     now_ms: i64,
 ) -> Result<(), CrdtError> {
     let plan = update_log::load_plan(conn, id)?;
-    let may_hold = plan.blobs().iter().any(|blob| {
-        String::from_utf8_lossy(blob)
-            .to_ascii_lowercase()
-            .contains(needle)
-    });
+    let may_hold = plan
+        .blobs()
+        .iter()
+        .any(|blob| tags::fold(&String::from_utf8_lossy(blob)).contains(needle));
     if !may_hold {
         return Ok(());
     }

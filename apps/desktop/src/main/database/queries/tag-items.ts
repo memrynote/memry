@@ -10,7 +10,7 @@
  * @module db/queries/tag-items
  */
 
-import { eq, inArray, like, or, type Column, type SQL } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { noteCache, noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
@@ -18,6 +18,8 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import type { FileType } from '@memry/shared/file-types'
 import type { DataDb, IndexDb } from '../types'
+import { tagKey } from '@memry/shared/tag-fold'
+import { tagOrUnder } from './tag-match'
 
 export interface TagItem {
   id: string
@@ -36,14 +38,6 @@ export interface TagItem {
   fileType: FileType
 }
 
-/**
- * Exact-or-descendant predicate: `tag = ? OR tag LIKE ? || '/%'`.
- * Never a bare `LIKE 'work%'` — that would also match `workshop`.
- */
-function tagMatches<TColumn extends Column>(column: TColumn, normalizedTag: string): SQL {
-  return or(eq(column, normalizedTag), like(column, `${normalizedTag}/%`))!
-}
-
 function folderOf(path: string): string | null {
   const idx = path.lastIndexOf('/')
   return idx === -1 ? null : path.slice(0, idx)
@@ -55,7 +49,7 @@ function listNoteItems(indexDb: IndexDb, normalizedTag: string): TagItem[] {
       indexDb
         .select({ noteId: noteTags.noteId })
         .from(noteTags)
-        .where(tagMatches(noteTags.tag, normalizedTag))
+        .where(tagOrUnder(noteTags.tag, normalizedTag))
         .all()
         .map((r) => r.noteId)
     )
@@ -109,7 +103,7 @@ function listTaskItems(dataDb: DataDb, normalizedTag: string): TagItem[] {
       dataDb
         .select({ taskId: taskTags.taskId })
         .from(taskTags)
-        .where(tagMatches(taskTags.tag, normalizedTag))
+        .where(tagOrUnder(taskTags.tag, normalizedTag))
         .all()
         .map((r) => r.taskId)
     )
@@ -162,7 +156,7 @@ function listInboxItemsForTag(dataDb: DataDb, normalizedTag: string): TagItem[] 
       dataDb
         .select({ itemId: inboxItemTags.itemId })
         .from(inboxItemTags)
-        .where(tagMatches(inboxItemTags.tag, normalizedTag))
+        .where(tagOrUnder(inboxItemTags.tag, normalizedTag))
         .all()
         .map((r) => r.itemId)
     )
@@ -208,13 +202,13 @@ function listInboxItemsForTag(dataDb: DataDb, normalizedTag: string): TagItem[] 
 }
 
 /**
- * In-memory twin of `tagMatches`: exact match, or a `/` descendant. Kept
+ * In-memory twin of `tagOrUnder`: exact match, or a `/` descendant. Kept
  * character-for-character equivalent to the SQL predicate so an ANDed tag
  * narrows by exactly the rule the primary tag was selected by.
  */
 export function itemTagsMatch(itemTags: string[], normalizedTag: string): boolean {
   return itemTags.some((raw) => {
-    const tag = raw.toLowerCase().trim()
+    const tag = tagKey(raw)
     return tag === normalizedTag || tag.startsWith(`${normalizedTag}/`)
   })
 }
@@ -237,7 +231,7 @@ export function listTagItems(
   tag: string,
   andTags: string[] = []
 ): TagItem[] {
-  const normalizedTag = tag.toLowerCase().trim()
+  const normalizedTag = tagKey(tag)
 
   const items = [
     ...listNoteItems(indexDb, normalizedTag),
@@ -246,11 +240,7 @@ export function listTagItems(
   ]
 
   const extra = [
-    ...new Set(
-      andTags
-        .map((value) => value.toLowerCase().trim())
-        .filter((value) => value !== '' && value !== normalizedTag)
-    )
+    ...new Set(andTags.map(tagKey).filter((value) => value !== '' && value !== normalizedTag))
   ]
   if (extra.length === 0) return items
 

@@ -19,7 +19,7 @@ const SPECS: CaseSpec[] = [
   },
   {
     name: 'rename-relation-targets-mixed-case',
-    pins: 'every matching target is rewritten, compared trimmed and lowercased; to is lowercased',
+    pins: 'every matching target is rewritten, compared by definition key (trimmed, folded); to is folded',
     input: {
       schema: {
         t: 3,
@@ -113,7 +113,7 @@ const SPECS: CaseSpec[] = [
   },
   {
     name: 'definition-id-dotted-i',
-    pins: 'references are definition ids, lowercased in full: İş and its full lowercase match; to is lowercased in full',
+    pins: 'references compare by definition key: İş, iş and the full lowercase i + U+0307 + ş all match; to is folded',
     input: {
       schema: {
         t: 1,
@@ -139,7 +139,7 @@ const SPECS: CaseSpec[] = [
   },
   {
     name: 'definition-id-mixed-case',
-    pins: 'ŞEHİR matches Şehİr in full lowercase; plain şehir is another definition; to MY-City lands as my-city',
+    pins: 'ŞEHİR, Şehİr and şehir are one definition key; to MY-City lands as my-city',
     input: {
       schema: {
         t: 2,

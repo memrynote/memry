@@ -775,32 +775,45 @@ fn two_spellings_of_one_tag_count_as_one() {
     );
 }
 
-/// **Case folding is ASCII-only, on purpose, and `Café` / `CAFÉ` are two
-/// tags.**
-///
-/// `COLLATE NOCASE` folds `A`-`Z` and nothing else, and `domain::tags::fold`
-/// is `to_ascii_lowercase` to match it exactly. That is FR-047's "letter-case
-/// behaviour identical to desktop": a core that folded Unicode here would
-/// merge two tags desktop keeps apart, and the vaults would disagree about
-/// how many tags exist.
-///
-/// Pinned as a test because it reads like a bug and is a decision.
+/// **Tag identity is the Unicode fold (§13.7.7), not `NOCASE`.** `Ünal` and
+/// `ünal`, `İş` and `iş` are one tag each, in the counts and on the tag screen,
+/// while `ış` stays its own word.
 #[test]
-fn folding_is_ascii_only_so_two_accented_spellings_stay_two_tags() {
+fn unicode_case_variants_are_one_tag_in_the_reads() {
     use memry_core::domain::reads;
 
     let (db, _vault) = vault("tag-unicode");
-    write_note(&db, "note-1", "One", &["Café".to_owned()], None);
-    write_note(&db, "note-2", "Two", &["CAFÉ".to_owned()], None);
+    write_note(
+        &db,
+        "note-1",
+        "One",
+        &["Ünal".to_owned(), "İş".to_owned()],
+        None,
+    );
+    write_note(
+        &db,
+        "note-2",
+        "Two",
+        &["ünal".to_owned(), "iş".to_owned()],
+        None,
+    );
+    write_note(&db, "note-3", "Three", &["ış".to_owned()], None);
 
     let tags = db
         .call_blocking(|conn: &mut Connection| reads::tags(conn))
         .expect("the tags");
-    assert_eq!(
-        tags.len(),
-        2,
-        "non-ASCII case is not folded, matching desktop: {tags:?}"
-    );
+    let counts: Vec<(&str, u32)> = tags
+        .iter()
+        .map(|t| (t.name.as_str(), t.note_count))
+        .collect();
+    assert_eq!(counts, vec![("iş", 2), ("Ünal", 2), ("ış", 1)], "{tags:?}");
+
+    for (query, want) in [("ÜNAL", 2), ("i\u{0307}ş", 2), ("IŞ", 2), ("ış", 1)] {
+        let found = db
+            .call_blocking(move |conn: &mut Connection| reads::notes_tagged(conn, query))
+            .expect("the notes");
+        assert_eq!(found.len(), want, "{query}");
+    }
 }
 
 /// Opening a tag screen from one spelling finds the notes that used another

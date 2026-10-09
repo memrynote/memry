@@ -105,6 +105,7 @@ import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
 import { backfillHeaderTagFlags } from './header-tag-backfill'
+import { convergeTagIdentity } from '../tags/converge-identity'
 import { resumeFieldRename } from '../tags/schema/field-rename'
 import { resumeTagRename } from '../tags/rename-tag'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
@@ -565,6 +566,13 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   await backfillHeaderTagFlags({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
 
   if (isStale()) return
+
+  try {
+    convergeTagIdentity(dataDb, getIndexDatabase())
+  } catch (error) {
+    logger.error('Tag identity convergence failed:', error)
+    trackMainError('vault', 'tag_identity_converge', error)
+  }
 
   try {
     await resumeFieldRename(dataDb)

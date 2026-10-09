@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import type { PresetKey } from '@memry/contracts/tag-schema'
 import type { TagSchemaCommand, TagSchemaCommandResult } from '@memry/contracts/tag-schema-api'
 import { notesService } from '@/services/notes-service'
@@ -29,7 +30,7 @@ export async function addPresetTag(
   const result = await edit({ kind: 'add-preset', preset })
   const tag = result.tag ?? result.snapshot.presets.find((offer) => offer.key === preset)?.name
   if (!tag) throw new Error('preset not added')
-  return tag.toLowerCase()
+  return tagKey(tag)
 }
 
 const LAST_TAG_KEY = 'memry:mention-create-last-tag'

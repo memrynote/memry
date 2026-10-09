@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -76,7 +77,7 @@ export function TemplateOffers({
     [getEditor, noteId, noteTitle, notePath, t]
   )
 
-  const header = new Set(headerTags.map((tag) => tag.toLowerCase()))
+  const header = new Set(headerTags.map(tagKey))
   const offers = pending.flatMap((key) => {
     const tag = snapshot?.tags[key]
     return tag?.template && header.has(key) ? [{ tag, templateId: tag.template.id }] : []

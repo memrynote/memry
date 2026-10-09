@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use rusqlite::Connection;
+use rusqlite::functions::FunctionFlags;
 
 use crate::api::errors::StorageError;
 
@@ -135,6 +136,18 @@ fn configure(conn: &Connection) -> Result<(), StorageError> {
         .map_err(|err| StorageError::Failed {
             what: format!("could not set foreign_keys: {err}"),
         })?;
+
+    // `tag_fold(text)`: tag identity (§13.7.7), because `COLLATE NOCASE` folds
+    // ASCII only. Desktop registers the same function on its connections.
+    conn.create_scalar_function(
+        "tag_fold",
+        1,
+        FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        |ctx| Ok(crate::domain::tags::fold(&ctx.get::<String>(0)?)),
+    )
+    .map_err(|err| StorageError::Failed {
+        what: format!("could not register tag_fold: {err}"),
+    })?;
 
     Ok(())
 }

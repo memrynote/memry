@@ -17,7 +17,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::tag_admin::{
-    carriers, definition_id, delete_definition, item_count, live_definition, refuse, rewrite,
+    carriers, definition_for, delete_definitions, item_count, live_definition, refuse, rewrite,
     upsert_definition,
 };
 use crate::domain::{body_tags, tag_body_rename, tag_schema_refs, tags};
@@ -43,11 +43,12 @@ fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)
     for name in names {
         let name = name.trim();
         let key = tags::fold(name);
-        let child = key
-            .strip_prefix(&old_key)
-            .is_some_and(|rest| rest.starts_with('/'));
+        // Segment-wise, never at `old_key.len()`: the fold can change length.
+        let depth = old_key.split('/').count();
+        let segments: Vec<&str> = name.split('/').collect();
+        let child = segments.len() > depth && tags::fold(&segments[..depth].join("/")) == old_key;
         if child && seen.insert(key.clone()) {
-            out.push((key, format!("{new}{}", &name[old_key.len()..])));
+            out.push((key, format!("{new}/{}", segments[depth..].join("/"))));
         }
     }
     out.sort_by_key(|(from, _)| std::cmp::Reverse(from.matches('/').count()));
@@ -61,20 +62,22 @@ fn move_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let from_id = definition_id(from);
-    if from_id == definition_id(to) {
+    if tags::same_tag(from.trim(), to.trim()) {
         return Ok(());
     }
+    let Some(from_id) = definition_for(conn, from)? else {
+        return Ok(());
+    };
     let Some(mut template) = live_definition(conn, &from_id)? else {
         return Ok(());
     };
     if let Some(map) = template.as_object_mut() {
         map.remove("clock");
     }
-    if live_definition(conn, &definition_id(to))?.is_none() {
+    if definition_for(conn, to)?.is_none() {
         upsert_definition(conn, to, Some(&template), Vec::new(), device_id, now_ms)?;
     }
-    delete_definition(conn, &from_id, device_id, now_ms)
+    delete_definitions(conn, from, device_id, now_ms)
 }
 
 /// Renames a tag and its children everywhere. Returns the number of items
@@ -203,6 +206,23 @@ mod tests {
             Ok(())
         })
         .expect("defs");
+    }
+
+    #[test]
+    fn rename_keeps_a_child_suffix_whose_fold_changes_length() {
+        let (db, _d) = vault("tags-rename-unicode");
+        seed(
+            &db,
+            "note",
+            "n3",
+            r#"{"title":"n3","tags":["İş/Plan","ünal"],"clock":{"desk":1}}"#,
+        );
+        db.call_blocking(|c| rename(c, "iş", "work", "phone", NOW + 1))
+            .expect("rename");
+        assert_eq!(tags_of(&db, "note", "n3"), vec!["work/Plan", "ünal"]);
+        db.call_blocking(|c| rename(c, "ÜNAL", "Name", "phone", NOW + 2))
+            .expect("rename");
+        assert_eq!(tags_of(&db, "note", "n3"), vec!["work/Plan", "Name"]);
     }
 
     #[test]

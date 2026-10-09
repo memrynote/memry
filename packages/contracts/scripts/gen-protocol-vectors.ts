@@ -54,6 +54,7 @@ import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
 import { buildRecreateClock } from './vectors/recreate-clock'
 import { buildSettingsMerge } from './vectors/settings-merge'
+import { buildTagFold } from './vectors/tag-fold'
 import { buildTagSchemaRefs } from './vectors/tag-schema-refs'
 import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
@@ -87,6 +88,7 @@ const CLASSES: readonly VectorClass[] = [
     name: 'versioned-values',
     files: [{ path: 'versioned-values.json', build: buildVersionedValues }]
   },
+  { name: 'tag-fold', files: [{ path: 'tag-fold.json', build: buildTagFold }] },
   {
     name: 'tag-schema-refs',
     files: [{ path: 'tag-schema-refs.json', build: buildTagSchemaRefs }]

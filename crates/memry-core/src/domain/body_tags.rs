@@ -18,8 +18,9 @@ use crate::domain::notes::failed;
 use crate::domain::tags;
 
 /// `note_tags` and `note_body_tags` as one `(note_id, tag)` relation. `UNION`
-/// compares with `note_tags.tag`'s `NOCASE`, so a tag both halves carry is one
-/// row.
+/// compares with the columns' `NOCASE`, which folds ASCII only, so one note can
+/// still yield two rows of one tag (`Ünal`, `ünal`): readers match and group by
+/// `tag_fold` and count distinct `note_id`s.
 pub const ALL_NOTE_TAGS: &str = "(SELECT note_id, tag FROM note_tags WHERE deleted_at IS NULL \
      UNION SELECT note_id, tag FROM note_body_tags)";
 

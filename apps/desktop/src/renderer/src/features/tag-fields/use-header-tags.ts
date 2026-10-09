@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -26,7 +27,7 @@ export interface HeaderTagActions {
 }
 
 const hasTag = (tags: readonly string[], name: string): boolean =>
-  tags.some((tag) => tag.toLowerCase() === name.toLowerCase())
+  tags.some((tag) => tagKey(tag) === tagKey(name))
 
 export function useHeaderTags({
   noteId,

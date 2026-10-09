@@ -1,4 +1,4 @@
-import { foldTag } from './tag-fold'
+import { foldTag, suffixBelow } from './tag-fold'
 
 /**
  * The inline `#tag` grammar every reader and rewriter of note bodies shares:
@@ -73,8 +73,8 @@ export interface TagRename {
  * The name `tag` takes under `renames`, or null when no rename names it or a
  * parent of it. Whole tags only: renaming `person` leaves `personal` alone.
  * A child keeps the spelling of its own suffix (`Person/VIP` → `people/VIP`).
- * Names compare with `foldTag`, which keeps length, so the suffix is cut from
- * the original spelling at the length of `from`.
+ * Names compare with `foldTag`, and the suffix is cut from the original
+ * spelling by segment (`suffixBelow`): a fold can change a name's length.
  */
 export function renamedTag(tag: string, renames: readonly TagRename[]): string | null {
   const key = foldTag(tag)
@@ -82,7 +82,7 @@ export function renamedTag(tag: string, renames: readonly TagRename[]): string |
     const fromTrim = from.trim()
     const fromKey = foldTag(fromTrim)
     if (key === fromKey) return to.trim()
-    if (key.startsWith(`${fromKey}/`)) return to.trim() + tag.slice(fromTrim.length)
+    if (key.startsWith(`${fromKey}/`)) return to.trim() + suffixBelow(tag, fromTrim)
   }
   return null
 }

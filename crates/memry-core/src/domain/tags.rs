@@ -6,17 +6,20 @@
 //!   lands in the payload's `tags` array. Nothing here lowercases, trims or
 //!   canonicalises a tag against another note's spelling — that would rewrite
 //!   the user's text to make a comparison cheaper.
-//! - **deduped case-insensitively.** Two spellings of one tag are one tag.
+//! - **deduped by identity.** Two spellings of one tag are one tag.
 //!
-//! **The fold is ASCII-only, because that is what `COLLATE NOCASE` is.**
-//! data-model §A.4 says `note_tags.tag` and `tag_definitions.name` are
-//! `COLLATE NOCASE` and that the collation *is* what FR-047's "letter-case
-//! behaviour identical to desktop" means in practice. SQLite's `NOCASE` folds
-//! `A`–`Z` and nothing else, so [`same_tag`] is [`str::eq_ignore_ascii_case`]
-//! and **not** `to_lowercase`. A Unicode fold here would disagree with the
-//! primary key one layer down: `Café` and `CAFÉ` are two rows in `note_tags`
-//! and must stay two entries in the payload, or the projection and the payload
-//! stop describing the same vault.
+//! **Identity is the Unicode fold of chapter 13 §13.7.7 ("tag identity"),**
+//! pinned by the `tag-fold` vectors and shared with desktop's
+//! `packages/shared/src/tag-fold.ts`. Each scalar folds on its own, with no
+//! locale and no context: `İ` (U+0130) is `i`, final `ς` is `σ`, a combining
+//! dot above (U+0307) right after a character that folded to `i` is dropped,
+//! and every other character takes its Unicode lowercase. So `Ünal`/`ünal`,
+//! `İş`/`iş`/`i̇ş` and `Café`/`CAFÉ` are one tag each, while `ı` and `i` stay two.
+//!
+//! SQLite's `COLLATE NOCASE` folds `A`–`Z` only, so SQL that matches or groups
+//! tags must not rely on it: readers select the rows and fold here. The fold
+//! can change a string's length, so never cut an original spelling at a folded
+//! string's length; split on `/` instead.
 //!
 //! ## Why the edits live here and not in the projector
 //!
@@ -51,16 +54,36 @@ use crate::sync::outbox;
 /// [`add`] does would be the wrong write. Tasks are T129's.
 pub const TAGGABLE_TYPES: [&str; 2] = ["note", "journal"];
 
-/// The case-fold key two spellings of one tag share.
-///
-/// ASCII-only, matching `COLLATE NOCASE`. See the module comment.
+/// The fold two spellings of one tag share (§13.7.7 tag identity). See the
+/// module comment. `fold(fold(s)) == fold(s)` and
+/// `fold(&s.to_lowercase()) == fold(s)`.
 pub fn fold(tag: &str) -> String {
-    tag.to_ascii_lowercase()
+    let mut out = String::with_capacity(tag.len());
+    let mut after_i = false;
+    for c in tag.chars() {
+        if after_i && c == '\u{0307}' {
+            continue;
+        }
+        match c {
+            '\u{0130}' => out.push('i'),
+            '\u{03C2}' => out.push('\u{03C3}'),
+            _ => out.extend(c.to_lowercase()),
+        }
+        let mut folded = c.to_lowercase();
+        after_i = c == '\u{0130}' || (folded.next() == Some('i') && folded.next().is_none());
+    }
+    out
+}
+
+/// A tag's key: the trimmed spelling, folded. `tag_definition` ids and schema
+/// references compare by this.
+pub fn tag_key(tag: &str) -> String {
+    fold(tag.trim())
 }
 
 /// Whether two spellings are the same tag.
 pub fn same_tag(a: &str, b: &str) -> bool {
-    a.eq_ignore_ascii_case(b)
+    fold(a) == fold(b)
 }
 
 /// Collapses case-variant spellings, **keeping the first one seen** and the
@@ -355,199 +378,5 @@ fn failed(error: rusqlite::Error) -> StorageError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::storage::repositories::InboundRecord;
-    use crate::storage::{Db, open_data, test_support::temp_dir};
-    use serde_json::json;
-
-    const NOW: i64 = 1_760_000_000_000;
-    const DEVICE: &str = "device-b";
-
-    /// A note a newer desktop wrote: a tag list, a pin, and one key this build
-    /// has never heard of.
-    const NOTE: &str = concat!(
-        r#"{"title":"A note","tags":["Protocol","inbox"],"pinnedTags":["Protocol"],"#,
-        r#""clock":{"device-a":2},"coverImage":{"url":"memry://cover/1"}}"#
-    );
-
-    fn open(label: &str, payload_json: &str) -> (Db, crate::storage::test_support::TempDir) {
-        let dir = temp_dir(label);
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        db.call_blocking(|conn| {
-            let record = InboundRecord {
-                item_type: "note".to_owned(),
-                item_id: "note-1".to_owned(),
-                payload_json: payload_json.to_owned(),
-                server_cursor: Some(7),
-                signer_device_id: Some("device-a".to_owned()),
-                updated_at: NOW,
-                deleted_at: None,
-            };
-            // Not asserted `Applied`: one test seeds a payload whose `tags` is
-            // not an array, and §13.2 rule 5 stores that verbatim as corrupt
-            // rather than skipping it. The bytes are what these tests read.
-            sync_items::apply_remote(conn, &record, NOW)?;
-            Ok(())
-        })
-        .expect("seed");
-        (db, dir)
-    }
-
-    fn pushed(conn: &Connection) -> Value {
-        let raw = sync_items::push_payload(conn, "note", "note-1")
-            .expect("push payload")
-            .expect("a payload");
-        serde_json::from_str(&raw).expect("valid JSON")
-    }
-
-    #[test]
-    fn a_case_variant_is_the_same_tag_but_a_unicode_variant_is_not() {
-        assert!(same_tag("Protocol", "protocol"));
-        assert!(same_tag("PROTOCOL", "protocol"));
-        // `COLLATE NOCASE` folds A-Z and nothing else, so these are two tags
-        // in `note_tags` and must stay two entries in the payload.
-        assert!(!same_tag("Café", "CAFÉ"));
-        assert_eq!(fold("Protocol"), "protocol");
-    }
-
-    #[test]
-    fn dedupe_keeps_the_first_spelling_and_the_original_order() {
-        let deduped = dedupe(
-            ["Protocol", "inbox", "protocol", "PROTOCOL", "Inbox"]
-                .into_iter()
-                .map(str::to_owned),
-        );
-        assert_eq!(deduped, vec!["Protocol".to_owned(), "inbox".to_owned()]);
-    }
-
-    #[test]
-    fn a_tag_is_stored_exactly_as_typed_and_the_unknown_key_rides_along() {
-        let (db, _dir) = open("tags-add", NOTE);
-        db.call_blocking(|conn| {
-            let tags = add(conn, "note", "note-1", "Deep Work", DEVICE, NOW + 1)?;
-            assert_eq!(tags, vec!["Protocol", "inbox", "Deep Work"]);
-
-            let payload = pushed(conn);
-            assert_eq!(payload["tags"], json!(["Protocol", "inbox", "Deep Work"]));
-            assert_eq!(
-                payload["coverImage"],
-                json!({"url": "memry://cover/1"}),
-                "§13.2 rule 3: the key this build does not model must survive"
-            );
-            // Document-level merge, so the edit ticks this device (§6.8).
-            assert_eq!(payload["clock"], json!({"device-a": 2, "device-b": 1}));
-            assert_eq!(payload["modifiedAt"], json!("2025-10-09T08:53:20.001Z"));
-
-            let rows: Vec<String> = {
-                let mut statement = conn
-                    .prepare("SELECT tag FROM note_tags WHERE note_id = 'note-1' ORDER BY position")
-                    .expect("prepare");
-                let mapped = statement
-                    .query_map([], |row| row.get::<_, String>(0))
-                    .expect("query");
-                mapped.map(|row| row.expect("row")).collect()
-            };
-            assert_eq!(rows, vec!["Protocol", "inbox", "Deep Work"]);
-
-            let queued: i64 = conn
-                .query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
-                .expect("outbox");
-            assert_eq!(queued, 1, "the merge and its outbox row commit together");
-            Ok(())
-        })
-        .expect("add");
-    }
-
-    #[test]
-    fn adding_a_case_variant_writes_nothing_at_all() {
-        let (db, _dir) = open("tags-duplicate", NOTE);
-        db.call_blocking(|conn| {
-            let tags = add(conn, "note", "note-1", "PROTOCOL", DEVICE, NOW + 1)?;
-            assert_eq!(tags, vec!["Protocol", "inbox"]);
-
-            // Byte for byte what arrived: no recasing, no clock tick.
-            let raw = sync_items::push_payload(conn, "note", "note-1")?.expect("a payload");
-            assert_eq!(raw, NOTE);
-            let queued: i64 = conn
-                .query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
-                .expect("outbox");
-            assert_eq!(queued, 0, "an edit that changes nothing must not push");
-            Ok(())
-        })
-        .expect("duplicate");
-    }
-
-    #[test]
-    fn removing_a_tag_unpins_it_and_matches_case_insensitively() {
-        let (db, _dir) = open("tags-remove", NOTE);
-        db.call_blocking(|conn| {
-            let tags = remove(conn, "note", "note-1", "protocol", DEVICE, NOW + 1)?;
-            assert_eq!(tags, vec!["inbox"]);
-
-            let payload = pushed(conn);
-            assert_eq!(payload["tags"], json!(["inbox"]));
-            assert_eq!(payload["pinnedTags"], json!([]));
-            Ok(())
-        })
-        .expect("remove");
-    }
-
-    #[test]
-    fn a_note_with_no_pinned_tags_key_does_not_grow_one() {
-        let (db, _dir) = open("tags-no-pins", r#"{"title":"t","tags":["a","b"]}"#);
-        db.call_blocking(|conn| {
-            remove(conn, "note", "note-1", "a", DEVICE, NOW + 1)?;
-            let payload = pushed(conn);
-            assert!(
-                payload.get("pinnedTags").is_none(),
-                "§13.4: absent means the sender does not know, an empty array is a clear"
-            );
-            Ok(())
-        })
-        .expect("no pins");
-    }
-
-    #[test]
-    fn set_dedupes_and_keeps_the_pins_that_survive() {
-        let (db, _dir) = open("tags-set", NOTE);
-        db.call_blocking(|conn| {
-            let next = ["inbox", "Deep Work", "INBOX"].map(str::to_owned);
-            let tags = set(conn, "note", "note-1", &next, DEVICE, NOW + 1)?;
-            assert_eq!(tags, vec!["inbox", "Deep Work"]);
-
-            let payload = pushed(conn);
-            assert_eq!(payload["tags"], json!(["inbox", "Deep Work"]));
-            assert_eq!(payload["pinnedTags"], json!([]));
-            Ok(())
-        })
-        .expect("set");
-    }
-
-    #[test]
-    fn a_tags_array_that_will_not_read_is_an_error_and_never_an_empty_list() {
-        let (db, _dir) = open("tags-unreadable", r#"{"title":"t","tags":"protocol"}"#);
-        db.call_blocking(|conn| {
-            assert!(
-                list(conn, "note", "note-1").is_err(),
-                "a silent empty here would make the next set() delete every tag"
-            );
-            assert!(add(conn, "note", "note-1", "x", DEVICE, NOW + 1).is_err());
-            Ok(())
-        })
-        .expect("unreadable");
-    }
-
-    #[test]
-    fn a_field_merged_type_is_refused_rather_than_document_clocked() {
-        let (db, _dir) = open("tags-task", NOTE);
-        db.call_blocking(|conn| {
-            assert!(
-                list(conn, "task", "task-1").is_err(),
-                "a task merges field-level; a document clock tick is the wrong write"
-            );
-            Ok(())
-        })
-        .expect("task");
-    }
-}
+#[path = "tags_tests.rs"]
+mod tests;

@@ -7,7 +7,6 @@
 
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { eq } from 'drizzle-orm'
 import { TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -26,8 +25,6 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@memry/contracts/tags-api'
-import { noteTags } from '@memry/db-schema/schema/notes-cache'
-import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
   createValidatedHandler,
   createStringHandler,
@@ -35,6 +32,7 @@ import {
   withErrorHandler
 } from './validate'
 import { requireDatabase, getIndexDatabase } from '../database'
+import { tagKey } from '@memry/shared/tag-fold'
 import {
   findNotesWithTagInfo,
   pinNoteToTag,
@@ -45,7 +43,9 @@ import {
   deleteTagDefinition,
   updateTagColor,
   updateTagIcon,
-  getNoteTags
+  getNoteTags,
+  noteIdsWithTag,
+  findTagDefinition
 } from '../tags/store'
 import {
   getAllTagsWithCounts,
@@ -134,16 +134,6 @@ function toTagNoteItem(
     pinnedAt: note.pinnedAt,
     emoji: note.emoji
   }
-}
-
-function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): string[] {
-  const normalized = tag.toLowerCase().trim()
-  return indexDb
-    .select({ noteId: noteTags.noteId })
-    .from(noteTags)
-    .where(eq(noteTags.tag, normalized))
-    .all()
-    .map((r) => r.noteId)
 }
 
 /**
@@ -341,21 +331,16 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const noteIds = getAffectedNoteIds(indexDb, tag)
+        const noteIds = noteIdsWithTag(indexDb, tag)
 
-        const normalizedTag = tag.toLowerCase().trim()
-        const tagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedTag))
-          .get()
+        const tagSnapshot = findTagDefinition(dataDb, tag)
 
         const restoreLockedTags = keepLockedNoteTags(indexDb, tag)
         const affectedNotes = deleteTag(indexDb, tag)
         restoreLockedTags()
         deleteTagDefinition(dataDb, tag)
 
-        syncTagDefinitionDelete(normalizedTag, tagSnapshot)
+        syncTagDefinitionDelete(tagSnapshot)
         await Promise.all(
           noteIds.map((noteId) =>
             editNoteHeaderTags(indexDb, noteId, { remove: [tag] }).catch((err) => {
@@ -435,9 +420,9 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const normalizedSource = input.source.toLowerCase().trim()
+        const normalizedSource = tagKey(input.source)
         const trimmedTarget = input.target.trim()
-        const normalizedTarget = trimmedTarget.toLowerCase()
+        const normalizedTarget = tagKey(trimmedTarget)
 
         if (normalizedSource === normalizedTarget) {
           return { success: false, error: getMainI18n().t('errors:tag.mergeSameTag') }
@@ -451,16 +436,12 @@ export function registerTagsHandlers(): void {
           mergeTagInTasks(dataDb, input.source, input.target)
         )
 
-        const sourceSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedSource))
-          .get()
+        const sourceSnapshot = findTagDefinition(dataDb, normalizedSource)
 
         deleteTagDefinition(dataDb, normalizedSource)
         getOrCreateTag(dataDb, normalizedTarget)
 
-        syncMergedTagDefinitions(normalizedSource, normalizedTarget, sourceSnapshot)
+        syncMergedTagDefinitions(normalizedTarget, sourceSnapshot)
         rewriteSchemaReferences(dataDb, normalizedSource, normalizedTarget)
 
         await Promise.all(
@@ -590,7 +571,7 @@ export function registerTagsHandlers(): void {
         if (tags?.length) {
           reorderTags(dataDb, tags)
           for (const assignment of tags) {
-            syncTagDefinitionUpdate(assignment.tag.toLowerCase().trim())
+            syncTagDefinitionUpdate(assignment.tag)
           }
         }
 

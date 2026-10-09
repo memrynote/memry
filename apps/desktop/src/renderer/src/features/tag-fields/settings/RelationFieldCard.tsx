@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { useId, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { RelationConfig } from '@memry/contracts/tag-schema'
@@ -35,7 +36,7 @@ export function RelationFieldCard({
   const [busy, setBusy] = useState(false)
   const inverseId = useId()
 
-  const targetRow = target ? tags.find((row) => row.tag.toLowerCase() === target) : undefined
+  const targetRow = target ? tags.find((row) => tagKey(row.tag) === tagKey(target)) : undefined
 
   const submit = async (): Promise<void> => {
     setBusy(true)
@@ -74,7 +75,7 @@ export function RelationFieldCard({
           </SelectTrigger>
           <SelectContent>
             {tags.map((row) => (
-              <SelectItem key={row.tag} value={row.tag.toLowerCase()}>
+              <SelectItem key={row.tag} value={tagKey(row.tag)}>
                 <TagChip name={row.tag} color={row.color} icon={row.icon} />
               </SelectItem>
             ))}

@@ -1,9 +1,9 @@
-import { eq, inArray, like, or } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
-import { foldTag } from '@memry/shared/tag-fold'
 import type { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
+import { tagOrUnder } from '@main/database/queries/tag-match'
 import { createLogger } from '../lib/logger'
 import { updateNoteCommand } from '../notes/domain'
 import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
@@ -14,11 +14,10 @@ type IndexDb = ReturnType<typeof getIndexDatabase>
 
 export function keepLockedNoteTags(indexDb: IndexDb, tag: string): () => void {
   if (!hasAnyVaultLock()) return () => {}
-  const normalized = foldTag(tag.trim())
   const lockedIds = indexDb
     .selectDistinct({ noteId: noteTags.noteId })
     .from(noteTags)
-    .where(or(eq(noteTags.tag, normalized), like(noteTags.tag, `${normalized}/%`)))
+    .where(tagOrUnder(noteTags.tag, tag.trim()))
     .all()
     .map((row) => row.noteId)
     .filter((noteId) => isNoteLocked(noteId))

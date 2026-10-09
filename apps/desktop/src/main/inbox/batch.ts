@@ -8,6 +8,7 @@ import {
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import type { DataDb } from '../database'
+import { tagIs } from '../database/queries/tag-match'
 import { generateId } from '../lib/id'
 import { bulkFileToFolder } from './filing'
 import { bulkSnoozeItems } from './snooze'
@@ -129,7 +130,7 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
           const existing = db
             .select()
             .from(inboxItemTags)
-            .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, normalizedTag)))
+            .where(and(eq(inboxItemTags.itemId, itemId), tagIs(inboxItemTags.tag, normalizedTag)))
             .get()
 
           if (!existing) {

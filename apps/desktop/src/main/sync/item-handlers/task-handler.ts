@@ -7,6 +7,7 @@ import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sy
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
+import { foldTag } from '@memry/shared/tag-fold'
 import { joinVersionedMap, owesHeal, plainVersionedMap } from '@memry/shared/versioned'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
@@ -100,12 +101,12 @@ function plainTask(row: typeof tasks.$inferSelect | undefined) {
 
 function writeTags(db: DrizzleDb, taskId: string, tagList: string[]): void {
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
-  // Case preserved; dedupe case-insensitively (NOCASE PK on (taskId, tag))
+  // Case preserved; dedupe by tag identity (`foldTag`)
   const byKey = new Map<string, string>()
   for (const raw of tagList) {
     const tag = raw.trim()
     if (!tag) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   if (byKey.size > 0) {

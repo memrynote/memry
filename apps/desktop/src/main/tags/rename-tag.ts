@@ -1,4 +1,3 @@
-import { eq, like, or } from 'drizzle-orm'
 import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
@@ -8,11 +7,12 @@ import {
   rewriteInlineTagsInMarkdown,
   type TagRename
 } from '@memry/shared/inline-tags'
-import { foldTag, tagKey } from '@memry/shared/tag-fold'
+import { suffixBelow, tagKey } from '@memry/shared/tag-fold'
 import type { DataDb, IndexDb } from '../database/types'
 import { renameTag, renameTagDefinition } from '@main/database/queries/notes'
 import { deleteSetting, getSetting, setSetting } from '@main/database/queries/settings'
 import { mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'
+import { tagIs, tagOrUnder, tagUnder } from '@main/database/queries/tag-match'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { updateNoteCommand } from '../notes/domain'
@@ -52,42 +52,33 @@ export class TagRenameInProgressError extends Error {
 
 const PROGRESS_INTERVAL_MS = 100
 
-const key = (tag: string): string => foldTag(tag.trim())
-
 function renamePairs(indexDb: IndexDb, dataDb: DataDb, oldName: string, newName: string) {
-  const oldKey = key(oldName)
-  const oldDefinition = tagKey(oldName)
+  const oldKey = tagKey(oldName)
+  const oldTrim = oldName.trim()
   const newTrim = newName.trim()
   const names = [
     ...indexDb
       .selectDistinct({ tag: noteTags.tag })
       .from(noteTags)
-      .where(or(eq(noteTags.tag, oldKey), like(noteTags.tag, `${oldKey}/%`)))
+      .where(tagUnder(noteTags.tag, oldTrim))
       .all(),
     ...dataDb
       .selectDistinct({ tag: taskTags.tag })
       .from(taskTags)
-      .where(or(eq(taskTags.tag, oldKey), like(taskTags.tag, `${oldKey}/%`)))
+      .where(tagUnder(taskTags.tag, oldTrim))
       .all(),
     ...dataDb
       .select({ tag: tagDefinitions.name })
       .from(tagDefinitions)
-      .where(
-        or(eq(tagDefinitions.name, oldDefinition), like(tagDefinitions.name, `${oldDefinition}/%`))
-      )
+      .where(tagUnder(tagDefinitions.name, oldTrim))
       .all()
   ].map((row) => row.tag)
   const byKey = new Map<string, TagRename>([[oldKey, { from: oldKey, to: newTrim }]])
   for (const name of names) {
     const trimmed = name.trim()
-    const isDefinitionChild = tagKey(trimmed).startsWith(`${oldDefinition}/`)
-    const nameKey = key(trimmed)
-    const isChild = nameKey.startsWith(`${oldKey}/`)
-    // `like` treats `_` as a wildcard: keep real children.
-    if (!isChild && !isDefinitionChild) continue
-    const prefix = isChild ? oldKey.length : oldDefinition.length
+    const nameKey = tagKey(trimmed)
     if (!byKey.has(nameKey)) {
-      byKey.set(nameKey, { from: trimmed, to: newTrim + trimmed.slice(prefix) })
+      byKey.set(nameKey, { from: trimmed, to: newTrim + suffixBelow(trimmed, oldTrim) })
     }
   }
   return [...byKey.values()].sort((a, b) => b.from.split('/').length - a.from.split('/').length)
@@ -98,13 +89,13 @@ function moveDefinition(dataDb: DataDb, { from, to }: TagRename): void {
   const toKey = tagKey(to)
   if (fromKey === toKey) return
   const find = (name: string) =>
-    dataDb.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()
+    dataDb.select().from(tagDefinitions).where(tagIs(tagDefinitions.name, name)).get()
   const snapshot = find(fromKey)
   if (!snapshot) return
   const merges = find(toKey) !== undefined
   renameTagDefinition(dataDb, fromKey, to)
-  if (merges) syncMergedTagDefinitions(fromKey, toKey, snapshot)
-  else syncTagDefinitionRename(fromKey, to, snapshot)
+  if (merges) syncMergedTagDefinitions(toKey, snapshot)
+  else syncTagDefinitionRename(to, snapshot)
 }
 
 async function renameInNote(
@@ -134,11 +125,11 @@ async function renameInNote(
   return true
 }
 
-function notesHolding(indexDb: IndexDb, oldKey: string): string[] {
+function notesHolding(indexDb: IndexDb, oldName: string): string[] {
   return indexDb
     .selectDistinct({ noteId: noteTags.noteId })
     .from(noteTags)
-    .where(or(eq(noteTags.tag, oldKey), like(noteTags.tag, `${oldKey}/%`)))
+    .where(tagOrUnder(noteTags.tag, oldName))
     .all()
     .map((row) => row.noteId)
 }
@@ -150,8 +141,8 @@ async function runJob(
   onProgress: (event: TagsProgressEvent) => void
 ): Promise<TagRenameResult> {
   const pairs = renamePairs(indexDb, dataDb, oldName, newName)
-  const oldKey = key(oldName)
-  const noteIds = notesHolding(indexDb, oldKey)
+  const oldKey = tagKey(oldName)
+  const noteIds = notesHolding(indexDb, oldName)
 
   for (const pair of pairs) rewriteSchemaReferences(dataDb, pair.from, pair.to)
   for (const pair of pairs) moveDefinition(dataDb, pair)
@@ -183,7 +174,7 @@ async function runJob(
   }
   if (noteIds.length === 0) onProgress({ runId, done: 0, total: 0 })
 
-  const caseOnly = oldKey === key(newName)
+  const caseOnly = oldKey === tagKey(newName)
   const restoreLockedTags = keepLockedNoteTags(indexDb, oldName)
   if (caseOnly) renameTag(indexDb, oldName, newName)
   else for (const pair of pairs) mergeTagInNotes(indexDb, pair.from, pair.to)

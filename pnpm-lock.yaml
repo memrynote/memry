@@ -1089,6 +1089,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../domain-tasks
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: ^4.3.4
         version: 4.3.6

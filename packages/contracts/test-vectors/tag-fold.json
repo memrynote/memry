@@ -1,0 +1,249 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "tag-fold",
+    "chapter": "docs/protocol/13-payload-schemas.md",
+    "source": "packages/shared/src/tag-fold.ts",
+    "caseCount": 13
+  },
+  "cases": [
+    {
+      "name": "ascii",
+      "pins": "ASCII letters lowercase",
+      "input": {
+        "tag": "Protocol",
+        "equal": [
+          "PROTOCOL",
+          "protocol"
+        ],
+        "distinct": [
+          "protocols"
+        ]
+      },
+      "expected": {
+        "fold": "protocol",
+        "key": "protocol"
+      }
+    },
+    {
+      "name": "umlaut",
+      "pins": "non-ASCII letters lowercase: Ü is ü",
+      "input": {
+        "tag": "Ünal",
+        "equal": [
+          "ünal",
+          "ÜNAL"
+        ],
+        "distinct": [
+          "unal"
+        ]
+      },
+      "expected": {
+        "fold": "ünal",
+        "key": "ünal"
+      }
+    },
+    {
+      "name": "turkish-dotted-capital-i",
+      "pins": "İ folds to i, not to i + U+0307; I folds to i too",
+      "input": {
+        "tag": "İş",
+        "equal": [
+          "iş",
+          "İŞ",
+          "i̇ş",
+          "IŞ"
+        ],
+        "distinct": [
+          "ış"
+        ]
+      },
+      "expected": {
+        "fold": "iş",
+        "key": "iş"
+      }
+    },
+    {
+      "name": "turkish-dotless-i",
+      "pins": "ı stays ı; I folds to i; ı and i stay distinct letters",
+      "input": {
+        "tag": "ışık",
+        "equal": [
+          "ışık"
+        ],
+        "distinct": [
+          "IŞIK",
+          "işik"
+        ]
+      },
+      "expected": {
+        "fold": "ışık",
+        "key": "ışık"
+      }
+    },
+    {
+      "name": "turkish-capital-i",
+      "pins": "I folds to i, so IŞIK is işik",
+      "input": {
+        "tag": "IŞIK",
+        "equal": [
+          "işik",
+          "İŞİK"
+        ],
+        "distinct": [
+          "ışık"
+        ]
+      },
+      "expected": {
+        "fold": "işik",
+        "key": "işik"
+      }
+    },
+    {
+      "name": "turkish-s-cedilla",
+      "pins": "Ş folds to ş; Şehir, şehir and ŞEHİR are one tag",
+      "input": {
+        "tag": "Şehir",
+        "equal": [
+          "şehir",
+          "ŞEHİR",
+          "ŞehİR"
+        ],
+        "distinct": [
+          "sehir"
+        ]
+      },
+      "expected": {
+        "fold": "şehir",
+        "key": "şehir"
+      }
+    },
+    {
+      "name": "combining-dot-only-after-i",
+      "pins": "U+0307 is dropped only right after a character that folded to i",
+      "input": {
+        "tag": "ė",
+        "equal": [
+          "Ė"
+        ],
+        "distinct": [
+          "e"
+        ]
+      },
+      "expected": {
+        "fold": "ė",
+        "key": "ė"
+      }
+    },
+    {
+      "name": "sharp-s",
+      "pins": "ß stays ß; ẞ folds to ß; SS is another tag",
+      "input": {
+        "tag": "Straße",
+        "equal": [
+          "STRAẞE",
+          "straße"
+        ],
+        "distinct": [
+          "STRASSE",
+          "strasse"
+        ]
+      },
+      "expected": {
+        "fold": "straße",
+        "key": "straße"
+      }
+    },
+    {
+      "name": "greek-final-sigma",
+      "pins": "every sigma folds to σ, with no context",
+      "input": {
+        "tag": "ΟΔΟΣ",
+        "equal": [
+          "οδος",
+          "οδοσ",
+          "Οδος"
+        ],
+        "distinct": [
+          "οδο"
+        ]
+      },
+      "expected": {
+        "fold": "οδοσ",
+        "key": "οδοσ"
+      }
+    },
+    {
+      "name": "mixed-case-and-scripts",
+      "pins": "Cyrillic, Latin and a hierarchy fold per character; / is kept",
+      "input": {
+        "tag": "Proje/ÇALIŞMA/Лекция",
+        "equal": [
+          "proje/çalişma/лекция",
+          "PROJE/Çalişma/ЛЕКЦИЯ"
+        ],
+        "distinct": [
+          "proje/çalışma/лекция"
+        ]
+      },
+      "expected": {
+        "fold": "proje/çalişma/лекция",
+        "key": "proje/çalişma/лекция"
+      }
+    },
+    {
+      "name": "length-changes",
+      "pins": "İ folds to one character, and i + U+0307 to one: never cut an original at a folded length",
+      "input": {
+        "tag": "Ai̇/b",
+        "equal": [
+          "aİ/b",
+          "Aİ/B"
+        ],
+        "distinct": [
+          "ai/c"
+        ]
+      },
+      "expected": {
+        "fold": "ai/b",
+        "key": "ai/b"
+      }
+    },
+    {
+      "name": "no-trim-in-fold",
+      "pins": "the fold keeps whitespace; the definition key trims it first",
+      "input": {
+        "tag": "  Ünal ",
+        "equal": [
+          "  ünal "
+        ],
+        "distinct": [
+          "ünal"
+        ]
+      },
+      "expected": {
+        "fold": "  ünal ",
+        "key": "ünal"
+      }
+    },
+    {
+      "name": "non-letters",
+      "pins": "digits, punctuation and emoji are kept",
+      "input": {
+        "tag": "Q3-2026_🎯",
+        "equal": [
+          "q3-2026_🎯"
+        ],
+        "distinct": [
+          "q3-2026"
+        ]
+      },
+      "expected": {
+        "fold": "q3-2026_🎯",
+        "key": "q3-2026_🎯"
+      }
+    }
+  ]
+}

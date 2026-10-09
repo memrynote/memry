@@ -17,6 +17,7 @@ import {
 } from '@memry/contracts/inbox-api'
 import { inboxItems, inboxItemTags, inboxJobs } from '@memry/db-schema/schema/inbox'
 import type { DataDb } from '../database'
+import { tagFoldOf } from '../database/queries/tag-match'
 import { createLogger } from '../lib/logger'
 import {
   getStaleThreshold as getStaleThresholdDays,
@@ -111,11 +112,11 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
     return db
       .select({
-        tag: inboxItemTags.tag,
+        tag: sql<string>`min(${inboxItemTags.tag})`,
         count: sql<number>`count(*)`
       })
       .from(inboxItemTags)
-      .groupBy(inboxItemTags.tag)
+      .groupBy(tagFoldOf(inboxItemTags.tag))
       .orderBy(desc(sql`count(*)`))
       .all()
   }
@@ -377,11 +378,11 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
       const tagRows = db
         .select({
-          tag: inboxItemTags.tag,
+          tag: sql<string>`min(${inboxItemTags.tag})`,
           count: sql<number>`count(*)`
         })
         .from(inboxItemTags)
-        .groupBy(inboxItemTags.tag)
+        .groupBy(tagFoldOf(inboxItemTags.tag))
         .orderBy(desc(sql`count(*)`))
         .limit(10)
         .all()

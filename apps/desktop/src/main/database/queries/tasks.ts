@@ -16,6 +16,8 @@ import {
   type NewTaskCanvas
 } from '@memry/db-schema/schema/task-relations'
 import type { DataDb } from '../types'
+import { foldTag } from '@memry/shared/tag-fold'
+import { tagFoldOf, tagIn } from './tag-match'
 
 // ============================================================================
 // Task CRUD
@@ -151,16 +153,15 @@ export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
     const tagResults = db
       .select({
         taskId: taskTags.taskId,
-        tagCount: sql<number>`count(distinct ${taskTags.tag})`
+        tagCount: sql<number>`count(distinct ${tagFoldOf(taskTags.tag)})`
       })
       .from(taskTags)
-      .where(sql`lower(${taskTags.tag}) IN ${tags.map((t) => t.toLowerCase())}`)
+      .where(tagIn(taskTags.tag, tags))
       .groupBy(taskTags.taskId)
       .all()
 
-    const taskIdsWithTags = tagResults
-      .filter((r) => r.tagCount === tags.length)
-      .map((r) => r.taskId)
+    const wanted = new Set(tags.map(foldTag)).size
+    const taskIdsWithTags = tagResults.filter((r) => r.tagCount === wanted).map((r) => r.taskId)
 
     if (taskIdsWithTags.length === 0) {
       return []
@@ -588,13 +589,12 @@ export function setTaskTags(db: DataDb, taskId: string, tags: string[]): void {
   // Delete existing tags
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
 
-  // Insert new tags — case preserved, deduped case-insensitively
-  // (tag column is COLLATE NOCASE, case variants would violate the PK)
+  // Insert new tags — case preserved, deduped by tag identity (`foldTag`)
   const byKey = new Map<string, string>()
   for (const raw of tags) {
     const tag = raw.trim()
     if (!tag) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   if (byKey.size > 0) {
@@ -625,11 +625,11 @@ export function getTaskTags(db: DataDb, taskId: string): string[] {
 export function getAllTaskTags(db: DataDb): { tag: string; count: number }[] {
   return db
     .select({
-      tag: taskTags.tag,
+      tag: sql<string>`min(${taskTags.tag})`,
       count: count()
     })
     .from(taskTags)
-    .groupBy(taskTags.tag)
+    .groupBy(tagFoldOf(taskTags.tag))
     .orderBy(desc(count()))
     .all()
     .map((row) => ({ tag: row.tag, count: Number(row.count) }))

@@ -59,6 +59,7 @@ one-class change reviewable.
 | `settings-merge.json`                   |                                 18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests   |
 | `recreate-clock.json`                   |                                 11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs` |
 | `versioned-values.json`                 |                                 43 | `../scripts/vectors/versioned-values.ts`    | `../src/__tests__/versioned-values.test.ts` + Rust `versioned_values_vectors.rs` |
+| `tag-fold.json`                         |                                 13 | `../scripts/vectors/tag-fold.ts`            | `../src/__tests__/tag-fold.test.ts` + Rust `tag_fold_vectors.rs`                 |
 | `tag-schema-refs.json`                  |                                 14 | `../scripts/vectors/tag-schema-refs.ts`     | `../src/__tests__/tag-schema-refs.test.ts` + Rust `tag_schema_refs_vectors.rs`   |
 | `pack-container.json`                   |                                 10 | `../scripts/vectors/pack-container.ts`      | `../src/__tests__/pack-container.test.ts`                                        |
 | `payload-schemas.json`                  |                                 52 | `../scripts/vectors/payload-schemas.ts`     | `../src/__tests__/payload-schemas.test.ts`                                       |

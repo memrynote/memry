@@ -11,6 +11,7 @@ import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { NoteTagTemplateOutcome } from '@memry/contracts/notes-api'
 import { getDatabase, getIndexDatabase } from '../database'
+import { tagKey } from '@memry/shared/tag-fold'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { loadBlockNoteConverter } from '../sync/blocknote-converter-loader'
@@ -80,8 +81,8 @@ async function replaceBodyIf(
 /** The added tags in the order the caller added them. */
 function addedInOrder(requested: string[] | undefined, added: string[]): string[] {
   if (!requested) return added
-  const wasAdded = new Set(added.map((tag) => tag.toLowerCase()))
-  return requested.filter((tag) => wasAdded.has(tag.toLowerCase()))
+  const wasAdded = new Set(added.map(tagKey))
+  return requested.filter((tag) => wasAdded.has(tagKey(tag)))
 }
 
 /** The first tag (in the order given) whose resolved schema names a template. */
@@ -91,7 +92,7 @@ function firstTagTemplate(
   if (tags.length === 0) return null
   const resolved = loadResolvedTags(getDatabase())
   for (const tag of tags) {
-    const template = resolved.get(tag.toLowerCase())?.template
+    const template = resolved.get(tagKey(tag))?.template
     if (template) return { tag, templateId: template.id, autofill: template.autofill }
   }
   return null

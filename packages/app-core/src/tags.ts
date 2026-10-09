@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { and, eq } from 'drizzle-orm'
 import { inboxItemTags, tagDefinitions, taskTags } from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
@@ -48,10 +49,6 @@ const DEFAULT_TAG_COLOR = '#6b7280'
 
 function normalizeTag(tag: string): string {
   return tag.trim()
-}
-
-function tagKey(tag: string): string {
-  return normalizeTag(tag).toLowerCase()
 }
 
 function countUniqueTags(tags: string[]): string[] {
