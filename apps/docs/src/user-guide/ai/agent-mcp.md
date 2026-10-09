@@ -304,6 +304,14 @@ error during the tool check (network failure, timeout, rate limit, or a 5xx serv
 turn tools off. That message keeps its tools, and the next message checks again. If you swap the
 model behind an unchanged configuration, press **Probe Tools** in Settings to force a fresh check.
 
+A turn with tools on the built-in backend can make up to 24 model calls, and each tool round uses
+one. The model is told this budget at the start of the turn. The 24th call runs without tools and asks
+the model for a short handoff: what is done, what is left, and what to send to continue. The reply
+then ends with **Stopped at the step limit** and a **Continue** button. Continue sends "Continue" as
+a normal message in the same conversation with your current model and settings, so the agent picks up
+from the handoff in a new turn. Claude Code, Codex, and Antigravity turns have no step limit set by
+memrynote.
+
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
 or test the connection again.
