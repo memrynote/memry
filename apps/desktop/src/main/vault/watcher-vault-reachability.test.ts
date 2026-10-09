@@ -230,6 +230,19 @@ describe('watcher and an unreachable vault (#2785)', () => {
     expect(syncNoteDelete).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps a note iCloud evicted to a .icloud placeholder (#3004)', async () => {
+    fs.renameSync(abs('notes/kept.md'), abs('notes/.kept.md.icloud'))
+    internals().handleFileDelete(abs('notes/kept.md'))
+    fs.rmSync(abs('notes/gone.md'))
+    internals().handleFileDelete(abs('notes/gone.md'))
+    await vi.advanceTimersByTimeAsync(600)
+    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
+    await flushProjectionEvents()
+
+    expect(syncNoteDelete).toHaveBeenCalledTimes(1)
+    expect(row('note-kept')?.path).toBe('notes/kept.md')
+  })
+
   it('rescans the vault when it comes back and replays what changed meanwhile', async () => {
     fs.renameSync(vault.path, away)
     unlinkEverything()

@@ -49,8 +49,15 @@ vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({ index: true }))
 }))
 
+vi.mock('../journal-day-merge', () => ({
+  oweJournalDayMerge: vi.fn(),
+  markOwedJournalDayMergeDeleted: vi.fn()
+}))
+
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
+  getNoteMetadataByPath: () => undefined,
+  deleteNoteMetadata: vi.fn(),
   updateNoteMetadata: (...args: unknown[]) => mockUpdateNoteMetadata(...args)
 }))
 
@@ -137,7 +144,7 @@ describe('journalHandler', () => {
     expect(
       journalHandler.applyUpsert(
         ctx,
-        'journal-1',
+        'j2026-05-10',
         {
           date: '2026-05-10',
           content: 'remote content',
@@ -162,7 +169,7 @@ describe('journalHandler', () => {
     expect(mockSaveCanonicalNote).toHaveBeenCalledWith(
       ctx.db,
       expect.objectContaining({
-        id: 'journal-1',
+        id: 'j2026-05-10',
         path: 'journals/2026-05-10.md',
         title: '2026-05-10',
         journalDate: '2026-05-10',
@@ -173,7 +180,7 @@ describe('journalHandler', () => {
     expect(mockSyncNoteToCache).toHaveBeenCalledWith(
       { index: true },
       expect.objectContaining({
-        id: 'journal-1',
+        id: 'j2026-05-10',
         path: 'journals/2026-05-10.md',
         parsedContent: 'remote content'
       }),
@@ -194,7 +201,7 @@ describe('journalHandler', () => {
     const ctx = makeCtx()
 
     expect(
-      journalHandler.applyUpsert(ctx, 'journal-1', { content: 'orphan' }, { 'device-a': 1 })
+      journalHandler.applyUpsert(ctx, 'j2026-05-10', { content: 'orphan' }, { 'device-a': 1 })
     ).toBe('skipped')
     await flushPromises()
 
@@ -202,7 +209,7 @@ describe('journalHandler', () => {
     expect(mockSaveCanonicalNote).not.toHaveBeenCalled()
     expect(ctx.emit).not.toHaveBeenCalled()
     expect(loggerMock.warn).toHaveBeenCalledWith('Skipping remote journal upsert with no date', {
-      itemId: 'journal-1'
+      itemId: 'j2026-05-10'
     })
   })
 
@@ -233,7 +240,7 @@ describe('journalHandler', () => {
     expect(
       journalHandler.applyUpsert(
         ctx,
-        'journal-1',
+        'j2026-05-10',
         { date: '2026-05-10', content: null, tags: ['remote'] },
         { 'device-a': 1 }
       )
@@ -244,7 +251,7 @@ describe('journalHandler', () => {
     expect(mockWriteSyncedNoteFile).not.toHaveBeenCalled()
     expect(loggerMock.warn).toHaveBeenCalledWith(
       'Skipping remote journal upsert: its file links outside the vault',
-      { itemId: 'journal-1' }
+      { itemId: 'j2026-05-10' }
     )
   })
 
@@ -255,18 +262,18 @@ describe('journalHandler', () => {
     // Every shipped build behaves this way, so a tombstone with no date is
     // indistinguishable from one with a date on any receiver.
     mockGetNoteMetadataById.mockReturnValue({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 1 }
     })
     const ctx = makeCtx()
 
-    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
+    expect(journalHandler.applyDelete(ctx, 'j2026-05-10', { 'device-a': 2 })).toBe('applied')
 
     expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(journalFilePath)
     // A journal entry carries a Y.Doc exactly as a note does, so the same
     // sweep resurrects it if the delete leaves the doc behind.
-    expect(mockPurgeCrdtDoc).toHaveBeenCalledWith('journal-1')
+    expect(mockPurgeCrdtDoc).toHaveBeenCalledWith('j2026-05-10')
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {
       date: '2026-05-10',
       source: 'sync'
@@ -277,18 +284,18 @@ describe('journalHandler', () => {
     const testDb = createTestDataDb()
     try {
       const db = asSyncDb(testDb.db)
-      writeBaseline(asClientDb(testDb.db), 'journal-1', 'locked day\n', 'hash-day')
+      writeBaseline(asClientDb(testDb.db), 'j2026-05-10', 'locked day\n', 'hash-day')
       mockGetNoteMetadataById.mockReturnValue({
-        id: 'journal-1',
+        id: 'j2026-05-10',
         journalDate: '2026-05-10',
         clock: { 'device-a': 1 }
       })
 
-      expect(journalHandler.applyDelete(makeCtx(db), 'journal-1', { 'device-a': 2 })).toBe(
+      expect(journalHandler.applyDelete(makeCtx(db), 'j2026-05-10', { 'device-a': 2 })).toBe(
         'applied'
       )
 
-      expect(getBaseline(asClientDb(testDb.db), 'journal-1')).toBeUndefined()
+      expect(getBaseline(asClientDb(testDb.db), 'j2026-05-10')).toBeUndefined()
     } finally {
       testDb.close()
     }
@@ -297,7 +304,7 @@ describe('journalHandler', () => {
   it('skips stale updates and applies concurrent updates as conflicts', async () => {
     const ctx = makeCtx()
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 3 }
     })
@@ -305,7 +312,7 @@ describe('journalHandler', () => {
     expect(
       journalHandler.applyUpsert(
         ctx,
-        'journal-1',
+        'j2026-05-10',
         { date: '2026-05-10', content: 'stale' },
         { 'device-a': 2 }
       )
@@ -313,14 +320,14 @@ describe('journalHandler', () => {
     expect(mockBuildJournalEntryWrite).not.toHaveBeenCalled()
 
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 3 }
     })
     expect(
       journalHandler.applyUpsert(
         ctx,
-        'journal-1',
+        'j2026-05-10',
         { date: '2026-05-10', content: 'remote merge' },
         { 'device-b': 1 }
       )
@@ -347,20 +354,20 @@ describe('journalHandler', () => {
     expect(journalHandler.applyDelete(ctx, 'missing')).toBe('skipped')
 
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 3 }
     })
-    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('skipped')
+    expect(journalHandler.applyDelete(ctx, 'j2026-05-10', { 'device-a': 2 })).toBe('skipped')
 
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 1 }
     })
-    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
+    expect(journalHandler.applyDelete(ctx, 'j2026-05-10', { 'device-a': 2 })).toBe('applied')
     expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(journalFilePath)
-    expect(mockDeleteNoteFromCache).toHaveBeenCalledWith({ index: true }, 'journal-1')
+    expect(mockDeleteNoteFromCache).toHaveBeenCalledWith({ index: true }, 'j2026-05-10')
     expect(mockFlushProjectionEvents).toHaveBeenCalled()
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {
       date: '2026-05-10',
@@ -369,9 +376,9 @@ describe('journalHandler', () => {
 
     mockGetNoteMetadataById.mockReturnValueOnce({ id: 'note-1', journalDate: null })
     expect(journalHandler.fetchLocal(ctx.db, 'note-1')).toBeUndefined()
-    mockGetNoteMetadataById.mockReturnValueOnce({ id: 'journal-1', journalDate: '2026-05-10' })
-    expect(journalHandler.fetchLocal(ctx.db, 'journal-1')).toMatchObject({
-      id: 'journal-1',
+    mockGetNoteMetadataById.mockReturnValueOnce({ id: 'j2026-05-10', journalDate: '2026-05-10' })
+    expect(journalHandler.fetchLocal(ctx.db, 'j2026-05-10')).toMatchObject({
+      id: 'j2026-05-10',
       journalDate: '2026-05-10'
     })
   })
@@ -383,14 +390,16 @@ describe('journalHandler', () => {
     )
 
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 1 },
       createdAt: '2026-05-10T09:00:00.000Z',
       modifiedAt: '2026-05-10T10:00:00.000Z'
     })
     expect(
-      JSON.parse(journalHandler.buildPushPayload({} as DrizzleDb, 'journal-1', 'd', 'create') ?? '')
+      JSON.parse(
+        journalHandler.buildPushPayload({} as DrizzleDb, 'j2026-05-10', 'd', 'create') ?? ''
+      )
     ).toMatchObject({
       date: '2026-05-10',
       content: 'parsed content',
@@ -400,7 +409,7 @@ describe('journalHandler', () => {
     })
 
     mockGetNoteMetadataById.mockReturnValueOnce({
-      id: 'journal-1',
+      id: 'j2026-05-10',
       journalDate: '2026-05-10',
       clock: { 'device-a': 1 },
       createdAt: '2026-05-10T09:00:00.000Z',
@@ -408,7 +417,9 @@ describe('journalHandler', () => {
     })
     fs.rmSync(journalFilePath, { force: true })
     expect(
-      JSON.parse(journalHandler.buildPushPayload({} as DrizzleDb, 'journal-1', 'd', 'update') ?? '')
+      JSON.parse(
+        journalHandler.buildPushPayload({} as DrizzleDb, 'j2026-05-10', 'd', 'update') ?? ''
+      )
     ).toMatchObject({
       date: '2026-05-10',
       content: null,

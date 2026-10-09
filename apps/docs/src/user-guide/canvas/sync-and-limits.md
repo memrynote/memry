@@ -39,7 +39,11 @@ editing different boards, or the same board at different times, is fine.
 
 Images pasted or dropped onto a canvas are stored as attachments rather than
 inside the board itself, so boards stay small and an identical image used twice
-is stored once. Deleting the image, or deleting the canvas in memrynote, releases the stored copy.
+is stored once. Deleting the image from a board releases the stored copy.
+Deleting the whole canvas keeps its images on every device, as deleting a note
+keeps its attachments, so a canvas put back from the trash still shows them
+everywhere. Those images keep counting against your storage quota (1 GiB or
+10 GiB, depending on your plan), the same as a deleted note's attachments.
 
 Moving an image out of the board needs sync. While you are signed out, or while
 sync is not running, the image simply stays inside the board: the canvas still

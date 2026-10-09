@@ -15,7 +15,8 @@
 //!    pass, so a checkbox flipped in a note on desktop reaches the phone's
 //!    copy of that note (FR-058) without waiting for the note to be opened.
 //!    Best effort, within a request budget ([`body_step`]): a failure here
-//!    never stops step 3.
+//!    never stops step 3. Then the journal day merges owed by step 1
+//!    ([`crate::sync::journal_day_merge`]).
 //! 3. Push: the outbox drained by [`PushCoordinator`], sealed with this
 //!    device's identity ([`AccountSealer`]).
 
@@ -31,6 +32,7 @@ use crate::protocol::account::{AccountSealer, DeviceSigner};
 use crate::protocol::types::Declaration;
 use crate::sync::body_pull::BodyPull;
 use crate::sync::body_step;
+use crate::sync::journal_day_merge;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
 
@@ -128,6 +130,9 @@ impl VaultSync {
         )
         .with_vault(&self.vault_id);
         let bodies = body_step::run(&self.db, &body_pull).await?;
+        // Foreign journal ids owed to their canonical day (#2939). Queues
+        // the merged body and the tombstones for the push below.
+        journal_day_merge::drain(&self.db, &body_pull, &self.session.device_id()?).await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());

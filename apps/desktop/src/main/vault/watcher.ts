@@ -37,7 +37,8 @@ import {
   getNoteCacheById,
   ensureTagDefinitions,
   isJournalEntry,
-  extractDateFromPath
+  extractDateFromPath,
+  newMarkdownFileId
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
@@ -625,7 +626,7 @@ export class VaultWatcher {
     // date, and updates rather than inserts — a stat-only full save would erase
     // bookkeeping a `stat` cannot reconstruct.
     // No watcher path writes files.
-    const noteId = claimed?.id ?? generateNoteId()
+    const noteId = claimed?.id ?? newMarkdownFileId(relativePath)
     const title = extractTitleFromPath(relativePath)
     const createdAt = claimed?.createdAt ?? stats.birthtime.toISOString()
     const modifiedAt = stats.mtime.toISOString()
@@ -1182,6 +1183,17 @@ export class VaultWatcher {
     // lock) as unlinked. It is still there, so it stays (#2764).
     if (!(await isFileMissing(absolutePath))) {
       logger.warn('File cannot be read; keeping it', { path: relativePath })
+      return false
+    }
+    // iCloud Drive before macOS 14 evicts a file under "Optimize Mac Storage"
+    // by swapping it for a hidden `.<name>.icloud` placeholder. The file is
+    // still in the vault, just not downloaded, so it stays (#3004).
+    const placeholder = path.join(
+      path.dirname(absolutePath),
+      `.${path.basename(absolutePath)}.icloud`
+    )
+    if (!(await isFileMissing(placeholder))) {
+      logger.info('File evicted to iCloud; keeping it', { path: relativePath })
       return false
     }
     return true

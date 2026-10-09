@@ -57,7 +57,7 @@ import { journalHandler } from './journal-handler'
 import { propertyDefinitionHandler } from './property-definition-handler'
 
 const DATE = '2026-09-24'
-const ITEM_ID = 'journal-2026-09-24'
+const ITEM_ID = 'j2026-09-24'
 const journalFile = path.join(vaultPath, 'journal', `${DATE}.md`)
 
 describe('journal handler inside a page transaction (#2284)', () => {

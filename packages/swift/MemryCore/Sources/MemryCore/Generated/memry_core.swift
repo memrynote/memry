@@ -32438,8 +32438,10 @@ public func journalWordCount(text: String) -> UInt64  {
 })
 }
 /**
- * Every section of `journal.json`, computed: `{ section: [expected, ...] }`
- * in case order, each `expected` in the file's own shape.
+ * The sections of `journal.json` the app calls, computed: `{ section:
+ * [expected, ...] }` in case order, each `expected` in the file's own shape.
+ * `dayIdentity` and `dayMerge` are left out: only the core's sync calls
+ * those rules, and `tests/journal_vectors.rs` checks them.
  */
 public func journalConformance(fileJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -32653,7 +32655,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_journal_word_count() != 31447) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_journal_conformance() != 28402) {
+    if (uniffi_memry_core_checksum_func_journal_conformance() != 2227) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {

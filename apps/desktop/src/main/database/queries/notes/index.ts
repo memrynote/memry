@@ -108,6 +108,7 @@ export {
   extractDateFromPath,
   generateJournalPath,
   generateJournalId,
+  newMarkdownFileId,
   getJournalEntryByDate,
   journalEntryExistsByDate,
   getHeatmapData,

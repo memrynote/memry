@@ -25,6 +25,7 @@ import type { CrdtProvider } from '../crdt-provider'
 import { SESSION_ONLY_CRDT_BODY_DEBTS, type CrdtBodyDebtStore } from './crdt-body-debts'
 import { CrdtPullLedger, isFailedBodyPull, type PassFailures } from './crdt-pull-ledger'
 import { prefetchWindow } from './prefetch-window'
+import { runJournalDayMerges } from '../journal-day-merge'
 
 const log = createLogger('CrdtSyncCoordinator')
 
@@ -448,6 +449,16 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       sequenceNum: snapshotResult.sequenceNum
     })
     return { since: baselineSequence, verified: true }
+  }
+
+  /** The pull's last body step: settles foreign journals owed to their day (#2939). */
+  async mergeForeignJournalDays(
+    credentials: { accessJwt: string; vaultKey: Uint8Array },
+    signal: AbortSignal
+  ): Promise<void> {
+    await runJournalDayMerges(this.ctx.deps.db, (id) =>
+      this.applyCrdtIncrementals(id, credentials.accessJwt, credentials.vaultKey, signal)
+    )
   }
 
   /**

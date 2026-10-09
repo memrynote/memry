@@ -28,7 +28,7 @@ import { getCanvasVaultPath } from '../../canvas/vault-path'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { clearCanvasEdges, rewriteCanvasEdges } from '../../canvas/edge-index'
 import { readMemryAssets } from '../../canvas/assets/memry-assets'
-import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/asset-service'
+import { ensureAssetsPresent } from '../../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { trackMainEvent } from '../../telemetry/track'
@@ -105,23 +105,6 @@ async function restoreCanvasAssets(
     await ensureAssetsPresent(assetCtx, canvasId, descriptors)
   } catch (err) {
     log.warn('canvas asset restore failed after apply', { canvasId, err })
-  }
-}
-
-/**
- * M5 GC on remote delete: after the tombstone commits, reconcile the deleted
- * canvas against an empty scene so all of its hashes are candidates for removal.
- * The GC union still protects any hash a conflict copy / other canvas references,
- * so a shared asset survives. Fire-and-forget / graceful — GC must never fail a
- * delete, and a closed vault is a silent no-op.
- */
-async function gcDeletedCanvasAssets(canvasId: string): Promise<void> {
-  try {
-    const assetCtx = buildAssetServiceContext()
-    if (!assetCtx) return
-    await reconcileCanvasAssets(assetCtx, canvasId, '')
-  } catch (err) {
-    log.warn('canvas asset GC failed after delete', { canvasId, err })
   }
 }
 
@@ -380,9 +363,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       return 'applied'
     })
 
-    // AFTER commit: GC the deleted canvas's assets (empty scene → all its hashes
-    // are removal candidates; the GC union protects any still shared). Only when
-    // a tombstone was actually written — a skipped delete leaves the canvas live.
+    // The assets are kept, as a note delete keeps its attachments: the deleting
+    // device can restore the canvas, and peers must still download its images
+    // then (#3002).
     if (result === 'applied') {
       // Remove the document too: a tombstoned canvas must not keep haunting the
       // user's folder. Outside the tx — an fs failure must never roll back (and
@@ -391,7 +374,6 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       if (vaultPath && deletedFilePath) {
         deleteCanvasFileSync(resolveCanvasFile(vaultPath, deletedFilePath))
       }
-      void gcDeletedCanvasAssets(itemId)
     }
     return result
   }

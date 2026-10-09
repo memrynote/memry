@@ -21,6 +21,8 @@ import {
   monthActivity,
   monthDays,
   orderedWeekdays,
+  planJournalDayApply,
+  planJournalDayMerge,
   resolveJournalTemplateId,
   weekdayOf,
   yearMonthStats
@@ -42,6 +44,67 @@ import {
   WEEKDAY_DATES
 } from './journal-template-cases'
 import { meta } from './shared'
+
+const D = '2026-06-09'
+const LIVE = { deleted: false, bodyPulled: true, hasBody: true, dayDeleted: false, clocked: true }
+const DAY_MERGE_CASES: ReadonlyArray<{
+  name: string
+  state: Parameters<typeof planJournalDayMerge>[0]
+}> = [
+  { name: 'live, body merged', state: LIVE },
+  { name: 'live, body not fully pulled', state: { ...LIVE, bodyPulled: false } },
+  { name: 'live, no body and no text', state: { ...LIVE, hasBody: false } },
+  { name: 'live, never synced (empty clock)', state: { ...LIVE, clocked: false } },
+  { name: 'live, day deleted here', state: { ...LIVE, dayDeleted: true } },
+  {
+    name: 'live, no body and no text, day deleted here',
+    state: { ...LIVE, hasBody: false, dayDeleted: true }
+  },
+  { name: 'deleted, body held here', state: { ...LIVE, deleted: true } },
+  {
+    name: 'deleted, nothing held here',
+    state: { ...LIVE, deleted: true, hasBody: false }
+  },
+  {
+    name: 'deleted, day deleted here',
+    state: { ...LIVE, deleted: true, dayDeleted: true }
+  }
+]
+const DAY_IDENTITY_CASES: ReadonlyArray<{
+  name: string
+  incomingId: string
+  date: string
+  holderId: string | null
+}> = [
+  { name: 'canonical, day empty', incomingId: `j${D}`, date: D, holderId: null },
+  { name: 'canonical, held by itself', incomingId: `j${D}`, date: D, holderId: `j${D}` },
+  {
+    name: 'canonical, held by a foreign row',
+    incomingId: `j${D}`,
+    date: D,
+    holderId: 'vcpzueguep8y'
+  },
+  { name: 'foreign, day empty', incomingId: 'vcpzueguep8y', date: D, holderId: null },
+  { name: 'foreign, held by canonical', incomingId: 'vcpzueguep8y', date: D, holderId: `j${D}` },
+  {
+    name: 'foreign, held by itself',
+    incomingId: 'vcpzueguep8y',
+    date: D,
+    holderId: 'vcpzueguep8y'
+  },
+  {
+    name: 'foreign, held by another foreign',
+    incomingId: 'vcpzueguep8y',
+    date: D,
+    holderId: 'wxudm2oo4rci'
+  },
+  {
+    name: 'canonical of another day is foreign',
+    incomingId: 'j2026-06-08',
+    date: D,
+    holderId: `j${D}`
+  }
+]
 
 export function buildJournal(): Record<string, unknown> {
   return {
@@ -95,6 +158,18 @@ export function buildJournal(): Record<string, unknown> {
         averageLevel: averageActivityLevel(rows.map((row) => row.characterCount))
       }
     }),
+    dayMerge: DAY_MERGE_CASES.map((c) => ({
+      name: c.name,
+      state: c.state,
+      expected: planJournalDayMerge(c.state)
+    })),
+    dayIdentity: DAY_IDENTITY_CASES.map((c) => ({
+      name: c.name,
+      incomingId: c.incomingId,
+      date: c.date,
+      holderId: c.holderId,
+      expected: planJournalDayApply(c.incomingId, c.date, c.holderId)
+    })),
     weekday: WEEKDAY_DATES.map((date) => ({ date, weekday: weekdayOf(date) })),
     orderedWeekdays: ([0, 1] as const).map((weekStartsOn) => ({
       weekStartsOn,

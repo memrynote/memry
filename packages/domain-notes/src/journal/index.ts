@@ -8,6 +8,7 @@
  *
  * @module journal
  */
+export * from './day-identity.ts'
 export * from './preview.ts'
 export * from './stats.ts'
 export * from './streak.ts'

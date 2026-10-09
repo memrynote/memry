@@ -416,33 +416,6 @@ describe('canvas asset IPC handlers', () => {
     })
   })
 
-  describe('canvas:delete — asset GC', () => {
-    it('reconciles assets before deleting when a vault is open', async () => {
-      await withWorkingCanvasContext()
-      const fakeCtx = { marker: 'ctx' }
-      vi.mocked(buildAssetServiceContext).mockReturnValue(fakeCtx as never)
-      vi.mocked(deleteCanvas).mockResolvedValue(true)
-      const handlers = await registerAndGetHandlers()
-
-      const result = await handlers[CanvasChannels.invoke.DELETE]({}, 'canvas-1')
-
-      expect(reconcileCanvasAssets).toHaveBeenCalledWith(fakeCtx, 'canvas-1', '')
-      expect(syncCanvasDelete).toHaveBeenCalledWith('canvas-1')
-      expect(result).toEqual({ success: true })
-    })
-
-    it('skips reconcile when no vault is open (ctx is null)', async () => {
-      await withWorkingCanvasContext()
-      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
-      vi.mocked(deleteCanvas).mockResolvedValue(true)
-      const handlers = await registerAndGetHandlers()
-
-      await handlers[CanvasChannels.invoke.DELETE]({}, 'canvas-1')
-
-      expect(reconcileCanvasAssets).not.toHaveBeenCalled()
-    })
-  })
-
   describe('canvas:delete — the document goes to the OS trash', () => {
     it('hands the store a trash callback wired to shell.trashItem', async () => {
       // The headline of this handler is "delete is recoverable from Finder".
