@@ -155,7 +155,7 @@ pub(crate) fn author_appends(
 }
 
 /// [`author`] for any write against the replayed document.
-fn author_with(
+pub(crate) fn author_with(
     conn: &Connection,
     doc_id: &str,
     device_id: &str,
