@@ -73,6 +73,23 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
 
   let scanned = 0
   let queued = 0
+  // A file note indexed at startup was never seen by the watcher, the only
+  // other path that queues it (#2965). It goes first: an embed of a file note
+  // with a row stays out of the body scan below, so its bytes upload once,
+  // under its own id. Copies older builds uploaded as embeds are left alone.
+  for (const note of notes) {
+    if (note.fileType === 'markdown' || note.attachmentId || note.localOnly) continue
+    const file = path.join(deps.vaultPath, note.path)
+    if (existingFiles([file]).length === 0) continue
+    try {
+      if (!queueUploadIfAbsent(deps.db, note.id, file)) continue
+    } catch (error) {
+      log.warn('Failed to queue a file note', { noteId: note.id, error })
+      continue
+    }
+    scanned++
+    queued++
+  }
   for (const note of notes) {
     // A local-only note is deliberately not on the server; uploading its
     // attachments would leak exactly what the flag exists to hold back.

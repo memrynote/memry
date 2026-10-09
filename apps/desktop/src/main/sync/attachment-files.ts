@@ -92,8 +92,8 @@ export function referencedVaultFiles(
  * is that note's attachment already: queuing it here would upload a second copy
  * under a second id. Folders under `attachments/` that are not named for a note
  * hold ordinary vault files and stay in. A file note that has uploaded or queued
- * its own bytes stays out (#2812). One indexed at startup has neither, since
- * only the watcher queues a file note, so the embed still carries it.
+ * its own bytes stays out (#2812). The backfill queues file notes before it
+ * scans bodies, so one indexed at startup stays out too (#2965).
  */
 export function embeddedFilesOutsideNoteFolders(
   db: DrizzleDb,
