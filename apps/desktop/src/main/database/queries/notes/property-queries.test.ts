@@ -8,7 +8,7 @@ import {
   insertPropertyDefinition
 } from './property-queries'
 import { insertNoteCache } from './note-crud'
-import { inferPropertyType } from '../../../vault/frontmatter'
+import { inferPropertyType } from '../../../vault/property-type'
 
 describe('project property typing', () => {
   let dbResult: TestDatabaseResult

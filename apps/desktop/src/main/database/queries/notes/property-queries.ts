@@ -12,7 +12,7 @@ import {
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
 import { setPropertyRefs } from './property-ref-queries'
-import { resolvePropertyType } from '@main/vault/frontmatter'
+import { resolvePropertyType } from '@main/vault/property-type'
 
 // ============================================================================
 // Property Value Operations

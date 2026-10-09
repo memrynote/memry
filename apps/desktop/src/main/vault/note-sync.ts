@@ -12,10 +12,9 @@ import {
   extractProperties,
   calculateWordCount,
   generateContentHash,
-  createSnippet,
-  inferPropertyType,
-  resolvePropertyType
+  createSnippet
 } from './frontmatter'
+import { inferPropertyType, resolvePropertyType } from './property-type'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
