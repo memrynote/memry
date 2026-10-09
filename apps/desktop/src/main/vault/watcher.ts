@@ -1173,8 +1173,11 @@ export class VaultWatcher {
       if (isCanvasFilePath(relativePath)) {
         // A moved canvas is re-pointed by the open's canvas reconcile, not here.
         if (keepUnpaired) return
-        trackExternalCanvasRemoval(vaultPath, relativePath, () =>
-          this.isGoneFromVault(vaultPath, absolutePath, relativePath)
+        trackExternalCanvasRemoval(
+          vaultPath,
+          relativePath,
+          () => this.isGoneFromVault(vaultPath, absolutePath, relativePath),
+          deferred
         )
         return
       }
