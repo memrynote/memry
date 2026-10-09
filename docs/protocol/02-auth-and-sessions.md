@@ -45,6 +45,14 @@ here. Every field is JSON; `?` marks optional, meaning **absent**, never `null`.
 Request: `email` (string, an email address).
 Response: `success` (bool), `expiresIn?` (number, seconds), `message?` (string).
 
+**Normative.** The two routes share one handler
+(`apps/sync-server/src/routes/auth.ts:99-124`, `:231-241`): each mints, stores,
+and emails a fresh code under the same per-address limit, whether or not an
+earlier code is still pending, and answers every address alike. A resend after
+the earlier code expired is how a user gets a working code back on the code
+screen. Servers before this rule answered `/resend` with success and sent
+nothing once no unexpired code was pending.
+
 **`POST /auth/otp/verify`**
 
 Request: `email` (string), `code` (string, exactly six digits, `/^\d{6}$/`),
@@ -559,3 +567,13 @@ was opened, so a late callback carrying a spent nonce cannot be honoured.
 Note the general lesson, which is why this is written out rather than left
 implied: a transition that names several causes on one line is a transition
 nobody checks has several call sites.
+
+### 2.14.2 A rate-limited verify is not a rejected code
+
+**Normative.** `POST /auth/otp/verify` sits behind the per-IP OTP limiter
+(`apps/sync-server/src/routes/auth.ts:73-77`, `:244`), which answers `429`
+before the code is looked at. That answer judged nothing: the pending code is
+still the one in the user's inbox. A client **MUST NOT** take the failure edge
+out of the awaiting-OTP state on a `429`; it stays there, keeps the entered
+code, and shows the wait from `Retry-After`. Every other verify failure still
+takes the failure edge (`crates/memry-core/src/api/auth.rs:420-427`).
