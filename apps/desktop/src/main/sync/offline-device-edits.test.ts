@@ -307,6 +307,43 @@ describe('edits made while the device id is missing (#2897)', () => {
     expect(s.deps.queue.getSize()).toBe(0)
   })
 
+  it('never folds a stale _offline create into a clean pending delete (#2912)', async () => {
+    const s = await sessionWithOfflineEdits()
+    // #given — the tag was deleted under the device (that push failed once),
+    // then recreated with the same name offline. The requeue coalesces into
+    // the stale `attempts = 0` create, so no new row is inserted.
+    const tagRow = s.db.select().from(syncQueue).where(eq(syncQueue.type, 'tag_definition')).get()
+    s.db.delete(syncQueue).where(eq(syncQueue.type, 'tag_definition')).run()
+    s.deps.queue.enqueue({
+      type: 'tag_definition',
+      itemId: 'work',
+      operation: 'delete',
+      payload: JSON.stringify({ name: 'work', clock: { 'device-1': 2 } })
+    })
+    // Lowest id and rowid, so an unordered read of the item's rows sees it first
+    s.db
+      .update(syncQueue)
+      .set({ id: '0-delete', attempts: 1 })
+      .where(eq(syncQueue.type, 'tag_definition'))
+      .run()
+    s.db
+      .insert(syncQueue)
+      .values({ ...tagRow!, id: 'stale-create', operation: 'create', attempts: 0 })
+      .run()
+    s.registerDevice()
+    s.getSigningKeys.mockResolvedValue(keys('device-1'))
+
+    await s.engine.push()
+
+    // #then — the recreate reaches the server as a create; no delete wins
+    const pushed = s.post.mock.calls
+      .flatMap(([, body]) => (body as { items: { type: string; operation: string }[] }).items)
+      .filter((item) => item.type === 'tag_definition')
+      .map((item) => item.operation)
+    expect(pushed.at(-1)).toBe('create')
+    expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
+  })
+
   describe('the push holds back _offline clocks when the rebind cannot run', () => {
     it('while the signing keys name a device the device row does not (#2866 repair window)', async () => {
       const s = await sessionWithOfflineEdits()

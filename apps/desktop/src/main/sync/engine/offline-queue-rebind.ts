@@ -111,12 +111,17 @@ export function rebindQueuedOfflineEdits(
       // Any row left for the item without an offline clock carries the
       // current state: the requeue rewrote a stale row, inserted a new one, or
       // coalesced into a clean pending row. The stale operations fold into it.
+      // Never a delete: folding a recreate into a pending delete would push a
+      // delete and lose the recreate. With only a clean delete left, the stale
+      // rows stay queued (held back by the push) and are logged.
       const after = db
         .select({ id: syncQueue.id, operation: syncQueue.operation, payload: syncQueue.payload })
         .from(syncQueue)
         .where(itemRows)
         .all()
-      const fresh = after.find((row) => !payloadCarriesOfflineClock(row.payload))
+      const fresh = after.find(
+        (row) => row.operation !== 'delete' && !payloadCarriesOfflineClock(row.payload)
+      )
       if (!fresh) {
         const untouched =
           after.length === stale.length &&
