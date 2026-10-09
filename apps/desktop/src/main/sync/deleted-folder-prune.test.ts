@@ -86,10 +86,14 @@ describe('deleted folder prune (#2512)', () => {
     expect(applyRemoteFolderDelete(ctx, 'Projects')).toBe('applied')
     expect(applyRemoteFolderDelete(ctx, 'Projects/Archive')).toBe('applied')
 
-    await vi.waitFor(() => expect(exists('Projects')).toBe(false))
-    expect(broadcastToAllWindows).toHaveBeenCalledWith('notes:folder-config-updated', {
-      path: 'Projects'
-    })
+    // The broadcast follows the rmdir, so wait for it rather than for the disk.
+    await vi.waitFor(() =>
+      expect(broadcastToAllWindows).toHaveBeenCalledWith('notes:folder-config-updated', {
+        path: 'Projects'
+      })
+    )
+    expect(exists('Projects')).toBe(false)
+    expect(logger.error).not.toHaveBeenCalled()
   })
 
   it('#given the folder still holds a note #when the remote folder delete arrives #then the folder and the note stay and the reason is logged', async () => {
