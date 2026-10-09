@@ -16,7 +16,8 @@ import { syncTagDefinitionUpdate } from './runtime-effects'
 import { PRESET_CATALOG, presetSpec, type PresetSpec } from './preset-catalog'
 import { ensureFieldDefinition, fieldNameFor, saveSchemaEdit } from './schema/edit'
 import { loadResolvedTags } from './schema/read'
-import { tagKey, type NewFieldBody } from './tag-schema'
+import { type NewFieldBody } from './tag-schema'
+import { tagKey } from '@memry/shared/tag-fold'
 
 export const PRESET_OFFER_DISMISSED_SETTING = 'tagFields.presetOfferDismissed'
 

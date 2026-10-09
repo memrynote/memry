@@ -21,6 +21,7 @@ import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { foldTag } from '@memry/shared/tag-fold'
 import {
   isWritingFrontmatterValue,
   WRITING_FRONTMATTER_KEY
@@ -295,7 +296,7 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
   for (const raw of frontmatter.tags) {
     const tag = String(raw).trim()
     if (!tag) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()]
@@ -307,7 +308,7 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
  * and a name already in the list keeps its spelling.
  */
 export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
-  const key = (tag: string): string => tag.trim().toLowerCase()
+  const key = (tag: string): string => foldTag(tag.trim())
   const removed = new Set((edit.remove ?? []).map(key))
   const renamed = new Map((edit.rename ?? []).map(({ from, to }) => [key(from), to.trim()]))
   const next: string[] = []
@@ -328,7 +329,7 @@ export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEd
 export function mergeTagLists(header: readonly string[], inline: readonly string[]): string[] {
   const byKey = new Map<string, string>()
   for (const tag of [...header, ...inline]) {
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()]

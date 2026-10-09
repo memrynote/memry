@@ -5,10 +5,10 @@ import { PropertyDefinitionsService } from '../../vault/property-definitions'
 import {
   parseSchemaColumn,
   resolveTagSchemas,
-  tagKey,
   type PropertyTypeLookup,
   type TagDefinitionInput
 } from '../tag-schema'
+import { tagKey } from '@memry/shared/tag-fold'
 
 /** Field types come from the vault-wide property definitions; none loaded reads as text. */
 const propertyTypes: PropertyTypeLookup = {

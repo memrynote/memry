@@ -2,7 +2,7 @@ import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { getOrCreateTag, writeTagViews } from '@main/database/queries/tag-definitions'
 import type { DataDb } from '../../database/types'
 import { syncTagDefinitionUpdate } from '../runtime-effects'
-import { tagKey } from '../tag-schema'
+import { tagKey } from '@memry/shared/tag-fold'
 
 /**
  * Saves a tag's views and syncs them. The row is created first: a tag no note

@@ -1,6 +1,7 @@
 import { eq, and, inArray } from 'drizzle-orm'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
+import { foldTag } from '@memry/shared/tag-fold'
 import type { TagWithCount } from '@memry/contracts/tags-api'
 import { getAllTags, getAllTagDefinitions, getOrCreateTag, deleteTagDefinition } from './notes'
 import { getAllTaskTags } from './tasks'
@@ -123,9 +124,9 @@ export function mergeTagInNotes(
   source: string,
   target: string
 ): { affected: number; noteIds: string[] } {
-  const normalizedSource = source.toLowerCase().trim()
+  const normalizedSource = foldTag(source.trim())
   const trimmedTarget = target.trim()
-  const normalizedTarget = trimmedTarget.toLowerCase()
+  const normalizedTarget = foldTag(trimmedTarget)
 
   if (normalizedSource === normalizedTarget) {
     return { affected: 0, noteIds: [] }
@@ -177,9 +178,9 @@ export function mergeTagInTasks(
   source: string,
   target: string
 ): { affected: number; taskIds: string[] } {
-  const normalizedSource = source.toLowerCase().trim()
+  const normalizedSource = foldTag(source.trim())
   const trimmedTarget = target.trim()
-  const normalizedTarget = trimmedTarget.toLowerCase()
+  const normalizedTarget = foldTag(trimmedTarget)
 
   if (normalizedSource === normalizedTarget) {
     return { affected: 0, taskIds: [] }

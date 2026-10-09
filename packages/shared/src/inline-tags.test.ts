@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { extractInlineTagsFromMarkdown, rewriteInlineTagsInMarkdown } from './inline-tags'
+import {
+  extractInlineTagsFromMarkdown,
+  isInlineTagName,
+  renamedTag,
+  rewriteInlineTagsInMarkdown
+} from './inline-tags'
+import { INLINE_TAG_RENAME_CASES } from './inline-tag-rename-cases'
+import { foldTag } from './tag-fold'
 
 describe('extractInlineTagsFromMarkdown', () => {
   it('extracts a single tag', () => {
@@ -91,5 +98,47 @@ describe('rewriteInlineTagsInMarkdown', () => {
     const content = 'x `code`#person y #person/a/b'
     const rewritten = rewriteInlineTagsInMarkdown(content, rename)
     expect(extractInlineTagsFromMarkdown(rewritten)).toEqual(['people', 'people/a/b'])
+  })
+})
+
+describe('rewriteInlineTagsInMarkdown shared cases', () => {
+  for (const c of INLINE_TAG_RENAME_CASES) {
+    it(c.name, () => {
+      const markdown = c.pieces.map((p) => (p.code ? `\`${p.text}\`` : p.text)).join('')
+      const rewritten = rewriteInlineTagsInMarkdown(markdown, c.renames)
+      expect(rewritten.replace(/`/g, '')).toBe(c.expected)
+    })
+  }
+})
+
+describe('foldTag', () => {
+  it('lowercases ASCII only, as SQLite NOCASE and the Rust core do', () => {
+    expect(foldTag('WorK/Deep')).toBe('work/deep')
+    expect(foldTag('İş')).toBe('İş')
+    expect(foldTag('Ünal')).toBe('Ünal')
+    expect(foldTag('ŞEHİR')).toBe('Şehİr')
+    expect(foldTag('Şehir/ALT')).toBe('Şehir/alt')
+  })
+})
+
+describe('renamedTag', () => {
+  it('keeps a non-ASCII child suffix whole', () => {
+    expect(renamedTag('İş/alt', [{ from: 'İş', to: 'Work' }])).toBe('Work/alt')
+    expect(renamedTag('ÜNAL/Ekip', [{ from: 'ÜNAL', to: 'team' }])).toBe('team/Ekip')
+  })
+
+  it('treats spellings that differ beyond ASCII case as different tags', () => {
+    expect(renamedTag('ünal', [{ from: 'Ünal', to: 'x' }])).toBeNull()
+    expect(renamedTag('iş/alt', [{ from: 'İş', to: 'x' }])).toBeNull()
+  })
+})
+
+describe('isInlineTagName', () => {
+  it('accepts what the inline grammar reads back whole', () => {
+    expect(isInlineTagName('people/VIP')).toBe(true)
+    expect(isInlineTagName('my project')).toBe(false)
+    expect(isInlineTagName('2024')).toBe(false)
+    expect(isInlineTagName('iş')).toBe(false)
+    expect(isInlineTagName('a/')).toBe(false)
   })
 })

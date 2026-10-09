@@ -5,6 +5,7 @@ import {
   type NoteCache,
   type NewNoteTag
 } from '@memry/db-schema/schema/notes-cache'
+import { foldTag } from '@memry/shared/tag-fold'
 import type { IndexDb } from '../../types'
 
 // ============================================================================
@@ -270,7 +271,7 @@ export function unpinNoteFromTag(db: IndexDb, noteId: string, tag: string): void
 }
 
 export function renameTag(db: IndexDb, oldName: string, newName: string): number {
-  const normalizedOld = oldName.toLowerCase().trim()
+  const normalizedOld = foldTag(oldName.trim())
   const trimmedNew = newName.trim()
 
   // Case-only renames are valid: they update the stored display case
