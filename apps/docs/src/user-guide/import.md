@@ -59,7 +59,7 @@ Unsupported file types are skipped rather than failing the whole drop; the suppo
 
 ## Adding Files to the Vault Folder
 
-Your vault is an ordinary folder, so you can also copy files into it with Finder, Explorer, git, or a sync tool. Memry picks up changes while it is running, and on the next launch it catches up on anything that changed while it was closed.
+Your vault is an ordinary folder, so you can also copy files into it with Finder, Explorer, git, or a sync tool. Memry picks up changes while it is running, and on the next launch it catches up on anything that changed while it was closed. With sync on, a PDF, image, audio or video file found that way uploads to your other devices just like one added while Memry was running, unless its note is kept local.
 
 **What Memry reads:**
 
