@@ -16,14 +16,6 @@ const log = createLogger('DeletedFolderPrune')
 const PAGE_QUIESCENCE_TIMEOUT_MS = 60_000
 
 /**
- * Prunes run one at a time. A subtree delete schedules one prune per folder, and
- * each walks up through the shared parents: run concurrently, two prunes scan
- * the same tree and the slower one's rmdir fails with ENOENT on a folder the
- * other already removed.
- */
-let pruneQueue: Promise<void> = Promise.resolve()
-
-/**
  * A folder deleted on another device reaches this one as a folder_config
  * tombstone per folder in the subtree, plus one note tombstone per note that
  * was inside it. The folder_config delete usually lands first (the deleting
@@ -49,11 +41,7 @@ export function scheduleDeletedFolderPrune(
         })
         return
       }
-      const prune = pruneQueue.then(() =>
-        pruneDeletedFolders(db, folderPath, options.folderConfigDeleted === true)
-      )
-      pruneQueue = prune.catch(() => undefined)
-      return prune
+      return pruneDeletedFolders(db, folderPath, options.folderConfigDeleted === true)
     })
     .catch((error: unknown) => {
       if (error instanceof VaultError && error.code === VaultErrorCode.NOT_INITIALIZED) {
