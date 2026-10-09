@@ -181,6 +181,32 @@ describe('deleted canvas assets', () => {
     ).toHaveLength(1)
   })
 
+  it('keeps an image a live canvas uploaded but has not saved into its scene yet', async () => {
+    const deleted = await canvasWithImage('Old', 'shared')
+    await deleteCanvasHere(deleted.id)
+
+    // Pasted near the end of the grace period: dedup puts the row on chunk-1,
+    // and the sweep runs before the renderer saves the scene.
+    advance(29)
+    const live = createCanvas(db, vaultPath, VAULT_ID, { title: 'Live' })
+    await uploadCanvasAsset(
+      assetCtx(),
+      live.id,
+      'file-1',
+      'image/png',
+      new TextEncoder().encode('shared')
+    )
+    expect(uploads).toBe(1)
+
+    advance(2)
+    expect(await release()).toBe(1)
+    expect(dereferenced).toEqual([])
+    expect(fs.existsSync(deleted.file)).toBe(true)
+    expect(
+      db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, live.id)).get()?.chunkHashes
+    ).toEqual(['chunk-1'])
+  })
+
   it('keeps the chunk link for an image a canvas restored under a new id still shows', async () => {
     const { id, ref } = await canvasWithImage('Old', 'shared')
     await deleteCanvasHere(id)

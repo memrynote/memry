@@ -134,13 +134,9 @@ function stillReferenced(db: DataDb, vaultPath: string, graceStart: number): Ref
     .from(canvases)
     .where(isNull(canvases.deletedAt))
     .all()
-  const unreadable: string[] = []
   for (const canvas of liveCanvases) {
     const scene = readCanvasScene(vaultPath, canvas.filePath)
-    if (scene === null) {
-      unreadable.push(canvas.id)
-      continue
-    }
+    if (scene === null) continue
     for (const { ref } of extractSceneFileRefs(scene)) {
       const hash = contentHashFromRef(ref)
       if (!hash) continue
@@ -149,15 +145,16 @@ function stillReferenced(db: DataDb, vaultPath: string, graceStart: number): Ref
     }
   }
 
-  // A canvas still in its grace period has no scene on disk to read, and one
-  // whose scene cannot be read now is kept by what it recorded.
+  // A live canvas is also kept by what it recorded: `uploadCanvasAsset` writes
+  // the row before the renderer saves the scene, and its scene may be
+  // unreadable now. A canvas still in its grace period has no scene to read.
   const recentlyDeleted = db
     .select({ id: canvases.id })
     .from(canvases)
     .where(gt(canvases.deletedAt, graceStart))
     .all()
     .map((row) => row.id)
-  const keptIds = [...unreadable, ...recentlyDeleted]
+  const keptIds = [...liveCanvases.map((canvas) => canvas.id), ...recentlyDeleted]
   if (keptIds.length > 0) {
     for (const row of db
       .select({ hash: canvasAssets.contentHash })
