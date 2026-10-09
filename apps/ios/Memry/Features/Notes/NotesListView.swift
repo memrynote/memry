@@ -54,6 +54,7 @@ struct NotesListView: View {
     @State private var isNamingFolder = false
     @State private var draftFolderName = ""
     private let notesLinks = NotesLinks.shared
+    @Environment(\.requestVaultSync) private var requestVaultSync
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -187,7 +188,10 @@ struct NotesListView: View {
                 .onChange(of: notesLinks.pending, initial: true) {
                     if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
-                .task { await model.loadIfNeeded() }
+                .task {
+                    model.requestSync = requestVaultSync
+                    await model.loadIfNeeded()
+                }
                 .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
                 .onAppear { Task { await model.refresh() } }
                 .writeFailureAlert(model)
