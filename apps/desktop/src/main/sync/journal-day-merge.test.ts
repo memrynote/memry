@@ -36,6 +36,8 @@ const { dbs, provider, journalSync, logger } = vi.hoisted(() => {
       docs,
       absorbed: [] as Array<{ targetId: string; foreignId: string; fallback: string | null }>,
       purgeFails: false,
+      /** Ids an editor window has open. */
+      openInWindow: new Set<string>(),
       /** Runs inside `hasDocState`: a write landing during the drain's await. */
       duringHasBody: null as (() => void) | null
     }
@@ -79,6 +81,7 @@ vi.mock('./crdt-provider', () => ({
       return has
     },
     getDoc: (id: string) => provider.docs.get(id),
+    getOpenNoteIds: () => [...provider.openInWindow],
     absorbForeignDoc: async (
       targetId: string,
       foreignId: string,
@@ -178,6 +181,7 @@ describe('runJournalDayMerges', () => {
     provider.docs.clear()
     provider.absorbed.length = 0
     provider.purgeFails = false
+    provider.openInWindow.clear()
     provider.duringHasBody = null
     fs.rmSync(vaultPath, { recursive: true, force: true })
     fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
@@ -358,6 +362,38 @@ describe('runJournalDayMerges', () => {
     expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
     expect(textOf(DAY)).toBe('typed mid-drain')
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('does not forget a blank holder open in an editor window; it forgets once the window closes', async () => {
+    foreignRow({ minter: 2 }, { body: '', indexed: true })
+    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
+    // Keystrokes the editor sent may not be applied in main yet (#3019).
+    provider.openInWindow.add(FOREIGN)
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: FOREIGN, path: DAY_PATH }])
+    expect(listOwedJournalDayMerges(ctx.db)).toHaveLength(1)
+
+    provider.openInWindow.clear()
+    await drain()
+
+    expect(rows()).toEqual([])
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('forgets a holder whose text was typed and deleted again before the fold', async () => {
+    foreignRow({ minter: 2 }, { body: '', indexed: true })
+    expect(journalHandler.applyDelete(ctx, FOREIGN, { minter: 2, other: 1 })).toBe('applied')
+    typed(FOREIGN, 'typed')
+    // Deleted after the drain saw a body: the fold finds nothing (#3019).
+    provider.duringHasBody = () => provider.docs.delete(FOREIGN)
+
+    await drain()
+
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+    expect(journalSync.enqueueRecoveredDelete).not.toHaveBeenCalled()
   })
 
   it('does not forget a blank holder whose day file gains text during the drain', async () => {
