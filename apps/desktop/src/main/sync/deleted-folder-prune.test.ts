@@ -86,9 +86,13 @@ describe('deleted folder prune (#2512)', () => {
     expect(applyRemoteFolderDelete(ctx, 'Projects')).toBe('applied')
     expect(applyRemoteFolderDelete(ctx, 'Projects/Archive')).toBe('applied')
 
-    await vi.waitFor(() => expect(exists('Projects')).toBe(false))
-    expect(broadcastToAllWindows).toHaveBeenCalledWith('notes:folder-config-updated', {
-      path: 'Projects'
+    // The broadcast runs after the rmdir resolves, so neither can be asserted
+    // the moment the other is seen: wait for both.
+    await vi.waitFor(() => {
+      expect(exists('Projects')).toBe(false)
+      expect(broadcastToAllWindows).toHaveBeenCalledWith('notes:folder-config-updated', {
+        path: 'Projects'
+      })
     })
   })
 
