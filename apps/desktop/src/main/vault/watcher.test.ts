@@ -127,6 +127,9 @@ vi.mock('../canvas/scene-file', async (importOriginal) => {
   return { ...actual, readCanvasFileSync: vi.fn(actual.readCanvasFileSync) }
 })
 
+const buildAssetServiceContext = vi.hoisted(() => vi.fn((): unknown => null))
+vi.mock('../canvas/assets/asset-service-context', () => ({ buildAssetServiceContext }))
+
 const enqueueLocalSyncCreate = vi.hoisted(() => vi.fn())
 const enqueueLocalSyncDelete = vi.hoisted(() => vi.fn())
 vi.mock('../sync/local-mutations', () => ({
@@ -167,6 +170,9 @@ import { canvases } from '@memry/db-schema/data-schema'
 import { createCanvas } from '../canvas/store'
 import { readCanvasFileSync, resolveCanvasFile } from '../canvas/scene-file'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
+import { listAssetsByCanvas, recordAsset } from '../canvas/assets/asset-store'
+import { removeCanvas } from '../canvas/delete'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -1798,6 +1804,7 @@ describe('vault watcher', () => {
     }
 
     afterEach(async () => {
+      buildAssetServiceContext.mockReturnValue(null)
       await stopWatcher()
     })
 
@@ -1879,6 +1886,63 @@ describe('vault watcher', () => {
       expect(canvasReads()).toContain(movedPath)
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
       expect(isLive(id)).toBe(true)
+    })
+
+    /** One image asset only this canvas uses, on disk and recorded with its server chunks. */
+    function withAsset(canvasId: string) {
+      const db = asClientDb(dataDb.db)
+      const dereference = vi.fn(async () => ({ ok: true }))
+      buildAssetServiceContext.mockReturnValue({
+        db,
+        vaultId: getOrCreateVaultUuid(db),
+        vaultPath: vault.path,
+        uploadAttachment: vi.fn(),
+        downloadAttachment: vi.fn(),
+        dereference,
+        markWritebackIgnored: vi.fn(),
+        trackEvent: vi.fn()
+      })
+      recordAsset(db, {
+        vaultId: getOrCreateVaultUuid(db),
+        canvasId,
+        contentHash: `hash-${canvasId}`,
+        attachmentId: 'attachment-1',
+        fileId: 'file-1',
+        filename: `hash-${canvasId}.png`,
+        mimeType: 'image/png',
+        sizeBytes: 3,
+        chunkHashes: ['chunk-1'],
+        createdAt: 1700000000000
+      })
+      const diskPath = canvasAssetDiskPath(vault.path, `hash-${canvasId}.png`)
+      fs.mkdirSync(path.dirname(diskPath), { recursive: true })
+      fs.writeFileSync(diskPath, 'png')
+      return { db, dereference, diskPath }
+    }
+
+    it('keeps its assets on disk and on the server so a restore can re-import them', async () => {
+      const trigger = await startWatching()
+      const { id, absolutePath } = makeCanvas('With image')
+      const { db, dereference, diskPath } = withAsset(id)
+
+      fs.rmSync(absolutePath)
+      trigger('unlink', absolutePath)
+
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
+      expect(fs.existsSync(diskPath)).toBe(true)
+      expect(dereference).not.toHaveBeenCalled()
+      expect(listAssetsByCanvas(db, id)).toHaveLength(1)
+    })
+
+    it('an in-app delete still releases its assets', async () => {
+      const { id } = makeCanvas('Deleted in app')
+      const { db, dereference, diskPath } = withAsset(id)
+
+      expect(await removeCanvas(id, async () => {})).toBe(true)
+
+      expect(dereference).toHaveBeenCalledWith(['chunk-1'])
+      expect(fs.existsSync(diskPath)).toBe(false)
+      expect(listAssetsByCanvas(db, id)).toHaveLength(0)
     })
 
     it('logs a failure in the delayed check instead of rejecting', async () => {

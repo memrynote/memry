@@ -32,14 +32,15 @@ const log = createLogger('CanvasDelete')
 
 export async function removeCanvas(
   id: string,
-  trash: (absolutePath: string) => Promise<void>
+  trash: (absolutePath: string) => Promise<void>,
+  { keepAssets = false }: { keepAssets?: boolean } = {}
 ): Promise<boolean> {
   const { db, vaultPath } = getCanvasContext()
 
   // GC this canvas's assets before the row is tombstoned (the other-canvas
   // union keeps assets shared with surviving canvases). Reads the
   // canvas_assets rows, so it must run before soft-delete/sync-delete.
-  const assetCtx = buildAssetServiceContext()
+  const assetCtx = keepAssets ? null : buildAssetServiceContext()
   if (assetCtx) {
     await reconcileCanvasAssets(assetCtx, id, '')
   }
@@ -56,9 +57,9 @@ export async function removeCanvas(
 /**
  * A canvas document unlinked outside the app becomes a canvas delete once the
  * rename window closes and the document is shown to be gone. The tombstone
- * syncs to every device and GCs the canvas's assets, so every doubt keeps the
- * canvas. `isGone` is the watcher's check that the file is really missing from
- * a reachable vault, shared with a note's removal.
+ * syncs to every device, so every doubt keeps the canvas. Its assets stay on
+ * disk and on the server. `isGone` is the watcher's check that the file is
+ * really missing from a reachable vault, shared with a note's removal.
  */
 export function trackExternalCanvasRemoval(
   vaultPath: string,
@@ -78,8 +79,10 @@ export function trackExternalCanvasRemoval(
       // The app or a sync apply moved it meanwhile and re-pointed the row.
       if (findLiveCanvasIdAtPath(db, relativePath) !== id) return
       if (mayStillHoldCanvas(db, vaultPath, id)) return
-      // The document is already gone, so there is nothing to trash.
-      await removeCanvas(id, async () => {})
+      // The document is already gone, so there is nothing to trash. Keep the
+      // asset files and server refs: a document restored from the Trash or a
+      // backup must be able to re-import its images (#2938).
+      await removeCanvas(id, async () => {}, { keepAssets: true })
     } catch (error) {
       log.error('Failed to delete a canvas removed outside the app; keeping it', {
         id,
