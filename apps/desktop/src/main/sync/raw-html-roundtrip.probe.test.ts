@@ -152,7 +152,7 @@ const INLINE_LEVEL: Probe[] = [
     markdown: 'See <a href="https://example.com">this</a>.',
     pass1: 'See [this](https://example.com).'
   },
-  { name: '<br> mid-paragraph', markdown: 'One<br>Two', pass1: 'One\nTwo' },
+  { name: '<br> mid-paragraph', markdown: 'One<br>Two', pass1: 'One  \nTwo' },
   { name: 'in a list item', markdown: '- <kbd>A</kbd> item', pass1: '- A item' },
   { name: 'in a heading', markdown: '# Title <sup>x</sup>', pass1: '# Title x' },
   // The entity is no longer decoded on the way through, so the author's bytes

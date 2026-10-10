@@ -347,13 +347,31 @@ const HARD_BREAK_TOKEN_PREFIX = 'MEMRYHBK'
 /** `MEMRYHBK<index>;`, as written by `maskHardBreaks`. */
 const HARD_BREAK_TOKEN = /MEMRYHBK(\d+);/g
 
-/** The same token, with the newline it marks when it still has one. */
-const HARD_BREAK_TOKEN_WITH_NEWLINE = /MEMRYHBK\d+;(\n?)/g
+/**
+ * The same token, with the spaces before it and the newline it marks when it
+ * still has one. Spaces before a break are part of its spelling, never text.
+ */
+const HARD_BREAK_TOKEN_WITH_NEWLINE = /([^\S\n]*)MEMRYHBK\d+;(\n?)/g
 
 // A hard break is a line ending in two or more spaces, or in a single
 // backslash. Both only count when a non-blank line follows: otherwise the line
 // ends the paragraph and the parser produces no break at all.
 const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
+
+// An author's `<br>` with more text after it on the same line (BBF-85). The
+// parser turns the tag into the same newline a soft break gives, so the token
+// goes in front of the tag and lands against that newline. A `<br>` that ends
+// its line already parses as two newlines, and two tags in a row already give
+// a hard break, so neither is marked.
+const HTML_BREAK_MID_LINE = /(?<!<br\s*\/?>[^\S\n]*)<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
+
+// Only a plain paragraph line. A table row is one line by grammar (a line with
+// a pipe may be one), and a hard break in a heading, quote or list item does
+// not survive the write-back on any spelling, so there the tag keeps the soft
+// break it parsed to before. A lazy line continues the block above it.
+const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[>#]|[-*+][ \t]|\d+[.)][ \t])|\|/
+
+const LINK_SYNTAX = /[[\]]|<a\b/i
 
 export interface MaskedHardBreaks {
   markdown: string
@@ -386,18 +404,33 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   // Cheap reject on the characters a hard break is spelled with. `$` in
   // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
   // meaningful once the text is split into lines.
-  if (!text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
+  const hasBr = /<br/i.test(text)
+  if (!hasBr && !text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
 
   const lines = text.split('\n')
-  for (let index = 0; index < lines.length - 1; index++) {
-    if (lines[index + 1].trim() === '') continue
+  let inOtherBlock = false
+  for (let index = 0; index < lines.length; index++) {
     const line = lines[index]
+    if (line.trim() === '') inOtherBlock = false
+    else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
+    // Link and image text and URLs never reach the unmask, so a line with any
+    // link syntax keeps its tags as they were rather than risk a token in the file.
+    if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
+      // The tag stays for the parser to break on. Its spelling is empty: in a
+      // `<pre>` block the tag's own newline is all it ever meant.
+      lines[index] = line.replace(HTML_BREAK_MID_LINE, (tag) => {
+        breaks.push('')
+        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
+      })
+    }
+    if (index === lines.length - 1) continue
+    if (lines[index + 1].trim() === '') continue
     if (line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
     // The marker replaces the spelling rather than joining it: leaving the two
     // trailing spaces in place would hand the parser a break it already knows
     // how to drop, and leaving the backslash would escape the token's first
     // character.
-    lines[index] = line.replace(HARD_BREAK_LINE, (spelling) => {
+    lines[index] = lines[index].replace(HARD_BREAK_LINE, (spelling) => {
       breaks.push(spelling)
       return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
     })
@@ -414,8 +447,8 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
  */
 export function unmaskHardBreaks(text: string): string {
   if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
-  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, newline: string) =>
-    newline ? '\n\n' : ''
+  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, spaces: string, newline: string) =>
+    newline ? '\n\n' : spaces
   )
 }
 

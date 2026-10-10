@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 157,
+    "exportedCaseCount": 168,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 167,
+    "caseCount": 178,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1083,9 +1083,86 @@
     {
       "name": "comment after a hard break after bold (BBF-76)",
       "markdown": "**a**<br><!-- b --> c",
-      "canonical": "**a**\n<!-- b --> c",
+      "canonical": "**a**  \n<!-- b --> c",
       "pending": null,
       "sha256": "3d0118e42225ee23f1a08ed6e48424af2bd6529b513d9769410ed90b34b0709e"
+    },
+    {
+      "name": "html break inside a paragraph (BBF-85)",
+      "markdown": "a<br>c",
+      "canonical": "a  \nc",
+      "pending": null,
+      "sha256": "76860a04ebc9f27314848ab498199ca51192e2740c04c928ff6df1c7ec6b1d7a"
+    },
+    {
+      "name": "self-closing html break at a line end (BBF-85)",
+      "markdown": "a<br />\nc",
+      "canonical": "a  \nc",
+      "pending": null,
+      "sha256": "883c6c43561825378ccb6ec2e7ef08cf48977964c7dbbf2b34a9da8f958f066c"
+    },
+    {
+      "name": "html break inside a code span (BBF-85)",
+      "markdown": "`a <br>c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "db050a1ec7a6a3f8033c9ac29d49a6f90ee6e1263fc85678a4d19ea7aef6490c"
+    },
+    {
+      "name": "html break between spaces (BBF-85)",
+      "markdown": "a <br> b",
+      "canonical": "a  \nb",
+      "pending": null,
+      "sha256": "0440275b8bb61be40c0c3e32440ac1bdf957b5417ec56f38f348e0ebd511e5df"
+    },
+    {
+      "name": "two html breaks in a row (BBF-85)",
+      "markdown": "a<br><br>b",
+      "canonical": "a  \nb",
+      "pending": null,
+      "sha256": "f74f4bd1f88cfc6be8a5fc9f9b75781742aee4c8036cc698cf002ee89d87e24d"
+    },
+    {
+      "name": "html break and a trailing hard break on one line (BBF-85)",
+      "markdown": "a<br>b  \nc",
+      "canonical": "a  \nb  \nc",
+      "pending": null,
+      "sha256": "f8dbd87349cc6b6816d1393acf5170879c9ce32be1fc12a973b18ba17db70444"
+    },
+    {
+      "name": "html break inside bold (BBF-85)",
+      "markdown": "**a<br>b**",
+      "canonical": "**a  \nb**",
+      "pending": null,
+      "sha256": "4e8fea3619e676c88a01ca6d5227c772ac6f02807400bab330c243fa894c387c"
+    },
+    {
+      "name": "html break inside a quote stays soft (BBF-85)",
+      "markdown": "> a<br>b",
+      "canonical": "> a\n> b",
+      "pending": null,
+      "sha256": "ac9d2939be1cb47b91c020bec2e19b5ca156b2e73fa80dfea4e97ce5222fd728"
+    },
+    {
+      "name": "html break on a lazy quote line stays soft (BBF-85)",
+      "markdown": "> a\nb<br>c",
+      "canonical": "> a\n> b\n> c",
+      "pending": null,
+      "sha256": "8d1db2a4d797eed81ba3d0b897bb678c33ad1e0b124fd47c6567064edb6a33fd"
+    },
+    {
+      "name": "html break inside image alt text (BBF-85)",
+      "markdown": "![x<br>y](i.png)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c09b468e68c0063ca42109bc04fb74827448391326ca0d2aeed4a4cd3e039a75"
+    },
+    {
+      "name": "html break in a table row with no leading pipe (BBF-85)",
+      "markdown": "a | b\n--|--\nc<br>d | e",
+      "canonical": "| a   | b |\n| --- | - |\n| c d | e |",
+      "pending": null,
+      "sha256": "e585300e05890a5d402055e02a6bf396022a28a1907196a317856d329d469671"
     },
     {
       "name": "code span with a leading space after a hard break (BBF-76)",

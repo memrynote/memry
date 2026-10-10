@@ -785,10 +785,45 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'bold run past a link (BBF-62)', markdown: '**[a](https://example.com) x c**' },
   { name: 'link with italic text inside bold (BBF-71)', markdown: '**[a *b*](https://e.com) c**' },
   {
-    // A `<br>` reads back as the newline a soft break also reads back as.
+    // House style spells every hard break with two trailing spaces (BBF-85).
     name: 'comment after a hard break after bold (BBF-76)',
     markdown: '**a**<br><!-- b --> c',
-    canonical: '**a**\n<!-- b --> c'
+    canonical: '**a**  \n<!-- b --> c'
+  },
+  { name: 'html break inside a paragraph (BBF-85)', markdown: 'a<br>c', canonical: 'a  \nc' },
+  {
+    name: 'self-closing html break at a line end (BBF-85)',
+    markdown: 'a<br />\nc',
+    canonical: 'a  \nc'
+  },
+  { name: 'html break inside a code span (BBF-85)', markdown: '`a <br>c` d' },
+  { name: 'html break between spaces (BBF-85)', markdown: 'a <br> b', canonical: 'a  \nb' },
+  { name: 'two html breaks in a row (BBF-85)', markdown: 'a<br><br>b', canonical: 'a  \nb' },
+  {
+    name: 'html break and a trailing hard break on one line (BBF-85)',
+    markdown: 'a<br>b  \nc',
+    canonical: 'a  \nb  \nc'
+  },
+  { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
+  {
+    // A hard break in a quote does not survive on any spelling yet, so the tag
+    // keeps the soft break it always parsed to.
+    name: 'html break inside a quote stays soft (BBF-85)',
+    markdown: '> a<br>b',
+    canonical: '> a\n> b'
+  },
+  {
+    // A lazy continuation line belongs to the quote above it.
+    name: 'html break on a lazy quote line stays soft (BBF-85)',
+    markdown: '> a\nb<br>c',
+    canonical: '> a\n> b\n> c'
+  },
+  // Image alt text never reaches the unmask, so the tag is left alone there.
+  { name: 'html break inside image alt text (BBF-85)', markdown: '![x<br>y](i.png)' },
+  {
+    name: 'html break in a table row with no leading pipe (BBF-85)',
+    markdown: 'a | b\n--|--\nc<br>d | e',
+    canonical: '| a   | b |\n| --- | - |\n| c d | e |'
   },
   {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.

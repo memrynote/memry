@@ -955,7 +955,8 @@ Inside an edited region the two are not always byte-for-byte the same. What is g
 is that nothing is _lost_ on the way through:
 
 - **A hard line break stays a hard line break.** A line ending in two spaces keeps them, so the
-  break stays a break rather than becoming a paragraph gap.
+  break stays a break rather than becoming a paragraph gap. A `<br>` inside a paragraph is saved
+  as a line ending in two spaces, so it stays a line break in other Markdown apps too.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.
