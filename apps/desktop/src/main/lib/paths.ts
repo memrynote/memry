@@ -198,7 +198,7 @@ export function refuseOutsideVaultSync(vaultPath: string, relativePath: string):
 }
 
 // O_NONBLOCK keeps a FIFO named like a note from hanging the open; it is 0 on Windows.
-const OPEN_FLAGS = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)
+const openFlags = (): number => constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)
 
 const sameFile = (a: BigIntStats, b: BigIntStats): boolean => a.dev === b.dev && a.ino === b.ino
 
@@ -215,7 +215,7 @@ export async function openVaultFile(
 ): Promise<FileHandle | null> {
   await refuseOutsideVault(vaultPath, relativePath)
   const joined = path.join(vaultPath, relativePath)
-  const handle = await open(joined, OPEN_FLAGS).catch((err: NodeJS.ErrnoException) => {
+  const handle = await open(joined, openFlags()).catch((err: NodeJS.ErrnoException) => {
     if (err.code === 'ENOENT') return null
     throw err
   })
@@ -239,7 +239,7 @@ export function openVaultFileSync(vaultPath: string, relativePath: string): numb
   refuseOutsideVaultSync(vaultPath, relativePath)
   let fd: number
   try {
-    fd = openSync(path.join(vaultPath, relativePath), OPEN_FLAGS)
+    fd = openSync(path.join(vaultPath, relativePath), openFlags())
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw err
