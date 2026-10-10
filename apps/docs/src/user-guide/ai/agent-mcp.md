@@ -199,8 +199,9 @@ To ask about a file without importing it into the vault, click the paperclip in 
 drop the file onto the prompt box. Agent Chat accepts `.txt`, `.md`, `.log`, `.csv`, `.tsv`,
 `.json`, `.yaml` and `.yml` files that are UTF-8 text, up to 100 KB in total per message. Each file
 shows as a chip with its name and size, and the chip's remove button takes it off the message. A
-binary file, a file of another type, or a file that takes the message over the limit is refused, and
-the prompt box says why.
+binary file, a file of another type, a file that takes the message over the limit, or a file that
+cannot be read (for example, one moved or deleted after you picked it) is refused, and the prompt box
+says why.
 
 When you send, the file text is added to the end of your message as a fenced block whose first
 line is `memry-file name="app.log" bytes=2048`, so the model sees the file name and size with the

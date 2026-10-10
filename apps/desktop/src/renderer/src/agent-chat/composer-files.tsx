@@ -15,7 +15,8 @@ import {
 const REFUSAL_KEYS = {
   unsupported_type: 'agentChat.composer.files.refused.unsupportedType',
   not_text: 'agentChat.composer.files.refused.notText',
-  too_large: 'agentChat.composer.files.refused.tooLarge'
+  too_large: 'agentChat.composer.files.refused.tooLarge',
+  read_failed: 'agentChat.composer.files.refused.readFailed'
 } as const satisfies Record<PromptFileRefusal, string>
 
 interface Refusal {

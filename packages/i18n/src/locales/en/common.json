@@ -294,7 +294,8 @@
         "refused": {
           "unsupportedType": "{name} is not a supported text file. Attach a .txt, .md, .log, .csv, .tsv, .json, .yaml or .yml file.",
           "notText": "{name} is not a UTF-8 text file. Attach a text file instead.",
-          "tooLarge": "{name} would take this message over the 100 KB limit. Remove a file or attach a smaller one."
+          "tooLarge": "{name} would take this message over the 100 KB limit. Remove a file or attach a smaller one.",
+          "readFailed": "{name} could not be read. Check that the file still exists and you can open it, then attach it again."
         }
       },
       "voice": {
