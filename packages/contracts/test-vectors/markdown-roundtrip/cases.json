@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 182,
+    "exportedCaseCount": 188,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 192,
+    "caseCount": 198,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1226,6 +1226,48 @@
       "canonical": "# h\n\nx",
       "pending": null,
       "sha256": "214c94d29c6857b01d1b26d5fd236fc67c17e717d39d4106ecc1977b650f9347"
+    },
+    {
+      "name": "hard break inside link text (BBF-103)",
+      "markdown": "[a  \nb](u)",
+      "canonical": "[a](u)  \n[b](u)",
+      "pending": null,
+      "sha256": "987c13b39c273bd6e2c6cb74605c9b3f9c47b32f333edf52655d4712644791e7"
+    },
+    {
+      "name": "backslash hard break inside link text mid-paragraph (BBF-103)",
+      "markdown": "p [a\\\nb](u) q",
+      "canonical": "p [a](u)  \n[b](u) q",
+      "pending": null,
+      "sha256": "e91fbbcd130ad3024619fa52434f7d348f540d7e441d4f76e053867efa799b89"
+    },
+    {
+      "name": "hard break inside image alt text (BBF-103)",
+      "markdown": "![a  \nb](i.png)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "cc5510a8fba4aa71ad416f8bd184bd7d6bb85094791cc2bdba11583a96ebd0a2"
+    },
+    {
+      "name": "leading space in link text mid-line (BBF-103)",
+      "markdown": "x [ a](u) y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4b90ca17fafc1af09efb5cb5b32668854dc133b52bef63f4b03207170f326d2d"
+    },
+    {
+      "name": "leading space in link text at line start (BBF-103)",
+      "markdown": "[ a](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "fc8853d028e4edafc7115fde0ee6b8b0f9d9f4a685834ea716d52763b5182119"
+    },
+    {
+      "name": "leading space in link text after a hard break (BBF-103)",
+      "markdown": "a  \n[ b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c016ba6523def7ae852e8302afafb998f7297850801c62a485caeb38114f8278"
     },
     {
       "name": "html break inside image alt text (BBF-85)",

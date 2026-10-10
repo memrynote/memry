@@ -845,7 +845,22 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '# h  \nx',
     canonical: '# h\n\nx'
   },
-  // Image alt text never reaches the unmask, so the tag is left alone there.
+  {
+    // The link splits at a break in its text, as it does for a soft break.
+    name: 'hard break inside link text (BBF-103)',
+    markdown: '[a  \nb](u)',
+    canonical: '[a](u)  \n[b](u)'
+  },
+  {
+    name: 'backslash hard break inside link text mid-paragraph (BBF-103)',
+    markdown: 'p [a\\\nb](u) q',
+    canonical: 'p [a](u)  \n[b](u) q'
+  },
+  { name: 'hard break inside image alt text (BBF-103)', markdown: '![a  \nb](i.png)' },
+  { name: 'leading space in link text mid-line (BBF-103)', markdown: 'x [ a](u) y' },
+  { name: 'leading space in link text at line start (BBF-103)', markdown: '[ a](u)' },
+  { name: 'leading space in link text after a hard break (BBF-103)', markdown: 'a  \n[ b](u)' },
+  // A `<br>` in image alt text is never masked, so the tag is left alone there.
   { name: 'html break inside image alt text (BBF-85)', markdown: '![x<br>y](i.png)' },
   {
     name: 'html break in a table row with no leading pipe (BBF-85)',

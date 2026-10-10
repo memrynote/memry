@@ -81,6 +81,7 @@ interface InlineRun {
 
 interface BlockLike {
   type?: string
+  props?: Record<string, unknown>
   content?: unknown
   children?: unknown
 }
@@ -119,12 +120,17 @@ function unmaskRun(text: string, code: boolean, breaks: string[]): string {
   return code ? restoreHardBreakSpelling(text, breaks) : unmaskHardBreaks(text)
 }
 
-function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
+function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine = true): void {
   for (const [index, run] of runs.entries()) {
+    // Link text is prose too, and a hard break in it carries a token (BBF-103).
+    const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
+    // A leading space in link text is the author's: CommonMark keeps it.
+    if (Array.isArray(linkContent)) repairRuns(linkContent as InlineRun[], code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
     // CommonMark keeps a code span's one-sided leading space: it is the author's.
     const codeSpan = (run as StyledRun).styles?.code === true
-    const opensLine = index === 0 || (!codeSpan && runs[index - 1]?.text?.endsWith('\n') === true)
+    const opensLine =
+      (index === 0 && startsLine) || (!codeSpan && runs[index - 1]?.text?.endsWith('\n') === true)
     // A newline followed by a space is the parser's artifact in prose and the
     // author's own indentation in a code block, so the strip is prose-only.
     let stripped = run.text
@@ -218,6 +224,12 @@ const LITERAL_TEXT_BLOCK_TYPES: ReadonlySet<string> = new Set(['codeBlock', 'dia
 function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
+    // An image's alt text is a prop, not a run: it gets the author's spelling back.
+    for (const [key, value] of Object.entries(block.props ?? {})) {
+      if (typeof value === 'string' && block.props && masks.breaks.length > 0) {
+        block.props[key] = restoreHardBreakSpelling(value, masks.breaks)
+      }
+    }
     if (Array.isArray(block.content)) {
       repairRuns(block.content as InlineRun[], code, masks)
       block.content = withHtmlCommentNodes(block.content as InlineRun[], code)

@@ -121,8 +121,8 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     if (line.trim() === '') inListItem = false
     else if (LIST_ITEM_START.test(line)) inListItem = true
     else if (BLOCK_START.test(line)) inListItem = false
-    // Link and image text and URLs never reach the unmask, so a line with any
-    // link syntax keeps its tags as they were rather than risk a token in the file.
+    // Link and image URLs never reach the unmask, so a line with any link
+    // syntax keeps its tags as they were rather than risk a token in the file.
     if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
       // The tag stays for the parser to break on. Its spelling is empty: in a
       // `<pre>` block the tag's own newline is all it ever meant.
