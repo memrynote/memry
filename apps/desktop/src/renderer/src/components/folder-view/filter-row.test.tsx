@@ -43,4 +43,21 @@ describe('FilterRow property icons', () => {
     expect(itemIcon(container, 'pages')).toBe(itemIcon(container, 'wordCount'))
     expect(itemIcon(container, 'due')).not.toBe(itemIcon(container, 'summary'))
   })
+
+  it('falls back to the generic icon for a stored type without its own icon', () => {
+    const { container } = render(
+      <FilterRow
+        condition={{ id: 'c1', property: 'title', operator: 'contains', value: '' }}
+        // `status` is a stored property type the filter's PropertyType union does not list.
+        availableProperties={[
+          { id: 'stage', name: 'Stage', type: 'status' as unknown as 'text' },
+          { id: 'unknownType', name: 'Unknown', type: undefined as unknown as 'text' }
+        ]}
+        onChange={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    )
+
+    expect(itemIcon(container, 'stage')).toBe(itemIcon(container, 'unknownType'))
+  })
 })
