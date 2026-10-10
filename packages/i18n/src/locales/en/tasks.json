@@ -1055,6 +1055,6 @@
       "topLevel": "Make top-level task",
       "delete": "Delete"
     },
-    "openPath": "Open {{path}}"
+    "openPath": "Open {path}"
   }
 }
