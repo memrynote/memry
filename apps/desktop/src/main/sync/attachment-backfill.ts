@@ -127,6 +127,10 @@ function queueUnsentFileNotes(
   let queued = 0
   for (const note of notes) {
     if (note.fileType === 'markdown' || note.attachmentId || note.localOnly) continue
+    if (resolveVaultFileSync(deps.vaultPath, note.path).kind === 'outside') {
+      log.warn('File note points outside the vault; it is not offered', { noteId: note.id })
+      continue
+    }
     const file = path.join(deps.vaultPath, note.path)
     if (existingFiles([file]).length === 0) continue
     try {
