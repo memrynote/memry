@@ -38,12 +38,7 @@ import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
-import {
-  noteCache,
-  noteTags,
-  noteProperties,
-  propertyDefinitions
-} from '@memry/db-schema/schema/notes-cache'
+import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
 import { defaultFieldTagView, fieldColumns, listFieldTagRows, tagItemToRow } from '../tags/objects'
 import { loadResolvedTags } from '../tags/schema/read'
@@ -115,25 +110,14 @@ async function fetchPropertyCounts(
   return propCounts
 }
 
-/**
- * Usage counts -> the sorted AvailableProperty list the response returns (highest usage first).
- * A property's explicit definition wins over the type note_properties inferred from its values.
- */
+/** Usage counts -> the sorted AvailableProperty list the response returns (highest usage first). */
 function toAvailableProperties(
-  db: ReturnType<typeof getDataDb>,
   propCounts: Map<string, { count: number; type: string }>
 ): AvailableProperty[] {
-  const definedTypes = new Map(
-    db
-      .select({ name: propertyDefinitions.name, type: propertyDefinitions.type })
-      .from(propertyDefinitions)
-      .all()
-      .map((row) => [row.name, row.type])
-  )
   const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
     ([name, { count, type }]) => ({
       name,
-      type: (definedTypes.get(name) ?? type) as AvailableProperty['type'],
+      type: type as AvailableProperty['type'],
       usageCount: count
     })
   )
@@ -479,7 +463,7 @@ export function registerFolderViewHandlers(): void {
           // Formulas live in `.folder.md`, which a tag has no equivalent of.
           return {
             builtIn: builtInForScope,
-            properties: toAvailableProperties(db, propCounts),
+            properties: toAvailableProperties(propCounts),
             formulas: []
           }
         }
@@ -510,11 +494,7 @@ export function registerFolderViewHandlers(): void {
           folderNotes.map((note) => note.id)
         )
 
-        return {
-          builtIn: builtInForScope,
-          properties: toAvailableProperties(db, propCounts),
-          formulas
-        }
+        return { builtIn: builtInForScope, properties: toAvailableProperties(propCounts), formulas }
       }
     )
   )

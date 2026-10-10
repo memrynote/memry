@@ -8,12 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vite
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { FolderViewChannels } from '@memry/contracts/ipc-channels'
 import { DEFAULT_VIEW } from '@memry/contracts/folder-view-api'
-import {
-  noteCache,
-  noteTags,
-  noteProperties,
-  propertyDefinitions
-} from '@memry/db-schema/schema/notes-cache'
+import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import {
   createTestIndexDb,
   createTestDataDb,
@@ -329,37 +324,6 @@ describe('folder-view-handlers', () => {
       noteId: 'note-2'
     })
     expect(suggestionResult.suggestions).toHaveLength(1)
-  })
-
-  it("types a property by its explicit definition, not by the values' inferred type", async () => {
-    registerFolderViewHandlers()
-
-    const now = new Date().toISOString()
-    indexDb.db
-      .insert(noteCache)
-      .values({
-        id: 'note-3',
-        path: 'projects/dated.md',
-        title: 'Dated',
-        contentHash: 'hash-3',
-        wordCount: 2,
-        characterCount: 10,
-        createdAt: now,
-        modifiedAt: now
-      })
-      .run()
-    indexDb.db
-      .insert(noteProperties)
-      .values({ noteId: 'note-3', name: 'label', value: 'Oct 7 2026', type: 'date' })
-      .run()
-    indexDb.db.insert(propertyDefinitions).values({ name: 'label', type: 'text' }).run()
-    ;(folderFiles.readFolderConfig as Mock).mockResolvedValue(null)
-
-    const props = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
-      scope: { kind: 'folder', path: 'projects' }
-    })
-
-    expect(props.properties).toEqual([{ name: 'label', type: 'text', usageCount: 1 }])
   })
 
   describe('list-with-properties under tag scope', () => {
