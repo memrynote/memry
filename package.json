@@ -18,6 +18,7 @@
     "docs:build": "pnpm --filter @memry/docs build",
     "docs:preview": "pnpm --filter @memry/docs preview",
     "release": "node scripts/release.mjs",
+    "sandbox": "pnpm --filter @memry/cli sandbox",
     "seed": "pnpm --filter @memry/desktop seed:vault",
     "seed1k": "pnpm --filter @memry/desktop seed:bench",
     "seed:1": "pnpm --filter @memry/desktop seed:small --variant=1",

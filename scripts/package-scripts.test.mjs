@@ -34,6 +34,20 @@ describe('environment scripts', () => {
   })
 })
 
+describe('sandbox vault script', () => {
+  it('runs the CLI generator under Electron so the shared better-sqlite3 build stays put', () => {
+    const cliPackage = JSON.parse(
+      readFileSync(new URL('../apps/cli/package.json', import.meta.url), 'utf8')
+    )
+    assert.equal(rootPackage.scripts.sandbox, 'pnpm --filter @memry/cli sandbox')
+    assert.equal(cliPackage.scripts.sandbox, 'node bin/sandbox.mjs')
+    assert.match(
+      readFileSync(new URL('../apps/cli/bin/sandbox.mjs', import.meta.url), 'utf8'),
+      /ELECTRON_RUN_AS_NODE: '1'/
+    )
+  })
+})
+
 describe('native warm-up scripts', () => {
   it('warms the native build from postinstall instead of a stampless rebuild', () => {
     // A bare `electron-rebuild` here never wrote node_modules/.native-build-target,

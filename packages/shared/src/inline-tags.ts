@@ -1,4 +1,4 @@
-import { foldTag, suffixBelow } from './tag-fold'
+import { foldTag, suffixBelow } from './tag-fold.ts'
 
 /**
  * The inline `#tag` grammar every reader and rewriter of note bodies shares:
