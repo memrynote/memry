@@ -478,7 +478,16 @@ describe('normalizeSerializedMarkdown', () => {
 
 describe('hard break masking', () => {
   it('leaves a <br> inside link or image text unmarked, since that text is never unmasked', () => {
-    for (const md of ['[a<br>b](u)', '![x<br>y](i.png)', 'see [a<br>b](u) now']) {
+    for (const md of [
+      '[a<br>b](u)',
+      '![x<br>y](i.png)',
+      'see [a<br>b](u) now',
+      'a] [b<br>c](u)',
+      '[a\nb<br>c](u)',
+      'a [b](u<br>c)',
+      '![i](p.png<br>x)',
+      '<a href="u">a<br>b</a>'
+    ]) {
       expect(maskHardBreaks(md)).toEqual({ markdown: md, breaks: [] })
     }
   })
