@@ -1,9 +1,8 @@
-import fs from 'fs'
-import path from 'path'
+import type { FileHandle } from 'fs/promises'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../../lib/logger'
-import { refuseOutsideVault } from '../../lib/paths'
+import { openVaultFile } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import {
   backfillUnresolvedLinksByTitle,
@@ -39,13 +38,12 @@ async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string
   const db = getIndexDatabase()
   const note = getNoteCacheById(db, noteId)
   if (!vaultPath || !note || note.fileType !== 'markdown') return
-  const absolutePath = path.join(vaultPath, note.path)
   let raw: string
   // One handle for the size check and the read, so both see the same file.
-  let file: fs.promises.FileHandle | null = null
+  let file: FileHandle | null = null
   try {
-    await refuseOutsideVault(vaultPath, note.path)
-    file = await fs.promises.open(absolutePath, 'r')
+    file = await openVaultFile(vaultPath, note.path)
+    if (file === null) throw new Error(`Note file is missing: ${note.path}`)
     if (classifyMarkdownStat((await file.stat()).size)) return
     raw = await file.readFile('utf-8')
   } catch (error) {

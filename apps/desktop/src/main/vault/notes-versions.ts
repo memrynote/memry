@@ -6,11 +6,10 @@
  * @module vault/notes-versions
  */
 
-import fs from 'fs/promises'
 import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
-import { atomicWrite, safeRead } from './file-ops'
+import { atomicWrite } from './file-ops'
 import {
   getNoteCacheById,
   insertNoteSnapshot,
@@ -29,7 +28,7 @@ import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import type { Note } from './notes-crud'
 import { assertNoteWritable } from '../vault-locks/registry'
 
@@ -117,8 +116,7 @@ export function createSnapshot(
 export async function createCloseSnapshot(noteId: string): Promise<boolean> {
   const cached = getNoteCacheById(getIndexDatabase(), noteId)
   if (!cached) return false
-  await refuseOutsideVault(getVaultRoot(), cached.path)
-  const fileContent = await safeRead(toAbsolutePath(cached.path))
+  const fileContent = await readVaultFile(getVaultRoot(), cached.path)
   if (!fileContent) return false
   return createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE) !== null
 }
@@ -202,9 +200,9 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
 
   assertNoteWritable(cached.id, cached.path)
 
-  await refuseOutsideVault(getVaultRoot(), cached.path)
   const absolutePath = toAbsolutePath(cached.path)
-  const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
+  const currentFileContent = await readVaultFile(getVaultRoot(), cached.path)
+  if (currentFileContent === null) throw new Error(`Note file is missing: ${absolutePath}`)
 
   createSnapshot(cached.id, currentFileContent, cached.title, SnapshotReasons.SIGNIFICANT, true)
 

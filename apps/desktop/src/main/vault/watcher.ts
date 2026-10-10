@@ -20,7 +20,6 @@ import {
   extractProperties,
   extractTitleFromPath
 } from './frontmatter'
-import { safeRead } from './file-ops'
 import { scanMarkdownFile } from './file-scan'
 import { enqueueIngestBackfill, clearIngestBackfill } from './ingest-backfill'
 import { generateNoteId } from '../lib/id'
@@ -85,7 +84,7 @@ import {
   syncFolderConfigDelete,
   syncFolderConfigDiscovered
 } from '../notes/folder-config-effects'
-import { normalizeRelativePath, refuseOutsideVault } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile, readVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
@@ -569,7 +568,7 @@ export class VaultWatcher {
       if (existing) {
         // A note file that turns readable again arrives as an add (#2764).
         if (fileType === 'markdown') {
-          await this.handleMarkdownFileChange(absolutePath, relativePath, existing, db)
+          await this.handleMarkdownFileChange(relativePath, existing, db)
         }
         return
       }
@@ -955,7 +954,7 @@ export class VaultWatcher {
       }
 
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileChange(absolutePath, relativePath, cached, db)
+        await this.handleMarkdownFileChange(relativePath, cached, db)
       } else {
         await this.handleNonMarkdownFileChange(absolutePath, relativePath, fileType, cached, db)
       }
@@ -981,8 +980,7 @@ export class VaultWatcher {
       if (getFileType(getExtension(absolutePath)) !== 'markdown') return
       const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
       if (!cached || !isNoteLocked(cached.id, relativePath)) return
-      await refuseOutsideVault(this.vaultPath, relativePath)
-      const content = await safeRead(absolutePath)
+      const content = await readVaultFile(this.vaultPath, relativePath)
       if (content !== null) await restoreLockedNoteFile(cached.id, content)
     } catch (err) {
       this.onError?.(err instanceof Error ? err : new Error(String(err)))
@@ -993,20 +991,26 @@ export class VaultWatcher {
    * Handle markdown file modification with full frontmatter parsing.
    */
   private async handleMarkdownFileChange(
-    absolutePath: string,
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
     if (!this.vaultPath) return
-    await refuseOutsideVault(this.vaultPath, relativePath)
-    const content = await safeRead(absolutePath)
+    const file = await openVaultFile(this.vaultPath, relativePath)
+    if (file === null) return
+    let content: string
+    let stats: Stats
+    try {
+      content = await file.readFile('utf-8')
+      stats = await file.stat()
+    } finally {
+      await file.close()
+    }
     if (!content) {
       return
     }
 
-    const stats = await fs.stat(absolutePath).catch(() => null)
-    const parsed = parseNote(content, relativePath, stats ?? undefined)
+    const parsed = parseNote(content, relativePath, stats)
 
     const contentHash = generateContentHash(content)
 

@@ -13,7 +13,7 @@ import { getSetting, setSetting } from '../database/queries/settings'
 import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
 import { getMemryDir } from './init'
-import { refuseOutsideVaultSync } from '../lib/paths'
+import { readVaultFileSync } from '../lib/paths'
 import { BUILT_IN_IDS } from './built-in-templates'
 
 const log = createLogger('TemplatesMigration')
@@ -95,10 +95,10 @@ export function migrateTemplateFilesToDb(db: DataDb, vaultPath: string): number 
       // Reading is the part that fails transiently (antivirus lock, cloud-sync
       // client mid-hydration), so it alone decides whether the one-shot flag
       // gets held back for a retry.
-      let raw: string
+      let raw: string | null
       try {
-        refuseOutsideVaultSync(vaultPath, path.relative(vaultPath, filePath))
-        raw = fs.readFileSync(filePath, 'utf-8')
+        raw = readVaultFileSync(vaultPath, path.relative(vaultPath, filePath))
+        if (raw === null) throw new Error(`Template file is missing: ${filePath}`)
       } catch (err) {
         failed++
         log.warn('Could not read template file; will retry on next vault open', {

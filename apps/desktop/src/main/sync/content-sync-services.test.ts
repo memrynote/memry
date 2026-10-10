@@ -175,10 +175,11 @@ vi.mock('../vault/journal', () => ({
   parseJournalEntry: (...args: unknown[]) => mocks.parseJournalEntry(...args)
 }))
 
-// `fs` is mocked whole here, so the outside-vault check has no disk to resolve.
+// `fs` is mocked whole here, so the vault reader has no disk to resolve.
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/paths')>()),
-  refuseOutsideVaultSync: vi.fn()
+  readVaultFileSync: (vault: string, relativePath: string) =>
+    mocks.readFileSync(`${vault}/${relativePath}`, 'utf-8')
 }))
 
 vi.mock('../vault/notes', () => ({

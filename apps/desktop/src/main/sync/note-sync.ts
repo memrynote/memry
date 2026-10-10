@@ -1,4 +1,3 @@
-import fs from 'fs'
 import path from 'path'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
@@ -10,7 +9,7 @@ import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
-import { refuseOutsideVaultSync } from '../lib/paths'
+import { readVaultFileSync } from '../lib/paths'
 import { parseNote } from '../vault/frontmatter'
 import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
@@ -95,8 +94,8 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
     let tags: string[] = []
     const absolutePath = toAbsolutePath(cached.path)
     try {
-      refuseOutsideVaultSync(getVaultRoot(), cached.path)
-      const raw = fs.readFileSync(absolutePath, 'utf-8')
+      const raw = readVaultFileSync(getVaultRoot(), cached.path)
+      if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
       const parsed = parseNote(raw)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []

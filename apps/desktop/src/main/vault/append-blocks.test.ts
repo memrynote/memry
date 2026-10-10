@@ -57,7 +57,8 @@ vi.mock('./notes-io', () => ({
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/paths')>()),
-  refuseOutsideVault: async () => undefined
+  readVaultFile: async (_vault: string, p: string) =>
+    written.find((w) => w.path === `/vault/${p}`)?.content ?? null
 }))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })

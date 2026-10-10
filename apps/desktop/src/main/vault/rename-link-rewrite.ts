@@ -46,10 +46,10 @@ import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrit
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
-import { safeRead, atomicWrite } from './file-ops'
+import { atomicWrite } from './file-ops'
 import { isNoteLocked } from '../vault-locks/registry'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('RenameLinkRewrite')
@@ -144,9 +144,8 @@ async function rewriteSource(
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.
   const sourcePath = sourceId === noteId ? input.newPath : cached.path
-  await refuseOutsideVault(getVaultRoot(), sourcePath)
   const absolutePath = toAbsolutePath(sourcePath)
-  const original = await safeRead(absolutePath)
+  const original = await readVaultFile(getVaultRoot(), sourcePath)
   if (!original) return
 
   const rewritten = rewriteWikiLinksToNote(original, from, to, otherNoteWithTitleExists)

@@ -19,7 +19,7 @@ import {
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
-import { refuseOutsideVaultSync } from '../lib/paths'
+import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
@@ -609,7 +609,7 @@ async function performWriteback(
     {
       notePath: cached.path,
       readFileBody: async () => {
-        const raw = await safeRead(toAbsolutePath(cached.path))
+        const raw = await readVaultFile(getVaultRoot(), cached.path)
         return raw === null ? null : splitFrontmatterBlock(raw).body
       },
       onSourceRestore: (sourceRestore) => {

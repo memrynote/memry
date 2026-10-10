@@ -12,15 +12,15 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
-const readFileSpy = vi.hoisted(() => vi.fn())
+const openSpy = vi.hoisted(() => vi.fn())
 const statSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', async () => {
   const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
   return {
     ...actual,
-    default: { ...actual, readFile: readFileSpy, stat: statSpy },
-    readFile: readFileSpy,
+    default: { ...actual, open: openSpy, stat: statSpy },
+    open: openSpy,
     stat: statSpy
   }
 })
@@ -58,8 +58,8 @@ describe('search projector', () => {
     initializeFtsTasks(dataDb.db as never)
     initializeFtsInbox(dataDb.db as never)
     vaultDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-search-projector-'))
-    readFileSpy.mockImplementation(async (filePath: string, encoding: BufferEncoding) =>
-      fs.readFileSync(filePath, encoding)
+    openSpy.mockImplementation(async (...args: Parameters<typeof fs.promises.open>) =>
+      fs.promises.open(...args)
     )
     statSpy.mockImplementation(async (filePath: string) => fs.statSync(filePath))
   })
@@ -368,7 +368,7 @@ describe('search projector', () => {
     seedInboxItem('inbox-1')
     seedDuplicateFtsRows()
 
-    readFileSpy.mockClear()
+    openSpy.mockClear()
 
     const projector = createSearchProjector(() => vaultDir)
     await projector.reconcile()
@@ -395,7 +395,7 @@ describe('search projector', () => {
     ).toBe('newest')
 
     // Deduping is not an excuse to re-read the vault.
-    expect(readFileSpy).not.toHaveBeenCalled()
+    expect(openSpy).not.toHaveBeenCalled()
   })
 
   it('runs the duplicate sweep once and skips it on every later open', async () => {
@@ -496,12 +496,12 @@ describe('search projector', () => {
       VALUES (${'inbox-1'}, ${'Inbox title'}, ${'already indexed'}, ${''}, ${'Source'})
     `)
 
-    readFileSpy.mockClear()
+    openSpy.mockClear()
 
     const projector = createSearchProjector(() => vaultDir)
     await projector.reconcile()
 
-    expect(readFileSpy).not.toHaveBeenCalled()
+    expect(openSpy).not.toHaveBeenCalled()
     expect(
       indexDb.db.get<{ content: string }>(sql`SELECT content FROM fts_notes WHERE id = ${'note-1'}`)
         ?.content
@@ -567,7 +567,7 @@ describe('search projector', () => {
 
     const controller = new AbortController()
     statSpy.mockClear()
-    readFileSpy.mockClear()
+    openSpy.mockClear()
     statSpy.mockImplementation(async (filePath: string) => {
       controller.abort()
       return fs.statSync(filePath)
@@ -577,7 +577,7 @@ describe('search projector', () => {
     await projector.reconcile(controller.signal)
 
     expect(statSpy.mock.calls.length).toBeLessThanOrEqual(64)
-    expect(readFileSpy).not.toHaveBeenCalled()
+    expect(openSpy).not.toHaveBeenCalled()
   })
 
   it('reconcile stops reading the vault once its abort signal fires', async () => {
@@ -596,16 +596,16 @@ describe('search projector', () => {
     `)
 
     const controller = new AbortController()
-    readFileSpy.mockClear()
-    readFileSpy.mockImplementation(async (filePath: string, encoding: BufferEncoding) => {
+    openSpy.mockClear()
+    openSpy.mockImplementation(async (...args: Parameters<typeof fs.promises.open>) => {
       controller.abort()
-      return fs.readFileSync(filePath, encoding)
+      return fs.promises.open(...args)
     })
 
     const projector = createSearchProjector(() => vaultDir)
     await projector.reconcile(controller.signal)
 
-    expect(readFileSpy).toHaveBeenCalledTimes(1)
+    expect(openSpy).toHaveBeenCalledTimes(1)
     // Nothing is written after the abort either — the database may already be
     // closed. The next open re-runs the same diff and finishes the backfill.
     expect(

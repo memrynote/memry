@@ -18,8 +18,8 @@
  * @module vault/ingest-backfill
  */
 
-import fs from 'fs/promises'
 import type { Stats } from 'fs'
+import type { FileHandle } from 'fs/promises'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -35,8 +35,7 @@ import { flushProjectionEvents } from '../projections'
 import { queueEmbeddedVaultFiles, syncNoteCreate } from '../notes/runtime-effects'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { createSnippet, extractProperties, extractTags, parseNote } from './frontmatter'
-import { safeRead } from './file-ops'
-import { refuseOutsideVault } from '../lib/paths'
+import { openVaultFile } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
 import { syncLargeFileBodyToCache, syncNoteToCache } from './note-sync'
 
@@ -145,18 +144,18 @@ async function backfillOne(entry: IngestBackfillEntry): Promise<void> {
   // path that no longer exists.
   if (!cached || cached.path !== entry.relativePath) return
   // A file linked outside the vault is listed but never read (#2804).
-  await refuseOutsideVault(entry.vaultPath, entry.relativePath)
-
-  const stats = await fs.stat(entry.absolutePath).catch(() => null)
-  if (!stats) return
-
-  const statClass = classifyMarkdownStat(stats.size)
-  if (statClass !== null) {
-    await backfillLargeFile(entry, cached, stats.mtime)
-    return
+  const file = await openVaultFile(entry.vaultPath, entry.relativePath)
+  if (file === null) return
+  try {
+    const stats = await file.stat()
+    if (classifyMarkdownStat(stats.size) !== null) {
+      await backfillLargeFile(entry, cached, stats.mtime, file)
+      return
+    }
+    await backfillNote(entry, cached, stats, await file.readFile('utf-8'))
+  } finally {
+    await file.close()
   }
-
-  await backfillNote(entry, cached, stats)
 }
 
 type CachedNote = NonNullable<ReturnType<typeof getNoteCacheById>>
@@ -164,11 +163,9 @@ type CachedNote = NonNullable<ReturnType<typeof getNoteCacheById>>
 async function backfillNote(
   entry: IngestBackfillEntry,
   cached: CachedNote,
-  stats: Stats
+  stats: Stats,
+  content: string
 ): Promise<void> {
-  const content = await safeRead(entry.absolutePath)
-  if (content === null) return
-
   const parsed = parseNote(content, entry.relativePath, stats)
   const db = getIndexDatabase()
 
@@ -268,9 +265,10 @@ async function backfillNote(
 async function backfillLargeFile(
   entry: IngestBackfillEntry,
   cached: CachedNote,
-  modifiedAt: Date
+  modifiedAt: Date,
+  file: FileHandle
 ): Promise<void> {
-  const scan = await scanMarkdownFile(entry.absolutePath, LARGE_FILE_INDEX_CHARS)
+  const scan = await scanMarkdownFile(file, LARGE_FILE_INDEX_CHARS)
   if (scan === null) return
 
   syncLargeFileBodyToCache(getIndexDatabase(), {

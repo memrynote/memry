@@ -256,6 +256,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let properties: Record<string, unknown> | null = null
     try {
       const raw = readJournalTextSync(cached.journalDate)
+      if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
       const parsed = parseJournalEntry(raw, cached.journalDate)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []

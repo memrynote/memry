@@ -27,7 +27,7 @@ import { getExtractedText, listFilesWithExtractedText } from '../../database/que
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { parseNote } from '../../vault/frontmatter'
 import { createLogger } from '../../lib/logger'
-import { refuseOutsideVault } from '../../lib/paths'
+import { readVaultFile } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
@@ -83,10 +83,10 @@ async function reindexMarkdownNote(
   note: { id: string; path: string; title: string }
 ): Promise<void> {
   if (!vaultPath) return
-  let raw: string
+  let raw: string | null
   try {
-    await refuseOutsideVault(vaultPath, note.path)
-    raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
+    raw = await readVaultFile(vaultPath, note.path)
+    if (raw === null) throw new Error(`Note file is missing: ${note.path}`)
   } catch (error) {
     logger.warn('Failed to read note for attachment text', { noteId: note.id, error })
     return
@@ -181,8 +181,8 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
     const absolutePath = path.join(vaultPath, row.path)
 
     try {
-      await refuseOutsideVault(vaultPath, row.path)
-      const raw = await fs.readFile(absolutePath, 'utf-8')
+      const raw = await readVaultFile(vaultPath, row.path)
+      if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
       const parsed = parseNote(raw, row.path)
       // resetFtsTable above left the table empty, so every id here is absent.
       insertFtsNoteUnchecked(
@@ -394,8 +394,8 @@ async function reconcileNotes(
     const absolutePath = path.join(vaultPath, row.path)
 
     try {
-      await refuseOutsideVault(vaultPath, row.path)
-      const raw = await fs.readFile(absolutePath, 'utf-8')
+      const raw = await readVaultFile(vaultPath, row.path)
+      if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
 
       // The link check and the read are the only awaits in this loop, so this
       // is the only point an abort can land. Bail before writing: closeVault closes the databases

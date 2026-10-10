@@ -31,7 +31,7 @@ import {
 import { getIndexDatabase } from '../../database/client'
 import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
-import { refuseOutsideVaultSync } from '../../lib/paths'
+import { readVaultFileSync } from '../../lib/paths'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/index'
 import {
@@ -116,8 +116,9 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
  */
 function withLocalBodyTags(remoteTags: string[], relPath: string): NoteTagSet {
   try {
-    refuseOutsideVaultSync(getVaultRoot(), relPath)
-    const parsed = parseNote(fs.readFileSync(toAbsolutePath(relPath), 'utf-8'))
+    const raw = readVaultFileSync(getVaultRoot(), relPath)
+    if (raw === null) throw new Error(`Note file is missing: ${relPath}`)
+    const parsed = parseNote(raw)
     return { header: remoteTags, inline: extractInlineTagsFromMarkdown(parsed.content) }
   } catch {
     log.warn('Could not read note body to merge its inline tags', { path: relPath })
@@ -395,8 +396,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
           if ((tagsChanged && remoteTags) || propertiesPresent || coverPresent) {
             // Content actually changed — rewrite user keys only
-            refuseOutsideVaultSync(notesDir, existing.path)
-            const raw = fs.readFileSync(oldAbsPath, 'utf-8')
+            const raw = readVaultFileSync(notesDir, existing.path)
+            if (raw === null) throw new Error(`Note file is missing: ${oldAbsPath}`)
             const parsed = parseNote(raw)
             if (tagsChanged && remoteTags) {
               if (remoteTags.length > 0) {
@@ -458,8 +459,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const absPath = toAbsolutePath(existing.path)
         try {
-          refuseOutsideVaultSync(getVaultRoot(), existing.path)
-          const raw = fs.readFileSync(absPath, 'utf-8')
+          const raw = readVaultFileSync(getVaultRoot(), existing.path)
+          if (raw === null) throw new Error(`Note file is missing: ${absPath}`)
           const parsed = parseNote(raw)
           if (tagsChanged && remoteTags) {
             if (remoteTags.length > 0) {

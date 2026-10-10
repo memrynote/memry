@@ -9,6 +9,7 @@
 import { foldTag } from '@memry/shared/tag-fold'
 import path from 'path'
 import fs from 'fs/promises'
+import type { Stats } from 'fs'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
@@ -62,7 +63,7 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
-import { refuseOutsideVault, resolveVaultFile } from '../lib/paths'
+import { openVaultFile, resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -594,17 +595,18 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return getNoteById(cached.id)
   }
 
-  await refuseOutsideVault(getVaultRoot(), notePath)
-  const absolutePath = toAbsolutePath(notePath)
-  const fileContent = await safeRead(absolutePath)
-
+  const file = await openVaultFile(getVaultRoot(), notePath)
   // `null` = truly missing (ENOENT); an empty string is a valid empty note.
-  if (fileContent === null) {
-    return null
+  if (file === null) return null
+  let fileContent: string
+  let stats: Stats
+  try {
+    fileContent = await file.readFile('utf-8')
+    stats = await file.stat()
+  } finally {
+    await file.close()
   }
-
-  const stats = await fs.stat(absolutePath).catch(() => null)
-  const parsed = parseNote(fileContent, notePath, stats ?? undefined)
+  const parsed = parseNote(fileContent, notePath, stats)
 
   const syncResult = syncNoteToCache(
     db,
