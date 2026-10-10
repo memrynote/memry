@@ -214,7 +214,7 @@ export function FilterRow({
           {builtInProperties.map((prop) => (
             <SelectItem key={prop.id} value={prop.id} className="text-xs">
               <span className="flex items-center gap-2">
-                <PropertyIcon icon={getColumnIcon(prop.id)} className="h-3.5 w-3.5" />
+                <PropertyIcon icon={getColumnIcon(prop.id, prop.type)} className="h-3.5 w-3.5" />
                 {prop.name}
               </span>
             </SelectItem>
@@ -229,7 +229,10 @@ export function FilterRow({
               {availableProperties.map((prop) => (
                 <SelectItem key={prop.id} value={prop.id} className="text-xs">
                   <span className="flex items-center gap-2">
-                    <PropertyIcon icon={getColumnIcon(prop.id)} className="h-3.5 w-3.5" />
+                    <PropertyIcon
+                      icon={getColumnIcon(prop.id, prop.type)}
+                      className="h-3.5 w-3.5"
+                    />
                     {prop.name}
                   </span>
                 </SelectItem>
