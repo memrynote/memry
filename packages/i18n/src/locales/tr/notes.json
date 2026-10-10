@@ -1784,7 +1784,7 @@
       "makeFailed": "Etiket eklenemedi",
       "makeHint": "#{tag} etiketini başlığa ekler ve alanlarını gösterir",
       "meta": "{count, plural, one {# nesne} other {# nesne}} · {fields, plural, one {# alan} other {# alan}}",
-      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# alan} other {# alan}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {one}{other, select, other {}}}} · {fields, plural, one {# alan} other {# alan}}",
       "open": "#{tag} aç",
       "remove": "Etiketi metinden kaldır"
     },
