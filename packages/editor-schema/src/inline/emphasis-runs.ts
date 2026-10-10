@@ -58,6 +58,26 @@ function runLength(items: InlineItem[], from: number, mark: EmphasisMark): numbe
   return end - from
 }
 
+const styleKey = (styles: Styles | undefined): string =>
+  JSON.stringify(Object.entries(styles ?? {}).sort(([a], [b]) => a.localeCompare(b)))
+
+// BlockNote writes each text run of a link as its own link, so the tokens
+// around `*b*` in `[a *b*](u)` would split it into four links (BBF-71).
+function joinTexts(items: InlineItem[]): InlineItem[] {
+  const out: InlineItem[] = []
+  for (const item of items) {
+    const last = out[out.length - 1]
+    if (
+      item.type === 'text' &&
+      last?.type === 'text' &&
+      styleKey(last.styles) === styleKey(item.styles)
+    ) {
+      out[out.length - 1] = { ...last, text: `${last.text ?? ''}${item.text ?? ''}` }
+    } else out.push(item)
+  }
+  return out
+}
+
 /** `items` with every run of a mark between tokens; `marks` maps each token pair to its mark. */
 export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[]): InlineItem[] {
   const out: InlineItem[] = []
@@ -73,7 +93,10 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[])
       const item = items[at++]
       out.push(
         Array.isArray(item.content)
-          ? { ...item, content: tokenizeEmphasisRuns(item.content as InlineItem[], marks) }
+          ? {
+              ...item,
+              content: joinTexts(tokenizeEmphasisRuns(item.content as InlineItem[], marks))
+            }
           : item
       )
       continue

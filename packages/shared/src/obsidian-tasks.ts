@@ -1,4 +1,4 @@
-import { foldTag } from './tag-fold'
+import { foldTag } from './tag-fold.ts'
 
 /**
  * Reads a task line written by the Obsidian Tasks plugin, in either of the two

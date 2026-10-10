@@ -29,3 +29,19 @@ describe('compareDates with a date-only value', () => {
     }
   )
 })
+
+describe('the date picker value', () => {
+  it.each(['UTC', 'Europe/Istanbul', 'America/Los_Angeles', 'Pacific/Kiritimati'])(
+    'stores the picked day as a plain date and shows it back as that day in %s',
+    (tz) => {
+      const source = `
+        const { toPlainDay, parseFilterDay } = await import(${JSON.stringify(MODULE_URL)})
+        const stored = toPlainDay(new Date(2026, 9, 7))
+        const shown = parseFilterDay(stored)
+        const legacy = parseFilterDay(new Date(2026, 9, 7).toISOString())
+        process.stdout.write(JSON.stringify([stored, shown.getDate(), legacy.getDate()]))
+      `
+      expect(runInTz(tz, source)).toEqual(['2026-10-07', 7, 7])
+    }
+  )
+})

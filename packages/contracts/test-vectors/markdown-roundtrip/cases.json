@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 154,
+    "exportedCaseCount": 155,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 164,
+    "caseCount": 165,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1072,6 +1072,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "8f172aa42b60d1a0f32767fc13c2884d61db45bb8f6e00f91a6630bd4f1e29f4"
+    },
+    {
+      "name": "link with italic text inside bold (BBF-71)",
+      "markdown": "**[a *b*](https://e.com) c**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7fc4e05ba8436951df79cdd1388cc242d8dbba82bac051f33247f55ac64b8468"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",

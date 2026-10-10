@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getOperatorsForType, getDefaultOperator, type PropertyType } from '@/lib/filter-evaluator'
+import { parseFilterDay, toPlainDay } from '@/lib/filter-date-compare'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { TagValueInput } from './tag-value-input'
@@ -381,17 +382,11 @@ interface DateValueInputProps {
 
 function DateValueInput({ value, onChange }: DateValueInputProps): React.JSX.Element {
   const dateFormat = useDateFormat()
-  // Parse the value to a Date
-  const dateValue = useMemo(() => {
-    if (!value) return undefined
-    if (value instanceof Date) return value
-    const parsed = new Date(value as string)
-    return isNaN(parsed.getTime()) ? undefined : parsed
-  }, [value])
+  const dateValue = useMemo(() => parseFilterDay(value), [value])
 
   const handleSelect = useCallback(
     (date: Date | undefined) => {
-      onChange(date?.toISOString() ?? '')
+      onChange(date ? toPlainDay(date) : '')
     },
     [onChange]
   )

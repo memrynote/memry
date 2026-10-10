@@ -734,47 +734,55 @@ describe('vault read-only locks (#2606)', () => {
  * the lock asks for, whatever platform runs the test.
  */
 describe('read-only attribute modes (#2606)', () => {
+  let dir: string
+
   beforeEach(() => {
     state.vaultPath = ''
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-lock-modes-'))
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  function stubFileMode(mode: number): ReturnType<typeof vi.fn> {
-    vi.spyOn(fs.promises, 'stat').mockResolvedValue({ mode } as fs.Stats)
-    vi.spyOn(fs, 'statSync').mockReturnValue({ mode } as fs.Stats)
-    const chmods = vi.fn()
-    vi.spyOn(fs.promises, 'chmod').mockImplementation(async (_file, next) => chmods(next))
-    vi.spyOn(fs, 'chmodSync').mockImplementation((_file, next) => chmods(next))
-    return chmods
+  function fileWithMode(name: string, mode: number): string {
+    const file = path.join(dir, name)
+    fs.writeFileSync(file, 'text\n')
+    fs.chmodSync(file, mode)
+    return file
   }
 
+  const modeOf = (file: string): number => fs.statSync(file).mode & 0o777
+
   it('locking drops every write bit, so Windows sets the read-only attribute', async () => {
-    const chmods = stubFileMode(0o100666)
+    const a = fileWithMode('a.md', 0o666)
+    const b = fileWithMode('b.md', 0o666)
 
-    await setFileReadOnly('/vault/a.md', true)
-    setFileReadOnlySync('/vault/a.md', true)
+    await setFileReadOnly(a, true)
+    setFileReadOnlySync(b, true)
 
-    expect(chmods.mock.calls).toEqual([[0o444], [0o444]])
+    expect([modeOf(a), modeOf(b)]).toEqual([0o444, 0o444])
   })
 
   it('unlocking sets the owner write bit, so Windows clears the read-only attribute', async () => {
-    const chmods = stubFileMode(0o100444)
+    const a = fileWithMode('a.md', 0o444)
+    const b = fileWithMode('b.md', 0o444)
 
-    await setFileReadOnly('/vault/a.md', false)
-    setFileReadOnlySync('/vault/a.md', false)
+    await setFileReadOnly(a, false)
+    setFileReadOnlySync(b, false)
 
-    expect(chmods.mock.calls).toEqual([[0o644], [0o644]])
+    const writable = isWindows ? 0o666 : 0o644
+    expect([modeOf(a), modeOf(b)]).toEqual([writable, writable])
   })
 
   it('leaves a file alone when it already has the wanted attribute', async () => {
-    const chmods = stubFileMode(0o100444)
+    const file = fileWithMode('a.md', 0o444)
+    const before = fs.statSync(file).ctimeMs
 
-    await setFileReadOnly('/vault/a.md', true)
-    setFileReadOnlySync('/vault/a.md', true)
+    await setFileReadOnly(file, true)
+    setFileReadOnlySync(file, true)
 
-    expect(chmods).not.toHaveBeenCalled()
+    expect(modeOf(file)).toBe(0o444)
+    expect(fs.statSync(file).ctimeMs).toBe(before)
   })
 })
