@@ -107,6 +107,9 @@ async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport
         Declaration::subscribed(),
         Arc::new(NeverOpens),
     )
+    // A delete over unsent text keeps it as an inbox capture (#3029), which
+    // is clocked under this device.
+    .with_clock_device(DEVICE)
     .pull_page()
     .await
 }

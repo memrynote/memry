@@ -28,6 +28,12 @@
 import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
 import type { CustomInlineContentImplementation } from '@blocknote/core'
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
+import {
+  restoreEmphasisRuns,
+  tokenizeEmphasisRuns,
+  type EmphasisMark,
+  type InlineItem
+} from './emphasis-runs'
 
 export const htmlCommentConfig = {
   type: 'htmlComment' as const,
@@ -44,13 +50,6 @@ export function createHtmlCommentContent(source: string) {
 let markdownWrites = 0
 
 type Styles = Record<string, unknown>
-type InlineItem = {
-  type: string
-  text?: string
-  styles?: Styles
-  props?: Styles
-  content?: unknown
-}
 type BlockItem = { content?: unknown; children?: BlockItem[] }
 
 function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): InlineItem | undefined {
@@ -119,41 +118,57 @@ function commentsInMarks(items: InlineItem[]): InlineItem[] {
   return out
 }
 
+type Inline = (items: InlineItem[]) => InlineItem[]
+
 // A table cell is a bare inline array in the legacy shape and `{ content }` in BlockNote 0.47+.
-function cellWithCommentsInMarks(cell: unknown): unknown {
-  if (Array.isArray(cell)) return commentsInMarks(cell)
+function mapCell(cell: unknown, inline: Inline): unknown {
+  if (Array.isArray(cell)) return inline(cell)
   const content = (cell as { content?: unknown } | null)?.content
-  return Array.isArray(content) ? { ...(cell as object), content: commentsInMarks(content) } : cell
+  return Array.isArray(content) ? { ...(cell as object), content: inline(content) } : cell
 }
 
-function blocksWithCommentsInMarks(blocks: BlockItem[]): BlockItem[] {
+function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
   return blocks.map((block) => {
     const next = { ...block }
     const table = block.content as { type?: string; rows: Array<{ cells: unknown[] }> } | undefined
-    if (Array.isArray(block.content)) next.content = commentsInMarks(block.content)
+    if (Array.isArray(block.content)) next.content = inline(block.content)
     else if (table?.type === 'tableContent') {
       next.content = {
         ...table,
-        rows: table.rows.map((row) => ({ ...row, cells: row.cells.map(cellWithCommentsInMarks) }))
+        rows: table.rows.map((row) => ({ ...row, cells: row.cells.map((c) => mapCell(c, inline)) }))
       }
     }
-    if (block.children) next.children = blocksWithCommentsInMarks(block.children)
+    if (block.children) next.children = mapInline(block.children, inline)
     return next
   })
 }
 
 /**
  * Runs a blocks-to-markdown serialization of `blocks` with every comment
- * written as its token, inside the marks it sat in. The scope is synchronous:
- * whatever `serialize` exports after it returns writes nothing for the node.
+ * written as its token, inside the marks it sat in, and each run of emphasis
+ * written as one span. The scope is synchronous: whatever
+ * `serialize` exports after it returns writes nothing for the node.
  */
-export function writeHtmlCommentTokens<B, T>(blocks: B[], serialize: (blocks: B[]) => T): T {
+export function writeHtmlCommentTokens<B>(blocks: B[], serialize: (blocks: B[]) => string): string
+export function writeHtmlCommentTokens<B>(
+  blocks: B[],
+  serialize: (blocks: B[]) => Promise<string>
+): Promise<string>
+export function writeHtmlCommentTokens<B>(
+  blocks: B[],
+  serialize: (blocks: B[]) => string | Promise<string>
+): string | Promise<string> {
+  const marks: EmphasisMark[] = []
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
-  const marked = blocksWithCommentsInMarks(blocks as BlockItem[]) as B[]
+  const marked = mapInline(blocks as BlockItem[], (items) =>
+    tokenizeEmphasisRuns(commentsInMarks(items), marks)
+  ) as B[]
+  const restore = (markdown: string): string => restoreEmphasisRuns(markdown, marks)
   markdownWrites++
   try {
-    return serialize(marked)
+    const out = serialize(marked)
+    return typeof out === 'string' ? restore(out) : out.then(restore)
   } finally {
     markdownWrites--
   }

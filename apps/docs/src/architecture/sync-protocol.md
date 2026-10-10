@@ -1094,6 +1094,22 @@ any key a retried upload claimed in the meantime. A failed object delete only
 leaks storage. The sweep works in batches of 90 ids (D1 binds at most 100),
 300 chunks per tick.
 
+A chunk also stays while a **hold** names it (#3022, protocol §14.8.1). A canvas
+can show an image it never uploaded: desktop reuses a stored image by content
+hash, and duplicates and conflict copies carry their source's images. The
+upload's reference belongs to the other canvas, so a peer that frees that
+canvas 30 days after deleting it would free the reuse's chunks too. Before a
+canvas is pushed, desktop holds every image its sidecar names under a holder id
+derived per (canvas, image) from the vault key, so every device names the same
+holder and repeats are no-ops. When the server answers that an image's chunks
+are gone, desktop uploads its local copy again, holds the new chunks, and the
+push carries the new attachment. A canvas whose holds keep failing waits at
+most five push cycles, or none when the server rejects the request outright,
+then pushes without them as before. Removing an image from a canvas, and the
+30-day release of a deleted canvas, release that canvas's holds. A dereference
+that takes a held chunk to zero refunds nothing; the release of its last hold
+does.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.

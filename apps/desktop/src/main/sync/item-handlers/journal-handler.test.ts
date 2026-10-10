@@ -49,6 +49,9 @@ vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({ index: true }))
 }))
 
+// Covered through a real database in keep-unseen-text.test.ts; these cases run on a stub db.
+vi.mock('../keep-unseen-text', () => ({ keepUnseenText: vi.fn() }))
+
 vi.mock('../journal-day-merge', () => ({
   oweJournalDayMerge: vi.fn(),
   markOwedJournalDayMergeDeleted: vi.fn()

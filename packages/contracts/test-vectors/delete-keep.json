@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "delete-keep",
+    "chapter": "docs/protocol/05-record-sync.md",
+    "implementation": "packages/sync-client/src/delete-keep.ts",
+    "caseCount": 15
+  },
+  "skewMs": 60000,
+  "cases": [
+    {
+      "name": "synced-text-is-not-kept",
+      "pins": "text pushed an hour before the delete, nothing waiting, clock covered: the deleter saw it",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "never-pushed-body-is-not-kept-when-old",
+      "pins": "no body push recorded and nothing waiting: nothing unseen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": null
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "waiting-change-is-kept",
+      "pins": "a local change still queued for the server is unseen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": true,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "concurrent-clock-is-kept",
+      "pins": "a record change the tombstone does not cover is unseen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4,
+          "device-b": 1
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "offline-create-is-kept",
+      "pins": "a day created here, clock only from this device, is concurrent with a peer delete",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-b": 1
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": null
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "body-pushed-after-delete-is-kept",
+      "pins": "the outbox won the race with the pull: text reached the server after the delete",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791547205000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "body-pushed-inside-skew-is-kept",
+      "pins": "text that reached the server just before the delete may not have reached the deleter",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791547140000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "body-pushed-just-outside-skew-is-not-kept",
+      "pins": "one ms past the slack counts as seen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791547139999
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "deleted-at-in-seconds",
+      "pins": "desktop sends deletedAt in whole seconds; it is read as ms * 1000",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200,
+        "lastLocalBodyAt": 1791547205000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "deleted-at-in-seconds-old-push",
+      "pins": "seconds are scaled, so an old push stays seen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "no-deleted-at",
+      "pins": "without a delete time only rules 1 and 2 apply",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": null,
+        "lastLocalBodyAt": 1791547205000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": null
+      }
+    },
+    {
+      "name": "blank-body-is-never-kept",
+      "pins": "nothing to keep",
+      "facts": {
+        "bodyBlank": true,
+        "waitingChanges": true,
+        "localClock": {
+          "device-b": 1
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "local-after-tombstone-is-not-kept",
+      "pins": "a local clock strictly after the tombstone keeps the item itself (§5.8)",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": true,
+        "localClock": {
+          "device-a": 6
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "clockless-row-uses-other-rules",
+      "pins": "no local clock: the clock rule is silent, a waiting change still keeps",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": true,
+        "localClock": null,
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "clockless-tombstone-uses-other-rules",
+      "pins": "a legacy tombstone with no clock: an old synced body is not kept",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": null,
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    }
+  ]
+}

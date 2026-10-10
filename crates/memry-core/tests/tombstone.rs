@@ -143,6 +143,9 @@ async fn deliver_the_delete(db: &Db) -> PullReport {
         Declaration::subscribed(),
         Arc::new(NeverOpens),
     )
+    // A delete over unsent text keeps it as an inbox capture (#3029), which
+    // is clocked under this device.
+    .with_clock_device(DEVICE)
     .pull_page()
     .await
     .expect("the page");
@@ -333,11 +336,24 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
         "delete-versus-edit has one answer: the arrival order of the record \
          feed and the body feed must not change whether the note exists"
     );
+    let note_rows = |state: &Resolution| -> Vec<(String, String)> {
+        state
+            .outbox
+            .iter()
+            .filter(|(_, id)| id == NOTE)
+            .cloned()
+            .collect()
+    };
     assert_eq!(
-        a_state.outbox, b_state.outbox,
+        note_rows(&a_state),
+        note_rows(&b_state),
         "and neither order throws the edit away: both still owe the server \
          the same push"
     );
+    // #3029: A held text the delete never saw, so A also queued that text as
+    // an inbox capture. B applied the delete before it typed.
+    assert_eq!(a_state.outbox.len(), note_rows(&a_state).len() + 1);
+    assert_eq!(b_state.outbox.len(), note_rows(&b_state).len());
 
     // The body tier is where the orders legitimately differ, and §7.15 is why.
     // The purge is what a client does **on applying** a tombstone, so A's edit

@@ -21,6 +21,7 @@ export async function deleteUserData(
     db.prepare('DELETE FROM crdt_sequence_floors WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM upload_sessions WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM blob_chunks WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM attachment_chunk_holds WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM device_sync_state WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM sync_items WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM server_cursor_sequence WHERE user_id = ?').bind(userId),

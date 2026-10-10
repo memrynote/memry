@@ -83,6 +83,9 @@ pub fn vector_file(name: &str) -> Json {
         "delete-attestation" => {
             include_str!("../../../../packages/contracts/test-vectors/delete-attestation.json")
         }
+        "delete-keep" => {
+            include_str!("../../../../packages/contracts/test-vectors/delete-keep.json")
+        }
         "task-parsing" => {
             include_str!("../../../../packages/contracts/test-vectors/task-parsing.json")
         }
