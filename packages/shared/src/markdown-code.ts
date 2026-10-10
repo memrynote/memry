@@ -56,13 +56,15 @@ export function stripMarkdownComments(markdown: string): string {
  * one-line comment is alone on its line. `blockGoesOn` is true for an HTML
  * comment that opens a CommonMark HTML block with text after its `-->`: that
  * text is part of the block, not a paragraph. Code stays as written. A `<!--`
- * read as text, or one that never closes, becomes `textOpen` and the text
+ * read as text, or one that never closes, becomes `textOpen`, except one that
+ * never closes and opens an HTML block, which becomes `unclosedOpen`. The text
  * after it stays.
  */
 export function replaceMarkdownComments(
   markdown: string,
   replace: (source: string, wholeLine: boolean, blockGoesOn: boolean) => string,
-  textOpen = '<!--'
+  textOpen = '<!--',
+  unclosedOpen = textOpen
 ): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
   return walkMarkdown(markdown, {
@@ -70,7 +72,9 @@ export function replaceMarkdownComments(
     textOpen: (open) => (open === '<!--' ? textOpen : open),
     codeSpan: (source) => source,
     comment: (source, closed, wholeLine, blockGoesOn) =>
-      closed ? replace(source, wholeLine, blockGoesOn) : textOpen + source.slice('<!--'.length)
+      closed
+        ? replace(source, wholeLine, blockGoesOn)
+        : (blockGoesOn ? unclosedOpen : textOpen) + source.slice('<!--'.length)
   })
 }
 
@@ -117,7 +121,9 @@ interface Visitor {
    * A whole comment, line breaks included when it spans lines. `closed` is
    * false for an HTML comment still open at the end of the note. `wholeLine`
    * is true for a one-line comment with nothing else on its line.
-   * `blockGoesOn` is as in `replaceMarkdownComments`.
+   * `blockGoesOn` is as in `replaceMarkdownComments`; for a comment that
+   * never closes it is true when the comment opens an HTML block, which then
+   * runs to the end of the note.
    */
   comment(source: string, closed: boolean, wholeLine: boolean, blockGoesOn: boolean): string
 }
@@ -158,7 +164,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       if (pending.close?.line !== index) {
         pending.source += '\n' + line
         if (index === lines.length - 1)
-          out.push(pending.prefix + visit.comment(pending.source, false, false, false))
+          out.push(pending.prefix + visit.comment(pending.source, false, false, pending.opensBlock))
         continue
       }
       const { end } = pending.close
@@ -253,7 +259,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     }
     if (pending) {
       if (index === lines.length - 1)
-        out.push(pending.prefix + visit.comment(pending.source, false, false, false))
+        out.push(pending.prefix + visit.comment(pending.source, false, false, pending.opensBlock))
       continue
     }
     result += line.slice(i)

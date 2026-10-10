@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 180,
+    "exportedCaseCount": 182,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 190,
+    "caseCount": 192,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1030,6 +1030,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "1984b2970036d2f7876e8d10310faa37fe7b9c82f9b02ea8b90e818cee7bddb7"
+    },
+    {
+      "name": "unclosed <!-- opening the note (BBF-101)",
+      "markdown": "<!-- never closes\nmore [[F]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4c605604841dc0bed406f342952961e8fa66bb348287de5087ff0b5ae37f01c5"
+    },
+    {
+      "name": "unclosed <!-- after a paragraph (BBF-101)",
+      "markdown": "Top\n\n<!-- open\n\n# Heading",
+      "canonical": null,
+      "pending": null,
+      "sha256": "52f667fd372b29d95b8ee2e75d4741a64554eccea81aab0875b8500aab81bdb9"
     },
     {
       "name": "comment inside bold (BBF-52)",
