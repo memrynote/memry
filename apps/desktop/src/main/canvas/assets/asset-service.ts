@@ -31,14 +31,21 @@ import { getMainRedactOptions } from '../../telemetry/redact-options'
 import type { TrackMainEventOptions } from '../../telemetry/track'
 
 import { assetFilename, hashAssetContent } from './content-hash'
-import { contentHashFromRef, extractSceneFileRefs, writeMemryAssets } from './memry-assets'
+import {
+  contentHashFromRef,
+  extractSceneFileRefs,
+  readMemryAssets,
+  writeMemryAssets
+} from './memry-assets'
 import {
   deleteCanvasAssetRows,
   findAssetByContentHash,
   hashesReferencedByOtherCanvases,
   listAssetsByCanvas,
-  recordAsset
+  recordAsset,
+  repointAsset
 } from './asset-store'
+import type { AssetHold, HoldOutcome } from './chunk-holds'
 import { planDereference } from './dedup-plan'
 
 const log = createLogger('CanvasAssetService')
@@ -69,6 +76,10 @@ export interface AssetServiceContext {
    *  404 (endpoint not yet deployed) / missing token / offline, so the caller can keep the
    *  rows that hold these hashes and retry on a later reconcile instead of leaking ref_count. */
   dereference: (chunkHashes: string[]) => Promise<{ ok: boolean }>
+  /** Hold these images' chunks for one canvas on the server (#3022). Never throws. */
+  holdChunks: (canvasId: string, holds: AssetHold[]) => Promise<HoldOutcome>
+  /** Release one canvas's holds on these images. Idempotent; never throws. */
+  releaseHolds: (canvasId: string, contentHashes: string[]) => Promise<{ ok: boolean }>
   /** Suppress the vault watcher's re-upload loop before writing/downloading a file. */
   markWritebackIgnored: (absolutePath: string) => void
   trackEvent: (name: TelemetryEventName, options: TrackMainEventOptions) => void
@@ -277,6 +288,13 @@ export async function reconcileCanvasAssets(
   const plan = planDereference(prev, current, others)
   if (plan.removedContentHashes.length === 0) return
 
+  // This canvas no longer shows these images, so its holds go first (#3022). A
+  // failed release keeps every removed row, so the next reconcile retries it.
+  if (!(await ctx.releaseHolds(canvasId, plan.removedContentHashes)).ok) {
+    log.warn('canvas asset hold release failed; keeping rows for a later retry', { canvasId })
+    return
+  }
+
   // Shared removed content — still referenced by another canvas, so no server call is needed;
   // prune the local row immediately.
   const dereferenced = new Set(plan.dereferencedContentHashes)
@@ -371,5 +389,127 @@ export function injectSceneAssetSidecar(
   } catch {
     // Unparseable scene — never corrupt it by dropping the payload.
     return sceneJson
+  }
+}
+
+/**
+ * Hold a canvas's images on the server before the canvas is pushed (#3022).
+ *
+ * A canvas can show an image whose chunks it never uploaded: a dedup hit, a
+ * duplicate, a conflict copy, or a canvas revived after its delete was freed.
+ * The upload's own reference belongs to another canvas, and a peer that frees
+ * that canvas frees the chunks too. The hold, keyed per (canvas, image), keeps
+ * them. When the server reports an image's chunks gone, this device uploads its
+ * local copy again and points the row at the new chunks, so the push carries a
+ * sidecar every peer can download.
+ *
+ * Returns false when the push should wait for a later cycle: the server could
+ * not be reached or the re-upload failed. A hold the server refuses outright
+ * (a 4xx other than 404/408/429) fails the same way on every retry, so the
+ * canvas pushes without it, as before holds existed.
+ */
+export async function holdCanvasAssetsForPush(
+  ctx: AssetServiceContext,
+  canvasId: string,
+  sceneJson: string
+): Promise<boolean> {
+  const descriptors = new Map(readMemryAssets(sceneJson).map((d) => [d.contentHash, d]))
+  if (descriptors.size === 0) return true
+  const rows = new Map(listAssetsByCanvas(ctx.db, canvasId).map((row) => [row.contentHash, row]))
+  const holds = [...descriptors.values()].map((d) => ({
+    contentHash: d.contentHash,
+    chunkHashes: rows.get(d.contentHash)?.chunkHashes ?? d.chunkHashes
+  }))
+
+  const outcome = await ctx.holdChunks(canvasId, holds)
+  if (outcome.status === 'failed' && !outcome.retryable) {
+    log.warn('server refused canvas asset holds; pushing without them', {
+      canvasId,
+      httpStatus: outcome.httpStatus,
+      images: holds.length
+    })
+    ctx.trackEvent('app_error_seen', {
+      surface: 'sync',
+      action: 'canvas_asset_hold',
+      objectType: 'canvas',
+      source: 'canvas_asset_service',
+      result: 'failed',
+      errorCode: `http_${outcome.httpStatus}`
+    })
+    return true
+  }
+  if (outcome.status === 'failed') return false
+  // A server without holds cannot report freed chunks either; push as before.
+  if (outcome.status === 'unsupported') return true
+
+  for (const contentHash of outcome.missing) {
+    const descriptor = descriptors.get(contentHash)!
+    const healed = await reuploadMissingAsset(ctx, canvasId, descriptor)
+    if (!healed) return false
+  }
+  return true
+}
+
+/** Upload this device's copy of an image whose chunks the server no longer has. */
+async function reuploadMissingAsset(
+  ctx: AssetServiceContext,
+  canvasId: string,
+  descriptor: MemryAssetDescriptor
+): Promise<boolean> {
+  const row = listAssetsByCanvas(ctx.db, canvasId).find(
+    (r) => r.contentHash === descriptor.contentHash
+  )
+  const diskPath = canvasAssetDiskPath(ctx.vaultPath, row?.filename ?? descriptor.filename)
+  if (!(await fileExists(diskPath))) {
+    // Nothing to upload from: the image stays broken, and holding the push
+    // back would not bring it back.
+    log.warn('canvas asset chunks are gone and no local copy exists', { canvasId })
+    ctx.trackEvent('app_error_seen', {
+      surface: 'sync',
+      action: 'canvas_asset_reupload',
+      objectType: 'canvas',
+      source: 'canvas_asset_service',
+      result: 'failed',
+      errorCode: 'canvas_asset_missing'
+    })
+    return true
+  }
+
+  try {
+    const { attachmentId, manifest } = await ctx.uploadAttachment(canvasId, diskPath)
+    const chunkHashes = manifest.chunks.map((c) => c.encryptedHash)
+    const held = await ctx.holdChunks(canvasId, [
+      { contentHash: descriptor.contentHash, chunkHashes }
+    ])
+    if (held.status !== 'ok' || held.missing.size > 0) return false
+    // The hold now keeps these chunks. Dropping the upload's own reference
+    // leaves the hold as their only owner, so releasing it frees them; a
+    // failed drop only leaves the bytes stored.
+    if (!(await ctx.dereference(chunkHashes)).ok) {
+      log.warn('could not drop the upload reference of a re-uploaded canvas asset', { canvasId })
+    }
+    repointAsset(ctx.db, {
+      vaultId: ctx.vaultId,
+      canvasId,
+      contentHash: descriptor.contentHash,
+      attachmentId,
+      fileId: row?.fileId ?? descriptor.fileId,
+      filename: row?.filename ?? descriptor.filename,
+      mimeType: row?.mimeType ?? descriptor.mimeType,
+      sizeBytes: row?.sizeBytes ?? descriptor.sizeBytes,
+      chunkHashes,
+      createdAt: Date.now()
+    })
+    ctx.trackEvent('canvas_asset_uploaded', {
+      surface: 'sync',
+      action: 'reupload',
+      objectType: 'canvas',
+      result: 'success',
+      metrics: { byteCount: row?.sizeBytes ?? descriptor.sizeBytes }
+    })
+    return true
+  } catch (err) {
+    log.warn('re-upload of a canvas asset with missing chunks failed', { canvasId, err })
+    return false
   }
 }

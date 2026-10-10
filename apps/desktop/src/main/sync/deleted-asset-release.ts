@@ -46,6 +46,8 @@ export interface AssetReleaseDeps {
   chunkHashesOf: (attachmentId: string) => Promise<string[]>
   /** Decrement the server ref_count of these chunks. Never throws. */
   dereference: (chunkHashes: string[]) => Promise<{ ok: boolean }>
+  /** Release one canvas's chunk holds on these images (#3022). Idempotent; never throws. */
+  releaseHolds: (canvasId: string, contentHashes: string[]) => Promise<{ ok: boolean }>
   markWritebackIgnored: (absolutePath: string) => void
 }
 
@@ -195,6 +197,10 @@ async function releaseCanvas(
   if (canvas && canvas.deletedAt === null) return true
 
   const rows = db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, canvasId)).all()
+  // The deleted canvas holds none of its images any more (#3022), kept or not:
+  // a live canvas that shows one holds it under its own id.
+  const contentHashes = rows.map((row) => row.contentHash)
+  if (!(await deps.releaseHolds(canvasId, contentHashes)).ok) return false
   const freed = rows.filter(
     (row) => !kept.contentHashes.has(row.contentHash) && !kept.attachmentIds.has(row.attachmentId)
   )

@@ -5,7 +5,7 @@
  *
  * Runs inside the bundled sync worker (canvas sync item-handler), so this
  * module must stay free of any electron import, direct or transitive — only
- * `JSON` and a type-only import of `MemryAssetDescriptor`.
+ * `JSON` and type-only imports.
  *
  * An externalized image's `files[fileId].dataURL` is a
  * `memry-file://local/.../attachments/canvas-assets/<contentHash>.<ext>` URL
@@ -15,6 +15,7 @@
  */
 
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
+import type { CanvasAssetRow } from '@memry/db-schema'
 
 const MEMRY_FILE_PREFIX = 'memry-file://'
 const CANVAS_ASSET_MARKER = '/canvas-assets/'
@@ -86,4 +87,23 @@ export function writeMemryAssets(sceneJson: string, descriptors: MemryAssetDescr
   const parsed = JSON.parse(sceneJson) as Record<string, unknown>
   parsed.memryAssets = descriptors
   return JSON.stringify(parsed)
+}
+
+/**
+ * The scene as it is pushed: each sidecar descriptor points at the attachment
+ * this device's row records, which a re-upload may have replaced since the
+ * scene was saved (#3022). Descriptors without a row stay as they are.
+ */
+export function sceneWithCurrentAssetRows(sceneJson: string, canvasRows: CanvasAssetRow[]): string {
+  const descriptors = readMemryAssets(sceneJson)
+  if (descriptors.length === 0) return sceneJson
+  const rows = new Map(canvasRows.map((row) => [row.contentHash, row]))
+  let changed = false
+  const current = descriptors.map((d) => {
+    const row = rows.get(d.contentHash)
+    if (!row || row.attachmentId === d.attachmentId) return d
+    changed = true
+    return { ...d, attachmentId: row.attachmentId, chunkHashes: row.chunkHashes }
+  })
+  return changed ? writeMemryAssets(sceneJson, current) : sceneJson
 }

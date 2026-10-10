@@ -37,6 +37,14 @@ const log = createLogger('PushCoordinator')
 
 const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<string>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
 
+/**
+ * Push cycles a canvas waits for its asset holds (#3022) before it goes out
+ * without them, as every push did before holds existed. Long enough to ride out
+ * a blip, a 429 window or a brief outage; short enough that a holds route that
+ * keeps failing delays a canvas by a few cycles instead of forever.
+ */
+export const MAX_CANVAS_HOLD_DEFERRALS = 5
+
 export class PushCoordinator {
   private ctx: SyncContext
   private stateManager: SyncStateManager
@@ -63,6 +71,8 @@ export class PushCoordinator {
   private lastPushGeneration = 0
   private readonly settledWaiters = new Set<() => void>()
   private readonly heldBackOffline = new Set<string>()
+  /** Consecutive failed hold attempts per canvas id, for MAX_CANVAS_HOLD_DEFERRALS. */
+  private readonly canvasHoldDeferrals = new Map<string, number>()
 
   /**
    * True from lock acquisition until the push released it, which spans every
@@ -238,7 +248,11 @@ export class PushCoordinator {
             break
           }
 
-          const dedupedItems = this.deduplicateByItemId(items)
+          const dedupedItems = await this.prepareCanvasItems(
+            this.deduplicateByItemId(items),
+            rejectedThisCycle
+          )
+          if (dedupedItems.length === 0) continue
           // Payload as it stood at dequeue. A local mutation made while this
           // batch is in flight coalesces into the same row (queue.ts enqueue),
           // so the ack below must only delete rows that still look like this.
@@ -723,6 +737,49 @@ export class PushCoordinator {
     }
 
     return Array.from(seen.values())
+  }
+
+  /**
+   * #3022: a canvas holds the chunks of the images it shows before its scene
+   * goes out, so a sidecar never names chunks a peer's release freed. A canvas
+   * whose hold or re-upload could not finish waits for the next cycle with its
+   * attempts untouched, up to MAX_CANVAS_HOLD_DEFERRALS cycles in a row; then it
+   * pushes without the hold.
+   */
+  private async prepareCanvasItems<
+    T extends { id: string; type: string; itemId: string; operation: string }
+  >(items: T[], rejectedThisCycle: Set<string>): Promise<T[]> {
+    const prepare = this.ctx.deps.prepareCanvasPush
+    if (!prepare) return items
+    const ready: T[] = []
+    for (const item of items) {
+      if (item.type !== 'canvas' || item.operation === 'delete') {
+        ready.push(item)
+        continue
+      }
+      if (await prepare(item.itemId)) {
+        this.canvasHoldDeferrals.delete(item.itemId)
+        ready.push(item)
+        continue
+      }
+      const deferrals = (this.canvasHoldDeferrals.get(item.itemId) ?? 0) + 1
+      if (deferrals >= MAX_CANVAS_HOLD_DEFERRALS) {
+        log.warn('Push: canvas asset holds kept failing; pushing without them', {
+          itemId: item.itemId.slice(0, 8),
+          attempts: deferrals
+        })
+        this.canvasHoldDeferrals.delete(item.itemId)
+        ready.push(item)
+        continue
+      }
+      log.info('Push: canvas waits for its asset holds', {
+        itemId: item.itemId.slice(0, 8),
+        attempts: deferrals
+      })
+      this.canvasHoldDeferrals.set(item.itemId, deferrals)
+      rejectedThisCycle.add(item.id)
+    }
+    return ready
   }
 
   /**

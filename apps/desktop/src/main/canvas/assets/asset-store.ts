@@ -69,6 +69,20 @@ export function recordAsset(db: DataDb, row: NewCanvasAssetRow): void {
   db.insert(canvasAssets).values(row).onConflictDoNothing().run()
 }
 
+/**
+ * Point a (canvas, image) row at a new attachment: a re-upload (#3022) or a
+ * peer's sidecar that names one.
+ */
+export function repointAsset(db: DataDb, row: NewCanvasAssetRow): void {
+  db.insert(canvasAssets)
+    .values(row)
+    .onConflictDoUpdate({
+      target: [canvasAssets.canvasId, canvasAssets.contentHash],
+      set: { attachmentId: row.attachmentId, chunkHashes: row.chunkHashes }
+    })
+    .run()
+}
+
 /** All asset rows for one canvas (the "previous" set for a GC diff). */
 export function listAssetsByCanvas(db: DataDb, canvasId: string): CanvasAssetRow[] {
   return db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, canvasId)).all()

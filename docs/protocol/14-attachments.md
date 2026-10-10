@@ -120,19 +120,21 @@ An unresolvable signer device is a hard failure, not a fallback
 
 | Method | Path                                                      | Line   |
 | ------ | --------------------------------------------------------- | ------ |
-| GET    | `/sync/blob/:blob_key`                                    | `:150` |
-| DELETE | `/sync/blob/:blob_key`                                    | `:196` |
-| POST   | `/sync/attachments/upload/initiate`                       | `:219` |
-| PUT    | `/sync/attachments/upload/:session_id/chunk/:chunk_index` | `:350` |
-| POST   | `/sync/attachments/upload/:session_id/complete`           | `:440` |
-| GET    | `/sync/attachments/upload/:session_id`                    | `:563` |
-| DELETE | `/sync/attachments/upload/:session_id`                    | `:581` |
-| POST   | `/sync/attachments/dereference`                           | `:661` |
-| POST   | `/sync/attachments/presign-batch`                         | `:714` |
-| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:775` |
-| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:796` |
-| GET    | `/sync/attachments/:attachment_id/manifest`               | `:827` |
-| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:842` |
+| GET    | `/sync/blob/:blob_key`                                    | `:161` |
+| DELETE | `/sync/blob/:blob_key`                                    | `:207` |
+| POST   | `/sync/attachments/upload/initiate`                       | `:230` |
+| PUT    | `/sync/attachments/upload/:session_id/chunk/:chunk_index` | `:361` |
+| POST   | `/sync/attachments/upload/:session_id/complete`           | `:451` |
+| GET    | `/sync/attachments/upload/:session_id`                    | `:574` |
+| DELETE | `/sync/attachments/upload/:session_id`                    | `:592` |
+| POST   | `/sync/attachments/dereference`                           | `:672` |
+| POST   | `/sync/attachments/holds`                                 | `:715` |
+| POST   | `/sync/attachments/holds/release`                         | `:729` |
+| POST   | `/sync/attachments/presign-batch`                         | `:765` |
+| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:826` |
+| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:847` |
+| GET    | `/sync/attachments/:attachment_id/manifest`               | `:878` |
+| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:893` |
 
 ### 14.5.1 The minimal read-only route set — Q14.1
 
@@ -222,7 +224,7 @@ against `manifest.size` under-counts.
 
 `POST /sync/attachments/dereference` is how chunk bytes are garbage collected: a
 client that removes an attachment reference tells the server the chunks are no
-longer needed (`apps/sync-server/src/routes/blob.ts:661`).
+longer needed (`apps/sync-server/src/routes/blob.ts:672`).
 
 **A read-only client never dereferences, and never calling it is safe.** It
 cannot leak quota, because quota is consumed by **uploads**, and a read-only
@@ -237,7 +239,8 @@ deleted note's or canvas's chunks this way 30 days after the delete
 (`apps/desktop/src/main/sync/deleted-asset-release.ts`).
 
 A dereference only lowers `blob_chunks.ref_count`; the scheduled
-`cleanupOrphanedBlobChunks` sweep reaps rows at `ref_count <= 0`. It deletes a
+`cleanupOrphanedBlobChunks` sweep reaps rows at `ref_count <= 0` that no hold
+names (§14.8.1). It deletes a
 row only while it is still unreferenced (`DELETE ... AND ref_count <= 0
 RETURNING r2_key`), re-checks that no row claimed those keys since (an upload
 retrying the same bytes puts the object, then inserts a fresh row), and only
@@ -249,6 +252,73 @@ tick (`apps/sync-server/src/services/cleanup.ts`, #2414).
 
 **A client that later gains the ability to delete an attachment MUST
 dereference**; until then the omission is correct rather than merely tolerated.
+
+### 14.8.1 Chunk holds (#3022)
+
+`ref_count` counts uploads. A client that shows chunks it did not upload (desktop
+reuses a canvas image by content hash, duplicates a canvas, or builds a conflict
+copy) cannot raise that count without re-sending the bytes, so a peer that frees
+the uploading item frees chunks the reuse still names. Holds close that gap.
+
+**Normative.** A hold is a row `(user_id, vault_id, holder_id, chunk_hash)` in
+`attachment_chunk_holds`
+(`apps/sync-server/migrations/0018_attachment_chunk_holds.sql:16-23`). A chunk is
+live while `ref_count > 0` or a hold names it.
+
+- `POST /sync/attachments/holds` takes `{ holds: [{ holderId, chunkHashes }] }`
+  (at most 64 holders of at most 128 hashes each,
+  `packages/contracts/src/blob-api.ts:62-77`) and answers `{ missing: holderId[] }`.
+  It holds only live chunks, re-checking liveness in the insert itself, and
+  names a holder `missing` when any of its chunks is gone or dead
+  (`apps/sync-server/src/services/chunk-holds.ts:39-76`). A dead chunk was
+  already refunded, so a client MUST re-upload a missing holder's bytes instead
+  of retrying the hold. Holding the same pair again writes nothing.
+- `POST /sync/attachments/holds/release` takes `{ holderIds }` (at most 64,
+  `packages/contracts/src/blob-api.ts:80-87`) and drops every hold of those
+  holders. A replay drops nothing. A chunk left with no hold and `ref_count <= 0`
+  refunds its `size_bytes` here (`apps/sync-server/src/services/chunk-holds.ts:82-111`).
+  The delete and the refund check are separate statements, so two concurrent
+  releases of different last holders of one chunk, or a release racing the
+  dereference of its last upload ref, can both see the chunk free and both
+  refund it. Storage is clamped at zero, so the effect is an under-counted
+  quota, never a freed live chunk.
+- A dereference that takes a held chunk to zero refunds nothing; the release of
+  its last hold does (`apps/sync-server/src/routes/blob.ts:695-706`). The sweep
+  reaps only rows with `ref_count <= 0` and no hold
+  (`apps/sync-server/src/services/cleanup.ts:345,360`).
+- A server that predates holds answers 404. A client treats that as "no holds":
+  it pushes as before and has nothing to release
+  (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:107,143`).
+
+**Holder ids are opaque to the server.** `holderId` is 64 lowercase hex
+characters (`packages/contracts/src/blob-api.ts:57-59`). Desktop derives one per
+(canvas, image) as BLAKE2b-256 keyed by the vault key over
+`"memry/canvas-asset-hold/v1" \0 canvasId \0 contentHash`
+(`apps/desktop/src/main/canvas/assets/chunk-holds.ts:19,49-56`), so every device
+names the same holder and holding or releasing from any of them is idempotent.
+The server learns how many holders a chunk has, as `ref_count` already shows,
+and nothing about which canvas or image they are.
+
+**Desktop canvas lifecycle.** Before a canvas create or update is encrypted, the
+push coordinator holds every image its scene sidecar names
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:749`,
+`apps/desktop/src/main/canvas/assets/asset-service.ts:411`). For a `missing`
+image it uploads its local copy, holds the new chunks, drops the new upload's
+own reference so the hold owns them, and points the row at the new attachment
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:454`). The pushed sidecar
+then names the row's attachment (`apps/desktop/src/main/canvas/assets/memry-assets.ts:97`),
+and a receiver adopts it (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`,
+`recordSceneAssets`). A canvas whose hold or re-upload cannot finish stays queued
+for the next cycle, at most `MAX_CANVAS_HOLD_DEFERRALS` (5) cycles in a row;
+then it pushes without the hold, as before holds existed. A hold the server
+refuses with a 4xx other than 404, 408 or 429 pushes the canvas at once
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:424-441`,
+`apps/desktop/src/main/sync/engine/push-coordinator.ts:46`). Removing an image
+from a canvas releases that pair first
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:293`), and the 30-day
+release of a deleted canvas releases all of its pairs
+(`apps/desktop/src/main/sync/deleted-asset-release.ts:203`). Note attachments and
+the iOS core do not use holds.
 
 **Disposition of Q14.3: answered (safe; quota is consumed by uploads only).**
 
