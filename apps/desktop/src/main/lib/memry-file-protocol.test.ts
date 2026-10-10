@@ -76,6 +76,13 @@ describe('memry-file:// (#3112)', () => {
     expect(await text(tail)).toBe('6789')
   })
 
+  it('answers 416 for a range that starts past the end', async () => {
+    const file = write('attachments/n1/short.pdf', '0123456789')
+    const response = await get(file, { Range: 'bytes=20-' })
+    expect(response.status).toBe(416)
+    expect(response.headers.get('Content-Range')).toBe('bytes */10')
+  })
+
   it('serves a userData file', async () => {
     const file = path.join(userData, 'thumb.png')
     fs.writeFileSync(file, 'png bytes')
