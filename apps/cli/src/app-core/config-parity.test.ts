@@ -56,7 +56,7 @@ test('a corrupt config.json is reported and left untouched', async (t) => {
   await fs.mkdir(path.join(vaultPath, '.memry'), { recursive: true })
   const configPath = getConfigPath(vaultPath)
   await fs.writeFile(configPath, '{ not json', 'utf-8')
-  const warn = t.mock.method(console, 'error', () => {})
+  const warn = t.mock.method(process.stderr, 'write', () => true)
 
   const config = await ensureVaultLayout(vaultPath)
 

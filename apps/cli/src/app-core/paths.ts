@@ -97,7 +97,10 @@ async function readVaultConfig(configPath: string): Promise<Partial<VaultConfig>
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
     // Leave the file alone: overwriting it would lose the user's settings.
-    console.error(`Could not read ${configPath}, using default settings:`, error)
+    const reason = error instanceof Error ? error.message : String(error)
+    process.stderr.write(
+      `Warning: ${configPath} cannot be read (${reason}); using default settings and leaving the file unchanged.\n`
+    )
     return null
   }
 }
