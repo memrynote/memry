@@ -1,7 +1,7 @@
 import { createFenceTracker } from './markdown-fences.ts'
 
 /**
- * Markdown with every fenced code block and inline code span blanked out, so a
+ * Markdown with every fenced or indented code block and inline code span blanked out, so a
  * scan for `[[…]]` reads only text that renders as a link (AF-006). A note that
  * documents link syntax in backticks drew an unresolved node on the graph.
  *
@@ -16,23 +16,23 @@ import { createFenceTracker } from './markdown-fences.ts'
  * blank a run of lines because one backtick was left unclosed.
  */
 export function blankMarkdownCode(markdown: string): string {
-  if (!markdown.includes('`') && !markdown.includes('~~~')) return markdown
+  if (!mayHoldCode(markdown)) return markdown
   return walkMarkdown(markdown, {
-    fenceLine: () => '',
+    codeLine: () => '',
     codeSpan: () => ' ',
     comment: (source) => source
   })
 }
 
 /**
- * `blankMarkdownCode` with every offset kept: fenced lines and code spans become
+ * `blankMarkdownCode` with every offset kept: code block lines and code spans become
  * spaces of the same length, so a match in the result is a match at the same
  * offset in the source.
  */
 export function maskMarkdownCode(markdown: string): string {
-  if (!markdown.includes('`') && !markdown.includes('~~~')) return markdown
+  if (!mayHoldCode(markdown)) return markdown
   return walkMarkdown(markdown, {
-    fenceLine: (line) => ' '.repeat(line.length),
+    codeLine: (line) => ' '.repeat(line.length),
     codeSpan: (source) => ' '.repeat(source.length),
     comment: (source) => source
   })
@@ -60,7 +60,7 @@ export function replaceMarkdownComments(
 ): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
   return walkMarkdown(markdown, {
-    fenceLine: (line) => line,
+    codeLine: (line) => line,
     codeSpan: (source) => source,
     comment: (source, closed, wholeLine) => (closed ? replace(source, wholeLine) : source)
   })
@@ -82,8 +82,20 @@ const COMMENT_FORMS = [
 
 type CommentForm = (typeof COMMENT_FORMS)[number]
 
+function mayHoldCode(markdown: string): boolean {
+  return markdown.includes('`') || markdown.includes('~~~') || INDENTED_LINE.test(markdown)
+}
+
+/** Four columns of indent, a tab counting as the rest of its stop. */
+const INDENTED = /^(?: {0,3}\t| {4})/
+const INDENTED_LINE = new RegExp(INDENTED.source, 'm')
+
+/** A list item or footnote definition, whose indented lines are its content. */
+const CONTAINER_START = /^ {0,3}(?:[-*+]|\d{1,9}[.)]|\[\^[^\]\s]+\]:)(?:\s|$)/
+
 interface Visitor {
-  fenceLine(line: string): string
+  /** A line of a fenced or indented code block. */
+  codeLine(line: string): string
   codeSpan(source: string): string
   /**
    * A whole comment, line breaks included when it spans lines. `closed` is
@@ -98,12 +110,20 @@ interface Visitor {
  * handed to the visitor, everything else is kept. A comment's extent is
  * settled when it opens (`COMMENT_FORMS`), so a stray `50%%` cannot hide the
  * rest of a note.
+ *
+ * An indented line is code when it starts a block (first line, or after a
+ * blank line or a fence) or continues one, the way the editor reads it
+ * (BBF-68). It is text when it continues a paragraph, and inside a list item
+ * or footnote definition, where indent marks the item's own content.
  */
 function walkMarkdown(markdown: string, visit: Visitor): string {
   const lines = markdown.split('\n')
   const fence = createFenceTracker()
   const out: string[] = []
   let pending: { prefix: string; source: string; close: CommentClose | null } | null = null
+  let blockStart = true
+  let indentedCode = false
+  let container = false
 
   for (let index = 0; index < lines.length; index++) {
     let line = lines[index]
@@ -124,9 +144,23 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       line = line.slice(end)
       closesComment = true
     } else if (fence.consume(withoutCr(line))) {
-      out.push(visit.fenceLine(line))
+      out.push(visit.codeLine(line))
+      blockStart = true
+      indentedCode = false
       continue
+    } else if (line.trim() === '') {
+      out.push(line)
+      blockStart = true
+      continue
+    } else if (INDENTED.test(line) && !container && (blockStart || indentedCode)) {
+      out.push(visit.codeLine(line))
+      indentedCode = true
+      continue
+    } else if (!INDENTED.test(line)) {
+      container = CONTAINER_START.test(line) || (container && !blockStart)
     }
+    blockStart = false
+    indentedCode = false
 
     const tableRow = TABLE_ROW_LINE.test(line)
     let i = 0

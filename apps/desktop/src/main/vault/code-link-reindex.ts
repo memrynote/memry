@@ -3,7 +3,7 @@
  * inside code (AF-006).
  *
  * Builds before this one read link syntax in inline code and fenced code
- * blocks as real links, and the indexer skips notes it already knows, so those
+ * blocks, and later in indented code blocks (BBF-68), as real links, and the indexer skips notes it already knows, so those
  * rows (unresolved graph nodes, wrong backlinks) would stay until each note is
  * edited again. Only a note that already has a link row can carry one, so only
  * those are read.
@@ -31,7 +31,8 @@ import type { DataDb, IndexDb } from '../database'
 
 const logger = createLogger('CodeLinkReindex')
 
-export const CODE_LINK_REINDEX_KEY = 'codeLinkReindexV1'
+// V2 reruns the pass on vaults V1 finished, for indented code blocks (BBF-68).
+export const CODE_LINK_REINDEX_KEY = 'codeLinkReindexV2'
 const DONE = 'done'
 
 export interface CodeLinkReindexInput {
