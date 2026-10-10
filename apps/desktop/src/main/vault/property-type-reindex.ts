@@ -39,12 +39,9 @@ export async function retypeIndexedProperties(
       let raw: string | null
       try {
         raw = await readVaultFile(vaultPath, before.path)
+        if (raw === null) throw new Error('Note file missing')
       } catch (error) {
         logger.warn('Skipping note, file unreadable', { noteId: row.noteId, error })
-        continue
-      }
-      if (raw === null) {
-        logger.warn('Skipping note, file missing', { noteId: row.noteId })
         continue
       }
 

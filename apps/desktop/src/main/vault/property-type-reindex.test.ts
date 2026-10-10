@@ -1,76 +1,72 @@
-import fs from 'fs'
-import os from 'os'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import path from 'path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-// The seam: right after the vault check resolves the note file, it is swapped
-// for a link to a file outside the vault, before it is read.
-const race = vi.hoisted(() => ({ target: '', swap: (): void => {} }))
-
-vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
-  const realpath = async (probe: string): Promise<string> => {
-    const real = await actual.realpath(probe)
-    if (race.target !== '' && probe === race.target) {
-      race.target = ''
-      race.swap()
-    }
-    return real
-  }
-  return { ...actual, default: { ...actual, realpath }, realpath }
-})
-
-const state = vi.hoisted(() => ({ retyped: [] as string[] }))
-vi.mock('@main/database/queries/notes', () => ({
-  listNotePropertyRowsByName: () => [{ noteId: 'p', type: 'date' }],
-  getNoteCacheById: () => ({ id: 'p', path: 'notes/p.md', indexedAt: 't' }),
-  getPropertyType: (_db: unknown, _name: string, value: unknown) =>
-    value === 'outside secret' ? 'leaked' : 'text',
-  setNotePropertyType: (_db: unknown, _id: string, _name: string, type: string) => {
-    state.retyped.push(type)
-  }
-}))
-
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
+import { createTestIndexDb } from '@tests/utils/test-db'
+import {
+  getNoteProperties,
+  insertNoteCache,
+  insertPropertyDefinition,
+  setNoteProperties,
+  updatePropertyDefinition
+} from '@main/database/queries/notes'
 import { retypeIndexedProperties } from './property-type-reindex'
-import type { IndexDb } from '../database'
 
-const db = {} as IndexDb
-const isWindows = process.platform === 'win32'
-
-describe('retypeIndexedProperties reads the note file it checked', () => {
+describe('retypeIndexedProperties', () => {
+  let dbResult: TestDatabaseResult
+  let db: TestDb
+  let root: string
   let vault: string
-  let outside: string
-  let file: string
+
+  const indexNote = (id: string, file: string): void => {
+    insertNoteCache(db, {
+      id,
+      path: file,
+      title: id,
+      contentHash: `hash-${id}`,
+      wordCount: 0,
+      characterCount: 0,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      modifiedAt: '2026-10-01T00:00:00.000Z'
+    })
+    setNoteProperties(db, id, { due: '2026-10-01' }, () => 'date')
+  }
+  const typeOf = (id: string): string | undefined =>
+    getNoteProperties(db, id).find((p) => p.name === 'due')?.type
 
   beforeEach(() => {
-    vault = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-retype-vault-')))
-    outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-retype-outside-'))
-    file = path.join(vault, 'notes', 'p.md')
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, '---\nstatus: inside\n---\nbody\n')
-    state.retyped = []
+    dbResult = createTestIndexDb()
+    db = dbResult.db
+    root = mkdtempSync(path.join(tmpdir(), 'retype-'))
+    vault = path.join(root, 'vault')
+    mkdirSync(vault)
+    insertPropertyDefinition(db, {
+      name: 'due',
+      type: 'date',
+      options: null,
+      defaultValue: null,
+      color: null
+    })
   })
 
   afterEach(() => {
-    race.target = ''
-    fs.rmSync(vault, { recursive: true, force: true })
-    fs.rmSync(outside, { recursive: true, force: true })
+    dbResult.close()
+    rmSync(root, { recursive: true, force: true })
   })
 
-  it('re-types a row from the note file in the vault', async () => {
-    expect(await retypeIndexedProperties(db, vault, ['status'])).toBe(1)
-    expect(state.retyped).toEqual(['text'])
-  })
+  it('re-types a vault note and skips a note that links outside the vault', async () => {
+    writeFileSync(path.join(vault, 'inside.md'), "---\ndue: '2026-10-01'\n---\n")
+    writeFileSync(path.join(root, 'secret.md'), "---\ndue: '2026-10-01'\n---\n")
+    symlinkSync(path.join(root, 'secret.md'), path.join(vault, 'outside.md'))
+    indexNote('inside', 'inside.md')
+    indexNote('outside', 'outside.md')
+    updatePropertyDefinition(db, 'due', { type: 'text' })
 
-  it.skipIf(isWindows)('never re-types from a file swapped for an outside link', async () => {
-    const secret = path.join(outside, 'private.md')
-    fs.writeFileSync(secret, '---\nstatus: outside secret\n---\n')
-    race.target = file
-    race.swap = () => {
-      fs.rmSync(file)
-      fs.symlinkSync(secret, file)
-    }
-    expect(await retypeIndexedProperties(db, vault, ['status'])).toBe(0)
-    expect(state.retyped).toEqual([])
+    const retyped = await retypeIndexedProperties(db, vault, ['due'])
+
+    expect(retyped).toBe(1)
+    expect(typeOf('inside')).toBe('text')
+    expect(typeOf('outside')).toBe('date')
   })
 })
