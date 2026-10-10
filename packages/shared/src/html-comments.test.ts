@@ -155,4 +155,20 @@ describe('maskHtmlComments with a <!-- reopened after an HTML block ends (BBF-78
     const out = maskHtmlComments('Text <!-- a --> <!-- b\nmore [[More]]\nc -->')
     expect(out).not.toContain('[[More]]')
   })
+
+  it.each([
+    ['a list item', '- <!-- a --> <!-- b\n  more [[More]]\n  c -->'],
+    ['an ordered list item', '1. <!-- a --> <!-- b\n   more [[More]]\n   c -->'],
+    ['a blockquote', '> <!-- a --> <!-- b\n> more [[More]]\n> c -->'],
+    ['a list in a blockquote', '> - <!-- a --> <!-- b\n>   more [[More]]\n>   c -->']
+  ])('leaves it as text when the HTML block opens in %s (BBF-89)', (_, markdown) => {
+    expect(maskHtmlComments(markdown).split('\n').slice(1)).toEqual(markdown.split('\n').slice(1))
+  })
+
+  it.each([
+    ['a list item paragraph', '- Text <!-- a --> <!-- b\n  more [[More]]\n  c -->'],
+    ['a blockquote paragraph', '> Text <!-- a --> <!-- b\n> more [[More]]\n> c -->']
+  ])('keeps a reopened <!-- in %s as a comment', (_, markdown) => {
+    expect(maskHtmlComments(markdown)).not.toContain('[[More]]')
+  })
 })
