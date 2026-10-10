@@ -7,6 +7,8 @@ import {
   type NewNoteCache
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
+import { foldTag } from '@memry/shared/tag-fold'
+import { tagFoldOf, tagIn } from '../tag-match'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
@@ -158,14 +160,15 @@ export function listNotesFromCache(
     const tagResults = db
       .select({
         noteId: noteTags.noteId,
-        tagCount: sql<number>`count(distinct ${noteTags.tag})`
+        tagCount: sql<number>`count(distinct ${tagFoldOf(noteTags.tag)})`
       })
       .from(noteTags)
-      .where(inArray(noteTags.tag, tags))
+      .where(tagIn(noteTags.tag, tags))
       .groupBy(noteTags.noteId)
       .all()
 
-    noteIdsWithTags = tagResults.filter((r) => r.tagCount === tags.length).map((r) => r.noteId)
+    const wanted = new Set(tags.map(foldTag)).size
+    noteIdsWithTags = tagResults.filter((r) => r.tagCount === wanted).map((r) => r.noteId)
 
     if (noteIdsWithTags.length === 0) {
       return []

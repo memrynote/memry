@@ -8,6 +8,7 @@
  * a folder routinely exceeds ~500 notes.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useMemo, useRef } from 'react'
 import { FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -132,7 +133,7 @@ export function FolderListView({
               {note.tags.slice(0, 3).map((tag) => (
                 <TagChip
                   key={tag}
-                  tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
+                  tag={toTagChip(tag, tagMetaMap.get(foldTag(tag)))}
                   onClick={onTagClick ? () => onTagClick(tag) : undefined}
                 />
               ))}

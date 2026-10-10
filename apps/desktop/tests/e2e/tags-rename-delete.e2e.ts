@@ -26,7 +26,7 @@ async function seedNoteWithTag(page, tag: string): Promise<void> {
     if (!api?.notes?.create) return false
     const res = await api.notes.create({
       title: `Tag Test ${tagName}`,
-      content: `Note body with #${tagName}`,
+      content: 'Note body',
       tags: [tagName]
     })
     return !!res?.success

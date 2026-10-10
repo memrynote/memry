@@ -8,10 +8,12 @@
 import { z } from 'zod'
 import { CalendarDateSchema } from './calendar-date.ts'
 import { PlainChecklistsOptionSchema } from './plain-checklists.ts'
-import type { ProjectWithStats, Task, TaskListItem } from '@memry/domain-tasks'
+import type { ProjectWithStats, Task, TaskFieldValue, TaskListItem } from '@memry/domain-tasks'
 export type {
   RepeatConfig,
   Task,
+  TaskFieldValue,
+  TaskFields,
   TaskListItem,
   Project,
   ProjectContents,
@@ -48,6 +50,41 @@ export const RepeatConfigSchema = z.object({
   createdAt: z.string()
 })
 
+/**
+ * Size caps on field values a caller sends. They bound one task's payload,
+ * which every device stores and pushes whole: text up to 10,000 characters
+ * (a long note-like value), lists up to 500 items (relation values are arrays
+ * of `memry://` URIs), objects up to 50 keys, and 100 fields per task. Values
+ * that arrive by sync are not checked here; they are another device's data.
+ */
+export const TASK_FIELD_LIMITS = {
+  textLength: 10_000,
+  listItems: 500,
+  objectKeys: 50,
+  fieldsPerTask: 100
+} as const
+
+const TaskFieldValueSchema: z.ZodType<TaskFieldValue, TaskFieldValue> = z.lazy(() =>
+  z.union([
+    z.string().max(TASK_FIELD_LIMITS.textLength),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(TaskFieldValueSchema).max(TASK_FIELD_LIMITS.listItems),
+    z
+      .record(z.string().max(200), TaskFieldValueSchema)
+      .refine((value) => Object.keys(value).length <= TASK_FIELD_LIMITS.objectKeys, {
+        message: `At most ${TASK_FIELD_LIMITS.objectKeys} keys`
+      })
+  ])
+)
+
+export const TaskFieldsSchema = z
+  .record(z.string().min(1).max(200), TaskFieldValueSchema)
+  .refine((fields) => Object.keys(fields).length <= TASK_FIELD_LIMITS.fieldsPerTask, {
+    message: `At most ${TASK_FIELD_LIMITS.fieldsPerTask} fields`
+  })
+
 export const TaskCreateSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1).max(500),
@@ -68,7 +105,8 @@ export const TaskCreateSchema = z.object({
   linkedNoteIds: z.array(z.string()).optional(),
   linkedCanvasIds: z.array(z.string()).optional(),
   sourceNoteId: z.string().nullish(),
-  position: z.number().int().optional()
+  position: z.number().int().optional(),
+  fields: TaskFieldsSchema.describe('Field values by name. A null value sets nothing.').optional()
 })
 
 export const TaskUpdateSchema = z.object({
@@ -90,7 +128,10 @@ export const TaskUpdateSchema = z.object({
   repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
-  linkedCanvasIds: z.array(z.string()).optional()
+  linkedCanvasIds: z.array(z.string()).optional(),
+  fields: TaskFieldsSchema.describe(
+    'Changes to field values by name. Fields left out keep their values, and null removes one.'
+  ).optional()
 })
 
 export const TaskCompleteSchema = z.object({
@@ -302,6 +343,9 @@ export const TaskActivityListSchema = z.object({
   /** Omit for "everything"; otherwise only these actions. */
   actions: z.array(z.string()).optional()
 })
+
+/** `TaskActivityEntry.field` of a task field value is this prefix and the field name. */
+export const TASK_FIELD_ACTIVITY_PREFIX = 'fields.'
 
 export interface TaskActivityEntry {
   id: string

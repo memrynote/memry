@@ -16,7 +16,12 @@ import {
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { applyTaskUpdate } from '@/contexts/tasks/apply-task-update'
-import { priorityReverseMap, toServiceRepeatConfig, toTaskUpdateInput } from './task-update-input'
+import {
+  applyFieldsPatch,
+  priorityReverseMap,
+  toServiceRepeatConfig,
+  toTaskUpdateInput
+} from './task-update-input'
 import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Tasks:Queries')
@@ -108,6 +113,7 @@ export function dbTaskToUiTask(dbTask: Task): UiTask {
     linkedCanvasIds: dbTask.linkedCanvasIds ?? [],
     sourceNoteId: dbTask.sourceNoteId ?? null,
     tags: dbTask.tags ?? [],
+    fields: dbTask.fields ?? {},
     parentId: dbTask.parentId,
     subtaskIds: [],
     createdAt: new Date(dbTask.createdAt),
@@ -331,7 +337,8 @@ export function useTaskWorkspaceMutations() {
           repeatFrom: task.repeatFrom ?? null,
           tags: task.tags,
           linkedNoteIds: task.linkedNoteIds,
-          linkedCanvasIds: task.linkedCanvasIds
+          linkedCanvasIds: task.linkedCanvasIds,
+          fields: task.fields
         })
         reportEnvelopeFailure('task_create', result)
         invalidateWorkspace()
@@ -353,7 +360,10 @@ export function useTaskWorkspaceMutations() {
       // the tree redraws before the refetch lands.
       setTasks((prev) => {
         const current = prev.find((task) => task.id === taskId)
-        return current ? applyTaskUpdate(prev, { ...current, ...updates }, taskId) : prev
+        if (!current) return prev
+        const next = { ...current, ...updates }
+        if (updates.fields) next.fields = applyFieldsPatch(current.fields, updates.fields)
+        return applyTaskUpdate(prev, next, taskId)
       })
 
       try {

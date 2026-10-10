@@ -242,8 +242,11 @@ pub(crate) fn insert_tag(
     if tag.is_empty() {
         return Ok(());
     }
+    // The primary key's `NOCASE` folds ASCII only; `tag_fold` is tag identity.
     tx.execute(
-        "INSERT OR IGNORE INTO inbox_item_tags (item_id, tag, created_at) VALUES (?1, ?2, ?3)",
+        "INSERT OR IGNORE INTO inbox_item_tags (item_id, tag, created_at)
+         SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT 1 FROM inbox_item_tags
+          WHERE item_id = ?1 AND tag_fold(tag) = tag_fold(?2))",
         params![item_id, tag, now_ms],
     )
     .map_err(failed)?;
@@ -264,7 +267,7 @@ pub fn add_tag(
 /// `handleRemoveTag`.
 pub fn remove_tag(conn: &Connection, item_id: &str, tag: &str) -> Result<(), StorageError> {
     conn.execute(
-        "DELETE FROM inbox_item_tags WHERE item_id = ?1 AND tag = ?2",
+        "DELETE FROM inbox_item_tags WHERE item_id = ?1 AND tag_fold(tag) = tag_fold(?2)",
         params![item_id, tag],
     )
     .map_err(failed)?;

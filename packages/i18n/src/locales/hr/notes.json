@@ -615,8 +615,7 @@
     "hint": "Oznake koje dijele bilješke najsličnije ovoj. Ništa se ne dodaje dok ne odaberete oznaku.",
     "acceptAria": "Dodaj oznaku {tag}",
     "support": "{count, plural, one {Ima je # slična bilješka} few {Imaju je # slične bilješke} other {Ima je # sličnih bilješki}}",
-    "dismiss": "Sakrij predložene oznake",
-    "failed": "Nije moguće dodati oznaku"
+    "dismiss": "Sakrij predložene oznake"
   },
   "comments": {
     "railAria": "Komentari",

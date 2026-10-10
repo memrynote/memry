@@ -119,6 +119,7 @@ export function createCommandRepository(
     getTasksLinkedToNote: vi.fn(() => []),
     createTask: vi.fn((t) => t as Task),
     updateTask: vi.fn(() => undefined),
+    patchTaskFields: vi.fn(() => undefined),
     deleteTask: vi.fn(),
     completeTask: vi.fn(() => undefined),
     uncompleteTask: vi.fn(() => undefined),

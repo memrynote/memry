@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import type React from 'react'
 import { useMemo } from 'react'
 import { useFolderView } from '@/hooks/use-folder-view'
@@ -41,7 +42,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
+      map.set(foldTag(tag.tag), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])

@@ -29,6 +29,7 @@
  * @module vault/backfill-project-frontmatter
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import { listMarkdownNoteProjectLinks } from '@main/database/queries/projects'
 import { getSetting, setSetting } from '@main/database/queries/settings'
@@ -121,7 +122,7 @@ async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   // cache never holds a blank or an untrimmed tag, so comparing raw entries
   // would read `tags: ['']` or `- " work "` as staleness and defer the note
   // permanently instead of transiently.
-  const normalizeTag = (tag: string): string => tag.trim().toLowerCase()
+  const normalizeTag = (tag: string): string => foldTag(tag.trim())
   const cachedTags = new Set(
     getNoteTags(getIndexDatabase(), noteId).map(normalizeTag).filter(Boolean)
   )

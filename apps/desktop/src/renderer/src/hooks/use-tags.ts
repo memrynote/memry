@@ -101,10 +101,6 @@ export function useTags() {
     [tags]
   )
 
-  const renameTag = useCallback(async (oldName: string, newName: string) => {
-    return window.api.tags.renameTag({ oldName, newName })
-  }, [])
-
   const mergeTag = useCallback(async (source: string, target: string) => {
     return window.api.tags.mergeTag({ source, target })
   }, [])
@@ -122,7 +118,6 @@ export function useTags() {
     searchTags,
     getPopularTags,
     getRecentTags,
-    renameTag,
     mergeTag,
     deleteTag,
     refetch

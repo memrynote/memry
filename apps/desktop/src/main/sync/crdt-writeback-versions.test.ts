@@ -228,7 +228,8 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
     expect(versionsKept(NOTE)).toEqual([first])
   })
 
-  const NOTE_AFTER = '---\nid: x\ntags:\n  - a\n---\nThe slow red fox jumps over the lazy cat\n'
+  // A note's file owns its `tags:` list; a journal still takes the doc's array.
+  const NOTE_AFTER = '---\nid: x\n---\nThe slow red fox jumps over the lazy cat\n'
   const JOURNAL_AFTER =
     "---\nid: x\ndate: '2026-01-03'\ntags:\n  - a\n---\nThe slow red fox jumps over the lazy cat\n"
 
@@ -255,41 +256,33 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
   it.each(['remote', 'local'] as const)(
     'keeps no version when a %s pass changes three words of bytes it wrote itself',
     async (source) => {
-      writtenElsewhere(NOTE, '---\nid: note-1\n---\nThe quick brown fox jumps over the lazy dog\n')
+      // No file yet: the first pass creates it, so its bytes are the write-back's own.
+      writtenElsewhere(NOTE, '')
+      h.files.delete(NOTE_FILE)
       await pass(NOTE, await docWith('The quick brown fox jumps over the lazy dog', ['a']), source)
       const ownWrite = h.files.get(NOTE_FILE)
 
       await pass(NOTE, await docWith('The slow red fox jumps over the lazy cat', ['a']), source)
 
-      expect(ownWrite).toBe(
-        '---\nid: note-1\ntags:\n  - a\n---\nThe quick brown fox jumps over the lazy dog\n'
-      )
+      expect(ownWrite).toBe('---\ntags:\n  - a\n---\nThe quick brown fox jumps over the lazy dog\n')
       expect(h.files.get(NOTE_FILE)).toBe(
-        '---\nid: note-1\ntags:\n  - a\n---\nThe slow red fox jumps over the lazy cat\n'
+        '---\ntags:\n  - a\n---\nThe slow red fox jumps over the lazy cat\n'
       )
       expect(versionsKept(NOTE)).toEqual([])
     }
   )
 
   it.each([
-    [
-      'LF',
-      '---\ntags:\n  - old\n---\nThe quick brown fox\n\nSecond line\n',
-      '---\ntags:\n  - new\n---\nThe quick brown fox\n\nSecond line\n'
-    ],
-    [
-      'CRLF',
-      '---\r\ntags:\r\n  - old\r\n---\r\nThe quick brown fox\r\n\r\nSecond line\r\n',
-      '---\r\ntags:\r\n  - new\r\n---\r\nThe quick brown fox\r\n\r\nSecond line\r\n'
-    ]
+    ['LF', '---\ntags:\n  - old\n---\nThe quick brown fox\n\nSecond line\n'],
+    ['CRLF', '---\r\ntags:\r\n  - old\r\n---\r\nThe quick brown fox\r\n\r\nSecond line\r\n']
   ])(
-    'keeps no version when a remote pass changes only the tags of a %s file',
-    async (_eol, raw, after) => {
+    'leaves a %s file whose doc differs only in its tag array untouched, with no version',
+    async (_eol, raw) => {
       writtenElsewhere(NOTE, raw)
 
       await pass(NOTE, await docWith('The quick brown fox\n\nSecond line', ['new']), 'remote')
 
-      expect(h.files.get(NOTE_FILE)).toBe(after)
+      expect(h.files.get(NOTE_FILE)).toBe(raw)
       expect(versionsKept(NOTE)).toEqual([])
     }
   )

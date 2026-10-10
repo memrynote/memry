@@ -5,7 +5,7 @@
 use crate::api::errors::StorageError;
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
-use crate::domain::{property_admin, tag_admin, template_admin};
+use crate::domain::{property_admin, tag_admin, tag_rename, template_admin};
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct TagItem {
@@ -79,7 +79,7 @@ impl Tasks {
     pub fn rename_tag(&self, old_name: String, new_name: String) -> Result<u32, StorageError> {
         let device = self.device_id.clone();
         self.db
-            .call_blocking(move |c| tag_admin::rename(c, &old_name, &new_name, &device, now_ms()))
+            .call_blocking(move |c| tag_rename::rename(c, &old_name, &new_name, &device, now_ms()))
     }
 
     pub fn merge_tag(&self, source: String, target: String) -> Result<u32, StorageError> {

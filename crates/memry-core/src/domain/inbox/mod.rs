@@ -207,14 +207,15 @@ pub fn tags_of(conn: &Connection, item_id: &str) -> Result<Vec<String>, StorageE
 }
 
 /// Every tag on a live capture with its use count, most used first
-/// (`handleGetTags`).
+/// (`handleGetTags`). Grouped by `tag_fold` (§13.7.7), not `NOCASE`, which
+/// folds ASCII only; the smallest spelling is shown.
 pub fn all_tags(conn: &Connection) -> Result<Vec<(String, i64)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT t.tag, count(*) FROM inbox_item_tags t
+            "SELECT MIN(t.tag), count(DISTINCT t.item_id) FROM inbox_item_tags t
                JOIN inbox_items i ON i.id = t.item_id AND i.deleted_at IS NULL
-              GROUP BY t.tag COLLATE NOCASE
-              ORDER BY count(*) DESC, t.tag",
+              GROUP BY tag_fold(t.tag)
+              ORDER BY count(DISTINCT t.item_id) DESC, MIN(t.tag)",
         )
         .map_err(failed)?;
     let rows = statement

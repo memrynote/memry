@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useCallback, useMemo } from 'react'
 
 import { ChevronRight } from '@/lib/icons'
@@ -204,8 +205,8 @@ export const FilterDropdown = ({
 
   const toggleTag = useCallback(
     (tag: string) => {
-      const next = filters.tags.some((x) => x.toLowerCase() === tag.toLowerCase())
-        ? filters.tags.filter((x) => x.toLowerCase() !== tag.toLowerCase())
+      const next = filters.tags.some((x) => foldTag(x) === foldTag(tag))
+        ? filters.tags.filter((x) => foldTag(x) !== foldTag(tag))
         : [...filters.tags, tag]
       onUpdateFilters({ tags: next })
     },

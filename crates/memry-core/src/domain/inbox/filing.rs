@@ -29,6 +29,7 @@ use crate::crdt::body_edit::BlockEdit;
 use crate::domain::body_write;
 use crate::domain::folders;
 use crate::domain::notes::{self, NewNote, failed};
+use crate::domain::tags;
 use crate::storage::repositories::schema::Object;
 
 use super::write::{mark_filed, require_live};
@@ -381,7 +382,7 @@ pub fn ensure_folder(
     Ok(())
 }
 
-/// Item tags + `inbox`, deduplicated (`mergedTags`).
+/// Item tags + `inbox`, deduplicated by tag identity (`mergedTags`).
 pub fn merged_tags(item: &InboxItem, extra: &[String]) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
     for tag in item
@@ -391,7 +392,7 @@ pub fn merged_tags(item: &InboxItem, extra: &[String]) -> Vec<String> {
         .map(|t| t.trim().to_owned())
         .chain(["inbox".to_owned()])
     {
-        if !tag.is_empty() && !tags.iter().any(|t| t.eq_ignore_ascii_case(&tag)) {
+        if !tag.is_empty() && !tags.iter().any(|t| tags::same_tag(t, &tag)) {
             tags.push(tag);
         }
     }

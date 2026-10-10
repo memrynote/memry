@@ -31,6 +31,7 @@ async function run(): Promise<void> {
       now: Date.now,
       chunkHashesOf: getAttachmentChunkHashes,
       dereference: ctx.dereference,
+      releaseHolds: ctx.releaseHolds,
       markWritebackIgnored: ctx.markWritebackIgnored
     })
     if (settled > 0) log.info('Freed the assets of deleted items', { settled })

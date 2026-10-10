@@ -615,8 +615,7 @@
     "hint": "Tag yang dimiliki catatan yang paling mirip dengan catatan ini. Tidak ada yang ditambahkan sampai Anda memilihnya.",
     "acceptAria": "Tambahkan tag {tag}",
     "support": "{count, plural, other {Digunakan di # catatan serupa}}",
-    "dismiss": "Sembunyikan saran tag",
-    "failed": "Tidak dapat menambahkan tag"
+    "dismiss": "Sembunyikan saran tag"
   },
   "comments": {
     "railAria": "Komentar",

@@ -115,8 +115,8 @@ describe('notes cache queries', () => {
     createNote('note-5', { path: 'archive/note-5.md' })
     createNote('note-6', { path: 'journal/2026-01-10.md', date: '2026-01-10' })
 
-    setNoteTags(db, 'note-3', ['alpha', 'beta'])
-    setNoteTags(db, 'note-4', ['alpha'])
+    setNoteTags(db, 'note-3', { header: ['alpha', 'beta'], inline: [] })
+    setNoteTags(db, 'note-4', { header: ['alpha'], inline: [] })
 
     const paged = listNotesFromCache(db, { limit: 1, offset: 1, sortBy: 'title', sortOrder: 'asc' })
     expect(paged).toHaveLength(1)
@@ -207,8 +207,8 @@ describe('notes cache queries', () => {
     })
     insertProjectionNote('tree-c', { path: 'archive/tree-c.md' })
     insertProjectionNote('tree-d', { path: 'journal/2026-01-10.md', date: '2026-01-10' })
-    setNoteTags(db, 'tree-a', ['alpha', 'beta'])
-    setNoteTags(db, 'tree-b', ['alpha'])
+    setNoteTags(db, 'tree-a', { header: ['alpha', 'beta'], inline: [] })
+    setNoteTags(db, 'tree-b', { header: ['alpha'], inline: [] })
 
     const ids = (rows: { id: string }[]) => rows.map((r) => r.id)
 
@@ -269,7 +269,7 @@ describe('notes cache queries', () => {
 
   it('manages note tags and tag listings, preserving case', () => {
     createNote('note-11')
-    setNoteTags(db, 'note-11', ['Work', 'Personal'])
+    setNoteTags(db, 'note-11', { header: ['Work', 'Personal'], inline: [] })
 
     expect(getNoteTags(db, 'note-11').sort()).toEqual(['Personal', 'Work'])
     const tags = getAllTags(db)
@@ -285,21 +285,34 @@ describe('notes cache queries', () => {
     createNote('note-11a')
     createNote('note-11b')
     // Case variants on one note collapse to the first spelling
-    setNoteTags(db, 'note-11a', ['Work', 'work'])
+    setNoteTags(db, 'note-11a', { header: ['Work', 'work'], inline: [] })
     expect(getNoteTags(db, 'note-11a')).toEqual(['Work'])
 
     // Lookups match regardless of case, counts merge across notes
-    setNoteTags(db, 'note-11b', ['WORK'])
+    setNoteTags(db, 'note-11b', { header: ['WORK'], inline: [] })
     expect(findNotesByTag(db, 'work').length).toBe(2)
     const tags = getAllTags(db)
     expect(tags).toEqual(expect.arrayContaining([expect.objectContaining({ count: 2 })]))
   })
 
+  it('records which tags the header holds, keeping a header copy over an inline one', () => {
+    createNote('note-11c')
+    setNoteTags(db, 'note-11c', { header: ['Work'], inline: ['focus', 'work'] })
+
+    const rows = db.all<{ tag: string; in_header: number }>(
+      sql`SELECT tag, in_header FROM note_tags WHERE note_id = 'note-11c' ORDER BY position`
+    )
+    expect(rows).toEqual([
+      { tag: 'Work', in_header: 1 },
+      { tag: 'focus', in_header: 0 }
+    ])
+  })
+
   it('finds notes by tags with pinned metadata', () => {
     createNote('note-12', { title: 'Pinned Note' })
     createNote('note-13', { title: 'Regular Note' })
-    setNoteTags(db, 'note-12', ['alpha'])
-    setNoteTags(db, 'note-13', ['alpha'])
+    setNoteTags(db, 'note-12', { header: ['alpha'], inline: [] })
+    setNoteTags(db, 'note-13', { header: ['alpha'], inline: [] })
 
     pinNoteToTag(db, 'note-12', 'alpha')
 
@@ -311,7 +324,7 @@ describe('notes cache queries', () => {
 
   it('supports tag pinning, renaming, deletion, and removal', () => {
     createNote('note-14')
-    setNoteTags(db, 'note-14', ['alpha'])
+    setNoteTags(db, 'note-14', { header: ['alpha'], inline: [] })
 
     pinNoteToTag(db, 'note-14', 'alpha')
     unpinNoteFromTag(db, 'note-14', 'alpha')
@@ -324,7 +337,7 @@ describe('notes cache queries', () => {
     removeTagFromNote(db, 'note-14', 'beta')
     expect(getNoteTags(db, 'note-14')).toEqual([])
 
-    setNoteTags(db, 'note-14', ['gamma'])
+    setNoteTags(db, 'note-14', { header: ['gamma'], inline: [] })
     deleteTag(db, 'gamma')
     expect(getNoteTags(db, 'note-14')).toEqual([])
   })
@@ -408,7 +421,7 @@ describe('notes cache queries', () => {
 
     expect(countNotes(db)).toBe(2)
 
-    setNoteTags(db, 'note-18', ['alpha'])
+    setNoteTags(db, 'note-18', { header: ['alpha'], inline: [] })
     setNoteLinks(db, 'note-18', [{ targetTitle: 'Bulk 2', targetId: 'note-19' }])
     clearNoteCache(db)
     expect(countNotes(db)).toBe(0)

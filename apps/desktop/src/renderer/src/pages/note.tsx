@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * NotePage Component
@@ -29,14 +30,7 @@ import {
   useNoteTasksChoice
 } from '@/components/note/delete-note-tasks'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
-import {
-  NoteLayout,
-  HeadingItem,
-  ContentArea,
-  HeadingInfo,
-  InlineTagsOrigin,
-  Block
-} from '@/components/note'
+import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
@@ -58,6 +52,7 @@ import {
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
 import {
@@ -68,6 +63,12 @@ import {
   type Note
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
+import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
+import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
+import { buildFieldGroups } from '@/features/tag-fields/build-field-groups'
+import { NoteFieldGroups } from '@/features/tag-fields/NoteFieldGroups'
+import { useNoteFieldFill } from '@/features/tag-fields/agent-fill/use-note-field-fill'
+import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
@@ -79,6 +80,7 @@ import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
+import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -382,6 +384,8 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const {
     properties,
+    values: propertyValues,
+    handleSetFieldValue,
     newlyAddedPropertyId,
     handlePropertyChange,
     handleAddProperty,
@@ -690,7 +694,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag.toLowerCase(), t.color)
+      map.set(foldTag(t.tag), t.color)
     }
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
@@ -706,22 +710,22 @@ export function NotePage({ noteId }: NotePageProps) {
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
+      if (t.icon) map.set(foldTag(t.tag), t.icon)
     }
     return map
   }, [allAvailableTags])
 
-  const noteTags: Tag[] = useMemo(() => {
-    return (note?.tags || []).map((tagName) => ({
+  const headerTags: Tag[] = useMemo(() => {
+    return (note?.headerTags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
       color:
-        tagColorMap.get(tagName.toLowerCase()) ??
-        pendingTagColorsRef.current.get(tagName.toLowerCase()) ??
+        tagColorMap.get(foldTag(tagName)) ??
+        pendingTagColorsRef.current.get(foldTag(tagName)) ??
         '',
-      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
+      icon: tagIconMap.get(foldTag(tagName)) ?? null
     }))
-  }, [note?.tags, tagColorMap, tagIconMap])
+  }, [note?.headerTags, tagColorMap, tagIconMap])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
@@ -1001,130 +1005,84 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   // Tag handlers
+  const canEditTags = useCallback(
+    (action: 'add' | 'remove') => {
+      if (!isDeleted) return true
+      toast.error(
+        getI18n().getFixedT(
+          null,
+          'notes'
+        )(
+          action === 'add'
+            ? 'phaseI.toasts.cannotAddTagThisNoteWasDeleted'
+            : 'phaseI.toasts.cannotRemoveTagThisNoteWasDeleted'
+        )
+      )
+      return false
+    },
+    [isDeleted]
+  )
+  const headerTagActions = useHeaderTags({
+    noteId: noteId ?? null,
+    noteTitle: note?.title ?? '',
+    headerTags: note?.headerTags ?? [],
+    values: propertyValues,
+    canEdit: () => canEditTags('add'),
+    onFieldTagAdded: () => setPropertiesCollapsed(false)
+  })
+  const { addTag: addHeaderTag, removeTag: removeHeaderTag } = headerTagActions
+
   const handleAddTag = useCallback(
     async (tagId: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
-        )
-        return
-      }
-
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
-        const newTags = [...note.tags, tagToAdd.name]
-        try {
-          await updateNote.mutateAsync({ id: noteId, tags: newTags })
-          // Note will be updated via TanStack Query cache invalidation
-        } catch (err) {
-          log.error('Failed to add tag:', err)
-        }
-      }
+      if (tagToAdd) await addHeaderTag(tagToAdd.name)
     },
-    [noteId, note, isDeleted, availableTags, updateNote]
+    [availableTags, addHeaderTag]
   )
 
   const handleCreateTag = useCallback(
     async (name: string, color: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
-        )
-        return
-      }
-
-      if (!note.tags.includes(name)) {
-        pendingTagColorsRef.current.set(name.toLowerCase(), color)
-        const newTags = [...note.tags, name]
-        try {
-          await updateNote.mutateAsync({ id: noteId, tags: newTags })
-        } catch (err) {
-          pendingTagColorsRef.current.delete(name.toLowerCase())
-          log.error('Failed to create tag:', err)
-        }
-      }
+      pendingTagColorsRef.current.set(foldTag(name), color)
+      await addHeaderTag(name)
     },
-    [noteId, note, isDeleted, updateNote]
+    [addHeaderTag]
   )
 
   const handleRemoveTag = useCallback(
     async (tagId: string) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotRemoveTagThisNoteWasDeleted')
-        )
-        return
-      }
-
-      const newTags = note.tags.filter((t) => t !== tagId)
-      try {
-        await updateNote.mutateAsync({ id: noteId, tags: newTags })
-        // Note will be updated via TanStack Query cache invalidation
-      } catch (err) {
-        log.error('Failed to remove tag:', err)
-      }
+      if (!canEditTags('remove')) return
+      await removeHeaderTag(tagId)
     },
-    [noteId, note, isDeleted, updateNote]
+    [canEditTags, removeHeaderTag]
   )
 
-  // Inline #tag sync: track which tags come from editor content
-  // pendingTagsRef bridges concurrent async calls so the second update
-  // builds on top of the first instead of overwriting it with stale data
-  const inlineTagsRef = useRef<Set<string>>(new Set())
-  const pendingTagsRef = useRef<string[] | null>(null)
+  const { data: tagSchemas } = useTagSchemas()
+  const fieldGroups = useMemo(
+    () => buildFieldGroups(note?.headerTags ?? [], tagSchemas, propertyValues),
+    [note?.headerTags, tagSchemas, propertyValues]
+  )
+  const ownProperties = useMemo(() => {
+    const own = new Set(fieldGroups.rest.map((entry) => entry.name))
+    return properties.filter((property) => own.has(property.name))
+  }, [fieldGroups.rest, properties])
+  const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || isLocked)
+  const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
+  const noteBodyEmpty = !(note?.content ?? '').trim()
+  const tagFieldHints = useMemo(
+    () => ({ bodyEmpty: noteBodyEmpty, tags: tagSchemas?.tags ?? {} }),
+    [noteBodyEmpty, tagSchemas]
+  )
 
-  const handleInlineTagsChange = useCallback(
-    async (currentInlineTags: string[], origin: InlineTagsOrigin) => {
-      if (!noteId || !note || isDeleted) return
-
-      // Opening a note must not modify it (#1454). A load report is the tag set
-      // the body already carried, so it only seeds the baseline later edits are
-      // diffed against: a tag that lives only in the body stays there — the
-      // index still indexes it — until the user actually adds or removes one.
-      if (origin === 'load') {
-        inlineTagsRef.current = new Set(currentInlineTags)
-        return
-      }
-
-      const prev = inlineTagsRef.current
-      const current = new Set(currentInlineTags)
-
-      const baseTags = pendingTagsRef.current ?? note.tags
-
-      const tagsToAdd = currentInlineTags.filter((t) => !prev.has(t) && !baseTags.includes(t))
-      const tagsToRemove = Array.from(prev).filter((t) => !current.has(t) && baseTags.includes(t))
-
-      inlineTagsRef.current = current
-
-      if (tagsToAdd.length === 0 && tagsToRemove.length === 0) return
-
-      let newTags = [...baseTags]
-      for (const tag of tagsToAdd) {
-        if (!newTags.includes(tag)) newTags.push(tag)
-      }
-      for (const tag of tagsToRemove) {
-        newTags = newTags.filter((t) => t !== tag)
-      }
-
-      pendingTagsRef.current = newTags
-
-      try {
-        await updateNote.mutateAsync({ id: noteId, tags: newTags })
-      } catch (err) {
-        log.error('Failed to sync inline tags:', err)
-      } finally {
-        if (pendingTagsRef.current === newTags) {
-          pendingTagsRef.current = null
-        }
-      }
-    },
-    [noteId, note, isDeleted, updateNote]
+  const handleInlineTagsChange = useInlineTagEdits(
+    useCallback(
+      (edit: InlineTagEdit) => {
+        if (!noteId || isDeleted) return
+        updateNote
+          .mutateAsync({ id: noteId, headerTags: { ...edit, source: 'inline' } })
+          .catch((err: unknown) => log.error('Failed to sync inline tags:', err))
+      },
+      [noteId, isDeleted, updateNote]
+    )
   )
 
   // Local-only toggle
@@ -1934,6 +1892,7 @@ export function NotePage({ noteId }: NotePageProps) {
           {isLocked && <LockedNoteNotice />}
           <NoteTitle
             disabled={isLocked}
+            noteId={note.id}
             emoji={note.emoji ?? null}
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
@@ -1944,7 +1903,8 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Tags: visible when tags exist */}
           <TagsRow
-            tags={noteTags}
+            fieldHints={tagFieldHints}
+            tags={headerTags}
             availableTags={availableTags}
             recentTags={recentTags}
             onAddTag={(...args) => void handleAddTag(...args)}
@@ -1964,11 +1924,36 @@ export function NotePage({ noteId }: NotePageProps) {
             disabled={isLocked}
           />
 
-          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted || isLocked} />
+          <NoteSuggestedTags
+            noteId={noteId}
+            tags={note.tags}
+            disabled={isDeleted || isLocked}
+            onAccept={(tag) => void addHeaderTag(tag)}
+          />
 
-          {properties.length > 0 && (
+          {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
             <InfoSection
-              properties={properties}
+              properties={ownProperties}
+              fieldSlotCount={fieldSlotCount}
+              fieldGroups={
+                fieldGroups.groups.length > 0 ? (
+                  <NoteFieldGroups
+                    groups={fieldGroups.groups}
+                    onFieldChange={handleSetFieldValue}
+                    {...fieldFill}
+                    onOpenTag={(tag) =>
+                      openSidebarItem({
+                        type: 'tag',
+                        title: tag.name,
+                        path: '/tags/' + tag.name,
+                        entityId: tag.name,
+                        color: tag.color
+                      })
+                    }
+                    disabled={isDeleted || isLocked}
+                  />
+                ) : undefined
+              }
               newlyAddedPropertyId={newlyAddedPropertyId}
               isExpanded={!propertiesCollapsed}
               onToggleExpand={togglePropertiesCollapsed}
@@ -1985,10 +1970,20 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Ghost affordance: add tag/property — fades in on hover/focus, placed
               below the metadata so it never sits above the title */}
+          <TemplateOffers
+            noteId={noteId}
+            noteTitle={note.title}
+            notePath={note.path}
+            headerTags={note.headerTags}
+            getEditor={getAttachmentsEditor}
+            disabled={isDeleted || isLocked}
+          />
+
           <GhostAffordanceRow
+            tagFieldHints={tagFieldHints}
             availableTags={availableTags}
             recentTags={recentTags}
-            currentTagIds={noteTags.map((t) => t.id)}
+            currentTagIds={headerTags.map((t) => t.id)}
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
@@ -2073,9 +2068,9 @@ export function NotePage({ noteId }: NotePageProps) {
                   initialHighlight={initialHighlight}
                   initialAnchorId={initialAnchorId}
                   noteTags={note.tags}
+                  onInlineTagsChange={handleInlineTagsChange}
                   tagColorMap={tagColorMap}
                   tagIconMap={tagIconMap}
-                  onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
                   focusAtEndRef={focusAtEndRef}
                   openTemplateInsertRef={openTemplateInsertRef}
                   marqueeZoneEl={marqueeZoneEl}
@@ -2137,11 +2132,16 @@ export function NotePage({ noteId }: NotePageProps) {
         {/* Backlinks, outgoing links & linked tasks — separated from content and excluded
             from the marquee/focus-at-end zone. */}
         <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
-          <BacklinksSection
-            backlinks={backlinks}
-            isLoading={backlinksLoading}
-            initialCount={5}
-            onBacklinkClick={handleBacklinkClick}
+          <LinkedHereOrBacklinks
+            noteId={note.id}
+            fallback={
+              <BacklinksSection
+                backlinks={backlinks}
+                isLoading={backlinksLoading}
+                initialCount={5}
+                onBacklinkClick={handleBacklinkClick}
+              />
+            }
           />
 
           <OutgoingLinksSection

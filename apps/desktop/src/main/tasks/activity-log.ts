@@ -25,6 +25,7 @@ import {
   type TaskActivityActor
 } from '@memry/db-schema/schema/task-activity'
 import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
+import { TASK_FIELD_ACTIVITY_PREFIX } from '@memry/contracts/tasks-api'
 import { TaskActivityChannels } from '@memry/contracts/ipc-channels'
 import { utcNow } from '@memry/shared/utc'
 import { getDatabase } from '../database'
@@ -44,6 +45,12 @@ const IGNORED_FIELDS = new Set(['position', 'modifiedAt'])
 
 /** Stored as a length delta, never as the body text. See the schema module. */
 const LENGTH_ONLY_FIELDS = new Set(['description'])
+
+const TASK_FIELD_LENGTH_ONLY_ABOVE_CHARS = 500
+
+function isLongFieldText(value: unknown): boolean {
+  return typeof value === 'string' && value.length > TASK_FIELD_LENGTH_ONLY_ABOVE_CHARS
+}
 
 interface ActivityRowInput {
   taskId: string
@@ -163,8 +170,22 @@ function fieldRows(
   const rows: ActivityRowInput[] = []
 
   for (const field of auditableFields(changedFields)) {
+    if (field === 'fields') {
+      rows.push(...taskFieldRows(taskId, action, next.fields, previous?.fields, actor))
+      continue
+    }
+
     if (LENGTH_ONLY_FIELDS.has(field)) {
-      rows.push(lengthOnlyRow(taskId, action, field, next, previous, actor))
+      rows.push(
+        lengthOnlyRow(
+          taskId,
+          action,
+          field,
+          next[field as keyof Task],
+          previous?.[field as keyof Task],
+          actor
+        )
+      )
       continue
     }
 
@@ -182,20 +203,39 @@ function fieldRows(
   return rows
 }
 
-/**
- * A row for a field whose value must never be stored — today only
- * `description`. Carries the character delta so the UI can say what happened
- * without the body ever reaching the database or an encrypted payload.
- */
+function taskFieldRows(
+  taskId: string,
+  action: TaskActivityAction,
+  next: Task['fields'],
+  previous: Task['fields'],
+  actor: TaskActivityActor
+): ActivityRowInput[] {
+  const before = previous ?? {}
+  const after = next ?? {}
+  const rows: ActivityRowInput[] = []
+  for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const oldValue = encodeValue(before[name])
+    const newValue = encodeValue(after[name])
+    if (oldValue === newValue) continue
+    const field = `${TASK_FIELD_ACTIVITY_PREFIX}${name}`
+    rows.push(
+      isLongFieldText(before[name]) || isLongFieldText(after[name])
+        ? lengthOnlyRow(taskId, action, field, after[name], before[name], actor)
+        : { taskId, action, field, oldValue, newValue, actor }
+    )
+  }
+  return rows
+}
+
 function lengthOnlyRow(
   taskId: string,
   action: TaskActivityAction,
   field: string,
-  next: Partial<Task>,
-  previous: Partial<Task> | undefined,
+  next: unknown,
+  previous: unknown,
   actor: TaskActivityActor
 ): ActivityRowInput {
-  const delta = textLength(next[field as keyof Task]) - textLength(previous?.[field as keyof Task])
+  const delta = textLength(next) - textLength(previous)
   return { taskId, action, field, oldValue: null, newValue: JSON.stringify({ delta }), actor }
 }
 

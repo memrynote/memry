@@ -512,6 +512,13 @@
       "when": 1791581370084,
       "tag": "0072_deleted_asset_releases",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1791581370085,
+      "tag": "0073_tag_schema_task_fields",
+      "breakpoints": true
     }
   ]
 }

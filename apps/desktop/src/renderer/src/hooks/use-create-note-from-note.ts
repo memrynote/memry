@@ -31,7 +31,7 @@ export function useCreateNoteFromNote(): (sourceId: string) => Promise<void> {
           title: 'Untitled',
           content: '',
           folder: folder || undefined,
-          tags: source.tags,
+          tags: source.headerTags,
           properties: source.properties,
           emoji: source.emoji ?? undefined
         })
@@ -53,7 +53,7 @@ export function useCreateNoteFromNote(): (sourceId: string) => Promise<void> {
         revealNoteInSidebar(newNote.id, { rename: true })
         toast.success(
           t('newNoteFromNote.created', {
-            tagCount: source.tags.length,
+            tagCount: source.headerTags.length,
             propertyCount: Object.keys(source.properties).length,
             source: source.title
           })

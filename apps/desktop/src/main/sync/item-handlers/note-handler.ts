@@ -19,6 +19,7 @@ import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
+import { keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -37,10 +38,11 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
-  extractInlineTagsFromMarkdown,
+  mergeTagLists,
   replacePropertiesOnRoot,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import {
   syncNoteToCache,
   syncFileToCache,
@@ -58,7 +60,8 @@ import {
   noteCacheExists,
   setNoteTags,
   updateNoteCache,
-  setNoteProperties
+  setNoteProperties,
+  type NoteTagSet
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -105,33 +108,21 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
 }
 
 /**
- * Remote frontmatter tags ∪ the body `#hashtags` of this device's copy of the
- * note, merged case-insensitively with the frontmatter spelling winning — the
- * same merge `extractNoteMetadata` performs when indexing a note from disk.
- *
  * A push payload carries frontmatter tags only, so a tag that exists solely as
  * a body hashtag never leaves the sending device. Re-deriving that half here is
  * what keeps the receiving side's replace from wiping it out of the index; the
  * body is the same on both devices, so nothing has to be asked of the sender —
  * and nothing body-derived leaks back into frontmatter (#1471).
  */
-function mergeWithLocalBodyTags(remoteTags: string[], relPath: string): string[] {
-  let bodyTags: string[]
+function withLocalBodyTags(remoteTags: string[], relPath: string): NoteTagSet {
   try {
     refuseOutsideVaultSync(getVaultRoot(), relPath)
     const parsed = parseNote(fs.readFileSync(toAbsolutePath(relPath), 'utf-8'))
-    bodyTags = extractInlineTagsFromMarkdown(parsed.content)
+    return { header: remoteTags, inline: extractInlineTagsFromMarkdown(parsed.content) }
   } catch {
     log.warn('Could not read note body to merge its inline tags', { path: relPath })
-    return remoteTags
+    return { header: remoteTags, inline: [] }
   }
-
-  const byKey = new Map<string, string>()
-  for (const tag of [...remoteTags, ...bodyTags]) {
-    const key = tag.toLowerCase()
-    if (!byKey.has(key)) byKey.set(key, tag)
-  }
-  return [...byKey.values()]
 }
 
 function mergeAttachmentReferences(
@@ -514,7 +505,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
         indexed && tagsChanged && remoteTags
-          ? mergeWithLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
+          ? withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
       if (indexTags) {
@@ -578,7 +569,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         changes: {
           title: newTitle,
           emoji: resolvedEmoji,
-          ...(indexTags ? { tags: indexTags } : {})
+          ...(indexTags ? { tags: mergeTagLists(indexTags.header, indexTags.inline) } : {})
         },
         source: 'sync'
       })
@@ -723,7 +714,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     return 'applied'
   }
 
-  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+  applyDelete(
+    ctx: ApplyContext,
+    itemId: string,
+    clock?: VectorClock,
+    deletedAt?: number
+  ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'note', existing)) return 'skipped'
@@ -735,6 +731,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return 'skipped'
       }
     }
+
+    const absolutePath = toAbsolutePath(existing.path)
+    keepUnseenText(ctx, {
+      itemId,
+      title: `${existing.title || 'Untitled'} (kept from deleted note)`,
+      localClock: existing.clock ?? null,
+      tombstoneClock: clock,
+      deletedAt,
+      readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
+    })
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
     // per item inside a pull batch, so awaiting a LevelDB clear here would
@@ -764,7 +770,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       .all()
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
-    const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)

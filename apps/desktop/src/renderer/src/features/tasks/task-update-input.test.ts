@@ -37,4 +37,10 @@ describe('toTaskUpdateInput', () => {
       })
     ).toEqual({ id: 'task-1', dueDate: '2026-09-07', repeatConfig: null, isRepeating: false })
   })
+
+  it('forwards a fields patch, keeping null as a removal', () => {
+    expect(
+      toTaskUpdateInput('task-1', { fields: { 'Waiting on': ['memry://note/n1'], Thread: null } })
+    ).toEqual({ id: 'task-1', fields: { 'Waiting on': ['memry://note/n1'], Thread: null } })
+  })
 })

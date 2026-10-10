@@ -167,14 +167,30 @@ describe('TagDefinitionSyncService push', () => {
     expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
   })
 
-  it('sends null views as an explicit clear and never invents the key', () => {
+  it('leaves out views and schema when the columns are NULL, so no peer is cleared', () => {
     seedTag()
 
     makeService().enqueueCreate('work')
 
     const payload = payloadOf(queueRows()[0])
-    expect(payload.views).toBeNull()
+    expect(payload).not.toHaveProperty('views')
+    expect(payload).not.toHaveProperty('schema')
     expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
+  })
+
+  it('carries an explicit no-views and a stored schema as JSON, and drops an unreadable schema', () => {
+    const schema = { t: 2, fields: [{ name: 'Role' }], preset: 'person' }
+    seedTag({ views: '[]', schema: JSON.stringify(schema) })
+    seedTag({ name: 'broken', schema: '{not json' })
+    const service = makeService()
+
+    service.enqueueCreate('work')
+    service.enqueueCreate('broken')
+
+    const [work, broken] = queueRows().map(payloadOf)
+    expect(work).toMatchObject({ views: [], schema })
+    expect(TagDefinitionSyncPayloadSchema.safeParse(work).success).toBe(true)
+    expect(broken).not.toHaveProperty('schema')
   })
 
   it('drops an unreadable views blob instead of clearing the peer copy', () => {

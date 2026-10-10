@@ -6,6 +6,7 @@
  * feature on) would otherwise add to an already large component.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import type { SimilarNoteItem } from '@memry/contracts/notes-api'
@@ -14,7 +15,6 @@ import { createWikiLinkInlineContent } from '@/components/note/content-area/wiki
 import { useTabs } from '@/contexts/tabs'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useSimilarNotes, useTagSuggestions } from '@/hooks/use-note-similarity'
-import { useNoteMutations } from '@/hooks/use-notes-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { addItemsToCanvas } from '@/pages/canvas/canvas-write'
@@ -151,42 +151,35 @@ export function NoteSimilarNotes({
 
 /**
  * Tag suggestions for a note that has no tags yet. Dismissing them holds for
- * this note until the page moves to another one.
+ * this note until the page moves to another one. Accepting one goes through
+ * the note's header-tag owner, so a tag with fields gets its template like any
+ * other add.
  */
 export function NoteSuggestedTags({
   noteId,
   tags,
-  disabled
+  disabled,
+  onAccept
 }: {
   noteId: string
   tags: readonly string[]
   disabled: boolean
+  onAccept: (tag: string) => void
 }): React.JSX.Element | null {
-  const { t } = useT('notes')
-  const { updateNote } = useNoteMutations()
   const [dismissedFor, setDismissedFor] = useState<string | null>(null)
   const visible = tags.length === 0 && dismissedFor !== noteId
   const suggestions = useTagSuggestions(noteId, { enabled: visible })
-
-  const handleAccept = useCallback(
-    async (tag: string) => {
-      if (disabled) return
-      if (tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return
-      try {
-        await updateNote.mutateAsync({ id: noteId, tags: [...tags, tag] })
-      } catch (err) {
-        log.error('Failed to add suggested tag:', err)
-        toast.error(extractErrorMessage(err, t('suggestedTags.failed')))
-      }
-    },
-    [disabled, noteId, tags, updateNote, t]
-  )
 
   if (!visible) return null
   return (
     <SuggestedTagsRow
       suggestions={suggestions}
-      onAccept={(tag) => void handleAccept(tag)}
+      onAccept={(tag) => {
+        if (disabled || tags.some((existing) => foldTag(existing) === foldTag(tag))) {
+          return
+        }
+        onAccept(tag)
+      }}
       onDismiss={() => setDismissedFor(noteId)}
       disabled={disabled}
     />

@@ -25,7 +25,10 @@ export interface MarkdownNoteProjection {
   parsedContent: string | null
   /** Only set by tier 0, where it is the one thing `stat` knows about the body. */
   fileSize?: number | null
+  /** Header and inline tags together, header spelling first. */
   tags: string[]
+  /** The subset of `tags` in the frontmatter `tags:` list. */
+  headerTags: string[]
   /**
    * Null when the frontmatter was not read: tier 0 and the large-file tier.
    * An empty object means the note has no properties, which unlinks it from
@@ -63,6 +66,15 @@ export type ProjectionEvent =
       /** The note's `extracted_text` rows changed; search and embeddings re-read them. */
       type: 'note.text-extracted'
       noteId: string
+    }
+  | {
+      /**
+       * The note's frontmatter `tags:` as read by vault/header-tag-backfill.ts,
+       * for its tag rows an older build wrote without a header flag.
+       */
+      type: 'note.header-tags-resolved'
+      noteId: string
+      headerTags: string[]
     }
   | {
       type: 'task.upserted'

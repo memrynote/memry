@@ -63,7 +63,11 @@ export const tagsService: TagsService = {
   /**
    * Rename a tag across all notes.
    */
-  renameTag: (input: { oldName: string; newName: string }): Promise<RenameTagResponse> => {
+  renameTag: (input: {
+    oldName: string
+    newName: string
+    runId?: string
+  }): Promise<RenameTagResponse> => {
     return window.api.tags.renameTag(input)
   },
 
@@ -139,7 +143,21 @@ export const tagsService: TagsService = {
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse> => {
     return window.api.tags.reorder(payload)
-  }
+  },
+
+  getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
+
+  editSchema: (command) => window.api.tags.editSchema(command),
+
+  previewImpact: (query) => window.api.tags.previewImpact(query),
+
+  getFillStatus: () => window.api.tags.getFillStatus(),
+
+  fillFields: (input) => window.api.tags.fillFields(input),
+
+  searchObjects: (input) => window.api.tags.searchObjects(input),
+
+  getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }
 
 // ============================================================================

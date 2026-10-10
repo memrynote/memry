@@ -145,6 +145,8 @@ export const NotesChannels = {
     GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count',
     /** Apply a template to an existing note (replaces body; optionally merges metadata) */
     APPLY_TEMPLATE: 'notes:apply-template',
+    /** Put back the empty body a tag template filled, if it is still untouched */
+    UNDO_TAG_TEMPLATE: 'notes:undo-tag-template',
     /** Append markdown to the end of an existing note's body (block "Move to") */
     APPEND_BLOCKS: 'notes:append-blocks',
     /** Open a large-file-class file for read-only streaming */

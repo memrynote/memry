@@ -117,6 +117,8 @@ describe('canvas asset service', () => {
       uploadAttachment,
       downloadAttachment,
       dereference,
+      holdChunks: vi.fn(async () => ({ status: 'ok' as const, missing: new Set<string>() })),
+      releaseHolds: vi.fn(async () => ({ ok: true })),
       markWritebackIgnored,
       trackEvent
     }

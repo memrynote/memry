@@ -499,4 +499,14 @@ struct DesignTokensRenderTests {
         #expect(dark != nil)
         #expect(light != dark)
     }
+
+    @Test("A tag's default colour hashes the tag fold, matching desktop")
+    func defaultTagColourFolds() {
+        // Literals pinned with tag-colors.test.ts and tag_admin_tests.rs.
+        #expect(Tokens.Palette.defaultName(for: "Work") == "coral")
+        #expect(Tokens.Palette.defaultName(for: "İş") == "emerald")
+        #expect(Tokens.Palette.defaultName(for: "iş") == "emerald")
+        #expect(Tokens.Palette.defaultName(for: "ΟΔΟΣ") == "cyan")
+        #expect(Tokens.Palette.defaultName(for: "οδοσ") == "cyan")
+    }
 }

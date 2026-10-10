@@ -17,16 +17,14 @@ vi.mock('../../vault/notes', () => ({
   toAbsolutePath: vi.fn((p: string) => path.join(VAULT_ROOT, p))
 }))
 
-vi.mock('../../vault/frontmatter', () => ({
+vi.mock('../../vault/frontmatter', async (importOriginal) => ({
+  mergeTagLists: (await importOriginal<typeof import('../../vault/frontmatter')>()).mergeTagLists,
   parseNote: vi.fn(() => ({
     frontmatter: { id: 'note-1', title: 'a1', tags: ['local'] },
     content: 'old content'
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
   serializeParsedNote: vi.fn(() => '---\n---\ncontent'),
-  // No body hashtags in this suite's fixtures — the real body-tag merge is
-  // covered against real files in note-handler.body-tags.test.ts.
-  extractInlineTagsFromMarkdown: vi.fn(() => []),
   replacePropertiesOnRoot: vi.fn((frontmatter, properties) => {
     const next = { ...frontmatter }
     delete next.properties
@@ -303,7 +301,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
     // #then
     expect(result).toBe('applied')
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'note-1', ['remote'])
+    expect(setNoteTags).toHaveBeenCalledWith({}, 'note-1', { header: ['remote'], inline: [] })
     expect(setNoteProperties).toHaveBeenCalledWith(
       {},
       'note-1',

@@ -531,6 +531,14 @@ describe('Filter Evaluator', () => {
         expect(evaluateFilter(note, 'category contains "personal"')).toBe(false)
       })
 
+      it('matches a relation field named with a space, as a Linked here count opens it', () => {
+        const note = createMockNote({
+          properties: { 'Waiting on': ['memry://note/ahmet', 'memry://note/elif'] }
+        })
+        expect(evaluateFilter(note, 'Waiting on contains "memry://note/ahmet"')).toBe(true)
+        expect(evaluateFilter(note, 'Waiting on contains "memry://note/mert"')).toBe(false)
+      })
+
       it('should work with tags built-in property', () => {
         const note = createMockNote({ tags: ['tag1', 'tag2'] })
         expect(evaluateFilter(note, 'tags contains "tag1"')).toBe(true)

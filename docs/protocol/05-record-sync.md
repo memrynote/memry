@@ -311,6 +311,28 @@ resolution for that conflict on both sides.
 A purged tombstone (§5.12.3) is applied under this same rule, through the same
 delete path.
 
+**Client behavior, not a wire rule (#3029).** Before a client applies a `note`
+or `journal` delete under this rule, it keeps local text the deleting device
+cannot have seen as a new inbox capture (`type: 'note'`, a fresh id, title
+`<note title> (kept from deleted note)` or
+`Journal <date> (kept from deleted day)`), then applies the delete unchanged.
+The deleted id stays deleted and the copy is an ordinary inbox create, so
+neither peers nor the server see anything new. The text is kept when the body
+is not blank and the local clock is not strictly after the tombstone, and any
+of these holds: a local change to the item still waits for the server; the
+local clock is concurrent with the tombstone; or this device's latest own
+body text reached the server (desktop: the last confirmed body push) or was
+written (the core, which pulls before it pushes) no earlier than `deletedAt`
+minus 60 s. A body edit never moves the record clock, so the clock alone
+cannot answer this. The rule is `keepsUnseenText`
+(`packages/sync-client/src/delete-keep.ts`) and `keeps_unseen_text`
+(`crates/memry-core/src/sync/delete_keep.rs`), pinned by `delete-keep.json`.
+The copy commits in the delete's own transaction, so a redelivered delete
+finds no live row and makes no second copy. `deletedAt` is read as whole
+seconds when it is below `10^11`: desktop has always pushed seconds
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:74`), while chapter 04 and
+the core use ms.
+
 ### A re-create seeds its clock from the tombstone (#2409)
 
 **Normative (client).** When a client writes an id it holds no clock for (a

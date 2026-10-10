@@ -24,6 +24,7 @@ export interface UsePropertiesReturn {
   removeProperty: (name: string) => Promise<void>
   renameProperty: (oldName: string, newName: string) => Promise<void>
   reorderProperties: (orderedNames: string[]) => Promise<void>
+  setPropertyValue: (name: string, value: unknown, type: string) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -174,6 +175,33 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     [entityId, fetchProperties, properties]
   )
 
+  const setPropertyValue = useCallback(
+    async (name: string, value: unknown, type: string) => {
+      if (!entityId) return
+
+      setProperties((current) => {
+        if (value === null) return current.filter((p) => p.name !== name)
+        return current.some((p) => p.name === name)
+          ? current.map((p) => (p.name === name ? { ...p, value } : p))
+          : [...current, { name, value, type }]
+      })
+
+      try {
+        const result = await propertiesService.merge(entityId, { [name]: value })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update property')
+        }
+      } catch (err) {
+        trackRendererError('note_property_update_failed', err)
+        log.error('Error updating:', err)
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateProperty'))
+        await fetchProperties()
+        throw err
+      }
+    },
+    [entityId, fetchProperties]
+  )
+
   const renameProperty = useCallback(
     async (oldName: string, newName: string) => {
       if (!entityId) return
@@ -244,6 +272,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     removeProperty,
     renameProperty,
     reorderProperties,
+    setPropertyValue,
     refresh: fetchProperties
   }
 }

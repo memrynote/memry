@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
@@ -15,7 +16,6 @@ import {
   renameNoteCommand,
   updateNoteCommand
 } from '../../../notes/domain'
-import { replaceNoteTagsInCrdt } from '../../../sync/crdt-feed'
 import { getCrdtProvider } from '../../../sync/crdt-provider'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
@@ -96,10 +96,6 @@ function mergeContent(
   if (!next) return current
   const [first, second] = mode === 'append' ? [current, next] : [next, current]
   return `${first.replace(/(\r?\n)+$/, '')}\n\n${second}`
-}
-
-function sameTagList(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((tag, index) => tag === b[index])
 }
 
 function taskStatusLabel(task: { statusId: string | null; completedAt?: string | null }): string {
@@ -245,7 +241,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         }
         // `updateNoteCommand` feeds the new body to the note's CRDT doc.
         let nextContent = note.content
-        const { result: updated, createdTasks } = await writeAgentBody(
+        const { createdTasks } = await writeAgentBody(
           input.id,
           input.content_markdown,
           input.mode === 'replace' ? note.content : '',
@@ -255,12 +251,6 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           }
         )
 
-        // Inline `#hashtag`s in the new body change the note's tag set, and
-        // write-back treats the Y.Doc tag array as authoritative — without this
-        // it would put the pre-edit tags back into the frontmatter.
-        if (!sameTagList(note.tags, updated.tags)) {
-          replaceNoteTagsInCrdt(input.id, updated.tags)
-        }
         return {
           ...(await storedNoteBody(input.id, nextContent)),
           ...createdTasksReply(createdTasks)
@@ -284,28 +274,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { marker: serializeFileBlockMarker(result), url: result.path }
       },
       async addTag({ id, tag }) {
-        const note = await getNoteById(id)
-        if (!note) {
-          throw new Error(`Note not found: ${id}`)
-        }
-        const nextTag = tag.trim()
-        const tags = note.tags.includes(nextTag) ? note.tags : [...note.tags, nextTag]
-        const updated = await updateNoteCommand({ id, tags })
-        // Same reason as the body path above: a live Y.Doc's tag array wins at
-        // write-back, so a tag only written to the file is reverted.
-        replaceNoteTagsInCrdt(id, updated.tags)
+        await updateNoteCommand({ id, headerTags: { add: [tag] } })
       },
       async removeTag({ id, tag }) {
-        const note = await getNoteById(id)
-        if (!note) {
-          throw new Error(`Note not found: ${id}`)
-        }
-        const normalized = tag.trim().toLowerCase()
-        const updated = await updateNoteCommand({
-          id,
-          tags: note.tags.filter((existing) => existing.toLowerCase() !== normalized)
-        })
-        replaceNoteTagsInCrdt(id, updated.tags)
+        await updateNoteCommand({ id, headerTags: { remove: [tag] } })
       },
       async moveToFolder({ id, folder_path }) {
         const folder = internalFolderFromToolPath(folder_path) ?? ''
@@ -553,10 +525,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const domain = createTaskDomain(dataDb)
         const task = domain.getTask(id)
         if (!task) throw new Error(`Task not found: ${id}`)
-        const normalized = tag.toLowerCase()
+        const normalized = foldTag(tag)
         const result = await domain.updateTask({
           id,
-          tags: (task.tags ?? []).filter((existing) => existing.toLowerCase() !== normalized)
+          tags: (task.tags ?? []).filter((existing) => foldTag(existing) !== normalized)
         })
         if (!result.success) throw new Error(result.error ?? 'Failed to remove task tag')
       }

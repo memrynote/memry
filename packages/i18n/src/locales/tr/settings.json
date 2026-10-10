@@ -1774,6 +1774,9 @@
     "toasts": {
       "renamed": "“{oldName}” etiketi “{newName}” olarak yeniden adlandırıldı",
       "renameFailed": "Etiket yeniden adlandırılamadı",
+      "renaming": "#{oldName} yeniden adlandırılıyor: {done} / {total} not",
+      "renamedBodySkipped": "“{newName}” satır içi etiket olarak yazılamıyor, bu yüzden not metnindeki #{oldName} olduğu gibi kaldı",
+      "renamedSomeFailed": "{count, plural, one {# not} other {# not}} güncellenemedi. Açıp etiketi yeniden ekleyin",
       "deleteFailed": "Etiket silinemedi",
       "deleted": "“{name}” etiketi {count, plural, one {# öğeden} other {# öğeden}} kaldırıldı",
       "mergeFailed": "Etiketler birleştirilemedi",

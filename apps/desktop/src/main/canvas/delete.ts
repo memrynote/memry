@@ -14,7 +14,7 @@ import { getDatabase, type DataDb } from '../database'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
-import { trackPendingDelete } from '../vault/rename-tracker'
+import { trackPendingDelete, type DeferredDeletes } from '../vault/rename-tracker'
 import {
   canvasPathKey,
   listCanvasFiles,
@@ -53,11 +53,14 @@ export async function removeCanvas(
  * syncs to every device, so every doubt keeps the canvas. Its assets stay on
  * disk and on the server. `isGone` is the watcher's check that the file is
  * really missing from a reachable vault, shared with a note's removal.
+ * `deferred` is a rescan's batch: the delete arms no window and settles with
+ * the rescan, so vault open has synced it before it returns.
  */
 export function trackExternalCanvasRemoval(
   vaultPath: string,
   relativePath: string,
-  isGone: () => Promise<boolean>
+  isGone: () => Promise<boolean>,
+  deferred: DeferredDeletes | null = null
 ): void {
   // The app's own delete tombstones the row before the file goes, so its
   // unlink finds nothing here.
@@ -65,24 +68,31 @@ export function trackExternalCanvasRemoval(
   if (!id) return
   // No content hash: a canvas move never reaches `checkForRename`, so the
   // window only lets the move's `add` land before the checks below run.
-  trackPendingDelete(id, '', relativePath, async () => {
-    try {
-      if (!(await isGone())) return
-      const db = getDatabase()
-      // The app or a sync apply moved it meanwhile and re-pointed the row.
-      if (findLiveCanvasIdAtPath(db, relativePath) !== id) return
-      if (mayStillHoldCanvas(db, vaultPath, id)) return
-      // The document is already gone, so there is nothing to trash.
-      await removeCanvas(id, async () => {})
-    } catch (error) {
-      log.error('Failed to delete a canvas removed outside the app; keeping it', {
-        id,
-        path: relativePath,
-        error
-      })
-      trackMainError('canvas', 'external_delete', error)
-    }
-  })
+  trackPendingDelete(
+    id,
+    '',
+    relativePath,
+    async () => {
+      try {
+        if (!(await isGone())) return
+        const db = getDatabase()
+        // The app or a sync apply moved it meanwhile and re-pointed the row.
+        if (findLiveCanvasIdAtPath(db, relativePath) !== id) return
+        if (mayStillHoldCanvas(db, vaultPath, id)) return
+        // The document is already gone, so there is nothing to trash.
+        await removeCanvas(id, async () => {})
+      } catch (error) {
+        log.error('Failed to delete a canvas removed outside the app; keeping it', {
+          id,
+          path: relativePath,
+          error
+        })
+        trackMainError('canvas', 'external_delete', error)
+      }
+    },
+    null,
+    deferred
+  )
 }
 
 /**

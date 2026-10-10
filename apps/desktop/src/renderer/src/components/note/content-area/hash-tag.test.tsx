@@ -66,6 +66,24 @@ describe('hash tag inline content', () => {
     ])
   })
 
+  it('promotes only tags the shared grammar reads, and keeps existing chips', () => {
+    const oldChip = { type: 'hashTag', props: { tag: '2024', color: '', icon: '' } }
+    const result = normalizeHashTags(
+      [
+        { id: 'a', type: 'paragraph', content: '#2024 and #a2024' },
+        { id: 'b', type: 'paragraph', content: [oldChip] }
+      ] as any,
+      new Set(['2024', 'a2024']),
+      new Map()
+    )
+
+    expect((result.blocks[0] as any).content).toEqual([
+      '#2024 and ',
+      { type: 'hashTag', props: { tag: 'a2024', color: '', icon: '' } }
+    ])
+    expect((result.blocks[1] as any).content).toEqual([oldChip])
+  })
+
   it('normalizes tags nested under a code block, but not the code itself', () => {
     const result = normalizeHashTags(
       [

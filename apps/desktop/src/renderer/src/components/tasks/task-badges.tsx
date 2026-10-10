@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Repeat } from '@/lib/icons'
@@ -374,7 +375,7 @@ export const TaskTagsBadge = ({
 }: TaskTagsBadgeProps): React.JSX.Element | null => {
   const { tags: tagDefs } = useNoteTagsQuery({ enabled: tags.length > 0 })
 
-  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [d.tag.toLowerCase(), d])), [tagDefs])
+  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [foldTag(d.tag), d])), [tagDefs])
 
   const chips: Tag[] = useMemo(
     () =>

@@ -33,6 +33,8 @@ export interface RemoteSyncAdapter<TDb = unknown, TEmit = unknown, TPayload = un
     operation: SyncOperation
     data?: TPayload
     clock?: VectorClock
+    /** A delete's `deletedAt`, as it came off the wire. */
+    deletedAt?: number
     vaultKey?: Uint8Array
   }): RemoteApplyResult
   fetchLocal?(db: TDb, itemId: string): Record<string, unknown> | undefined

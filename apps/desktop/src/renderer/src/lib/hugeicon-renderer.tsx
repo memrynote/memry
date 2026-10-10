@@ -21,7 +21,8 @@ export function HugeIconByName({
   className?: string
 }): React.JSX.Element {
   const cached = iconCache.get(name)
-  const [icon, setIcon] = useState<IconSvgElement | null>(cached ?? null)
+  const [loaded, setLoaded] = useState<{ name: string; icon: IconSvgElement } | null>(null)
+  const icon = cached ?? (loaded?.name === name ? loaded.icon : null)
 
   useEffect(() => {
     if (cached) return
@@ -32,7 +33,7 @@ export function HugeIconByName({
       const resolved = mod[name] as IconSvgElement | undefined
       if (resolved) {
         iconCache.set(name, resolved)
-        setIcon(resolved)
+        setLoaded({ name, icon: resolved })
       }
     })
     return () => {

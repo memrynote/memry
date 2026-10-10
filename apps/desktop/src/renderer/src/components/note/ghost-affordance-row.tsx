@@ -1,7 +1,7 @@
 import { useState, memo, type MouseEvent as ReactMouseEvent } from 'react'
 import { Image, List, Tag } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { TagInputPopup } from './tags-row/TagInputPopup'
+import { TagInputPopup, type TagFieldHints } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
 import type { Tag as TagEntity } from './tags-row/TagChip'
 import type { NewProperty, PropertyType } from './info-section/types'
@@ -21,6 +21,7 @@ export interface GhostAffordanceRowProps {
   existingNames?: string[]
   disabled?: boolean
   className?: string
+  tagFieldHints?: TagFieldHints
 }
 
 const CHIP_CLASS = cn(
@@ -47,7 +48,8 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   excludeTypes,
   existingNames,
   disabled = false,
-  className
+  className,
+  tagFieldHints
 }: GhostAffordanceRowProps) {
   const { t } = useT('notes')
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false)
@@ -92,6 +94,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         open={isTagPopupOpen}
         onOpenChange={setIsTagPopupOpen}
         disabled={disabled}
+        fieldHints={tagFieldHints}
       >
         <button type="button" disabled={disabled} className={CHIP_CLASS}>
           <Tag className={CHIP_ICON_CLASS} strokeWidth={2} />

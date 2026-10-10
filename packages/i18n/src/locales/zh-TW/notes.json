@@ -615,8 +615,7 @@
     "hint": "與這則筆記最相似的筆記所共用的標籤。在你選擇之前，不會新增任何標籤。",
     "acceptAria": "新增標籤 {tag}",
     "support": "{count, plural, other {用於 # 則相似筆記}}",
-    "dismiss": "隱藏建議的標籤",
-    "failed": "無法新增標籤"
+    "dismiss": "隱藏建議的標籤"
   },
   "comments": {
     "railAria": "留言",

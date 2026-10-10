@@ -17,6 +17,15 @@ describe('defaultTagColorName', () => {
     expect(defaultTagColorName('TEST')).toBe(defaultTagColorName('test'))
   })
 
+  it('hashes the shared tag fold, so İ and ς spellings of one tag share a color', () => {
+    expect(defaultTagColorName('İş')).toBe('emerald')
+    expect(defaultTagColorName('iş')).toBe('emerald')
+    expect(defaultTagColorName('ΟΔΟΣ')).toBe('cyan')
+    expect(defaultTagColorName('οδοσ')).toBe('cyan')
+    // ASCII tags keep the color they had before the fold.
+    expect(defaultTagColorName('Work')).toBe('coral')
+  })
+
   it('always returns a real palette color name', () => {
     for (const name of ['research', 'tech/typescript', 'a', '', 'travel/japan']) {
       expect(COLOR_NAMES).toContain(defaultTagColorName(name))

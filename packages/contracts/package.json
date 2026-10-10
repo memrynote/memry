@@ -70,8 +70,11 @@
     "./sync-socket": "./src/sync-socket.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
     "./tag-colors": "./src/tag-colors.ts",
+    "./tag-schema": "./src/tag-schema.ts",
     "./tag-searches-api": "./src/tag-searches-api.ts",
     "./tags-api": "./src/tags-api.ts",
+    "./tag-objects-api": "./src/tag-objects-api.ts",
+    "./tag-fill-api": "./src/tag-fill-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./telemetry-api": "./src/telemetry-api.ts",
     "./templates-api": "./src/templates-api.ts",
@@ -91,6 +94,8 @@
     "./test-vectors/cbor-canonical.json": "./test-vectors/cbor-canonical.json",
     "./test-vectors/compression.json": "./test-vectors/compression.json",
     "./test-vectors/field-merge.json": "./test-vectors/field-merge.json",
+    "./test-vectors/tag-fold.json": "./test-vectors/tag-fold.json",
+    "./test-vectors/tag-schema-refs.json": "./test-vectors/tag-schema-refs.json",
     "./test-vectors/pack-container.json": "./test-vectors/pack-container.json",
     "./test-vectors/payload-schemas.json": "./test-vectors/payload-schemas.json",
     "./test-vectors/device-linking.json": "./test-vectors/device-linking.json",
@@ -134,6 +139,7 @@
   },
   "dependencies": {
     "@memry/domain-tasks": "workspace:*",
+    "@memry/shared": "workspace:*",
     "zod": "^4.3.4"
   }
 }

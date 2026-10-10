@@ -122,55 +122,81 @@ pub fn capture(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<InboxItem>, StorageError> {
+    let id = capture_id(capture)?;
+    outbox::commit(
+        conn,
+        &outbox::Change::upsert(ITEM_TYPE, &id),
+        now_ms,
+        |tx| insert_capture(tx, &id, capture, device_id, now_ms),
+    )
+}
+
+/// [`capture`] inside a transaction the caller already holds: a pulled
+/// delete keeps unseen text this way, in the delete's own transaction (#3029).
+pub(crate) fn capture_in(
+    tx: &Connection,
+    capture: &NewCapture,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<InboxItem, StorageError> {
+    let id = capture_id(capture)?;
+    let item = insert_capture(tx, &id, capture, device_id, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
+    Ok(item)
+}
+
+fn capture_id(capture: &NewCapture) -> Result<String, StorageError> {
     if capture.title.is_empty() && capture.item_type.is_empty() {
         return Err(StorageError::Invalid {
             what: "a capture needs a type and a title".to_owned(),
         });
     }
-    let id = match &capture.id {
-        Some(id) => super::super::tasks::valid_item_id(id)?.to_owned(),
-        None => mint_id(),
-    };
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
-        now_ms,
-        |tx| {
-            let at = iso(now_ms)?;
-            let payload = object(json!({
-                "id": id,
-                "type": capture.item_type,
-                "title": capture.title,
-                "content": capture.content,
-                "createdAt": at,
-                "modifiedAt": at,
-                "filedAt": null,
-                "filedTo": null,
-                "filedAction": null,
-                "snoozedUntil": null,
-                "snoozeReason": null,
-                "viewedAt": null,
-                "processingStatus": capture.processing_status,
-                "processingError": null,
-                "metadata": capture.metadata,
-                "attachmentPath": capture.attachment_path,
-                "thumbnailPath": capture.thumbnail_path,
-                "transcription": null,
-                "transcriptionStatus": capture.transcription_status,
-                "sourceUrl": capture.source_url,
-                "sourceTitle": capture.source_title,
-                "captureSource": capture.capture_source,
-                "archivedAt": null,
-                "clock": next_clock(&Object::new(), device_id)?,
-                "localOnly": false,
-            }));
-            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            for tag in &capture.tags {
-                insert_tag(tx, &id, tag, now_ms)?;
-            }
-            read_back(tx, &id)
-        },
-    )
+    match &capture.id {
+        Some(id) => Ok(super::super::tasks::valid_item_id(id)?.to_owned()),
+        None => Ok(mint_id()),
+    }
+}
+
+fn insert_capture(
+    tx: &Connection,
+    id: &str,
+    capture: &NewCapture,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<InboxItem, StorageError> {
+    let at = iso(now_ms)?;
+    let payload = object(json!({
+        "id": id,
+        "type": capture.item_type,
+        "title": capture.title,
+        "content": capture.content,
+        "createdAt": at,
+        "modifiedAt": at,
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": null,
+        "snoozeReason": null,
+        "viewedAt": null,
+        "processingStatus": capture.processing_status,
+        "processingError": null,
+        "metadata": capture.metadata,
+        "attachmentPath": capture.attachment_path,
+        "thumbnailPath": capture.thumbnail_path,
+        "transcription": null,
+        "transcriptionStatus": capture.transcription_status,
+        "sourceUrl": capture.source_url,
+        "sourceTitle": capture.source_title,
+        "captureSource": capture.capture_source,
+        "archivedAt": null,
+        "clock": next_clock(&Object::new(), device_id)?,
+        "localOnly": false,
+    }));
+    insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
+    for tag in &capture.tags {
+        insert_tag(tx, id, tag, now_ms)?;
+    }
+    read_back(tx, id)
 }
 
 /// `captureTextItem` behind `captureText`'s duplicate check.

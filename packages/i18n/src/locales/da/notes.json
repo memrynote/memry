@@ -615,8 +615,7 @@
     "hint": "Tags, som de noter, der minder mest om denne, har til fælles. Intet tilføjes, før du vælger et.",
     "acceptAria": "Tilføj tagget {tag}",
     "support": "{count, plural, one {Bruges på # lignende note} other {Bruges på # lignende noter}}",
-    "dismiss": "Skjul foreslåede tags",
-    "failed": "Kunne ikke tilføje tagget"
+    "dismiss": "Skjul foreslåede tags"
   },
   "comments": {
     "railAria": "Kommentarer",

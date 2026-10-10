@@ -615,8 +615,7 @@
     "hint": "Etiquetas que comparten las notas más parecidas a esta. No se añade nada hasta que elijas una.",
     "acceptAria": "Añadir la etiqueta {tag}",
     "support": "{count, plural, one {Se usa en # nota similar} other {Se usa en # notas similares}}",
-    "dismiss": "Ocultar etiquetas sugeridas",
-    "failed": "No se pudo añadir la etiqueta"
+    "dismiss": "Ocultar etiquetas sugeridas"
   },
   "comments": {
     "railAria": "Comentarios",

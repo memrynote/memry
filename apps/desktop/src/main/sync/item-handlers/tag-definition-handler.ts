@@ -7,7 +7,14 @@ import {
 } from '@memry/contracts/sync-payloads'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import {
+  joinVersionedValue,
+  owesHeal,
+  readVersionedObject,
+  type VersionedObject
+} from '@memry/shared/versioned'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
@@ -15,6 +22,16 @@ import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('TagDefinitionHandler')
+
+function readSchemaColumn(raw: string | null, tag: string): VersionedObject | undefined {
+  if (raw === null) return undefined
+  try {
+    return readVersionedObject(JSON.parse(raw))
+  } catch {
+    log.warn('Discarding a corrupt tag schema', { tag })
+    return undefined
+  }
+}
 
 class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
   readonly type = 'tag_definition' as const
@@ -26,10 +43,19 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     data: TagDefinitionSyncPayload,
     clock: VectorClock
   ): ApplyResult {
-    return ctx.db.transaction((tx): ApplyResult => {
+    let heal = false
+    const result = ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const now = utcNow()
+      // The schema joins by its own version on every branch, the skip included
+      // (chapter 06 §6.11): an older peer can carry an older or a newer schema
+      // under any document clock.
+      const schema = joinVersionedValue(
+        existing ? readSchemaColumn(existing.schema, itemId) : undefined,
+        data.schema
+      )
+      const schemaWrite = schema.localChanged ? { schema: JSON.stringify(schema.value) } : {}
 
       if (existing) {
         const resolution = this.resolveUpsertClock(
@@ -40,6 +66,10 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           data
         )
         if (resolution.action === 'skip') {
+          if (schema.localChanged) {
+            tx.update(tagDefinitions).set(schemaWrite).where(eq(tagDefinitions.name, itemId)).run()
+            ctx.emit('notes:tags-changed', {})
+          }
           log.info('Skipping remote tag definition update, local is newer', { itemId })
           return 'skipped'
         }
@@ -71,7 +101,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
             icon: data.icon !== undefined ? data.icon : existing.icon,
             categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId,
             sortOrder: data.sortOrder ?? existing.sortOrder,
-            clock: resolution.mergedClock
+            clock: resolution.mergedClock,
+            ...schemaWrite
           })
           .where(eq(tagDefinitions.name, itemId))
           .run()
@@ -83,6 +114,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         if (data.views !== undefined) {
           writeTagViews(tx, itemId, data.views)
         }
+
+        heal = owesHeal(resolution.action, schema, resolution.action === 'merge')
 
         // The colour the row actually kept, not the one that was offered — the
         // renderer must not paint a repaint the merge just refused.
@@ -102,6 +135,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           icon: data.icon ?? null,
           categoryId: data.categoryId ?? null,
           sortOrder: data.sortOrder ?? 0,
+          schema: schema.value ? JSON.stringify(schema.value) : null,
           clock: remoteClock,
           createdAt: data.createdAt ?? now
         })
@@ -115,6 +149,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       ctx.emit('notes:tags-changed', {})
       return 'applied'
     })
+    if (heal) getTagDefinitionSyncService()?.enqueueUpdate(itemId)
+    return result
   }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
@@ -154,6 +190,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
   ): string | null {
     const tag = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
     if (!tag) return null
+    const views = readTagViews(db, itemId)
+    const schema = readSchemaColumn(tag.schema, itemId)
     const payload: TagDefinitionSyncPayload = {
       name: tag.name,
       color: tag.color,
@@ -161,7 +199,11 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       icon: tag.icon ?? null,
       categoryId: tag.categoryId ?? null,
       sortOrder: tag.sortOrder,
-      views: readTagViews(db, itemId),
+      // A NULL column means this device does not know, so the key is left
+      // out: `views: null` clears every peer, and `schema: null` carries no
+      // information (chapter 13 §13.7.7). "No views" travels as `[]`.
+      ...(views !== null ? { views } : {}),
+      ...(schema ? { schema } : {}),
       clock: (tag.clock as VectorClock) ?? undefined,
       createdAt: tag.createdAt
     }
@@ -173,11 +215,13 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     for (const item of items) {
       const clock = nextLocalClock(db, 'tag_definition', item.name, null, deviceId, 'create')
       db.update(tagDefinitions).set({ clock }).where(eq(tagDefinitions.name, item.name)).run()
+      const payload = this.buildPushPayload(db, item.name, deviceId, 'create')
+      if (payload === null) continue
       queue.enqueue({
         type: 'tag_definition',
         itemId: item.name,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock }),
+        payload,
         priority: 0
       })
     }

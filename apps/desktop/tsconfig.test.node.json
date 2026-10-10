@@ -146,7 +146,6 @@
     "src/main/sync/item-handlers/project-handler.test.ts",
     "src/main/sync/item-handlers/settings-handler.test.ts",
     "src/main/sync/item-handlers/tag-definition-color-preservation.test.ts",
-    "src/main/sync/item-handlers/tag-definition-handler.test.ts",
     "src/main/sync/item-handlers/task-handler-fk.test.ts",
     "src/main/sync/item-handlers/task-handler.test.ts",
     "src/main/sync/queue.test.ts",

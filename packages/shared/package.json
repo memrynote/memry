@@ -23,6 +23,8 @@
     "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",
     "./markdown-code": "./src/markdown-code.ts",
+    "./inline-tags": "./src/inline-tags.ts",
+    "./tag-fold": "./src/tag-fold.ts",
     "./footnotes": "./src/footnotes.ts",
     "./html-comments": "./src/html-comments.ts",
     "./wiki-target": "./src/wiki-target.ts",
@@ -33,6 +35,7 @@
     "./cover-image": "./src/cover-image.ts",
     "./template-placeholders": "./src/template-placeholders.ts",
     "./view-block": "./src/view-block.ts",
+    "./versioned": "./src/versioned.ts",
     "./writing-tools": "./src/writing-tools/yjs.ts",
     "./writing-tools/markdown": "./src/writing-tools/markdown.ts"
   },

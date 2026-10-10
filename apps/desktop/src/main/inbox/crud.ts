@@ -3,6 +3,7 @@ import { InboxUpdateSchema, type CaptureResponse, type InboxItem } from '@memry/
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import type { DataDb } from '../database'
+import { tagIs } from '../database/queries/tag-match'
 import { generateId } from '../lib/id'
 import { deleteInboxAttachments } from './attachments'
 import { syncInboxDelete } from './runtime-effects'
@@ -126,7 +127,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       const existingTag = db
         .select()
         .from(inboxItemTags)
-        .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
+        .where(and(eq(inboxItemTags.itemId, itemId), tagIs(inboxItemTags.tag, tag)))
         .get()
 
       if (existingTag) {
@@ -157,7 +158,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       const db = deps.requireDatabase()
 
       db.delete(inboxItemTags)
-        .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
+        .where(and(eq(inboxItemTags.itemId, itemId), tagIs(inboxItemTags.tag, tag)))
         .run()
 
       return { success: true }

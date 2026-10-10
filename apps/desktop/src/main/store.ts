@@ -83,6 +83,8 @@ export interface AccountVaultsCache {
 
 export interface AgentStoreData {
   disclosureAccepted?: boolean
+  /** Agent fill (tag fields): the user accepted that the inline-AI model reads one note. */
+  fieldFillDisclosureAccepted?: boolean
   accessMode?: 'vault_only' | 'computer_access'
   toolApprovalMode?: 'always_accept' | 'ask'
   /**

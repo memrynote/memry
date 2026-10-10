@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * Hook for managing tag detail view state and operations.
@@ -107,7 +108,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
   // Subscribe to tag notes changed events
   useEffect(() => {
     const unsubscribe = onTagNotesChanged((event) => {
-      if (event.tag.toLowerCase() === tag.toLowerCase()) {
+      if (foldTag(event.tag) === foldTag(tag)) {
         // Refresh the list when notes change for this tag
         void fetchNotes()
       }
@@ -118,7 +119,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
 
   useEffect(() => {
     const unsubscribe = onTagColorUpdated((event) => {
-      if (event.tag.toLowerCase() === tag.toLowerCase()) {
+      if (foldTag(event.tag) === foldTag(tag)) {
         void fetchNotes()
       }
     })

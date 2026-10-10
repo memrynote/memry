@@ -263,6 +263,7 @@
     "shortcutInUse": "{shortcut} kısayolu zaten kullanılıyor"
   },
   "tag": {
+    "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
     "mergeSameTag": "Kaynak ve hedef etiketler aynı",
     "categoryNameRequired": "Kategori adı gerekli",
     "pinNoteFailed": "Not sabitlenemedi",
@@ -320,5 +321,18 @@
   "vaultLock": {
     "noteReadOnly": "Sahibi bu notu salt okunur yaptı.",
     "folderReadOnly": "Sahibi bu klasörü salt okunur yaptı."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" ayrılmış bir ad, alan adı olamaz",
+    "duplicateField": "#{definedBy} etiketinde \"{name}\" adlı bir alan zaten var",
+    "unknownField": "Bu etiketin \"{name}\" adlı bir alanı yok",
+    "inheritedField": "\"{name}\" alanı #{definedBy} etiketinden geliyor. Orada düzenleyin",
+    "cycle": "#{parent} alanlarını zaten bu etiketten alıyor",
+    "unreadableSchema": "Bu etiketi Memry'nin daha yeni bir sürümü değiştirdi. Düzenlemek için Memry'yi güncelleyin",
+    "relationTargetRequired": "Bu ilişkinin hangi etikete bağlanacağını seçin",
+    "editFailed": "Etiketin alanları değiştirilemedi",
+    "previewFailed": "Bu değişikliğin neyi etkileyeceği sayılamadı",
+    "snapshotFailed": "Etiket alanları yüklenemedi",
+    "renameRunning": "Başka bir alan yeniden adlandırması hâlâ sürüyor ({from} → {to}). Bitince yeniden dene."
   }
 }

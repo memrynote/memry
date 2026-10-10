@@ -40,6 +40,9 @@ import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/fold
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
+import { defaultFieldTagView, fieldColumns, listFieldTagRows, tagItemToRow } from '../tags/objects'
+import { loadResolvedTags } from '../tags/schema/read'
+import { getPropertiesForNotes } from '../notes/store'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -74,35 +77,6 @@ function computeRelativeFolder(notePath: string, viewedFolder: string): string {
   }
 
   return '/'
-}
-
-/**
- * Batch-fetch every property value for the given notes.
- * Shared by both scopes — a tag view is worthless if its property columns
- * are blank, so tag rows go through exactly the same fetch folders use.
- */
-async function fetchPropertiesFor(
-  db: ReturnType<typeof getDataDb>,
-  noteIds: string[]
-): Promise<Map<string, Record<string, unknown>>> {
-  const propertiesMap = new Map<string, Record<string, unknown>>()
-  for (const noteId of noteIds) {
-    const propsResult = await db
-      .select({ name: noteProperties.name, value: noteProperties.value })
-      .from(noteProperties)
-      .where(eq(noteProperties.noteId, noteId))
-
-    const props: Record<string, unknown> = {}
-    propsResult.forEach((row) => {
-      try {
-        props[row.name] = row.value ? JSON.parse(row.value) : null
-      } catch {
-        props[row.name] = row.value
-      }
-    })
-    propertiesMap.set(noteId, props)
-  }
-  return propertiesMap
 }
 
 /**
@@ -163,13 +137,16 @@ async function readScopedViews(scope: ViewScope): Promise<ViewConfig[] | null> {
   return folderConfig?.views ?? null
 }
 
-async function writeScopedViews(scope: ViewScope, views: ViewConfig[] | null): Promise<void> {
+async function writeScopedViews(scope: ViewScope, views: ViewConfig[]): Promise<void> {
   if (scope.kind === 'tag') {
     writeTagViews(getDatabase(), scope.tag, views)
     return
   }
   const currentConfig = (await readFolderConfig(scope.path)) || {}
-  await writeFolderConfig(scope.path, { ...currentConfig, views: views ?? undefined })
+  await writeFolderConfig(scope.path, {
+    ...currentConfig,
+    views: views.length > 0 ? views : undefined
+  })
 }
 
 // ============================================================================
@@ -229,7 +206,11 @@ export function registerFolderViewHandlers(): void {
       const views = await readScopedViews(input.scope)
 
       if (!views || views.length === 0) {
-        return { views: [DEFAULT_VIEW], defaultIndex: 0 }
+        const fieldView =
+          input.scope.kind === 'tag'
+            ? defaultFieldTagView(input.scope.tag, loadResolvedTags(getDatabase()))
+            : null
+        return { views: [fieldView ?? DEFAULT_VIEW], defaultIndex: 0 }
       }
 
       const defaultIndex = views.findIndex((v) => v.default) ?? 0
@@ -287,14 +268,10 @@ export function registerFolderViewHandlers(): void {
 
         const filtered = views.filter((v) => v.name !== input.viewName)
 
-        if (filtered.length === 0) {
-          await writeScopedViews(input.scope, null)
-        } else {
-          if (!filtered.some((v) => v.default)) {
-            filtered[0].default = true
-          }
-          await writeScopedViews(input.scope, filtered)
+        if (filtered.length > 0 && !filtered.some((v) => v.default)) {
+          filtered[0].default = true
         }
+        await writeScopedViews(input.scope, filtered)
 
         return { success: true }
       }, 'errors:folderView.deleteViewFailed')
@@ -322,36 +299,27 @@ export function registerFolderViewHandlers(): void {
             return { notes: [], total: 0, hasMore: false }
           }
 
+          const fieldRows = listFieldTagRows(
+            db,
+            dataDb,
+            loadResolvedTags(dataDb),
+            input.scope,
+            input.rows
+          )
+          if (fieldRows) {
+            const page = fieldRows.rows.slice(input.offset, input.offset + input.limit)
+            return {
+              notes: page,
+              total: fieldRows.rows.length,
+              hasMore: input.offset + page.length < fieldRows.rows.length,
+              complete: fieldRows.complete
+            }
+          }
+
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
-          const propertiesMap = await fetchPropertiesFor(db, noteIds)
-
-          const rows: NoteWithProperties[] = items.map((item) => ({
-            id: item.id,
-            // Tasks and inbox items have no note path; synthesise a stable one so
-            // row identity and any path-keyed UI still work.
-            path:
-              item.kind === 'note'
-                ? (item.path ?? '')
-                : item.kind === 'task'
-                  ? `/tasks/${item.id}`
-                  : `/inbox/${item.id}`,
-            title: item.title,
-            emoji: item.emoji,
-            // `container` is the note's parent folder or the task's project name.
-            folder: item.container ?? '',
-            tags: item.tags,
-            created: item.created,
-            modified: item.modified,
-            // TagItem carries no word count for any kind.
-            wordCount: 0,
-            properties: propertiesMap.get(item.id) ?? {},
-            kind: item.kind,
-            // A tagged PDF/image is a note row too; its real type keeps its
-            // metadata cells read-only (#2073) and lets the canvas card it as
-            // a file rather than a note (#2484).
-            fileType: item.fileType
-          }))
+          const propertiesMap = getPropertiesForNotes(db, noteIds)
+          const rows = items.map((item) => tagItemToRow(item, propertiesMap.get(item.id) ?? {}))
 
           const page = rows.slice(input.offset, input.offset + input.limit)
           return {
@@ -417,8 +385,7 @@ export function registerFolderViewHandlers(): void {
         // Batch fetch properties for all notes.
         // When input.properties is undefined, fetch ALL properties (for column flexibility)
         // When input.properties is specified, only fetch those (for optimization) —
-        // currently fetchPropertiesFor always fetches all, for simplicity.
-        const propertiesMap = await fetchPropertiesFor(db, noteIds)
+        const propertiesMap = getPropertiesForNotes(db, noteIds)
 
         // Build response
         const notesWithProps: NoteWithProperties[] = notes.map((note) => ({
@@ -488,6 +455,10 @@ export function registerFolderViewHandlers(): void {
           const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
           const propCounts = await fetchPropertyCounts(db, noteIds)
+          for (const field of fieldColumns(input.scope.tag, loadResolvedTags(dataDb))) {
+            if (!propCounts.has(field.name))
+              propCounts.set(field.name, { count: 0, type: field.type })
+          }
 
           // Formulas live in `.folder.md`, which a tag has no equivalent of.
           return {

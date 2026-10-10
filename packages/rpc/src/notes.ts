@@ -21,7 +21,10 @@ import type {
   LinkVia,
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
-  NoteClustersResponse
+  NoteClustersResponse,
+  HeaderTagEdit,
+  NoteTagTemplateOutcome,
+  UndoTagTemplateResponse
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
 import {
@@ -46,7 +49,10 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
+  /** Header and inline `#tags` together: the set the editor turns into chips. */
   tags: string[]
+  /** The frontmatter `tags:` list alone: what the tags row shows and `headerTags` edits change. */
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown>
@@ -293,7 +299,7 @@ export interface NoteUpdateInput {
   id: string
   title?: string
   content?: string
-  tags?: string[]
+  headerTags?: HeaderTagEdit
   frontmatter?: Record<string, unknown>
   emoji?: string | null
 }
@@ -368,6 +374,7 @@ export interface NoteUpdateResponse {
   success: boolean
   note: Note | null
   error?: string
+  tagTemplate?: NoteTagTemplateOutcome
 }
 
 export interface NoteListResponse {
@@ -562,6 +569,12 @@ export const notesRpc = defineDomain({
     }),
     applyTemplate: defineMethod<(input: ApplyTemplateInput) => Promise<NoteUpdateResponse>>({
       channel: NotesChannels.invoke.APPLY_TEMPLATE,
+      params: ['input']
+    }),
+    undoTagTemplate: defineMethod<
+      (input: { noteId: string; undoToken: string }) => Promise<UndoTagTemplateResponse>
+    >({
+      channel: NotesChannels.invoke.UNDO_TAG_TEMPLATE,
       params: ['input']
     }),
     appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({

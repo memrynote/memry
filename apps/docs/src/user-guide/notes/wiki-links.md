@@ -344,6 +344,45 @@ printed where they stand, and a definition nothing references is left out.
 
 Inline footnotes such as `^[text]` are not supported and stay plain text.
 
+## People and Things in Links
+
+When a note has a [tag with fields](/user-guide/notes/tags-with-fields) such as `#person`
+or `#company` in its tags row, it is drawn as one of those things wherever it appears:
+
+- A link to it shows the tag's colour and icon, or the person's initials, in front of the
+  title. The file still holds a plain `[[Title]]` link.
+- Its tab, its row in the sidebar, its search result and its title use the same icon.
+  A note's own icon always wins.
+- Hovering the link shows who or what it is: the first filled fields, when you last met
+  for a person in meetings, open tasks that point at it, and how many notes mention it.
+
+### Finding and creating them with @
+
+Type `@` and a name. Matches are grouped by their tag, with a second line taken from
+their first filled fields, above plain notes and canvases. A date phrase such as
+`@friday` still puts the date first.
+
+**Create** is always the last row. It asks what the new note is: the tag you used last
+comes first, then the other tags with fields, then ready-made tags you have not added
+yet (picking one adds it), then **Plain note**. Memry creates the note with that tag
+and its template, links it where you typed, and does not open it. A small card offers
+the first two fields: <kbd>Tab</kbd> moves between them, <kbd>Enter</kbd> saves, and
+<kbd>Esc</kbd> keeps the note with empty fields.
+
+### Linked here
+
+On a note that is one of these things, **Linked here** replaces **Backlinks**. It lists
+the notes whose relation fields point at it (for example meetings whose Attendees
+include this person), tasks whose fields point at it, and notes that mention it, each
+with the newest two and a count. Clicking a relation or task count opens the tag's
+table filtered to this note; clicking the mentions count shows them all.
+
+### An inline tag with fields
+
+A `#company` typed in the text of a note stays a label. Clicking it offers
+**Make this note a Company**, which adds the tag to the note's tags row, plus
+**Open #company** and **Remove tag from text**.
+
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a

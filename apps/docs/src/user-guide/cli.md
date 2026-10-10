@@ -128,7 +128,7 @@ memrynote folder-view suggestions note_abc123
 memrynote folder-view exists Projects
 ```
 
-Per-note properties are stored in note frontmatter. Property definitions are stored in the local database, and portable definitions (`select`, `multiselect`, `status`, `date`, `project`) are also mirrored to `.memry/properties.md` for desktop compatibility; `relation` definitions stay DB-only by design. Folder view writes preserve the folder's `icon:` (emoji or `custom:<id>`), so a CLI view edit never wipes a desktop-set folder icon. Folder view configuration is stored in the same `.folder.md` files used by the desktop Folder View.
+Per-note properties are stored in note frontmatter. Property definitions are stored in the local database, and portable definitions (`select`, `multiselect`, `status`, `date`, `project`) are also mirrored to `.memry/properties.md` for desktop compatibility; `relation` definitions stay DB-only by design. When the CLI saves a definition it rewrites only its own entries in that file; definitions desktop added there (other types, colors, calendar flags, or entries it cannot read) are kept, and a file it cannot parse is left untouched. Folder view writes preserve the folder's `icon:` (emoji or `custom:<id>`), so a CLI view edit never wipes a desktop-set folder icon. Folder view configuration is stored in the same `.folder.md` files used by the desktop Folder View.
 Folder suggestions are deterministic local suggestions from existing vault folders; AI similarity suggestions still require the desktop runtime.
 
 ## Journal

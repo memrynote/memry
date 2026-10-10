@@ -67,7 +67,7 @@ from the same bytes in the same transaction
 Desktop writes that `content` as the new note's file (§12.2 carve-out A).
 
 **The race is the journal row's.** Desktop builds a document from the file only when the note's
-fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:1689-1691`). If desktop opens the
+fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:1694-1696`). If desktop opens the
 note after the record arrives and before the seeded updates do, both devices have seeded a tree,
 and the merge holds the body twice. The window and the outcome are the same as for a journal day
 opened from a template on the phone, and neither write closes it.
@@ -223,7 +223,7 @@ TypeScript as `CRDT_FRAGMENT_NAME` (`packages/contracts/src/ipc-crdt.ts:73`, pin
 BlockNote document.
 
 **Document ids are bare.** Desktop keys every Y.Doc by the bare note id, with no
-namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:840`, `:847`).
+namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:845`, `:852`).
 Journal documents are keyed by the journal record's id (chapter 07 §7.1).
 
 **The two-namespace local update log**, `<docId>` for server sequence numbers and
@@ -288,7 +288,7 @@ Per path:
 
 | Path              | Behaviour                                                                                                                                                                                                                                                                                                                   |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CRDT write-back   | `{ ...existing }` then `merged.tags = yjsTags` (`apps/desktop/src/main/sync/crdt-writeback.ts:949-953`) — existing keys hold position, `tags` is **appended only if absent**. Journal `{ ...existing, date }` (`:966`) behaves the same                                                                                     |
+| CRDT write-back   | `{ ...existing }`, and `merged.tags = yjsTags` only when there is no file yet (`apps/desktop/src/main/sync/crdt-writeback.ts:1052-1063`) — existing keys hold position and an existing file keeps its own `tags:`. Journal `{ ...existing, date }` (`:966`) still takes a non-empty array                                   |
 | remote tags       | assignment or `delete` in place (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:357-361`, `:404-408`)                                                                                                                                                                                                            |
 | remote properties | `replacePropertiesOnRoot` normalises, deletes every property key, then re-adds them in the **record's** order (`apps/desktop/src/main/vault/frontmatter.ts:414-434`, `:438-449`, `:452-461`). **Editing one property moves every property to the end of the block.**                                                        |
 | new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:107-115`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
@@ -436,15 +436,15 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 (`apps/desktop/src/main/sync/crdt-persistence.ts:229-231`) and cleared
 (`:256-259`).
 
-| Root                       | Type                                    | Writer                                                                                                                                                                                                                                                                                        | Reader                                                                                                      | Consequence of dropping it                                                                                                                                                |
-| -------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prosemirror`              | XmlFragment                             | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1681`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                                      |
-| `meta`                     | Map (`title`, `date`)                   | `apps/desktop/src/main/sync/crdt-provider.ts:1163-1165`, `:1184-1186`                                                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                             |
-| `tags`                     | Array\<string\>                         | `apps/desktop/src/main/sync/crdt-provider.ts:1167-1171`, `apps/desktop/src/main/sync/crdt-feed.ts:93-99`                                                                                                                                                                                      | `apps/desktop/src/main/sync/crdt-writeback.ts:993-1001` → `:950-955`                                        | desktop keeps the file's tags while the array is empty (the `yjsTags.length > 0` guard at `:952`), so a drop is **silent divergence** until a later record push overrides |
-| `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region"         |
-| `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                  | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                         |
-| `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                           | same (`:191`)                                                                                               | same                                                                                                                                                                      |
-| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                       | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**            |
+| Root                       | Type                                    | Writer                                                                                                                                                                                                                                                                                        | Reader                                                                                                      | Consequence of dropping it                                                                                                                                        |
+| -------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prosemirror`              | XmlFragment                             | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1686`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                              |
+| `meta`                     | Map (`title`, `date`)                   | `apps/desktop/src/main/sync/crdt-provider.ts:1168-1170`, `:1184-1186`                                                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
+| `tags`                     | Array\<string\>                         | `apps/desktop/src/main/sync/crdt-provider.ts:1885-1890`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                    | `apps/desktop/src/main/sync/crdt-writeback.ts:1059` (a note file the write-back creates)                    | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
+| `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
+| `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                  | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
+| `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                           | same (`:191`)                                                                                               | same                                                                                                                                                              |
+| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                       | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -498,15 +498,15 @@ Rust binding) and never assemble a document by copying named roots.**
 
 The core and desktop already do this
 (`crates/memry-core/src/crdt/registry.rs:200`, `crates/memry-core/src/crdt/snapshots.rs:10`;
-`apps/desktop/src/main/sync/crdt-provider.ts:433`, `:444`, `:560`, `:712`,
-`:820`, `:876`, `:1127`).
+`apps/desktop/src/main/sync/crdt-provider.ts:438`, `:449`, `:565`, `:717`,
+`:825`, `:881`, `:1132`).
 
 **A non-desktop client** reads `prosemirror` for `extract_text` and its block operations,
 and **MUST NOT delete or normalise other roots as a side effect**. It **MUST NOT** write
 `criticMarkupMarks`, `linkReference*` or `markdownSource` — byte-offset marks and
 source records are desktop-derived and a client that touches them corrupts them.
 It **MAY** write `meta` and `tags` with
-`apps/desktop/src/main/sync/crdt-provider.ts:1163-1171` semantics: set-if-absent
+`apps/desktop/src/main/sync/crdt-provider.ts:1168-1176` semantics: set-if-absent
 on create, whole-array replace on a tag edit
 (`apps/desktop/src/main/sync/crdt-feed.ts:96-99`).
 
@@ -518,7 +518,7 @@ elements MUST keep that shape exactly.
 ### 12.5.2 The `meta` key set
 
 **Normative: two keys are defined, `title` and `date`
-(`apps/desktop/src/main/sync/crdt-provider.ts:1164-1165`, `:1185-1186`). Every
+(`apps/desktop/src/main/sync/crdt-provider.ts:1169-1170`, `:1185-1186`). Every
 other key is reserved and MUST be preserved.** Nothing forbids one, and §12.5's
 rule applies to map keys as it does to roots.
 
@@ -535,12 +535,12 @@ tiebreak**. A client MUST NOT construct a case that depends on which wins.
 `Y.Array` and `Y.Text`; anything else is logged and **skipped**
 (`packages/sync-client/src/crdt-compact-utils.ts:14-30`). `initDocStructure`
 types only `prosemirror`, `meta`, `tags` and `criticMarkupMarks`
-(`apps/desktop/src/main/sync/crdt-provider.ts:1039-1044`), so `markdownSource`
+(`apps/desktop/src/main/sync/crdt-provider.ts:1044-1049`), so `markdownSource`
 and the two `linkReference*` roots are typed only once a seed or a
 `yDocToMarkdown` touches them.
 
 Compaction fires via `setImmediate` when the encoded document passes 1 MiB with
-no editor open (`apps/desktop/src/main/sync/crdt-provider.ts:1387-1395`,
+no editor open (`apps/desktop/src/main/sync/crdt-provider.ts:1392-1400`,
 threshold at `:47-49`) and its output replaces both the pushed snapshot and local
 persistence (`:1458`, `:1479-1486`), while write-back is debounced 500 ms
 (`apps/desktop/src/main/sync/crdt-writeback.ts:69`).

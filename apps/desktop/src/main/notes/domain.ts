@@ -9,10 +9,14 @@ import {
   getNoteById,
   type Note,
   type NoteCreateInput,
-  type NoteUpdateInput
+  type NoteUpdateInput,
+  type NoteUpdateOutcome
 } from '../vault/notes'
+import type { NoteTagTemplateOutcome } from '@memry/contracts/notes-api'
+import { applyTagTemplateAfterAdd, undoTagTemplate } from './tag-template'
 import { extractTags } from '../vault/frontmatter'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
@@ -46,7 +50,38 @@ export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
 }
 
 export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
-  const note = await updateNote(input)
+  return (await updateNoteWithTagTemplateCommand(input)).note
+}
+
+/**
+ * `updateNoteCommand`, plus what an added header tag did with its template
+ * (`notes:update` hands that to the renderer for its undo or offer).
+ */
+export async function updateNoteWithTagTemplateCommand(
+  input: NoteUpdateInput
+): Promise<{ note: Note; tagTemplate?: NoteTagTemplateOutcome }> {
+  const { note, headerTagChange } = await writeNoteCommand(input)
+  if (!headerTagChange || headerTagChange.added.length === 0) return { note }
+  return applyTagTemplateAfterAdd(
+    note,
+    { requested: input.headerTags?.add, added: headerTagChange.added },
+    writeNoteBodyCommand
+  )
+}
+
+export function undoTagTemplateCommand(input: {
+  noteId: string
+  undoToken: string
+}): Promise<{ status: 'restored' | 'stale' }> {
+  return undoTagTemplate(input, writeNoteBodyCommand)
+}
+
+async function writeNoteBodyCommand(input: NoteUpdateInput): Promise<Note> {
+  return (await writeNoteCommand(input)).note
+}
+
+async function writeNoteCommand(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
+  const { note, headerTagChange } = await updateNote(input)
   // `updateNote` moves the index hash to the new bytes, so the watcher never
   // feeds this edit, and the next write-back would put the doc's older body
   // back over it (#2646). No `writing`: the doc keeps its own alternatives.
@@ -59,9 +94,13 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
     }
     queueEmbeddedVaultFiles(input.id, input.content)
   }
+  // Write-back writes an open doc's `tags` array over the file's `tags:` list
+  // whenever the array is not empty, so the array has to follow every header
+  // edit and hold the header alone, or the next body edit reverts the edit.
+  if (input.headerTags || headerTagChange) replaceNoteTagsInCrdt(input.id, note.headerTags)
   const hasMetadataChanges =
     input.title !== undefined ||
-    input.tags !== undefined ||
+    headerTagChange !== null ||
     input.frontmatter !== undefined ||
     input.emoji !== undefined
 
@@ -69,7 +108,7 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
     syncNoteUpdate(input.id, input.title)
   }
 
-  return note
+  return { note, headerTagChange }
 }
 
 /**

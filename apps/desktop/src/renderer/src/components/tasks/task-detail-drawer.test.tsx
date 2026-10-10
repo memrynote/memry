@@ -117,6 +117,8 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   )
 }))
 
+vi.mock('@/features/tag-fields/tasks/TaskFieldGroup', () => ({ TaskFieldGroups: () => null }))
+
 let i18nEn: I18nInstance
 
 function renderWithI18n(ui: ReactElement) {
@@ -632,6 +634,7 @@ describe('TaskDetailDrawer — editable properties', () => {
       created: new Date(),
       modified: new Date(),
       tags: [],
+      headerTags: [],
       aliases: [],
       wordCount: 0,
       properties: {}

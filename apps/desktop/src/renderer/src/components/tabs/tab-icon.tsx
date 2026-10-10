@@ -33,6 +33,8 @@ import {
 } from '@/lib/icons/page-icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
+import { TagGlyph } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { ProjectIcon } from '@/components/tasks/project-icon'
 import { useTasksOptional } from '@/contexts/tasks'
@@ -146,6 +148,20 @@ const ProjectTabIcon = ({
   )
 }
 
+const NoteTabIcon = ({
+  noteId,
+  className,
+  fallback
+}: {
+  noteId: string
+  className?: string
+  fallback: React.JSX.Element
+}): React.JSX.Element => {
+  const identity = useOptionalObjectIdentity(noteId)
+  if (!identity) return fallback
+  return <TagGlyph look={identity} className={className} />
+}
+
 /**
  * Renders the appropriate icon for a tab
  * If emoji is provided, renders emoji instead of icon
@@ -174,8 +190,12 @@ const TabIconComponent = ({
   // Use provided icon name or fall back to type-based default
   const iconName = icon || TYPE_TO_ICON[type] || 'file'
   const IconComponent = ICON_COMPONENTS[iconName] || File
+  const plain = <IconComponent className={cn('shrink-0', className)} />
 
-  return <IconComponent className={cn('shrink-0', className)} />
+  if (type === 'note' && entityId) {
+    return <NoteTabIcon noteId={entityId} className={className} fallback={plain} />
+  }
+  return plain
 }
 
 export const TabIcon = memo(TabIconComponent)

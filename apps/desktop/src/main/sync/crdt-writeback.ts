@@ -1039,19 +1039,25 @@ interface MergedFrontmatter {
 }
 
 /**
- * Merge write-back frontmatter: user keys pass through verbatim, CRDT tags
- * win when present. No Memry keys are ever injected. `changed` stays false
- * when the CRDT state matches the file, so the raw block survives verbatim.
+ * Merge write-back frontmatter: user keys pass through verbatim. No Memry keys
+ * are ever injected. `changed` stays false when the CRDT state matches the
+ * file, so the raw block survives verbatim.
+ *
+ * The file owns its `tags:` list: header edits land in the file and sync with
+ * the note record. The doc's `tags` array can be stale (a header edit made
+ * while the note was closed never reaches its stored doc) or hold body tags (a
+ * doc an older build seeded with header and inline tags), so it only seeds the
+ * list of a file the write-back creates.
  */
 function mergeFrontmatter(
   existing: NoteFrontmatter | null,
   doc: Y.Doc,
   writing: WritingFrontmatter
 ): MergedFrontmatter {
-  const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...(existing ?? {}) }
   let changed = mergeWritingFrontmatter(merged, writing)
-  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
+  const yjsTags = existing === null ? getYjsTags(doc) : []
+  if (yjsTags.length > 0) {
     merged.tags = yjsTags
     changed = true
   }

@@ -1,3 +1,5 @@
+import { foldTag } from './tag-fold'
+
 /**
  * Reads a task line written by the Obsidian Tasks plugin, in either of the two
  * formats that plugin emits: the emoji format (`- [ ] Buy milk 📅 2026-01-01 ⏫`)
@@ -307,7 +309,7 @@ function extractTags(description: string): string[] {
   const seen = new Set<string>()
   for (const raw of matches) {
     const tag = raw.trim()
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (seen.has(key)) continue
     seen.add(key)
     tags.push(tag)

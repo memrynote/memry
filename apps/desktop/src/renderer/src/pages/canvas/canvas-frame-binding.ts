@@ -16,6 +16,7 @@
  * @module pages/canvas/canvas-frame-binding
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import {
   DEFAULT_STATUS_CATEGORIES,
@@ -163,7 +164,7 @@ export function withFrameBinding(
 
 export function sameBinding(a: FrameBinding | null, b: FrameBinding | null): boolean {
   if (!a || !b) return a === b
-  if (a.kind === 'tag' && b.kind === 'tag') return a.tag.toLowerCase() === b.tag.toLowerCase()
+  if (a.kind === 'tag' && b.kind === 'tag') return foldTag(a.tag) === foldTag(b.tag)
   if (a.kind === 'property' && b.kind === 'property') {
     return a.property === b.property && a.value === b.value
   }
@@ -296,15 +297,15 @@ export function diffMembership(
 
 /** The tag list with `tag` added, or null when it is already there. */
 export function addTag(tags: readonly string[], tag: string): string[] | null {
-  const key = tag.toLowerCase()
-  if (tags.some((existing) => existing.toLowerCase() === key)) return null
+  const key = foldTag(tag)
+  if (tags.some((existing) => foldTag(existing) === key)) return null
   return [...tags, tag]
 }
 
 /** The tag list without `tag`, or null when it was not there. */
 export function removeTag(tags: readonly string[], tag: string): string[] | null {
-  const key = tag.toLowerCase()
-  const next = tags.filter((existing) => existing.toLowerCase() !== key)
+  const key = foldTag(tag)
+  const next = tags.filter((existing) => foldTag(existing) !== key)
   return next.length === tags.length ? null : next
 }
 

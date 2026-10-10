@@ -27,6 +27,7 @@ vi.mock('./runtime-effects', () => ({
 }))
 
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn() }))
+vi.mock('../sync/crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
 
 vi.mock('../vault-locks/registry', () => ({
   assertNoteWritable: vi.fn((noteId: string) => {
@@ -45,6 +46,13 @@ import {
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+
+/** What `updateNote` resolves to for a write that left the header list as it was. */
+function outcome(note: object): Awaited<ReturnType<typeof noteVault.updateNote>> {
+  return { note, headerTagChange: null } as unknown as Awaited<
+    ReturnType<typeof noteVault.updateNote>
+  >
+}
 
 describe('notes domain adapter', () => {
   beforeEach(() => {
@@ -130,9 +138,7 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       title: 'Updated Note'
     }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(
-      note as Awaited<ReturnType<typeof noteVault.updateNote>>
-    )
+    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
 
     const result = await updateNoteCommand({
       id: 'note-1',
@@ -201,9 +207,7 @@ describe('notes domain adapter', () => {
 
   it('does not call syncNoteUpdate when only content changes', async () => {
     const note = { id: 'note-1', title: 'Title' }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(
-      note as Awaited<ReturnType<typeof noteVault.updateNote>>
-    )
+    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
 
     await updateNoteCommand({ id: 'note-1', content: 'new content' })
 
@@ -219,11 +223,9 @@ describe('notes domain adapter', () => {
       title: 'Title',
       frontmatter: { writing: { alternatives: {}, overflow: [{ text: 'Cut line.' }] } }
     }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(
-      note as unknown as Awaited<ReturnType<typeof noteVault.updateNote>>
-    )
+    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
 
-    await updateNoteCommand({ id: 'note-1', tags: ['focus'] })
+    await updateNoteCommand({ id: 'note-1', headerTags: { add: ['focus'] } })
     await updateNoteCommand({ id: 'note-1', content: 'new content' })
 
     expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([['note-1', 'new content']])
@@ -238,13 +240,10 @@ describe('notes domain adapter', () => {
       content: '![shot](images/shot.png)',
       frontmatter: {}
     } as unknown as Awaited<ReturnType<typeof noteVault.createNote>>)
-    vi.mocked(noteVault.updateNote).mockResolvedValue({
-      id: 'note-1',
-      title: 'Title'
-    } as Awaited<ReturnType<typeof noteVault.updateNote>>)
+    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome({ id: 'note-1', title: 'Title' }))
 
     await createNoteCommand({ title: 'Title', content: '![shot](images/shot.png)' })
-    await updateNoteCommand({ id: 'note-1', tags: ['focus'] })
+    await updateNoteCommand({ id: 'note-1', headerTags: { add: ['focus'] } })
     await updateNoteCommand({ id: 'note-1', content: 'now ![other](images/other.png)' })
 
     expect(vi.mocked(runtimeEffects.queueEmbeddedVaultFiles).mock.calls).toEqual([
@@ -255,9 +254,7 @@ describe('notes domain adapter', () => {
 
   it('saves the note and pushes its metadata when the CRDT feed throws', async () => {
     const note = { id: 'note-1', title: 'Renamed' }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(
-      note as Awaited<ReturnType<typeof noteVault.updateNote>>
-    )
+    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
     vi.mocked(feedExternalEditToCrdt).mockRejectedValueOnce(new Error('converter failed'))
 
     const saved = await updateNoteCommand({ id: 'note-1', title: 'Renamed', content: 'body' })

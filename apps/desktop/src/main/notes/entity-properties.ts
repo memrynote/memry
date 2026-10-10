@@ -15,8 +15,9 @@ import { getNoteCacheById } from './store'
 import { updateNote } from '../vault/notes'
 import { syncNoteUpdate } from './runtime-effects'
 import { enqueueJournalUpdate } from '../journal/runtime-effects'
-import { updateJournalProperties } from '../journal/properties'
+import { patchJournalProperties, updateJournalProperties } from '../journal/properties'
 import { getMainI18n } from '../lib/main-i18n'
+import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('EntityProperties')
 
@@ -48,6 +49,31 @@ export async function setEntityProperties(
     syncNoteUpdate(entityId)
   }
 
+  return { success: true }
+}
+
+/**
+ * Sets only the given keys and leaves the rest; a null value removes its key.
+ * A patch runs inside the note's or journal's write queue against the file's
+ * own frontmatter, so it sees every earlier write and any external edit the index
+ * has not caught up with yet.
+ */
+export async function mergeEntityProperties(
+  entityId: string,
+  values: Record<string, unknown>
+): Promise<SetEntityPropertiesResult> {
+  const entity = getNoteCacheById(getIndexDatabase(), entityId)
+  if (!entity) {
+    return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
+  }
+  if (entity.date) {
+    await patchJournalProperties(entity.date, values)
+    enqueueJournalUpdate(entityId, entity.date)
+  } else {
+    await updateNote({ id: entityId, propertyPatch: values })
+    syncNoteUpdate(entityId)
+  }
+  await flushProjectionEvents()
   return { success: true }
 }
 

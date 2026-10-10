@@ -151,7 +151,7 @@ rule.**
 
 **Only one field in scope carries an object**: `repeatConfig` in
 `TASK_SYNCABLE_FIELDS` (`packages/sync-client/src/field-merge.ts:22`,
-`packages/contracts/src/sync-payloads.ts:36`). `PROJECT_SYNCABLE_FIELDS` has
+`packages/contracts/src/sync-payloads.ts:50`). `PROJECT_SYNCABLE_FIELDS` has
 none; everything else is string, number, boolean or null. Key order comes from
 whoever last wrote the row, so two devices that build `repeatConfig` from the UI
 with different insertion orders compare as differing **forever**, even when
@@ -550,6 +550,10 @@ The field-level path exists only where a payload carries `fieldClocks`
 **A client MUST NOT infer the algorithm from the absence of a list.** The table
 above is the enumeration.
 
+**Two keys bypass both the field list and the document gate**: `task.fields` and
+`tag_definition.schema` are versioned values, joined by §6.11 on every apply path
+whatever the row's algorithm decided.
+
 **Disposition of Q06.5: answered** (this section).
 
 ## 6.9 Settings use a third shape
@@ -740,3 +744,124 @@ under chapter 00 §0.8 obligation 3.
 
 **Disposition of Q06.6: answered (no pruning rule; growth is bounded by the
 device cap and recorded).**
+
+## 6.11 Versioned values
+
+**Normative.** `task.fields` (chapter 13 §13.7.3.1) and `tag_definition.schema`
+(§13.7.7.1) carry their own version `t` inside the value and merge by it,
+independently of the document clock (`packages/shared/src/versioned.ts`).
+
+### 6.11.1 Why the version lives inside the value
+
+Three shipped peers can deliver an old value under a newer document clock:
+
+- a desktop before #2265 strips a key it does not model and pushes without it;
+- a desktop since #2265 echoes the key it captured from the last pulled payload,
+  and the capture runs before the clock gate
+  (`apps/desktop/src/main/sync/apply-item.ts:161`), so it can come from a payload
+  the gate skipped;
+- the Rust core keeps its local copy of an unmodelled key on a concurrent task
+  merge (§6.9.2).
+
+A clock kept beside the value does not survive those peers, because their
+merges keep only the listed field clocks (§6.7). A version carried inside the
+value travels with it through all three. It is a Lamport counter rather than a
+vector clock: stamping needs no device id, so `_offline` (§6.6) never enters a
+value, and a union of vector clocks on a tie is not associative.
+
+### 6.11.2 Order and join
+
+- `version(x)` is `x.t` when it is a safe integer `>= 0`, and 0 otherwise
+  (`packages/shared/src/versioned.ts:33-37`).
+- `canonical(x)` is §6.4.2's canonical form written out: object keys sorted by
+  UTF-16 code units at every depth, arrays in order, no whitespace, numbers as
+  the shortest round-trip digits with no exponent, `-0` as `0`, `undefined`
+  members dropped (`:43-72`). It is the same string as the Rust core's writer
+  (`crates/memry-core/src/sync/field_merge.rs:243`).
+- `a` wins over `b` iff `version(a) > version(b)`, or the versions are equal and
+  `canonical(a)` is greater than `canonical(b)` compared as UTF-16 code units
+  (`packages/shared/src/versioned.ts:74-80`). Equal canonical forms are the
+  same value.
+- **`schema`**: the joined value is the winner of local and remote
+  (`packages/shared/src/versioned.ts:102-112`).
+- **`fields`**: per field name, the winner of the two entries, and an entry
+  present on one side only is taken from that side
+  (`packages/shared/src/versioned.ts:114-135`). A removal (`v: null`) is an
+  entry like any other, so a removal at `t = 3` beats a value at `t = 2` and
+  loses to one at `t = 4`; a stale echo cannot resurrect a value.
+- A remote `null` carries no information: the join keeps the local value and
+  owes no heal (`packages/shared/src/versioned.ts:104`, `:116`). A remote that
+  is absent or not an object reads as absent.
+
+The join is commutative, associative and idempotent and uses no device id. It
+MUST run on every apply path, insert, apply, merge and a document-gate skip
+included (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:159`,
+`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:54`). A skip
+still joins because a #2265 capture can carry a value the receiver never saw
+directly. A client writes the joined value only when it differs from its own.
+
+### 6.11.3 Stamping a local edit
+
+- A task field edit stamps every key it changes with one
+  `t = max(clockTotal(C), highest t in the map) + 1`, where `C` is the task's
+  document clock before this edit ticks it, `_offline` included (§6.2)
+  (`packages/shared/src/versioned.ts:143-156`, called from
+  `packages/storage-data/src/tasks-repository.ts:244-257`). An edit made after
+  seeing more history therefore outranks one made before it. A key whose value
+  does not change keeps its entry, an entry keeps the keys a newer build added,
+  and a new task's values start at `t = 1` (`:160-163`).
+- A schema edit stamps `t = version(previous) + 1` with no clock floor, so a
+  device that never learned a newer schema cannot outrank it with one edit
+  (`packages/shared/src/versioned.ts:163-169`). An edit that changes nothing
+  keeps the previous value and its `t`.
+- Neither stamp carries a device id, so rebinding `_offline` (§6.6) never touches
+  a value: rebinding moves ticks without changing `clockTotal`.
+
+### 6.11.4 Healing
+
+After an apply, or a merge that does not return `'conflict'`, whose join left the
+remote behind (the key was absent, older, or missing entries), a client that
+models the key MUST re-push the item (`packages/shared/src/versioned.ts:181-187`).
+Desktop enqueues a local update after the apply's transaction
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:384`,
+`apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:152`). The
+enqueue ticks this device into the document clock, which is what lets the
+re-push pass the server's replay check
+(`apps/sync-server/src/services/sync.ts:229-240`): the apply stored the remote's
+clock, and a push at that clock is refused. A task's heal names no changed
+field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`).
+
+- A merge that returns `'conflict'` already re-queues the merged row at the union
+  clock (§6.5.2 P3), so it enqueues nothing more. A tag definition merge always
+  returns it.
+- A skip, an insert and a remote `null` never heal, and `'conflict'` is never
+  used as a heal signal, because it shows the user a conflict count.
+- An echo of a client's own push joins to an identical value and heals nothing,
+  so two clients never ping-pong.
+
+Convergence against every shipped peer below is pinned by a seeded property
+test over the production join, stamps and heal rule
+(`packages/shared/src/versioned-convergence.test.ts`).
+
+### 6.11.5 Older peers
+
+| Peer                              | What it does with the two keys                                                                                                                                                       | Outcome                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| desktop before #2265              | strips both on apply and never sends them                                                                                                                                            | a newer desktop keeps its value (absent keeps) and heals                           |
+| desktop since #2265, before §6.11 | keeps them in `sync_unknown_fields` and echoes the last capture, possibly stale, under a newer clock                                                                                 | the join rejects the stale value by `t`, and the receiver heals                    |
+| desktop upgrading to §6.11        | data migration 0073 adopts a captured object into the new column once (`apps/desktop/src/main/database/drizzle-data/0073_tag_schema_task_fields.sql:14-50`)                          | the values show at once and push as stored                                         |
+| Rust core                         | stores both verbatim, keeps local `fields` on a concurrent task merge, takes the remote payload on a concurrent tag definition, copies `fields` to a duplicate and a next occurrence | desktop joins and heals for it (`crates/memry-core/tests/versioned_keys_carry.rs`) |
+| server                            | stores ciphertext                                                                                                                                                                    | no change, and no version floor: an Electron desktop sends no client header        |
+
+A downgrade is inert: an older desktop never selects the two columns, strips
+the two keys, and has no migration newer than 0073 to apply.
+
+The Rust core implements none of §6.11.2 to §6.11.4 today. A core that comes
+to model these keys MUST implement them; the vectors below are already
+reproduced by an independent implementation in its tests.
+
+**The shared vectors are `versioned-values.json`**
+(`packages/contracts/test-vectors/`), generated from
+`packages/shared/src/versioned.ts` and asserted by
+`packages/contracts/src/__tests__/versioned-values.test.ts` and
+`crates/memry-core/tests/versioned_values_vectors.rs`.

@@ -51,6 +51,7 @@ import {
   calculateActivityLevel as calculateActivityLevelFromCharCount
 } from '../journal/store'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
+import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import {
@@ -143,19 +144,22 @@ export function registerJournalHandlers(): void {
 
       // Read current entry to get existing data
       const existing = await readJournalEntry(input.date)
+      const givenTags = input.tags ?? existing?.tags ?? []
+      const newTags = input.inlineTags
+        ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
+        : givenTags
       if (!existing) {
         // If entry doesn't exist, create it (properties serialized to frontmatter)
         return createJournalEntry({
           date: input.date,
           content: input.content ?? '',
-          tags: input.tags ?? [],
+          tags: newTags,
           properties: input.properties
         })
       }
 
       // Merge updates
       const newContent = input.content ?? existing.content
-      const newTags = input.tags ?? existing.tags
       // Merge properties: use input.properties if provided, otherwise keep existing
       const newProperties = input.properties !== undefined ? input.properties : existing.properties
 

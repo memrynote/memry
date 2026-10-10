@@ -7,15 +7,28 @@ import type {
   ProjectWithStatuses,
   Status,
   Task,
+  TaskFieldValue,
+  TaskFieldsPatch,
   TaskListItem,
   TaskListOptions,
   TaskStats
 } from '@memry/domain-tasks'
+import {
+  canonicalJson,
+  plainVersionedMap,
+  stampVersionedMapPatch,
+  type VersionedMap
+} from '@memry/shared/versioned'
 
-type TaskRecord = Omit<Task, 'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom'> & {
+type TaskRecord = Omit<
+  Task,
+  'isRepeating' | 'priority' | 'repeatConfig' | 'repeatFrom' | 'fields'
+> & {
   priority: number
   repeatConfig: unknown
   repeatFrom: string | null
+  fields?: VersionedMap | null
+  clock?: Readonly<Record<string, number>> | null
 }
 type ProjectRecord = Project
 type StatusRecord = Status
@@ -138,6 +151,17 @@ export interface CreateTasksRepositoryDeps<TDb> {
   projectQueries: ProjectQueryModule<TDb>
 }
 
+function clockTotal(clock: Readonly<Record<string, number>> | null | undefined): number {
+  let total = 0
+  for (const tick of Object.values(clock ?? {})) total += tick
+  return total
+}
+
+function firstFieldMap(fields: Record<string, TaskFieldValue> | undefined): VersionedMap | null {
+  const stamped = fields ? stampVersionedMapPatch(undefined, fields, 0) : {}
+  return Object.keys(stamped).length > 0 ? stamped : null
+}
+
 function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskRecord): Task {
   const subtaskCounts = taskQueries.countSubtasks(db, task.id)
   return {
@@ -146,6 +170,7 @@ function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskR
     repeatConfig: task.repeatConfig as Task['repeatConfig'],
     repeatFrom: task.repeatFrom as Task['repeatFrom'],
     isRepeating: !!task.repeatConfig,
+    fields: plainVersionedMap(task.fields),
     tags: taskQueries.getTaskTags(db, task.id),
     linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id),
     linkedCanvasIds: taskQueries.getTaskCanvasIds(db, task.id),
@@ -200,18 +225,35 @@ export function createTasksRepository<TDb>({
         | 'tags'
         | 'linkedNoteIds'
         | 'linkedCanvasIds'
+        | 'fields'
         | 'hasSubtasks'
         | 'subtaskCount'
         | 'completedSubtaskCount'
-      >
+      > & { fields?: Record<string, TaskFieldValue> }
     ): Task {
-      const created = taskQueries.insertTask(db, task)
+      const { fields, ...row } = task
+      const created = taskQueries.insertTask(db, { ...row, fields: firstFieldMap(fields) })
       return enrichTask(db, taskQueries, created)
     },
 
     updateTask(id: string, updates: Record<string, unknown>): Task | undefined {
       const task = taskQueries.updateTask(db, id, updates)
       return task ? enrichTask(db, taskQueries, task) : undefined
+    },
+
+    patchTaskFields(
+      taskId: string,
+      patch: Record<string, TaskFieldValue>
+    ): TaskFieldsPatch | undefined {
+      const task = taskQueries.getTaskById(db, taskId)
+      if (!task) return undefined
+      const next = stampVersionedMapPatch(task.fields, patch, clockTotal(task.clock))
+      const before = plainVersionedMap(task.fields)
+      const after = plainVersionedMap(next)
+      if (canonicalJson(after) !== canonicalJson(before)) {
+        taskQueries.updateTask(db, taskId, { fields: next })
+      }
+      return { before, after }
     },
 
     deleteTask(id: string): void {

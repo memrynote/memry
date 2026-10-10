@@ -197,6 +197,12 @@ export const UpdateEntryInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   content: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // The `#tags` typed into or deleted from the body, applied on top of `tags`.
+  // Only plain tags move into or out of the header: a tag with fields stays a
+  // mention in the text.
+  inlineTags: z
+    .object({ add: z.array(z.string()).optional(), remove: z.array(z.string()).optional() })
+    .optional(),
   properties: z.record(z.string(), z.unknown()).optional()
 })
 

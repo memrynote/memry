@@ -6,6 +6,7 @@
  * `title` and `project` order with `String.prototype.localeCompare` (ICU root
  * collation), which the `task-filtering` vectors pin.
  */
+import { foldTag } from '@memry/shared/tag-fold'
 import {
   addDays,
   addWeeks,
@@ -62,8 +63,8 @@ export const filterByPriorities = <T extends FilterTask>(
 
 export const filterByTags = <T extends FilterTask>(tasks: T[], tags: string[]): T[] => {
   if (tags.length === 0) return tasks
-  const selected = new Set(tags.map((t) => t.toLowerCase()))
-  return tasks.filter((task) => task.tags.some((tag) => selected.has(tag.toLowerCase())))
+  const selected = new Set(tags.map(foldTag))
+  return tasks.filter((task) => task.tags.some((tag) => selected.has(foldTag(tag))))
 }
 
 const hasLocation = (filters: TaskFilters): boolean =>

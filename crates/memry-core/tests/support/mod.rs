@@ -52,6 +52,13 @@ pub fn vector_file(name: &str) -> Json {
         "recreate-clock" => {
             include_str!("../../../../packages/contracts/test-vectors/recreate-clock.json")
         }
+        "versioned-values" => {
+            include_str!("../../../../packages/contracts/test-vectors/versioned-values.json")
+        }
+        "tag-schema-refs" => {
+            include_str!("../../../../packages/contracts/test-vectors/tag-schema-refs.json")
+        }
+        "tag-fold" => include_str!("../../../../packages/contracts/test-vectors/tag-fold.json"),
         "pack-container" => {
             include_str!("../../../../packages/contracts/test-vectors/pack-container.json")
         }
@@ -75,6 +82,9 @@ pub fn vector_file(name: &str) -> Json {
         }
         "delete-attestation" => {
             include_str!("../../../../packages/contracts/test-vectors/delete-attestation.json")
+        }
+        "delete-keep" => {
+            include_str!("../../../../packages/contracts/test-vectors/delete-keep.json")
         }
         "task-parsing" => {
             include_str!("../../../../packages/contracts/test-vectors/task-parsing.json")

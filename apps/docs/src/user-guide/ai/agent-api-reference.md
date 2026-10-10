@@ -7905,6 +7905,7 @@ The notes in a folder or tag scope with the values of the properties asked for.
 | `options.properties` | `string[]`                                                                             | no       |                                              |
 | `options.limit`      | `integer`                                                                              | no       | min `1`; max `1000`; default `500`           |
 | `options.offset`     | `integer`                                                                              | no       | min `0`; max `9007199254740991`; default `0` |
+| `options.rows`       | `"objects" \| "mentions"`                                                              | no       | `"objects"`, `"mentions"`                    |
 
 Example call:
 
@@ -10323,15 +10324,22 @@ Change a note’s title, content, tags, properties or emoji.
 
 `notes.update(input)` through `vault_desktop_write`; needs approval.
 
-| Argument            | Type                  | Required | Allowed values                   |
-| ------------------- | --------------------- | -------- | -------------------------------- |
-| `input`             | `object`              | yes      |                                  |
-| `input.id`          | `string`              | yes      |                                  |
-| `input.title`       | `string`              | no       | min length `1`; max length `200` |
-| `input.content`     | `string`              | no       |                                  |
-| `input.tags`        | `string[]`            | no       | max items `50`                   |
-| `input.frontmatter` | `Record<string, any>` | no       |                                  |
-| `input.emoji`       | `string \| null`      | no       |                                  |
+| Argument                         | Type                  | Required | Allowed values                   |
+| -------------------------------- | --------------------- | -------- | -------------------------------- |
+| `input`                          | `object`              | yes      |                                  |
+| `input.id`                       | `string`              | yes      |                                  |
+| `input.title`                    | `string`              | no       | min length `1`; max length `200` |
+| `input.content`                  | `string`              | no       |                                  |
+| `input.headerTags`               | `object`              | no       |                                  |
+| `input.headerTags.add`           | `string[]`            | no       | max items `50`                   |
+| `input.headerTags.remove`        | `string[]`            | no       | max items `50`                   |
+| `input.headerTags.rename`        | `object[]`            | no       | max items `50`                   |
+| `input.headerTags.rename[].from` | `string`              | yes      | min length `1`; max length `50`  |
+| `input.headerTags.rename[].to`   | `string`              | yes      | min length `1`; max length `50`  |
+| `input.headerTags.source`        | `"inline"`            | no       | `"inline"`                       |
+| `input.tags`                     | `string[]`            | no       | max items `50`                   |
+| `input.frontmatter`              | `Record<string, any>` | no       |                                  |
+| `input.emoji`                    | `string \| null`      | no       |                                  |
 
 Example call:
 
@@ -11503,38 +11511,39 @@ Create a task in a project.
 
 `tasks.create(input)` through `vault_desktop_write`; needs approval.
 
-| Argument                               | Type                                           | Required | Allowed values                                  |
-| -------------------------------------- | ---------------------------------------------- | -------- | ----------------------------------------------- |
-| `input`                                | `object`                                       | yes      |                                                 |
-| `input.projectId`                      | `string`                                       | yes      |                                                 |
-| `input.title`                          | `string`                                       | yes      | min length `1`; max length `500`                |
-| `input.description`                    | `string \| null`                               | no       |                                                 |
-| `input.priority`                       | `integer`                                      | no       | min `0`; max `4`; default `0`                   |
-| `input.statusId`                       | `string \| null`                               | no       |                                                 |
-| `input.parentId`                       | `string \| null`                               | no       |                                                 |
-| `input.dueDate`                        | `string \| null`                               | no       |                                                 |
-| `input.dueTime`                        | `string \| null`                               | no       |                                                 |
-| `input.startDate`                      | `string \| null`                               | no       |                                                 |
-| `input.isRepeating`                    | `boolean`                                      | no       | default `false`                                 |
-| `input.repeatConfig`                   | `object \| null`                               | no       |                                                 |
-| `input.repeatConfig.frequency`         | `"daily" \| "weekly" \| "monthly" \| "yearly"` | yes      | `"daily"`, `"weekly"`, `"monthly"`, `"yearly"`  |
-| `input.repeatConfig.interval`          | `integer`                                      | no       | min `1`; max `9007199254740991`; default `1`    |
-| `input.repeatConfig.daysOfWeek`        | `integer[]`                                    | no       |                                                 |
-| `input.repeatConfig.monthlyType`       | `"dayOfMonth" \| "weekPattern"`                | no       | `"dayOfMonth"`, `"weekPattern"`                 |
-| `input.repeatConfig.dayOfMonth`        | `integer`                                      | no       | min `1`; max `31`                               |
-| `input.repeatConfig.weekOfMonth`       | `integer`                                      | no       | min `1`; max `5`                                |
-| `input.repeatConfig.dayOfWeekForMonth` | `integer`                                      | no       | min `0`; max `6`                                |
-| `input.repeatConfig.endType`           | `"never" \| "date" \| "count"`                 | yes      | `"never"`, `"date"`, `"count"`                  |
-| `input.repeatConfig.endDate`           | `string \| null`                               | no       |                                                 |
-| `input.repeatConfig.endCount`          | `integer`                                      | no       | min `1`; max `9007199254740991`                 |
-| `input.repeatConfig.completedCount`    | `integer`                                      | no       | min `0`; max `9007199254740991`; default `0`    |
-| `input.repeatConfig.createdAt`         | `string`                                       | yes      |                                                 |
-| `input.repeatFrom`                     | `"due" \| "completion" \| null`                | no       | `"due"`, `"completion"`                         |
-| `input.tags`                           | `string[]`                                     | no       | max items `20`                                  |
-| `input.linkedNoteIds`                  | `string[]`                                     | no       |                                                 |
-| `input.linkedCanvasIds`                | `string[]`                                     | no       |                                                 |
-| `input.sourceNoteId`                   | `string \| null`                               | no       |                                                 |
-| `input.position`                       | `integer`                                      | no       | min `-9007199254740991`; max `9007199254740991` |
+| Argument                               | Type                                                                                        | Required | Allowed values                                  | Notes                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------- | ------------------------------------------------ |
+| `input`                                | `object`                                                                                    | yes      |                                                 |                                                  |
+| `input.projectId`                      | `string`                                                                                    | yes      |                                                 |                                                  |
+| `input.title`                          | `string`                                                                                    | yes      | min length `1`; max length `500`                |                                                  |
+| `input.description`                    | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.priority`                       | `integer`                                                                                   | no       | min `0`; max `4`; default `0`                   |                                                  |
+| `input.statusId`                       | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.parentId`                       | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.dueDate`                        | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.dueTime`                        | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.startDate`                      | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.isRepeating`                    | `boolean`                                                                                   | no       | default `false`                                 |                                                  |
+| `input.repeatConfig`                   | `object \| null`                                                                            | no       |                                                 |                                                  |
+| `input.repeatConfig.frequency`         | `"daily" \| "weekly" \| "monthly" \| "yearly"`                                              | yes      | `"daily"`, `"weekly"`, `"monthly"`, `"yearly"`  |                                                  |
+| `input.repeatConfig.interval`          | `integer`                                                                                   | no       | min `1`; max `9007199254740991`; default `1`    |                                                  |
+| `input.repeatConfig.daysOfWeek`        | `integer[]`                                                                                 | no       |                                                 |                                                  |
+| `input.repeatConfig.monthlyType`       | `"dayOfMonth" \| "weekPattern"`                                                             | no       | `"dayOfMonth"`, `"weekPattern"`                 |                                                  |
+| `input.repeatConfig.dayOfMonth`        | `integer`                                                                                   | no       | min `1`; max `31`                               |                                                  |
+| `input.repeatConfig.weekOfMonth`       | `integer`                                                                                   | no       | min `1`; max `5`                                |                                                  |
+| `input.repeatConfig.dayOfWeekForMonth` | `integer`                                                                                   | no       | min `0`; max `6`                                |                                                  |
+| `input.repeatConfig.endType`           | `"never" \| "date" \| "count"`                                                              | yes      | `"never"`, `"date"`, `"count"`                  |                                                  |
+| `input.repeatConfig.endDate`           | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.repeatConfig.endCount`          | `integer`                                                                                   | no       | min `1`; max `9007199254740991`                 |                                                  |
+| `input.repeatConfig.completedCount`    | `integer`                                                                                   | no       | min `0`; max `9007199254740991`; default `0`    |                                                  |
+| `input.repeatConfig.createdAt`         | `string`                                                                                    | yes      |                                                 |                                                  |
+| `input.repeatFrom`                     | `"due" \| "completion" \| null`                                                             | no       | `"due"`, `"completion"`                         |                                                  |
+| `input.tags`                           | `string[]`                                                                                  | no       | max items `20`                                  |                                                  |
+| `input.linkedNoteIds`                  | `string[]`                                                                                  | no       |                                                 |                                                  |
+| `input.linkedCanvasIds`                | `string[]`                                                                                  | no       |                                                 |                                                  |
+| `input.sourceNoteId`                   | `string \| null`                                                                            | no       |                                                 |                                                  |
+| `input.position`                       | `integer`                                                                                   | no       | min `-9007199254740991`; max `9007199254740991` |                                                  |
+| `input.fields`                         | `Record<string, string \| number \| boolean \| null \| object[] \| Record<string, object>>` | no       |                                                 | Field values by name. A null value sets nothing. |
 
 Example call:
 
@@ -11599,37 +11608,38 @@ Change a task’s fields.
 
 `tasks.update(input)` through `vault_desktop_write`; needs approval.
 
-| Argument                               | Type                                           | Required | Allowed values                                 |
-| -------------------------------------- | ---------------------------------------------- | -------- | ---------------------------------------------- |
-| `input`                                | `object`                                       | yes      |                                                |
-| `input.id`                             | `string`                                       | yes      |                                                |
-| `input.title`                          | `string`                                       | no       | min length `1`; max length `500`               |
-| `input.description`                    | `string \| null`                               | no       |                                                |
-| `input.priority`                       | `integer`                                      | no       | min `0`; max `4`                               |
-| `input.projectId`                      | `string`                                       | no       |                                                |
-| `input.statusId`                       | `string \| null`                               | no       |                                                |
-| `input.parentId`                       | `string \| null`                               | no       |                                                |
-| `input.dueDate`                        | `string \| null`                               | no       |                                                |
-| `input.dueTime`                        | `string \| null`                               | no       |                                                |
-| `input.startDate`                      | `string \| null`                               | no       |                                                |
-| `input.isRepeating`                    | `boolean`                                      | no       |                                                |
-| `input.repeatConfig`                   | `object \| null`                               | no       |                                                |
-| `input.repeatConfig.frequency`         | `"daily" \| "weekly" \| "monthly" \| "yearly"` | yes      | `"daily"`, `"weekly"`, `"monthly"`, `"yearly"` |
-| `input.repeatConfig.interval`          | `integer`                                      | no       | min `1`; max `9007199254740991`; default `1`   |
-| `input.repeatConfig.daysOfWeek`        | `integer[]`                                    | no       |                                                |
-| `input.repeatConfig.monthlyType`       | `"dayOfMonth" \| "weekPattern"`                | no       | `"dayOfMonth"`, `"weekPattern"`                |
-| `input.repeatConfig.dayOfMonth`        | `integer`                                      | no       | min `1`; max `31`                              |
-| `input.repeatConfig.weekOfMonth`       | `integer`                                      | no       | min `1`; max `5`                               |
-| `input.repeatConfig.dayOfWeekForMonth` | `integer`                                      | no       | min `0`; max `6`                               |
-| `input.repeatConfig.endType`           | `"never" \| "date" \| "count"`                 | yes      | `"never"`, `"date"`, `"count"`                 |
-| `input.repeatConfig.endDate`           | `string \| null`                               | no       |                                                |
-| `input.repeatConfig.endCount`          | `integer`                                      | no       | min `1`; max `9007199254740991`                |
-| `input.repeatConfig.completedCount`    | `integer`                                      | no       | min `0`; max `9007199254740991`; default `0`   |
-| `input.repeatConfig.createdAt`         | `string`                                       | yes      |                                                |
-| `input.repeatFrom`                     | `"due" \| "completion" \| null`                | no       | `"due"`, `"completion"`                        |
-| `input.tags`                           | `string[]`                                     | no       | max items `20`                                 |
-| `input.linkedNoteIds`                  | `string[]`                                     | no       |                                                |
-| `input.linkedCanvasIds`                | `string[]`                                     | no       |                                                |
+| Argument                               | Type                                                                                        | Required | Allowed values                                 | Notes                                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `input`                                | `object`                                                                                    | yes      |                                                |                                                                                           |
+| `input.id`                             | `string`                                                                                    | yes      |                                                |                                                                                           |
+| `input.title`                          | `string`                                                                                    | no       | min length `1`; max length `500`               |                                                                                           |
+| `input.description`                    | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.priority`                       | `integer`                                                                                   | no       | min `0`; max `4`                               |                                                                                           |
+| `input.projectId`                      | `string`                                                                                    | no       |                                                |                                                                                           |
+| `input.statusId`                       | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.parentId`                       | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.dueDate`                        | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.dueTime`                        | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.startDate`                      | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.isRepeating`                    | `boolean`                                                                                   | no       |                                                |                                                                                           |
+| `input.repeatConfig`                   | `object \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.repeatConfig.frequency`         | `"daily" \| "weekly" \| "monthly" \| "yearly"`                                              | yes      | `"daily"`, `"weekly"`, `"monthly"`, `"yearly"` |                                                                                           |
+| `input.repeatConfig.interval`          | `integer`                                                                                   | no       | min `1`; max `9007199254740991`; default `1`   |                                                                                           |
+| `input.repeatConfig.daysOfWeek`        | `integer[]`                                                                                 | no       |                                                |                                                                                           |
+| `input.repeatConfig.monthlyType`       | `"dayOfMonth" \| "weekPattern"`                                                             | no       | `"dayOfMonth"`, `"weekPattern"`                |                                                                                           |
+| `input.repeatConfig.dayOfMonth`        | `integer`                                                                                   | no       | min `1`; max `31`                              |                                                                                           |
+| `input.repeatConfig.weekOfMonth`       | `integer`                                                                                   | no       | min `1`; max `5`                               |                                                                                           |
+| `input.repeatConfig.dayOfWeekForMonth` | `integer`                                                                                   | no       | min `0`; max `6`                               |                                                                                           |
+| `input.repeatConfig.endType`           | `"never" \| "date" \| "count"`                                                              | yes      | `"never"`, `"date"`, `"count"`                 |                                                                                           |
+| `input.repeatConfig.endDate`           | `string \| null`                                                                            | no       |                                                |                                                                                           |
+| `input.repeatConfig.endCount`          | `integer`                                                                                   | no       | min `1`; max `9007199254740991`                |                                                                                           |
+| `input.repeatConfig.completedCount`    | `integer`                                                                                   | no       | min `0`; max `9007199254740991`; default `0`   |                                                                                           |
+| `input.repeatConfig.createdAt`         | `string`                                                                                    | yes      |                                                |                                                                                           |
+| `input.repeatFrom`                     | `"due" \| "completion" \| null`                                                             | no       | `"due"`, `"completion"`                        |                                                                                           |
+| `input.tags`                           | `string[]`                                                                                  | no       | max items `20`                                 |                                                                                           |
+| `input.linkedNoteIds`                  | `string[]`                                                                                  | no       |                                                |                                                                                           |
+| `input.linkedCanvasIds`                | `string[]`                                                                                  | no       |                                                |                                                                                           |
+| `input.fields`                         | `Record<string, string \| number \| boolean \| null \| object[] \| Record<string, object>>` | no       |                                                | Changes to field values by name. Fields left out keep their values, and null removes one. |
 
 Example call:
 
@@ -15362,13 +15372,16 @@ Change the content, tags or properties of a journal entry.
 
 `journal.updateEntry(input)` through `vault_desktop_write`; needs approval.
 
-| Argument           | Type                  | Required | Allowed values                |
-| ------------------ | --------------------- | -------- | ----------------------------- |
-| `input`            | `object`              | yes      |                               |
-| `input.date`       | `string`              | yes      | pattern `^\d{4}-\d{2}-\d{2}$` |
-| `input.content`    | `string`              | no       |                               |
-| `input.tags`       | `string[]`            | no       |                               |
-| `input.properties` | `Record<string, any>` | no       |                               |
+| Argument                  | Type                  | Required | Allowed values                |
+| ------------------------- | --------------------- | -------- | ----------------------------- |
+| `input`                   | `object`              | yes      |                               |
+| `input.date`              | `string`              | yes      | pattern `^\d{4}-\d{2}-\d{2}$` |
+| `input.content`           | `string`              | no       |                               |
+| `input.tags`              | `string[]`            | no       |                               |
+| `input.inlineTags`        | `object`              | no       |                               |
+| `input.inlineTags.add`    | `string[]`            | no       |                               |
+| `input.inlineTags.remove` | `string[]`            | no       |                               |
+| `input.properties`        | `Record<string, any>` | no       |                               |
 
 Example call:
 
@@ -16264,11 +16277,12 @@ Rename a tag everywhere it is used.
 
 `tags.renameTag(input)` through `vault_desktop_write`; needs approval.
 
-| Argument        | Type     | Required | Allowed values                  |
-| --------------- | -------- | -------- | ------------------------------- |
-| `input`         | `object` | yes      |                                 |
-| `input.oldName` | `string` | yes      | min length `1`                  |
-| `input.newName` | `string` | yes      | min length `1`; max length `50` |
+| Argument        | Type     | Required | Allowed values                   |
+| --------------- | -------- | -------- | -------------------------------- |
+| `input`         | `object` | yes      |                                  |
+| `input.oldName` | `string` | yes      | min length `1`                   |
+| `input.newName` | `string` | yes      | min length `1`; max length `50`  |
+| `input.runId`   | `string` | no       | min length `1`; max length `100` |
 
 Example call:
 

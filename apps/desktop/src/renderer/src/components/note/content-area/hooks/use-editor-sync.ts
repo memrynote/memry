@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef } from 'react'
 import { removeAndInsertBlocks, type Block } from '@blocknote/core'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
@@ -275,7 +276,7 @@ function promoteHashTagsInSharedDoc(
   tagColorMap: Map<string, string>,
   tagIconMap: Map<string, string> | undefined
 ): void {
-  const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+  const tagSet = new Set(noteTags.map((t) => foldTag(t)))
   const options = { unmarkedRunsOnly: true }
   const blocks = editor.document as Block[]
   const normalized = normalizeHashTags(blocks, tagSet, tagColorMap, tagIconMap, options)
@@ -533,7 +534,7 @@ export function useEditorSync({
             )
 
             if (noteTags?.length && tagColorMap) {
-              const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+              const tagSet = new Set(noteTags.map((t) => foldTag(t)))
               const hashNormalized = normalizeHashTags(
                 normalizedBlocks,
                 tagSet,
@@ -560,7 +561,7 @@ export function useEditorSync({
           let normalizedBlocks = normalizeNoteBlocks(initialContent, null)
 
           if (noteTags?.length && tagColorMap) {
-            const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+            const tagSet = new Set(noteTags.map((t) => foldTag(t)))
             const hashNormalized = normalizeHashTags(
               normalizedBlocks,
               tagSet,

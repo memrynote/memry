@@ -725,8 +725,7 @@
     "hint": "Tags shared by the notes most similar to this one. Nothing is added until you pick one.",
     "acceptAria": "Add tag {tag}",
     "support": "{count, plural, one {Used on # similar note} other {Used on # similar notes}}",
-    "dismiss": "Hide suggested tags",
-    "failed": "Could not add the tag"
+    "dismiss": "Hide suggested tags"
   },
   "comments": {
     "railAria": "Comments",
@@ -1655,5 +1654,394 @@
     "readOnlyIndicator": "Locked. Read-only for you and for agents.",
     "externalEditRestored": "“{title}” is locked, so its outside edit was undone",
     "externalEditRestoredHint": "The edited text is saved in the note's version history."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Person",
+        "plural": "People",
+        "fields": {
+          "company": "Company",
+          "role": "Role",
+          "email": "Email",
+          "phone": "Phone"
+        },
+        "inverse": {
+          "company": "People"
+        },
+        "template": {
+          "name": "Person",
+          "context": "Context",
+          "contextHint": "How we met, what they care about",
+          "notes": "Notes"
+        }
+      },
+      "company": {
+        "name": "Company",
+        "plural": "Companies",
+        "fields": {
+          "website": "Website",
+          "industry": "Industry",
+          "location": "Location"
+        },
+        "template": {
+          "name": "Company",
+          "overview": "Overview",
+          "overviewHint": "What they do, who we know there",
+          "notes": "Notes"
+        }
+      },
+      "meeting": {
+        "name": "Meeting",
+        "plural": "Meetings",
+        "fields": {
+          "date": "Date",
+          "attendees": "Attendees",
+          "company": "Company"
+        },
+        "inverse": {
+          "attendees": "Meetings",
+          "company": "Meetings"
+        },
+        "template": {
+          "name": "Meeting",
+          "agenda": "Agenda",
+          "notes": "Notes",
+          "actionItems": "Action items"
+        }
+      },
+      "book": {
+        "name": "Book",
+        "plural": "Books",
+        "fields": {
+          "author": "Author",
+          "shelf": "Shelf",
+          "rating": "Rating",
+          "finished": "Finished"
+        },
+        "shelf": {
+          "toRead": "To read",
+          "reading": "Reading",
+          "read": "Read"
+        },
+        "template": {
+          "name": "Book",
+          "highlights": "Highlights",
+          "thoughts": "Thoughts"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} is now a {tag}. Template added.",
+      "templateChanged": "The note changed after the template was added, so it stays.",
+      "undoFailed": "Could not undo",
+      "addFailed": "Could not add the tag",
+      "removeFailed": "Could not remove the tag",
+      "removedKept": "Removed #{tag}. {count} values kept.",
+      "removedKeptOne": "Removed #{tag}. 1 value kept."
+    },
+    "picker": {
+      "create": "Create #{tag}",
+      "fillsTemplate": "Fills this empty note with the {tag} template"
+    },
+    "hub": {
+      "strip": {
+        "title": "Ready-made tags",
+        "subtitle": "Tags that come with fields. Notes stay as they are until you tag them.",
+        "notNow": "Not now",
+        "add": "Add",
+        "addFields": "Add fields",
+        "added": "Added",
+        "alreadyOn": "Already on {count} notes",
+        "alreadyOnOne": "Already on 1 note"
+      },
+      "dialog": {
+        "title": "Add {preset} fields to #{tag}?",
+        "body": "#{tag} is already on {count} notes. They keep everything they have and get these fields, empty until someone fills them.",
+        "bodyOne": "#{tag} is already on 1 note. It keeps everything it has and gets these fields, empty until someone fills them.",
+        "template": "The template ({sections}) fills only notes that are empty.",
+        "alsoAddsPrefix": "Also adds",
+        "alsoAddsSuffix": "for the {field} field.",
+        "useAnotherName": "Use another name",
+        "nameLabel": "New tag name",
+        "namePlaceholder": "contact",
+        "cancel": "Cancel",
+        "addFields": "Add fields"
+      },
+      "toast": {
+        "added": "Added #{tag}",
+        "addedFields": "Added {preset} fields to #{tag}"
+      },
+      "hasFields": "Has fields"
+    },
+    "tasks": {
+      "thisTask": "This task",
+      "viaTag": "{name} via #{via}",
+      "clearValue": "Clear {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "via #{tag}",
+      "groupMenu": "{tag} options",
+      "openTag": "Open #{tag}",
+      "thisNote": "This note"
+    },
+    "offer": {
+      "text": "Add the {tag} template below your text",
+      "add": "Add",
+      "dismiss": "Dismiss",
+      "addFailed": "Could not add the template"
+    },
+    "settings": {
+      "title": "Settings for #{tag}",
+      "close": "Close",
+      "cancel": "Cancel",
+      "save": "Save",
+      "onCounts": "On {notes, plural, one {# note} other {# notes}} and {tasks, plural, one {# task} other {# tasks}}",
+      "onNotes": "On {count, plural, one {# note} other {# notes}}",
+      "headerFields": "{count, plural, one {# field} other {# fields}}",
+      "editTag": "Edit tag",
+      "syncNote": "Changes sync to your other devices",
+      "newerVersion": "A newer version of Memry changed this tag. Update Memry to edit it here.",
+      "sections": {
+        "appearance": "Appearance",
+        "extends": "Extends",
+        "fields": "Fields · {count}",
+        "template": "Template"
+      },
+      "appearance": {
+        "icon": "Icon",
+        "color": "Colour",
+        "customColor": "Custom",
+        "category": "Category",
+        "noCategory": "No category"
+      },
+      "extends": {
+        "nothing": "Nothing",
+        "hint": "Take another tag's fields and show up in its table.",
+        "hintSet": "{tag} notes get {parent}'s fields and appear in the {parent} table."
+      },
+      "types": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "url": "URL",
+        "status": "Status",
+        "select": "Select",
+        "multiselect": "Multi-select",
+        "checkbox": "Checkbox",
+        "relation": "Relation"
+      },
+      "fields": {
+        "empty": "No fields yet. Add one to give every #tag note the same properties.",
+        "fromParent": "From #{tag} · edit there",
+        "inverseSub": "Shown on the {target} as {inverse}",
+        "anyNoteSub": "Links to any note",
+        "actions": "Actions for {field}",
+        "rename": "Rename…",
+        "relationSettings": "Relation settings",
+        "remove": "Remove…"
+      },
+      "addField": {
+        "button": "Add field",
+        "namePlaceholder": "Field name",
+        "existing": "Existing properties",
+        "existingSub": "{type} · on {count, plural, one {# note} other {# notes}} · reuse",
+        "newType": "New field type",
+        "relationSub": "Link to notes with a tag",
+        "submit": "Add field",
+        "reserved": "{name} is reserved and cannot be a field.",
+        "taken": "#{tag} already has {name}."
+      },
+      "relation": {
+        "target": "Points to notes tagged",
+        "pickTag": "Pick a tag",
+        "howMany": "How many",
+        "one": "One",
+        "many": "Many",
+        "inverseLabel": "On the {target} page, list them as",
+        "inverseLabelAny": "On the linked page, list them as",
+        "inverseHint": "A read-only list on each {target}. Nothing is written to {target} notes.",
+        "inverseHintAny": "A read-only list on each linked note. Nothing is written to those notes."
+      },
+      "shared": {
+        "title": "New field on #{tag}",
+        "existsWith": "{name} already exists in this vault with {options}.",
+        "existsAs": "{name} already exists in this vault as a {type} property.",
+        "shareWith": "#{tag} will share it with your {others} notes.",
+        "shareAny": "#{tag} will share it with your other notes.",
+        "useInstead": "Use {name} instead",
+        "share": "Share {name}"
+      },
+      "template": {
+        "edit": "Edit template",
+        "none": "No template yet. A template fills empty notes when they get the tag.",
+        "create": "Create template",
+        "defaultHeading": "Notes",
+        "inherited": "From #{tag}",
+        "autofill": "Fill empty notes when they get #{tag}"
+      },
+      "remove": {
+        "title": "Remove {field} from #{tag}?",
+        "body": "{field} is filled on {filled, plural, one {# note} other {# notes}}. Those values stay on the notes as a regular property; the {empty, plural, one {# empty slot disappears} other {# empty slots disappear}}.",
+        "confirm": "Remove field"
+      },
+      "rename": {
+        "title": "Rename {from} to {to}",
+        "titleEmpty": "Rename {from}",
+        "label": "New name",
+        "body": "{count, plural, one {# note has} other {# notes have}} a {field} value. Memry renames the key in each file and in their properties; Obsidian sees the new name too.",
+        "progress": "Renaming in notes",
+        "confirm": "Rename",
+        "taken": "This tag already has {name}.",
+        "done": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}.",
+        "skipped": "Renamed {from} to {to} in {count, plural, one {# item} other {# items}}. {locked, plural, =0 {} one {# locked note finishes when it is unlocked.} other {# locked notes finish when they are unlocked.}} {existing, plural, =0 {} one {# note already had {to} and keeps both.} other {# notes already had {to} and keep both.}}"
+      },
+      "delete": {
+        "button": "Delete tag",
+        "title": "Delete #{tag}?",
+        "body": "#{tag} will be removed from {notes, plural, one {# note} other {# notes}} and the tag goes away with its {fields, plural, one {# field} other {# fields}} and template.",
+        "bodyNoTemplate": "#{tag} will be removed from {notes, plural, one {# note} other {# notes}} and the tag goes away with its {fields, plural, one {# field} other {# fields}}.",
+        "bodyPlain": "#{tag} will be removed from every note that has it in its tags.",
+        "statNotes": "notes keep their text",
+        "statValues": "values stay as properties",
+        "plainText": "Notes that mention #{tag} in their text keep it as plain text.",
+        "confirm": "Delete tag",
+        "done": "Deleted #{tag}."
+      },
+      "errors": {
+        "addField": "Could not add the field.",
+        "removeField": "Could not remove the field.",
+        "renameField": "Could not rename the field.",
+        "moveField": "Could not move the field.",
+        "relation": "Could not save the relation.",
+        "extends": "Could not change what this tag extends.",
+        "template": "Could not update the template.",
+        "deleteTag": "Could not delete the tag.",
+        "icon": "Could not change the icon.",
+        "color": "Could not change the colour.",
+        "category": "Could not change the category."
+      }
+    },
+    "fill": {
+      "action": "Fill from note",
+      "reading": "Reading note…",
+      "disclosure": "Your agent model ({model}) reads this note to suggest values. Only this note is sent. Nothing is saved until you accept.",
+      "disclosureLocal": "Your local model ({model}) reads this note on this device to suggest values. Nothing leaves the device, and nothing is saved until you accept.",
+      "disclosureMany": "Your agent model ({model}) reads these notes one at a time to suggest values. Only those notes are sent. Nothing is saved until you accept.",
+      "disclosureLocalMany": "Your local model ({model}) reads these notes on this device to suggest values. Nothing leaves the device, and nothing is saved until you accept.",
+      "suggest": "Suggest values",
+      "notNow": "Not now",
+      "countOne": "· {count} suggestion",
+      "count": "· {count} suggestions",
+      "dismiss": "Dismiss",
+      "acceptAll": "Accept all",
+      "accept": "Accept {field}",
+      "reject": "Reject {field}",
+      "notInNote": "Not in the note",
+      "createHint": "Creates a new #{tag} when accepted",
+      "nothingFound": "Nothing in this note fills the empty fields",
+      "failed": "Could not suggest values. {message}",
+      "saveFailed": "Could not save the accepted values",
+      "bulkAction": "Fill empty fields",
+      "bulkTitle": "Fill empty fields",
+      "bulkReading": "{done} of {total} notes · reading notes…",
+      "bulkRead": "{done} of {total} notes read",
+      "stop": "Stop",
+      "name": "Name",
+      "nothingInRow": "Nothing found",
+      "found": "{count} found",
+      "reviewOneByOne": "Review one by one",
+      "acceptRow": "Accept values for {title}",
+      "rejectRow": "Skip {title}",
+      "bulkSavedOne": "Filled {count} field on {notes} notes",
+      "bulkSaved": "Filled {count} fields on {notes} notes"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Create {title} as",
+      "asPrefix": "Create",
+      "asSuffix": "as",
+      "failed": "Could not create the note",
+      "lastUsed": "Last used",
+      "noteWord": "note",
+      "plainNote": "Plain note",
+      "readyMade": "Ready-made tag",
+      "row": "Create “{title}”",
+      "rowHint": "As a {types}"
+    },
+    "hover": {
+      "at": "at",
+      "lastMet": "Last met · {title}",
+      "lastMetOn": "Last met {date} · {title}",
+      "mentionedIn": "{count, plural, one {Mentioned in # note} other {Mentioned in # notes}}",
+      "open": "Open",
+      "tasks": "{count, plural, one {# task · {field}} other {# tasks · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} in the text",
+      "explain": "In the text, a tag is a label. This note is listed under Mentioned in on #{tag}.",
+      "made": "Added #{tag} to this note's tags",
+      "make": "Make this note a {tag}",
+      "makeFailed": "Could not add the tag",
+      "makeHint": "Adds #{tag} to the header and shows its fields",
+      "meta": "{count, plural, one {# object} other {# objects}} · {fields, plural, one {# field} other {# fields}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# field} other {# fields}}",
+      "open": "Open #{tag}",
+      "remove": "Remove tag from text"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "as {field}",
+      "due": "Due {date}",
+      "inTheText": "in the text",
+      "mentionedIn": "Mentioned in",
+      "tasks": "Tasks",
+      "title": "Linked here"
+    },
+    "mention": {
+      "notes": "Notes"
+    },
+    "picker": {
+      "create": "New {tag}",
+      "createNamed": "New {tag} “{title}”",
+      "empty": "No matches",
+      "search": "Search {tag}",
+      "untitled": "New {tag}"
+    },
+    "quickFields": {
+      "add": "Add {field}",
+      "aria": "First fields of {title}",
+      "done": "Done",
+      "later": "Later",
+      "newObject": "New {tag}",
+      "saveFailed": "Could not save the fields"
+    },
+    "table": {
+      "untitled": "New {tag}",
+      "newInGroup": "New {tag} in {group}",
+      "newInGroupHint": "⌘↵ opens it in a new tab",
+      "new": "New {tag}",
+      "includes": "{field} includes",
+      "removeFilter": "Remove filter",
+      "shown": "{shown} of {total}",
+      "saveView": "Save view",
+      "mentionedMeta": "{count, plural, one {# note with '#'{tag} in its text} other {# notes with '#'{tag} in their text}}",
+      "saveFailed": "Could not save the field",
+      "created": "Created {title}"
+    },
+    "relationDrop": {
+      "title": "Add #{tag} to “{title}”?",
+      "body": "This field only links notes tagged #{tag}. Memry adds #{tag} to the header of “{title}”, then links it here.",
+      "confirm": "Add #{tag} and link",
+      "cancel": "Cancel",
+      "added": "“{title}” is now a #{tag} and linked",
+      "notANote": "Only notes can be linked here as #{tag}",
+      "failed": "Could not link this note"
+    }
   }
 }

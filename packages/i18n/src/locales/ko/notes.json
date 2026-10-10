@@ -615,8 +615,7 @@
     "hint": "이 노트와 가장 비슷한 노트에서 함께 쓰인 태그입니다. 선택하기 전에는 아무것도 추가되지 않습니다.",
     "acceptAria": "{tag} 태그 추가",
     "support": "{count, plural, other {유사한 노트 #개에서 사용}}",
-    "dismiss": "추천 태그 숨기기",
-    "failed": "태그를 추가하지 못했습니다"
+    "dismiss": "추천 태그 숨기기"
   },
   "comments": {
     "railAria": "댓글",

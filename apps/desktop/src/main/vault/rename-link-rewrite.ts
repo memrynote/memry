@@ -199,7 +199,7 @@ async function rewriteSource(
         id: sourceId,
         date: journalDate,
         content: parsed.content,
-        tags: syncResult.tags,
+        tags: syncResult.headerTags,
         wordCount: syncResult.wordCount,
         characterCount: syncResult.characterCount,
         modified: new Date(now),

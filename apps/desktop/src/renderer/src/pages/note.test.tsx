@@ -183,6 +183,14 @@ vi.mock('@/hooks/use-notes-query', () => ({
   })
 }))
 
+vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  useObjectIdentity: () => null,
+  useObjectIdentityLookup: () => () => null
+}))
+
 vi.mock('@/hooks/use-property-section', () => ({
   usePropertySection: ({
     onBlocked,
@@ -195,6 +203,8 @@ vi.mock('@/hooks/use-property-section', () => ({
     mocks.propertyCanEdit = canEdit
     return {
       properties: [{ id: 'p1', name: 'Status', value: 'Draft', type: 'text' }],
+      values: { Status: 'Draft' },
+      handleSetFieldValue: vi.fn(),
       newlyAddedPropertyId: null,
       handlePropertyChange: mocks.handlePropertyChange,
       handleAddProperty: mocks.handleAddProperty,
@@ -596,7 +606,7 @@ vi.mock('@/components/note/tags-row', () => ({
     onTagClick: (tag: { name: string; color: string }) => void
   }) => (
     <div>
-      <span>{tags.map((tag) => tag.name).join(',')}</span>
+      <span data-testid="tags-row">{tags.map((tag) => tag.name).join(',')}</span>
       <button type="button" onClick={() => onAddTag('later')}>
         Add tag
       </button>
@@ -905,7 +915,8 @@ const note = {
   title: 'Test Note',
   path: 'notes/Test Note.md',
   content: 'Original body',
-  tags: ['work'],
+  tags: ['work', 'idea'],
+  headerTags: ['work'],
   frontmatter: { localOnly: false, fullWidth: false },
   wordCount: 2,
   created: new Date('2026-05-01'),
@@ -1037,14 +1048,25 @@ describe('NotePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
     expect(mocks.renameNote).toHaveBeenCalledWith({ id: 'note-1', newTitle: 'Renamed Note' })
 
+    expect(screen.getByTestId('tags-row')).toHaveTextContent(/^work$/)
+
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'later'] })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: ['later'] }
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Create tag' }))
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'urgent'] })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: ['urgent'] }
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { remove: ['work'] }
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tag' }))
     expect(mocks.openSidebarItem).toHaveBeenCalledWith({
@@ -1093,7 +1115,7 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
   })
 
-  it('debounces markdown saves and syncs inline tags', async () => {
+  it('debounces markdown saves and reports typed inline tags', async () => {
     vi.useFakeTimers()
     renderWithProviders(<NotePage noteId="note-1" />)
 
@@ -1109,54 +1131,35 @@ describe('NotePage', () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['graph', 'note-1'] })
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync inline tags' }))
-    await waitFor(() =>
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'urgent'] })
-    )
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: ['work', 'urgent'], remove: [], source: 'inline' }
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
-    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: [], remove: ['work', 'urgent'], source: 'inline' }
+    })
   })
 
   it('does not write the note when opening it reports its inline tags', async () => {
-    // #given a note opened with `#work` in its body (#1454)
     renderWithProviders(<NotePage noteId="note-1" />)
     await screen.findByRole('button', { name: 'Load inline tags' })
 
     // #when the editor reports the tag set it loaded with
     fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    // #then nothing is persisted — opening a note may not modify it
-    const tagWrites = mocks.updateNote.mock.calls.filter(
-      ([input]) => (input as { tags?: string[] }).tags !== undefined
-    )
-    expect(tagWrites).toEqual([])
-  })
-
-  it('does not rewrite the note when a loaded tag differs only in case', async () => {
-    // #given the index keeps the frontmatter spelling ('work') while the body
-    // says '#Work'. Before the origin was threaded through, `tagsToAdd` saw
-    // 'Work' as new and merely OPENING the note wrote tags: ['work', 'Work'].
-    renderWithProviders(<NotePage noteId="note-1" />)
-    await screen.findByRole('button', { name: 'Load cased inline tags' })
-
-    // #when the editor reports what it loaded
     fireEvent.click(screen.getByRole('button', { name: 'Load cased inline tags' }))
     await act(async () => {
       await Promise.resolve()
     })
 
-    // #then nothing is written — a load is not an edit
     expect(mocks.updateNote).not.toHaveBeenCalledWith(
-      expect.objectContaining({ tags: expect.anything() })
+      expect.objectContaining({ headerTags: expect.anything() })
     )
   })
 
-  it('still removes a tag when the user deletes the last inline tag after opening', async () => {
-    // #given a note opened with `#work` in its body, so the baseline is set by
-    // the load report rather than by a write
+  it('removes a tag when the user deletes the inline tag the note opened with', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     await screen.findByRole('button', { name: 'Load inline tags' })
     fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
@@ -1164,9 +1167,10 @@ describe('NotePage', () => {
     // #when the user deletes it
     fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
 
-    // #then the tag comes off the note. Without the load baseline the page
-    // would have no record of `work` ever being inline and would drop this.
-    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: [], remove: ['work'], source: 'inline' }
+    })
   })
 
   it('flushes pending markdown saves through the registry and unmount cleanup', async () => {

@@ -4,38 +4,29 @@
  * replaces. Without a merge, a tag that exists only as a body hashtag is wiped
  * from the second device's index on every remote update: the note silently
  * drops out of tag search and the tag hub while its file stays intact (#1471).
- *
- * These run against real note files and the real frontmatter parser, so the
- * merge is actually exercised rather than mocked away — `setNoteTags` is the
- * only seam, because it is the assertion.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  createTestIndexDb,
+  sql,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-body-tags-'))
 
 let dataDb: TestDatabaseResult
+let indexDb: TestDatabaseResult
 
 vi.mock('../../database', () => ({ getDatabase: () => dataDb.db }))
 
 vi.mock('../../database/client', () => ({
-  getIndexDatabase: vi.fn(() => ({}))
-}))
-
-const mockGetNoteTags = vi.fn<() => string[]>(() => [])
-vi.mock('@main/database/queries/notes', () => ({
-  noteCacheExists: vi.fn(() => true),
-  getNoteCacheById: vi.fn(() => undefined),
-  getNoteCacheByPath: vi.fn(() => undefined),
-  getNoteTags: () => mockGetNoteTags(),
-  setNoteTags: vi.fn(),
-  updateNoteCache: vi.fn(),
-  setNoteProperties: vi.fn()
+  getIndexDatabase: () => indexDb.db
 }))
 
 vi.mock('../../vault/notes', () => ({
@@ -63,13 +54,13 @@ vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn() }))
 
 import { noteHandler } from './note-handler'
-import { setNoteTags } from '@main/database/queries/notes'
+import { insertNoteCache, setNoteTags } from '@main/database/queries/notes'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 
 const NOTE_PATH = 'n1.md'
 const REMOTE_CLOCK = { 'device-A': 1, 'device-B': 1 }
 
-function seedNote(fileContent: string, indexTags: string[]): void {
+function seedNote(fileContent: string, bodyTags: string[]): void {
   dataDb.db
     .insert(noteMetadata)
     .values({
@@ -82,10 +73,26 @@ function seedNote(fileContent: string, indexTags: string[]): void {
       modifiedAt: '2026-01-01T00:00:00.000Z'
     })
     .run()
+  insertNoteCache(indexDb.db, {
+    id: 'n1',
+    path: NOTE_PATH,
+    title: 'n1',
+    contentHash: 'hash-n1',
+    wordCount: 0,
+    characterCount: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    modifiedAt: '2026-01-01T00:00:00.000Z'
+  })
+  setNoteTags(indexDb.db, 'n1', { header: [], inline: bodyTags })
 
   fs.mkdirSync(VAULT_ROOT, { recursive: true })
   fs.writeFileSync(path.join(VAULT_ROOT, NOTE_PATH), fileContent, 'utf-8')
-  mockGetNoteTags.mockReturnValue(indexTags)
+}
+
+function indexRows(): Array<{ tag: string; in_header: number | null }> {
+  return indexDb.db.all(
+    sql`SELECT tag, in_header FROM note_tags WHERE note_id = 'n1' ORDER BY position`
+  )
 }
 
 function readNoteFile(): string {
@@ -103,12 +110,14 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     dataDb = createTestDataDb()
+    indexDb = createTestIndexDb()
     ctx = { db: dataDb.db as unknown as DrizzleDb, emit: vi.fn() }
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
   })
 
   afterEach(() => {
     dataDb.close()
+    indexDb.close()
   })
 
   afterAll(() => {
@@ -117,7 +126,7 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
 
   it('keeps a body-only hashtag in the index when the remote payload carries no tags', () => {
     // #given — the tag lives only in the body, so the sender's payload is empty
-    seedNote('---\ntitle: n1\n---\n\nsome body with #work in it\n', ['work'])
+    seedNote('---\ntitle: n1\n---\n\nsome body with #work in it\n', ['work', 'stale'])
 
     // #when
     const result = noteHandler.applyUpsert(
@@ -129,12 +138,12 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
 
     // #then — the index keeps the tag instead of being replaced with []
     expect(result).toBe('applied')
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'n1', ['work'])
+    expect(indexRows()).toEqual([{ tag: 'work', in_header: 0 }])
     // …and nothing body-derived is written back into frontmatter (#1454)
     expect(readFrontmatter()).not.toMatch(/tags:/)
   })
 
-  it('merges remote frontmatter tags with the local body hashtag', () => {
+  it('marks the payload tags as header tags and the local body hashtag as inline', () => {
     // #given
     seedNote('---\ntitle: n1\n---\n\nsome body with #work in it\n', ['work'])
 
@@ -148,7 +157,10 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
 
     // #then — index carries both; the file's frontmatter carries only the remote half
     expect(result).toBe('applied')
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'n1', ['roadmap', 'work'])
+    expect(indexRows()).toEqual([
+      { tag: 'roadmap', in_header: 1 },
+      { tag: 'work', in_header: 0 }
+    ])
     const frontmatter = readFrontmatter()
     expect(frontmatter).toMatch(/roadmap/)
     expect(frontmatter).not.toMatch(/work/)
@@ -161,8 +173,10 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
     // #when
     noteHandler.applyUpsert(ctx, 'n1', { tags: ['work'], clock: REMOTE_CLOCK }, REMOTE_CLOCK)
 
-    // #then — one entry for the shared tag, spelled as the frontmatter has it
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'n1', ['work', 'focus'])
+    expect(indexRows()).toEqual([
+      { tag: 'work', in_header: 1 },
+      { tag: 'focus', in_header: 0 }
+    ])
   })
 
   it('carries the merged tags on the emitted update, not the remote half alone', () => {
@@ -195,7 +209,10 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
 
     // #then — read from the new path, not the unlinked old one
     expect(result).toBe('applied')
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'n1', ['roadmap', 'work'])
+    expect(indexRows()).toEqual([
+      { tag: 'roadmap', in_header: 1 },
+      { tag: 'work', in_header: 0 }
+    ])
   })
 
   it('falls back to the remote tags when the note file cannot be read', () => {
@@ -207,6 +224,6 @@ describe('noteHandler.applyUpsert — body hashtags on a synced update', () => {
     noteHandler.applyUpsert(ctx, 'n1', { tags: ['roadmap'], clock: REMOTE_CLOCK }, REMOTE_CLOCK)
 
     // #then — no merge is possible, but the remote half still lands
-    expect(setNoteTags).toHaveBeenCalledWith({}, 'n1', ['roadmap'])
+    expect(indexRows()).toEqual([{ tag: 'roadmap', in_header: 1 }])
   })
 })

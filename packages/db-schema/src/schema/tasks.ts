@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
+import type { VersionedMap } from '@memry/shared/versioned'
 import { projects } from './projects.ts'
 import { statuses } from './statuses.ts'
 
@@ -31,6 +32,8 @@ export const tasks = sqliteTable(
 
     completedAt: text('completed_at'),
     archivedAt: text('archived_at'),
+
+    fields: text('fields', { mode: 'json' }).$type<VersionedMap>(),
 
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
     fieldClocks: text('field_clocks', { mode: 'json' }).$type<FieldClocks>(),

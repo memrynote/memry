@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, memo } from 'react'
-
+import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -71,6 +71,8 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   const nextDate = nextProps.task.dueDate?.getTime() ?? null
   if (prevDate !== nextDate) return false
   if (prevProps.task.dueTime !== nextProps.task.dueTime) return false
+  if (prevProps.task.fields !== nextProps.task.fields) return false
+  if (prevProps.task.tags !== nextProps.task.tags) return false
   if (prevProps.isCompleted !== nextProps.isCompleted) return false
   if (prevProps.isSelected !== nextProps.isSelected) return false
   if (prevProps.isSelectionMode !== nextProps.isSelectionMode) return false
@@ -326,6 +328,10 @@ const TaskRowComponent = ({
 
         {task.isRepeating && task.repeatConfig && (
           <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
+        )}
+
+        {!isOverlay && task.fields && Object.keys(task.fields).length > 0 && (
+          <TaskRelationChip tags={task.tags} fields={task.fields} />
         )}
 
         {showProjectBadge && !path && (

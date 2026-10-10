@@ -7,6 +7,7 @@
  * note does.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -174,7 +175,7 @@ function TemplateEditorSurface({
   // tag the user typed with a capital.
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const tag of allAvailableTags) map.set(tag.tag.toLowerCase(), tag.color)
+    for (const tag of allAvailableTags) map.set(foldTag(tag.tag), tag.color)
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
@@ -187,9 +188,7 @@ function TemplateEditorSurface({
         id: name,
         name,
         color:
-          tagColorMap.get(name.toLowerCase()) ??
-          pendingTagColorsRef.current.get(name.toLowerCase()) ??
-          ''
+          tagColorMap.get(foldTag(name)) ?? pendingTagColorsRef.current.get(foldTag(name)) ?? ''
       })),
     [fields.tags, tagColorMap]
   )
@@ -210,7 +209,7 @@ function TemplateEditorSurface({
 
   const handleCreateTag = useCallback(
     (name: string, color: string) => {
-      pendingTagColorsRef.current.set(name.toLowerCase(), color)
+      pendingTagColorsRef.current.set(foldTag(name), color)
       if (fields.tags.includes(name)) return
       setFields({ tags: [...fields.tags, name] })
     },

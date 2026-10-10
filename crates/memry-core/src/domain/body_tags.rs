@@ -18,8 +18,9 @@ use crate::domain::notes::failed;
 use crate::domain::tags;
 
 /// `note_tags` and `note_body_tags` as one `(note_id, tag)` relation. `UNION`
-/// compares with `note_tags.tag`'s `NOCASE`, so a tag both halves carry is one
-/// row.
+/// compares with the columns' `NOCASE`, which folds ASCII only, so one note can
+/// still yield two rows of one tag (`Ünal`, `ünal`): readers match and group by
+/// `tag_fold` and count distinct `note_id`s.
 pub const ALL_NOTE_TAGS: &str = "(SELECT note_id, tag FROM note_tags WHERE deleted_at IS NULL \
      UNION SELECT note_id, tag FROM note_body_tags)";
 
@@ -46,33 +47,44 @@ pub fn extract(blocks: &[Block]) -> Vec<String> {
 }
 
 fn scan(line: &str, found: &mut Vec<String>) {
-    let chars: Vec<char> = line.chars().collect();
+    for (start, end) in tag_spans(line, None) {
+        found.push(line[start..end].to_owned());
+    }
+}
+
+pub(crate) fn tag_spans(line: &str, before: Option<char>) -> Vec<(usize, usize)> {
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
+    let byte = |at: usize| chars.get(at).map_or(line.len(), |(offset, _)| *offset);
+    let char_at = |at: usize| chars.get(at).map(|(_, c)| *c);
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
+    let mut spans = Vec::new();
     let mut at = 0;
     while at < chars.len() {
-        let starts = chars[at] == '#'
-            && (at == 0 || chars[at - 1].is_whitespace())
-            && chars.get(at + 1).is_some_and(char::is_ascii_alphabetic);
+        let preceding = if at == 0 { before } else { char_at(at - 1) };
+        let starts = char_at(at) == Some('#')
+            && preceding.is_none_or(char::is_whitespace)
+            && char_at(at + 1).is_some_and(|c| c.is_ascii_alphabetic());
         if !starts {
             at += 1;
             continue;
         }
         let mut end = at + 1;
-        while end < chars.len() && word(chars[end]) {
+        while char_at(end).is_some_and(word) {
             end += 1;
         }
         // A `/` continues the tag only when a segment follows it.
-        while chars.get(end) == Some(&'/')
-            && chars.get(end + 1).is_some_and(char::is_ascii_alphanumeric)
+        while char_at(end) == Some('/')
+            && char_at(end + 1).is_some_and(|c| c.is_ascii_alphanumeric())
         {
             end += 1;
-            while end < chars.len() && word(chars[end]) {
+            while char_at(end).is_some_and(word) {
                 end += 1;
             }
         }
-        found.push(chars[at + 1..end].iter().collect());
+        spans.push((byte(at + 1), byte(end)));
         at = end;
     }
+    spans
 }
 
 /// Replaces one document's cached body tags.

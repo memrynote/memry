@@ -11,8 +11,9 @@ export {
   updateTagColor,
   updateTagIcon,
   getNoteTags,
-  setNoteTags,
-  getNoteCacheById
+  getNoteCacheById,
+  noteIdsWithTag,
+  findTagDefinition
 } from '@main/database/queries/notes'
 export { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'
 export {
@@ -26,4 +27,5 @@ export {
   type TagAssignment
 } from '@main/database/queries/tag-categories'
 export { listTagItems, type TagItem } from '@main/database/queries/tag-items'
-export { readTagViews, writeTagViews } from '@main/database/queries/tag-definitions'
+export { readTagViews } from '@main/database/queries/tag-definitions'
+export { saveTagViews as writeTagViews } from './schema/views'

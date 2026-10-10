@@ -69,6 +69,7 @@ function unifiedSidebar() {
             { text: 'Creating & Editing', link: '/user-guide/notes/editing' },
             { text: 'Wiki Links & Backlinks', link: '/user-guide/notes/wiki-links' },
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
+            { text: 'Tags With Fields', link: '/user-guide/notes/tags-with-fields' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },
             { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
             { text: 'Read-Only Locks', link: '/user-guide/notes/read-only-locks' },

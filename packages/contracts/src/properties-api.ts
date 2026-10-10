@@ -54,6 +54,15 @@ export const SetPropertiesSchema = z.object({
 })
 
 /**
+ * Schema for merging values into an entity's properties: the given keys are
+ * set, a null value removes its key, every other property stays.
+ */
+export const MergePropertiesSchema = z.object({
+  entityId: z.string().min(1, 'Entity ID is required'),
+  values: z.record(z.string(), z.unknown())
+})
+
+/**
  * Schema for renaming a property on an entity.
  * Note-only scope: rename only affects the current entity's frontmatter.
  */

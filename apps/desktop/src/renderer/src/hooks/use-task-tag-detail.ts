@@ -1,3 +1,4 @@
+import { tagKey } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * Hook for listing tasks that carry a given tag (or a descendant of it) in
@@ -45,8 +46,8 @@ export interface UseTaskTagDetailReturn {
  * `work`.
  */
 export function matchesTagOrDescendant(taskTag: string, tag: string): boolean {
-  const a = taskTag.toLowerCase()
-  const b = tag.toLowerCase()
+  const a = tagKey(taskTag)
+  const b = tagKey(tag)
   return a === b || a.startsWith(`${b}/`)
 }
 

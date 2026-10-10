@@ -6,25 +6,29 @@
  * @module vault/notes-crud
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import path from 'path'
 import fs from 'fs/promises'
-import { isDeepStrictEqual } from 'util'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
   serializeUpdatedNote,
-  extractInlineTagsFromMarkdown,
-  normalizePropertiesToRoot,
-  replacePropertiesOnRoot,
+  extractTags,
   writePropertiesToRoot,
-  propertiesToWrite,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
+import {
+  compareHeaderTags,
+  nextHeaderTags,
+  nextNoteFrontmatter,
+  queueNoteWrite,
+  type HeaderTagChange
+} from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
@@ -62,6 +66,7 @@ import { refuseOutsideVault, resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
+  type HeaderTagEdit,
   type NoteSizeClass,
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
@@ -123,6 +128,7 @@ export interface Note {
   created: Date
   modified: Date
   tags: string[]
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown>
@@ -191,10 +197,19 @@ export interface NoteUpdateInput {
   id: string
   title?: string
   content?: string
+  headerTags?: HeaderTagEdit
+  /** Full replacement list from the shipped agent API (`NoteUpdateSchema.tags`). */
   tags?: string[]
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown>
+  propertyPatch?: Record<string, unknown>
+  ignoreInlineTags?: boolean
   emoji?: string | null
+}
+
+export interface NoteUpdateOutcome {
+  note: Note
+  headerTagChange: HeaderTagChange
 }
 
 /**
@@ -267,7 +282,15 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   let templateProperties: Record<string, unknown> = {}
   let templateIcon: string | null = null
 
+  // Loaded lazily, like the folder and template modules below.
   let templateId = input.template
+  if (!templateId && input.tags?.length) {
+    const { loadResolvedTags } = await import('../tags/schema/read')
+    const resolved = loadResolvedTags(dataDb)
+    templateId = input.tags
+      .map((tag) => resolved.get(foldTag(tag))?.template?.id)
+      .find((id) => id !== undefined)
+  }
   if (!templateId && input.folder) {
     const { getFolderTemplate } = await import('./folders')
     templateId = (await getFolderTemplate(input.folder)) ?? undefined
@@ -345,6 +368,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     created: new Date(created),
     modified: new Date(modified),
     tags: mergedTags,
+    headerTags: extractTags(frontmatter),
     aliases: frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties,
@@ -392,6 +416,7 @@ function largeFileNote(
     created: new Date(cached.createdAt),
     modified: new Date(cached.modifiedAt),
     tags: getNoteTags(db, id),
+    headerTags: [],
     aliases: [],
     wordCount: cached.wordCount ?? 0,
     properties: getNotePropertiesAsRecord(db, id),
@@ -503,6 +528,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     created: new Date(cached.createdAt),
     modified: new Date(cached.modifiedAt),
     tags: getNoteTags(db, id),
+    headerTags: extractTags(parsed.frontmatter),
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: cached.wordCount ?? 0,
     properties: getNotePropertiesAsRecord(db, id),
@@ -604,6 +630,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     created: new Date(parsed.created),
     modified: new Date(parsed.modified),
     tags: syncResult.tags,
+    headerTags: syncResult.headerTags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties: syncResult.properties,
@@ -615,7 +642,11 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // Update
 // ============================================================================
 
-export async function updateNote(input: NoteUpdateInput): Promise<Note> {
+export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
+  return queueNoteWrite(input.id, () => writeNote(input))
+}
+
+async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -643,84 +674,29 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
-  let newTags = input.tags ?? existing.tags
-
-  if (input.content !== undefined && input.tags === undefined) {
-    const oldInline = new Set(extractInlineTagsFromMarkdown(existing.content))
-    const newInline = new Set(extractInlineTagsFromMarkdown(input.content))
-
-    const removedInline = [...oldInline].filter((t) => !newInline.has(t))
-    const addedInline = [...newInline].filter((t) => !oldInline.has(t))
-
-    if (removedInline.length > 0 || addedInline.length > 0) {
-      newTags = newTags.filter((t) => !removedInline.includes(t))
-      for (const tag of addedInline) {
-        if (!newTags.includes(tag)) newTags.push(tag)
-      }
-    }
-  }
+  const headerTags = nextHeaderTags(dataDb, existing, input)
+  const headerTagChange = compareHeaderTags(existing.headerTags, headerTags)
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
-
-  if (input.content !== undefined && input.content !== existing.content) {
-    logger.info('updateNote: content changed, attempting snapshot', { noteId: input.id })
-    try {
-      const absolutePath = toAbsolutePath(existing.path)
-      const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
-      const snap = maybeCreateSignificantSnapshot(
-        input.id,
-        currentFileContent,
-        existing.content,
-        newContent,
-        existing.title
-      )
-      if (snap) {
-        logger.info('updateNote: snapshot created', { noteId: input.id, snapshotId: snap.id })
-      } else {
-        logger.info('updateNote: snapshot skipped (below threshold)', { noteId: input.id })
-      }
-    } catch (err) {
-      logger.error('Failed to read current file for snapshot:', err)
-    }
-  } else if (input.content !== undefined) {
-    logger.info('updateNote: content unchanged, skipping snapshot', { noteId: input.id })
-  }
-
-  // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
-  const mergedFrontmatter: NoteFrontmatter = {
-    ...existing.frontmatter,
-    ...input.frontmatter
-  }
-  for (const [name, value] of Object.entries(input.frontmatter ?? {})) {
-    if (value === null) delete mergedFrontmatter[name]
-  }
-  let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
-
-  const newProperties = propertiesToWrite(input.properties, existing, newFrontmatter)
-
-  if (input.properties !== undefined) {
-    newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
-  }
-
-  if (newTags.length > 0) {
-    newFrontmatter.tags = newTags
-  } else {
-    delete newFrontmatter.tags
-  }
-
-  const tagsChanged =
-    newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
-
-  // Re-stringify when a caller changed frontmatter or when normalizing a
-  // legacy nested property block. Otherwise the raw block stays byte-identical.
-  const frontmatterEdited =
-    !isDeepStrictEqual(newFrontmatter, existing.frontmatter) ||
-    tagsChanged ||
-    (input.properties !== undefined && !isDeepStrictEqual(input.properties, existing.properties)) ||
-    (input.frontmatter !== undefined &&
-      !isDeepStrictEqual({ ...existing.frontmatter, ...input.frontmatter }, existing.frontmatter))
 
   const absolutePath = toAbsolutePath(existing.path)
   const currentRaw = await safeRead(absolutePath)
+  if (currentRaw !== null && input.content !== undefined && input.content !== existing.content) {
+    const snap = maybeCreateSignificantSnapshot(
+      input.id,
+      currentRaw,
+      existing.content,
+      newContent,
+      existing.title
+    )
+    logger.info('updateNote: body changed', { noteId: input.id, snapshotId: snap?.id ?? null })
+  }
+
+  const {
+    frontmatter: newFrontmatter,
+    properties: newProperties,
+    edited: frontmatterEdited
+  } = nextNoteFrontmatter(existing, input, headerTags, headerTagChange)
+
   let fileContent: string
   if (currentRaw === null) {
     fileContent = serializeNote(newFrontmatter, newContent)
@@ -766,12 +742,17 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
           localOnly: cached?.localOnly ?? false,
           emoji: newEmoji
         },
-        { isNew: false, tagsOverride: newTags }
+        { isNew: false }
       )
     : null
 
+  const tags = syncResult?.tags ?? existing.tags
+  const tagsChanged =
+    headerTagChange !== null ||
+    tags.length !== existing.tags.length ||
+    tags.some((t) => !existing.tags.includes(t))
   if (tagsChanged) {
-    ensureTagDefinitions(dataDb, newTags)
+    ensureTagDefinitions(dataDb, tags)
   }
 
   const note: Note = {
@@ -782,7 +763,8 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     frontmatter: writtenFrontmatter,
     created: existing.created,
     modified: new Date(newModified),
-    tags: newTags,
+    tags,
+    headerTags,
     aliases: newFrontmatter.aliases ?? [],
     wordCount: syncResult?.wordCount ?? cached?.wordCount ?? existing.wordCount,
     properties: newProperties,
@@ -795,7 +777,8 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       changes: {
         title: newTitle,
         content: newContent,
-        tags: newTags,
+        tags,
+        headerTags,
         properties: newProperties,
         emoji: newEmoji
       },
@@ -819,7 +802,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     emitNoteEvent('notes:tags-changed', undefined)
   }
 
-  return note
+  return { note, headerTagChange }
 }
 
 // ============================================================================

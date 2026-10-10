@@ -27,6 +27,7 @@ const noteEvent: ProjectionEvent = {
     modifiedAt: '2026-01-01T00:00:00.000Z',
     parsedContent: 'test',
     tags: [],
+    headerTags: [],
     properties: {},
     wikiLinks: []
   }

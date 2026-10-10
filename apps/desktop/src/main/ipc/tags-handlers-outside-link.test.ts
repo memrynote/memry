@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type { VaultStatus } from '@memry/contracts/vault-api'
 import { insertNoteCache, setNoteTags } from '@main/database/queries/notes'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown, vault: '' }))
@@ -18,15 +19,17 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
-vi.mock('../database', () => ({
+vi.mock('../database', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../database')>()),
   getIndexDatabase: () => state.index,
   getDatabase: () => state.data,
   requireDatabase: () => state.data
 }))
-vi.mock('../vault/notes', () => ({
-  getVaultRoot: () => state.vault,
-  toAbsolutePath: (p: string) => path.join(state.vault, p)
+vi.mock('../sync/crdt-provider', () => ({
+  ORIGIN_LOCAL: 'local',
+  getCrdtProvider: () => ({ getDoc: () => undefined, recordOwedFullState: vi.fn() })
 }))
+vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 vi.mock('../tags/runtime-effects', () => ({
@@ -41,6 +44,7 @@ vi.mock('../tags/runtime-effects', () => ({
   commitTaskRetag: vi.fn((_db: unknown, retag: () => unknown) => retag())
 }))
 
+import * as vaultIndex from '../vault/index'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 
 const SECRET = '---\ntags: [old]\n---\nOutside secret\n'
@@ -68,6 +72,13 @@ describe('vault-wide tag changes and a note file linked outside the vault', () =
     fs.symlinkSync(secret, link)
     free = path.join(state.vault, 'notes', 'free.md')
     fs.writeFileSync(free, '---\ntags: [old]\n---\nFree body\n')
+    vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
+      isOpen: true,
+      path: state.vault,
+      isIndexing: false,
+      indexProgress: 100,
+      error: null
+    } satisfies VaultStatus)
     for (const id of ['linked', 'free']) {
       insertNoteCache(index.db, {
         id,
@@ -79,13 +90,14 @@ describe('vault-wide tag changes and a note file linked outside the vault', () =
         createdAt: '2026-01-10T00:00:00.000Z',
         modifiedAt: '2026-01-12T00:00:00.000Z'
       })
-      setNoteTags(index.db, id, ['old'])
+      setNoteTags(index.db, id, { header: ['old'], inline: [] })
     }
     registerTagsHandlers()
   })
 
   afterEach(() => {
     unregisterTagsHandlers()
+    vi.restoreAllMocks()
     data.close()
     index.close()
     fs.rmSync(state.vault, { recursive: true, force: true })

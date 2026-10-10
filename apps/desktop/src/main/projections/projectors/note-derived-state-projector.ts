@@ -14,6 +14,7 @@ import {
   getOutgoingLinks,
   getPropertyType,
   insertNoteCache,
+  resolveHeaderTagFlags,
   setMarkdownNoteLinks,
   setNoteLinks,
   setNoteProperties,
@@ -150,7 +151,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
 
   if (bodyUnread) return
 
-  setNoteTags(db, note.noteId, note.tags)
+  setNoteTags(db, note.noteId, { header: note.headerTags, inline: note.tags })
   setNoteProperties(db, note.noteId, note.properties ?? {}, (name, value) =>
     getPropertyType(db, name, value, inferPropertyType)
   )
@@ -224,7 +225,8 @@ export function createNoteDerivedStateProjector(
       return (
         event.type === 'note.upserted' ||
         event.type === 'note.deleted' ||
-        event.type === 'note.text-extracted'
+        event.type === 'note.text-extracted' ||
+        event.type === 'note.header-tags-resolved'
       )
     },
 
@@ -236,6 +238,11 @@ export function createNoteDerivedStateProjector(
 
       if (event.type === 'note.text-extracted') {
         await refreshMarkdownNoteLinks(getVaultPath(), event.noteId)
+        return
+      }
+
+      if (event.type === 'note.header-tags-resolved') {
+        resolveHeaderTagFlags(getIndexDatabase(), event.noteId, event.headerTags)
         return
       }
 

@@ -4,20 +4,6 @@
  */
 
 /**
- * Validate tag name
- * Tags must:
- * - Start with letter or number
- * - Contain only letters, numbers, hyphens, underscores
- * - Optionally contain / for hierarchical sub-tags (e.g. movies/oscar)
- * - No leading/trailing slash, no double slashes, no empty segments
- */
-export function isValidTagName(name: string): boolean {
-  if (!name || name.length === 0) return false
-  if (!/^[a-zA-Z0-9]/.test(name)) return false
-  return /^[a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*$/.test(name)
-}
-
-/**
  * Normalize tag name
  * - Trim whitespace
  * - Convert to lowercase (for storage)
@@ -32,18 +18,6 @@ export function normalizeTagName(name: string): string {
  */
 export function formatTagDisplay(name: string): string {
   return `#${name}`
-}
-
-/**
- * Extract tags from text
- * Finds all #tag patterns in text
- */
-export function extractTagsFromText(text: string): string[] {
-  const tagRegex = /#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
-  const matches = text.matchAll(tagRegex)
-  const tags = Array.from(matches, (m) => m[1])
-
-  return Array.from(new Set(tags))
 }
 
 /**

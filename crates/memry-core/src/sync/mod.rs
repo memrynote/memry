@@ -44,6 +44,7 @@ mod calendar_push;
 mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
+pub mod delete_keep;
 pub mod engine;
 mod feed_restart;
 pub mod field_merge;

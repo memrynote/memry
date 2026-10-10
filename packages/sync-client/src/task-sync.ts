@@ -11,6 +11,7 @@ import {
   rebindOfflineClockData
 } from './offline-clock'
 import { createLogger } from './logging'
+import { taskRowToWire } from './task-wire'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const log = createLogger('TaskSync')
@@ -38,7 +39,7 @@ function enrichWithJunctionData(
     .where(eq(taskCanvases.taskId, taskId))
     .all()
     .map((r) => r.canvasId)
-  return { ...base, tags, linkedNoteIds, linkedCanvasIds }
+  return taskRowToWire(base, { tags, linkedNoteIds, linkedCanvasIds })
 }
 
 interface TaskSyncDeps {

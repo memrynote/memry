@@ -7,6 +7,7 @@
  * a clear (X).
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { Download, FolderInput, Link, Pin, Smile, Tag, Trash2, X } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -304,7 +305,7 @@ function AddTagButton({
         {suggestions.length > 0 && (
           <div className="mt-1 max-h-40 overflow-y-auto">
             {suggestions.map((tag) => {
-              const icon = tagMeta?.get(tag.toLowerCase())?.icon
+              const icon = tagMeta?.get(foldTag(tag))?.icon
               return (
                 <button
                   key={tag}

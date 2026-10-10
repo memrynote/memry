@@ -241,6 +241,7 @@ describe('Inbox Filing Operations', () => {
     mockCreateNote.mockReset()
     mockGetNoteById.mockReset()
     mockUpdateNote.mockReset()
+    mockUpdateNote.mockResolvedValue({ note: null, headerTagChange: null })
     mockCreateFolder.mockReset()
     mockGetFolders.mockResolvedValue([])
     mockSend.mockClear()
@@ -459,7 +460,10 @@ describe('Inbox Filing Operations', () => {
         'image'
       )
       // ...and the merged tags (existing + assigned + 'inbox') are written to note_tags.
-      expect(mockSetNoteTags).toHaveBeenCalledWith({}, 'file-note-id', ['Photos', 'Image', 'inbox'])
+      expect(mockSetNoteTags).toHaveBeenCalledWith({}, 'file-note-id', {
+        header: ['Photos', 'Image', 'inbox'],
+        inline: []
+      })
     })
 
     it('announces the filed binary so the sidebar updates without a restart', async () => {

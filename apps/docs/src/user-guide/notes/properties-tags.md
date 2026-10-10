@@ -14,7 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
-- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
+- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` starts with a letter A to Z, then letters, digits, `-` or `_`, with `/` for a child tag: `#a2024` becomes a chip, `#2024` stays text. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
@@ -47,9 +47,37 @@ Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or ope
 page and use its header menu to rename, recolor, or delete it directly. Renames apply across
 every note instantly.
 
-Renaming or deleting a tag currently updates your **notes** only — tasks keep the original
-tag, so a task tagged `MIT` stays `MIT` even after you rename that tag. **Merging** two tags
-does carry across tasks. To retag a task directly, edit it in the task detail drawer.
+A rename changes the `tags:` list of each note and every `#tag` written in the text of your
+notes and journal entries, including notes you have open. Only whole tags change: renaming
+`person` leaves `#personal` alone, and a `#tag` inside code stays as written. A delete changes
+the `tags:` list only, so a `#tag` in the text stays until you edit it.
+
+If the new name can't be typed as a `#tag` (it has a space, starts with a digit, or uses a
+letter outside A to Z), the rename still changes the `tags:` lists, but `#tags` in the text
+keep the old name, and Memry tells you so. A rename runs one note at a time, and a toast
+counts the notes as it goes; if Memry quits
+partway, it finishes the rename the next time the vault opens, and it doesn't start another
+rename until then. If a note can't be updated, Memry tells you how many were skipped.
+
+Tag names match ignoring letter case in every language: `Work` and `work` are one tag, and so
+are `Ünal` and `ünal`, or `İş` and `iş`. The dotless `ı` stays its own letter, so `ışık` and
+`işik` are two tags. If an older version left two tags that now count as one, Memry merges
+them the next time you open the vault and keeps the colors, icons and fields.
+
+Renaming a tag renames its child tags too: `person` to `people` also turns `person/vip` into
+`people/vip`, with their colors, icons, views and fields. If the new name, or a child's new
+name, already exists, the two merge as they do with **Merge**: the existing tag keeps its color
+and fields, and the renamed tag's notes and tasks join it.
+
+Renaming or merging a tag carries across your **tasks** too: a task tagged `MIT` becomes
+`focus` when you rename `MIT` to `focus`. Deleting a tag updates your **notes** only, so tasks
+keep the deleted tag. To retag a task directly, edit it in the task detail drawer.
+
+A rename or merge also updates every other tag that points at the renamed one: a tag that
+[extends](/user-guide/notes/tags-with-fields#extends) it, or a relation field that offers its
+notes. Deleting a tag leaves those links in place, and they work again if a tag with that
+name comes back. Renaming a tag's field is a separate action that renames a frontmatter key;
+see [Tags With Fields](/user-guide/notes/tags-with-fields#fields).
 
 ### Tag Icons
 
@@ -126,6 +154,8 @@ number, checkbox, URL, date, select, multi-select and status. A definition that 
 desktop API creates or edits is in that file as soon as the call returns. Older versions kept
 non-select definitions only in the app's database; the first time a vault opens after the update,
 they are copied into the file once, and entries the file already has are left as they are.
+If one entry in the file is malformed, the others still load and the malformed entry is kept as
+written. If the file cannot be read at all, Memry leaves it untouched until you fix it.
 The file also keeps each definition's default value and color, so both survive a restart. Older
 app versions read the file and ignore those two fields.
 Saving a note that uses a property never clears that property's options, default or color, and
@@ -176,10 +206,17 @@ A note or journal entry joins a project through its **`project` property**, not 
 - **In a [folder view](/user-guide/folder-view) column**, each project shows as a pill with the project's color and icon; clicking one opens that project's page, the way clicking a tag opens its tag page. The cell is read-only there — a `project` value is a list of project _names_, so editing it as free text in a table would point the note at a project that doesn't exist. Add, remove, and rename projects from the note's property row or the project itself.
 
 ::: tip First open after upgrading
-Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. Those notes are saved in the same pass, so their frontmatter is normalised the way any memrynote save normalises it: tags written inline in the note body are lifted into the `tags:` list, and tag capitalisation follows what memrynote has indexed. Nothing is removed, and the note body is untouched.
+Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. That save adds the `project` property and leaves the note's `tags:` list as it is. Tags written inline in the note body stay in the body; they are not lifted into the `tags:` list. Nothing is removed, and the note body is untouched.
 :::
 
 Files and calendar events have no frontmatter, so they keep their own **Add to project** action instead of a property — see [Projects](/user-guide/projects#linking-notes-events-and-files).
+
+## Tags With Fields
+
+A tag can carry fields, a template, and a table of the notes that have it. Tagging a note
+`#person` then gives it the Person fields. Tags with fields, the ready-made Person, Company,
+Meeting and Book tags, relations, extends, templates, task fields and **Fill from note** are
+covered in [Tags With Fields](/user-guide/notes/tags-with-fields).
 
 ## Tags vs Properties — When to Use Which
 

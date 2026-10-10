@@ -2,6 +2,7 @@
  * The view block's header pieces and notices, shared by the list body in
  * `view-block.tsx` and the journal chart body in `view-block-chart.tsx`.
  */
+import { foldTag } from '@memry/shared/tag-fold'
 import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { ViewBlockDefinition, ViewBlockSource } from '@memry/shared/view-block'
@@ -158,7 +159,7 @@ export function SourcePicker({
                   onSelect={() => onChange({ kind: 'tag', tag: tag.tag })}
                 >
                   <span className="truncate">#{tag.tag}</span>
-                  {source?.kind === 'tag' && source.tag.toLowerCase() === tag.tag.toLowerCase() ? (
+                  {source?.kind === 'tag' && foldTag(source.tag) === foldTag(tag.tag) ? (
                     <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
                   ) : null}
                 </DropdownMenuItem>

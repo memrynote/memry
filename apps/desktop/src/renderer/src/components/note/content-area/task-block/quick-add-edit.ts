@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { findQuickAddSpans, parseQuickAdd, type QuickAddSpan } from '@/lib/quick-add-parser'
 import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
@@ -62,10 +63,10 @@ const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
 }
 
 const mergeTags = (existing: string[], added: string[]): string[] => {
-  const seen = new Set(existing.map((tag) => tag.toLowerCase()))
+  const seen = new Set(existing.map((tag) => foldTag(tag)))
   const merged = [...existing]
   for (const tag of added) {
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (seen.has(key)) continue
     seen.add(key)
     merged.push(tag)

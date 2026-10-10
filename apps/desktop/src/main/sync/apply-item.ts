@@ -97,9 +97,10 @@ export class ItemApplier {
             itemId: input.itemId,
             operation: 'delete',
             clock: input.clock,
+            deletedAt: input.deletedAt,
             vaultKey: input.vaultKey
           })
-        : handler!.applyDelete(ctx, input.itemId, input.clock)
+        : handler!.applyDelete(ctx, input.itemId, input.clock, input.deletedAt)
       // #2409: recorded whatever the result, on the page's db so it commits with
       // the delete and the cursor. An absent row is how a fresh install learns
       // the clock; a skipped delete means the local row is already past it.

@@ -50,6 +50,8 @@ vi.mock('../inbox/suggestions', () => ({
 }))
 
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
+import { tagDefinitionHandler } from '../sync/item-handlers/tag-definition-handler'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getIndexDatabase, getDatabase } from '../database'
 import * as folderFiles from '../vault/folders'
 import * as suggestions from '../inbox/suggestions'
@@ -97,7 +99,7 @@ function insertTaggedNote(
     title: string
     path: string
     tag: string
-    property?: { name: string; value: unknown }
+    property?: { name: string; value: string; type?: string }
   }
 ): void {
   const now = new Date().toISOString()
@@ -121,8 +123,9 @@ function insertTaggedNote(
       .values({
         noteId: opts.id,
         name: opts.property.name,
-        value: JSON.stringify(opts.property.value),
-        type: 'text'
+        // Stored as `serializePropertyValue` writes it: a text value raw.
+        value: opts.property.value,
+        type: opts.property.type ?? 'text'
       })
       .run()
   }
@@ -263,7 +266,7 @@ describe('folder-view-handlers', () => {
       .values({
         noteId: 'note-1',
         name: 'status',
-        value: JSON.stringify('open'),
+        value: 'open',
         type: 'text'
       })
       .run()
@@ -375,6 +378,39 @@ describe('folder-view-handlers', () => {
 
       const noteRow = result.notes.find((r) => r.kind === 'note')!
       expect(noteRow.properties).toEqual({ status: 'active' })
+    })
+
+    it('keeps a property its stored type: a text "123" stays a string', async () => {
+      insertTaggedNote(indexDb.db, {
+        id: 'note-text',
+        title: 'Text digits',
+        path: 'projects/text.md',
+        tag: 'araba',
+        property: { name: 'code', value: '123' }
+      })
+      insertTaggedNote(indexDb.db, {
+        id: 'note-number',
+        title: 'Number',
+        path: 'projects/number.md',
+        tag: 'other',
+        property: { name: 'count', value: '7', type: 'number' }
+      })
+
+      const byTag = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
+        scope: { kind: 'tag', tag: 'araba' },
+        limit: 500,
+        offset: 0
+      })
+      expect(byTag.notes.find((r) => r.id === 'note-text')?.properties).toEqual({ code: '123' })
+
+      const byFolder = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
+        scope: { kind: 'folder', path: 'projects' },
+        limit: 10,
+        offset: 0
+      })
+      const props = Object.fromEntries(byFolder.notes.map((r) => [r.id, r.properties]))
+      expect(props['note-text']).toEqual({ code: '123' })
+      expect(props['note-number']).toEqual({ count: 7 })
     })
 
     it('leaves properties empty on task and inbox rows', async () => {
@@ -600,6 +636,25 @@ describe('folder-view-handlers', () => {
       })
 
       expect(result.views).toEqual([DEFAULT_VIEW])
+    })
+
+    it('pushes deleting the last view as an explicit empty list, so peers clear theirs', async () => {
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        view: { name: 'Open tasks', type: 'table', default: true }
+      })
+      await invokeHandler(FolderViewChannels.invoke.DELETE_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        viewName: 'Open tasks'
+      })
+
+      const pushed = tagDefinitionHandler.buildPushPayload(
+        dataDb.db as unknown as DrizzleDb,
+        'araba',
+        'device-a',
+        'update'
+      )
+      expect(JSON.parse(pushed!)).toMatchObject({ views: [] })
     })
 
     it('keeps folder and tag views in separate stores', async () => {

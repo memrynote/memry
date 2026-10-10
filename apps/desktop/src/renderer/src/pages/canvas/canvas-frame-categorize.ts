@@ -48,9 +48,12 @@ function opposite(direction: Direction): Direction {
 async function writeNoteTags(noteId: string, tag: string, direction: Direction): Promise<boolean> {
   const note = await notesService.get(noteId)
   if (!note) throw new Error(`Note not found: ${noteId}`)
-  const next = direction === 'add' ? addTag(note.tags, tag) : removeTag(note.tags, tag)
+  const next = direction === 'add' ? addTag(note.headerTags, tag) : removeTag(note.headerTags, tag)
   if (!next) return false
-  const result = await notesService.update({ id: noteId, tags: next })
+  const result = await notesService.update({
+    id: noteId,
+    headerTags: direction === 'add' ? { add: [tag] } : { remove: [tag] }
+  })
   if (!result.success) throw new Error(result.error ?? 'Failed to update note tags')
   return true
 }

@@ -615,8 +615,7 @@
     "hint": "Taggar som delas av de anteckningar som mest liknar den här. Inget läggs till förrän du väljer en.",
     "acceptAria": "Lägg till taggen {tag}",
     "support": "{count, plural, one {Används i # liknande anteckning} other {Används i # liknande anteckningar}}",
-    "dismiss": "Dölj föreslagna taggar",
-    "failed": "Det gick inte att lägga till taggen"
+    "dismiss": "Dölj föreslagna taggar"
   },
   "comments": {
     "railAria": "Kommentarer",

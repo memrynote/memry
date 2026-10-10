@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Focus,
@@ -20,7 +21,8 @@ import {
   relationLinksOf,
   type GraphRelationLink
 } from '@/lib/graph-edits'
-import { isValidTagName, normalizeTagName } from '@/lib/tag-utils'
+import { isInlineTagName } from '@memry/shared/inline-tags'
+import { normalizeTagName } from '@/lib/tag-utils'
 import { PINNED_ATTRIBUTE } from '@/lib/graph-physics'
 
 export interface ContextMenuState {
@@ -430,7 +432,7 @@ function TagPicker({
   const { t } = useT('graph')
   const [query, setQuery] = useState('')
   const typed = normalizeTagName(query)
-  const typedValid = isValidTagName(typed) && !hasTag(nodeTags, typed)
+  const typedValid = isInlineTagName(typed) && !hasTag(nodeTags, typed)
 
   // Every tag already in the vault graph, so the common case needs no typing.
   const suggestions = useMemo(() => {
@@ -444,7 +446,7 @@ function TagPicker({
       .slice(0, MAX_PICKER_RESULTS)
   }, [graph, nodeTags, typed])
 
-  const showCreate = typedValid && !suggestions.some((tag) => tag.toLowerCase() === typed)
+  const showCreate = typedValid && !suggestions.some((tag) => foldTag(tag) === foldTag(typed))
 
   return (
     <PickerShell
@@ -453,7 +455,7 @@ function TagPicker({
       onChange={setQuery}
       onBack={onBack}
       onSubmit={() => {
-        const exact = suggestions.find((tag) => tag.toLowerCase() === typed)
+        const exact = suggestions.find((tag) => foldTag(tag) === foldTag(typed))
         if (exact) onPick(exact)
         else if (typedValid) onPick(typed)
         else if (suggestions[0]) onPick(suggestions[0])

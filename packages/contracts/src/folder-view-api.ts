@@ -506,6 +506,12 @@ export interface NoteWithProperties {
    * `inbox-api` (and its Node `Buffer` types) into that build.
    */
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+
+  /**
+   * Object rows of a tag with fields: the tag that makes the row a member when
+   * it is a tag extending the viewed one ("employee" on the Person table).
+   */
+  viaTag?: string
 }
 
 // ============================================================================
@@ -566,7 +572,13 @@ export const ListWithPropertiesRequestSchema = z.object({
   /** Pagination limit */
   limit: z.number().int().min(1).max(1000).default(500),
   /** Pagination offset */
-  offset: z.number().int().min(0).default(0)
+  offset: z.number().int().min(0).default(0),
+  /**
+   * Tag scope only, and only for a tag with fields: its objects (header
+   * carriers, incl. tags that extend it) or the rest that carries it
+   * ("Mentioned in"). Absent means objects. Plain tags ignore it.
+   */
+  rows: z.enum(['objects', 'mentions']).optional()
 })
 
 export const GetAvailablePropertiesRequestSchema = z.object({
@@ -632,6 +644,11 @@ export interface ListWithPropertiesResponse {
   notes: NoteWithProperties[]
   total: number
   hasMore: boolean
+  /**
+   * Tag with fields only: false while tag rows written by an older build have
+   * no header flag yet, so some objects may be missing until the backfill ends.
+   */
+  complete?: boolean
 }
 
 export interface GetAvailablePropertiesResponse {

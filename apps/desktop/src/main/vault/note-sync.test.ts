@@ -146,38 +146,13 @@ describe('extractNoteMetadata', () => {
   })
 })
 
-describe('syncNoteToCache — tagsOverride', () => {
-  it('uses tagsOverride instead of re-extracting inline tags from stale content', () => {
+describe('syncNoteToCache', () => {
+  it('publishes the header tags apart from the inline ones', () => {
     const db = createMockDb()
 
     const input = buildInput({
-      frontmatter: {
-        id: 'abc123def456',
-        created: FIXED_ISO,
-        modified: FIXED_ISO,
-        tags: []
-      },
-      parsedContent: 'Still has #typescript in old content'
-    })
-
-    syncNoteToCache(db, input, { isNew: true, tagsOverride: [] })
-
-    expect(publishProjectionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'note.upserted',
-        note: expect.objectContaining({
-          noteId: 'abc123def456',
-          tags: []
-        })
-      })
-    )
-  })
-
-  it('falls back to extracted tags when tagsOverride is not provided', () => {
-    const db = createMockDb()
-
-    const input = buildInput({
-      parsedContent: 'Has #typescript inline'
+      frontmatter: { tags: ['Work'] },
+      parsedContent: 'Has #typescript inline and #work again'
     })
 
     syncNoteToCache(db, input, { isNew: true })
@@ -187,7 +162,8 @@ describe('syncNoteToCache — tagsOverride', () => {
         type: 'note.upserted',
         note: expect.objectContaining({
           noteId: 'abc123def456',
-          tags: ['typescript']
+          tags: ['Work', 'typescript'],
+          headerTags: ['Work']
         })
       })
     )

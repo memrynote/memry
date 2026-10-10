@@ -130,6 +130,26 @@ describe('task activity write path', () => {
     expect(due?.newValue).toBe(JSON.stringify('2026-08-20'))
   })
 
+  it('writes one row per changed task field, and only the length of a long text value', () => {
+    const notes = 'n'.repeat(501)
+    createTasksPublisher().taskUpdated({
+      id: 'task-1',
+      task: makeTask({ fields: { Owner: 'Deniz', Notes: notes } }),
+      changes: { fields: { Owner: 'Deniz', Notes: notes } },
+      changedFields: ['fields'],
+      previous: { fields: { Owner: 'Ahmet', Thread: 'ts-1' } }
+    })
+
+    expect(
+      Object.fromEntries(rows().map((row) => [row.field, [row.oldValue, row.newValue]]))
+    ).toEqual({
+      'fields.Owner': [JSON.stringify('Ahmet'), JSON.stringify('Deniz')],
+      'fields.Thread': [JSON.stringify('ts-1'), null],
+      'fields.Notes': [null, JSON.stringify({ delta: 501 })]
+    })
+    expect(JSON.stringify(rows())).not.toContain(notes)
+  })
+
   it('never stores the description body — only a length delta', () => {
     const body = 'a'.repeat(500)
     createTasksPublisher().taskUpdated({

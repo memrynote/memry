@@ -8,7 +8,7 @@ import {
   validateNoteId,
   extractTitleFromPath,
   extractTags,
-  extractInlineTagsFromMarkdown,
+  applyHeaderTagEdit,
   calculateWordCount,
   generateContentHash,
   extractProperties,
@@ -312,73 +312,40 @@ describe('properties helpers', () => {
   })
 })
 
-describe('extractInlineTagsFromMarkdown', () => {
-  it('extracts a single tag', () => {
-    expect(extractInlineTagsFromMarkdown('Hello #world')).toEqual(['world'])
-  })
-
-  it('extracts multiple tags', () => {
-    expect(extractInlineTagsFromMarkdown('#foo and #bar')).toEqual(['foo', 'bar'])
-  })
-
-  it('deduplicates repeated tags', () => {
-    expect(extractInlineTagsFromMarkdown('#foo then #foo again')).toEqual(['foo'])
-  })
-
-  it('preserves case as typed', () => {
-    expect(extractInlineTagsFromMarkdown('#Work #URGENT')).toEqual(['Work', 'URGENT'])
-  })
-
-  it('deduplicates case variants, first occurrence wins', () => {
-    expect(extractInlineTagsFromMarkdown('#Work then #work again')).toEqual(['Work'])
-  })
-
-  it('skips tags inside fenced code blocks', () => {
-    const content = 'before #real\n```\n#fake\n```\nafter #also-real'
-    expect(extractInlineTagsFromMarkdown(content)).toEqual(['real', 'also-real'])
-  })
-
-  it('skips tags inside inline code', () => {
-    expect(extractInlineTagsFromMarkdown('use `#hidden` but #visible')).toEqual(['visible'])
-  })
-
-  it('requires whitespace or start-of-string before #', () => {
-    expect(extractInlineTagsFromMarkdown('email@user#tag')).toEqual([])
-  })
-
-  it('matches tag after newline', () => {
-    expect(extractInlineTagsFromMarkdown('line one\n#tag')).toEqual(['tag'])
-  })
-
-  it('rejects tags starting with a digit', () => {
-    expect(extractInlineTagsFromMarkdown('#123 #456abc')).toEqual([])
-  })
-
-  it('allows hyphens and underscores', () => {
-    expect(extractInlineTagsFromMarkdown('#my-tag #my_tag')).toEqual(['my-tag', 'my_tag'])
-  })
-
-  it('returns empty array for empty string', () => {
-    expect(extractInlineTagsFromMarkdown('')).toEqual([])
-  })
-
-  it('handles tag at very start of content', () => {
-    expect(extractInlineTagsFromMarkdown('#first word')).toEqual(['first'])
-  })
-
-  it('extracts hierarchical tags with slashes', () => {
-    expect(extractInlineTagsFromMarkdown('#movies/oscar and #movies/grammy')).toEqual([
-      'movies/oscar',
-      'movies/grammy'
-    ])
-  })
-
-  it('extracts deeply nested hierarchical tags', () => {
-    expect(extractInlineTagsFromMarkdown('#a/b/c/d')).toEqual(['a/b/c/d'])
-  })
-
-  it('does not capture trailing slash', () => {
-    expect(extractInlineTagsFromMarkdown('#movies/ rest')).toEqual(['movies'])
+describe('applyHeaderTagEdit', () => {
+  it.each([
+    {
+      rule: 'removes a tag whatever its case and padding',
+      current: ['Old', 'keep'],
+      edit: { remove: [' OLD '] },
+      next: ['keep']
+    },
+    {
+      rule: 'renames a tag where it stands',
+      current: ['a', 'old', 'b'],
+      edit: { rename: [{ from: 'OLD', to: 'new' }] },
+      next: ['a', 'new', 'b']
+    },
+    {
+      rule: 'renaming onto a tag the list holds leaves one copy, where the source stood',
+      current: ['source', 'other', 'target'],
+      edit: { rename: [{ from: 'source', to: 'target' }] },
+      next: ['target', 'other']
+    },
+    {
+      rule: 'renaming a tag the list lacks adds nothing',
+      current: ['a'],
+      edit: { rename: [{ from: 'inline-only', to: 'b' }] },
+      next: ['a']
+    },
+    {
+      rule: 'adds only what the list lacks, keeping the spelling it holds',
+      current: ['Work'],
+      edit: { add: ['work', 'Focus'] },
+      next: ['Work', 'Focus']
+    }
+  ])('$rule', ({ current, edit, next }) => {
+    expect(applyHeaderTagEdit(current, edit)).toEqual(next)
   })
 })
 

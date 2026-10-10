@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
  * Folder View Hook
@@ -27,6 +28,7 @@ import type {
   ViewScope,
   ViewConfig as ContractViewConfig
 } from '@memry/contracts/folder-view-api'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { propertiesService } from '@/services/properties-service'
@@ -146,6 +148,7 @@ interface UseFolderViewOptions {
   pageSize?: number
   /** Saved view name to activate on load, preferred over the folder default (e.g. Home widget config). */
   initialViewName?: string
+  extraFilter?: string | null
 }
 
 /** Formula info for column selector */
@@ -153,6 +156,8 @@ export interface FormulaInfo {
   id: string
   expression: string
 }
+
+type HeaderTagAddRemove = Pick<HeaderTagEdit, 'add' | 'remove'>
 
 /** Response from listWithProperties API */
 interface ListWithPropertiesResponse {
@@ -249,8 +254,7 @@ interface UseFolderViewResult {
   removeNotesOptimistically: (noteIds: string[]) => void
   /** Update a property value on a note */
   updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
-  /** Update tags on a note */
-  updateNoteTags: (noteId: string, tags: string[]) => Promise<void>
+  updateNoteHeaderTags: (noteId: string, edit: HeaderTagAddRemove) => Promise<void>
   /**
    * Set (or clear, with `null`) the icon on each note named. Resolves to the
    * inverse of the writes that landed, which replays as Undo.
@@ -271,7 +275,8 @@ interface UseFolderViewResult {
 export function useFolderView({
   scope,
   pageSize = 100,
-  initialViewName
+  initialViewName,
+  extraFilter
 }: UseFolderViewOptions): UseFolderViewResult {
   const queryClient = useQueryClient()
 
@@ -415,7 +420,11 @@ export function useFolderView({
 
   // Client-side filtered notes
   const filteredNotes = useMemo(() => {
-    const filters = activeView?.filters as FilterExpression | undefined
+    const viewFilters = activeView?.filters as FilterExpression | undefined
+    const filters: FilterExpression | undefined =
+      extraFilter && viewFilters
+        ? { and: [viewFilters, extraFilter] }
+        : (extraFilter ?? viewFilters)
     if (!filters) return notes
 
     try {
@@ -424,7 +433,7 @@ export function useFolderView({
       log.error('Filter evaluation error:', err)
       return notes
     }
-  }, [notes, activeView?.filters])
+  }, [notes, activeView?.filters, extraFilter])
 
   // Get properties data from query
   const availableProperties = propertiesQuery.data?.properties ?? []
@@ -921,10 +930,10 @@ export function useFolderView({
   )
 
   /**
-   * Update tags for a note with optimistic cache update.
+   * Add or remove tags in a note's header, with an optimistic cache update.
    */
-  const updateNoteTags = useCallback(
-    async (noteId: string, tags: string[]) => {
+  const updateNoteHeaderTags = useCallback(
+    async (noteId: string, edit: HeaderTagAddRemove) => {
       const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
         folderViewKeys.notes(scope)
       )
@@ -937,14 +946,19 @@ export function useFolderView({
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              notes: page.notes.map((note) => (note.id === noteId ? { ...note, tags } : note))
+              notes: page.notes.map((note) => {
+                if (note.id !== noteId) return note
+                const kept = note.tags.filter((t) => !edit.remove?.includes(t))
+                const added = (edit.add ?? []).filter((t) => !kept.includes(t))
+                return { ...note, tags: [...kept, ...added] }
+              })
             }))
           }
         }
       )
 
       try {
-        const result = await notesService.update({ id: noteId, tags })
+        const result = await notesService.update({ id: noteId, headerTags: edit })
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update tags')
         }
@@ -1170,7 +1184,7 @@ export function useFolderView({
     if (scope.kind !== 'tag') return
     const currentTag = scope.tag
     const unsubscribe = onTagNotesChanged((event) => {
-      if (event.tag.toLowerCase() === currentTag.toLowerCase()) {
+      if (foldTag(event.tag) === foldTag(currentTag)) {
         void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
       }
     })
@@ -1181,6 +1195,8 @@ export function useFolderView({
   useEffect(() => {
     if (scope.kind !== 'tag') return
     const unsubscribe = onTagsChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) })
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
     })
     return unsubscribe
@@ -1237,7 +1253,7 @@ export function useFolderView({
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags,
+    updateNoteHeaderTags,
     updateNoteIcons
   }
 }

@@ -48,6 +48,8 @@ import {
   clearAllPendingDeletes,
   hasPendingDeletes,
   settleDeferredDeletes,
+  createDeferredDeletes,
+  type DeferredDeletes,
   buildStatRenameKey,
   processRename,
   type RenameMatch
@@ -459,8 +461,9 @@ export class VaultWatcher {
     }
 
     if (!isCurrent()) return
+    const deferred = createDeferredDeletes()
     for (const absolutePath of missing) {
-      this.handleFileDelete(absolutePath, { keepUnpaired, deferred: true })
+      this.handleFileDelete(absolutePath, { keepUnpaired, deferred })
     }
     for (const absolutePath of added) {
       if (!isCurrent()) return
@@ -468,7 +471,7 @@ export class VaultWatcher {
     }
     // A stop meanwhile cleared the deferred deletes with the rest.
     if (!isCurrent()) return
-    await settleDeferredDeletes()
+    await settleDeferredDeletes(deferred)
     if (!withChanges) return
     for (const absolutePath of changed) {
       if (!isCurrent()) return
@@ -501,8 +504,9 @@ export class VaultWatcher {
    *
    * Checking the journal once, up front, is enough: the rows checked are read
    * after it, and an apply that commits later adds rows this scan never sees.
-   * A delete looks its row up by path when its window closes, so a remote move
-   * meanwhile finds no row at the old path and deletes nothing.
+   * A delete captures its row when it is tracked, not when it settles. A
+   * remote move of the same note between the two still gets deleted if the old
+   * path stays gone: delete wins that conflict.
    */
   private async collectMissedRemovals(
     vaultPath: string,
@@ -1088,7 +1092,7 @@ export class VaultWatcher {
           id: cached.id,
           date: journalDate,
           content: parsed.content,
-          tags,
+          tags: syncResult.headerTags,
           wordCount: syncResult.wordCount,
           characterCount: syncResult.characterCount,
           modified: new Date(parsed.modified),
@@ -1147,11 +1151,14 @@ export class VaultWatcher {
    * Tracks as pending delete to detect renames (delete + add with same UUID).
    * `keepUnpaired` still lets a rename claim the row, but a removal that
    * pairs with nothing keeps its row and syncs no delete. `deferred` arms no
-   * rename window; the rescan settles the delete after its last add.
+   * rename window; the rescan settles its batch after its last add.
    */
   private handleFileDelete(
     absolutePath: string,
-    { keepUnpaired = false, deferred = false } = {}
+    {
+      keepUnpaired = false,
+      deferred = null
+    }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
     const vaultPath = this.vaultPath
     if (!vaultPath) return
@@ -1166,8 +1173,11 @@ export class VaultWatcher {
       if (isCanvasFilePath(relativePath)) {
         // A moved canvas is re-pointed by the open's canvas reconcile, not here.
         if (keepUnpaired) return
-        trackExternalCanvasRemoval(vaultPath, relativePath, () =>
-          this.isGoneFromVault(vaultPath, absolutePath, relativePath)
+        trackExternalCanvasRemoval(
+          vaultPath,
+          relativePath,
+          () => this.isGoneFromVault(vaultPath, absolutePath, relativePath),
+          deferred
         )
         return
       }
