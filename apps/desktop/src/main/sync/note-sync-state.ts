@@ -19,7 +19,9 @@
  * server answers with `SYNC_REPLAY_DETECTED` touches none of this.
  *
  * Reads and writes never throw: a database that cannot be used reads as "no
- * record" and the write is dropped with a log line.
+ * record" and the write is dropped with a log line. `readLocalBodyFacts` is
+ * the exception: a pulled delete reads it, and reading "nothing waiting" off a
+ * broken database would let the delete erase unsent text (#3029).
  *
  * @module sync/note-sync-state
  */
@@ -182,6 +184,26 @@ function readNoteMeta(indexDb: IndexDb, noteIds: string[]): Map<string, NoteMeta
     }
   }
   return meta
+}
+
+export interface LocalBodyFacts {
+  /** A queued body or record change, a file the doc has not taken, or a refused push. */
+  waiting: boolean
+  /** When the server last stored a body push from this device (local ms). */
+  confirmedAt: number | null
+}
+
+/** One note's waiting changes and last confirmed body push, for a pulled delete (#3029). */
+export function readLocalBodyFacts(db: DataDb, noteId: string): LocalBodyFacts {
+  const changes = readWaiting(db, [noteId]).get(noteId) ?? NO_WAITING
+  const pushes = readPushes(db, [noteId]).get(noteId) ?? null
+  const rejected = pushes?.lastRejectedAt ?? null
+  return {
+    waiting:
+      oldest(changes.body, changes.record, changes.fileNotTaken) !== null ||
+      (rejected !== null && rejected > (pushes?.lastSnapshotAt ?? -1)),
+    confirmedAt: pushes?.lastConfirmedAt ?? null
+  }
 }
 
 export interface NoteSyncStateDbs {

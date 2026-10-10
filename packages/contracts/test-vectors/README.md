@@ -58,6 +58,7 @@ one-class change reviewable.
 | `field-merge.json`                      |                                 32 | `../scripts/vectors/field-merge.ts`         | `../src/__tests__/field-merge.test.ts`                                           |
 | `settings-merge.json`                   |                                 18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests   |
 | `recreate-clock.json`                   |                                 11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs` |
+| `delete-keep.json`                      |                                 15 | `../scripts/vectors/delete-keep.ts`         | `../src/__tests__/delete-keep.test.ts` + the Rust `delete_keep_vectors.rs`       |
 | `pack-container.json`                   |                                 10 | `../scripts/vectors/pack-container.ts`      | `../src/__tests__/pack-container.test.ts`                                        |
 | `payload-schemas.json`                  |                                 52 | `../scripts/vectors/payload-schemas.ts`     | `../src/__tests__/payload-schemas.test.ts`                                       |
 | `device-linking.json`                   |                                  8 | `../scripts/vectors/device-linking.ts`      | `../src/__tests__/device-linking.test.ts` + the desktop parity suite             |

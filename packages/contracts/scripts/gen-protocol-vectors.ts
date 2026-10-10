@@ -48,6 +48,7 @@ import { buildCalendarIcal } from './vectors/calendar-ical'
 import { buildCalendarWrite } from './vectors/calendar-write'
 import { buildInbox } from './vectors/inbox'
 import { buildDeleteAttestation } from './vectors/delete-attestation'
+import { buildDeleteKeep } from './vectors/delete-keep'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
@@ -81,6 +82,7 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
   { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
   { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
+  { name: 'delete-keep', files: [{ path: 'delete-keep.json', build: buildDeleteKeep }] },
   { name: 'pack-container', files: [{ path: 'pack-container.json', build: buildPackContainer }] },
   {
     name: 'payload-schemas',

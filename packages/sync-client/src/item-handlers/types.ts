@@ -18,7 +18,12 @@ export interface SyncItemHandler<T = unknown> {
   readonly type: SyncItemType
   readonly schema: ZodType<T>
   applyUpsert(ctx: ApplyContext, itemId: string, data: T, clock: VectorClock): ApplyResult
-  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped'
+  applyDelete(
+    ctx: ApplyContext,
+    itemId: string,
+    clock?: VectorClock,
+    deletedAt?: number
+  ): 'applied' | 'skipped'
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number
   buildPushPayload?(

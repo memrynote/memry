@@ -180,6 +180,14 @@ Board _selection_ is deliberately not synced: which board is open stays in
 local clock merely concurrent with the tombstone loses: the row is deleted and the local edit is
 dropped.
 
+The note and journal handlers first keep text the delete never saw (#3029). `keepUnseenText`
+(`apps/desktop/src/main/sync/keep-unseen-text.ts`) asks `keepsUnseenText`
+(`packages/sync-client/src/delete-keep.ts`) whether a local change still waits for the server, the
+local clock is concurrent with the tombstone, or the last confirmed body push landed no earlier than
+`deletedAt` minus 60 s. When one holds and the body is not blank, it inserts an inbox `note` capture
+with the body on the page db, queues its create, and the delete then runs as before. The Rust core
+mirrors the rule in `crates/memry-core/src/sync/delete_keep.rs`.
+
 That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
 any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
 stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
