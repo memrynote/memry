@@ -67,6 +67,18 @@ describe('NoteTreeDeleteDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete 2' }))
     expect(onConfirm).toHaveBeenLastCalledWith(['t1', 't2'])
   })
+
+  it('says so when the tasks could not be checked, and still deletes', async () => {
+    getCarriedTasks.mockRejectedValue(new Error('No vault is open'))
+    const onConfirm = renderDialog()
+
+    expect(
+      await screen.findByText('Could not check for tasks inside. Any there will stay in Tasks.')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Delete 2' }))
+    expect(onConfirm).toHaveBeenCalledWith([])
+  })
 })
 
 describe('NoteTreeDeleteDialog journal warning', () => {
