@@ -36,6 +36,10 @@ vi.mock('fs', async (importOriginal) => {
 const state = vi.hoisted(() => ({ vault: '', snapshots: [] as string[] }))
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: (_db: unknown, id: string) => ({ id, path: `notes/${id}.md`, title: id }),
+  getOutgoingLinks: () => [],
+  getNoteTags: () => [],
+  getNotePropertiesAsRecord: () => ({}),
+  getIncomingReferences: () => [{ sourceNoteId: 'src', targetNoteId: 'target' }],
   snapshotExistsWithHash: () => false,
   getLatestSnapshot: () => null,
   insertNoteSnapshot: (_db: unknown, row: { fileContent: string }) => {
@@ -44,6 +48,7 @@ vi.mock('@main/database/queries/notes', () => ({
   },
   pruneOldSnapshots: () => undefined
 }))
+vi.mock('@main/database/queries/canvas-edges', () => ({ getCanvasEdgesForEntity: () => [] }))
 vi.mock('../database', () => ({
   getDatabase: () => ({}),
   getIndexDatabase: () => ({}),
@@ -64,7 +69,10 @@ vi.mock('./index', () => ({
 }))
 
 import { createCloseSnapshot } from './notes-versions'
-import { readJournalTextSync } from './journal'
+import { readJournalEntry, readJournalTextSync } from './journal'
+import { getNoteById } from './notes-crud'
+import { getNoteLinks } from './notes-queries'
+import { readCanvasScene } from '../canvas/store'
 import { OutsideVaultError } from '../lib/errors'
 
 const isWindows = process.platform === 'win32'
@@ -106,5 +114,28 @@ describe('a vault file swapped for an outside link after the vault check (#3074)
   it.skipIf(isWindows)('the sync journal read never returns the outside bytes', () => {
     arm(path.join(state.vault, 'journal', '2024-01-02.md'))
     expect(() => readJournalTextSync('2024-01-02')).toThrow(OutsideVaultError)
+  })
+
+  it.skipIf(isWindows)('opening a journal entry never returns the outside bytes', async () => {
+    arm(path.join(state.vault, 'journal', '2024-01-03.md'))
+    await expect(readJournalEntry('2024-01-03')).rejects.toThrow(OutsideVaultError)
+  })
+
+  it.skipIf(isWindows)('opening a note never returns the outside bytes', async () => {
+    arm(path.join(state.vault, 'notes', 'b.md'))
+    await expect(getNoteById('b')).rejects.toThrow(OutsideVaultError)
+  })
+
+  it.skipIf(isWindows)('a backlink excerpt never quotes the outside bytes', async () => {
+    fs.writeFileSync(secret, 'outside secret [[target]]\n')
+    arm(path.join(state.vault, 'notes', 'src.md'))
+    const links = await getNoteLinks('target')
+    expect(links.incoming).toHaveLength(1)
+    expect(JSON.stringify(links)).not.toContain('outside secret')
+  })
+
+  it.skipIf(isWindows)('a canvas scene never returns the outside bytes', () => {
+    arm(path.join(state.vault, 'canvas', 'c.excalidraw'))
+    expect(readCanvasScene(state.vault, 'canvas/c.excalidraw')).toBeNull()
   })
 })
