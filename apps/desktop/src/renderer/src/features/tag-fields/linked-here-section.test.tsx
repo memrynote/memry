@@ -88,9 +88,55 @@ describe('LinkedHereOrBacklinks', () => {
     expect(await screen.findByTestId('linked-here')).toBeInTheDocument()
     expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
   })
+
+  it('holds a placeholder, never the fallback, until the schema snapshot says what the note is', async () => {
+    mockGroups([{ kind: 'mentions', total: 1, items: [note(1)] }])
+    let resolveSnapshot: (value: TagSchemaSnapshot) => void = () => {}
+    api.tags.getSchemaSnapshot = vi.fn(
+      () => new Promise<TagSchemaSnapshot>((resolve) => (resolveSnapshot = resolve))
+    )
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <LinkedHereOrBacklinks noteId="person-1" fallback={<p>Backlinks</p>} />
+      </QueryClientProvider>
+    )
+
+    expect(screen.getByTestId('linked-here-pending')).toBeInTheDocument()
+    expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
+
+    await act(async () => resolveSnapshot(snapshot))
+
+    expect(await screen.findByTestId('linked-here')).toBeInTheDocument()
+    expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
+  })
+})
+
+describe('LinkedHereOrBacklinks when the snapshot read fails', () => {
+  it('falls back to plain backlinks instead of holding the placeholder', async () => {
+    api.tags.getSchemaSnapshot = vi.fn().mockRejectedValue(new Error('ipc down'))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <LinkedHereOrBacklinks noteId="person-1" fallback={<p>Backlinks</p>} />
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText('Backlinks')).toBeInTheDocument()
+    expect(screen.queryByTestId('linked-here-pending')).not.toBeInTheDocument()
+  })
 })
 
 describe('LinkedHereSection', () => {
+  it('holds a placeholder while the linked notes load', async () => {
+    mockGroups([{ kind: 'mentions', total: 1, items: [note(1)] }])
+    renderWithClient(<LinkedHereSection noteId="person-1" />)
+
+    expect(screen.getByTestId('linked-here-pending')).toBeInTheDocument()
+    expect(await screen.findByTestId('linked-here')).toBeInTheDocument()
+    expect(screen.queryByTestId('linked-here-pending')).not.toBeInTheDocument()
+  })
+
   it('renders nothing when no note or task links to the object', async () => {
     mockGroups([])
     renderWithClient(<LinkedHereSection noteId="person-1" />)
