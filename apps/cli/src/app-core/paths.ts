@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { normalizeJournalFolder } from '@memry/storage-vault'
 
 export interface VaultConfig {
   excludePatterns: string[]
@@ -78,6 +79,10 @@ export function getConfigPath(vaultPath: string): string {
 export async function writeVaultConfig(vaultPath: string, config: VaultConfig): Promise<void> {
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
   await fs.writeFile(getConfigPath(vaultPath), `${JSON.stringify(config, null, 2)}\n`, 'utf-8')
+  await ensureVaultFolders(vaultPath, config)
+}
+
+async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promise<void> {
   await fs.mkdir(path.join(vaultPath, config.defaultNoteFolder), { recursive: true })
   await fs.mkdir(path.join(vaultPath, config.journalFolder), { recursive: true })
   await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR), { recursive: true })
@@ -85,19 +90,31 @@ export async function writeVaultConfig(vaultPath: string, config: VaultConfig): 
   await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'files'), { recursive: true })
 }
 
+/** Reads config.json as desktop's getConfig does. A missing file is created with defaults. */
+async function readVaultConfig(configPath: string): Promise<Partial<VaultConfig> | null> {
+  try {
+    return JSON.parse(await fs.readFile(configPath, 'utf-8')) as Partial<VaultConfig>
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    // Leave the file alone: overwriting it would lose the user's settings.
+    console.error(`Could not read ${configPath}, using default settings:`, error)
+    return null
+  }
+}
+
 export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig> {
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
 
-  const configPath = getConfigPath(vaultPath)
-  let config = structuredClone(defaultVaultConfig)
-  try {
-    const raw = await fs.readFile(configPath, 'utf-8')
-    config = { ...config, ...(JSON.parse(raw) as Partial<VaultConfig>) }
-  } catch {
-    await fs.writeFile(configPath, `${JSON.stringify(defaultVaultConfig, null, 2)}\n`, 'utf-8')
+  const stored = await readVaultConfig(getConfigPath(vaultPath))
+  const merged = { ...structuredClone(defaultVaultConfig), ...stored }
+  if (stored) await writeVaultConfig(vaultPath, merged)
+
+  // Same normalization as desktop's getConfig (main/vault/index.ts).
+  const config: VaultConfig = {
+    ...merged,
+    journalFolder: normalizeJournalFolder(merged.journalFolder),
+    journalShowInSidebar: merged.journalShowInSidebar === true
   }
-
-  await writeVaultConfig(vaultPath, config)
-
+  await ensureVaultFolders(vaultPath, config)
   return config
 }

@@ -17,14 +17,15 @@ export interface FoldersService {
  * Mirrors desktop's `createTreeFolderFilter` (main/vault/folder-visibility.ts).
  * Structural and excluded folders hide by first segment; the journal folder
  * hides as an exact subtree, and shows when `journalShowInSidebar` is on.
+ * `config` comes from `ensureVaultLayout`, already normalized like desktop's.
  */
 function createTreeFolderFilter(config: VaultConfig): (folderPath: string) => boolean {
   const hiddenRoots = new Set(
     [ATTACHMENTS_DIR, CANVAS_DIR, ...config.excludePatterns]
       .filter(Boolean)
-      .map((p) => normalizePath(p).split('/')[0])
+      .map((p) => p.replace(/\/+$/, '').split('/')[0])
   )
-  const journalFolder = config.journalShowInSidebar ? '' : normalizePath(config.journalFolder)
+  const journalFolder = config.journalShowInSidebar ? '' : config.journalFolder
 
   return (folderPath) =>
     !hiddenRoots.has(folderPath.split('/')[0]) &&
