@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 186,
+    "exportedCaseCount": 188,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 196,
+    "caseCount": 198,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1254,6 +1254,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "4b90ca17fafc1af09efb5cb5b32668854dc133b52bef63f4b03207170f326d2d"
+    },
+    {
+      "name": "leading space in link text at line start (BBF-103)",
+      "markdown": "[ a](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "fc8853d028e4edafc7115fde0ee6b8b0f9d9f4a685834ea716d52763b5182119"
+    },
+    {
+      "name": "leading space in link text after a hard break (BBF-103)",
+      "markdown": "a  \n[ b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c016ba6523def7ae852e8302afafb998f7297850801c62a485caeb38114f8278"
     },
     {
       "name": "html break inside image alt text (BBF-85)",
