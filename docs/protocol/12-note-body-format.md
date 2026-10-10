@@ -693,10 +693,19 @@ node holds no marks, so a comment inside emphasis (`**a <!-- b --> c**`) is
 written as a text run holding its token and the marks it sat in: those a
 neighbouring text run holds on a whitespace edge next to the comment (a hard
 break's `\n` is not one), never `code` (BBF-52,
-`packages/editor-schema/src/inline/html-comment.ts:75-87`, `:150`). Comments in fenced code and
+`packages/editor-schema/src/inline/html-comment.ts:74-86`, `:152`). Comments in fenced code and
 code spans stay code, and Memry's own marker comments (§12.8, file markers,
 nesting markers, writing tools markers) keep their own readers. A client built
 before the type finds it unrepresentable and keeps the file (§12.1).
+
+House style writes each run of neighbouring inline items that hold `bold`,
+`italic` or `strike` as one pair of delimiters, with the whitespace on its
+edges outside them (BBF-62). `**alpha *x y* omega**` comes back as written, not
+as one emphasis per text run. The mark spanning the most items opens first, ties
+in the order `bold, italic, strike`. A link counts as holding a mark when all
+of its text does. `code` holds no other mark, so ``**`a` x `c`**`` reads back
+as bold `x` only and is written `` `a` **x** `c` ``
+(`packages/editor-schema/src/inline/emphasis-runs.ts:62`, `:93`).
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 
