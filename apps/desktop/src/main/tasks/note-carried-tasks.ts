@@ -13,7 +13,6 @@
  * @module tasks/note-carried-tasks
  */
 
-import fs from 'fs/promises'
 import { scanTaskCheckboxStates } from '@memry/shared/task-block'
 import { classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { getTaskById, getTaskNoteIds } from '@main/database/queries/tasks'
@@ -25,9 +24,8 @@ import {
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
 import { OutsideVaultError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
-import { refuseOutsideVault } from '../lib/paths'
-import { safeRead } from '../vault/file-ops'
-import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
+import { openVaultFile } from '../lib/paths'
+import { getVaultRoot } from '../vault/notes-io'
 
 const log = createLogger('NoteCarriedTasks')
 
@@ -64,17 +62,18 @@ export function selectCarriedTaskIds(notes: CarrierNote[], deps: CarriedTaskDeps
 // multi-hundred-MB log out of a main-process string. A file linked outside
 // the vault is never read: its task ids are not this note's.
 async function readCarrierMarkdown(relativePath: string): Promise<string | null> {
-  try {
-    await refuseOutsideVault(getVaultRoot(), relativePath)
-  } catch (error) {
+  const handle = await openVaultFile(getVaultRoot(), relativePath).catch((error: unknown) => {
     if (!(error instanceof OutsideVaultError)) throw error
     log.warn('Skipped carried tasks of a note file', { error: error.message })
     return null
+  })
+  if (handle === null) return null
+  try {
+    if (classifyMarkdownStat((await handle.stat()).size)) return null
+    return await handle.readFile('utf-8')
+  } finally {
+    await handle.close()
   }
-  const absolutePath = toAbsolutePath(relativePath)
-  const stats = await fs.stat(absolutePath).catch(() => null)
-  if (!stats || classifyMarkdownStat(stats.size)) return null
-  return safeRead(absolutePath)
 }
 
 export async function getCarriedTaskIds(input: {

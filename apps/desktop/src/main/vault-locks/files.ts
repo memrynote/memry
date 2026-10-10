@@ -24,7 +24,7 @@ import {
   isIndexDatabaseInitialized
 } from '../database'
 import { createLogger } from '../lib/logger'
-import { normalizeRelativePath, refuseOutsideVault, refuseOutsideVaultSync } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile, openVaultFileSync } from '../lib/paths'
 import { setVaultFileWriteGuard } from '../vault/file-ops'
 import { generateContentHash } from '../vault/frontmatter'
 import { getStatus } from '../vault/index'
@@ -121,10 +121,18 @@ export async function adoptCopiedVaultIdentities(root: string): Promise<void> {
   })
 }
 
-/** The vault root and the path under it, for the outside-link refusal before a chmod. */
-function vaultPlace(absolutePath: string): [string, string] | null {
+// libuv's fchmod on Windows reopens the handle exclusively, so Windows changes the mode by name.
+const chmodByName = process.platform === 'win32'
+
+/**
+ * The vault root and the path under it, for the outside-link refusal before a
+ * chmod. With no vault open, the file's own folder bounds it.
+ */
+function vaultPlace(absolutePath: string): [string, string] {
   const vaultPath = getStatus().path
-  return vaultPath ? [vaultPath, path.relative(vaultPath, absolutePath)] : null
+  return vaultPath
+    ? [vaultPath, path.relative(vaultPath, absolutePath)]
+    : [path.dirname(absolutePath), path.basename(absolutePath)]
 }
 
 async function changeMode(
@@ -133,12 +141,17 @@ async function changeMode(
   asFound: boolean
 ): Promise<void> {
   try {
-    // stat and chmod follow links: a file linked outside the vault is refused, never followed.
-    const place = vaultPlace(absolutePath)
-    if (place !== null) await refuseOutsideVault(...place)
-    const stats = await fs.promises.stat(absolutePath)
-    const next = nextMode(absolutePath, stats, readOnly, asFound)
-    if (next !== null) await fs.promises.chmod(absolutePath, next)
+    // The file is opened once and changed through the handle, so a file linked
+    // outside the vault, even one swapped in after the check, is never changed.
+    const handle = await openVaultFile(...vaultPlace(absolutePath))
+    if (handle === null) return
+    try {
+      const next = nextMode(absolutePath, await handle.stat(), readOnly, asFound)
+      if (next === null) return
+      await (chmodByName ? fs.promises.chmod(absolutePath, next) : handle.chmod(next))
+    } finally {
+      await handle.close()
+    }
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
     log.warn('Could not change the read-only attribute', { readOnly, error: err })
@@ -156,11 +169,16 @@ export async function protectFileAsFound(absolutePath: string): Promise<void> {
 
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
   try {
-    const place = vaultPlace(absolutePath)
-    if (place !== null) refuseOutsideVaultSync(...place)
-    const stats = fs.statSync(absolutePath)
-    const next = nextMode(absolutePath, stats, readOnly, false)
-    if (next !== null) fs.chmodSync(absolutePath, next)
+    const fd = openVaultFileSync(...vaultPlace(absolutePath))
+    if (fd === null) return
+    try {
+      const next = nextMode(absolutePath, fs.fstatSync(fd), readOnly, false)
+      if (next === null) return
+      if (chmodByName) fs.chmodSync(absolutePath, next)
+      else fs.fchmodSync(fd, next)
+    } finally {
+      fs.closeSync(fd)
+    }
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return
     log.warn('Could not change the read-only attribute', { readOnly, error: err })
