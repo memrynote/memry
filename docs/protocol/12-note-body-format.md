@@ -719,7 +719,21 @@ of its text does. Text runs inside a link that hold the same remaining marks
 are joined, so `**[a *b*](u) c**` stays one link (BBF-71). `code` holds no
 other mark, so ``**`a` x `c`**`` reads back as bold `x` only and is written
 `` `a` **x** `c` ``
-(`packages/editor-schema/src/inline/emphasis-runs.ts:66`, `:82`, `:116`).
+(`packages/editor-schema/src/inline/emphasis-runs.ts:71`, `:87`, `:140`).
+
+`code` holds no link either, so a code span inside link text is the link's own
+text, backticks included (BBF-105). ``[`a`](u)`` parses to link text
+`` `a` ``, and the editor shows the backticks inside the link. Before BBF-105 the
+span parsed to code with no link, and the next write-back deleted the address.
+The parse rebuilds the span from its code: the shortest backtick fence no run
+in it matches, with one space on each side when the code opens or closes with
+a backtick or with a space on both ends
+(`packages/editor-schema/src/inline/link-code-spans.ts:16`, `:25`,
+`packages/editor-schema/src/parse-markdown.ts:315`;
+`crates/memry-core/src/crdt/markdown_seed/inline.rs:316`, `:343`). House style
+writes each code-span-shaped run of link text without escapes, so
+``[`a*b`](u)`` comes back as written
+(`packages/editor-schema/src/inline/emphasis-runs.ts:127`).
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 

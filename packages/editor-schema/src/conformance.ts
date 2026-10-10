@@ -881,10 +881,25 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '**[a](u)**  \n[b](u)'
   },
   {
-    // A code span loses its link with or without a break (follow-up); the break stays.
     name: 'code span before a hard break inside link text (BBF-104)',
     markdown: '[`a`  \nb](u)',
-    canonical: '`a`  \n[b](u)'
+    canonical: '[`a`](u)  \n[b](u)'
+  },
+  // A code span in link text keeps its link (BBF-105).
+  { name: 'code span as link text (BBF-105)', markdown: '[`a`](u)' },
+  { name: 'code span as link text mid-line (BBF-105)', markdown: 'x [`a`](u)' },
+  { name: 'code span then text in link text (BBF-105)', markdown: '[`a` b](u)' },
+  { name: 'code span with a backtick in link text (BBF-105)', markdown: '[``a`b``](u)' },
+  { name: 'code span with markdown syntax in link text (BBF-105)', markdown: '[`a*b_[c]`](u)' },
+  {
+    name: 'bold code span in link text (BBF-105)',
+    markdown: '[**`a`**](u)',
+    canonical: '**[`a`](u)**'
+  },
+  {
+    name: 'code span before a soft break in link text (BBF-105)',
+    markdown: '[`a`\nb](u)',
+    canonical: '[`a`](u)\n[b](u)'
   },
   {
     name: 'bold across a soft break inside link text (BBF-104)',
