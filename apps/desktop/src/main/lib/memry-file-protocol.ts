@@ -130,6 +130,13 @@ async function serveFromHandle(
   const match = rangeHeader?.match(/bytes=(\d*)-(\d*)/)
   if (match) {
     const start = match[1] ? parseInt(match[1], 10) : 0
+    if (start >= fileSize) {
+      await handle.close()
+      return new Response(null, {
+        status: 416,
+        headers: { ...headers, 'Content-Range': `bytes */${fileSize}` }
+      })
+    }
     const end = Math.min(match[2] ? parseInt(match[2], 10) : fileSize - 1, fileSize - 1)
     const length = Math.max(end - start + 1, 0)
     let bytes = Buffer.alloc(length)
