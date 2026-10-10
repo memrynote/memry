@@ -178,11 +178,10 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
   let indexed = 0
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
-    const absolutePath = path.join(vaultPath, row.path)
 
     try {
       const raw = await readVaultFile(vaultPath, row.path)
-      if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
+      if (raw === null) throw new Error(`Note file is missing: ${row.path}`)
       const parsed = parseNote(raw, row.path)
       // resetFtsTable above left the table empty, so every id here is absent.
       insertFtsNoteUnchecked(
@@ -391,14 +390,13 @@ async function reconcileNotes(
   let indexed = 0
   for (let i = 0; i < stale.length; i++) {
     const row = stale[i]
-    const absolutePath = path.join(vaultPath, row.path)
 
     try {
       const raw = await readVaultFile(vaultPath, row.path)
-      if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
+      if (raw === null) throw new Error(`Note file is missing: ${row.path}`)
 
-      // The link check and the read are the only awaits in this loop, so this
-      // is the only point an abort can land. Bail before writing: closeVault closes the databases
+      // The read is the only await in this loop, so this is the only point an
+      // abort can land. Bail before writing: closeVault closes the databases
       // as soon as the runtime stops.
       if (signal?.aborted) {
         break

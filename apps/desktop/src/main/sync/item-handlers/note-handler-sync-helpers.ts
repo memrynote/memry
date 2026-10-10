@@ -5,7 +5,7 @@ import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
+import { getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
 import { parseNote } from '../../vault/frontmatter'
 import { getDatabase, getIndexDatabase } from '../../database/client'
@@ -56,10 +56,9 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
   // `undefined` omits the key, which tells peers nothing: the file could not be
   // read, or this note has had no cover here. `null` is a local removal only.
   let cover: NoteCoverSync | null | undefined
-  const absolutePath = toAbsolutePath(cached.path)
   try {
     const raw = readVaultFileSync(getVaultRoot(), cached.path)
-    if (raw === null) throw new Error(`Note file is missing: ${absolutePath}`)
+    if (raw === null) throw new Error(`Note file is missing: ${cached.path}`)
     const parsed = parseNote(raw)
     content = operation === 'create' ? parsed.content : null
     tags = parsed.frontmatter.tags ?? []

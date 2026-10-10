@@ -65,6 +65,7 @@ vi.mock('./index', () => ({
 
 import { createCloseSnapshot } from './notes-versions'
 import { readJournalTextSync } from './journal'
+import { OutsideVaultError } from '../lib/errors'
 
 const isWindows = process.platform === 'win32'
 
@@ -104,12 +105,6 @@ describe('a vault file swapped for an outside link after the vault check (#3074)
 
   it.skipIf(isWindows)('the sync journal read never returns the outside bytes', () => {
     arm(path.join(state.vault, 'journal', '2024-01-02.md'))
-    let text: string | null = null
-    try {
-      text = readJournalTextSync('2024-01-02')
-    } catch {
-      text = null
-    }
-    expect(text ?? '').not.toContain('outside secret')
+    expect(() => readJournalTextSync('2024-01-02')).toThrow(OutsideVaultError)
   })
 })

@@ -83,6 +83,12 @@ vi.mock('@memry/shared/utc', () => ({
   utcNow: () => '2026-01-01T00:00:00.000Z'
 }))
 
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  readVaultFile: (_vault: string, relative: string) =>
+    mocks.safeRead(mocks.toAbsolutePath(relative))
+}))
+
 vi.mock('../vault/file-ops', () => ({
   atomicWrite: (...args: unknown[]) => mocks.atomicWrite(...args),
   safeRead: (...args: unknown[]) => mocks.safeRead(...args),

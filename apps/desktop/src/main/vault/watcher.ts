@@ -987,9 +987,6 @@ export class VaultWatcher {
     }
   }
 
-  /**
-   * Handle markdown file modification with full frontmatter parsing.
-   */
   private async handleMarkdownFileChange(
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,

@@ -18,7 +18,7 @@ import {
 } from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
-import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
+import { atomicWrite, ensureDirectory } from '../vault/file-ops'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
@@ -768,7 +768,7 @@ async function writebackExisting(
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
 
-  const existingRaw = await safeRead(absolutePath)
+  const existingRaw = await readVaultFile(getVaultRoot(), cached.path)
   const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
 
   const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeFrontmatter(
@@ -936,7 +936,7 @@ async function writebackJournal(
   await ensureDirectory(path.dirname(getJournalPath(date)))
 
   const absolutePath = toAbsolutePath(cached.path)
-  const existingRaw = await safeRead(absolutePath)
+  const existingRaw = await readVaultFile(getVaultRoot(), cached.path)
   const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
 
   const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeJournalFrontmatter(

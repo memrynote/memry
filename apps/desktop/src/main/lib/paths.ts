@@ -190,9 +190,8 @@ export function resolveVaultFileSync(vaultPath: string, relativePath: string): V
 }
 
 /**
- * Throws `OutsideVaultError` for a vault file linked outside the vault. Only
- * for a writer that replaces the file by rename without reading it: a reader
- * reads through `readVaultFile`, since the file can be swapped after this check.
+ * Throws `OutsideVaultError` for a vault file linked outside the vault. A reader
+ * reads through `readVaultFile` instead, since the file can be swapped after this check.
  */
 export function refuseOutsideVaultSync(vaultPath: string, relativePath: string): void {
   const resolved = resolveVaultFileSync(vaultPath, relativePath)
