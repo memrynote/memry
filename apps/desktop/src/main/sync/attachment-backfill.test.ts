@@ -436,6 +436,34 @@ describe('attachment backfill', () => {
     expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
   })
 
+  it('queues no file note linked outside the vault, and still queues one inside it', () => {
+    const fileNote = (id: string, relative: string): void => {
+      upsertNoteMetadata(db, {
+        id,
+        path: relative,
+        title: id,
+        fileType: 'image',
+        createdAt: '2026-08-21T00:00:00.000Z',
+        modifiedAt: '2026-08-21T00:00:00.000Z'
+      })
+    }
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-backfill-outside-'))
+    const secret = path.join(outside, 'private.png')
+    fs.writeFileSync(secret, 'secret bytes')
+    fs.mkdirSync(path.join(vaultPath, 'sources'), { recursive: true })
+    fs.symlinkSync(secret, path.join(vaultPath, 'sources', 'linked.png'))
+    writeVaultFile('sources/inside.png')
+    fileNote('linked', 'sources/linked.png')
+    fileNote('inside', 'sources/inside.png')
+
+    try {
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+      expect(listPendingUploads(db).map((row) => row.noteId)).toEqual(['inside'])
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   it('returns empty for a vault with no attachments folder at all', () => {
     fs.rmSync(path.join(vaultPath, 'attachments'), { recursive: true, force: true })
 
