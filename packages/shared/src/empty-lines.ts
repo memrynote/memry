@@ -365,10 +365,11 @@ const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
 // a hard break, so neither is marked.
 const HTML_BREAK_MID_LINE = /(?<!<br\s*\/?>[^\S\n]*)<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
 
-// Only a plain paragraph line. A table row is one line by grammar, and a hard
-// break in a heading, quote or list item does not survive the write-back on
-// any spelling, so there the tag keeps the soft break it parsed to before.
-const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[|>#]|[-*+][ \t]|\d+[.)][ \t])/
+// Only a plain paragraph line. A table row is one line by grammar (a line with
+// a pipe may be one), and a hard break in a heading, quote or list item does
+// not survive the write-back on any spelling, so there the tag keeps the soft
+// break it parsed to before. A lazy line continues the block above it.
+const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[>#]|[-*+][ \t]|\d+[.)][ \t])|\|/
 
 export interface MaskedHardBreaks {
   markdown: string
@@ -405,24 +406,30 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   if (!hasBr && !text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
 
   const lines = text.split('\n')
+  let inOtherBlock = false
   for (let index = 0; index < lines.length; index++) {
-    if (hasBr && !NOT_PARAGRAPH_LINE.test(lines[index])) {
+    const line = lines[index]
+    if (line.trim() === '') inOtherBlock = false
+    else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
+    if (hasBr && !inOtherBlock) {
       // The tag stays for the parser to break on. Its spelling is empty: in a
-      // `<pre>` block the tag's own newline is all it ever meant.
-      lines[index] = lines[index].replace(HTML_BREAK_MID_LINE, (tag) => {
+      // `<pre>` block the tag's own newline is all it ever meant. Link and
+      // image text never reaches the unmask, so a tag inside `[...]` is left.
+      lines[index] = line.replace(HTML_BREAK_MID_LINE, (tag, offset: number) => {
+        const before = line.slice(0, offset)
+        if (before.split('[').length > before.split(']').length) return tag
         breaks.push('')
         return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
       })
     }
     if (index === lines.length - 1) continue
     if (lines[index + 1].trim() === '') continue
-    const line = lines[index]
     if (line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
     // The marker replaces the spelling rather than joining it: leaving the two
     // trailing spaces in place would hand the parser a break it already knows
     // how to drop, and leaving the backslash would escape the token's first
     // character.
-    lines[index] = line.replace(HARD_BREAK_LINE, (spelling) => {
+    lines[index] = lines[index].replace(HARD_BREAK_LINE, (spelling) => {
       breaks.push(spelling)
       return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
     })

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 167,
+    "exportedCaseCount": 168,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 177,
+    "caseCount": 178,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1121,6 +1121,13 @@
       "canonical": "a  \nb",
       "pending": null,
       "sha256": "f74f4bd1f88cfc6be8a5fc9f9b75781742aee4c8036cc698cf002ee89d87e24d"
+    },
+    {
+      "name": "html break and a trailing hard break on one line (BBF-85)",
+      "markdown": "a<br>b  \nc",
+      "canonical": "a  \nb  \nc",
+      "pending": null,
+      "sha256": "f8dbd87349cc6b6816d1393acf5170879c9ce32be1fc12a973b18ba17db70444"
     },
     {
       "name": "html break inside bold (BBF-85)",
