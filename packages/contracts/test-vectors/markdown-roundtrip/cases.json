@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 149,
+    "exportedCaseCount": 154,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 159,
+    "caseCount": 164,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1044,6 +1044,41 @@
       "canonical": null,
       "pending": null,
       "sha256": "5eac671d8d755839da7d918dd20cadca830fdb7fc424d409a97592580a0bdfea"
+    },
+    {
+      "name": "italic nested in bold (BBF-62)",
+      "markdown": "**alpha *x y* omega**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e7aa8f16da0c1d68dd91445f2e12eae424d28bcba1c7d63caf9251ddc901982f"
+    },
+    {
+      "name": "bold nested in italic (BBF-62)",
+      "markdown": "*alpha **x** omega*",
+      "canonical": null,
+      "pending": null,
+      "sha256": "982c1ffb7ad859a49b41693d9a8e7fdceb0e895a47d67ee5934d00083da7a42e"
+    },
+    {
+      "name": "bold stops at a code span (BBF-62)",
+      "markdown": "**`a` x `c`**",
+      "canonical": "`a` **x** `c`",
+      "pending": null,
+      "sha256": "f4f221505a49fb8b2931e221e7fb605448454e247106e1e248289940b686c63f"
+    },
+    {
+      "name": "bold run past a link (BBF-62)",
+      "markdown": "**[a](https://example.com) x c**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8f172aa42b60d1a0f32767fc13c2884d61db45bb8f6e00f91a6630bd4f1e29f4"
+    },
+    {
+      "name": "comment after a link inside bold (BBF-62)",
+      "markdown": "**[l](https://example.com) <!-- b --> c**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "eb0dc011b062b9bb15d8e28d663ffc5b585f89254d0ea1b13e292a5d8ed967fd"
     },
     {
       "name": "obsidian comment inside a line",

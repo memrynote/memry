@@ -1485,4 +1485,69 @@ describe('Composer', () => {
     expect(mockCancelTurn).toHaveBeenCalledWith('conversation-1')
     expect(mockSendTurn).not.toHaveBeenCalled()
   })
+
+  it('sends an attached text file as a labelled block after the prompt', async () => {
+    renderComposer('conversation-1')
+
+    await userEvent.upload(
+      screen.getByTestId('agent-file-input'),
+      new File(['ERROR disk full\n'], 'app.log', { type: 'text/plain' })
+    )
+    expect(await screen.findByText('app.log')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove app.log' })).toBeInTheDocument()
+
+    await setPromptText('what failed?')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'what failed?\n\n```memry-file name="app.log" bytes=16\nERROR disk full\n\n```',
+        attachments: []
+      })
+    )
+    expect(screen.queryByText('app.log')).not.toBeInTheDocument()
+  })
+
+  it('sends only the files left after removing a chip', async () => {
+    renderComposer('conversation-1')
+
+    await userEvent.upload(screen.getByTestId('agent-file-input'), [
+      new File(['one'], 'a.txt', { type: 'text/plain' }),
+      new File(['two'], 'b.txt', { type: 'text/plain' })
+    ])
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove a.txt' }))
+    await setPromptText('compare')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'compare\n\n```memry-file name="b.txt" bytes=3\ntwo\n```' })
+    )
+  })
+
+  it('accepts a text file dropped onto the composer', async () => {
+    renderComposer('conversation-1')
+
+    fireEvent.drop(screen.getByTestId('agent-composer-box'), {
+      dataTransfer: {
+        files: [new File(['a,b\n'], 'data.csv', { type: 'text/csv' })],
+        types: ['Files']
+      }
+    })
+
+    expect(await screen.findByText('data.csv')).toBeInTheDocument()
+  })
+
+  it('refuses a binary or too-large file with a visible reason', async () => {
+    renderComposer('conversation-1')
+    const input = screen.getByTestId('agent-file-input')
+
+    await userEvent.upload(input, new File([new Uint8Array([0x89, 0x50, 0x00])], 'app.log'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('app.log is not a UTF-8 text file')
+
+    await userEvent.upload(input, new File(['a'.repeat(100 * 1024 + 1)], 'big.txt'))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'big.txt would take this message over the 100 KB limit'
+    )
+    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument()
+  })
 })

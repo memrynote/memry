@@ -97,6 +97,7 @@ Agent Chat can:
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
 - mention notes, tasks, journals, inbox items, and calendar events inline in a prompt with `@`
+- attach small text files, such as a log or a CSV, to a prompt without importing them
 - stream assistant text back into the sidebar, with each new word resolving out of a soft blur
 - link returned or created memrynote items directly in assistant replies, showing cited items as
   inline citation chips and listing all of them behind a source count under the reply
@@ -191,6 +192,21 @@ search for an earlier query is discarded rather than shown.
 
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
+
+### Attaching a text file
+
+To ask about a file without importing it into the vault, click the paperclip in the prompt bar or
+drop the file onto the prompt box. Agent Chat accepts `.txt`, `.md`, `.log`, `.csv`, `.tsv`,
+`.json`, `.yaml` and `.yml` files that are UTF-8 text, up to 100 KB in total per message. Each file
+shows as a chip with its name and size, and the chip's remove button takes it off the message. A
+binary file, a file of another type, or a file that takes the message over the limit is refused, and
+the prompt box says why.
+
+When you send, the file text is added to the end of your message as a fenced block whose first
+line is `memry-file name="app.log" bytes=2048`, so the model sees the file name and size with the
+content. The transcript shows the block as a collapsed card with the file name and size; click it
+to read the content. The file is not copied into the vault. Its text is stored only in the message,
+which is encrypted and syncs like any other message. Older app versions show the plain fenced block.
 
 ### Agent memory
 
