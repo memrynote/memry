@@ -9,6 +9,7 @@
     "./utc": "./src/utc.ts",
     "./file-types": "./src/file-types.ts",
     "./empty-lines": "./src/empty-lines.ts",
+    "./hard-breaks": "./src/hard-breaks.ts",
     "./block-colors": "./src/block-colors.ts",
     "./block-markers": "./src/block-markers.ts",
     "./inline-colors": "./src/inline-colors.ts",
