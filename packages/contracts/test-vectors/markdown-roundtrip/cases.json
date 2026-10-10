@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 188,
+    "exportedCaseCount": 196,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 198,
+    "caseCount": 206,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1247,6 +1247,62 @@
       "canonical": null,
       "pending": null,
       "sha256": "cc5510a8fba4aa71ad416f8bd184bd7d6bb85094791cc2bdba11583a96ebd0a2"
+    },
+    {
+      "name": "soft break inside link text (BBF-104)",
+      "markdown": "[a\nb](u)",
+      "canonical": "[a](u)\n[b](u)",
+      "pending": null,
+      "sha256": "7af5fb56c2a49304e90659868d17ea9b62e2e44b1f49f144c2a3e021abb80c00"
+    },
+    {
+      "name": "soft break between two links (BBF-104)",
+      "markdown": "[a](u)\n[b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d2dcc2bfad4f80466416017d1cab6c079af4dd26957ac594884503f889de40ab"
+    },
+    {
+      "name": "soft break after a link (BBF-104)",
+      "markdown": "[a](u)\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b69b4d91d713a72f1cf0fdc8f7311afeb72900c86812c412747eb0c7a0d8f326"
+    },
+    {
+      "name": "soft break inside link text mid-paragraph (BBF-104)",
+      "markdown": "p [a\nb](u) q",
+      "canonical": "p [a](u)\n[b](u) q",
+      "pending": null,
+      "sha256": "7a5baf1e70e55675f799133c0cc4b478e7361fc735df1f4ec7198afae115bee5"
+    },
+    {
+      "name": "italic before a soft break inside link text (BBF-104)",
+      "markdown": "[*a*\nb](u)",
+      "canonical": "*[a](u)*\n[b](u)",
+      "pending": null,
+      "sha256": "1349c5f11ef33c9961b04c67ea37a38eebd10c0d592d75342fcdbae8e7226151"
+    },
+    {
+      "name": "bold before a hard break inside link text (BBF-104)",
+      "markdown": "[**a**  \nb](u)",
+      "canonical": "**[a](u)**  \n[b](u)",
+      "pending": null,
+      "sha256": "d8dc394c9cbd51f8f83e96fdcf212819bc709e477ff658f86471bd8f64cb3369"
+    },
+    {
+      "name": "code span before a hard break inside link text (BBF-104)",
+      "markdown": "[`a`  \nb](u)",
+      "canonical": "`a`  \n[b](u)",
+      "pending": null,
+      "sha256": "9c26e47c24ff9731ba8102ca8316c49dda3ecb5de1574feb69343a3a541a9711"
+    },
+    {
+      "name": "bold across a soft break inside link text (BBF-104)",
+      "markdown": "[**a\nb**](u)",
+      "canonical": "**[a](u)\n[b](u)**",
+      "pending": null,
+      "sha256": "b9cd45b0e9467eeb63c6464016a9904e2acb830d9d6d91c94405a5deed267272"
     },
     {
       "name": "leading space in link text mid-line (BBF-103)",

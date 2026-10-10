@@ -78,8 +78,46 @@ function joinTexts(items: InlineItem[]): InlineItem[] {
   return out
 }
 
+/**
+ * BlockNote writes a link whose text holds a break as one link per line. Split
+ * here first, the break outside the links, so no token pair spans the split:
+ * `[**a**\nb](u)` wrote `[**a](u)\n[**b](u)` (BBF-104).
+ */
+function splitLinksAtBreaks(items: InlineItem[]): InlineItem[] {
+  const out: InlineItem[] = []
+  for (const item of items) {
+    const content = item.content as InlineItem[] | undefined
+    if (item.type !== 'link' || !content?.some((child) => child.text?.includes('\n'))) {
+      out.push(item)
+      continue
+    }
+    let line: InlineItem[] = []
+    const endLine = (): void => {
+      if (line.length > 0) out.push({ ...item, content: line })
+      line = []
+    }
+    for (const child of content) {
+      for (const part of (child.text ?? '').split(/(\n+)/)) {
+        if (part === '') continue
+        if (!part.startsWith('\n')) {
+          line.push({ ...child, text: part })
+          continue
+        }
+        endLine()
+        // The break keeps the run's marks, so a bold run across it stays one run.
+        const { code: _code, ...styles } = child.styles ?? {}
+        out.push({ ...child, text: part, styles })
+      }
+      if (child.type !== 'text') line.push(child)
+    }
+    endLine()
+  }
+  return out
+}
+
 /** `items` with every run of a mark between tokens; `marks` maps each token pair to its mark. */
 export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[]): InlineItem[] {
+  items = splitLinksAtBreaks(items)
   const out: InlineItem[] = []
   let at = 0
   while (at < items.length) {
