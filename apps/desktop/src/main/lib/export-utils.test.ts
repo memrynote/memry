@@ -49,6 +49,17 @@ describe('export-utils', () => {
     expect(html).toContain('<code>&lt;!-- kept --&gt;</code>')
   })
 
+  it('markdownToHtml keeps the HTML block a stripped comment started (BBF-87)', () => {
+    for (const markdown of [
+      '<!-- a --> <!-- b\nmore [[F]]\nc -->',
+      '<!-- a\nx --> <!-- b\nmore [[F]]\nc -->'
+    ]) {
+      const html = markdownToHtml(markdown)
+      expect(html).toContain('<p>more <span class="wiki-link">F</span><br>c --&gt;</p>')
+      expect(html).not.toContain('x -->')
+    }
+  })
+
   it('markdownToHtml prints numbered footnotes and a Notes list with back-links', () => {
     const markdown = [
       'Claim[^src] and another[^2], then the claim again[^src].',
