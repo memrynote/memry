@@ -1,8 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+// The seam: right after the outside-vault check resolves the requested file,
+// the file is swapped for a link to a file outside the vault, before it is read.
+const race = vi.hoisted(() => ({ target: '', swap: (): void => {} }))
+
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>()
+  const realpath = async (probe: string): Promise<string> => {
+    const real = await actual.realpath(probe)
+    if (race.target !== '' && probe === race.target) {
+      race.target = ''
+      race.swap()
+    }
+    return real
+  }
+  return { ...actual, default: { ...actual, realpath }, realpath }
+})
+
 import { HTML_EMBED_CSP, resolveHtmlEmbedFile, serveHtmlEmbed } from './html-embed-protocol'
 
 /** `memry-html://local/<abs>` for a path, the shape the renderer builds. */
@@ -97,6 +115,47 @@ describe('memry-html protocol (#1872)', () => {
       )
       expect(response.status).toBe(404)
     })
+
+    it.skipIf(process.platform === 'win32')(
+      'refuses an html attachment linked outside the vault',
+      async () => {
+        const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-out-')))
+        try {
+          const secret = path.join(outside, 'private.html')
+          fs.writeFileSync(secret, '<p>outside secret</p>')
+          const file = path.join(noteDir, 'linked.html')
+          fs.symlinkSync(secret, file)
+          const response = await serveHtmlEmbed(new Request(embedUrl(file)), [vault])
+          expect(response.status).toBe(404)
+          expect(await response.text()).not.toContain('outside')
+        } finally {
+          fs.rmSync(outside, { recursive: true, force: true })
+        }
+      }
+    )
+
+    it.skipIf(process.platform === 'win32')(
+      'refuses an html attachment swapped for an outside link after the check',
+      async () => {
+        const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-out-')))
+        try {
+          const secret = path.join(outside, 'private.html')
+          fs.writeFileSync(secret, '<p>outside secret</p>')
+          const file = path.join(noteDir, 'abc123-report.html')
+          race.target = file
+          race.swap = () => {
+            fs.rmSync(file)
+            fs.symlinkSync(secret, file)
+          }
+          const response = await serveHtmlEmbed(new Request(embedUrl(file)), [vault])
+          expect(response.status).toBe(404)
+          expect(await response.text()).not.toContain('outside')
+        } finally {
+          race.target = ''
+          fs.rmSync(outside, { recursive: true, force: true })
+        }
+      }
+    )
 
     it('only answers GET', async () => {
       const file = path.join(noteDir, 'abc123-report.html')

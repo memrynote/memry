@@ -18,11 +18,12 @@
  */
 
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { isPathInsideDirs, resolveLocalSchemePath } from '../lib/external-url'
 import { remapCrossDeviceAttachmentPath } from '../lib/attachment-path-remap'
+import { OutsideVaultError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { openVaultFile } from '../lib/paths'
 import { healAttachmentPath } from './attachment-heal'
 
 const log = createLogger('HtmlEmbed')
@@ -112,8 +113,16 @@ export async function serveHtmlEmbed(
     log.warn('memry-html: refused request outside vault html attachments')
     return new Response(null, { status: 404, statusText: 'Not Found' })
   }
+  const vault = vaultPaths
+    .filter((dir): dir is string => Boolean(dir))
+    .map((dir) => path.resolve(dir))
+    .find((dir) => isPathInsideDirs(filePath, [dir]))
   try {
-    const bytes = await readFile(filePath)
+    // Read only from the handle openVaultFile checked, so a file linked outside
+    // the vault, or swapped for such a link after the check, is never served.
+    const handle = vault ? await openVaultFile(vault, path.relative(vault, filePath)) : null
+    if (!handle) return new Response(null, { status: 404, statusText: 'Not Found' })
+    const bytes = await handle.readFile().finally(() => handle.close())
     return new Response(bytes, {
       status: 200,
       headers: {
@@ -126,6 +135,10 @@ export async function serveHtmlEmbed(
       }
     })
   } catch (error) {
+    if (error instanceof OutsideVaultError) {
+      log.warn('memry-html: refused file linked outside the vault')
+      return new Response(null, { status: 404, statusText: 'Not Found' })
+    }
     log.warn('memry-html: serve failed', { error })
     return new Response(null, { status: 404, statusText: 'Not Found' })
   }
