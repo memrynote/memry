@@ -70,7 +70,8 @@ marked.setOptions({
  * block with text after it leaves an empty `<!---->`, so that text stays in a
  * block that ends on its line instead of joining or opening another block. A
  * `<!--` that is text, such as the `<!-- b` in `<!-- a --> <!-- b`, is
- * escaped: left raw, the browser would read a comment and hide the rest.
+ * escaped, and so is one that never closes (BBF-98): left raw, the browser
+ * would read a comment and hide the rest.
  */
 export function markdownToHtml(markdown: string): string {
   const uncommented = replaceMarkdownComments(

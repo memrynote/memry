@@ -63,6 +63,19 @@ describe('export-utils', () => {
     }
   })
 
+  it('markdownToHtml prints the text after a comment that never closes (BBF-98)', () => {
+    for (const markdown of [
+      '<!-- never closes\nmore [[F]]',
+      'a\n\n<!-- a --> <!-- never closes\nmore [[F]]'
+    ]) {
+      const html = markdownToHtml(markdown)
+      expect(html).toContain('&lt;!-- never closes')
+      expect(html).toContain('more <span class="wiki-link">F</span>')
+      // A raw `<!--` would open a comment in the browser and hide the rest.
+      expect(html).not.toContain('<!-- never')
+    }
+  })
+
   it('markdownToHtml prints numbered footnotes and a Notes list with back-links', () => {
     const markdown = [
       'Claim[^src] and another[^2], then the claim again[^src].',

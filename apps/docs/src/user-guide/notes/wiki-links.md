@@ -307,7 +307,8 @@ where an earlier comment closes, such as `--> <!--`, ends before a code block th
 and the code block stays code. An HTML comment that starts its line runs to the first `-->`,
 code blocks included, also when it starts a list item or a quote line (`- <!--`, `> <!--`). Another `<!--` after that `-->` on the same line, as in
 `<!-- a --> <!-- b`, is plain text unless it also closes on that line. A PDF or HTML export
-prints that `<!-- b` and the text below it.
+prints that `<!-- b` and the text below it. A `<!--` with no `-->` anywhere below it is
+printed the same way in a PDF or HTML export, so the rest of the note still shows there.
 
 On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
 ``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
