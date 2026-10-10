@@ -5,7 +5,7 @@ import matter from 'gray-matter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { NotesChannels } from '@memry/contracts/notes-api'
-import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
+import { noteCache, noteProperties, propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const state = vi.hoisted(() => ({
@@ -334,5 +334,47 @@ describe('property definitions reach .memry/properties.md', () => {
     await PropertyDefinitionsService.get().reloadOnOpen()
 
     expect(Object.keys(fileProperties() as object)).toEqual(['Stage', 'Rating'])
+  })
+
+  it('re-types indexed rows when a definition changes type, keeping unquoted YAML dates', async () => {
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, { name: 'label', type: 'date' })
+    const index = state.indexDb!.db
+    const notes = [
+      { id: 'quoted', frontmatter: "label: '2026-10-07'" },
+      { id: 'unquoted', frontmatter: 'label: 2026-10-07' }
+    ]
+    for (const { id, frontmatter } of notes) {
+      writeFileSync(path.join(vaultPath, `${id}.md`), `---\n${frontmatter}\n---\nbody\n`)
+      index
+        .insert(noteCache)
+        .values({
+          id,
+          path: `${id}.md`,
+          title: id,
+          contentHash: id,
+          wordCount: 1,
+          characterCount: 4,
+          createdAt: '2026-01-15T12:00:00.000Z',
+          modifiedAt: '2026-01-15T12:00:00.000Z'
+        })
+        .run()
+      index
+        .insert(noteProperties)
+        .values({ noteId: id, name: 'label', value: '2026-10-07', type: 'date' })
+        .run()
+    }
+
+    await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, { name: 'label', type: 'text' })
+
+    const rows = index
+      .select({ noteId: noteProperties.noteId, type: noteProperties.type })
+      .from(noteProperties)
+      .all()
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { noteId: 'quoted', type: 'text' },
+        { noteId: 'unquoted', type: 'date' }
+      ])
+    )
   })
 })
