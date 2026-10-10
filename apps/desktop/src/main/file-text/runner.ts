@@ -26,7 +26,7 @@
  * and embeddings pick the text up from the `note.text-extracted` events it
  * publishes.
  */
-import { readdir, readFile, stat } from 'fs/promises'
+import { readdir, stat } from 'fs/promises'
 import path from 'path'
 import { getExtension, getFileType } from '@memry/shared/file-types'
 import type { IndexDb } from '../database/types'
@@ -53,7 +53,7 @@ import {
 } from '../database/queries/extracted-text'
 import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
-import { normalizeRelativePath, resolveVaultFile } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile, readVaultFile, resolveVaultFile } from '../lib/paths'
 import { readHtmlText } from './html-text'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
@@ -258,10 +258,8 @@ export class FileTextRunner {
         (entry) => entry.isFile() && !entry.name.startsWith('.') && attachmentKind(entry.name)
       )
       if (candidates.length === 0) continue
-      let body: string
-      try {
-        body = await readFile(path.join(this.deps.vaultPath, note.path), 'utf8')
-      } catch {
+      const body = await readVaultFile(this.deps.vaultPath, note.path).catch(() => null)
+      if (body === null) {
         unread.add(note.id)
         continue
       }
@@ -427,7 +425,7 @@ export class FileTextRunner {
         return
       }
       const result = await this.readTwice(async () => {
-        const bytes = await readFile(absolutePath)
+        const bytes = await readVaultBytes(this.deps.vaultPath, file.path)
         // Grown since the size check: never parse it.
         if (bytes.byteLength > HTML_TEXT_MAX_BYTES) throw new Error('HTML file grew past the cap')
         return { method: 'html', text: await readHtmlText(bytes.toString('utf8')) }
@@ -566,4 +564,15 @@ export class FileTextRunner {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/** A vault file's bytes read through the opened file; a missing or outside file throws. */
+async function readVaultBytes(vaultPath: string, relativePath: string): Promise<Buffer> {
+  const handle = await openVaultFile(vaultPath, relativePath)
+  if (handle === null) throw new Error('File not found')
+  try {
+    return await handle.readFile()
+  } finally {
+    await handle.close()
+  }
 }

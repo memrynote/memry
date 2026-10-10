@@ -640,8 +640,11 @@ reference are kept. Deleting a task that came from it leaves the file alone, qui
 version of it, and a lock on it keeps no copy of its text and does not change the file's permissions. Deleting it, or the
 folder it is in, does not offer to delete tasks listed in the outside file. Semantic search and its outgoing links do
 not read it either. The permission change a lock makes, the delete dialog's task check, search and
-semantic indexing, sync pushes, versions, block moves, link rewrites on rename, and external-edit
-handling also hold when the file is swapped for such a link while Memry is checking it: they act on
+semantic indexing, sync pushes, versions, block moves, link rewrites on rename, external-edit
+handling, opening a note or journal day, backlink excerpts, the copy a lock keeps and the restore
+of a locked file at open, the sync editor's first load of a note, attachment counting and the check
+for other notes that use an attachment, opening a canvas, and reading text from an attached HTML
+file also hold when the file is swapped for such a link while Memry is checking it: they act on
 the file they opened and checked, not whatever the path points to a moment later. The link stays as you made it. A symlink to another file inside the vault works
 as usual.
 

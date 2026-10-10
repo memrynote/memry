@@ -230,9 +230,27 @@ vi.mock('../vault/notes', () => ({
   toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
 }))
 
-vi.mock('../vault/file-ops', () => ({
-  safeRead: (...args: unknown[]) => mocks.safeRead(...args)
-}))
+// The file is opened through the real vault check, then read through the
+// `safeRead` fake at the mapped path; `stat` is real, as before.
+vi.mock('../lib/paths', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const { OutsideVaultError } = await import('../lib/errors')
+  const fsp = await import('fs/promises')
+  return {
+    ...actual,
+    openVaultFile: async (vault: string, relative: string) => {
+      if ((await actual.resolveVaultFile(vault, relative)).kind === 'outside') {
+        throw new OutsideVaultError(relative)
+      }
+      const file = mocks.toAbsolutePath(relative)
+      return {
+        stat: () => fsp.stat(file),
+        readFile: () => mocks.safeRead(file),
+        close: async () => undefined
+      }
+    }
+  }
+})
 
 vi.mock('../vault/frontmatter', () => ({
   parseNote: (...args: unknown[]) => mocks.parseNote(...args),

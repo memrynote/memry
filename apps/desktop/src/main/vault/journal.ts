@@ -17,8 +17,8 @@ import { getStatus, getConfig } from './index'
 import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './frontmatter'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
-import { OutsideVaultError, VaultError, VaultErrorCode } from '../lib/errors'
-import { readVaultFileSync, resolveVaultFile } from '../lib/paths'
+import { VaultError, VaultErrorCode } from '../lib/errors'
+import { readVaultFile, readVaultFileSync } from '../lib/paths'
 import {
   generateJournalId,
   calculateActivityLevel,
@@ -239,11 +239,7 @@ export function extractJournalProperties(
 
 async function readJournalText(date: string): Promise<string | null> {
   const vaultPath = getVaultPath()
-  const store = getContentStore()
-  const relativePath = store.getJournalRelativePath(date)
-  const resolved = await resolveVaultFile(vaultPath, relativePath)
-  if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
-  return resolved.kind === 'inside' ? store.read(path.relative(vaultPath, resolved.path)) : null
+  return readVaultFile(vaultPath, getContentStore().getJournalRelativePath(date))
 }
 
 /**

@@ -38,6 +38,7 @@ import {
 import path from 'path'
 
 import { createLogger } from '../lib/logger'
+import { readVaultFileSync } from '../lib/paths'
 import { sanitizeFilename } from '../vault/file-ops'
 import {
   canvasPathKey,
@@ -315,8 +316,20 @@ export function writeCanvasFileSync(absolutePath: string, content: string): void
 }
 
 export function readCanvasFileSync(absolutePath: string): string | null {
+  return readAsCanvasDocument(() => readFileSync(absolutePath, 'utf-8'))
+}
+
+/**
+ * `readCanvasFileSync` for a vault-relative path, read through the opened file
+ * (`readVaultFileSync`). Throws `OutsideVaultError` for a file linked outside the vault.
+ */
+export function readCanvasVaultFileSync(vaultPath: string, relativePath: string): string | null {
+  return readAsCanvasDocument(() => readVaultFileSync(vaultPath, relativePath))
+}
+
+function readAsCanvasDocument(read: () => string | null): string | null {
   try {
-    return withTransientFsRetrySync(() => readFileSync(absolutePath, 'utf-8'), 'readCanvasFile')
+    return withTransientFsRetrySync(read, 'readCanvasFile')
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
     // ENOENT is the "no document" answer the callers expect. ENOTDIR/EISDIR
