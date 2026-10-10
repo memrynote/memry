@@ -19,6 +19,7 @@ export function blankMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
   return walkMarkdown(markdown, {
     codeLine: () => '',
+    textOpen: (open) => open,
     codeSpan: () => ' ',
     comment: (source) => source
   })
@@ -33,6 +34,7 @@ export function maskMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
   return walkMarkdown(markdown, {
     codeLine: (line) => ' '.repeat(line.length),
+    textOpen: (open) => open,
     codeSpan: (source) => ' '.repeat(source.length),
     comment: (source) => source
   })
@@ -49,20 +51,25 @@ export function stripMarkdownComments(markdown: string): string {
 
 /**
  * Every closed HTML or `%% … %%` comment outside code replaced by
- * `replace(source, wholeLine)`. `source` is the comment's exact text,
- * delimiters and line breaks included. `wholeLine` is true when a one-line
- * comment is alone on its line. Code and a comment that never closes stay as
- * written.
+ * `replace(source, wholeLine, blockGoesOn)`. `source` is the comment's exact
+ * text, delimiters and line breaks included. `wholeLine` is true when a
+ * one-line comment is alone on its line. `blockGoesOn` is true for an HTML
+ * comment that opens a CommonMark HTML block with text after its `-->`: that
+ * text is part of the block, not a paragraph. Code and a comment that never
+ * closes stay as written, except that a `<!--` read as text becomes `textOpen`.
  */
 export function replaceMarkdownComments(
   markdown: string,
-  replace: (source: string, wholeLine: boolean) => string
+  replace: (source: string, wholeLine: boolean, blockGoesOn: boolean) => string,
+  textOpen = '<!--'
 ): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
   return walkMarkdown(markdown, {
     codeLine: (line) => line,
+    textOpen: (open) => (open === '<!--' ? textOpen : open),
     codeSpan: (source) => source,
-    comment: (source, closed, wholeLine) => (closed ? replace(source, wholeLine) : source)
+    comment: (source, closed, wholeLine, blockGoesOn) =>
+      closed ? replace(source, wholeLine, blockGoesOn) : source
   })
 }
 
@@ -100,12 +107,15 @@ interface Visitor {
   /** A line of a fenced or indented code block. */
   codeLine(line: string): string
   codeSpan(source: string): string
+  /** A comment opener that is text: it never closes, or is cut off by a fence or a cell. */
+  textOpen(open: string): string
   /**
    * A whole comment, line breaks included when it spans lines. `closed` is
    * false for an HTML comment still open at the end of the note. `wholeLine`
    * is true for a one-line comment with nothing else on its line.
+   * `blockGoesOn` is as in `replaceMarkdownComments`.
    */
-  comment(source: string, closed: boolean, wholeLine: boolean): string
+  comment(source: string, closed: boolean, wholeLine: boolean, blockGoesOn: boolean): string
 }
 
 /**
@@ -128,6 +138,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     source: string
     close: CommentClose | null
     htmlBlock: boolean
+    opensBlock: boolean
   } | null = null
   let blockStart = true
   let indentedCode = false
@@ -143,12 +154,14 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       if (pending.close?.line !== index) {
         pending.source += '\n' + line
         if (index === lines.length - 1)
-          out.push(pending.prefix + visit.comment(pending.source, false, false))
+          out.push(pending.prefix + visit.comment(pending.source, false, false, false))
         continue
       }
       const { end } = pending.close
+      const blockGoesOn = pending.opensBlock && line.slice(end).trim() !== ''
       result =
-        pending.prefix + visit.comment(pending.source + '\n' + line.slice(0, end), true, false)
+        pending.prefix +
+        visit.comment(pending.source + '\n' + line.slice(0, end), true, false, blockGoesOn)
       htmlBlock = pending.htmlBlock
       pending = null
       line = line.slice(end)
@@ -186,14 +199,17 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
         // GFM splits a row into cells before it reads inline syntax, so a
         // comment in a cell ends in that cell or is text (BBF-51).
         if (tableRow && (close === -1 || close > cellPipe(line, at))) {
-          result += line.slice(i, at + form.open.length)
+          result += line.slice(i, at) + visit.textOpen(form.open)
           i = at + form.open.length
           continue
         }
         if (close !== -1) {
           const end = close + form.close.length
-          const wholeLine = !closesComment && !line.slice(0, at).trim() && !line.slice(end).trim()
-          result += line.slice(i, at) + visit.comment(line.slice(at, end), true, wholeLine)
+          const textAfter = line.slice(end).trim() !== ''
+          const wholeLine = !closesComment && !line.slice(0, at).trim() && !textAfter
+          const blockGoesOn = opensHtmlBlock(htmlBlock, closesComment, i, form) && textAfter
+          result +=
+            line.slice(i, at) + visit.comment(line.slice(at, end), true, wholeLine, blockGoesOn)
           i = end
           continue
         }
@@ -205,7 +221,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           ? 'text'
           : findLaterClose(lines, index, form, inline)
         if (later === 'text' || (form.proseOnly && !later)) {
-          result += line.slice(i, at + form.open.length)
+          result += line.slice(i, at) + visit.textOpen(form.open)
           i = at + form.open.length
           continue
         }
@@ -213,7 +229,8 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           prefix: result + line.slice(i, at),
           source: line.slice(at),
           close: later,
-          htmlBlock
+          htmlBlock,
+          opensBlock: opensHtmlBlock(htmlBlock, closesComment, i, form)
         }
         break
       }
@@ -232,13 +249,23 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     }
     if (pending) {
       if (index === lines.length - 1)
-        out.push(pending.prefix + visit.comment(pending.source, false, false))
+        out.push(pending.prefix + visit.comment(pending.source, false, false, false))
       continue
     }
     result += line.slice(i)
     out.push(result)
   }
   return out.join('\n')
+}
+
+/** The comment scanned from `i` is the `<!--` that `HTML_BLOCK_COMMENT` matched. */
+function opensHtmlBlock(
+  htmlBlock: boolean,
+  closesComment: boolean,
+  i: number,
+  form: CommentForm
+): boolean {
+  return htmlBlock && !closesComment && i === 0 && !form.proseOnly
 }
 
 function nextCommentOpen(line: string, from: number): { form: CommentForm; at: number } | null {

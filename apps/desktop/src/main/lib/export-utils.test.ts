@@ -55,7 +55,7 @@ describe('export-utils', () => {
       '<!-- a\nx --> <!-- b\nmore [[F]]\nc -->'
     ]) {
       const html = markdownToHtml(markdown)
-      expect(html).toContain('more <span class="wiki-link">F</span><br>c --&gt;</p>')
+      expect(html).toContain('<p>more <span class="wiki-link">F</span><br>c --&gt;</p>')
       expect(html).not.toContain('x -->')
       // A raw `<!-- b` would open a comment in the browser and hide the rest.
       expect(html).toContain('&lt;!-- b')

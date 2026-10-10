@@ -9,7 +9,7 @@
 import { marked } from 'marked'
 import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
-import { maskMarkdownCode, stripMarkdownComments } from '@memry/shared/markdown-code'
+import { maskMarkdownCode, replaceMarkdownComments } from '@memry/shared/markdown-code'
 import { scanFootnotes } from '@memry/shared/footnotes'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import { sanitizeSvgBytes } from '../icons/sanitize-svg'
@@ -65,9 +65,20 @@ marked.setOptions({
  * HTML and `%% … %%` comments are left out first, Memry's own markers and the
  * links hidden in them included (FB-011): a reader of the export sees neither.
  * Link syntax in code stays as written (BBF-47).
+ *
+ * Stripping keeps the source's blocks (BBF-87). A comment that opens an HTML
+ * block with text after it leaves an empty `<!---->`, so that text stays in a
+ * block that ends on its line instead of joining or opening another block. A
+ * `<!--` that is text, such as the `<!-- b` in `<!-- a --> <!-- b`, is
+ * escaped: left raw, the browser would read a comment and hide the rest.
  */
 export function markdownToHtml(markdown: string): string {
-  const { body, notes } = renderFootnotes(replaceProseWikiLinks(stripMarkdownComments(markdown)))
+  const uncommented = replaceMarkdownComments(
+    markdown,
+    (_source, _wholeLine, blockGoesOn) => (blockGoesOn ? '<!---->' : ''),
+    '&lt;!--'
+  )
+  const { body, notes } = renderFootnotes(replaceProseWikiLinks(uncommented))
 
   return (marked.parse(body) as string) + notes
 }
