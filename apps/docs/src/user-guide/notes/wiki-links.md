@@ -306,7 +306,8 @@ An HTML comment that opens after other text on its line, such as `a <!--`, or on
 where an earlier comment closes, such as `--> <!--`, ends before a code block that starts below it. If its `-->` is inside that code block, the `<!--` is plain text
 and the code block stays code. An HTML comment that starts its line runs to the first `-->`,
 code blocks included. Another `<!--` after that `-->` on the same line, as in
-`<!-- a --> <!-- b`, is plain text unless it also closes on that line.
+`<!-- a --> <!-- b`, is plain text unless it also closes on that line. The export
+keeps that line apart from the lines below it, so text after it still prints.
 
 On the line where a `%%` comment opens, the next `%%` closes it, even inside inline code. In
 ``Sale 50%% off, format `%%d` [[X]]`` the comment runs from `50%%` to the `%%` in `` `%%d` ``,
