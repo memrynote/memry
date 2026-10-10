@@ -135,3 +135,24 @@ describe('maskHtmlComments with a fence after an inline <!-- (BBF-46)', () => {
     expect(maskHtmlComments(note)).toBe(note)
   })
 })
+
+describe('maskHtmlComments with a <!-- reopened after an HTML block ends (BBF-78)', () => {
+  it('leaves the reopened <!-- as text', () => {
+    const out = maskHtmlComments('<!-- a --> <!-- b\nmore [[More]]\nc -->')
+    expect(splitHtmlCommentTokens(out.split('\n')[0])).toEqual([
+      { kind: 'comment', source: '<!-- a -->' },
+      { kind: 'text', text: ' <!-- b' }
+    ])
+    expect(out.split('\n').slice(1)).toEqual(['more [[More]]', 'c -->'])
+  })
+
+  it('leaves it as text after a multi-line block closes too', () => {
+    const out = maskHtmlComments('<!-- a\nx --> <!-- b\nmore [[More]]\nc -->')
+    expect(out.split('\n').slice(1)).toEqual(['more [[More]]', 'c -->'])
+  })
+
+  it('keeps a reopened <!-- in a paragraph as a comment', () => {
+    const out = maskHtmlComments('Text <!-- a --> <!-- b\nmore [[More]]\nc -->')
+    expect(out).not.toContain('[[More]]')
+  })
+})
