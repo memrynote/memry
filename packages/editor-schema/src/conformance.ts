@@ -837,6 +837,14 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '| h      |\n| ------ |\n| a ` x` |'
   },
   {
+    name: 'code span with two inner spaces in a cell (BBF-90)',
+    markdown: '| h        |\n| -------- |\n| `a  b` c |'
+  },
+  {
+    name: 'code span with a trailing space in a cell (BBF-90)',
+    markdown: '| h      |\n| ------ |\n| `x ` b |'
+  },
+  {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
   },
