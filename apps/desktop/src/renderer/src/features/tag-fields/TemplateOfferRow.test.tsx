@@ -10,7 +10,6 @@ import { TemplateOffers } from './TemplateOfferRow'
 import { templateOffers } from './template-offers'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
-// The BlockNote editor boundary: parsing and inserting blocks is not under test here.
 vi.mock('@/components/note/content-area/insert-template', () => ({
   insertTemplateBlocks: vi.fn()
 }))

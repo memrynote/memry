@@ -46,7 +46,6 @@ vi.mock('../store', () => ({
 }))
 vi.mock('../lib/main-i18n', () => ({ getMainI18n: () => ({ language: 'en' }) }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
-// The note body comes from the vault on disk; the model is the external provider.
 vi.mock('../vault/notes-crud', () => ({ getNoteById: vi.fn(async () => state.note) }))
 vi.mock('../ai-inline/ai-llm-service', () => ({ createLanguageModel: () => state.model }))
 

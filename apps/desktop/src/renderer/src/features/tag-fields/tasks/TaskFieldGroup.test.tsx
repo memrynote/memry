@@ -13,7 +13,6 @@ vi.mock('@/hooks/use-calendar-properties', () => ({
 vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({ refresh: vi.fn(), getDefinition: () => undefined })
 }))
-// The relation picker resolves note titles over IPC; the row only hands it the field's config.
 vi.mock('@/components/note/info-section/editors', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/components/note/info-section/editors')>()),
   RelationEditor: ({
@@ -141,7 +140,6 @@ function renderGroups(tags: string[], initial: Fields = {}) {
 const cardOf = (title: string): HTMLElement =>
   screen.getByText(title).closest('section') as HTMLElement
 
-/** The schema snapshot has loaded and the groups were built from it. */
 async function snapshotLoaded(): Promise<void> {
   await vi.waitFor(() => expect(api.tags.getSchemaSnapshot).toHaveBeenCalled())
   await act(() => new Promise((resolve) => setTimeout(resolve, 20)))

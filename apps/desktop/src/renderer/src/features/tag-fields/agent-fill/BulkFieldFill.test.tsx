@@ -178,7 +178,6 @@ describe('bulk agent fill', () => {
       expect(propertiesApi.merge).toHaveBeenCalledWith('n_ada', { Company: 'Analytical Engines' })
     )
     expect(propertiesApi.merge).toHaveBeenCalledTimes(1)
-    // A single accepted note shows no bulk summary toast.
     expect(toast).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(0))
   })

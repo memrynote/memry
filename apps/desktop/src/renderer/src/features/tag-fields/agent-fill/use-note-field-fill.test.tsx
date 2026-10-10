@@ -188,7 +188,6 @@ describe('agent fill for one note', () => {
     expect(propertiesApi.merge).not.toHaveBeenCalled()
 
     await userEvent.click(screen.getByRole('button', { name: 'Reject Role' }))
-    // Rejecting the last one ends the review and brings the action back.
     expect(await screen.findByTestId('field-fill-action')).toBeInTheDocument()
   })
 

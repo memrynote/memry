@@ -25,7 +25,6 @@ beforeEach(() => {
   })
 })
 
-// The hub hands the service flat arguments; the preload API takes one object per call.
 describe('tag categories through the real tags service', () => {
   it('creates, renames and deletes a category with the argument shape the IPC expects', async () => {
     const { result } = renderHook(() => useTagCategories())

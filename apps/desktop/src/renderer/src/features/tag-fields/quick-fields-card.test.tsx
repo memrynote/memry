@@ -209,7 +209,6 @@ describe('QuickFieldsCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Employer' }))
     await userEvent.click(await screen.findByRole('option', { name: /Acme/ }))
 
-    // The chosen object replaces the placeholder in the field.
     expect(await screen.findByText('Acme')).toBeInTheDocument()
     expect(screen.queryByText('Add employer')).not.toBeInTheDocument()
 

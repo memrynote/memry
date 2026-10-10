@@ -133,7 +133,6 @@ describe('NoteFieldGroups', () => {
     )
 
     expect(screen.getByText('custom Company slot')).toBeInTheDocument()
-    // Slots the host declines fall back to the regular property row.
     expect(screen.getByText('Age')).toBeInTheDocument()
     expect(screen.getByText('action for Person')).toBeInTheDocument()
     expect(screen.getByText('footer for Person')).toBeInTheDocument()

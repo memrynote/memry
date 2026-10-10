@@ -425,7 +425,6 @@ describe('MentionedInSection', () => {
       limit: 200,
       offset: 0
     })
-    // Collapsed until the user opens it.
     expect(screen.queryByText('Standup')).not.toBeInTheDocument()
 
     await userEvent.click(toggle)
