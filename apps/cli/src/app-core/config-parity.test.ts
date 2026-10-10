@@ -75,3 +75,11 @@ test('a missing config.json is created with defaults', async () => {
   const written = JSON.parse(await fs.readFile(getConfigPath(vaultPath), 'utf-8'))
   assert.equal(written.journalFolder, 'journal')
 })
+
+test('the journal folder is created under its normalized name', async () => {
+  const vaultPath = await vaultWithConfig({ journalFolder: ' Daily ' }, [])
+  await ensureVaultLayout(vaultPath)
+  const entries = await fs.readdir(vaultPath)
+  assert.ok(entries.includes('Daily'))
+  assert.ok(!entries.includes(' Daily '))
+})
