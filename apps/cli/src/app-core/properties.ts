@@ -7,7 +7,10 @@ import {
   listPropertyDefinitions,
   upsertPropertyDefinition
 } from '@memry/storage-data'
-import { parsePropertyDefinitionEntries } from '@memry/contracts/property-types'
+import {
+  PropertyDefinitionSchema,
+  parsePropertyDefinitionEntries
+} from '@memry/contracts/property-types'
 import type { NewPropertyDefinition, PropertyDefinition } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
 import type { NotesService } from './notes.ts'
@@ -45,7 +48,9 @@ export interface PropertiesService {
 // `.memry/properties.md`. `relation` is deliberately absent — desktop types a
 // relation from its value every time, and an unknown entry in the file fails
 // the schema's safeParse, which discards every definition at once.
-const portableDefinitionTypes = new Set(['select', 'multiselect', 'status', 'date', 'project'])
+const portableDefinitionTypes = new Set<string>(
+  PropertyDefinitionSchema.options.map((member) => member.shape.type.value)
+)
 
 function parseJson(value: string | null | undefined): unknown {
   if (!value) return null

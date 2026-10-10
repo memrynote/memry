@@ -5,6 +5,8 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { eq } from 'drizzle-orm'
+import matter from 'gray-matter'
+import { PropertyDefinitionsFileSchema } from '@memry/contracts/property-types'
 import { attachmentUploadQueue, noteMetadata, templates } from '@memry/db-schema/data-schema'
 
 import { openDatabases } from './database.ts'
@@ -156,6 +158,27 @@ test('.memry/properties.md carries date and project definitions and never a rela
     // A relation entry would fail desktop's file schema and discard everything.
     assert.doesNotMatch(raw, /linked:/)
     assert.doesNotMatch(raw, /relation/)
+  } finally {
+    app.close()
+  }
+})
+
+test('.memry/properties.md names every persistable definition, so desktop opens it without a rewrite', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    for (const type of ['text', 'number', 'url', 'checkbox', 'date', 'project', 'relation']) {
+      await app.properties.createDefinition({ name: `p-${type}`, type })
+    }
+
+    const raw = await fs.readFile(path.join(vaultPath, '.memry', 'properties.md'), 'utf-8')
+    const parsed = PropertyDefinitionsFileSchema.parse(matter(raw).data)
+    // Desktop's first open rewrites the file when a data DB row is missing from it.
+    const persistable = (await app.properties.definitions())
+      .filter((definition) => definition.type !== 'relation')
+      .map((definition) => definition.name)
+      .sort()
+    assert.deepEqual(Object.keys(parsed.properties).sort(), persistable)
   } finally {
     app.close()
   }
