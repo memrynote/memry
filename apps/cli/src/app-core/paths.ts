@@ -90,7 +90,7 @@ async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promi
   await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'files'), { recursive: true })
 }
 
-/** Reads config.json as desktop's getConfig does. A missing file is created with defaults. */
+/** `{}` for a missing config.json, `null` for one that cannot be read or parsed. */
 async function readVaultConfig(configPath: string): Promise<Partial<VaultConfig> | null> {
   try {
     return JSON.parse(await fs.readFile(configPath, 'utf-8')) as Partial<VaultConfig>
