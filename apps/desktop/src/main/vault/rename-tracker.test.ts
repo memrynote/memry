@@ -29,7 +29,9 @@ import {
   clearPendingDelete,
   clearAllPendingDeletes,
   hasPendingDeletes,
-  getPendingDeleteCount
+  getPendingDeleteCount,
+  createDeferredDeletes,
+  settleDeferredDeletes
 } from './rename-tracker'
 
 describe('rename-tracker', () => {
@@ -50,6 +52,25 @@ describe('rename-tracker', () => {
     indexDb.close()
     vi.clearAllMocks()
     vi.useRealTimers()
+  })
+
+  it('settles only the deferred deletes of the rescan that created them (#3026)', async () => {
+    const first = createDeferredDeletes()
+    const second = createDeferredDeletes()
+    const deleteA = vi.fn().mockResolvedValue(undefined)
+    const deleteB = vi.fn().mockResolvedValue(undefined)
+    trackPendingDelete('note-a', 'hash-a', 'notes/a.md', deleteA, null, first)
+    trackPendingDelete('note-b', 'hash-b', 'notes/b.md', deleteB, null, second)
+
+    await settleDeferredDeletes(first)
+
+    expect(deleteA).toHaveBeenCalledTimes(1)
+    expect(deleteB).not.toHaveBeenCalled()
+    // The second rescan's add still pairs with its delete as a rename.
+    expect(checkForRename('hash-b', 'notes/b-moved.md')).toMatchObject({ id: 'note-b' })
+
+    await settleDeferredDeletes(second)
+    expect(deleteB).not.toHaveBeenCalled()
   })
 
   // ==========================================================================

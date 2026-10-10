@@ -329,7 +329,9 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
     fs.rmSync(abs('canvases/Gone.excalidraw'))
     fs.renameSync(abs('canvases/Evicted.excalidraw'), placeholderOf('canvases/Evicted.excalidraw'))
 
-    await openVault()
+    // Settled by the replay itself, not by a window on the clock.
+    await reconcileCanvasFiles(data.db as never, vault.path, VAULT_ID)
+    await watcher.replayMissedRemovals()
 
     expect(syncCanvasDelete).toHaveBeenCalledWith('canvas-gone')
     expect(syncCanvasDelete).toHaveBeenCalledTimes(1)
