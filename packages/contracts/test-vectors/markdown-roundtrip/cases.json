@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 171,
+    "exportedCaseCount": 180,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 181,
+    "caseCount": 190,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1149,6 +1149,69 @@
       "canonical": "> a\n> b\n> c",
       "pending": null,
       "sha256": "8d1db2a4d797eed81ba3d0b897bb678c33ad1e0b124fd47c6567064edb6a33fd"
+    },
+    {
+      "name": "hard break inside a quote (BBF-99)",
+      "markdown": "> a  \n> b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "028cdb021deed3a6438ef765652243c64165cd081ccc6c3fbc2b0d16721196de"
+    },
+    {
+      "name": "backslash hard break inside a quote (BBF-99)",
+      "markdown": "> a\\\n> b",
+      "canonical": "> a  \n> b",
+      "pending": null,
+      "sha256": "4e02f499a4f600f9bec2b1a068b83b9341e75bc5235f3e9db4bc1c0666d5380c"
+    },
+    {
+      "name": "hard break inside a list item (BBF-99)",
+      "markdown": "- a  \n  b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9a1e101c39e9949033404ecbac89529db2ab4bcbf74820924333b11d6730625c"
+    },
+    {
+      "name": "hard break before a lazy list line (BBF-99)",
+      "markdown": "- a  \nb",
+      "canonical": "- a  \n  b",
+      "pending": null,
+      "sha256": "8e3858f90eaf6d86b5ff7823ea3f7999751386fc6e478cabc9ca88938f161520"
+    },
+    {
+      "name": "hard breaks in an ordered list item (BBF-99)",
+      "markdown": "1. a  \n   b\\\n   c",
+      "canonical": "1. a  \n   b  \n   c",
+      "pending": null,
+      "sha256": "cf2cf52979bf51f44f8d6750b75d9315d8f1477d1412efa21ee0e1e4c212f6ed"
+    },
+    {
+      "name": "soft break in a list item next to a hard one (BBF-99)",
+      "markdown": "- a  \n  b\n- c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "39bf8f0dc956a9e17063fae75192752c82092961028fd16a2421f71092f18964"
+    },
+    {
+      "name": "hard break in a task list item (BBF-99)",
+      "markdown": "- [ ] a  \n  b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "02bc4826b187fe699e43f3a25b83aa7c84c657ff3a27e96bc45672f354e3d485"
+    },
+    {
+      "name": "hard break in a nested list item (BBF-99)",
+      "markdown": "- a\n  - b  \n    c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e091b5b672630696e42a961971ff73f2e5f2a75e5e08b2192b319e6e2514441a"
+    },
+    {
+      "name": "trailing spaces on a heading (BBF-99)",
+      "markdown": "# h  \nx",
+      "canonical": "# h\n\nx",
+      "pending": null,
+      "sha256": "214c94d29c6857b01d1b26d5fd236fc67c17e717d39d4106ecc1977b650f9347"
     },
     {
       "name": "html break inside image alt text (BBF-85)",

@@ -1,11 +1,10 @@
 import { markdownToHTML } from '@blocknote/core'
+import { escapeWikiLinkPipesInTableRows, fenceIndentedCodeBlocks } from '@memry/shared/empty-lines'
 import {
-  escapeWikiLinkPipesInTableRows,
-  fenceIndentedCodeBlocks,
   maskHardBreaks,
   restoreHardBreakSpelling,
   unmaskHardBreaks
-} from '@memry/shared/empty-lines'
+} from '@memry/shared/hard-breaks'
 import {
   decodeHtmlCommentTokens,
   hasHtmlCommentToken,
