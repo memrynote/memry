@@ -101,9 +101,16 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  * `htmlComment` node, whose `source` keeps its own delimiters. An indented
  * code block is not told apart here: a comment inside one is masked and comes
  * back as the code block's own text (`parseMarkdownToBlocksRepaired`).
+ * A `<!--` that never closes and opens an HTML block hides the rest of the
+ * note in CommonMark, so only the opener becomes a node and the text after it
+ * stays visible (BBF-101).
  */
 export function maskHtmlComments(markdown: string): string {
-  return replaceMarkdownComments(markdown, (source, wholeLine) =>
-    isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source)
+  return replaceMarkdownComments(
+    markdown,
+    (source, wholeLine) =>
+      isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source),
+    '<!--',
+    encodeHtmlCommentToken('<!--')
   )
 }

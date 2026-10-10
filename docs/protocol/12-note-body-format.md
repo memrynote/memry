@@ -702,6 +702,14 @@ code spans stay code, and Memry's own marker comments (§12.8, file markers,
 nesting markers, writing tools markers) keep their own readers. A client built
 before the type finds it unrepresentable and keeps the file (§12.1).
 
+A `<!--` that opens an HTML block and never closes would hide the rest of the
+note, so it is a node whose `source` is `<!--` alone, and the text after it
+stays document content, written back as its own bytes (BBF-101,
+`packages/shared/src/html-comments.ts:108-116`,
+`packages/shared/src/markdown-code.ts:74-77`). Builds before BBF-101 parse such
+a note to an empty body and keep the file through the source record. A `<!--`
+that never closes inside a paragraph is text.
+
 House style writes each run of neighbouring inline items that hold `bold`,
 `italic` or `strike` as one pair of delimiters, with the whitespace on its
 edges outside them (BBF-62). `**alpha *x y* omega**` comes back as written, not
