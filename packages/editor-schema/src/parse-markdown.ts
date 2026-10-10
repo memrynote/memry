@@ -120,7 +120,19 @@ function unmaskRun(text: string, code: boolean, breaks: string[]): string {
   return code ? restoreHardBreakSpelling(text, breaks) : unmaskHardBreaks(text)
 }
 
+/**
+ * True when `run` ends its line. A link's soft break lands inside its text, so
+ * `[a](u)\n[b](u)` parses as link `a\n`, then ` `, and each write-back added
+ * one more space before the second link (BBF-104).
+ */
+function endsLine(run: InlineRun | undefined): boolean {
+  const content = (run as StyledRun | undefined)?.content
+  if (run?.type === 'link' && Array.isArray(content)) return endsLine(content.at(-1) as InlineRun)
+  return run?.text?.endsWith('\n') === true
+}
+
 function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine = true): void {
+  const emptied = new Set<InlineRun>()
   for (const [index, run] of runs.entries()) {
     // Link text is prose too, and a hard break in it carries a token (BBF-103).
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
@@ -129,11 +141,11 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
     // CommonMark keeps a code span's one-sided leading space: it is the author's.
     const codeSpan = (run as StyledRun).styles?.code === true
-    const opensLine =
-      (index === 0 && startsLine) || (!codeSpan && runs[index - 1]?.text?.endsWith('\n') === true)
+    const opensLine = (index === 0 && startsLine) || (!codeSpan && endsLine(runs[index - 1]))
     // A newline followed by a space is the parser's artifact in prose and the
     // author's own indentation in a code block, so the strip is prose-only.
-    let stripped = run.text
+    const original = run.text
+    let stripped = original
     if (!code) {
       stripped = stripped.replace(BREAK_ARTIFACT, '\n')
       if (opensLine) stripped = stripped.replace(LEADING_BREAK_ARTIFACT, '')
@@ -150,6 +162,12 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
       restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
       masks.spaces
     )
+    if (stripped === '' && original !== '') emptied.add(run)
+  }
+  // A run that held only the artifact would split the marks around it:
+  // `**[a](u)\n[b](u)**` came back as two bold runs (BBF-104).
+  for (let index = runs.length - 1; index >= 0; index--) {
+    if (emptied.has(runs[index])) runs.splice(index, 1)
   }
 }
 

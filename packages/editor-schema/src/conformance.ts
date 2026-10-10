@@ -864,6 +864,7 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '[a](u)\n[b](u)'
   },
   { name: 'soft break between two links (BBF-104)', markdown: '[a](u)\n[b](u)' },
+  { name: 'soft break after a link (BBF-104)', markdown: '[a](u)\nb' },
   {
     name: 'soft break inside link text mid-paragraph (BBF-104)',
     markdown: 'p [a\nb](u) q',
@@ -880,9 +881,10 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '**[a](u)**  \n[b](u)'
   },
   {
+    // A code span loses its link with or without a break (follow-up); the break stays.
     name: 'code span before a hard break inside link text (BBF-104)',
     markdown: '[`a`  \nb](u)',
-    canonical: '[`a`](u)  \n[b](u)'
+    canonical: '`a`  \n[b](u)'
   },
   {
     name: 'bold across a soft break inside link text (BBF-104)',
