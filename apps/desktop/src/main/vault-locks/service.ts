@@ -85,7 +85,10 @@ function getNoteIdByPath(relativePath: string): string | null {
 
 const OUTSIDE_VAULT = Symbol('outside vault')
 
-/** A locked note file's text, null when missing, or OUTSIDE_VAULT (logged) for a file linked outside the vault, which is never read. */
+/**
+ * A locked note file's text, null when missing, or OUTSIDE_VAULT (logged) for
+ * a file linked outside the vault, which is never read.
+ */
 async function readLockedNote(
   noteId: string,
   relativePath: string,
