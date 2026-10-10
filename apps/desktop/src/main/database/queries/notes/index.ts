@@ -81,6 +81,8 @@ export {
   getAllPropertyDefinitions,
   ensurePropertyDefinition,
   getPropertyType,
+  listNotePropertyRowsByName,
+  setNotePropertyType,
   type PropertyValue
 } from './property-queries'
 
