@@ -818,6 +818,24 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '> a\nb<br>c',
     canonical: '> a\n> b\n> c'
   },
+  { name: 'hard break inside a quote (BBF-99)', markdown: '> a  \n> b' },
+  {
+    name: 'backslash hard break inside a quote (BBF-99)',
+    markdown: '> a\\\n> b',
+    canonical: '> a  \n> b'
+  },
+  { name: 'hard break inside a list item (BBF-99)', markdown: '- a  \n  b' },
+  {
+    name: 'hard break before a lazy list line (BBF-99)',
+    markdown: '- a  \nb',
+    canonical: '- a  \n  b'
+  },
+  {
+    // An ATX heading is one line, so the next line is a paragraph of its own.
+    name: 'trailing spaces on a heading (BBF-99)',
+    markdown: '# h  \nx',
+    canonical: '# h\n\nx'
+  },
   // Image alt text never reaches the unmask, so the tag is left alone there.
   { name: 'html break inside image alt text (BBF-85)', markdown: '![x<br>y](i.png)' },
   {
