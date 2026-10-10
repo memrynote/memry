@@ -56,24 +56,17 @@ import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import { useT } from '@memry/i18n/renderer'
 import { dragRefsForRow, startCanvasRowsDrag } from '@/pages/canvas/canvas-bulk-add'
 import {
-  AlignLeft,
   Calendar,
-  CheckSquare,
   ChevronRight,
   ChevronDown,
   FileText,
   Folder,
-  FolderKanban,
   Hash,
-  Link,
-  Link2,
-  List,
   Sigma,
-  Star,
   Tag,
-  Tags,
   type AppIcon
 } from '@/lib/icons'
+import { PROPERTY_TYPE_ICONS } from './column-icons'
 import { cn } from '@/lib/utils'
 import { handleMiddleClick } from '@/lib/middle-click'
 import { getColumnLabel } from '@/lib/contract-display-names'
@@ -239,19 +232,6 @@ function getColumnType(columnId: string): PropertyType {
     default:
       return 'text'
   }
-}
-
-const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
-  text: AlignLeft,
-  number: Hash,
-  checkbox: CheckSquare,
-  date: Calendar,
-  select: List,
-  multiselect: Tags,
-  url: Link,
-  rating: Star,
-  relation: Link2,
-  project: FolderKanban
 }
 
 const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {
