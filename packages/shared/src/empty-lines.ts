@@ -371,6 +371,8 @@ const HTML_BREAK_MID_LINE = /(?<!<br\s*\/?>[^\S\n]*)<br\s*\/?>(?![^\S\n]*<br\b)(
 // break it parsed to before. A lazy line continues the block above it.
 const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[>#]|[-*+][ \t]|\d+[.)][ \t])|\|/
 
+const LINK_SYNTAX = /[[\]]|<a\b/i
+
 export interface MaskedHardBreaks {
   markdown: string
   /** The spelling each token replaced, by index. Empty when nothing was masked. */
@@ -411,13 +413,12 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     const line = lines[index]
     if (line.trim() === '') inOtherBlock = false
     else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
-    if (hasBr && !inOtherBlock) {
+    // Link and image text and URLs never reach the unmask, so a line with any
+    // link syntax keeps its tags as they were rather than risk a token in the file.
+    if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
       // The tag stays for the parser to break on. Its spelling is empty: in a
-      // `<pre>` block the tag's own newline is all it ever meant. Link and
-      // image text never reaches the unmask, so a tag inside `[...]` is left.
-      lines[index] = line.replace(HTML_BREAK_MID_LINE, (tag, offset: number) => {
-        const before = line.slice(0, offset)
-        if (before.split('[').length > before.split(']').length) return tag
+      // `<pre>` block the tag's own newline is all it ever meant.
+      lines[index] = line.replace(HTML_BREAK_MID_LINE, (tag) => {
         breaks.push('')
         return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
       })
