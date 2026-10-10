@@ -797,6 +797,16 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: 'a  \nc'
   },
   { name: 'html break inside a code span (BBF-85)', markdown: '`a<br>c` d' },
+  { name: 'html break between spaces (BBF-85)', markdown: 'a <br> b', canonical: 'a  \nb' },
+  { name: 'two html breaks in a row (BBF-85)', markdown: 'a<br><br>b', canonical: 'a  \nb' },
+  { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
+  {
+    // A hard break in a quote does not survive on any spelling yet, so the tag
+    // keeps the soft break it always parsed to.
+    name: 'html break inside a quote stays soft (BBF-85)',
+    markdown: '> a<br>b',
+    canonical: '> a\n> b'
+  },
   {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
     name: 'code span with a leading space after a hard break (BBF-76)',

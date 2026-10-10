@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 160,
+    "exportedCaseCount": 164,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 170,
+    "caseCount": 174,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1107,6 +1107,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "46526c244bbf3bf350bbbba480d3689f679cc220208ba68d7e75e2a64d4c8ea2"
+    },
+    {
+      "name": "html break between spaces (BBF-85)",
+      "markdown": "a <br> b",
+      "canonical": "a  \nb",
+      "pending": null,
+      "sha256": "0440275b8bb61be40c0c3e32440ac1bdf957b5417ec56f38f348e0ebd511e5df"
+    },
+    {
+      "name": "two html breaks in a row (BBF-85)",
+      "markdown": "a<br><br>b",
+      "canonical": "a  \nb",
+      "pending": null,
+      "sha256": "f74f4bd1f88cfc6be8a5fc9f9b75781742aee4c8036cc698cf002ee89d87e24d"
+    },
+    {
+      "name": "html break inside bold (BBF-85)",
+      "markdown": "**a<br>b**",
+      "canonical": "**a  \nb**",
+      "pending": null,
+      "sha256": "4e8fea3619e676c88a01ca6d5227c772ac6f02807400bab330c243fa894c387c"
+    },
+    {
+      "name": "html break inside a quote stays soft (BBF-85)",
+      "markdown": "> a<br>b",
+      "canonical": "> a\n> b",
+      "pending": null,
+      "sha256": "ac9d2939be1cb47b91c020bec2e19b5ca156b2e73fa80dfea4e97ce5222fd728"
     },
     {
       "name": "code span with a leading space after a hard break (BBF-76)",

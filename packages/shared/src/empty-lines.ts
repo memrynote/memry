@@ -355,6 +355,19 @@ const HARD_BREAK_TOKEN_WITH_NEWLINE = /MEMRYHBK\d+;(\n?)/g
 // ends the paragraph and the parser produces no break at all.
 const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
 
+// An author's `<br>` with more text after it on the same line (BBF-85). The
+// parser turns the tag into the same newline a soft break gives, so the token
+// goes in front of the tag, eating the spaces before it, and lands against that
+// newline. A `<br>` that ends its line already parses as two newlines, and two
+// tags in a row already give a hard break, so neither is marked.
+const HTML_BREAK_MID_LINE =
+  /(?<!<br\s*\/?>[^\S\n]*)[^\S\n]*<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
+
+// Only a plain paragraph line. A table row is one line by grammar, and a hard
+// break in a heading, quote or list item does not survive the write-back on
+// any spelling, so there the tag keeps the soft break it parsed to before.
+const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[|>#]|[-*+][ \t]|\d+[.)][ \t])/
+
 export interface MaskedHardBreaks {
   markdown: string
   /** The spelling each token replaced, by index. Empty when nothing was masked. */
@@ -386,10 +399,20 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   // Cheap reject on the characters a hard break is spelled with. `$` in
   // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
   // meaningful once the text is split into lines.
-  if (!text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
+  const hasBr = /<br/i.test(text)
+  if (!hasBr && !text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
 
   const lines = text.split('\n')
-  for (let index = 0; index < lines.length - 1; index++) {
+  for (let index = 0; index < lines.length; index++) {
+    if (hasBr && !NOT_PARAGRAPH_LINE.test(lines[index])) {
+      // The tag stays for the parser to break on. Its spelling is empty: in a
+      // `<pre>` block the tag's own newline is all it ever meant.
+      lines[index] = lines[index].replace(HTML_BREAK_MID_LINE, (tag) => {
+        breaks.push('')
+        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag.trimStart()}`
+      })
+    }
+    if (index === lines.length - 1) continue
     if (lines[index + 1].trim() === '') continue
     const line = lines[index]
     if (line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
