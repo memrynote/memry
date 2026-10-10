@@ -127,6 +127,7 @@ async function device(fetchFn: typeof fetch = realFetch): Promise<Device> {
     }),
     getDevicePublicKey: async () => signing.publicKey,
     getSyncServerUrl: () => baseUrl,
+    getVaultPath: () => vaultPath,
     fetchFn: realFetch
   })
   const holdDeps: ChunkHoldDeps = {
