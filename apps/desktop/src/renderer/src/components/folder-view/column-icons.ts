@@ -32,7 +32,8 @@ const BUILTIN_ICONS: Record<string, AppIcon> = {
   wordCount: Hash
 }
 
-export const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
+// Partial: stored types outside this union (e.g. `status`) reach callers at runtime.
+export const PROPERTY_TYPE_ICONS: Partial<Record<PropertyType, AppIcon>> = {
   text: AlignLeft,
   number: Hash,
   checkbox: CheckSquare,
@@ -47,5 +48,5 @@ export const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
 
 /** Resolve the leading icon for a column id: built-in mapped, custom by its type, else generic. */
 export function getColumnIcon(id: string, type?: PropertyType): AppIcon {
-  return BUILTIN_ICONS[id] ?? (type ? PROPERTY_TYPE_ICONS[type] : Type)
+  return BUILTIN_ICONS[id] ?? (type && PROPERTY_TYPE_ICONS[type]) ?? Type
 }
