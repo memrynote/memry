@@ -63,6 +63,14 @@ const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[>#]|[-*+][ \t]|\d+[.)][ \t])|\|/
 
 const LINK_SYNTAX = /[[\]]|<a\b/i
 
+const INLINE_SPAN_SYNTAX = /[`[\]<]/
+
+/** A break an earlier join wrote: a token, then the `<br>` it marks. */
+const JOINED_BREAK = /MEMRYHBK\d+;<br>/g
+
+/** A task item's `[ ]` / `[x]`, which is not link syntax. */
+const TASK_ITEM_BOX = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+)\[[ xX]\]/
+
 const LIST_ITEM_START = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 
 // A line that opens a block of its own rather than continuing a paragraph.
@@ -138,7 +146,10 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     // paragraph, or ends the list on a lazy one, so the break is lost (BBF-99).
     // Joined with the `<br>` the item parses to instead, the token lands
     // against that newline; the joined line is scanned again for its own break.
-    if (inListItem && !BLOCK_START.test(lines[index + 1])) {
+    // A code span, link or tag that the join would carry across keeps the
+    // old split rather than risk a `<br>` or token written into the file.
+    const joined = `${lines[index].replace(TASK_ITEM_BOX, '').replace(JOINED_BREAK, '')}${lines[index + 1]}`
+    if (inListItem && !BLOCK_START.test(lines[index + 1]) && !INLINE_SPAN_SYNTAX.test(joined)) {
       lines[index] += `<br>${lines[index + 1].trimStart()}`
       lines.splice(index + 1, 1)
       index--

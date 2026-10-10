@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 179,
+    "exportedCaseCount": 180,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 189,
+    "caseCount": 190,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1191,6 +1191,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "39bf8f0dc956a9e17063fae75192752c82092961028fd16a2421f71092f18964"
+    },
+    {
+      "name": "hard break in a task list item (BBF-99)",
+      "markdown": "- [ ] a  \n  b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "02bc4826b187fe699e43f3a25b83aa7c84c657ff3a27e96bc45672f354e3d485"
     },
     {
       "name": "hard break in a nested list item (BBF-99)",

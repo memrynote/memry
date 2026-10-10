@@ -835,6 +835,7 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '1. a  \n   b  \n   c'
   },
   { name: 'soft break in a list item next to a hard one (BBF-99)', markdown: '- a  \n  b\n- c' },
+  { name: 'hard break in a task list item (BBF-99)', markdown: '- [ ] a  \n  b' },
   { name: 'hard break in a nested list item (BBF-99)', markdown: '- a\n  - b  \n    c' },
   {
     // An ATX heading is one line, so the next line is a paragraph of its own.

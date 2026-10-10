@@ -81,4 +81,12 @@ describe('hard break masking', () => {
     // that must never reach the user's file is the token.
     expect(restoreHardBreakSpelling('one MEMRYHBK9; two', [])).toBe('one  two')
   })
+
+  it('never carries a list item join across a code span, link or tag', () => {
+    // #given a `<br>` joined into these would be written into the file as text
+    for (const md of ['- `a  \n  b` x', '- [a  \n  b](u)', '- a  \n  b <br> c']) {
+      // #then
+      expect(maskHardBreaks(md).markdown).not.toContain('<br>' + md.split('\n')[1].trimStart())
+    }
+  })
 })
