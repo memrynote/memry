@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { listTitledCanvases } from '@/lib/canvas-lookup'
 import { notesService } from '@/services/notes-service'
+import { tagsService } from '@/services/tags-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import {
   buildDateMentionEntry,
@@ -48,6 +49,26 @@ export interface UseMentionSuggestionsOptions {
   editorContainerRef: RefObject<HTMLDivElement | null>
   /** The spatialCanvas flag: off, the `@` menu offers no canvases at all. */
   canvasesEnabled: boolean
+  onCreate?: (title: string, position: { x: number; y: number }) => void
+}
+
+const OBJECT_LIMIT = 8
+
+async function searchObjectItems(query: string): Promise<MentionSuggestionItem[]> {
+  if (!query) return []
+  try {
+    const { matches } = await tagsService.searchObjects({ query, limit: OBJECT_LIMIT })
+    const order: string[] = []
+    for (const match of matches) if (!order.includes(match.groupTag)) order.push(match.groupTag)
+    return order.flatMap((group) =>
+      matches
+        .filter((match) => match.groupTag === group)
+        .map((match): MentionSuggestionItem => ({ kind: 'object', match }))
+    )
+  } catch (error) {
+    log.error('Failed to search objects for mentions', error)
+    return []
+  }
 }
 
 /** Caret position relative to the editor container, where the choice popover opens. */
@@ -61,7 +82,7 @@ function caretPosition(editor: any, container: HTMLElement | null): { x: number;
 
 export function useMentionSuggestions(
   editor: any,
-  { onInsertDate, editorContainerRef, canvasesEnabled }: UseMentionSuggestionsOptions
+  { onInsertDate, editorContainerRef, canvasesEnabled, onCreate }: UseMentionSuggestionsOptions
 ) {
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
   // Live `@` query, so a date-hint selection can restore the text BlockNote
@@ -101,8 +122,12 @@ export function useMentionSuggestions(
         }
       }
 
-      const notes = notesCacheRef.current?.notes ?? []
       const trimmed = query.trim()
+      const objectItems = await searchObjectItems(trimmed)
+      const objectIds = new Set(
+        objectItems.flatMap((item) => (item.kind === 'object' ? [item.match.noteId] : []))
+      )
+      const notes = (notesCacheRef.current?.notes ?? []).filter((note) => !objectIds.has(note.id))
       const filtered = trimmed ? fuzzySearch(notes, trimmed, ['title']) : notes
       const visible = expanded ? filtered : filtered.slice(0, COLLAPSED_LIMIT)
 
@@ -155,9 +180,12 @@ export function useMentionSuggestions(
       // `@now` / `@no` lead the Date group with "Now" (today + current time).
       if (isNowQuery(trimmed)) dateItems.unshift({ kind: 'now' })
 
-      return [...dateItems, ...noteItems, ...canvasItems]
+      const createItems: MentionSuggestionItem[] =
+        onCreate && trimmed ? [{ kind: 'create', title: trimmed }] : []
+
+      return [...dateItems, ...objectItems, ...noteItems, ...canvasItems, ...createItems]
     },
-    [expanded, canvasesEnabled]
+    [expanded, canvasesEnabled, onCreate]
   )
 
   const showMore = useCallback(() => setExpanded(true), [])
@@ -178,10 +206,13 @@ export function useMentionSuggestions(
         if (query) editor.insertInlineContent('@' + query)
         return
       }
-      if (item.kind === 'note') {
-        editor.insertInlineContent([createWikiLinkInlineContent(item.title, ''), ' '], {
+      if (item.kind === 'note' || item.kind === 'object') {
+        const title = item.kind === 'object' ? item.match.title : item.title
+        editor.insertInlineContent([createWikiLinkInlineContent(title, ''), ' '], {
           updateSelection: true
         })
+      } else if (item.kind === 'create') {
+        onCreate?.(item.title, caretPosition(editor, editorContainerRef.current))
       } else if (item.kind === 'canvas') {
         // BlockNote has already removed the `@query`, so the caret sits where
         // the pick will land. Nothing is inserted until the user chooses.
@@ -197,7 +228,7 @@ export function useMentionSuggestions(
       }
       setExpanded(false)
     },
-    [editor, onInsertDate, openCanvasChoice, editorContainerRef]
+    [editor, onInsertDate, openCanvasChoice, editorContainerRef, onCreate]
   )
 
   const selectCanvasChoice = useCallback(

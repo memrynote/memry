@@ -5,8 +5,8 @@
  * Supports multiple views, filtering, and sorting.
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useEffect, useRef } from 'react'
-import { getI18n } from 'react-i18next'
 import { ChevronRight, Plus, Search, X } from '@/lib/icons'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
@@ -53,6 +53,16 @@ import type { TagSearch } from '@memry/contracts/tag-searches-api'
 import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
 import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
 import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
+import {
+  TagFieldsCount,
+  TagFieldsToolbar,
+  TagLinkedFilter,
+  TagMentionedIn,
+  TagSettingsHost,
+  useFolderViewTagFields
+} from '@/features/tag-fields/folder-view-tag-fields'
+import { TagTableProvider } from '@/features/tag-fields/tag-table'
+import { useTagScopeActions } from '@/components/folder-view/use-tag-scope-actions'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
@@ -75,7 +85,6 @@ import {
 } from './folder-view-state'
 import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
-import { tagsService, onTagRenamed, onTagDeleted } from '@/services/tags-service'
 import {
   DEFAULT_COLUMNS,
   scopeKey,
@@ -133,6 +142,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     parse: parseViewName
   })
 
+  const tagFields = useFolderViewTagFields(scope)
+  const { fieldTag } = tagFields
+
   // Use the folder view hook
   const {
     views,
@@ -167,11 +179,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags,
+    updateNoteHeaderTags,
     updateNoteIcons,
     hasMore,
     loadMore
-  } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
+  } = useFolderView({
+    scope,
+    initialViewName: storedViewName ?? undefined,
+    extraFilter: tagFields.linkedFilter
+  })
 
   // Filters, sorts, groups and summaries run over the loaded rows, so a folder
   // past the first page must load every page or its later entries never show.
@@ -366,7 +382,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
+      map.set(foldTag(tag.tag), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])
@@ -383,7 +399,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // and the hierarchy segments for a nested tag like "araba/lastik".
   const tagRow =
     scope.kind === 'tag'
-      ? allTags.find((row) => row.tag.toLowerCase() === scope.tag.toLowerCase())
+      ? allTags.find((row) => foldTag(row.tag) === foldTag(scope.tag))
       : undefined
   const tagResolvedColor = tagRow?.color ?? ''
   const tagIcon = tagRow?.icon ?? null
@@ -467,7 +483,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Handle clicking a tag
   const handleTagClick = useCallback(
     (tag: string): void => {
-      const color = tagMetaMap.get(tag.toLowerCase())?.color ?? ''
+      const color = tagMetaMap.get(foldTag(tag))?.color ?? ''
       openSidebarItem({
         type: 'tag',
         title: tag,
@@ -479,7 +495,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [openSidebarItem, tagMetaMap]
   )
 
-  // `updateNoteTags` goes to the notes-only `notesService.update` IPC, but the
+  // `updateNoteHeaderTags` goes to the notes-only `notesService.update` IPC, but the
   // table wires this to every row's tag chips — and a row can be a task, an
   // inbox item, or a PDF/image filed in the folder. The cells no longer offer
   // the remove affordance on those rows; this stays as the last line before
@@ -497,10 +513,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         })
         return
       }
-      const nextTags = note.tags.filter((t) => t !== tag)
-      void updateNoteTags(noteId, nextTags)
+      void updateNoteHeaderTags(noteId, { remove: [tag] })
     },
-    [notes, updateNoteTags]
+    [notes, updateNoteHeaderTags]
   )
 
   // Same gate for the property cells: `propertiesService.set` lands in the very
@@ -509,6 +524,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     (noteId: string, propertyName: string, value: unknown): void => {
       const note = notes.find((n) => n.id === noteId)
       if (!note) return
+      if (tagFields.editTaskRowField(note, propertyName, value, () => void refresh())) return
       if (!isMetadataEditableRow(note)) {
         log.warn('Ignoring property update on a row with no writable frontmatter', {
           id: noteId,
@@ -519,7 +535,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       }
       void updateNoteProperty(noteId, propertyName, value)
     },
-    [notes, updateNoteProperty]
+    [notes, updateNoteProperty, tagFields, refresh]
   )
 
   // ============================================================================
@@ -540,66 +556,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [activeTab, closeTab])
 
-  const handleTagIconChange = useCallback(
-    async (icon: string | null) => {
-      if (scope.kind !== 'tag') return
-      const tag = scope.tag
-      const tSettings = getI18n().getFixedT(null, 'settings')
-      try {
-        const result = await tagsService.updateTagIcon({ tag, icon })
-        if (!result.success) {
-          throw new Error(result.error ?? tSettings('tags.toasts.iconFailed'))
-        }
-      } catch (err) {
-        log.error('Failed to update tag icon', err)
-        toast.error(extractErrorMessage(err, tSettings('tags.toasts.iconFailed')))
-      }
-    },
-    [scope]
-  )
-
-  const handleTagRenameSubmit = useCallback(
-    async (newName: string) => {
-      if (scope.kind !== 'tag') return
-      const tag = scope.tag
-      const tSettings = getI18n().getFixedT(null, 'settings')
-      try {
-        const result = await tagsService.renameTag({ oldName: tag, newName })
-        if (!result.success) {
-          throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
-        }
-        toast.success(tSettings('tags.toasts.renamed', { oldName: tag, newName }))
-        closeThisTab()
-      } catch (err) {
-        log.error('Failed to rename tag', err)
-        const message = extractErrorMessage(err, tSettings('tags.toasts.renameFailed'))
-        toast.error(message)
-        throw err instanceof Error ? err : new Error(message)
-      }
-    },
-    [scope, closeThisTab]
-  )
-
-  const handleTagDeleteConfirm = useCallback(async () => {
-    if (scope.kind !== 'tag') return
-    const tag = scope.tag
-    const tSettings = getI18n().getFixedT(null, 'settings')
-    try {
-      const result = await tagsService.deleteTag(tag)
-      if (!result.success) {
-        throw new Error(result.error ?? tSettings('tags.toasts.deleteFailed'))
-      }
-      toast.success(tSettings('tags.toasts.deleted', { name: tag, count: totalNotes }))
-      closeThisTab()
-    } catch (err) {
-      log.error('Failed to delete tag', err)
-      toast.error(extractErrorMessage(err, tSettings('tags.toasts.deleteFailed')))
-    }
-  }, [scope, totalNotes, closeThisTab])
-
-  // Keep this tab in sync with the tag's lifecycle, mirroring tag-view.tsx's
-  // subscriptions. Depends on the tag string (not `scope`) so a new `scope`
-  // object reference each render doesn't resubscribe.
   const activeTagName = scope.kind === 'tag' ? scope.tag : null
 
   // Tag scope's ANDed selection. Read straight off the scope — `TabContent`
@@ -615,7 +571,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       const [primary, ...rest] = search.tags
       if (!primary) return
       // Same primary tag: swap the extras in place, no navigation.
-      if (activeTagName && primary.toLowerCase() === activeTagName.toLowerCase()) {
+      if (activeTagName && foldTag(primary) === foldTag(activeTagName)) {
         setAndTags(rest)
         return
       }
@@ -641,27 +597,11 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [activeTagName, openTab, setAndTags]
   )
 
-  useEffect(() => {
-    if (activeTagName === null) return
-    const currentTag = activeTagName
-    const unsubscribeRenamed = onTagRenamed((event) => {
-      if (event.oldName.toLowerCase() === currentTag.toLowerCase()) {
-        closeThisTab()
-      }
-    })
-    return unsubscribeRenamed
-  }, [activeTagName, closeThisTab])
-
-  useEffect(() => {
-    if (activeTagName === null) return
-    const currentTag = activeTagName
-    const unsubscribeDeleted = onTagDeleted((event) => {
-      if (event.tag.toLowerCase() === currentTag.toLowerCase()) {
-        closeThisTab()
-      }
-    })
-    return unsubscribeDeleted
-  }, [activeTagName, closeThisTab])
+  const { handleTagIconChange, handleTagRenameSubmit, handleTagDeleteConfirm } = useTagScopeActions(
+    activeTagName,
+    totalNotes,
+    closeThisTab
+  )
 
   // View-rename isn't wired up for tag scope (renameView is .folder.md-backed
   // and the hook gates it to folder scope) — surface why instead of letting
@@ -978,14 +918,13 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       await Promise.all(
         selectedNoteIds.map((id) => {
           const note = notes.find((n) => n.id === id)
-          if (!note || note.tags.includes(tag)) return Promise.resolve()
           // A PDF/image row in a mixed selection has no frontmatter to write.
-          if (!isMetadataEditableRow(note)) return Promise.resolve()
-          return updateNoteTags(id, [...note.tags, tag])
+          if (!note || !isMetadataEditableRow(note)) return Promise.resolve()
+          return updateNoteHeaderTags(id, { add: [tag] })
         })
       )
     },
-    [selectedNoteIds, notes, updateNoteTags]
+    [selectedNoteIds, notes, updateNoteHeaderTags]
   )
 
   const { setRowIcon, setSelectionIcon } = useFolderNoteIcons({
@@ -1013,8 +952,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [selectedRowIds])
 
-  return (
-    <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
+  const page = (
+    <div className="relative flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
       <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
         {scope.kind === 'folder' ? (
@@ -1080,7 +1019,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             {/* Colored tag chip (segmented for a hierarchical tag) + item count */}
             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
               <span
-                className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                className="inline-flex min-w-0 max-w-56 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
                 style={{
                   backgroundColor: withAlpha(tagColors?.text ?? '', 0.12),
                   color: tagColors?.text
@@ -1098,7 +1037,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 ))}
               </span>
               <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
-              <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+              <span className="min-w-0 truncate whitespace-nowrap font-medium text-text-tertiary">
                 {isLoading ? (
                   <Skeleton className="h-3.5 w-16" />
                 ) : totalNotes < unfilteredCount ? (
@@ -1107,6 +1046,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                   t('page.itemsCount', { count: totalNotes })
                 )}
               </span>
+              <TagFieldsCount tag={fieldTag} />
             </div>
           </>
         )}
@@ -1253,6 +1193,14 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             onDeleteView={handleDeleteView}
           />
 
+          {scope.kind === 'tag' && (
+            <TagFieldsToolbar
+              tag={fieldTag}
+              notes={notes}
+              onEdit={() => tagFields.setSettingsOpen(true)}
+            />
+          )}
+
           {/* New Note button */}
           <button
             type="button"
@@ -1261,7 +1209,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] shadow-sm transition-colors hover:bg-[var(--tint-hover)]"
           >
             <Plus className="size-3.5" />
-            {tPhaseF('phaseF.pagesFolderView.createNewNote')}
+            {fieldTag
+              ? t('tagObjects.table.new', { tag: fieldTag.name })
+              : tPhaseF('phaseF.pagesFolderView.createNewNote')}
           </button>
 
           {/* Tag actions overflow menu (rename, color, icon, delete) — tag scope only */}
@@ -1288,8 +1238,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           onOpenSavedSearch={handleOpenSavedSearch}
         />
       )}
+      <TagLinkedFilter
+        filter={tagFields.linkedFilter}
+        shown={notes.length}
+        total={unfilteredCount}
+        viewFilters={activeView?.filters as FilterExpression | undefined}
+        onClear={() => tagFields.setLinkedFilter(null)}
+        updateFilters={updateFilters}
+      />
 
-      {/* Content - relative container for absolute positioned table */}
       <div className="flex-1 relative min-w-0">
         {/* Absolute positioned inner container isolates table width from layout */}
         <div className="absolute inset-0 overflow-hidden">
@@ -1457,6 +1414,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           )}
       </div>
 
+      <TagMentionedIn tag={fieldTag} />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -1496,6 +1455,14 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         noteTitle={movingNoteTitle}
       />
 
+      {scope.kind === 'tag' && (
+        <TagSettingsHost
+          tag={scope.tag}
+          open={tagFields.settingsOpen}
+          onClose={() => tagFields.setSettingsOpen(false)}
+        />
+      )}
+
       {/* Tag scope: rename / delete dialogs (ported from tag-view.tsx) */}
       {scope.kind === 'tag' && (
         <>
@@ -1514,6 +1481,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         </>
       )}
     </div>
+  )
+
+  return (
+    <TagTableProvider tag={fieldTag} onCreated={tagFields.onObjectCreated}>
+      {page}
+    </TagTableProvider>
   )
 }
 

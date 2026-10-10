@@ -4,6 +4,7 @@ import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { utcNow } from '@memry/shared/utc'
 import type { DataDb } from '../types'
+import { tagIs } from './tag-match'
 
 export interface TagCategoryRow {
   id: string
@@ -17,8 +18,6 @@ export interface TagAssignment {
   categoryId: string | null
   sortOrder: number
 }
-
-const normalize = (tag: string): string => tag.toLowerCase().trim()
 
 export function listTagCategories(db: DataDb): TagCategoryRow[] {
   return db
@@ -80,7 +79,7 @@ export function reorderTags(db: DataDb, assignments: TagAssignment[]): void {
     for (const a of assignments) {
       tx.update(tagDefinitions)
         .set({ categoryId: a.categoryId, sortOrder: a.sortOrder })
-        .where(eq(tagDefinitions.name, normalize(a.tag)))
+        .where(tagIs(tagDefinitions.name, a.tag.trim()))
         .run()
     }
   })

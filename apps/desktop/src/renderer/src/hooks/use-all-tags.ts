@@ -6,6 +6,7 @@
  * @module hooks/use-all-tags
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { notesService, onTagsChanged } from '@/services/notes-service'
@@ -98,7 +99,7 @@ export function useAllTags(): UseAllTagsResult {
     // Keyed by lowercase (case-insensitive identity); name keeps stored casing
     if (notesQuery.data) {
       for (const tag of notesQuery.data) {
-        const key = tag.tag.toLowerCase()
+        const key = foldTag(tag.tag)
         tagMap.set(key, {
           name: tag.tag,
           count: tag.count,
@@ -111,7 +112,7 @@ export function useAllTags(): UseAllTagsResult {
     // Add inbox tags (merge counts if tag exists)
     if (inboxQuery.data) {
       for (const tag of inboxQuery.data) {
-        const key = tag.tag.toLowerCase()
+        const key = foldTag(tag.tag)
         const existing = tagMap.get(key)
         if (existing) {
           // Tag exists in both sources

@@ -62,7 +62,9 @@ export const UnpinNoteFromTagSchema = z.object({
 
 export const RenameTagSchema = z.object({
   oldName: z.string().min(1),
-  newName: z.string().min(1).max(50)
+  newName: z.string().min(1).max(50),
+  /** Tags the `tags:progress` events of this rename; main makes one up when absent. */
+  runId: z.string().min(1).max(100).optional()
 })
 
 export const UpdateTagColorSchema = z.object({
@@ -104,7 +106,15 @@ export interface TagOperationResponse {
 }
 
 export interface RenameTagResponse extends TagOperationResponse {
+  /** Notes the rename wrote. */
   affectedNotes?: number
+  /** Notes it could not write; the tag still moved in the index for them. */
+  failedNoteIds?: string[]
+  /**
+   * The new name cannot be written as an inline `#tag` (a space, a leading
+   * digit, a non-ASCII letter), so body `#tags` kept the old name.
+   */
+  bodySkipped?: boolean
 }
 
 export interface DeleteTagResponse extends TagOperationResponse {

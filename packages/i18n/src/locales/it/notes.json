@@ -615,8 +615,7 @@
     "hint": "Tag condivisi dalle note più simili a questa. Non viene aggiunto nulla finché non ne scegli uno.",
     "acceptAria": "Aggiungi il tag {tag}",
     "support": "{count, plural, one {Usato in # nota simile} other {Usato in # note simili}}",
-    "dismiss": "Nascondi i tag suggeriti",
-    "failed": "Impossibile aggiungere il tag"
+    "dismiss": "Nascondi i tag suggeriti"
   },
   "comments": {
     "railAria": "Commenti",

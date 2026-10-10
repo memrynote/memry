@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vite
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { JournalEntry } from '@memry/contracts/journal-api'
+import { createTestDataDb, sql } from '@tests/utils/test-db'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -401,6 +402,37 @@ describe('journal-handlers', () => {
       JournalChannels.events.ENTRY_UPDATED,
       expect.objectContaining({ entry: expect.objectContaining({ id: 'cache-1' }) })
     )
+  })
+
+  it('moves only the plain #tags typed into or deleted from the body into the header', async () => {
+    const dataDb = createTestDataDb()
+    dataDb.db.run(
+      sql`INSERT INTO tag_definitions (name, color, schema) VALUES ('meeting', 'blue', ${JSON.stringify({ t: 1, fields: [{ name: 'Attendees' }] })})`
+    )
+    ;(getDatabase as Mock).mockReturnValue(dataDb.db)
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry, tags: ['focus'] })
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: baseEntry,
+      fileContent: 'serialized',
+      frontmatter: { date: baseEntry.date }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+
+    await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
+      date: '2025-01-01',
+      tags: ['focus', 'row'],
+      inlineTags: { add: ['meeting', 'car'], remove: ['focus'] }
+    })
+
+    expect(journalVault.writeJournalEntryWithContent).toHaveBeenCalledWith(
+      '2025-01-01',
+      baseEntry.content,
+      ['row', 'car'],
+      expect.anything(),
+      undefined
+    )
+    dataDb.close()
   })
 
   // An open journal editor is bound to the entry's CRDT doc, and the update

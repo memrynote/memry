@@ -615,8 +615,7 @@
     "hint": "Etichete comune notițelor cele mai asemănătoare cu aceasta. Nu se adaugă nimic până nu alegeți una.",
     "acceptAria": "Adaugă eticheta {tag}",
     "support": "{count, plural, one {Folosită în # notiță similară} few {Folosită în # notițe similare} other {Folosită în # de notițe similare}}",
-    "dismiss": "Ascunde etichetele sugerate",
-    "failed": "Nu s-a putut adăuga eticheta"
+    "dismiss": "Ascunde etichetele sugerate"
   },
   "comments": {
     "railAria": "Comentarii",

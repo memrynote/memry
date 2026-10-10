@@ -8,7 +8,7 @@
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractTags,
-  extractInlineTagsFromMarkdown,
+  mergeTagLists,
   extractProperties,
   calculateWordCount,
   generateContentHash,
@@ -16,6 +16,7 @@ import {
 } from './frontmatter'
 import { inferPropertyType, resolvePropertyType } from './property-type'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
@@ -147,8 +148,8 @@ export interface NoteSyncInput {
 export interface NoteMetadata {
   /** Note ID */
   id: string
-  /** Extracted tags (case preserved, deduplicated case-insensitively) */
   tags: string[]
+  headerTags: string[]
   /** Custom properties from frontmatter */
   properties: Record<string, unknown>
   /** Wiki links found in content */
@@ -178,13 +179,6 @@ export type NoteSyncResult = NoteMetadata
 export interface NoteSyncOptions {
   /** Whether this is a new note (insert) or existing (update). */
   isNew: boolean
-
-  /**
-   * Authoritative tags to use instead of re-extracting from content.
-   * Prevents stale inline tags from being resurrected when content
-   * and tags are saved in separate IPC calls.
-   */
-  tagsOverride?: string[]
 }
 
 // ============================================================================
@@ -201,15 +195,8 @@ export interface NoteSyncOptions {
 export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const { id, path, fileContent, frontmatter, parsedContent } = input
 
-  const frontmatterTags = extractTags(frontmatter)
-  const inlineTags = extractInlineTagsFromMarkdown(parsedContent)
-  // Case-insensitive merge; frontmatter spelling wins over inline
-  const tagsByKey = new Map<string, string>()
-  for (const tag of [...frontmatterTags, ...inlineTags]) {
-    const key = tag.toLowerCase()
-    if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
-  }
-  const tags = [...tagsByKey.values()]
+  const headerTags = extractTags(frontmatter)
+  const tags = mergeTagLists(headerTags, extractInlineTagsFromMarkdown(parsedContent))
 
   const properties = extractProperties(frontmatter)
   const wikiLinks = extractWikiLinks(parsedContent)
@@ -223,6 +210,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   return {
     id,
     tags,
+    headerTags,
     properties,
     wikiLinks,
     wordCount,
@@ -244,14 +232,22 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
 export function syncNoteToCache(
   _db: IndexDb,
   input: NoteSyncInput,
-  options: NoteSyncOptions
+  _options: NoteSyncOptions
 ): NoteSyncResult {
-  const { tagsOverride } = options
   const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
-  const { properties, wikiLinks, wordCount, characterCount, snippet, contentHash, date, emoji } =
-    metadata
-  const tags = tagsOverride ?? metadata.tags
+  const {
+    tags,
+    headerTags,
+    properties,
+    wikiLinks,
+    wordCount,
+    characterCount,
+    snippet,
+    contentHash,
+    date,
+    emoji
+  } = metadata
 
   syncCanonicalMetadata(
     {
@@ -285,6 +281,7 @@ export function syncNoteToCache(
     modifiedAt,
     parsedContent,
     tags,
+    headerTags,
     properties,
     wikiLinks
   }
@@ -374,6 +371,7 @@ export function syncNoteStatToCache(
     parsedContent: null,
     fileSize,
     tags: [],
+    headerTags: [],
     properties: null,
     wikiLinks: []
   }
@@ -439,6 +437,7 @@ export function syncLargeFileBodyToCache(_db: IndexDb, input: LargeFileBodySyncI
     modifiedAt,
     parsedContent: input.indexedHead,
     tags: [],
+    headerTags: [],
     properties: null,
     wikiLinks: []
   }

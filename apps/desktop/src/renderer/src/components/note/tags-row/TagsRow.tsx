@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { cn } from '@/lib/utils'
 import { TagChip, Tag } from './TagChip'
 import { AddTagButton } from './AddTagButton'
-import { TagInputPopup } from './TagInputPopup'
+import { TagInputPopup, type TagFieldHints } from './TagInputPopup'
 import { useT } from '@memry/i18n/renderer'
 
 export interface TagsRowProps {
@@ -17,6 +17,7 @@ export interface TagsRowProps {
   className?: string
   hideWhenEmpty?: boolean
   hideAddButton?: boolean
+  fieldHints?: TagFieldHints
 }
 
 export const TagsRow = memo(function TagsRow({
@@ -30,7 +31,8 @@ export const TagsRow = memo(function TagsRow({
   disabled = false,
   className,
   hideWhenEmpty = false,
-  hideAddButton = false
+  hideAddButton = false,
+  fieldHints
 }: TagsRowProps) {
   const { t } = useT('notes')
   const currentTagIds = tags.map((t) => t.id)
@@ -61,6 +63,7 @@ export const TagsRow = memo(function TagsRow({
           onAddTag={onAddTag}
           onCreateTag={onCreateTag}
           disabled={disabled}
+          fieldHints={fieldHints}
         >
           <AddTagButton disabled={disabled} />
         </TagInputPopup>

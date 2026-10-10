@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { type NewProperty, type Property } from '@/components/note/info-section'
+import { type NewProperty, type Property, type PropertyType } from '@/components/note/info-section'
+import { isFilledValue } from '@/features/tag-fields/build-field-groups'
 import { useProperties } from '@/hooks/use-properties'
 import {
   getDefaultValueForType,
@@ -25,6 +26,8 @@ export interface UsePropertySectionResult {
   handleDeleteProperty: (propertyId: string) => void
   handlePropertyNameChange: (propertyId: string, newName: string) => void
   handlePropertyOrderChange: (newOrder: string[]) => void
+  handleSetFieldValue: (name: string, value: unknown, type: PropertyType) => void
+  values: Record<string, unknown>
 }
 
 export function usePropertySection({
@@ -36,11 +39,13 @@ export function usePropertySection({
 }: UsePropertySectionOptions): UsePropertySectionResult {
   const {
     properties: backendProperties,
+    propertiesRecord,
     updateProperty,
     addProperty,
     removeProperty,
     renameProperty,
-    reorderProperties
+    reorderProperties,
+    setPropertyValue
   } = useProperties(entityId)
 
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
@@ -147,8 +152,26 @@ export function usePropertySection({
     [canPerformAction, reorderProperties, onError]
   )
 
+  const handleSetFieldValue = useCallback(
+    async (name: string, value: unknown, type: PropertyType) => {
+      const exists = Object.prototype.hasOwnProperty.call(propertiesRecord, name)
+      const filled = isFilledValue(value)
+      if (!exists && !filled) return
+      const action: PropertySectionAction = !exists ? 'add' : filled ? 'update' : 'remove'
+      if (!canPerformAction(action)) return
+      try {
+        await setPropertyValue(name, filled ? value : null, type)
+      } catch (error) {
+        onError?.(action, error)
+      }
+    },
+    [propertiesRecord, canPerformAction, setPropertyValue, onError]
+  )
+
   return {
     properties,
+    values: propertiesRecord,
+    handleSetFieldValue: (...args) => void handleSetFieldValue(...args),
     newlyAddedPropertyId,
     handlePropertyChange: (...args) => void handlePropertyChange(...args),
     handleAddProperty: (...args) => void handleAddProperty(...args),

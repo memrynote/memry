@@ -34,6 +34,7 @@ import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
+import { TaskFieldGroups } from '@/features/tag-fields/tasks/TaskFieldGroup'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { ArrowUp, ArrowUpRight, X, Plus, Trash } from '@/lib/icons'
 import { TaskUnarchiveButton } from './task-unarchive-button'
@@ -88,6 +89,8 @@ const formatCreatedDate = (date: Date, language: string): string =>
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
+
+const EMPTY_FIELDS: NonNullable<Task['fields']> = {}
 
 export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   task,
@@ -446,6 +449,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               </PropertyRow>
 
               <TagAutocomplete tags={task.tags} onTagsChange={handleTagsChange} variant="row" />
+
+              {task.tags.length > 0 && (
+                <TaskFieldGroups
+                  tags={task.tags}
+                  fields={task.fields ?? EMPTY_FIELDS}
+                  onFieldsChange={(fields) => onUpdateTask?.(task.id, { fields })}
+                />
+              )}
             </div>
 
             {/* ── Description: no heading, the text speaks for itself ── */}

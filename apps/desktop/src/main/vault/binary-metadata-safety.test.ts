@@ -127,9 +127,9 @@ describe('binary file metadata safety (#2073)', () => {
   it('rejects a tag edit on a PDF row and leaves the bytes untouched', async () => {
     const { absolutePath, sha } = await seedBinary('pdf-tag-1', 'invoice.pdf', 'pdf', PDF_BYTES)
 
-    await expect(notes.updateNote({ id: 'pdf-tag-1', tags: ['invoice'] })).rejects.toMatchObject({
-      code: 'NOTE_NOT_MARKDOWN'
-    })
+    await expect(
+      notes.updateNote({ id: 'pdf-tag-1', headerTags: { add: ['invoice'] } })
+    ).rejects.toMatchObject({ code: 'NOTE_NOT_MARKDOWN' })
 
     expect(sha256(absolutePath)).toBe(sha)
     expect(Buffer.compare(fs.readFileSync(absolutePath), PDF_BYTES)).toBe(0)
@@ -138,9 +138,9 @@ describe('binary file metadata safety (#2073)', () => {
   it('rejects a tag edit on an image row and leaves the bytes untouched', async () => {
     const { absolutePath, sha } = await seedBinary('png-tag-1', 'photo.png', 'image', PNG_BYTES)
 
-    await expect(notes.updateNote({ id: 'png-tag-1', tags: ['holiday'] })).rejects.toMatchObject({
-      code: 'NOTE_NOT_MARKDOWN'
-    })
+    await expect(
+      notes.updateNote({ id: 'png-tag-1', headerTags: { add: ['holiday'] } })
+    ).rejects.toMatchObject({ code: 'NOTE_NOT_MARKDOWN' })
 
     expect(sha256(absolutePath)).toBe(sha)
     expect(Buffer.compare(fs.readFileSync(absolutePath), PNG_BYTES)).toBe(0)
@@ -169,9 +169,12 @@ describe('binary file metadata safety (#2073)', () => {
   it('still lets a markdown note take a tag edit', async () => {
     const created = await notes.createNote({ title: 'Meeting', content: 'Body.' })
 
-    const updated = await notes.updateNote({ id: created.id, tags: ['work'] })
+    const { note: updated } = await notes.updateNote({
+      id: created.id,
+      headerTags: { add: ['work'] }
+    })
 
-    expect(updated.tags).toEqual(['work'])
+    expect(updated.headerTags).toEqual(['work'])
     const raw = fs.readFileSync(path.join(tempVault.path, created.path), 'utf-8')
     expect(raw).toContain('tags:')
     expect(raw).toContain('- work')

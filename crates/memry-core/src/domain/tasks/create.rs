@@ -126,7 +126,7 @@ pub fn create_detailed(
 
 /// The fields a duplicate copies (`duplicateTask`); `completedAt`,
 /// `archivedAt` and `sourceNoteId` are deliberately not among them.
-const DUPLICATED_FIELDS: [&str; 13] = [
+const DUPLICATED_FIELDS: [&str; 14] = [
     "projectId",
     "statusId",
     "parentId",
@@ -140,6 +140,7 @@ const DUPLICATED_FIELDS: [&str; 13] = [
     "tags",
     "linkedNoteIds",
     "linkedCanvasIds",
+    "fields",
 ];
 
 /// Duplicates a task, and its subtasks when `include_subtasks`, in one

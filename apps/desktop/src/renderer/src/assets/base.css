@@ -3861,6 +3861,58 @@ del.bn-inline-content {
   color: rgb(168, 152, 128) !important;
 }
 
+/* A wiki link to an object (a note with a tag with fields in its header).
+   Painted from outside the chip by the same decoration pass as broken links:
+   `--object-color` is the tag colour, and the leading 18px avatar (initials)
+   or icon tile is a ::before, so the link span itself still takes the clicks. */
+.wiki-link.wiki-link--object {
+  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--object-color) 10%, transparent);
+  border-radius: 999px;
+  padding-block: 1px;
+  padding-inline: 2px 8px;
+  white-space: nowrap;
+}
+
+.wiki-link.wiki-link--object:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--object-color) 18%, transparent);
+}
+
+.wiki-link--object::before {
+  content: '';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-inline-end: 5px;
+  vertical-align: middle;
+  translate: 0 -1px;
+  border-radius: 5px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.wiki-link--object[data-object-initials]::before {
+  content: attr(data-object-initials);
+  border-radius: 999px;
+  background: var(--object-color);
+  color: white;
+}
+
+.wiki-link--object[data-object-tile]::before {
+  background:
+    var(--object-icon, none) center / 12px 12px no-repeat,
+    color-mix(in srgb, var(--object-color) 14%, transparent);
+}
+
+.wiki-link--object[data-object-emoji]::before {
+  content: attr(data-object-emoji);
+  font-size: 12px;
+}
+
 /* A wiki link opened for editing: the `[[` and `]]` are real characters the
    user can delete, so they are dimmed rather than hidden — the text still reads
    as a link without the brackets shouting. */
@@ -5386,4 +5438,9 @@ del.bn-inline-content {
     animation: none;
     transition: none;
   }
+}
+
+/* An inline #tag whose "Make this note a …" popover is open (C3). */
+.inline-hash-tag.inline-hash-tag--active {
+  box-shadow: 0 0 0 1.5px currentColor;
 }

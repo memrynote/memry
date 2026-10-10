@@ -615,8 +615,7 @@
     "hint": "このノートに最も似ているノートで使われているタグです。選択するまで何も追加されません。",
     "acceptAria": "タグ {tag} を追加",
     "support": "{count, plural, other {類似ノート # 件で使用}}",
-    "dismiss": "おすすめのタグを非表示",
-    "failed": "タグを追加できませんでした"
+    "dismiss": "おすすめのタグを非表示"
   },
   "comments": {
     "railAria": "コメント",

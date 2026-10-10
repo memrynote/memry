@@ -244,6 +244,13 @@ vi.mock('@/services/notes-service', () => ({
   notesService: contentAreaMocks.notesService
 }))
 
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  tagSchemaQueryKey: ['tags', 'schema-snapshot'],
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useEditTagSchema: () => vi.fn(),
+  useObjectIdentityLookup: () => () => null
+}))
+
 vi.mock('@/services/templates-service', () => ({
   templatesService: contentAreaMocks.templatesService,
   onTemplateCreated: vi.fn(() => vi.fn()),

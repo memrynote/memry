@@ -5,6 +5,19 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type {
+  ImpactQuery,
+  ImpactResult,
+  TagSchemaCommand,
+  TagSchemaCommandResult,
+  TagSchemaSnapshot,
+  TagsProgressEvent
+} from '@memry/contracts/tag-schema-api'
+import type {
+  FieldFillStatus,
+  FillFieldsInput,
+  FillFieldsResult
+} from '@memry/contracts/tag-fill-api'
 import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
@@ -91,6 +104,7 @@ import type {
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type {
   CustomIcon,
@@ -564,6 +578,7 @@ export interface PropertiesClientAPI {
    * Set properties for any entity (note or journal entry) by ID.
    */
   set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  merge(entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse>
   /**
    * Rename a property for a specific entity (note-only scope).
    * Does not propagate to other entities - only affects this entity's frontmatter.
@@ -616,6 +631,7 @@ export interface JournalClientAPI {
     date: string
     content?: string
     tags?: string[]
+    inlineTags?: { add?: string[]; remove?: string[] }
     properties?: Record<string, unknown>
   }): Promise<JournalEntry>
   deleteEntry(date: string): Promise<{ success: boolean }>
@@ -905,7 +921,7 @@ export interface TagsClientAPI {
   }): Promise<GetNotesByTagResponse>
   pinNoteToTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
-  renameTag(input: { oldName: string; newName: string }): Promise<RenameTagResponse>
+  renameTag(input: { oldName: string; newName: string; runId?: string }): Promise<RenameTagResponse>
   updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
   updateTagIcon(input: { tag: string; icon: string | null }): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
@@ -920,6 +936,17 @@ export interface TagsClientAPI {
     tags?: TagAssignment[]
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse>
+  getSchemaSnapshot(): Promise<TagSchemaSnapshot>
+  editSchema(command: TagSchemaCommand): Promise<TagSchemaCommandResult>
+  previewImpact(query: ImpactQuery): Promise<ImpactResult>
+  getFillStatus(): Promise<FieldFillStatus>
+  fillFields(input: FillFieldsInput): Promise<FillFieldsResult>
+  searchObjects(input: {
+    query: string
+    tag?: string
+    limit?: number
+  }): Promise<SearchObjectsResponse>
+  getLinkedHere(input: { noteId: string; limitPerGroup?: number }): Promise<GetLinkedHereResponse>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType
@@ -2044,6 +2071,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagCategoriesChanged: (callback: () => void) => () => void
+  onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
+  onPropertyDefinitionChanged: (callback: (event: { name: string }) => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void

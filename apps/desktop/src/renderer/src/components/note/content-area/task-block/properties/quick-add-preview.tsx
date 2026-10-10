@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import { useT } from '@memry/i18n/renderer'
 import { Calendar, Hash, Repeat } from '@/lib/icons'
 import { formatDateShort, formatTime } from '@/lib/task-utils'
@@ -31,8 +32,8 @@ export const QuickAddPreview = ({
     settings: { clockFormat }
   } = useGeneralSettings()
   const project = changes.projectId ? projects.find((p) => p.id === changes.projectId) : null
-  const existing = new Set(existingTags.map((tag) => tag.toLowerCase()))
-  const addedTags = (changes.tags ?? []).filter((tag) => !existing.has(tag.toLowerCase()))
+  const existing = new Set(existingTags.map((tag) => foldTag(tag)))
+  const addedTags = (changes.tags ?? []).filter((tag) => !existing.has(foldTag(tag)))
 
   return (
     <div

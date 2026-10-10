@@ -7,6 +7,14 @@ import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/w
 import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
 import { TabPane } from './split-view/tab-pane'
 
+vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  useObjectIdentity: () => null,
+  useObjectIdentityLookup: () => () => null
+}))
+
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
   tabGroup: null as null | {

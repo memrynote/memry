@@ -34,6 +34,7 @@ import {
   insertTaskNotes,
   insertTasks,
   insertTaskTags,
+  insertTemplates,
   openDataDb
 } from './seed-vault/db-writer'
 import { generateId } from '../src/main/lib/id'
@@ -54,6 +55,15 @@ import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
 import { CANVASES } from './seed-data/canvas'
 import { buildPropertiesFileData, PROPERTY_DEFINITION_ROWS } from './seed-data/properties'
 import { TAG_CATEGORIES, TAG_PALETTE } from './seed-data/tags'
+import {
+  OBJECT_FOLDER_CONFIGS,
+  OBJECT_NOTE_FILES,
+  OBJECT_NOTE_METADATA,
+  OBJECT_TAG_DEFINITIONS,
+  OBJECT_TASKS,
+  OBJECT_TASK_TAGS,
+  OBJECT_TEMPLATES
+} from './seed-data/objects'
 import {
   IOS_PARITY_LINK_TARGETS,
   IOS_PARITY_METADATA,
@@ -142,10 +152,13 @@ async function main(): Promise<void> {
     const tagCategoryCount = insertTagCategories(db, TAG_CATEGORIES)
     console.log(`  → tag_categories: ${tagCategoryCount}`)
 
-    const tagCount = insertTagDefinitions(db, TAG_PALETTE)
+    const tagCount = insertTagDefinitions(db, [...TAG_PALETTE, ...OBJECT_TAG_DEFINITIONS])
     console.log(`  → tag_definitions: ${tagCount}`)
 
-    const folderCount = insertFolderConfigs(db, FOLDER_CONFIGS)
+    const templateCount = insertTemplates(db, OBJECT_TEMPLATES)
+    console.log(`  → templates: ${templateCount}`)
+
+    const folderCount = insertFolderConfigs(db, [...FOLDER_CONFIGS, ...OBJECT_FOLDER_CONFIGS])
     console.log(`  → folder_configs: ${folderCount}`)
 
     const propCount = insertPropertyDefinitions(db, PROPERTY_DEFINITION_ROWS)
@@ -158,7 +171,8 @@ async function main(): Promise<void> {
       ...JOURNAL_METADATA,
       IOS_PARITY_METADATA,
       ...IOS_PARITY_LINK_TARGETS.map((target) => target.metadata),
-      WRITING_DRAFTS_METADATA
+      WRITING_DRAFTS_METADATA,
+      ...OBJECT_NOTE_METADATA
     ])
     console.log(`  → note_metadata: ${noteMetaCount}`)
 
@@ -168,13 +182,13 @@ async function main(): Promise<void> {
     const statusCount = insertStatuses(db, STATUSES)
     console.log(`  → statuses: ${statusCount}`)
 
-    const taskCount = insertTasks(db, TASKS)
+    const taskCount = insertTasks(db, [...TASKS, ...OBJECT_TASKS])
     console.log(`  → tasks: ${taskCount}`)
 
     const taskNoteCount = insertTaskNotes(db, TASK_NOTES)
     console.log(`  → task_notes: ${taskNoteCount}`)
 
-    const taskTagCount = insertTaskTags(db, TASK_TAGS)
+    const taskTagCount = insertTaskTags(db, [...TASK_TAGS, ...OBJECT_TASK_TAGS])
     console.log(`  → task_tags: ${taskTagCount}`)
 
     const calendarSourceCount = insertCalendarSources(db, CALENDAR_SOURCES)
@@ -229,7 +243,8 @@ async function main(): Promise<void> {
     ...NOTES,
     IOS_PARITY_NOTE,
     ...IOS_PARITY_LINK_TARGETS.map((target) => target.note),
-    WRITING_DRAFTS_NOTE
+    WRITING_DRAFTS_NOTE,
+    ...OBJECT_NOTE_FILES
   ]
   console.log(`  → Writing ${noteFiles.length} note files`)
   const notesWritten = writeNoteFiles(vaultPath, noteFiles)
@@ -243,7 +258,7 @@ async function main(): Promise<void> {
   console.log('')
   console.log('Done.')
   console.log(
-    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${PROJECT_LINKS.length} project links, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets, ${CANVASES.length} canvases.`
+    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length + OBJECT_TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${PROJECT_LINKS.length} project links, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets, ${CANVASES.length} canvases.`
   )
   console.log(`Vault path: ${vaultPath}`)
   console.log('')

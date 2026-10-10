@@ -2559,6 +2559,12 @@ describe('Task Utils', () => {
         expect(filterByTags([taskA], ['mit']).map((t) => t.id)).toEqual(['a'])
       })
 
+      it('matches by the shared tag fold, not plain lowercase', () => {
+        const turkish = createMockTask({ id: 't', tags: ['İş'] })
+        const greek = createMockTask({ id: 'g', tags: ['ΟΔΟΣ'] })
+        expect(filterByTags([turkish, greek], ['iş', 'οδος']).map((t) => t.id)).toEqual(['t', 'g'])
+      })
+
       it('excludes untagged tasks when a tag is selected', () => {
         expect(filterByTags([taskA, taskC], ['MIT']).map((t) => t.id)).toEqual(['a'])
       })

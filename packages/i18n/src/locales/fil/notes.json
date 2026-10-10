@@ -615,8 +615,7 @@
     "hint": "Mga tag na ginagamit ng mga talang pinakakahawig nito. Walang maidadagdag hanggang may piliin ka.",
     "acceptAria": "Idagdag ang tag na {tag}",
     "support": "{count, plural, one {Ginamit sa # katulad na tala} other {Ginamit sa # katulad na tala}}",
-    "dismiss": "Itago ang mga mungkahing tag",
-    "failed": "Hindi maidagdag ang tag"
+    "dismiss": "Itago ang mga mungkahing tag"
   },
   "comments": {
     "railAria": "Mga komento",

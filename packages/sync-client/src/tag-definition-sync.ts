@@ -2,6 +2,7 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { readVersionedObject } from '@memry/shared/versioned'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
@@ -16,48 +17,44 @@ interface TagDefinitionSyncDeps {
 
 let instance: TagDefinitionSyncService | null = null
 
+const JSON_TEXT_KEYS: Record<string, (value: unknown) => boolean> = {
+  views: Array.isArray,
+  schema: (value) => readVersionedObject(value) !== undefined
+}
+
+function parseJsonText(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Normalise a raw `tag_definitions` row into something
  * `TagDefinitionSyncPayloadSchema` accepts.
  *
- * `tag_definitions.views` is a TEXT column holding a JSON array, but the
- * contract expects `array | null | undefined`. Shipping the row verbatim put a
- * *string* on the wire, so `safeParse` failed on the receiving device and the
- * whole tag definition — colour included — was dropped.
- *
  * The push coordinator normally rebuilds this payload via
- * `tagDefinitionHandler.buildPushPayload` (which calls `readTagViews`), so the
- * frozen queue payload only escapes on the fallback path — reached when the row
- * is gone locally by flush time, e.g. a remote delete hard-deletes it while a
- * local update is still queued. Normalising here makes both paths agree.
+ * `tagDefinitionHandler.buildPushPayload`, so the frozen queue payload only
+ * escapes on the fallback path — reached when the row is gone locally by flush
+ * time, e.g. a remote delete hard-deletes it while a local update is still
+ * queued. Normalising here makes both paths agree.
  *
- * Backward compatibility:
- * - Key presence is preserved exactly as the row provides it, so this never
- *   turns an absent `views` into an explicit clear.
- * - A corrupt or non-array blob drops the key rather than sending `null`, so the
- *   receiver's `hasOwnProperty` guard keeps its local views instead of clearing
- *   them. An absent key is also what an older sender produces, so receivers on
- *   every build already handle it.
+ * A NULL column, a corrupt blob or a wrong shape drops the key rather than
+ * sending `null`: a NULL column means this device does not know, `views: null`
+ * would clear every peer, and an absent key is what an older sender produces,
+ * so receivers on every build keep their own value.
  */
 function normalizeTagPayload(local: Record<string, unknown>): Record<string, unknown> {
-  if (!Object.prototype.hasOwnProperty.call(local, 'views')) return local
-
-  const raw = local.views
-  // `null` is an explicit clear and an array is already schema-shaped.
-  if (raw === null || Array.isArray(raw)) return local
-
-  if (typeof raw === 'string') {
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      if (Array.isArray(parsed)) return { ...local, views: parsed }
-    } catch {
-      // Corrupt blob: fall through and drop the key. Mirrors `readTagViews`,
-      // which treats unreadable JSON as "no saved views" rather than throwing.
-    }
+  const payload = { ...local }
+  for (const [key, accepts] of Object.entries(JSON_TEXT_KEYS)) {
+    if (!Object.prototype.hasOwnProperty.call(payload, key)) continue
+    const parsed = parseJsonText(payload[key])
+    if (accepts(parsed)) payload[key] = parsed
+    else delete payload[key]
   }
-
-  const { views: _unreadable, ...rest } = local
-  return rest
+  return payload
 }
 
 export function initTagDefinitionSyncService(

@@ -43,7 +43,7 @@ use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 use crate::domain::body_tags::ALL_NOTE_TAGS;
-use crate::domain::template_admin;
+use crate::domain::{tag_admin, tags, template_admin};
 
 /// The device id the read-only document registry runs under.
 ///
@@ -180,27 +180,31 @@ pub struct TagSummary {
 /// the tags a user actually uses first, and a stable tie-break so two reads of
 /// an unchanged vault render identically.
 ///
-/// **Case folds for grouping and not for display.** `note_tags.tag` is
-/// `COLLATE NOCASE`, which is what FR-047's "letter-case behaviour identical
-/// to desktop" means, so `Café` and `CAFÉ` count as one tag — and the name
-/// shown is whichever spelling the rows carry rather than a lowercased
-/// invention.
+/// **The fold groups, it does not display.** Spellings that share a
+/// `tag_fold` (§13.7.7 tag identity) are one tag, so `Ünal` and `ünal` count
+/// once per note; the name shown is the smallest spelling the rows carry
+/// rather than a lowercased invention. `COLLATE NOCASE` folds ASCII only,
+/// which is why the grouping is `tag_fold`. The colour is the surviving
+/// definition's ([`tag_admin::definitions`]).
 pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
+    let definitions = tag_admin::definitions(conn)?;
     let mut statement = conn
         .prepare(&format!(
-            "SELECT t.tag, COUNT(*), d.color FROM {ALL_NOTE_TAGS} t \
+            "SELECT MIN(t.tag), COUNT(DISTINCT t.note_id) FROM {ALL_NOTE_TAGS} t \
              JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL \
-             LEFT JOIN tag_definitions d ON d.name = t.tag AND d.deleted_at IS NULL \
-             GROUP BY t.tag COLLATE NOCASE \
-             ORDER BY COUNT(*) DESC, t.tag COLLATE NOCASE"
+             GROUP BY tag_fold(t.tag) \
+             ORDER BY COUNT(DISTINCT t.note_id) DESC, tag_fold(MIN(t.tag)), MIN(t.tag)"
         ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
+            let name: String = row.get(0)?;
             Ok(TagSummary {
-                name: row.get(0)?,
+                color: definitions
+                    .get(&tags::tag_key(&name))
+                    .map(|d| d.color.clone()),
+                name,
                 note_count: row.get::<_, i64>(1)?.max(0) as u32,
-                color: row.get(2)?,
             })
         })
         .map_err(failed)?;
@@ -209,15 +213,15 @@ pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
 
 /// The live notes carrying one tag (N600).
 ///
-/// Matched case-insensitively by the column's own collation, so a screen
-/// opened from `#café` finds the note that spelled it `#Café` — which is what
-/// desktop does and what the user means.
+/// Matched by `tag_fold` (§13.7.7 tag identity), so a screen opened from
+/// `#ünal` finds the note that spelled it `#Ünal` — which is what desktop does
+/// and what the user means. A note carrying two spellings is listed once.
 pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at \
-             FROM notes n JOIN {ALL_NOTE_TAGS} t ON t.note_id = n.id \
-             WHERE n.deleted_at IS NULL AND t.tag = ?1 COLLATE NOCASE \
+             FROM notes n WHERE n.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
+             {ALL_NOTE_TAGS} t WHERE t.note_id = n.id AND tag_fold(t.tag) = tag_fold(?1)) \
              ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id"
         ))
         .map_err(failed)?;
@@ -230,13 +234,13 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
 /// A day's tags sit in `note_tags` under the day's record id, beside the
 /// notes' own, so [`notes_tagged`] never sees them: it joins `notes`. Desktop
 /// lists a tagged day in a tag view as one more row titled `YYYY-MM-DD`,
-/// which is what this gives a view block. Matched with the same collation.
+/// which is what this gives a view block. Matched with the same fold.
 pub fn journals_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at \
-             FROM journal_entries j JOIN {ALL_NOTE_TAGS} t ON t.note_id = j.id \
-             WHERE j.deleted_at IS NULL AND t.tag = ?1 COLLATE NOCASE \
+             FROM journal_entries j WHERE j.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
+             {ALL_NOTE_TAGS} t WHERE t.note_id = j.id AND tag_fold(t.tag) = tag_fold(?1)) \
              ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id"
         ))
         .map_err(failed)?;

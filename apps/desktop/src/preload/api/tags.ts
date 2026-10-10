@@ -1,4 +1,10 @@
-import { TagsChannels } from '@memry/contracts/ipc-channels'
+import { PropertiesChannels, TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
+import type {
+  ImpactQuery,
+  TagSchemaCommand,
+  TagsProgressEvent
+} from '@memry/contracts/tag-schema-api'
+import type { FillFieldsInput } from '@memry/contracts/tag-fill-api'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const tagsApi = {
@@ -12,7 +18,7 @@ export const tagsApi = {
     invoke(TagsChannels.invoke.PIN_NOTE_TO_TAG, input),
   unpinNoteFromTag: (input: { noteId: string; tag: string }) =>
     invoke(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, input),
-  renameTag: (input: { oldName: string; newName: string }) =>
+  renameTag: (input: { oldName: string; newName: string; runId?: string }) =>
     invoke(TagsChannels.invoke.RENAME_TAG, input),
   updateTagColor: (input: { tag: string; color: string }) =>
     invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
@@ -32,7 +38,16 @@ export const tagsApi = {
   reorder: (input: {
     tags?: { tag: string; categoryId: string | null; sortOrder: number }[]
     categories?: { id: string; sortOrder: number }[]
-  }) => invoke(TagsChannels.invoke.REORDER, input)
+  }) => invoke(TagsChannels.invoke.REORDER, input),
+  getSchemaSnapshot: () => invoke(TagSchemaChannels.invoke.GET_SCHEMA_SNAPSHOT),
+  editSchema: (command: TagSchemaCommand) => invoke(TagSchemaChannels.invoke.EDIT_SCHEMA, command),
+  previewImpact: (query: ImpactQuery) => invoke(TagSchemaChannels.invoke.PREVIEW_IMPACT, query),
+  getFillStatus: () => invoke(TagSchemaChannels.invoke.FILL_STATUS),
+  fillFields: (input: FillFieldsInput) => invoke(TagSchemaChannels.invoke.FILL_FIELDS, input),
+  searchObjects: (input: { query: string; tag?: string; limit?: number }) =>
+    invoke(TagsChannels.invoke.SEARCH_OBJECTS, input),
+  getLinkedHere: (input: { noteId: string; limitPerGroup?: number }) =>
+    invoke(TagsChannels.invoke.GET_LINKED_HERE, input)
 }
 
 export const tagEvents = {
@@ -64,5 +79,11 @@ export const tagEvents = {
     }>(TagsChannels.events.NOTES_CHANGED, callback),
 
   onTagCategoriesChanged: (callback: () => void): (() => void) =>
-    subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback)
+    subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback),
+
+  onTagsProgress: (callback: (event: TagsProgressEvent) => void): (() => void) =>
+    subscribe<TagsProgressEvent>(TagSchemaChannels.events.PROGRESS, callback),
+
+  onPropertyDefinitionChanged: (callback: (event: { name: string }) => void): (() => void) =>
+    subscribe<{ name: string }>(PropertiesChannels.events.DEFINITION_CHANGED, callback)
 }

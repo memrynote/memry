@@ -61,7 +61,7 @@ function SaveNoteAsTemplateDialogActive({
         const built = buildTemplateFromNote({
           title: note.title,
           content: note.content,
-          tags: note.tags,
+          tags: note.headerTags,
           properties
         })
         setSource(built)

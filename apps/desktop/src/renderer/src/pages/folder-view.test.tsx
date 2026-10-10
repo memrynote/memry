@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   removeNotesOptimistically: vi.fn(),
   updateNoteProperty: vi.fn(),
-  updateNoteTags: vi.fn(),
+  updateNoteHeaderTags: vi.fn(),
   updateNoteIcons: vi.fn(),
   toastSuccess: vi.fn(),
   setActiveViewIndex: vi.fn(),
@@ -118,11 +118,24 @@ vi.mock('@/components/folder-view/folder-emoji-chip', () => ({
   FolderEmojiChip: () => <div data-testid="folder-emoji-chip" />
 }))
 
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  resolveTag: () => null,
+  tagHasFields: () => false,
+  useEditTagSchema: () => vi.fn()
+}))
+
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     move: mocks.moveNote,
     delete: mocks.deleteNote
   }
+}))
+
+vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
+  useResolvedTag: () => null,
+  useObjectIdentityLookup: () => () => null
 }))
 
 vi.mock('@/hooks/use-property-definitions', () => ({
@@ -172,7 +185,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
     refresh: mocks.refresh,
     removeNotesOptimistically: mocks.removeNotesOptimistically,
     updateNoteProperty: mocks.updateNoteProperty,
-    updateNoteTags: mocks.updateNoteTags,
+    updateNoteHeaderTags: mocks.updateNoteHeaderTags,
     updateNoteIcons: mocks.updateNoteIcons,
     hasMore: mocks.folderState.hasMore,
     loadMore: mocks.loadMore
@@ -630,7 +643,7 @@ describe('FolderViewPage', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
-    expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', [])
+    expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { remove: ['work'] })
 
     fireEvent.click(screen.getByRole('button', { name: 'Update property' }))
     expect(mocks.updateNoteProperty).toHaveBeenCalledWith('note-1', 'rating', 5)
@@ -974,11 +987,11 @@ describe('FolderViewPage tag mutations stay note-only', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
 
     await waitFor(() =>
-      expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', ['work', 'urgent'])
+      expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { add: ['urgent'] })
     )
-    expect(mocks.updateNoteTags).toHaveBeenCalledTimes(1)
-    expect(mocks.updateNoteTags).not.toHaveBeenCalledWith('task-1', expect.anything())
-    expect(mocks.updateNoteTags).not.toHaveBeenCalledWith('inbox-1', expect.anything())
+    expect(mocks.updateNoteHeaderTags).toHaveBeenCalledTimes(1)
+    expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalledWith('task-1', expect.anything())
+    expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalledWith('inbox-1', expect.anything())
   })
 
   it('removing a tag chip on a task row does not touch the note IPC', async () => {
@@ -986,7 +999,7 @@ describe('FolderViewPage tag mutations stay note-only', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove tag on task row' }))
 
-    expect(mocks.updateNoteTags).not.toHaveBeenCalled()
+    expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalled()
   })
 
   it('removing a tag chip on an inbox row does not touch the note IPC', async () => {
@@ -994,7 +1007,7 @@ describe('FolderViewPage tag mutations stay note-only', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove tag on inbox row' }))
 
-    expect(mocks.updateNoteTags).not.toHaveBeenCalled()
+    expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalled()
   })
 
   it('still removes a tag chip on a note row under tag scope', async () => {
@@ -1002,7 +1015,7 @@ describe('FolderViewPage tag mutations stay note-only', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove tag' }))
 
-    expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', [])
+    expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { remove: ['work'] })
   })
 
   it('still bulk adds a tag to every selected row under folder scope', async () => {
@@ -1013,10 +1026,10 @@ describe('FolderViewPage tag mutations stay note-only', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
 
     await waitFor(() =>
-      expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', ['work', 'urgent'])
+      expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { add: ['urgent'] })
     )
-    expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-2', ['work', 'urgent'])
-    expect(mocks.updateNoteTags).toHaveBeenCalledTimes(2)
+    expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-2', { add: ['urgent'] })
+    expect(mocks.updateNoteHeaderTags).toHaveBeenCalledTimes(2)
   })
 })
 

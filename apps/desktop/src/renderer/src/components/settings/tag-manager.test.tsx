@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   mergeTag: vi.fn(),
   deleteTag: vi.fn(),
   toastSuccess: vi.fn(),
-  toastError: vi.fn()
+  toastError: vi.fn(),
+  toastLoading: vi.fn()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -29,14 +30,15 @@ vi.mock('@memry/i18n/renderer', () => ({
 vi.mock('sonner', () => ({
   toast: {
     success: mocks.toastSuccess,
-    error: mocks.toastError
+    error: mocks.toastError,
+    loading: mocks.toastLoading,
+    dismiss: vi.fn()
   }
 }))
 
 vi.mock('@/hooks/use-tags', () => ({
   useTags: () => ({
     ...mocks.tagsState,
-    renameTag: mocks.renameTag,
     mergeTag: mocks.mergeTag,
     deleteTag: mocks.deleteTag
   })
@@ -143,6 +145,7 @@ describe('TagManager', () => {
       isLoading: false,
       error: null
     }
+    ;(window as Window & { api: any }).api.tags.renameTag = mocks.renameTag
     mocks.renameTag.mockResolvedValue({ success: true })
     mocks.mergeTag.mockResolvedValue({ success: true, affectedItems: 2 })
     mocks.deleteTag.mockResolvedValue({ success: true, affectedNotes: 3 })
@@ -180,6 +183,35 @@ describe('TagManager', () => {
     expect(screen.getByText('tags.noMatch')).toBeInTheDocument()
   })
 
+  it("shows rename progress from the run's tags:progress events", async () => {
+    let emit: (event: { runId: string; done: number; total: number }) => void = () => {}
+    ;(window as Window & { api: any }).api.onTagsProgress = vi.fn((cb) => {
+      emit = cb
+      return () => {}
+    })
+    let finish: (value: { success: boolean }) => void = () => {}
+    mocks.renameTag.mockImplementationOnce(
+      (input: { runId: string }) =>
+        new Promise((resolve) => {
+          emit({ runId: 'other', done: 1, total: 9 })
+          emit({ runId: input.runId, done: 3, total: 40 })
+          finish = resolve
+        })
+    )
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
+    const input = screen.getByDisplayValue('work')
+    fireEvent.change(input, { target: { value: 'later' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(mocks.toastLoading).toHaveBeenCalledTimes(1))
+    expect(mocks.toastLoading.mock.calls[0][0]).toBe('Renaming #work: 3 / 40 notes')
+    finish({ success: true })
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed "work" to "later"')
+    )
+  })
+
   it('renames tags, skips unchanged names, and reports rename failures', async () => {
     const { rerender } = render(<TagManager />)
 
@@ -189,9 +221,11 @@ describe('TagManager', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
 
     await waitFor(() => {
-      expect(mocks.renameTag).toHaveBeenCalledWith('work', 'later')
+      expect(mocks.renameTag).toHaveBeenCalledWith(
+        expect.objectContaining({ oldName: 'work', newName: 'later' })
+      )
     })
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('tags.toasts.renamed:work:later')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed "work" to "later"')
 
     mocks.renameTag.mockClear()
     fireEvent.click(screen.getAllByText('tags.actions.rename')[0])

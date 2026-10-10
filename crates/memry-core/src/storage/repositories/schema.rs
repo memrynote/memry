@@ -93,7 +93,8 @@ pub enum Kind {
     /// `Date.now()` are already on the server — and the string is what a
     /// conforming client emits.
     SyncTimestamp,
-    /// Deliberately opaque: `repeatConfig`, `oldValue`, `newValue`.
+    /// Deliberately opaque: `repeatConfig`, `oldValue`, `newValue`, `fields`,
+    /// `schema`.
     Any,
 }
 

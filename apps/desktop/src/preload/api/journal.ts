@@ -5,8 +5,12 @@ export const journalApi = {
   getEntry: (date: string) => invoke(JournalChannels.invoke.GET_ENTRY, { date }),
   createEntry: (input: { date: string; content?: string; tags?: string[] }) =>
     invoke(JournalChannels.invoke.CREATE_ENTRY, input),
-  updateEntry: (input: { date: string; content?: string; tags?: string[] }) =>
-    invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
+  updateEntry: (input: {
+    date: string
+    content?: string
+    tags?: string[]
+    inlineTags?: { add?: string[]; remove?: string[] }
+  }) => invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
   deleteEntry: (date: string) => invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
 
   getHeatmap: (year: number) => invoke(JournalChannels.invoke.GET_HEATMAP, { year }),

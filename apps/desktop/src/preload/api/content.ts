@@ -10,6 +10,8 @@ export const propertiesApi = {
   get: (entityId: string) => invoke(PropertiesChannels.invoke.GET, { entityId }),
   set: (entityId: string, properties: Record<string, unknown>) =>
     invoke(PropertiesChannels.invoke.SET, { entityId, properties }),
+  merge: (entityId: string, values: Record<string, unknown>) =>
+    invoke(PropertiesChannels.invoke.MERGE, { entityId, values }),
   rename: (entityId: string, oldName: string, newName: string) =>
     invoke(PropertiesChannels.invoke.RENAME, { entityId, oldName, newName }),
   resolveRefs: (uris: string[]) => invoke(PropertiesChannels.invoke.RESOLVE_REFS, { uris })

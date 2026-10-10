@@ -17,6 +17,11 @@
  * set, so a freshly typed link to a known-missing title is styled without a
  * round trip; a link to a title never seen before stays unstyled until the
  * next resolve pass refreshes the set.
+ *
+ * The same pass also hands over the links whose target is an object (a note
+ * with a tag with fields in its header): those get `.wiki-link--object` and
+ * the attrs `objectChipAttrs` builds, painted by CSS as the object chip. A
+ * decoration again, never a node prop: the file keeps `[[Title]]`.
  */
 
 import { Plugin, PluginKey } from '@tiptap/pm/state'
@@ -30,9 +35,17 @@ export const WIKI_LINK_BROKEN_PLUGIN_KEY = new PluginKey<WikiLinkBrokenPluginSta
 
 const SET_BROKEN_TARGETS_META = 'wikiLinkBrokenSet'
 
-interface WikiLinkBrokenPluginState {
+export type ObjectLinkAttrs = ReadonlyMap<string, Record<string, string>>
+
+const NO_OBJECTS: ObjectLinkAttrs = new Map()
+
+interface WikiLinkDecorationTargets {
   /** Lowercased raw `target` attributes known to resolve to nothing. */
   broken: ReadonlySet<string>
+  objects: ObjectLinkAttrs
+}
+
+interface WikiLinkBrokenPluginState extends WikiLinkDecorationTargets {
   decorations: DecorationSet
 }
 
@@ -47,22 +60,34 @@ export function collectWikiLinkTargets(doc: ProseMirrorNode): string[] {
   return [...targets]
 }
 
-function buildDecorations(doc: ProseMirrorNode, broken: ReadonlySet<string>): DecorationSet {
-  if (broken.size === 0) return DecorationSet.empty
+function buildDecorations(
+  doc: ProseMirrorNode,
+  { broken, objects }: WikiLinkDecorationTargets
+): DecorationSet {
+  if (broken.size === 0 && objects.size === 0) return DecorationSet.empty
 
   const decorations: Decoration[] = []
   doc.descendants((node, pos) => {
     if (node.type.name !== 'wikiLink') return
     const target = typeof node.attrs.target === 'string' ? node.attrs.target.trim() : ''
-    if (!target || !broken.has(target.toLowerCase())) return
-    decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: 'wiki-link-broken' }))
+    if (!target) return
+    const key = target.toLowerCase()
+    if (broken.has(key)) {
+      decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: 'wiki-link-broken' }))
+      return
+    }
+    const object = objects.get(key)
+    if (object) decorations.push(Decoration.node(pos, pos + node.nodeSize, object))
   })
   return decorations.length > 0 ? DecorationSet.create(doc, decorations) : DecorationSet.empty
 }
 
-/** Hands the plugin a fresh broken set; call after each batch resolve. */
-export function setBrokenWikiTargets(view: EditorView, broken: ReadonlySet<string>): void {
-  view.dispatch(view.state.tr.setMeta(SET_BROKEN_TARGETS_META, broken))
+export function setBrokenWikiTargets(
+  view: EditorView,
+  broken: ReadonlySet<string>,
+  objects: ObjectLinkAttrs = NO_OBJECTS
+): void {
+  view.dispatch(view.state.tr.setMeta(SET_BROKEN_TARGETS_META, { broken, objects }))
 }
 
 export function createWikiLinkBrokenPlugin(): Plugin {
@@ -70,16 +95,16 @@ export function createWikiLinkBrokenPlugin(): Plugin {
     key: WIKI_LINK_BROKEN_PLUGIN_KEY,
 
     state: {
-      init: () => ({ broken: new Set<string>(), decorations: DecorationSet.empty }),
+      init: () => ({
+        broken: new Set<string>(),
+        objects: NO_OBJECTS,
+        decorations: DecorationSet.empty
+      }),
 
       apply(tr, value, _oldState, newState) {
-        const nextBroken = tr.getMeta(SET_BROKEN_TARGETS_META) as ReadonlySet<string> | undefined
-        if (nextBroken) {
-          return { broken: nextBroken, decorations: buildDecorations(newState.doc, nextBroken) }
-        }
-        if (tr.docChanged) {
-          return { broken: value.broken, decorations: buildDecorations(newState.doc, value.broken) }
-        }
+        const next = tr.getMeta(SET_BROKEN_TARGETS_META) as WikiLinkDecorationTargets | undefined
+        if (next) return { ...next, decorations: buildDecorations(newState.doc, next) }
+        if (tr.docChanged) return { ...value, decorations: buildDecorations(newState.doc, value) }
         return value
       }
     },

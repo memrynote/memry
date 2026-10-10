@@ -289,12 +289,11 @@ describe('main zero-covered runtime surfaces', () => {
     inbox.syncInboxDelete('inbox-1', '{"id":"inbox-1"}')
     inbox.publishInboxUpserted('inbox-2')
 
-    tags.syncTaggedNote('note-1')
-    tags.syncTagDefinitionRename('Old', ' New ', { name: 'Old' })
-    tags.syncTagDefinitionRename('Ignored', 'Ignored2')
+    tags.syncTagDefinitionRename(' New ', { name: 'Old' })
+    tags.syncTagDefinitionRename('Ignored2')
     tags.syncTagDefinitionUpdate('tag')
-    tags.syncTagDefinitionDelete('Tag', { name: 'Tag' })
-    tags.syncMergedTagDefinitions('source', 'target', { name: 'source' })
+    tags.syncTagDefinitionDelete({ name: 'Tag' })
+    tags.syncMergedTagDefinitions('target', { name: 'source' })
 
     expect(mocks.publishProjectionEvent).toHaveBeenCalledWith({
       type: 'inbox.deleted',
@@ -306,9 +305,10 @@ describe('main zero-covered runtime surfaces', () => {
       sourceId: 'inbox-1'
     })
     expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('tag_definition', 'new')
+    // A definition's sync id is its stored name, spelling included.
     expect(mocks.enqueueLocalSyncDelete).toHaveBeenCalledWith(
       'tag_definition',
-      'tag',
+      'Tag',
       '{"name":"Tag"}'
     )
     expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalledWith('tag_definition', 'Ignored2')

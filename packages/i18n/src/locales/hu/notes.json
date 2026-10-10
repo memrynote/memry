@@ -615,8 +615,7 @@
     "hint": "Az ehhez leginkább hasonló jegyzetek közös címkéi. Semmi sem kerül a jegyzetbe, amíg nem választ egyet.",
     "acceptAria": "Címke hozzáadása: {tag}",
     "support": "{count, plural, one {# hasonló jegyzetben szerepel} other {# hasonló jegyzetben szerepel}}",
-    "dismiss": "Javasolt címkék elrejtése",
-    "failed": "Nem sikerült hozzáadni a címkét"
+    "dismiss": "Javasolt címkék elrejtése"
   },
   "comments": {
     "railAria": "Megjegyzések",

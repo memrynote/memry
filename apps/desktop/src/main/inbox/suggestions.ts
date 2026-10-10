@@ -22,6 +22,8 @@ import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { getSetting } from '@main/database/queries/settings'
 import { listNotesFromCache } from '@main/database/queries/notes'
+import { tagIn } from '@main/database/queries/tag-match'
+import { foldTag } from '@memry/shared/tag-fold'
 import { getNoteById } from '../vault/notes'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -626,18 +628,18 @@ function computeTagMatches(itemTags: string[]): Map<string, number> {
       .select({ path: noteCache.path, tag: noteTags.tag })
       .from(noteTags)
       .innerJoin(noteCache, eq(noteTags.noteId, noteCache.id))
-      .where(inArray(noteTags.tag, tags))
+      .where(tagIn(noteTags.tag, tags))
       .all()
 
     const perFolder = new Map<string, Set<string>>()
     for (const row of rows) {
       const folder = getFolderFromPath(row.path)
       const set = perFolder.get(folder) ?? new Set<string>()
-      set.add(row.tag)
+      set.add(foldTag(row.tag))
       perFolder.set(folder, set)
     }
     for (const [folder, tagSet] of perFolder) {
-      matches.set(folder, tagSet.size / tags.length)
+      matches.set(folder, tagSet.size / new Set(tags.map(foldTag)).size)
     }
   } catch {
     return matches

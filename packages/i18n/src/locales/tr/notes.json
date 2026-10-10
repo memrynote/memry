@@ -615,8 +615,7 @@
     "hint": "Bu nota en çok benzeyen notların ortak etiketleri. Siz birini seçene kadar hiçbir şey eklenmez.",
     "acceptAria": "{tag} etiketini ekle",
     "support": "{count, plural, one {# benzer notta kullanılıyor} other {# benzer notta kullanılıyor}}",
-    "dismiss": "Önerilen etiketleri gizle",
-    "failed": "Etiket eklenemedi"
+    "dismiss": "Önerilen etiketleri gizle"
   },
   "comments": {
     "railAria": "Yorumlar",
@@ -1451,5 +1450,394 @@
     "cancel": "İptal",
     "save": "Kaydet",
     "addToFilterHint": "Filtreye eklemek için bir etikete Ctrl/Cmd ile tıklayın"
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Kişi",
+        "plural": "Kişiler",
+        "fields": {
+          "company": "Şirket",
+          "role": "Rol",
+          "email": "E-posta",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Kişiler"
+        },
+        "template": {
+          "name": "Kişi",
+          "context": "Bağlam",
+          "contextHint": "Nasıl tanıştık, neleri önemsiyor",
+          "notes": "Notlar"
+        }
+      },
+      "company": {
+        "name": "Şirket",
+        "plural": "Şirketler",
+        "fields": {
+          "website": "Web sitesi",
+          "industry": "Sektör",
+          "location": "Konum"
+        },
+        "template": {
+          "name": "Şirket",
+          "overview": "Genel bakış",
+          "overviewHint": "Ne yapıyorlar, orada kimi tanıyoruz",
+          "notes": "Notlar"
+        }
+      },
+      "meeting": {
+        "name": "Toplantı",
+        "plural": "Toplantılar",
+        "fields": {
+          "date": "Tarih",
+          "attendees": "Katılımcılar",
+          "company": "Şirket"
+        },
+        "inverse": {
+          "attendees": "Toplantılar",
+          "company": "Toplantılar"
+        },
+        "template": {
+          "name": "Toplantı",
+          "agenda": "Gündem",
+          "notes": "Notlar",
+          "actionItems": "Yapılacaklar"
+        }
+      },
+      "book": {
+        "name": "Kitap",
+        "plural": "Kitaplar",
+        "fields": {
+          "author": "Yazar",
+          "shelf": "Raf",
+          "rating": "Puan",
+          "finished": "Bitiş"
+        },
+        "shelf": {
+          "toRead": "Okunacak",
+          "reading": "Okunuyor",
+          "read": "Okundu"
+        },
+        "template": {
+          "name": "Kitap",
+          "highlights": "Öne çıkanlar",
+          "thoughts": "Düşünceler"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} artık bir {tag}. Şablon eklendi.",
+      "templateChanged": "Şablon eklendikten sonra not değişti, bu yüzden şablon kaldı.",
+      "undoFailed": "Geri alınamadı",
+      "addFailed": "Etiket eklenemedi",
+      "removeFailed": "Etiket kaldırılamadı",
+      "removedKept": "#{tag} kaldırıldı. {count} değer korundu.",
+      "removedKeptOne": "#{tag} kaldırıldı. 1 değer korundu."
+    },
+    "picker": {
+      "create": "#{tag} oluştur",
+      "fillsTemplate": "Bu boş notu {tag} şablonuyla doldurur"
+    },
+    "hub": {
+      "strip": {
+        "title": "Hazır etiketler",
+        "subtitle": "Alanlarla gelen etiketler. Notlar, siz etiketleyene kadar olduğu gibi kalır.",
+        "notNow": "Şimdi değil",
+        "add": "Ekle",
+        "addFields": "Alanları ekle",
+        "added": "Eklendi",
+        "alreadyOn": "Zaten {count} notta",
+        "alreadyOnOne": "Zaten 1 notta"
+      },
+      "dialog": {
+        "title": "{preset} alanları #{tag} etiketine eklensin mi?",
+        "body": "#{tag} zaten {count} notta. Notlar sahip olduklarını korur ve bu alanları alır; alanlar biri doldurana kadar boş kalır.",
+        "bodyOne": "#{tag} zaten 1 notta. Not sahip olduğunu korur ve bu alanları alır; alanlar biri doldurana kadar boş kalır.",
+        "template": "Şablon ({sections}) yalnızca boş notları doldurur.",
+        "alsoAddsPrefix": "{field} alanı için",
+        "alsoAddsSuffix": "etiketini de ekler.",
+        "useAnotherName": "Başka bir ad kullan",
+        "nameLabel": "Yeni etiket adı",
+        "namePlaceholder": "kişi",
+        "cancel": "Vazgeç",
+        "addFields": "Alanları ekle"
+      },
+      "toast": {
+        "added": "#{tag} eklendi",
+        "addedFields": "{preset} alanları #{tag} etiketine eklendi"
+      },
+      "hasFields": "Alanları var"
+    },
+    "tasks": {
+      "thisTask": "Bu görev",
+      "viaTag": "#{via} üzerinden {name}",
+      "clearValue": "{name} değerini temizle",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "#{tag} üzerinden",
+      "groupMenu": "{tag} seçenekleri",
+      "openTag": "#{tag} aç",
+      "thisNote": "Bu not"
+    },
+    "offer": {
+      "text": "{tag} şablonunu metninin altına ekle",
+      "add": "Ekle",
+      "dismiss": "Kapat",
+      "addFailed": "Şablon eklenemedi"
+    },
+    "settings": {
+      "title": "#{tag} ayarları",
+      "close": "Kapat",
+      "cancel": "Vazgeç",
+      "save": "Kaydet",
+      "onCounts": "{notes} notta ve {tasks} görevde",
+      "onNotes": "{count} notta",
+      "headerFields": "{count} alan",
+      "editTag": "Etiketi düzenle",
+      "syncNote": "Değişiklikler diğer cihazlarınızla eşitlenir",
+      "newerVersion": "Bu etiketi Memry'nin daha yeni bir sürümü değiştirdi. Burada düzenlemek için Memry'yi güncelleyin.",
+      "sections": {
+        "appearance": "Görünüm",
+        "extends": "Genişletir",
+        "fields": "Alanlar · {count}",
+        "template": "Şablon"
+      },
+      "appearance": {
+        "icon": "Simge",
+        "color": "Renk",
+        "customColor": "Özel",
+        "category": "Kategori",
+        "noCategory": "Kategori yok"
+      },
+      "extends": {
+        "nothing": "Hiçbiri",
+        "hint": "Başka bir etiketin alanlarını al ve onun tablosunda görün.",
+        "hintSet": "{tag} notları {parent} alanlarını alır ve {parent} tablosunda görünür."
+      },
+      "types": {
+        "text": "Metin",
+        "number": "Sayı",
+        "date": "Tarih",
+        "url": "URL",
+        "status": "Durum",
+        "select": "Seçim",
+        "multiselect": "Çoklu seçim",
+        "checkbox": "Onay kutusu",
+        "relation": "İlişki"
+      },
+      "fields": {
+        "empty": "Henüz alan yok. Bu etiketli her nota aynı özellikleri vermek için bir alan ekleyin.",
+        "fromParent": "#{tag} etiketinden · orada düzenleyin",
+        "inverseSub": "{target} sayfasında {inverse} olarak gösterilir",
+        "anyNoteSub": "Herhangi bir nota bağlanır",
+        "actions": "{field} işlemleri",
+        "rename": "Yeniden adlandır…",
+        "relationSettings": "İlişki ayarları",
+        "remove": "Kaldır…"
+      },
+      "addField": {
+        "button": "Alan ekle",
+        "namePlaceholder": "Alan adı",
+        "existing": "Mevcut özellikler",
+        "existingSub": "{type} · {count} notta · yeniden kullan",
+        "newType": "Yeni alan türü",
+        "relationSub": "Bir etiketi olan notlara bağla",
+        "submit": "Alan ekle",
+        "reserved": "{name} ayrılmış bir addır, alan olamaz.",
+        "taken": "#{tag} zaten {name} alanına sahip."
+      },
+      "relation": {
+        "target": "Şu etiketli notları gösterir",
+        "pickTag": "Etiket seçin",
+        "howMany": "Kaç tane",
+        "one": "Bir",
+        "many": "Çok",
+        "inverseLabel": "{target} sayfasında şöyle listele",
+        "inverseLabelAny": "Bağlı sayfada şöyle listele",
+        "inverseHint": "Her {target} üzerinde salt okunur bir liste. {target} notlarına hiçbir şey yazılmaz.",
+        "inverseHintAny": "Her bağlı notta salt okunur bir liste. O notlara hiçbir şey yazılmaz."
+      },
+      "shared": {
+        "title": "#{tag} için yeni alan",
+        "existsWith": "{name} bu kasada {options} seçenekleriyle zaten var.",
+        "existsAs": "{name} bu kasada {type} özelliği olarak zaten var.",
+        "shareWith": "#{tag} bunu {others} notlarınızla paylaşacak.",
+        "shareAny": "#{tag} bunu diğer notlarınızla paylaşacak.",
+        "useInstead": "Bunun yerine {name} kullan",
+        "share": "{name} paylaş"
+      },
+      "template": {
+        "edit": "Şablonu düzenle",
+        "none": "Henüz şablon yok. Şablon, etiketi alan boş notları doldurur.",
+        "create": "Şablon oluştur",
+        "defaultHeading": "Notlar",
+        "inherited": "#{tag} etiketinden",
+        "autofill": "#{tag} alan boş notları doldur"
+      },
+      "remove": {
+        "title": "{field} alanı #{tag} etiketinden kaldırılsın mı?",
+        "body": "{field} {filled} notta dolu. Bu değerler notlarda normal özellik olarak kalır; {empty} boş alan kaybolur.",
+        "confirm": "Alanı kaldır"
+      },
+      "rename": {
+        "title": "{from} adını {to} olarak değiştir",
+        "titleEmpty": "{from} adını değiştir",
+        "label": "Yeni ad",
+        "body": "{count} notta {field} değeri var. Memry anahtarı her dosyada ve özelliklerinde yeniden adlandırır; Obsidian da yeni adı görür.",
+        "progress": "Notlarda yeniden adlandırılıyor",
+        "confirm": "Yeniden adlandır",
+        "taken": "Bu etiket zaten {name} alanına sahip.",
+        "done": "{from}, {count} öğede {to} olarak yeniden adlandırıldı.",
+        "skipped": "{from}, {count} öğede {to} olarak yeniden adlandırıldı. {locked, plural, =0 {} other {Kilitli # not, kilidi açılınca tamamlanır.}} {existing, plural, =0 {} other {# notta zaten {to} vardı; ikisi de korunur.}}"
+      },
+      "delete": {
+        "button": "Etiketi sil",
+        "title": "#{tag} silinsin mi?",
+        "body": "#{tag} {notes} nottan kaldırılacak ve etiket {fields} alanı ve şablonuyla birlikte silinecek.",
+        "bodyNoTemplate": "#{tag} {notes} nottan kaldırılacak ve etiket {fields} alanıyla birlikte silinecek.",
+        "bodyPlain": "#{tag} etiketlerinde onu taşıyan her nottan kaldırılacak.",
+        "statNotes": "not metnini korur",
+        "statValues": "değer özellik olarak kalır",
+        "plainText": "Metninde #{tag} geçen notlar onu düz metin olarak korur.",
+        "confirm": "Etiketi sil",
+        "done": "#{tag} silindi."
+      },
+      "errors": {
+        "addField": "Alan eklenemedi.",
+        "removeField": "Alan kaldırılamadı.",
+        "renameField": "Alan yeniden adlandırılamadı.",
+        "moveField": "Alan taşınamadı.",
+        "relation": "İlişki kaydedilemedi.",
+        "extends": "Bu etiketin genişlettiği değiştirilemedi.",
+        "template": "Şablon güncellenemedi.",
+        "deleteTag": "Etiket silinemedi.",
+        "icon": "Simge değiştirilemedi.",
+        "color": "Renk değiştirilemedi.",
+        "category": "Kategori değiştirilemedi."
+      }
+    },
+    "fill": {
+      "action": "Nottan doldur",
+      "reading": "Not okunuyor…",
+      "disclosure": "Ajan modelin ({model}) değer önermek için bu notu okur. Yalnızca bu not gönderilir. Sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureLocal": "Yerel modelin ({model}) değer önermek için bu notu bu cihazda okur. Hiçbir şey cihazdan çıkmaz ve sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureMany": "Ajan modelin ({model}) değer önermek için bu notları tek tek okur. Yalnızca bu notlar gönderilir. Sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "disclosureLocalMany": "Yerel modelin ({model}) değer önermek için bu notları bu cihazda okur. Hiçbir şey cihazdan çıkmaz ve sen onaylayana kadar hiçbir şey kaydedilmez.",
+      "suggest": "Değer öner",
+      "notNow": "Şimdi değil",
+      "countOne": "· {count} öneri",
+      "count": "· {count} öneri",
+      "dismiss": "Vazgeç",
+      "acceptAll": "Tümünü kabul et",
+      "accept": "{field} değerini kabul et",
+      "reject": "{field} değerini reddet",
+      "notInNote": "Notta yok",
+      "createHint": "Kabul edilince yeni bir #{tag} oluşturur",
+      "nothingFound": "Bu notta boş alanları dolduracak bir şey yok",
+      "failed": "Değer önerilemedi. {message}",
+      "saveFailed": "Kabul edilen değerler kaydedilemedi",
+      "bulkAction": "Boş alanları doldur",
+      "bulkTitle": "Boş alanları doldur",
+      "bulkReading": "{total} nottan {done} · notlar okunuyor…",
+      "bulkRead": "{total} nottan {done} okundu",
+      "stop": "Durdur",
+      "name": "Ad",
+      "nothingInRow": "Bulunamadı",
+      "found": "{count} bulundu",
+      "reviewOneByOne": "Tek tek incele",
+      "acceptRow": "{title} için değerleri kabul et",
+      "rejectRow": "{title} atla",
+      "bulkSavedOne": "{notes} notta {count} alan dolduruldu",
+      "bulkSaved": "{notes} notta {count} alan dolduruldu"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title} şu olarak oluştur",
+      "asPrefix": "Oluştur",
+      "asSuffix": "olarak",
+      "failed": "Not oluşturulamadı",
+      "lastUsed": "Son kullanılan",
+      "noteWord": "not",
+      "plainNote": "Düz not",
+      "readyMade": "Hazır etiket",
+      "row": "“{title}” oluştur",
+      "rowHint": "Şu olarak: {types}"
+    },
+    "hover": {
+      "at": "·",
+      "lastMet": "Son görüşme · {title}",
+      "lastMetOn": "Son görüşme {date} · {title}",
+      "mentionedIn": "{count, plural, one {# notta geçiyor} other {# notta geçiyor}}",
+      "open": "Aç",
+      "tasks": "{count, plural, one {# görev · {field}} other {# görev · {field}}}"
+    },
+    "inline": {
+      "aria": "Metindeki #{tag}",
+      "explain": "Metinde etiket yalnızca bir etikettir. Bu not #{tag} sayfasında Geçtiği notlar altında listelenir.",
+      "made": "#{tag} bu notun etiketlerine eklendi",
+      "make": "Bu notu {tag} yap",
+      "makeFailed": "Etiket eklenemedi",
+      "makeHint": "#{tag} etiketini başlığa ekler ve alanlarını gösterir",
+      "meta": "{count, plural, one {# nesne} other {# nesne}} · {fields, plural, one {# alan} other {# alan}}",
+      "metaNamed": "{count} {one} · {fields, plural, one {# alan} other {# alan}}",
+      "open": "#{tag} aç",
+      "remove": "Etiketi metinden kaldır"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "{field} olarak",
+      "due": "Bitiş {date}",
+      "inTheText": "metinde",
+      "mentionedIn": "Geçtiği notlar",
+      "tasks": "Görevler",
+      "title": "Buraya bağlı"
+    },
+    "mention": {
+      "notes": "Notlar"
+    },
+    "picker": {
+      "create": "Yeni {tag}",
+      "createNamed": "Yeni {tag} “{title}”",
+      "empty": "Eşleşme yok",
+      "search": "{tag} ara",
+      "untitled": "Yeni {tag}"
+    },
+    "quickFields": {
+      "add": "{field} ekle",
+      "aria": "{title} için ilk alanlar",
+      "done": "Bitti",
+      "later": "Sonra",
+      "newObject": "Yeni {tag}",
+      "saveFailed": "Alanlar kaydedilemedi"
+    },
+    "table": {
+      "untitled": "Yeni {tag}",
+      "newInGroup": "{group} içinde yeni {tag}",
+      "newInGroupHint": "⌘↵ yeni sekmede açar",
+      "new": "Yeni {tag}",
+      "includes": "{field} şunu içerir",
+      "removeFilter": "Filtreyi kaldır",
+      "shown": "{shown} / {total}",
+      "saveView": "Görünümü kaydet",
+      "mentionedMeta": "{count, plural, one {Metninde '#'{tag} geçen # not} other {Metninde '#'{tag} geçen # not}}",
+      "saveFailed": "Alan kaydedilemedi",
+      "created": "{title} oluşturuldu"
+    },
+    "relationDrop": {
+      "title": "“{title}” notuna #{tag} eklensin mi?",
+      "body": "Bu alan yalnızca #{tag} etiketli notlara bağlanır. Memry “{title}” başlığına #{tag} ekler, sonra buraya bağlar.",
+      "confirm": "#{tag} ekle ve bağla",
+      "cancel": "Vazgeç",
+      "added": "“{title}” artık bir #{tag} ve bağlandı",
+      "notANote": "Buraya #{tag} olarak yalnızca notlar bağlanabilir",
+      "failed": "Bu not bağlanamadı"
+    }
   }
 }

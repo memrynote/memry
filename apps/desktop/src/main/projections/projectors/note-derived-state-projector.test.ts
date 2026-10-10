@@ -90,6 +90,7 @@ describe('note derived state projector', () => {
         modifiedAt: '2026-01-02T00:00:00.000Z',
         parsedContent: 'Plain text with no links',
         tags: [],
+        headerTags: [],
         properties: {},
         wikiLinks: []
       }
@@ -140,6 +141,7 @@ describe('note derived state projector', () => {
         modifiedAt: '2026-01-02T00:00:00.000Z',
         parsedContent: wikiLinks.map((title) => `[[${title}]]`).join(' '),
         tags: [],
+        headerTags: [],
         properties: {},
         wikiLinks
       }
@@ -282,6 +284,7 @@ describe('note derived state projector', () => {
         modifiedAt: '2026-01-02T00:00:00.000Z',
         parsedContent: '',
         tags: [],
+        headerTags: [],
         properties: {},
         wikiLinks: []
       }

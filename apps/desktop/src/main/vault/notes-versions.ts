@@ -241,6 +241,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     created: new Date(cached.createdAt),
     modified: now,
     tags: syncResult.tags,
+    headerTags: syncResult.headerTags,
     aliases: snapshotParsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties: syncResult.properties,
@@ -264,7 +265,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     snapshotParsed.content,
     writingFrontmatterOf(snapshotParsed.frontmatter)
   )
-  replaceNoteTagsInCrdt(cached.id, syncResult.tags)
+  replaceNoteTagsInCrdt(cached.id, syncResult.headerTags)
 
   return restoredNote
 }

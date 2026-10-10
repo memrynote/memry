@@ -10,6 +10,8 @@ import { registerJournalHandlers, unregisterJournalHandlers } from './journal-ha
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+import { registerTagSchemaHandlers, unregisterTagSchemaHandlers } from './tag-schema-handlers'
+import { registerTagObjectHandlers, unregisterTagObjectHandlers } from './tag-object-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
@@ -126,6 +128,8 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register tags handlers
   registerTagsHandlers()
+  registerTagSchemaHandlers()
+  registerTagObjectHandlers()
 
   // Register inbox handlers
   registerInboxHandlers()
@@ -226,6 +230,8 @@ export function unregisterAllHandlers(): void {
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
   unregisterTagsHandlers()
+  unregisterTagSchemaHandlers()
+  unregisterTagObjectHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
   unregisterCalendarHandlers()
@@ -279,6 +285,7 @@ export { registerJournalHandlers, unregisterJournalHandlers } from './journal-ha
 export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+export { registerTagSchemaHandlers, unregisterTagSchemaHandlers } from './tag-schema-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'

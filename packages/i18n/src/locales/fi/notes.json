@@ -615,8 +615,7 @@
     "hint": "Tunnisteet, joita tätä eniten muistuttavat muistiinpanot käyttävät. Mitään ei lisätä, ennen kuin valitset tunnisteen.",
     "acceptAria": "Lisää tunniste {tag}",
     "support": "{count, plural, one {Käytössä # samankaltaisessa muistiinpanossa} other {Käytössä # samankaltaisessa muistiinpanossa}}",
-    "dismiss": "Piilota ehdotetut tunnisteet",
-    "failed": "Tunnisteen lisääminen epäonnistui"
+    "dismiss": "Piilota ehdotetut tunnisteet"
   },
   "comments": {
     "railAria": "Kommentit",

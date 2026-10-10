@@ -8,6 +8,7 @@
  * @module similarity/scoring
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { corroboratedSimilarity } from '../inbox/folder-scoring'
 
 /** Cosine similarity of two vectors. 0 when either has no length. */
@@ -71,7 +72,7 @@ export function scoreNeighbourTags(
   options: TagScoringOptions = {}
 ): ScoredTag[] {
   const { minSimilarity = 0, minSupport = 1, minConfidence = 0, limit } = options
-  const excluded = new Set([...(options.exclude ?? [])].map((tag) => tag.toLowerCase()))
+  const excluded = new Set([...(options.exclude ?? [])].map((tag) => foldTag(tag)))
 
   const byKey = new Map<string, { sims: number[]; spellings: Map<string, number> }>()
   for (const neighbour of neighbours) {
@@ -79,7 +80,7 @@ export function scoreNeighbourTags(
     // A note lists a tag once; guard anyway so a duplicate cannot double-count.
     const seen = new Set<string>()
     for (const tag of neighbour.tags) {
-      const key = tag.toLowerCase()
+      const key = foldTag(tag)
       if (!key || excluded.has(key) || seen.has(key)) continue
       seen.add(key)
       const entry = byKey.get(key) ?? { sims: [], spellings: new Map<string, number>() }

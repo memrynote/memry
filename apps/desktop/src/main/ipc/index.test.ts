@@ -122,6 +122,14 @@ vi.mock('./tags-handlers', () => ({
   registerTagsHandlers: hoisted.registerTagsHandlers,
   unregisterTagsHandlers: hoisted.unregisterTagsHandlers
 }))
+vi.mock('./tag-object-handlers', () => ({
+  registerTagObjectHandlers: vi.fn(),
+  unregisterTagObjectHandlers: vi.fn()
+}))
+vi.mock('./tag-schema-handlers', () => ({
+  registerTagSchemaHandlers: vi.fn(),
+  unregisterTagSchemaHandlers: vi.fn()
+}))
 vi.mock('./inbox-handlers', () => ({
   registerInboxHandlers: hoisted.registerInboxHandlers,
   unregisterInboxHandlers: hoisted.unregisterInboxHandlers

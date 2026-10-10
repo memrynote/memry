@@ -54,7 +54,10 @@ export interface Note {
   frontmatter: NoteFrontmatter
   created: Date
   modified: Date
+  /** Header and inline `#tags` together: the set the editor turns into chips. */
   tags: string[]
+  /** The frontmatter `tags:` list alone: what the tags row shows and `headerTags` edits change. */
+  headerTags: string[]
   aliases: string[]
   wordCount: number
   emoji?: string | null // Emoji icon for visual identification
@@ -167,12 +170,41 @@ export const NoteCreateSchema = z.object({
   ...PlainChecklistsOptionSchema.shape
 })
 
+const HeaderTagNameSchema = z.string().trim().min(1).max(50)
+
+/**
+ * A change to a note's frontmatter `tags:` list, applied to the list in the
+ * file: removes first, then renames in place, then adds the list does not hold.
+ * Names compare case-insensitively. A delta rather than a list, so a caller can
+ * never write the inline `#tags` it read from a note into its header.
+ *
+ * `source: 'inline'` marks the `#tags` typed into or deleted from the body.
+ * Main applies only the plain ones: a tag with fields stays a mention in the
+ * text and never joins or leaves the header that way.
+ */
+export const HeaderTagEditSchema = z.object({
+  add: z.array(HeaderTagNameSchema).max(50).optional(),
+  remove: z.array(HeaderTagNameSchema).max(50).optional(),
+  rename: z
+    .array(z.object({ from: HeaderTagNameSchema, to: HeaderTagNameSchema }))
+    .max(50)
+    .optional(),
+  source: z.literal('inline').optional()
+})
+export type HeaderTagEdit = z.infer<typeof HeaderTagEditSchema>
+
 export const NoteUpdateSchema = z.object({
   id: z.string(),
   title: z.string().min(1).max(200).optional(),
   content: z.string().optional(),
+  headerTags: HeaderTagEditSchema.optional(),
+  /**
+   * Shipped agent API contract: the whole `tags:` list. Main turns it into a
+   * header delta against the file's own list, so it replaces the header and
+   * never promotes inline tags. Ignored when `headerTags` is set.
+   */
   tags: z.array(z.string().max(50)).max(50).optional(),
-  frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields
+  frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields; never `tags`
   emoji: z.string().nullable().optional() // Emoji icon for visual identification
 })
 
@@ -428,6 +460,11 @@ export const SetLocalOnlySchema = z.object({
   localOnly: z.boolean()
 })
 
+export const UndoTagTemplateSchema = z.object({
+  noteId: z.string(),
+  undoToken: z.string()
+})
+
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
@@ -494,10 +531,19 @@ export interface NoteCreateResponse {
   error?: string
 }
 
+/** What adding a header tag did with that tag's template (`notes:update`). */
+export type NoteTagTemplateOutcome =
+  { kind: 'applied'; tag: string; undoToken: string } | { kind: 'offered'; tag: string }
+
 export interface NoteUpdateResponse {
   success: boolean
   note: Note | null
   error?: string
+  tagTemplate?: NoteTagTemplateOutcome
+}
+
+export interface UndoTagTemplateResponse {
+  status: 'restored' | 'stale'
 }
 
 export interface NoteListResponse {
@@ -723,6 +769,10 @@ export interface NotesHandlers {
     input: z.infer<typeof ApplyTemplateSchema>
   ) => Promise<NoteUpdateResponse>
 
+  [NotesChannels.invoke.UNDO_TAG_TEMPLATE]: (
+    input: z.infer<typeof UndoTagTemplateSchema>
+  ) => Promise<UndoTagTemplateResponse>
+
   [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
 
   /** `null` when the session is gone — after a main restart, or an eviction. */
@@ -838,4 +888,5 @@ export interface NotesClientAPI {
   openAttachmentExternal(noteId: string, url: string): Promise<void>
   renameAttachment(noteId: string, url: string, newName: string): Promise<AttachmentRenameResult>
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
+  undoTagTemplate(input: z.infer<typeof UndoTagTemplateSchema>): Promise<UndoTagTemplateResponse>
 }

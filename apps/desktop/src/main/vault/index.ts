@@ -104,6 +104,10 @@ import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
+import { backfillHeaderTagFlags } from './header-tag-backfill'
+import { convergeTagIdentity } from '../tags/converge-identity'
+import { resumeFieldRename } from '../tags/schema/field-rename'
+import { resumeTagRename } from '../tags/rename-tag'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -570,6 +574,38 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   if (isStale()) return
 
   await reindexCodeLinks({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  await backfillHeaderTagFlags({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  try {
+    convergeTagIdentity(dataDb, getIndexDatabase())
+  } catch (error) {
+    logger.error('Tag identity convergence failed:', error)
+    trackMainError('vault', 'tag_identity_converge', error)
+  }
+
+  try {
+    await resumeFieldRename(dataDb)
+  } catch (error) {
+    logger.error('Resuming a field rename failed:', error)
+    trackMainError('vault', 'field_rename_resume', error)
+  }
+
+  try {
+    const resumed = await resumeTagRename(getIndexDatabase(), dataDb)
+    if (resumed && resumed.failedNoteIds.length > 0) {
+      logger.warn('A resumed tag rename could not write some notes', {
+        failedNoteIds: resumed.failedNoteIds
+      })
+    }
+  } catch (error) {
+    logger.error('Resuming a tag rename failed:', error)
+    trackMainError('vault', 'tag_rename_resume', error)
+  }
 
   if (isStale()) return
 

@@ -91,12 +91,15 @@ describe('useNoteEditor', () => {
     await act(async () => {
       await result.current.updateTitle('Renamed')
       await result.current.updateEmoji('✅')
-      await result.current.updateTags(['two'])
+      await result.current.updateHeaderTags({ add: ['two'] })
     })
 
     expect(api.notes.rename).toHaveBeenCalledWith('note-1', 'Renamed')
     expect(api.notes.update).toHaveBeenCalledWith({ id: 'note-1', emoji: '✅' })
-    expect(api.notes.update).toHaveBeenCalledWith({ id: 'note-1', tags: ['two'] })
+    expect(api.notes.update).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { add: ['two'] }
+    })
 
     vi.useFakeTimers()
 
@@ -147,7 +150,7 @@ describe('useNoteEditor', () => {
       await nullHook.result.current.updateTitle('ignored')
       nullHook.result.current.updateContent('ignored')
       await nullHook.result.current.updateEmoji(null)
-      await nullHook.result.current.updateTags([])
+      await nullHook.result.current.updateHeaderTags({ remove: ['two'] })
       await nullHook.result.current.saveNow()
     })
 

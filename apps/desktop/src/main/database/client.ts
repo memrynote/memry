@@ -6,7 +6,7 @@ import * as indexSchema from '@memry/db-schema/index-schema'
 import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
 import { createLogger } from '../lib/logger'
-import { registerDataDbFunctions } from './sqlite-functions'
+import { registerSqliteFunctions } from './sqlite-functions'
 import { isSqliteCorruptError } from './sqlite-errors'
 import type { DataDb, IndexDb, RawIndexDb } from './types'
 
@@ -74,7 +74,7 @@ export function initDatabase(dbPath: string): DataDb {
   sqliteDataDb.pragma(`temp_store = ${SQLITE_TEMP_STORE}`)
 
   // Unicode-aware helpers queries can call (see sqlite-functions.ts)
-  registerDataDbFunctions(sqliteDataDb)
+  registerSqliteFunctions(sqliteDataDb)
 
   dataDb = drizzle(sqliteDataDb, { schema: dataSchema })
   return dataDb
@@ -103,6 +103,9 @@ export function initIndexDatabase(dbPath: string): IndexDb {
 
   // Store temp tables in memory
   sqliteIndexDb.pragma(`temp_store = ${SQLITE_TEMP_STORE}`)
+
+  // Unicode-aware helpers queries can call (see sqlite-functions.ts)
+  registerSqliteFunctions(sqliteIndexDb)
 
   // Load sqlite-vec extension for vector search
   sqliteVec.load(sqliteIndexDb)

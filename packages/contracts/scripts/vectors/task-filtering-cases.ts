@@ -107,7 +107,7 @@ export const FILTER_TASKS: readonly WireTask[] = [
     dueDate: '2026-01-12',
     projectId: 'p2',
     statusId: 'p2-todo',
-    tags: ['home'],
+    tags: ['home', 'İş'],
     createdAt: '2026-01-13T08:00:00'
   }),
   t('c', {
@@ -116,6 +116,7 @@ export const FILTER_TASKS: readonly WireTask[] = [
     dueDate: '2026-01-14',
     dueTime: '08:30',
     statusId: 'p1-doing',
+    tags: ['ΟΔΟΣ'],
     linkedNoteIds: ['n-standup', 'n-roadmap'],
     createdAt: '2026-01-07T08:00:00'
   }),

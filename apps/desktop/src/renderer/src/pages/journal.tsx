@@ -5,6 +5,7 @@
  * Day context (calendar + tasks) available via global Day Panel
  */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import {
   useCallback,
   useEffect,
@@ -51,7 +52,7 @@ import { notesService } from '@/services/notes-service'
 import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
-import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
+import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
@@ -98,6 +99,7 @@ import {
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import {
   createJournalDateLabels,
   formatDateToISO,
@@ -225,6 +227,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     externalUpdateCount,
     updateContent,
     updateTags,
+    updateInlineTags,
     forceReload,
     retrySave,
     dismissSaveError,
@@ -318,6 +321,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entryId, toggleBookmark, selectedDate, t])
 
   const entryTags = useMemo(() => entry?.tags ?? [], [entry?.tags])
+  const chipTags = useMemo(
+    () => [...entryTags, ...extractInlineTagsFromMarkdown(entry?.content ?? '')],
+    [entryTags, entry?.content]
+  )
 
   const [editorRevision, setEditorRevision] = useState(0)
 
@@ -526,7 +533,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag.toLowerCase(), t.color)
+      map.set(foldTag(t.tag), t.color)
     }
     // Just-created tags aren't in allAvailableTags until reindex+refetch;
     // without this the editor pill falls back to the hashed default color
@@ -539,7 +546,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
+      if (t.icon) map.set(foldTag(t.tag), t.icon)
     }
     return map
   }, [allAvailableTags])
@@ -548,9 +555,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color:
-        tagColorMap.get(tagName.toLowerCase()) ?? pendingTagColors.get(tagName.toLowerCase()) ?? '',
-      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
+      color: tagColorMap.get(foldTag(tagName)) ?? pendingTagColors.get(foldTag(tagName)) ?? '',
+      icon: tagIconMap.get(foldTag(tagName)) ?? null
     }))
   }, [entry?.tags, tagColorMap, tagIconMap, pendingTagColors])
 
@@ -1074,7 +1080,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const handleCreateTag = useCallback(
     (name: string, color: string) => {
-      setPendingTagColors((prev) => new Map(prev).set(name.toLowerCase(), color))
+      setPendingTagColors((prev) => new Map(prev).set(foldTag(name), color))
       const currentTags = entryTags
       if (!currentTags.includes(name)) {
         updateTags([...currentTags, name])
@@ -1091,7 +1097,18 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
-  const handleInlineTagsChange = useJournalInlineTags(entryTags, updateTags)
+  const handleInlineTagsChange = useInlineTagEdits(
+    useCallback(
+      (edit: InlineTagEdit) => {
+        const holds = (tag: string): boolean =>
+          entryTags.some((held) => foldTag(held) === foldTag(tag))
+        const add = edit.add.filter((tag) => !holds(tag))
+        const remove = edit.remove.filter(holds)
+        if (add.length > 0 || remove.length > 0) updateInlineTags({ add, remove })
+      },
+      [entryTags, updateInlineTags]
+    )
+  )
 
   // Backlinks transform
   const backlinks: Backlink[] = useMemo(() => {
@@ -1394,10 +1411,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                   onInternalLinkClick={(...args) =>
                                     void handleInternalLinkClick(...args)
                                   }
-                                  noteTags={entryTags}
+                                  noteTags={chipTags}
+                                  onInlineTagsChange={handleInlineTagsChange}
                                   tagColorMap={tagColorMap}
                                   tagIconMap={tagIconMap}
-                                  onInlineTagsChange={handleInlineTagsChange}
                                   focusAtEndRef={focusAtEndRef}
                                   openTemplateInsertRef={openTemplateInsertRef}
                                   marqueeZoneEl={marqueeZoneEl}

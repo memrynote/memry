@@ -615,8 +615,7 @@
     "hint": "Các thẻ chung của những ghi chú giống ghi chú này nhất. Chưa có thẻ nào được thêm cho đến khi bạn chọn.",
     "acceptAria": "Thêm thẻ {tag}",
     "support": "{count, plural, other {Dùng trong # ghi chú tương tự}}",
-    "dismiss": "Ẩn thẻ gợi ý",
-    "failed": "Không thể thêm thẻ"
+    "dismiss": "Ẩn thẻ gợi ý"
   },
   "comments": {
     "railAria": "Bình luận",

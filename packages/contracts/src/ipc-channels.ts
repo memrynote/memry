@@ -122,7 +122,11 @@ export const TagsChannels = {
     /** Delete a tag category (its tags become uncategorized) */
     DELETE_CATEGORY: 'tags:delete-category',
     /** Apply a drag result: tag assignments and/or category order, in one transaction */
-    REORDER: 'tags:reorder'
+    REORDER: 'tags:reorder',
+    /** Objects of tags with fields matching a query (@ menu, relation picker) */
+    SEARCH_OBJECTS: 'tags:search-objects',
+    /** What points at a note: relation fields, task fields, wiki links */
+    GET_LINKED_HERE: 'tags:get-linked-here'
   },
   events: {
     /** Tag was renamed */
@@ -135,6 +139,26 @@ export const TagsChannels = {
     NOTES_CHANGED: 'tags:notes-changed',
     /** Tag categories or their membership changed */
     CATEGORIES_CHANGED: 'tags:categories-changed'
+  }
+} as const
+
+/** Tag schemas (fields, template, extends, preset): payloads in tag-schema-api.ts. */
+export const TagSchemaChannels = {
+  invoke: {
+    /** Resolved tag schemas, ready-made tag offers and object identities */
+    GET_SCHEMA_SNAPSHOT: 'tags:get-schema-snapshot',
+    /** Apply one tag schema command and return a fresh snapshot */
+    EDIT_SCHEMA: 'tags:edit-schema',
+    /** Count what a schema change would touch, before it runs */
+    PREVIEW_IMPACT: 'tags:preview-impact',
+    /** Whether agent fill is on and its disclosure accepted: FieldFillStatus */
+    FILL_STATUS: 'tags:fill-status',
+    /** The inline-AI model proposes values for a note's empty fields; writes nothing */
+    FILL_FIELDS: 'tags:fill-fields'
+  },
+  events: {
+    /** Progress of a long schema command (field rename): TagsProgressEvent */
+    PROGRESS: 'tags:progress'
   }
 } as const
 
@@ -298,6 +322,8 @@ export const PropertiesChannels = {
     GET: 'properties:get',
     /** Set properties for any entity (note or journal) by ID */
     SET: 'properties:set',
+    /** Set only the given keys (null removes one), leaving the entity's other properties */
+    MERGE: 'properties:merge',
     /** Rename a property for a specific entity (note-only scope) */
     RENAME: 'properties:rename',
     /** Resolve relation property URIs to display data (title, existence) */

@@ -5,11 +5,9 @@
  * @module ipc/tags-handlers
  */
 
-import { readFile } from 'fs/promises'
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { eq, like, or } from 'drizzle-orm'
-import { TagsChannels } from '@memry/contracts/ipc-channels'
+import { TagSchemaChannels, TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
   PinNoteToTagSchema,
@@ -27,8 +25,6 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@memry/contracts/tags-api'
-import { noteTags } from '@memry/db-schema/schema/notes-cache'
-import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
   createValidatedHandler,
   createStringHandler,
@@ -36,21 +32,20 @@ import {
   withErrorHandler
 } from './validate'
 import { requireDatabase, getIndexDatabase } from '../database'
+import { tagKey } from '@memry/shared/tag-fold'
 import {
   findNotesWithTagInfo,
   pinNoteToTag,
   unpinNoteFromTag,
-  renameTag,
   deleteTag,
   removeTagFromNote,
   getOrCreateTag,
   deleteTagDefinition,
-  renameTagDefinition,
   updateTagColor,
   updateTagIcon,
   getNoteTags,
-  setNoteTags,
-  getNoteCacheById
+  noteIdsWithTag,
+  findTagDefinition
 } from '../tags/store'
 import {
   getAllTagsWithCounts,
@@ -67,16 +62,13 @@ import {
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
-import { getVaultRoot, toAbsolutePath } from '../vault/notes'
-import { refuseOutsideVault } from '../lib/paths'
-import { parseNote, serializeUpdatedNote, type NoteFrontmatter } from '../vault/frontmatter'
-import { atomicWrite } from '../vault/file-ops'
-import { assertNoteWritable, hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { assertNoteWritable } from '../vault-locks/registry'
+import { editNoteHeaderTags, keepLockedNoteTags } from '../tags/note-tag-edits'
+import { renameTagEverywhere, TagRenameInProgressError } from '../tags/rename-tag'
+import { generateId } from '../lib/id'
 import {
   syncMergedTagDefinitions,
-  syncTaggedNote,
   syncTagDefinitionDelete,
-  syncTagDefinitionRename,
   syncTagDefinitionUpdate,
   syncTagCategoryCreate,
   syncTagCategoryUpdate,
@@ -84,6 +76,7 @@ import {
   commitTaskRetag
 } from '../tags/runtime-effects'
 import { getMainI18n } from '../lib/main-i18n'
+import { rewriteSchemaReferences } from '../tags/schema/references'
 
 const log = createLogger('TagsHandlers')
 
@@ -141,74 +134,6 @@ function toTagNoteItem(
     pinnedAt: note.pinnedAt,
     emoji: note.emoji
   }
-}
-
-function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): string[] {
-  const normalized = tag.toLowerCase().trim()
-  return indexDb
-    .select({ noteId: noteTags.noteId })
-    .from(noteTags)
-    .where(eq(noteTags.tag, normalized))
-    .all()
-    .map((r) => r.noteId)
-}
-
-/**
- * Snapshot the index tags of every locked note that carries `tag` (or a child
- * of it) before a vault-wide rename, merge or delete, and put them back after
- * it. The file of a locked note is left as it is, so its index row must not
- * change either (#2606).
- */
-function keepLockedNoteTags(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): () => void {
-  if (!hasAnyVaultLock()) return () => {}
-  const normalized = tag.toLowerCase().trim()
-  const noteIds = indexDb
-    .selectDistinct({ noteId: noteTags.noteId })
-    .from(noteTags)
-    .where(or(eq(noteTags.tag, normalized), like(noteTags.tag, `${normalized}/%`)))
-    .all()
-    .map((row) => row.noteId)
-  const kept = noteIds
-    .filter((noteId) => isNoteLocked(noteId))
-    .map((noteId) => ({ noteId, tags: getNoteTags(indexDb, noteId) }))
-  return () => {
-    for (const { noteId, tags } of kept) setNoteTags(indexDb, noteId, tags)
-  }
-}
-
-async function updateNoteFrontmatterTag(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  mutate: (tags: string[]) => string[]
-): Promise<void> {
-  const cached = getNoteCacheById(indexDb, noteId)
-  if (!cached) return
-  // A vault-wide tag rename, merge or delete leaves a locked note's file as it is.
-  if (isNoteLocked(noteId, cached.path)) {
-    log.info('Left the tags of a locked note unchanged', { noteId })
-    return
-  }
-
-  await refuseOutsideVault(getVaultRoot(), cached.path)
-  const absolutePath = toAbsolutePath(cached.path)
-  const raw = await readFile(absolutePath, 'utf-8')
-  const parsed = parseNote(raw, absolutePath)
-
-  const currentTags: string[] = Array.isArray(parsed.frontmatter.tags)
-    ? parsed.frontmatter.tags
-    : []
-  const updatedTags = mutate(currentTags)
-
-  const nextFrontmatter: NoteFrontmatter = { ...parsed.frontmatter, tags: updatedTags }
-  if (updatedTags.length === 0) delete nextFrontmatter.tags
-
-  const serialized = serializeUpdatedNote(parsed, nextFrontmatter, parsed.content, {
-    frontmatterEdited: true
-  })
-  if (serialized !== raw) {
-    await atomicWrite(absolutePath, serialized)
-  }
-  syncTaggedNote(noteId)
 }
 
 /**
@@ -314,35 +239,23 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const noteIds = getAffectedNoteIds(indexDb, input.oldName)
-
-        const restoreLockedTags = keepLockedNoteTags(indexDb, input.oldName)
-        const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
-        restoreLockedTags()
-
-        const oldTagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
-          .get()
-
-        renameTagDefinition(dataDb, input.oldName, input.newName)
-
-        syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
-
-        const normalizedOld = input.oldName.toLowerCase().trim()
-        const trimmedNew = input.newName.trim()
-        await Promise.all(
-          noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.map((t) => (t.toLowerCase() === normalizedOld ? trimmedNew : t))
-            ).catch((err) => {
-              log.warn('Failed to update frontmatter for note', { noteId, err })
-              // DB and vault file now diverge silently; must reach Error Tracking.
-              trackMainError('tags', 'frontmatter_writeback', err)
-            })
+        let result
+        try {
+          result = await renameTagEverywhere(
+            indexDb,
+            dataDb,
+            { from: input.oldName, to: input.newName, runId: input.runId ?? generateId() },
+            (event) => broadcastToAllWindows(TagSchemaChannels.events.PROGRESS, event)
           )
-        )
+        } catch (error) {
+          if (!(error instanceof TagRenameInProgressError)) throw error
+          const { from, to } = error.job
+          return {
+            success: false,
+            error: getMainI18n().t('errors:tag.renameInProgress', { from, to })
+          } as RenameTagResponse
+        }
+        const affectedNotes = result.notesWritten
 
         emitTagEvent(TagsChannels.events.RENAMED, {
           oldName: input.oldName,
@@ -355,11 +268,16 @@ export function registerTagsHandlers(): void {
           surface: 'tags',
           action: 'renamed',
           objectType: 'tag',
-          result: 'success',
+          result: result.failedNoteIds.length > 0 ? 'failed' : 'success',
           metrics: { itemCount: affectedNotes }
         })
 
-        return { success: true, affectedNotes } as RenameTagResponse
+        return {
+          success: true,
+          affectedNotes,
+          failedNoteIds: result.failedNoteIds,
+          bodySkipped: result.bodySkipped
+        } as RenameTagResponse
       }, 'errors:tag.renameFailed')
     )
   )
@@ -413,26 +331,19 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const noteIds = getAffectedNoteIds(indexDb, tag)
+        const noteIds = noteIdsWithTag(indexDb, tag)
 
-        const normalizedTag = tag.toLowerCase().trim()
-        const tagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedTag))
-          .get()
+        const tagSnapshot = findTagDefinition(dataDb, tag)
 
         const restoreLockedTags = keepLockedNoteTags(indexDb, tag)
         const affectedNotes = deleteTag(indexDb, tag)
         restoreLockedTags()
         deleteTagDefinition(dataDb, tag)
 
-        syncTagDefinitionDelete(normalizedTag, tagSnapshot)
+        syncTagDefinitionDelete(tagSnapshot)
         await Promise.all(
           noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.filter((t) => t.toLowerCase() !== normalizedTag)
-            ).catch((err) => {
+            editNoteHeaderTags(indexDb, noteId, { remove: [tag] }).catch((err) => {
               log.warn('Failed to update frontmatter for note', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)
             })
@@ -465,10 +376,7 @@ export function registerTagsHandlers(): void {
         assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
 
-        const normalizedTag = input.tag.toLowerCase().trim()
-        await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
-          tags.filter((t) => t.toLowerCase() !== normalizedTag)
-        ).catch((err) => {
+        await editNoteHeaderTags(db, input.noteId, { remove: [input.tag] }).catch((err) => {
           log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
           trackMainError('tags', 'frontmatter_writeback', err)
         })
@@ -512,9 +420,9 @@ export function registerTagsHandlers(): void {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
-        const normalizedSource = input.source.toLowerCase().trim()
+        const normalizedSource = tagKey(input.source)
         const trimmedTarget = input.target.trim()
-        const normalizedTarget = trimmedTarget.toLowerCase()
+        const normalizedTarget = tagKey(trimmedTarget)
 
         if (normalizedSource === normalizedTarget) {
           return { success: false, error: getMainI18n().t('errors:tag.mergeSameTag') }
@@ -528,23 +436,18 @@ export function registerTagsHandlers(): void {
           mergeTagInTasks(dataDb, input.source, input.target)
         )
 
-        const sourceSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedSource))
-          .get()
+        const sourceSnapshot = findTagDefinition(dataDb, normalizedSource)
 
         deleteTagDefinition(dataDb, normalizedSource)
         getOrCreateTag(dataDb, normalizedTarget)
 
-        syncMergedTagDefinitions(normalizedSource, normalizedTarget, sourceSnapshot)
+        syncMergedTagDefinitions(normalizedTarget, sourceSnapshot)
+        rewriteSchemaReferences(dataDb, normalizedSource, normalizedTarget)
 
         await Promise.all(
           noteResult.noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
-              const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
-              const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
-              return hasTarget ? withoutSource : [...withoutSource, trimmedTarget]
+            editNoteHeaderTags(indexDb, noteId, {
+              rename: [{ from: input.source, to: trimmedTarget }]
             }).catch((err) => {
               log.warn('Failed to update frontmatter for note during merge', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)
@@ -668,7 +571,7 @@ export function registerTagsHandlers(): void {
         if (tags?.length) {
           reorderTags(dataDb, tags)
           for (const assignment of tags) {
-            syncTagDefinitionUpdate(assignment.tag.toLowerCase().trim())
+            syncTagDefinitionUpdate(assignment.tag)
           }
         }
 

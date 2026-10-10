@@ -27,6 +27,8 @@ import type {
   TaskActivityListInput,
   TaskActivityListResponse,
   TaskCreateResponse,
+  TaskFieldValue,
+  TaskFields,
   TaskMoveInput,
   TaskStats
 } from '../../contracts/src/tasks-api.ts'
@@ -76,6 +78,8 @@ export type {
   TaskActivityListInput,
   TaskActivityListResponse,
   TaskCreateResponse,
+  TaskFieldValue,
+  TaskFields,
   TaskMoveInput,
   TaskStats
 }
@@ -118,6 +122,7 @@ export interface Task {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
+  fields?: TaskFields
   hasSubtasks?: boolean
   subtaskCount?: number
   completedSubtaskCount?: number

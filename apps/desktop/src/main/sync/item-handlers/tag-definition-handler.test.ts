@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
+import type { VectorClock } from '@memry/contracts/sync-api'
+import {
+  TagDefinitionSyncPayloadSchema,
+  type TagDefinitionSyncPayload
+} from '@memry/contracts/sync-payloads'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
   createTestDataDb,
@@ -10,6 +15,10 @@ import {
 } from '@tests/utils/test-db'
 import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import {
+  initTagDefinitionSyncService,
+  resetTagDefinitionSyncService
+} from '@memry/sync-client/tag-definition-sync'
 import { tagDefinitionHandler } from './tag-definition-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -46,7 +55,7 @@ describe('tagDefinitionHandler', () => {
     const result = tagDefinitionHandler.applyUpsert(
       ctx,
       'focus',
-      { name: 'focus', createdAt: '2026-05-01T00:00:00.000Z' },
+      { name: 'focus', createdAt: '2026-05-01T00:00:00.000Z' } as TagDefinitionSyncPayload,
       { 'device-b': 1 }
     )
 
@@ -337,5 +346,214 @@ describe('tagDefinitionHandler', () => {
 
       expect(JSON.parse(json!)).toMatchObject({ views: [{ name: 'Mine', type: 'table' }] })
     })
+  })
+})
+
+// Chapter 06 §6.11: the schema joins by its own `t` on every branch, and a
+// device that holds more than the remote re-pushes it under a ticked clock.
+describe('tagDefinitionHandler versioned schema', () => {
+  const V2 = { t: 2, fields: [{ name: 'Role' }], preset: 'person' }
+  const V3 = { t: 3, fields: [{ name: 'Role' }, { name: 'Email' }], preset: 'person' }
+
+  let testDb: TestDatabaseResult
+  let ctx: ApplyContext
+  let queue: SyncQueueManager
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    ctx = makeCtx(testDb)
+    queue = new SyncQueueManager(asSyncDb(testDb.db))
+    initTagDefinitionSyncService({
+      queue,
+      db: asSyncDb(testDb.db),
+      getDeviceId: () => 'device-a'
+    })
+  })
+
+  afterEach(() => {
+    resetTagDefinitionSyncService()
+    testDb.close()
+  })
+
+  function seed(schema: object | null, clock: VectorClock): void {
+    testDb.db
+      .insert(tagDefinitions)
+      .values({
+        name: 'person',
+        color: '#111111',
+        clock,
+        schema: schema === null ? null : JSON.stringify(schema)
+      })
+      .run()
+  }
+
+  function row(): { schema: unknown; clock: unknown } {
+    const stored = testDb.db
+      .select()
+      .from(tagDefinitions)
+      .where(eq(tagDefinitions.name, 'person'))
+      .get()
+    return {
+      schema: stored?.schema ? (JSON.parse(stored.schema) as unknown) : null,
+      clock: stored?.clock
+    }
+  }
+
+  function pushed(): Record<string, unknown> {
+    const payload = tagDefinitionHandler.buildPushPayload(
+      testDb.db as unknown as DrizzleDb,
+      'person',
+      'device-a',
+      'update'
+    )
+    return JSON.parse(payload!) as Record<string, unknown>
+  }
+
+  it('keeps the schema an older peer stripped and re-pushes it past the replay check', () => {
+    seed(V3, { 'device-a': 1 })
+
+    const result = tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#222222' },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+
+    expect(result).toBe('applied')
+    expect(row()).toEqual({ schema: V3, clock: { 'device-a': 2, 'device-b': 1 } })
+    expect(queue.dequeue(10)).toMatchObject([
+      { type: 'tag_definition', itemId: 'person', operation: 'update' }
+    ])
+    expect(pushed()).toMatchObject({ schema: V3, clock: { 'device-a': 2, 'device-b': 1 } })
+  })
+
+  it('rejects a stale schema echoed under a newer clock (#2265 capture) and heals', () => {
+    seed(V3, { 'device-a': 1 })
+
+    tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#111111', schema: V2 },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+
+    expect(row().schema).toEqual(V3)
+    expect(queue.dequeue(10)).toHaveLength(1)
+  })
+
+  it('takes a newer schema without re-pushing it', () => {
+    seed(V2, { 'device-a': 1 })
+
+    tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#111111', schema: V3 },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+
+    expect(row()).toEqual({ schema: V3, clock: { 'device-a': 1, 'device-b': 1 } })
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('reads a null schema as no information: nothing written, nothing re-pushed', () => {
+    seed(V3, { 'device-a': 1 })
+
+    tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#111111', schema: null },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+
+    expect(row().schema).toEqual(V3)
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('applies and re-pushes nothing for its own echo', () => {
+    seed(V3, { 'device-a': 2 })
+    const echo = TagDefinitionSyncPayloadSchema.parse(pushed())
+
+    const result = tagDefinitionHandler.applyUpsert(ctx, 'person', echo, { 'device-a': 2 })
+
+    expect(result).toBe('skipped')
+    expect(row()).toEqual({ schema: V3, clock: { 'device-a': 2 } })
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('re-pushes nothing when another device sends the same schema under a newer clock', () => {
+    seed(V3, { 'device-a': 1 })
+
+    tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#333333', schema: structuredClone(V3) },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+
+    expect(row().schema).toEqual(V3)
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('joins a newer schema carried by a payload the clock skips, without a re-push', () => {
+    seed(V2, { 'device-a': 3 })
+
+    const result = tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#999999', schema: V3 },
+      { 'device-a': 1 }
+    )
+
+    expect(result).toBe('skipped')
+    expect(row()).toEqual({ schema: V3, clock: { 'device-a': 3 } })
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('takes the remote schema when it inserts the tag', () => {
+    tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#111111', schema: V2 },
+      { 'device-b': 1 }
+    )
+
+    expect(row()).toEqual({ schema: V2, clock: { 'device-b': 1 } })
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('leaves a concurrent edit to the conflict re-queue instead of enqueueing a heal', () => {
+    seed(V3, { 'device-a': 2 })
+
+    const result = tagDefinitionHandler.applyUpsert(
+      ctx,
+      'person',
+      { name: 'person', color: '#222222' },
+      { 'device-b': 1 }
+    )
+
+    expect(result).toBe('conflict')
+    expect(row()).toEqual({ schema: V3, clock: { 'device-a': 2, 'device-b': 1 } })
+    expect(queue.dequeue(10)).toEqual([])
+  })
+
+  it('leaves out a NULL schema and NULL views, and sends [] views and a stored schema', () => {
+    seed(null, { 'device-a': 1 })
+    expect(pushed()).not.toHaveProperty('schema')
+    expect(pushed()).not.toHaveProperty('views')
+
+    writeTagViews(asClientDb(testDb.db), 'person', [])
+    testDb.db
+      .update(tagDefinitions)
+      .set({ schema: JSON.stringify(V2) })
+      .where(eq(tagDefinitions.name, 'person'))
+      .run()
+    expect(pushed()).toMatchObject({ views: [], schema: V2 })
+
+    testDb.db
+      .update(tagDefinitions)
+      .set({ schema: '{not json' })
+      .where(eq(tagDefinitions.name, 'person'))
+      .run()
+    expect(pushed()).not.toHaveProperty('schema')
   })
 })

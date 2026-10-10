@@ -32,7 +32,7 @@ use super::model::{
 /// spreads the whole task and re-creates it through `tasksService.create`,
 /// which carries these and not `sourceNoteId`; `dueDate`, `statusId`,
 /// `repeatConfig` and `position` are set separately.
-const OCCURRENCE_FIELDS: [&str; 11] = [
+const OCCURRENCE_FIELDS: [&str; 12] = [
     "title",
     "description",
     "projectId",
@@ -44,6 +44,7 @@ const OCCURRENCE_FIELDS: [&str; 11] = [
     "tags",
     "linkedNoteIds",
     "linkedCanvasIds",
+    "fields",
 ];
 
 /// The occurrence a repeating completion created.

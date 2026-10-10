@@ -254,7 +254,7 @@ async function backfillNote(
       entry: {
         date: journalDate,
         content: parsed.content,
-        tags,
+        tags: syncResult.headerTags,
         wordCount: syncResult.wordCount,
         characterCount: syncResult.characterCount,
         modified: new Date(parsed.modified),

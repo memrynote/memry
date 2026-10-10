@@ -615,8 +615,7 @@
     "hint": "与此笔记最相似的笔记所共用的标签。选择之后才会添加。",
     "acceptAria": "添加标签 {tag}",
     "support": "{count, plural, other {用于 # 篇相似笔记}}",
-    "dismiss": "隐藏建议的标签",
-    "failed": "无法添加标签"
+    "dismiss": "隐藏建议的标签"
   },
   "comments": {
     "railAria": "评论",

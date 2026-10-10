@@ -7,20 +7,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
-import type * as Frontmatter from '../vault/frontmatter'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 const mockSend = vi.fn()
 const fileMocks = vi.hoisted(() => ({
-  readFile: vi.fn(),
-  toAbsolutePath: vi.fn(),
-  parseNote: vi.fn(),
-  serializeNote: vi.fn(),
-  serializeUpdatedNote: vi.fn(),
-  atomicWrite: vi.fn(),
+  updateNoteCommand: vi.fn(),
   syncMergedTagDefinitions: vi.fn(),
-  syncTaggedNote: vi.fn(),
   commitTaskRetag: vi.fn((_db: unknown, retag: () => unknown) => retag()),
   syncTagDefinitionDelete: vi.fn(),
   syncTagDefinitionRename: vi.fn(),
@@ -52,16 +45,10 @@ vi.mock('../database', () => ({
   requireDatabase: vi.fn()
 }))
 
-vi.mock('fs/promises', () => ({
-  readFile: fileMocks.readFile
-}))
-
 vi.mock('@main/database/queries/notes', () => ({
   findNotesWithTagInfo: vi.fn(),
   pinNoteToTag: vi.fn(),
   unpinNoteFromTag: vi.fn(),
-  renameTag: vi.fn(),
-  renameTagDefinition: vi.fn(),
   deleteTag: vi.fn(),
   deleteTagDefinition: vi.fn(),
   removeTagFromNote: vi.fn(),
@@ -69,7 +56,12 @@ vi.mock('@main/database/queries/notes', () => ({
   updateTagColor: vi.fn(),
   updateTagIcon: vi.fn(),
   getNoteTags: vi.fn(),
-  getNoteCacheById: vi.fn()
+  getNoteCacheById: vi.fn(),
+  // Read through the db mock the way the real queries do.
+  noteIdsWithTag: vi.fn((db: { select: () => any }) =>
+    (db?.select().from().where().all() ?? []).map((row: { noteId: string }) => row.noteId)
+  ),
+  findTagDefinition: vi.fn((db: { select: () => any }) => db?.select().from().where().get())
 }))
 
 vi.mock('@main/database/queries/tags', () => ({
@@ -87,23 +79,8 @@ vi.mock('@main/database/queries/tag-categories', () => ({
   reorderCategories: vi.fn()
 }))
 
-vi.mock('../vault/notes', () => ({
-  getVaultRoot: () => '/vault',
-  toAbsolutePath: fileMocks.toAbsolutePath
-}))
-vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
-  refuseOutsideVault: async () => undefined
-}))
-
-vi.mock('../vault/frontmatter', () => ({
-  parseNote: fileMocks.parseNote,
-  serializeNote: fileMocks.serializeNote,
-  serializeUpdatedNote: fileMocks.serializeUpdatedNote
-}))
-
-vi.mock('../vault/file-ops', () => ({
-  atomicWrite: fileMocks.atomicWrite
+vi.mock('../notes/domain', () => ({
+  updateNoteCommand: fileMocks.updateNoteCommand
 }))
 
 vi.mock('../lib/logger', () => {
@@ -130,7 +107,6 @@ vi.mock('../telemetry/diagnostics', () => ({
 
 vi.mock('../tags/runtime-effects', () => ({
   syncMergedTagDefinitions: fileMocks.syncMergedTagDefinitions,
-  syncTaggedNote: fileMocks.syncTaggedNote,
   syncTagDefinitionDelete: fileMocks.syncTagDefinitionDelete,
   syncTagDefinitionRename: fileMocks.syncTagDefinitionRename,
   syncTagDefinitionUpdate: fileMocks.syncTagDefinitionUpdate,
@@ -140,7 +116,16 @@ vi.mock('../tags/runtime-effects', () => ({
   commitTaskRetag: fileMocks.commitTaskRetag
 }))
 
+vi.mock('../tags/schema/references', () => ({ rewriteSchemaReferences: vi.fn(() => []) }))
+
+vi.mock('../tags/rename-tag', () => ({
+  renameTagEverywhere: vi.fn(),
+  TagRenameInProgressError: class extends Error {}
+}))
+
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+import { rewriteSchemaReferences } from '../tags/schema/references'
+import { renameTagEverywhere } from '../tags/rename-tag'
 import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tagQueries from '@main/database/queries/tags'
@@ -169,15 +154,7 @@ describe('tags-handlers', () => {
     ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
     ;(getDatabase as Mock).mockReturnValue(createDbMock())
     ;(requireDatabase as Mock).mockReturnValue(createDbMock())
-    fileMocks.readFile.mockResolvedValue('---\ntags: [old, keep]\n---\nBody')
-    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
-    fileMocks.parseNote.mockReturnValue({
-      frontmatter: { tags: ['old', 'keep'] },
-      content: 'Body'
-    })
-    fileMocks.serializeNote.mockReturnValue('serialized note')
-    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
-    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    fileMocks.updateNoteCommand.mockResolvedValue(undefined)
     ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
   })
 
@@ -252,13 +229,27 @@ describe('tags-handlers', () => {
 
   it('renames, updates color, and deletes tags', async () => {
     registerTagsHandlers()
-    ;(notesQueries.renameTag as Mock).mockReturnValue(3)
+    ;(renameTagEverywhere as Mock).mockResolvedValue({
+      notesWritten: 3,
+      failedNoteIds: ['n9'],
+      bodySkipped: false
+    })
     const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
       oldName: 'old',
       newName: 'new'
     })
-    expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
-    expect(notesQueries.renameTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
+    expect(renameResult).toEqual({
+      success: true,
+      affectedNotes: 3,
+      failedNoteIds: ['n9'],
+      bodySkipped: false
+    })
+    expect(renameTagEverywhere).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      expect.objectContaining({ from: 'old', to: 'new', runId: expect.any(String) }),
+      expect.any(Function)
+    )
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new' })
@@ -277,6 +268,8 @@ describe('tags-handlers', () => {
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })
     expect(notesQueries.deleteTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'new')
+    // A delete leaves references dangling, so they re-resolve if the tag returns.
+    expect(rewriteSchemaReferences).not.toHaveBeenCalled()
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.DELETED,
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })
@@ -307,6 +300,10 @@ describe('tags-handlers', () => {
   })
 
   it('removes a tag from a note and emits change events', async () => {
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
+      path: 'notes/a.md',
+      fileType: 'markdown'
+    })
     registerTagsHandlers()
 
     const result = await invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, {
@@ -320,6 +317,10 @@ describe('tags-handlers', () => {
       'note-1',
       'focus'
     )
+    expect(fileMocks.updateNoteCommand).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { remove: ['focus'] }
+    })
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.NOTES_CHANGED,
       expect.objectContaining({ action: 'removed', tag: 'focus', noteId: 'note-1' })
@@ -327,52 +328,26 @@ describe('tags-handlers', () => {
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
   })
 
-  it('updates markdown frontmatter and sync metadata when renaming or deleting tags', async () => {
+  it('rewrites each carrier header through the note command when deleting tags', async () => {
     const indexDb = createDbMock({ allResult: [{ noteId: 'note-1' }] })
     const dataDb = createDbMock({ getResult: { name: 'old', color: 'red' } })
     ;(getIndexDatabase as Mock).mockReturnValue(indexDb)
     ;(requireDatabase as Mock).mockReturnValue(dataDb)
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
-    ;(notesQueries.renameTag as Mock).mockReturnValue(1)
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
+      path: 'notes/a.md',
+      fileType: 'markdown'
+    })
     registerTagsHandlers()
-
-    const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
-      oldName: ' old ',
-      newName: ' New '
-    })
-
-    expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
-    expect(fileMocks.toAbsolutePath).toHaveBeenCalledWith('notes/a.md')
-    expect(fileMocks.readFile).toHaveBeenCalledWith('/vault/notes/a.md', 'utf-8')
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
-      expect.any(Object),
-      { tags: ['New', 'keep'] },
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
-    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
-    expect(fileMocks.syncTagDefinitionRename).toHaveBeenCalledWith(' old ', ' New ', {
-      name: 'old',
-      color: 'red'
-    })
-
-    fileMocks.parseNote.mockReturnValueOnce({
-      frontmatter: { tags: ['old'] },
-      content: 'Body'
-    })
     ;(notesQueries.deleteTag as Mock).mockReturnValue(1)
 
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, ' old ')
 
     expect(deleteResult).toEqual({ success: true, affectedNotes: 1 })
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenLastCalledWith(
-      expect.any(Object),
-      {},
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith('old', {
+    expect(fileMocks.updateNoteCommand).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      headerTags: { remove: [' old '] }
+    })
+    expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith({
       name: 'old',
       color: 'red'
     })
@@ -383,7 +358,10 @@ describe('tags-handlers', () => {
     const dataDb = createDbMock({ getResult: { name: 'source', color: 'blue' } })
     ;(getIndexDatabase as Mock).mockReturnValue(indexDb)
     ;(requireDatabase as Mock).mockReturnValue(dataDb)
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
+      path: 'notes/a.md',
+      fileType: 'markdown'
+    })
     ;(tagQueries.getAllTagsWithCounts as Mock).mockReturnValue([{ name: 'focus', count: 2 }])
     ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({
       affected: 2,
@@ -406,35 +384,36 @@ describe('tags-handlers', () => {
       })
     ).toEqual({ success: false, error: 'Source and target tags are the same' })
 
-    fileMocks.parseNote.mockReturnValueOnce({
-      frontmatter: { tags: ['source', 'target'] },
-      content: 'Body'
-    })
     const mergeResult = await invokeHandler(TagsChannels.invoke.MERGE_TAG, {
       source: ' source ',
       target: ' target '
     })
 
     expect(mergeResult).toEqual({ success: true, affectedItems: 3 })
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
-      expect.any(Object),
-      { tags: ['target'] },
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('source', 'target', {
+    expect(fileMocks.updateNoteCommand).toHaveBeenCalledWith({
+      id: 'note-1',
+      headerTags: { rename: [{ from: ' source ', to: 'target' }] }
+    })
+    expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('target', {
       name: 'source',
       color: 'blue'
     })
     // #2301 review A-3/B-5: the retag commits with its tasks' sync intents,
     // before the note frontmatter writes an app quit could interrupt.
     expect(fileMocks.commitTaskRetag).toHaveBeenCalledTimes(1)
+    expect(rewriteSchemaReferences).toHaveBeenCalledWith(expect.any(Object), 'source', 'target')
     expect(fileMocks.commitTaskRetag.mock.invocationCallOrder[0]).toBeLessThan(
-      fileMocks.serializeUpdatedNote.mock.invocationCallOrder[0]
+      fileMocks.updateNoteCommand.mock.invocationCallOrder[0]
     )
 
     unregisterTagsHandlers()
-    expect(removeHandlerCalls).toEqual(Object.values(TagsChannels.invoke))
+    const objectChannels: string[] = [
+      TagsChannels.invoke.SEARCH_OBJECTS,
+      TagsChannels.invoke.GET_LINKED_HERE
+    ]
+    expect(removeHandlerCalls).toEqual(
+      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.includes(channel))
+    )
   })
 })
 
@@ -557,7 +536,8 @@ describe('tag category handlers', () => {
     expect(tagCategoryQueries.reorderCategories).toHaveBeenCalledWith(expect.any(Object), [
       { id: 'cat-1', sortOrder: 0 }
     ])
-    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('meetings')
+    // The sync id is resolved from the stored row, so the typed spelling goes through.
+    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('Meetings')
     expect(fileMocks.syncTagCategoryUpdate).toHaveBeenCalledWith('cat-1')
     expect(mockSend).toHaveBeenCalledWith(TagsChannels.events.CATEGORIES_CHANGED, expect.anything())
   })
@@ -594,8 +574,7 @@ const resettableStoreMocks = (): Mock[] =>
     notesQueries.findNotesWithTagInfo,
     notesQueries.pinNoteToTag,
     notesQueries.unpinNoteFromTag,
-    notesQueries.renameTag,
-    notesQueries.renameTagDefinition,
+    renameTagEverywhere,
     notesQueries.deleteTag,
     notesQueries.deleteTagDefinition,
     notesQueries.removeTagFromNote,
@@ -627,11 +606,7 @@ describe('tags-handlers failure envelopes', () => {
     ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
     ;(requireDatabase as Mock).mockReturnValue(createDbMock())
     ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
-    fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
-    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
-    fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
-    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
-    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    fileMocks.updateNoteCommand.mockResolvedValue(undefined)
     registerTagsHandlers()
   })
 
@@ -715,7 +690,7 @@ describe('tags-handlers failure envelopes', () => {
       [
         TagsChannels.invoke.RENAME_TAG,
         { oldName: 'old', newName: 'new' },
-        notesQueries.renameTag as Mock,
+        renameTagEverywhere as Mock,
         'errors:tag.renameFailed'
       ],
       [
@@ -876,7 +851,7 @@ describe('tags-handlers failure envelopes', () => {
       /Validation failed/
     )
 
-    expect(notesQueries.renameTag).not.toHaveBeenCalled()
+    expect(renameTagEverywhere).not.toHaveBeenCalled()
     expect(notesQueries.findNotesWithTagInfo).not.toHaveBeenCalled()
   })
 })
@@ -891,27 +866,30 @@ describe('tags-handlers vault-file edge cases', () => {
     mockSend.mockClear()
     ;(getIndexDatabase as Mock).mockReturnValue(indexDb())
     ;(requireDatabase as Mock).mockReturnValue(createDbMock())
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
-    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
-    fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
-    fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
-    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
-    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
+      path: 'notes/a.md',
+      fileType: 'markdown'
+    })
+    fileMocks.updateNoteCommand.mockResolvedValue(undefined)
     registerTagsHandlers()
   })
 
   it('keeps the tag operation successful when the note file cannot be rewritten', async () => {
     // The index is already updated at this point; a missing/unreadable file on
     // disk must not be reported to the user as a failed rename/delete/merge.
-    fileMocks.readFile.mockRejectedValue(new Error('ENOENT: no such file or directory'))
-    ;(notesQueries.renameTag as Mock).mockReturnValue(2)
+    fileMocks.updateNoteCommand.mockRejectedValue(new Error('ENOENT: no such file or directory'))
+    ;(renameTagEverywhere as Mock).mockResolvedValue({
+      notesWritten: 2,
+      failedNoteIds: [],
+      bodySkipped: false
+    })
     ;(notesQueries.deleteTag as Mock).mockReturnValue(2)
     ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
     ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
 
     await expect(
       invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' })
-    ).resolves.toEqual({ success: true, affectedNotes: 2 })
+    ).resolves.toMatchObject({ success: true, affectedNotes: 2 })
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new', affectedNotes: 2 })
@@ -929,71 +907,21 @@ describe('tags-handlers vault-file edge cases', () => {
     await expect(
       invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'new' })
     ).resolves.toEqual({ success: true, affectedItems: 1 })
-
-    expect(fileMocks.atomicWrite).not.toHaveBeenCalled()
-    expect(fileMocks.syncTaggedNote).not.toHaveBeenCalled()
   })
 
-  it('leaves a note untouched when its frontmatter has no tags list', async () => {
-    // Frontmatter `tags` may be absent or a bare string; neither is an array and
-    // neither may trigger a byte-changing rewrite of the user's file.
-    fileMocks.readFile.mockResolvedValue('RAW FILE')
-    fileMocks.parseNote.mockReturnValue({ frontmatter: { title: 'A' }, content: 'Body' })
-    fileMocks.serializeUpdatedNote.mockReturnValue('RAW FILE')
-
-    await expect(
-      invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
-    ).resolves.toEqual({ success: true })
-
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
-      { frontmatter: { title: 'A' }, content: 'Body' },
-      { title: 'A' },
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.atomicWrite).not.toHaveBeenCalled()
-    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
-  })
-
-  it('strips only the removed tag from the note frontmatter, ignoring case and padding', async () => {
-    fileMocks.parseNote.mockReturnValue({
-      frontmatter: { tags: ['Old', 'keep'] },
-      content: 'Body'
+  it('never hands a filed binary to the note command: its tags live in the index alone', async () => {
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
+      path: 'files/scan.pdf',
+      fileType: 'pdf'
     })
-
-    await expect(
-      invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: ' OLD ' })
-    ).resolves.toEqual({ success: true })
-
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
-      expect.any(Object),
-      { tags: ['keep'] },
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
-    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
-  })
-
-  it('appends the target tag when the merged note does not already carry it', async () => {
     ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
-    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 2, taskIds: ['task-1'] })
-    fileMocks.parseNote.mockReturnValue({
-      frontmatter: { tags: ['source', 'other'] },
-      content: 'Body'
-    })
+    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
 
     await expect(
-      invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: ' Source ', target: ' Target ' })
-    ).resolves.toEqual({ success: true, affectedItems: 3 })
+      invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'new' })
+    ).resolves.toEqual({ success: true, affectedItems: 1 })
 
-    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
-      expect.any(Object),
-      { tags: ['other', 'Target'] },
-      'Body',
-      { frontmatterEdited: true }
-    )
-    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
+    expect(fileMocks.updateNoteCommand).not.toHaveBeenCalled()
   })
 
   it('reports a note without a word count as zero words', async () => {
@@ -1022,71 +950,5 @@ describe('tags-handlers vault-file edge cases', () => {
     expect(result.unpinnedNotes).toEqual([
       expect.objectContaining({ id: 'note-1', wordCount: 0, emoji: '📌', pinnedAt: null })
     ])
-  })
-})
-
-describe('tags-handlers keep legacy frontmatter lines', () => {
-  const LEGACY_LINES = [
-    'id: legacy123',
-    'title: Legacy note',
-    'created: 2024-03-05',
-    'modified: 2024-03-06T10:00:00Z'
-  ]
-  const legacyFile = ['---', ...LEGACY_LINES, 'tags: [old, keep]', '---', 'Body', ''].join('\n')
-
-  beforeEach(async () => {
-    const actual = await vi.importActual<typeof Frontmatter>('../vault/frontmatter')
-    resetIpcMocks()
-    vi.clearAllMocks()
-    resettableStoreMocks().forEach((mock) => mock.mockReset())
-    ;(getIndexDatabase as Mock).mockReturnValue(createDbMock({ allResult: [{ noteId: 'note-1' }] }))
-    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
-    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
-    fileMocks.readFile.mockResolvedValue(legacyFile)
-    fileMocks.parseNote.mockImplementation(actual.parseNote)
-    fileMocks.serializeUpdatedNote.mockImplementation(actual.serializeUpdatedNote)
-    fileMocks.atomicWrite.mockResolvedValue(undefined)
-    registerTagsHandlers()
-  })
-
-  function writtenFile(): string {
-    expect(fileMocks.atomicWrite).toHaveBeenCalledTimes(1)
-    return fileMocks.atomicWrite.mock.calls[0][1] as string
-  }
-
-  function expectLegacyLinesKept(file: string, tags: string[] | undefined): void {
-    for (const line of LEGACY_LINES) expect(file.split('\n')).toContain(line)
-    expect(fileMocks.parseNote.getMockImplementation()?.(file, 'a.md').frontmatter.tags).toEqual(
-      tags
-    )
-    expect(file.endsWith('\nBody\n')).toBe(true)
-  }
-
-  it('removeTagFromNote', async () => {
-    await invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
-    expectLegacyLinesKept(writtenFile(), ['keep'])
-  })
-
-  it('renameTag', async () => {
-    ;(notesQueries.renameTag as Mock).mockReturnValue(1)
-    await invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' })
-    expectLegacyLinesKept(writtenFile(), ['new', 'keep'])
-  })
-
-  it('deleteTag, down to no tags', async () => {
-    fileMocks.readFile.mockResolvedValue(legacyFile.replace('tags: [old, keep]', 'tags: [old]'))
-    ;(notesQueries.deleteTag as Mock).mockReturnValue(1)
-    await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'old')
-    const file = writtenFile()
-    expectLegacyLinesKept(file, undefined)
-    expect(file).not.toContain('tags')
-  })
-
-  it('mergeTag', async () => {
-    ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
-    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
-    await invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'target' })
-    expectLegacyLinesKept(writtenFile(), ['keep', 'target'])
   })
 })

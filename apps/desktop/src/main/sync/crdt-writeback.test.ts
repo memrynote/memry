@@ -902,9 +902,9 @@ describe('crdt writeback', () => {
     expect(mocks.atomicWrite).toHaveBeenLastCalledWith(
       '/vault/notes/Existing.md',
       JSON.stringify({
-        frontmatter: { id: 'note-1', title: 'Existing', tags: ['new-tag'] },
+        frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
         markdown: 'updated markdown 15',
-        options: { frontmatterEdited: true }
+        options: { frontmatterEdited: false }
       })
     )
   })
@@ -947,9 +947,9 @@ describe('crdt writeback', () => {
     expect(mocks.atomicWrite).toHaveBeenLastCalledWith(
       '/vault/notes/Existing.md',
       JSON.stringify({
-        frontmatter: { id: 'note-1', title: 'Existing', tags: ['new-tag'] },
+        frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
         markdown: 'updated markdown 1',
-        options: { frontmatterEdited: true }
+        options: { frontmatterEdited: false }
       })
     )
   })

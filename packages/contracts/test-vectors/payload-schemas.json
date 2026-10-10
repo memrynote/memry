@@ -463,6 +463,29 @@
             "categoryId": "cat-1",
             "sortOrder": 3,
             "views": [],
+            "schema": {
+              "t": 3,
+              "fields": [
+                {
+                  "name": "Company",
+                  "relation": {
+                    "target": "company",
+                    "many": false,
+                    "inverse": "People"
+                  }
+                },
+                {
+                  "name": "Phone",
+                  "addedByNewerBuild": "e164"
+                }
+              ],
+              "template": {
+                "id": "tpl_8f2c",
+                "autofill": true
+              },
+              "extends": null,
+              "preset": "person"
+            },
             "clock": {
               "device-a": 1
             },
@@ -476,6 +499,29 @@
             "categoryId": "cat-1",
             "sortOrder": 3,
             "views": [],
+            "schema": {
+              "t": 3,
+              "fields": [
+                {
+                  "name": "Company",
+                  "relation": {
+                    "target": "company",
+                    "many": false,
+                    "inverse": "People"
+                  }
+                },
+                {
+                  "name": "Phone",
+                  "addedByNewerBuild": "e164"
+                }
+              ],
+              "template": {
+                "id": "tpl_8f2c",
+                "autofill": true
+              },
+              "extends": null,
+              "preset": "person"
+            },
             "clock": {
               "device-a": 1
             },
@@ -489,12 +535,14 @@
             "name": "protocol",
             "color": "#4f46e5",
             "views": null,
+            "schema": null,
             "clock": {}
           },
           "expectedParsed": {
             "name": "protocol",
             "color": "#4f46e5",
             "views": null,
+            "schema": null,
             "clock": {}
           },
           "pins": "absent and empty stay distinct across the round trip"
@@ -509,6 +557,29 @@
             "categoryId": "cat-1",
             "sortOrder": 3,
             "views": [],
+            "schema": {
+              "t": 3,
+              "fields": [
+                {
+                  "name": "Company",
+                  "relation": {
+                    "target": "company",
+                    "many": false,
+                    "inverse": "People"
+                  }
+                },
+                {
+                  "name": "Phone",
+                  "addedByNewerBuild": "e164"
+                }
+              ],
+              "template": {
+                "id": "tpl_8f2c",
+                "autofill": true
+              },
+              "extends": null,
+              "preset": "person"
+            },
             "clock": {
               "device-a": 1
             },
@@ -523,6 +594,29 @@
             "categoryId": "cat-1",
             "sortOrder": 3,
             "views": [],
+            "schema": {
+              "t": 3,
+              "fields": [
+                {
+                  "name": "Company",
+                  "relation": {
+                    "target": "company",
+                    "many": false,
+                    "inverse": "People"
+                  }
+                },
+                {
+                  "name": "Phone",
+                  "addedByNewerBuild": "e164"
+                }
+              ],
+              "template": {
+                "id": "tpl_8f2c",
+                "autofill": true
+              },
+              "extends": null,
+              "preset": "person"
+            },
             "clock": {
               "device-a": 1
             },
@@ -535,8 +629,8 @@
         },
         {
           "name": "tag_definition: verbatim round trip of the unknown-field instance",
-          "storedPayloadJson": "{\"name\":\"protocol\",\"color\":\"#4f46e5\",\"colorAuthored\":true,\"icon\":\"tag\",\"categoryId\":\"cat-1\",\"sortOrder\":3,\"views\":[],\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"pinned\":true}",
-          "expectedPushedPayloadJson": "{\"name\":\"protocol\",\"color\":\"#4f46e5\",\"colorAuthored\":true,\"icon\":\"tag\",\"categoryId\":\"cat-1\",\"sortOrder\":3,\"views\":[],\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"pinned\":true}",
+          "storedPayloadJson": "{\"name\":\"protocol\",\"color\":\"#4f46e5\",\"colorAuthored\":true,\"icon\":\"tag\",\"categoryId\":\"cat-1\",\"sortOrder\":3,\"views\":[],\"schema\":{\"t\":3,\"fields\":[{\"name\":\"Company\",\"relation\":{\"target\":\"company\",\"many\":false,\"inverse\":\"People\"}},{\"name\":\"Phone\",\"addedByNewerBuild\":\"e164\"}],\"template\":{\"id\":\"tpl_8f2c\",\"autofill\":true},\"extends\":null,\"preset\":\"person\"},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"pinned\":true}",
+          "expectedPushedPayloadJson": "{\"name\":\"protocol\",\"color\":\"#4f46e5\",\"colorAuthored\":true,\"icon\":\"tag\",\"categoryId\":\"cat-1\",\"sortOrder\":3,\"views\":[],\"schema\":{\"t\":3,\"fields\":[{\"name\":\"Company\",\"relation\":{\"target\":\"company\",\"many\":false,\"inverse\":\"People\"}},{\"name\":\"Phone\",\"addedByNewerBuild\":\"e164\"}],\"template\":{\"id\":\"tpl_8f2c\",\"autofill\":true},\"extends\":null,\"preset\":\"person\"},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"pinned\":true}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]
@@ -835,6 +929,25 @@
               "abc123def456"
             ],
             "linkedCanvasIds": [],
+            "fields": {
+              "Waiting on": {
+                "v": [
+                  "memry://note/abc123def456"
+                ],
+                "t": 2
+              },
+              "Follow up": {
+                "v": "2026-05-14",
+                "t": 1,
+                "addedByNewerBuild": {
+                  "source": "agent"
+                }
+              },
+              "Thread": {
+                "v": null,
+                "t": 3
+              }
+            },
             "clock": {
               "device-a": 1
             },
@@ -874,6 +987,25 @@
               "abc123def456"
             ],
             "linkedCanvasIds": [],
+            "fields": {
+              "Waiting on": {
+                "v": [
+                  "memry://note/abc123def456"
+                ],
+                "t": 2
+              },
+              "Follow up": {
+                "v": "2026-05-14",
+                "t": 1,
+                "addedByNewerBuild": {
+                  "source": "agent"
+                }
+              },
+              "Thread": {
+                "v": null,
+                "t": 3
+              }
+            },
             "clock": {
               "device-a": 1
             },
@@ -894,6 +1026,7 @@
             "description": null,
             "tags": [],
             "linkedNoteIds": [],
+            "fields": {},
             "clock": {},
             "fieldClocks": {}
           },
@@ -902,6 +1035,7 @@
             "description": null,
             "tags": [],
             "linkedNoteIds": [],
+            "fields": {},
             "clock": {},
             "fieldClocks": {}
           },
@@ -937,6 +1071,25 @@
               "abc123def456"
             ],
             "linkedCanvasIds": [],
+            "fields": {
+              "Waiting on": {
+                "v": [
+                  "memry://note/abc123def456"
+                ],
+                "t": 2
+              },
+              "Follow up": {
+                "v": "2026-05-14",
+                "t": 1,
+                "addedByNewerBuild": {
+                  "source": "agent"
+                }
+              },
+              "Thread": {
+                "v": null,
+                "t": 3
+              }
+            },
             "clock": {
               "device-a": 1
             },
@@ -977,6 +1130,25 @@
               "abc123def456"
             ],
             "linkedCanvasIds": [],
+            "fields": {
+              "Waiting on": {
+                "v": [
+                  "memry://note/abc123def456"
+                ],
+                "t": 2
+              },
+              "Follow up": {
+                "v": "2026-05-14",
+                "t": 1,
+                "addedByNewerBuild": {
+                  "source": "agent"
+                }
+              },
+              "Thread": {
+                "v": null,
+                "t": 3
+              }
+            },
             "clock": {
               "device-a": 1
             },
@@ -995,8 +1167,8 @@
         },
         {
           "name": "task: verbatim round trip of the unknown-field instance",
-          "storedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
-          "expectedPushedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
+          "storedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
+          "expectedPushedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

@@ -25,6 +25,7 @@ function entityKey(event: ProjectionEvent): string {
       return `note:${event.note.noteId}`
     case 'note.deleted':
     case 'note.text-extracted':
+    case 'note.header-tags-resolved':
       return `note:${event.noteId}`
     case 'task.upserted':
     case 'task.deleted':

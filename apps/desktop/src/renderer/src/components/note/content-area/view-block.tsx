@@ -1,3 +1,4 @@
+import { foldTag } from '@memry/shared/tag-fold'
 import React, {
   useCallback,
   useEffect,
@@ -324,7 +325,7 @@ function ViewBlockRows({
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
+      map.set(foldTag(tag.tag), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])

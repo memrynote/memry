@@ -84,6 +84,7 @@ export function createGeneratedRpcApi({
       "delete": ((id) => invoke("notes:delete", id)) as GeneratedRpcApi["notes"]["delete"],
       "getCarriedTasks": ((input) => invoke("notes:get-carried-tasks", input)) as GeneratedRpcApi["notes"]["getCarriedTasks"],
       "applyTemplate": ((input) => invoke("notes:apply-template", input)) as GeneratedRpcApi["notes"]["applyTemplate"],
+      "undoTagTemplate": ((input) => invoke("notes:undo-tag-template", input)) as GeneratedRpcApi["notes"]["undoTagTemplate"],
       "appendBlocks": ((input) => invoke("notes:append-blocks", input)) as GeneratedRpcApi["notes"]["appendBlocks"],
       "list": ((options) => invoke("notes:list", options ?? {})) as GeneratedRpcApi["notes"]["list"],
       "getTags": (() => invoke("notes:get-tags")) as GeneratedRpcApi["notes"]["getTags"],

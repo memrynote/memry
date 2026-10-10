@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { type Block } from '@blocknote/core'
 import { createHashTagSpec } from '@memry/editor-schema/inline'
+import { findInlineTags } from '@memry/shared/inline-tags'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import {
   isCustomIconValue,
@@ -127,8 +129,6 @@ export const HashTag = createHashTagSpec((inlineContent) => {
 // HASH TAG TEXT SPLITTING (for normalization on load)
 // =============================================================================
 
-const HASH_TAG_PATTERN = /#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
-
 function createStyledText(
   text: string,
   styles: Record<string, boolean | string>
@@ -144,22 +144,15 @@ function splitTextWithHashTags(
   styles?: Record<string, boolean | string>
 ): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
   const segments: Array<string | Record<string, unknown>> = []
-  const pattern = new RegExp(HASH_TAG_PATTERN)
   let didChange = false
   let lastIndex = 0
-  let match: RegExpExecArray | null
 
-  while ((match = pattern.exec(text)) !== null) {
-    const [full, tagName] = match
-
-    const precedingChar = match.index > 0 ? text[match.index - 1] : ''
-    if (precedingChar && !/\s/.test(precedingChar)) continue
-
-    const normalizedTag = tagName.toLowerCase()
+  for (const { index, tag: tagName } of findInlineTags(text)) {
+    const normalizedTag = foldTag(tagName)
     if (!noteTags.has(normalizedTag)) continue
 
-    if (match.index > lastIndex) {
-      const before = text.slice(lastIndex, match.index)
+    if (index > lastIndex) {
+      const before = text.slice(lastIndex, index)
       segments.push(styles ? createStyledText(before, styles) : before)
     }
 
@@ -168,7 +161,7 @@ function splitTextWithHashTags(
     segments.push(createHashTagInlineContent(tagName, color, icon))
 
     didChange = true
-    lastIndex = match.index + full.length
+    lastIndex = index + 1 + tagName.length
   }
 
   if (!didChange) {
@@ -340,21 +333,14 @@ export function normalizeHashTags(
 export function extractInlineTags(blocks: Block[]): string[] {
   // Case preserved; deduplicated case-insensitively (first occurrence wins)
   const tagsByKey = new Map<string, string>()
-  const tagPattern = new RegExp(HASH_TAG_PATTERN)
 
   function addTag(tag: string): void {
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
   }
 
   function extractFromText(text: string): void {
-    tagPattern.lastIndex = 0
-    let match: RegExpExecArray | null
-    while ((match = tagPattern.exec(text)) !== null) {
-      const precedingChar = match.index > 0 ? text[match.index - 1] : ''
-      if (precedingChar && !/\s/.test(precedingChar)) continue
-      addTag(match[1])
-    }
+    for (const { tag } of findInlineTags(text)) addTag(tag)
   }
 
   function walkBlock(block: Block): void {
@@ -362,7 +348,9 @@ export function extractInlineTags(blocks: Block[]): string[] {
     if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
       for (const item of block.content as any[]) {
         if (item?.type === 'hashTag' && item.props?.tag) {
-          addTag(item.props.tag as string)
+          // A chip saves as `#tag`; read it as the indexer reads that text, so
+          // an older chip the grammar rejects stays visible but is not a tag.
+          extractFromText(`#${item.props.tag as string}`)
         } else if (item?.type === 'text' && item.text) {
           extractFromText(item.text as string)
         } else if (typeof item === 'string') {

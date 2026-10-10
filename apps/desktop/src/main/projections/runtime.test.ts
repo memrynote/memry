@@ -22,6 +22,7 @@ function markdownEvent(noteId: string, parsedContent: string): ProjectionEvent {
       modifiedAt: '2026-01-01T00:00:00.000Z',
       parsedContent,
       tags: [],
+      headerTags: [],
       properties: {},
       wikiLinks: []
     }
@@ -50,6 +51,7 @@ function eventEntityId(event: ProjectionEvent): string {
       return event.note.noteId
     case 'note.deleted':
     case 'note.text-extracted':
+    case 'note.header-tags-resolved':
       return event.noteId
     case 'task.upserted':
     case 'task.deleted':

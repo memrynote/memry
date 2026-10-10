@@ -231,7 +231,7 @@ async function indexFiledBinary(
   try {
     const indexDb = getIndexDatabase()
     const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
-    if (tags.length > 0) setNoteTags(indexDb, noteId, tags)
+    if (tags.length > 0) setNoteTags(indexDb, noteId, { header: tags, inline: [] })
 
     const stats = await stat(absolutePath)
     return {

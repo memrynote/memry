@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  TASK_FIELD_LIMITS,
   RepeatConfigSchema,
   TaskCreateSchema,
   TaskUpdateSchema,
@@ -1171,5 +1172,32 @@ describe('RenameFolderSchema', () => {
       oldPath: '/notes/old-folder'
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('task field value caps', () => {
+  const update = (fields: Record<string, unknown>) =>
+    TaskUpdateSchema.safeParse({ id: 'task-1', fields }).success
+
+  it('accepts values at each cap and refuses one past it', () => {
+    const text = 'a'.repeat(TASK_FIELD_LIMITS.textLength)
+    const list = Array.from({ length: TASK_FIELD_LIMITS.listItems }, (_, i) => `memry://note/n${i}`)
+    const object = Object.fromEntries(
+      Array.from({ length: TASK_FIELD_LIMITS.objectKeys }, (_, i) => [`k${i}`, i])
+    )
+    const map = Object.fromEntries(
+      Array.from({ length: TASK_FIELD_LIMITS.fieldsPerTask }, (_, i) => [`F${i}`, null])
+    )
+    expect(update({ Notes: text, With: list, Meta: object })).toBe(true)
+    expect(update(map)).toBe(true)
+
+    expect(update({ Notes: `${text}a` })).toBe(false)
+    expect(update({ With: [...list, 'x'] })).toBe(false)
+    expect(update({ Meta: { ...object, extra: 1 } })).toBe(false)
+    expect(update({ ...map, Extra: null })).toBe(false)
+    expect(
+      TaskCreateSchema.safeParse({ projectId: 'p', title: 't', fields: { Notes: `${text}a` } })
+        .success
+    ).toBe(false)
   })
 })

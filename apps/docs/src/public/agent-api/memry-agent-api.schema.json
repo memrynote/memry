@@ -9316,6 +9316,10 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "rows": {
+              "type": "string",
+              "enum": ["objects", "mentions"]
             }
           },
           "required": ["scope"],
@@ -11755,6 +11759,55 @@
             "content": {
               "type": "string"
             },
+            "headerTags": {
+              "type": "object",
+              "properties": {
+                "add": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "remove": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "rename": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "to": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      }
+                    },
+                    "required": ["from", "to"],
+                    "additionalProperties": false
+                  }
+                },
+                "source": {
+                  "type": "string",
+                  "const": "inline"
+                }
+              },
+              "additionalProperties": false
+            },
             "tags": {
               "maxItems": 50,
               "type": "array",
@@ -13249,6 +13302,42 @@
     "tasks.create": {
       "$id": "tasks.create",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 10000
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "maxItems": 500,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          ]
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -13457,6 +13546,18 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
+            },
+            "fields": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              },
+              "description": "Field values by name. A null value sets nothing."
             }
           },
           "required": ["projectId", "title"],
@@ -13523,6 +13624,42 @@
     "tasks.update": {
       "$id": "tasks.update",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 10000
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "maxItems": 500,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          ]
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -13717,6 +13854,18 @@
               "items": {
                 "type": "string"
               }
+            },
+            "fields": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema0"
+              },
+              "description": "Changes to field values by name. Fields left out keep their values, and null removes one."
             }
           },
           "required": ["id"],
@@ -18265,6 +18414,24 @@
                 "type": "string"
               }
             },
+            "inlineTags": {
+              "type": "object",
+              "properties": {
+                "add": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "remove": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
             "properties": {
               "type": "object",
               "propertyNames": {
@@ -19641,6 +19808,11 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 50
+            },
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
             }
           },
           "required": ["oldName", "newName"],

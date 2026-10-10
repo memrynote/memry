@@ -12,6 +12,7 @@ import {
   projectLinks,
   vaultMetadata
 } from '@memry/db-schema/data-schema'
+import type { VersionedMap } from '@memry/shared/versioned'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_MIGRATIONS = resolve(__dirname, '../../src/main/database/drizzle-data')
@@ -67,6 +68,12 @@ export interface SeedTagDefinition {
   /** Omit to leave the tag uncategorized. */
   categoryId?: string
   sortOrder?: number
+  icon?: string | null
+  colorAuthored?: boolean
+  /** Serialized `TagSchemaStored` (`tags/tag-schema.ts` serializeSchema). */
+  schema?: string | null
+  /** Serialized `ViewConfig[]`. */
+  views?: string | null
 }
 
 export function insertTagDefinitions(db: DataDb, tags: SeedTagDefinition[]): number {
@@ -77,7 +84,11 @@ export function insertTagDefinitions(db: DataDb, tags: SeedTagDefinition[]): num
         name: t.name,
         color: t.color,
         categoryId: t.categoryId ?? null,
-        sortOrder: t.sortOrder ?? 0
+        sortOrder: t.sortOrder ?? 0,
+        icon: t.icon ?? null,
+        colorAuthored: t.colorAuthored ?? false,
+        schema: t.schema ?? null,
+        views: t.views ?? null
       }))
     )
     .run()
@@ -261,6 +272,8 @@ export interface SeedTask {
   archivedAt?: string | null
   createdAt?: string
   modifiedAt?: string
+  /** Stored versioned map (`stampVersionedMapPatch`). */
+  fields?: VersionedMap | null
 }
 
 export function insertTasks(db: DataDb, tasks: SeedTask[]): number {
@@ -284,12 +297,37 @@ export function insertTasks(db: DataDb, tasks: SeedTask[]): number {
         sourceNoteId: t.sourceNoteId ?? null,
         completedAt: t.completedAt ?? null,
         archivedAt: t.archivedAt ?? null,
+        fields: t.fields ?? null,
         ...(t.createdAt ? { createdAt: t.createdAt } : {}),
         ...(t.modifiedAt ? { modifiedAt: t.modifiedAt } : {})
       })
       .run()
   }
   return tasks.length
+}
+
+export interface SeedTemplate {
+  id: string
+  name: string
+  icon?: string | null
+  content: string
+}
+
+export function insertTemplates(db: DataDb, templates: SeedTemplate[]): number {
+  if (templates.length === 0) return 0
+  db.insert(schema.templates)
+    .values(
+      templates.map((t) => ({
+        id: t.id,
+        name: t.name,
+        icon: t.icon ?? null,
+        tags: [],
+        properties: [],
+        content: t.content
+      }))
+    )
+    .run()
+  return templates.length
 }
 
 export interface SeedTaskNote {

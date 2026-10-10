@@ -39,20 +39,25 @@ beforeEach(() => {
 })
 
 describe('applyFrameBinding', () => {
-  it('adds a tag to a note and reverts against the tags present at undo time', async () => {
-    mocks.noteGet.mockResolvedValueOnce({ tags: ['a'] })
+  it('adds a tag to a note header and reverts against the header present at undo time', async () => {
+    mocks.noteGet.mockResolvedValueOnce({ tags: ['a', 'health/sleep'], headerTags: ['a'] })
     const outcome = await applyFrameBinding(note, tag)
-    expect(mocks.noteUpdate).toHaveBeenCalledWith({ id: 'n1', tags: ['a', 'health/sleep'] })
+    expect(mocks.noteUpdate).toHaveBeenCalledWith({
+      id: 'n1',
+      headerTags: { add: ['health/sleep'] }
+    })
     expect(outcome.status).toBe('applied')
 
-    // Someone added "b" in the meantime; undo must keep it.
-    mocks.noteGet.mockResolvedValueOnce({ tags: ['a', 'health/sleep', 'b'] })
+    mocks.noteGet.mockResolvedValueOnce({ headerTags: ['a', 'health/sleep', 'b'] })
     if (outcome.status === 'applied') await outcome.revert()
-    expect(mocks.noteUpdate).toHaveBeenLastCalledWith({ id: 'n1', tags: ['a', 'b'] })
+    expect(mocks.noteUpdate).toHaveBeenLastCalledWith({
+      id: 'n1',
+      headerTags: { remove: ['health/sleep'] }
+    })
   })
 
   it('reports unchanged when the note already has the tag', async () => {
-    mocks.noteGet.mockResolvedValueOnce({ tags: ['Health/Sleep'] })
+    mocks.noteGet.mockResolvedValueOnce({ headerTags: ['Health/Sleep'] })
     await expect(applyFrameBinding(note, tag)).resolves.toEqual({ status: 'unchanged' })
     expect(mocks.noteUpdate).not.toHaveBeenCalled()
   })
@@ -94,7 +99,7 @@ describe('applyFrameBinding', () => {
   })
 
   it('throws when the write fails', async () => {
-    mocks.noteGet.mockResolvedValueOnce({ tags: [] })
+    mocks.noteGet.mockResolvedValueOnce({ headerTags: [] })
     mocks.noteUpdate.mockResolvedValueOnce({ success: false, note: null, error: 'boom' })
     await expect(applyFrameBinding(note, tag)).rejects.toThrow('boom')
   })
@@ -102,11 +107,17 @@ describe('applyFrameBinding', () => {
 
 describe('removeFrameBinding', () => {
   it('removes a tag and its revert puts it back', async () => {
-    mocks.noteGet.mockResolvedValueOnce({ tags: ['health/sleep', 'a'] })
+    mocks.noteGet.mockResolvedValueOnce({ headerTags: ['health/sleep', 'a'] })
     const outcome = await removeFrameBinding(note, tag)
-    expect(mocks.noteUpdate).toHaveBeenCalledWith({ id: 'n1', tags: ['a'] })
-    mocks.noteGet.mockResolvedValueOnce({ tags: ['a'] })
+    expect(mocks.noteUpdate).toHaveBeenCalledWith({
+      id: 'n1',
+      headerTags: { remove: ['health/sleep'] }
+    })
+    mocks.noteGet.mockResolvedValueOnce({ headerTags: ['a'] })
     if (outcome.status === 'applied') await outcome.revert()
-    expect(mocks.noteUpdate).toHaveBeenLastCalledWith({ id: 'n1', tags: ['a', 'health/sleep'] })
+    expect(mocks.noteUpdate).toHaveBeenLastCalledWith({
+      id: 'n1',
+      headerTags: { add: ['health/sleep'] }
+    })
   })
 })

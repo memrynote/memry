@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { foldTag } from '@memry/shared/tag-fold'
 import { createPortal } from 'react-dom'
 import { DelayedSpinner } from '@/components/ui/spinner'
 import { memo, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
@@ -168,6 +169,9 @@ import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
+import { useMentionCreate } from '@/features/tag-fields/use-mention-create'
+import { useObjectIdentityLookup } from '@/features/tag-fields/use-tag-schemas'
+import { useInlineTagObject } from '@/features/tag-fields/use-inline-tag-object'
 import { capNoteTaskTree, taskDepthBelow } from './hooks/task-block-marquee-indent'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
@@ -264,7 +268,7 @@ function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
   const byKey = new Map<string, string>()
   for (const tag of [...obsidianTags, ...parsedTags]) {
     if (tag.length > TAG_MAX_LENGTH) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()].slice(0, TAG_MAX_COUNT)
@@ -790,16 +794,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
   // live by note created/renamed/deleted events (#1716).
-  useWikiLinkBroken(editor)
+  useWikiLinkBroken(editor, useObjectIdentityLookup())
 
   const footnoteHover = useFootnotes(editor)
 
   // Hook #4: Tag suggestions + inline plugin
+  const { onTagClick: onInlineObjectTagClick, overlay: inlineTagObjectOverlay } =
+    useInlineTagObject(editor, editorContainerRef, runSideEffects ? noteId : undefined)
   const { handleTagSuggestionSelect } = useTagSuggestions({
     editor,
     editorContainerRef,
     tagColorMap,
-    tagIconMap
+    tagIconMap,
+    onTagClick: onInlineObjectTagClick
   })
 
   // Hook #5: Drag and drop state
@@ -1154,6 +1161,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return registerEditorPlugin(editor, createInlineCheckboxPlugin())
   }, [editor])
 
+  const { openCreate: openMentionCreate, overlay: mentionCreateOverlay } = useMentionCreate(
+    editor,
+    editorContainerRef
+  )
+
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
   // as a date, plus recent notes (insert as wiki links) and canvases (a
   // Mention / Embed choice). The bound menu is memoized so it doesn't remount
@@ -1168,7 +1180,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   } = useMentionSuggestions(editor, {
     onInsertDate: insertDatePill,
     editorContainerRef,
-    canvasesEnabled: isFeatureEnabled('spatialCanvas')
+    canvasesEnabled: isFeatureEnabled('spatialCanvas'),
+    onCreate: runSideEffects ? openMentionCreate : undefined
   })
   const MentionSuggestionMenu = useCallback(
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
@@ -3376,6 +3389,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           />
 
           <CanvasChoiceMenu choice={canvasChoice} onSelect={selectCanvasChoice} />
+          {mentionCreateOverlay}
+          {inlineTagObjectOverlay}
 
           <DateMentionPopover
             open={dateMentionState.open}

@@ -153,6 +153,21 @@ describe('TaskSyncPayloadSchema', () => {
   })
 })
 
+describe.each([
+  { type: 'task', schema: TaskSyncPayloadSchema, base: {}, key: 'fields' },
+  {
+    type: 'tag_definition',
+    schema: TagDefinitionSyncPayloadSchema,
+    base: { name: 'work', color: '#abc' },
+    key: 'schema'
+  }
+])('$type.$key', ({ schema, base, key }) => {
+  it.each(['oops', 3, true, [{ v: 1, t: 1 }]])('reads %j as absent', (unreadable) => {
+    const parsed = schema.parse({ ...base, [key]: unreadable }) as Record<string, unknown>
+    expect(parsed[key]).toBeUndefined()
+  })
+})
+
 describe('InboxSyncPayloadSchema', () => {
   it('accepts empty payload', () => {
     expect(InboxSyncPayloadSchema.safeParse({}).success).toBe(true)

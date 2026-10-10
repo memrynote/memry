@@ -4,6 +4,7 @@ import { FileText, CheckSquare, Calendar, PenTool, BookOpen, type AppIcon } from
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
 import { useT } from '@memry/i18n/renderer'
+import { ObjectRelationPicker } from '@/features/tag-fields/object-relation-picker'
 import { useRelationSearch, type RelationSearchResult } from './use-relation-search'
 
 const GROUP_ICONS: Record<RelationKind, AppIcon> = {
@@ -17,6 +18,8 @@ const GROUP_ICONS: Record<RelationKind, AppIcon> = {
 interface RelationPickerProps {
   /** Called with a `memry://<kind>/<id>` URI when a result is picked. */
   onSelect: (uri: string) => void
+  targetTag?: string | null
+  selected?: readonly string[]
 }
 
 /**
@@ -26,7 +29,18 @@ interface RelationPickerProps {
  * this component owns no open/close state of its own, matching how
  * EmojiPicker is dropped into TagIconChip's PopoverContent.
  */
-export function RelationPicker({ onSelect }: RelationPickerProps): React.JSX.Element {
+export function RelationPicker({
+  onSelect,
+  targetTag,
+  selected
+}: RelationPickerProps): React.JSX.Element {
+  if (targetTag) {
+    return <ObjectRelationPicker targetTag={targetTag} selected={selected} onSelect={onSelect} />
+  }
+  return <AnyRelationPicker onSelect={onSelect} />
+}
+
+function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): React.JSX.Element {
   const { t } = useT('notes')
   const [query, setQuery] = useState('')
   const { notes, tasks, events, canvases, journals, loading } = useRelationSearch(query)

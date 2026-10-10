@@ -16,9 +16,11 @@ import {
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { editFrontmatterBlock } from './frontmatter-edit'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { foldTag } from '@memry/shared/tag-fold'
 import {
   isWritingFrontmatterValue,
   WRITING_FRONTMATTER_KEY
@@ -293,38 +295,34 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
   for (const raw of frontmatter.tags) {
     const tag = String(raw).trim()
     if (!tag) continue
-    const key = tag.toLowerCase()
+    const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()]
 }
 
-/**
- * Extract inline #tag patterns from markdown body text.
- * Strips code blocks and inline code first, then matches tags
- * preceded by whitespace or start-of-string.
- *
- * Mirrors the editor's HASH_TAG_PATTERN from hash-tag.tsx.
- *
- * @param content - Markdown body (post-frontmatter)
- * @returns Deduplicated tag names (case preserved, case-insensitive dedupe)
- */
-export function extractInlineTagsFromMarkdown(content: string): string[] {
-  const withoutCode = content.replace(/```[\s\S]*?```/g, '')
-  const withoutInlineCode = withoutCode.replace(/`[^`]+`/g, '')
-
-  const byKey = new Map<string, string>()
-  const pattern = /#([a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
-  let match: RegExpExecArray | null
-
-  while ((match = pattern.exec(withoutInlineCode)) !== null) {
-    const precedingChar = match.index > 0 ? withoutInlineCode[match.index - 1] : ''
-    if (precedingChar && !/\s/.test(precedingChar)) continue
-    const key = match[1].toLowerCase()
-    if (!byKey.has(key)) byKey.set(key, match[1])
+export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
+  const key = (tag: string): string => foldTag(tag.trim())
+  const removed = new Set((edit.remove ?? []).map(key))
+  const renamed = new Map((edit.rename ?? []).map(({ from, to }) => [key(from), to.trim()]))
+  const next: string[] = []
+  const append = (tag: string): void => {
+    if (tag && !next.some((held) => key(held) === key(tag))) next.push(tag)
   }
+  for (const tag of current) {
+    if (!removed.has(key(tag))) append(renamed.get(key(tag)) ?? tag)
+  }
+  for (const tag of edit.add ?? []) append(tag.trim())
+  return next
+}
 
-  return Array.from(byKey.values())
+export function mergeTagLists(header: readonly string[], inline: readonly string[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const tag of [...header, ...inline]) {
+    const key = foldTag(tag)
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
 }
 
 /**
@@ -470,6 +468,25 @@ export function writePropertiesToRoot(
     if (value === undefined) delete next[name]
     else next[name] = value
   }
+  return next
+}
+
+export function patchPropertiesOnRoot(
+  frontmatter: NoteFrontmatter,
+  patch: Record<string, unknown>
+): NoteFrontmatter {
+  const entries = Object.entries(patch).filter(([name, v]) => !isReservedFrontmatterKey(name, v))
+  const added = entries.filter(([name, v]) => v !== null && !Object.hasOwn(frontmatter, name))
+  const next: NoteFrontmatter = {}
+  let placed = false
+  for (const [name, value] of Object.entries(frontmatter)) {
+    const patched = entries.find(([key]) => key === name)
+    if (patched?.[1] === null) {
+      if (!placed) for (const [key, v] of added) next[key] = v
+      placed = true
+    } else next[name] = patched ? patched[1] : value
+  }
+  if (!placed) for (const [key, v] of added) next[key] = v
   return next
 }
 

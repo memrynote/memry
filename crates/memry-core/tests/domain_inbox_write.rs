@@ -697,3 +697,24 @@ fn the_lifecycle_payloads_match_the_committed_fixture() {
         "rerun with MEMRY_UPDATE_FIXTURES=1 and commit the change"
     );
 }
+
+#[test]
+fn filing_merges_tags_by_the_tag_fold() {
+    let db = open("fold");
+    db.call_blocking(|conn| {
+        let mut item = created(write::capture_text(
+            conn,
+            "fold me",
+            None,
+            Some("inline"),
+            false,
+            DEVICE,
+            NOW,
+        )?);
+        item.tags = vec!["İş".into(), "ΟΔΟΣ".into()];
+        let extra = ["iş".to_owned(), "οδοσ".to_owned(), "INBOX".to_owned()];
+        assert_eq!(filing::merged_tags(&item, &extra), ["İş", "ΟΔΟΣ", "INBOX"]);
+        Ok(())
+    })
+    .expect("merge");
+}

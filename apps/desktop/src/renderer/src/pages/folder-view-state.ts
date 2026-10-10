@@ -39,7 +39,8 @@ export const FOLDER_VIEW_STATE_KEYS = {
    * The chart layout's settings while the tab shows a chart; `null` when it
    * shows the view's own layout. A lens over the active view, like the search.
    */
-  chart: 'folderChart'
+  chart: 'folderChart',
+  linkedFilter: 'tagLinkedFilter'
 } as const
 
 /**
@@ -97,3 +98,6 @@ export const parseTagAndTags = (raw: unknown): string[] | undefined =>
   Array.isArray(raw) && raw.every((v) => typeof v === 'string' && v.trim() !== '')
     ? (raw as string[]).map((v) => v.trim())
     : undefined
+
+export const parseLinkedFilter = (raw: unknown): string | null | undefined =>
+  raw === null ? null : typeof raw === 'string' && raw.trim() !== '' ? raw : undefined

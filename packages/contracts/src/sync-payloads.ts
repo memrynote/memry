@@ -22,6 +22,20 @@ const SyncTimestampSchema = z
   .union([z.string(), z.number()])
   .transform((value) => (typeof value === 'string' ? value : new Date(value).toISOString()))
 
+/**
+ * A versioned value, merged by its own `t` (`@memry/shared/versioned`, chapter
+ * 06 §6.11) rather than by the document clock. Opaque on purpose: a record of
+ * unknown keeps every key a newer build adds, inside array elements included,
+ * where a declared shape would strip them. A non-object reads as absent rather
+ * than failing the whole item (the `cover` precedent), and `null` carries no
+ * information: clearing travels as a versioned value, never as `null`.
+ */
+const VersionedValueSyncSchema = z
+  .record(z.string(), z.unknown())
+  .nullable()
+  .optional()
+  .catch(undefined)
+
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -41,6 +55,8 @@ export const TaskSyncPayloadSchema = z.object({
   tags: z.array(z.string()).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
   linkedCanvasIds: z.array(z.string()).optional(),
+  // Chapter 13 §13.7.3.1.
+  fields: VersionedValueSyncSchema,
   clock: VectorClockSchema.optional(),
   fieldClocks: FieldClocksSchema.optional(),
   createdAt: z.string().optional(),
@@ -339,6 +355,8 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   // `undefined` (key absent) means the sender predates saved views and must not
   // clobber the local value; `null` is an explicit clear. See tag-definition-handler.ts.
   views: z.array(ViewConfigSchema).nullable().optional(),
+  // Chapter 13 §13.7.7.1.
+  schema: VersionedValueSyncSchema,
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
 })

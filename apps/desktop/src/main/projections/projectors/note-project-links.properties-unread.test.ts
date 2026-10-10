@@ -157,6 +157,7 @@ describe('note-project-links projector — note.upserted with unread frontmatter
         modifiedAt: '2026-01-02T00:00:00.000Z',
         parsedContent: 'body',
         tags: [],
+        headerTags: [],
         properties: {},
         wikiLinks: []
       }

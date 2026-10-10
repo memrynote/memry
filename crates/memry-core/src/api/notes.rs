@@ -110,9 +110,10 @@ impl Notes {
 
     /// The live notes carrying one tag (N600).
     ///
-    /// Matched by the column's own `COLLATE NOCASE`, so a screen opened from
-    /// `#café` finds a note that spelled it `#Café`. That is FR-047's
-    /// "letter-case behaviour identical to desktop".
+    /// Matched by the tag fold (`tag_fold`, protocol §13.7.7), so a screen
+    /// opened from `#café` finds a note that spelled it `#Café`, and `#iş`
+    /// finds `#İş`. That is FR-047's "letter-case behaviour identical to
+    /// desktop".
     pub fn notes_tagged(&self, tag: String) -> Result<Vec<NoteSummary>, StorageError> {
         self.db
             .call_blocking(move |conn| reads::notes_tagged(conn, &tag))

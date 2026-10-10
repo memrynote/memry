@@ -6,15 +6,14 @@ import { getMemryDir } from './init'
 import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
 import { getSetting, setSetting } from '../database/queries/settings'
 import {
-  PropertyDefinitionsFileSchema,
   type PropertyDefinition,
-  type PropertyType,
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
   DEFAULT_STATUS_CATEGORIES,
   DEFAULT_STATUS_DEFINITION,
-  isPersistableDefinitionType
+  isPersistableDefinitionType,
+  parsePropertyDefinitionEntries
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
 import {
@@ -37,6 +36,12 @@ let instance: PropertyDefinitionsService | null = null
 export class PropertyDefinitionsService {
   private vaultPath: string
   private cache: Map<string, PropertyDefinition> = new Map()
+  // Entries this build cannot parse, written back verbatim so a rewrite never
+  // deletes a definition an older or newer build wrote.
+  private unparsed: Map<string, unknown> = new Map()
+  // Set while the file exists but cannot be read as a whole. Writing the
+  // cache over it would drop every definition the file held.
+  private fileUnreadable = false
   private writeQueue: WriteTask[] = []
   private writing = false
 
@@ -97,6 +102,8 @@ export class PropertyDefinitionsService {
       // and its first pull can land definitions before anything writes one.
       // Clearing the cache without the union would delete them again.
       this.cache.clear()
+      this.unparsed.clear()
+      this.fileUnreadable = false
       const gained = this.mergeDatabaseDefinitions(includeUnclocked)
       this.rebuildDbCache()
       if (gained) await this.persistToFile()
@@ -104,15 +111,23 @@ export class PropertyDefinitionsService {
     }
 
     try {
-      const { data, healed } = withoutNonPersistableDefinitions(matter(raw).data)
-      const parsed = PropertyDefinitionsFileSchema.safeParse(data)
-
-      if (!parsed.success) {
-        logger.warn('Invalid properties.md format, keeping last-known-good cache:', parsed.error)
+      const parsed = parsePropertyDefinitionEntries(matter(raw).data.properties)
+      if (!parsed) {
+        this.fileUnreadable = true
+        logger.warn('Invalid properties.md format, keeping last-known-good cache')
         return false
       }
 
-      this.applyParsedData(parsed.data)
+      this.fileUnreadable = false
+      for (const name of parsed.unparsed.keys()) {
+        logger.warn(
+          'Skipping unreadable property definition in properties.md; keeping it as is',
+          name
+        )
+      }
+      this.unparsed = parsed.unparsed
+      this.applyParsedData({ properties: parsed.valid })
+      const healed = parsed.healed
       const gained = this.mergeDatabaseDefinitions(includeUnclocked)
       this.rebuildDbCache()
       // A definition that arrived over sync exists only as a data DB row until
@@ -122,6 +137,7 @@ export class PropertyDefinitionsService {
       if (gained || healed) await this.persistToFile()
       return true
     } catch (err) {
+      this.fileUnreadable = true
       logger.warn('Failed to parse properties.md, keeping last-known-good cache:', err)
       return false
     }
@@ -168,7 +184,7 @@ export class PropertyDefinitionsService {
    * cannot land last.
    */
   applyRemoteDelete(name: string): { filePath: string; content: string } | null {
-    if (!this.cache.delete(name)) return null
+    if (!this.cache.delete(name) || this.fileUnreadable) return null
     void this.enqueueWrite(() => this.persistToFile()).catch((err: unknown) => {
       logger.warn('Failed to persist a remote property definition delete:', err)
     })
@@ -200,6 +216,7 @@ export class PropertyDefinitionsService {
       pulled.showOnCalendar = cached.showOnCalendar
     }
     this.cache.set(row.name, pulled)
+    if (this.fileUnreadable) return null
     void this.enqueueWrite(() => this.persistToFile()).catch((err: unknown) => {
       logger.warn('Failed to persist a remote property definition upsert:', err)
     })
@@ -402,6 +419,10 @@ export class PropertyDefinitionsService {
   }
 
   private async persistToFile(): Promise<void> {
+    if (this.fileUnreadable) {
+      logger.warn('properties.md cannot be parsed; not overwriting it', this.filePath)
+      return
+    }
     await atomicWrite(this.filePath, this.serializeFile())
     logger.debug('Persisted property definitions to', this.filePath)
   }
@@ -409,6 +430,9 @@ export class PropertyDefinitionsService {
   private serializeFile(): string {
     const properties: Record<string, unknown> = {}
 
+    for (const [name, entry] of this.unparsed) {
+      if (!this.cache.has(name)) properties[name] = entry
+    }
     for (const [name, def] of this.cache) {
       if (!isPersistableDefinitionType(def.type)) continue
       // js-yaml refuses to dump `undefined`, and one such value fails the write
@@ -557,27 +581,6 @@ function sharedFields(def: {
     ...(def.defaultValue ? { defaultValue: def.defaultValue } : {}),
     ...(def.color ? { color: def.color } : {})
   }
-}
-
-/**
- * The parsed `properties.md` without its non-persistable entries, and whether
- * any were there. Older builds wrote synced `relation` definitions into the
- * file, and one such entry fails `safeParse` for the whole file, so the vault
- * loaded no definitions at all. Copies rather than mutates because
- * gray-matter caches the parsed object per file content.
- */
-function withoutNonPersistableDefinitions(data: Record<string, unknown>): {
-  data: Record<string, unknown>
-  healed: boolean
-} {
-  const properties = data.properties
-  if (typeof properties !== 'object' || properties === null) return { data, healed: false }
-  const kept = Object.entries(properties).filter(([, def]) => {
-    const type = (def as { type?: PropertyType } | null)?.type
-    return !type || isPersistableDefinitionType(type)
-  })
-  if (kept.length === Object.keys(properties).length) return { data, healed: false }
-  return { data: { ...data, properties: Object.fromEntries(kept) }, healed: true }
 }
 
 function renameOptionInDefinition(

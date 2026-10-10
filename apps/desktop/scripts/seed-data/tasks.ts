@@ -32,7 +32,7 @@ export const PROJECT_IDS = {
   side: generateId()
 } as const
 
-const STATUS_IDS = {
+export const STATUS_IDS = {
   // Inbox
   inboxTodo: generateId(),
   // Istanbul Weekend

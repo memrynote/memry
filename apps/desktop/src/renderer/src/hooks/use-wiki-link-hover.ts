@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WikiLinkPreview } from '@/services/notes-service'
-import { notesService, onNoteCreated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
+import {
+  notesService,
+  onNoteCreated,
+  onNoteDeleted,
+  onNoteRenamed,
+  onNoteUpdated
+} from '@/services/notes-service'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 
 interface HoverPosition {
@@ -164,7 +170,8 @@ export function useWikiLinkHover(
     const unsubscribes = [
       onNoteCreated(clearCache),
       onNoteRenamed(clearCache),
-      onNoteDeleted(clearCache)
+      onNoteDeleted(clearCache),
+      onNoteUpdated(clearCache)
     ]
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
   }, [])

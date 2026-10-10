@@ -182,6 +182,38 @@ describe('useJournalEntry dedicated hook', () => {
     })
   })
 
+  it('saves the body #tag changes made during a save, merged, on top of the tags-row list', async () => {
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    let finishFirstSave: () => void = () => {}
+    ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      (input) =>
+        new Promise((resolve) => {
+          finishFirstSave = () => resolve(createMockJournalEntry({ date: input.date }))
+        })
+    )
+
+    act(() => result.current.updateTags(['row']))
+    await waitFor(() => expect(window.api.journal.updateEntry).toHaveBeenCalledTimes(1))
+    act(() => result.current.updateInlineTags({ add: ['car', 'bike'], remove: [] }))
+    act(() => result.current.updateInlineTags({ add: [], remove: ['bike', 'old'] }))
+    await act(async () => finishFirstSave())
+    await waitFor(() => expect(result.current.isSaving).toBe(false))
+    act(() => result.current.updateTags(['row', 'later']))
+
+    expect(window.api.journal.updateEntry).toHaveBeenNthCalledWith(1, {
+      date: '2026-05-10',
+      tags: ['row']
+    })
+    await waitFor(() =>
+      expect(window.api.journal.updateEntry).toHaveBeenLastCalledWith({
+        date: '2026-05-10',
+        tags: ['row', 'later'],
+        inlineTags: { add: ['car'], remove: ['bike', 'old'] }
+      })
+    )
+  })
+
   // The editor flushes its last debounced edit only after it has unmounted, and
   // serializing is async, so that edit reaches `updateContent` after this hook
   // has already switched dates and flushed the old one (#1900).

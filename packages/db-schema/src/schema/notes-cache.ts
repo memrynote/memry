@@ -59,12 +59,16 @@ export const noteTags = sqliteTable(
     tag: nocaseText('tag').notNull(),
     position: integer('position').notNull().default(0),
     // When the note was pinned to this tag (null = not pinned)
-    pinnedAt: text('pinned_at')
+    pinnedAt: text('pinned_at'),
+    // true: in the frontmatter `tags:` header. false: only an inline #tag in the
+    // body. null: written before 0024 and not resolved yet (vault/header-tag-backfill.ts).
+    inHeader: integer('in_header', { mode: 'boolean' })
   },
   (table) => [
     primaryKey({ columns: [table.noteId, table.tag] }),
     index('idx_note_tags_tag').on(table.tag),
-    index('idx_note_tags_pinned').on(table.pinnedAt)
+    index('idx_note_tags_pinned').on(table.pinnedAt),
+    index('idx_note_tags_tag_header').on(table.tag, table.inHeader)
   ]
 )
 

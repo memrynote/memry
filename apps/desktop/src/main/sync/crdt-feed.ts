@@ -47,12 +47,18 @@ export async function replaceNoteBodyInCrdt(
   return doc ? replaceDocBody(doc, noteId, markdown, writing) : false
 }
 
-/** `replaceNoteBodyInCrdt` for a doc the caller holds. */
+/**
+ * `replaceNoteBodyInCrdt` for a doc the caller holds. With `unlessChangedFrom`
+ * (the fragment's `toJSON()` when the caller read the body), the replace
+ * happens only if the fragment still holds exactly that, checked in the same
+ * transaction, so a keystroke typed meanwhile is never overwritten.
+ */
 export async function replaceDocBody(
   doc: Y.Doc,
   noteId: string,
   markdown: string,
-  writing?: WritingFrontmatter
+  writing?: WritingFrontmatter,
+  unlessChangedFrom?: string
 ): Promise<boolean> {
   // The other markdown → Y.Doc door, alongside the seed in `crdt-provider`, and
   // the one a receiver walks through: an oversized note arriving over sync gets
@@ -75,16 +81,25 @@ export async function replaceDocBody(
   // external edit refreshes link-reference definitions/usages (#1909) and
   // CriticMarkup marks the same way a freshly seeded note does, instead of
   // leaving the previous body's copies in place (#1959).
-  const { prepareFragmentSeed, applyFragmentSeed, recordMarkdownSourceInYDoc } =
-    await loadBlockNoteConverter()
+  const converter = await loadBlockNoteConverter()
+  const { prepareFragmentSeed, applyFragmentSeed, recordMarkdownSourceInYDoc } = converter
   const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId), writing)
   if (!prepared) return false
+  // An open editor always holds at least one block, and its binding stops
+  // following the doc once the fragment is emptied under it: every later feed
+  // lands in the doc but never on screen, and the editor's stale empty body is
+  // what it saves next. An empty body is BlockNote's empty document instead.
+  if (prepared.blocks.length === 0) prepared.blocks = converter.emptyDocumentBlocks()
 
   const fragment = doc.getXmlFragment('prosemirror')
+  let replaced = false
   doc.transact(() => {
+    if (unlessChangedFrom !== undefined && fragment.toJSON() !== unlessChangedFrom) return
     fragment.delete(0, fragment.length)
     applyFragmentSeed(prepared, fragment)
+    replaced = true
   }, ORIGIN_LOCAL)
+  if (!replaced) return false
 
   // The file's new bytes are the source from here on: whatever the write-back
   // does not change comes back spelled the way this edit spelled it (#1915).

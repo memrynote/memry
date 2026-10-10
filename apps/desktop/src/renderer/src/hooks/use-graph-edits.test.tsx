@@ -128,17 +128,32 @@ describe('useGraphEdits', () => {
 
   it('adds a tag through notes:update and removes it on undo', async () => {
     const { edits } = setup()
-    mocks.notesGet.mockResolvedValue({ id: 'note-a', title: 'Alpha', tags: ['work'] })
+    mocks.notesGet.mockResolvedValue({
+      id: 'note-a',
+      title: 'Alpha',
+      tags: ['work', 'reading'],
+      headerTags: ['work']
+    })
 
     await act(() => edits.addTag('note-a', 'reading'))
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-a', tags: ['work', 'reading'] })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-a',
+      headerTags: { add: ['reading'] }
+    })
 
-    mocks.notesGet.mockResolvedValue({ id: 'note-a', title: 'Alpha', tags: ['work', 'reading'] })
+    mocks.notesGet.mockResolvedValue({
+      id: 'note-a',
+      title: 'Alpha',
+      headerTags: ['work', 'reading']
+    })
     await act(async () => {
       lastUndo()()
       await vi.waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2))
     })
-    expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-a', tags: ['work'] })
+    expect(mocks.updateNote).toHaveBeenLastCalledWith({
+      id: 'note-a',
+      headerTags: { remove: ['reading'] }
+    })
   })
 
   it('does not write or toast when the unlink target is not in any relation', async () => {
@@ -162,7 +177,7 @@ describe('useGraphEdits', () => {
     await act(() => edits.addTag('note-a', 'reading'))
     expect(mocks.toast.error).toHaveBeenLastCalledWith('Note not found')
 
-    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', headerTags: [] })
     mocks.updateNote.mockResolvedValueOnce({ success: false, note: null, error: 'locked' })
     await act(() => edits.addTag('note-a', 'reading'))
     expect(mocks.toast.error).toHaveBeenLastCalledWith('locked')
@@ -190,9 +205,9 @@ describe('useGraphEdits', () => {
     })
     expect(mocks.propertiesSet).toHaveBeenCalledTimes(1)
 
-    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', headerTags: [] })
     await act(() => edits.addTag('note-a', 'reading'))
-    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', headerTags: [] })
     await act(async () => {
       lastUndo()()
       await vi.waitFor(() => expect(mocks.notesGet).toHaveBeenCalledTimes(2))
@@ -202,7 +217,7 @@ describe('useGraphEdits', () => {
 
   it('skips a tag the note already has, ignoring case', async () => {
     const { edits } = setup()
-    mocks.notesGet.mockResolvedValue({ id: 'note-a', title: 'Alpha', tags: ['Reading'] })
+    mocks.notesGet.mockResolvedValue({ id: 'note-a', title: 'Alpha', headerTags: ['Reading'] })
 
     await act(() => edits.addTag('note-a', 'reading'))
 

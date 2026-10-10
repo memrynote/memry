@@ -13,6 +13,7 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Note } from '@memry/rpc/notes'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
@@ -48,7 +49,7 @@ export interface UseNoteEditorReturn {
   updateTitle: (title: string) => Promise<void>
   updateContent: (content: string) => void
   updateEmoji: (emoji: string | null) => Promise<void>
-  updateTags: (tags: string[]) => Promise<void>
+  updateHeaderTags: (edit: HeaderTagEdit) => Promise<void>
 
   // Manual save (bypasses debounce)
   saveNow: () => Promise<void>
@@ -78,7 +79,7 @@ export interface UseNoteEditorReturn {
  *     updateTitle,
  *     updateContent,
  *     updateEmoji,
- *     updateTags
+ *     updateHeaderTags
  *   } = useNoteEditor(noteId)
  *
  *   if (isLoading) return <Spinner />
@@ -349,12 +350,12 @@ export function useNoteEditor(
     [noteId, note, isDeleted, showToasts]
   )
 
-  const updateTags = useCallback(
-    async (tags: string[]) => {
+  const updateHeaderTags = useCallback(
+    async (headerTags: HeaderTagEdit) => {
       if (!noteId || !note || isDeleted) return
 
       try {
-        const result = await notesService.update({ id: noteId, tags })
+        const result = await notesService.update({ id: noteId, headerTags })
         if (result) {
           setNote(result as unknown as Note)
         }
@@ -411,7 +412,7 @@ export function useNoteEditor(
     updateTitle,
     updateContent,
     updateEmoji,
-    updateTags,
+    updateHeaderTags,
     saveNow,
     clearError
   }

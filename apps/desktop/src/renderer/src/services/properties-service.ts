@@ -55,6 +55,10 @@ export const propertiesService = {
     return window.api.properties.set(entityId, properties)
   },
 
+  merge: (entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse> => {
+    return window.api.properties.merge(entityId, values)
+  },
+
   /**
    * Rename a property for an entity.
    * Note-only scope: rename only affects this entity's frontmatter.

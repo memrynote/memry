@@ -43,7 +43,6 @@ const mocks = vi.hoisted(() => ({
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
-  replaceNoteTagsInCrdt: vi.fn(),
   settleWriteback: vi.fn(),
   isPersistent: vi.fn(),
   getEditorSettings: vi.fn(),
@@ -148,10 +147,6 @@ vi.mock('./current-note', () => ({
 
 vi.mock('./desktop-api', () => ({
   invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
-}))
-
-vi.mock('../../../sync/crdt-feed', () => ({
-  replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
 }))
 
 vi.mock('../../../sync/crdt-writeback', () => ({
@@ -424,17 +419,19 @@ describe('createVaultServiceHandles', () => {
       content: 'Current\n\nNext'
     })
 
-    await handles.notes.addTag({ id: 'note-1', tag: ' Team ' })
-    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', tags: ['Team'] })
-
+    // A delta on the header alone: the note's index list, inline tags
+    // included, never reaches it.
     await handles.notes.addTag({ id: 'note-1', tag: 'Review' })
     expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
       id: 'note-1',
-      tags: ['Team', 'Review']
+      headerTags: { add: ['Review'] }
     })
 
     await handles.notes.removeTag({ id: 'note-1', tag: 'team' })
-    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', tags: [] })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      headerTags: { remove: ['team'] }
+    })
 
     await handles.notes.moveToFolder({ id: 'note-1', folder_path: '/archive' })
     expect(mocks.moveNoteCommand).toHaveBeenCalledWith('note-1', 'archive')
@@ -456,14 +453,6 @@ describe('createVaultServiceHandles', () => {
 
     mocks.getNoteById.mockResolvedValueOnce(null)
     await expect(handles.notes.read('missing')).resolves.toBeNull()
-    mocks.getNoteById.mockResolvedValueOnce(null)
-    await expect(handles.notes.addTag({ id: 'missing', tag: 'tag' })).rejects.toThrow(
-      'Note not found: missing'
-    )
-    mocks.getNoteById.mockResolvedValueOnce(null)
-    await expect(handles.notes.removeTag({ id: 'missing', tag: 'tag' })).rejects.toThrow(
-      'Note not found: missing'
-    )
 
     mocks.getNoteById.mockResolvedValueOnce({
       id: 'empty',
@@ -684,8 +673,6 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.updateNoteCommand.mock.calls).toEqual([
       [{ id: 'note-1', content: 'Current\n\nNext' }]
     ])
-    // The tag set did not move, so the live tag array is left alone.
-    expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 
   describe('when the note file cannot be read before an update', () => {
@@ -777,53 +764,6 @@ describe('createVaultServiceHandles', () => {
       expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', content: stored })
     }
   )
-
-  it('re-points the live tag array when the new body changes the tag set', async () => {
-    const handles = createVaultServiceHandles(deps)
-
-    mocks.getNoteCacheById.mockReturnValue({
-      id: 'note-1',
-      title: 'Alpha',
-      path: 'work/alpha.md',
-      fileType: 'markdown'
-    })
-    mocks.getNoteById.mockResolvedValue({
-      id: 'note-1',
-      title: 'Alpha',
-      content: 'Current',
-      tags: ['team'],
-      path: 'work/alpha.md',
-      frontmatter: {}
-    })
-    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team', 'planning'] })
-
-    await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: '#planning' })
-
-    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenCalledWith('note-1', ['team', 'planning'])
-  })
-
-  /**
-   * Write-back treats the Y.Doc tag array as authoritative, so a tag written
-   * only to the file is reverted on the next flush of an open note.
-   */
-  it('re-points the live tag array on add and remove', async () => {
-    const handles = createVaultServiceHandles(deps)
-
-    mocks.getNoteById.mockResolvedValue({
-      id: 'note-1',
-      title: 'Alpha',
-      content: 'Current',
-      tags: ['team'],
-      path: 'work/alpha.md',
-      frontmatter: {}
-    })
-
-    await handles.notes.addTag({ id: 'note-1', tag: 'planning' })
-    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', ['team', 'planning'])
-
-    await handles.notes.removeTag({ id: 'note-1', tag: 'TEAM' })
-    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
-  })
 
   it('answers every note write with the note as stored', async () => {
     const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({

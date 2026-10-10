@@ -250,6 +250,7 @@ describe('tasks-handlers', () => {
           linkedCanvasIds: [],
           tags: [],
           isRepeating: false,
+          fields: {},
           hasSubtasks: false,
           subtaskCount: 0,
           completedSubtaskCount: 0
@@ -318,6 +319,7 @@ describe('tasks-handlers', () => {
         expect(result).toEqual({
           ...mockTask,
           isRepeating: false,
+          fields: {},
           tags: ['tag1'],
           linkedNoteIds: ['note1'],
           linkedCanvasIds: ['canvas1'],

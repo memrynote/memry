@@ -46,7 +46,7 @@ import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
+export const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
   text: Type,
   number: Hash,
   checkbox: CheckSquare,
@@ -66,6 +66,8 @@ interface PropertyValueRendererProps {
   autoOpen?: boolean
   onValueChange: (value: unknown) => void
   onEndEdit: () => void
+  relationTarget?: string | null
+  relationMany?: boolean
 }
 
 function PropertyValueDisplay({ property }: { property: Property }) {
@@ -271,7 +273,9 @@ function PropertyValueRenderer({
   isEditing,
   autoOpen,
   onValueChange,
-  onEndEdit
+  onEndEdit,
+  relationTarget,
+  relationMany
 }: PropertyValueRendererProps) {
   if (property.type === 'checkbox') {
     return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
@@ -294,7 +298,14 @@ function PropertyValueRenderer({
 
   if (property.type === 'relation') {
     const val = Array.isArray(property.value) ? (property.value as string[]) : []
-    return <RelationEditor value={val} onChange={onValueChange} />
+    return (
+      <RelationEditor
+        value={val}
+        onChange={onValueChange}
+        targetTag={relationTarget}
+        many={relationMany}
+      />
+    )
   }
 
   if (property.type === 'date') {
@@ -337,6 +348,9 @@ interface PropertyRowProps {
    * focused. Receives whether the row is hovered.
    */
   renderAction?: (hovered: boolean) => React.ReactNode
+  relationTarget?: string | null
+  relationMany?: boolean
+  compact?: boolean
 }
 
 export function PropertyRow({
@@ -347,7 +361,10 @@ export function PropertyRow({
   disabled,
   autoFocus = false,
   isSortable = false,
-  renderAction
+  renderAction,
+  relationTarget,
+  relationMany,
+  compact = false
 }: PropertyRowProps) {
   const { t } = useT('notes')
   const { isEnabled, setEnabled } = useCalendarProperties()
@@ -491,7 +508,7 @@ export function PropertyRow({
             onBlur={handleEndNameEdit}
             onKeyDown={handleNameKeyDown}
             className={cn(
-              'w-28 shrink-0',
+              compact ? 'w-[72px] shrink-0' : 'w-28 shrink-0',
               'text-[13px] text-muted-foreground font-sans',
               'bg-transparent border-b border-border',
               'focus:outline-none focus:border-muted-foreground',
@@ -503,7 +520,7 @@ export function PropertyRow({
           <span
             onClick={canRenameName ? handleStartNameEdit : undefined}
             className={cn(
-              'w-28 shrink-0',
+              compact ? 'w-[72px] shrink-0' : 'w-28 shrink-0',
               'text-[13px] text-text-tertiary font-sans leading-4',
               'truncate',
               canRenameName && !disabled && 'cursor-pointer hover:text-text-secondary'
@@ -555,6 +572,8 @@ export function PropertyRow({
           autoOpen={autoFocus && isAlwaysInteractive}
           onValueChange={onValueChange}
           onEndEdit={handleEndEdit}
+          relationTarget={relationTarget}
+          relationMany={relationMany}
         />
       </div>
 

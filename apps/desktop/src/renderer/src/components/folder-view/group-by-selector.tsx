@@ -45,8 +45,15 @@ interface GroupBySelectorProps {
 /** Properties that work well for grouping */
 const GROUPABLE_BUILT_IN = ['folder', 'tags', 'created', 'modified'] as const
 
-/** Property types that support grouping */
-const GROUPABLE_TYPES = new Set(['text', 'select', 'multiselect', 'checkbox', 'date', 'number'])
+const GROUPABLE_TYPES = new Set([
+  'text',
+  'select',
+  'multiselect',
+  'checkbox',
+  'date',
+  'number',
+  'relation'
+])
 
 // ============================================================================
 // Component
@@ -193,7 +200,7 @@ export function GroupBySelector({
                   <button
                     type="button"
                     onClick={handleClearGrouping}
-                    className="ml-1 p-0.5 rounded hover:bg-muted"
+                    className="ms-1 p-0.5 rounded hover:bg-muted"
                     aria-label={tPhaseF('phaseF.componentsFolderViewGroupBySelector.clearGrouping')}
                   >
                     <X className="h-3 w-3" />
@@ -374,7 +381,7 @@ function PropertyRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left',
+        'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-start',
         'hover:bg-muted transition-colors',
         isSelected && 'bg-primary/10'
       )}
