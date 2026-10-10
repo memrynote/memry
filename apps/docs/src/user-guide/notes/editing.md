@@ -639,9 +639,10 @@ rename, merge or delete skips it, its backlink excerpts stay empty, and attachme
 reference are kept. Deleting a task that came from it leaves the file alone, quitting keeps no
 version of it, and a lock on it keeps no copy of its text and does not change the file's permissions. Deleting it, or the
 folder it is in, does not offer to delete tasks listed in the outside file. Semantic search and its outgoing links do
-not read it either. All of this also holds when the file is swapped for such a link while Memry is
-checking it: Memry reads, indexes and syncs the file it opened and checked, not whatever the path
-points to a moment later. The link stays as you made it. A symlink to another file inside the vault works
+not read it either. A lock, the delete dialog's task check, search and semantic indexing, sync
+pushes, versions, block moves, link rewrites on rename, and external-edit handling also hold when the
+file is swapped for such a link while Memry is checking it: they read the file they opened and
+checked, not whatever the path points to a moment later. The link stays as you made it. A symlink to another file inside the vault works
 as usual.
 
 ## Word Count
