@@ -11,6 +11,7 @@
  */
 
 import { createReadStream } from 'fs'
+import type { FileHandle } from 'fs/promises'
 import { createContentHasher } from './frontmatter'
 
 /** Bytes pulled from disk per chunk. The stream decodes UTF-8 across them. */
@@ -37,11 +38,12 @@ function isWhitespace(code: number): boolean {
 /**
  * Read a file in chunks, measuring it as it goes.
  *
+ * @param source A path, or an open handle the caller keeps and closes.
  * @returns null when the file is gone — the backfill queue can outlive a file
  *   the user deletes a moment after pasting it.
  */
 export async function scanMarkdownFile(
-  absolutePath: string,
+  source: string | FileHandle,
   headChars: number = DEFAULT_HEAD_CHARS
 ): Promise<MarkdownFileScan | null> {
   const hasher = createContentHasher()
@@ -51,10 +53,11 @@ export async function scanMarkdownFile(
   // Carried across chunks so a word split by a chunk boundary is counted once.
   let previousWasWhitespace = true
 
-  const stream = createReadStream(absolutePath, {
-    encoding: 'utf-8',
-    highWaterMark: READ_CHUNK_BYTES
-  })
+  const options = { encoding: 'utf-8', highWaterMark: READ_CHUNK_BYTES } as const
+  const stream =
+    typeof source === 'string'
+      ? createReadStream(source, options)
+      : source.createReadStream({ ...options, autoClose: false })
 
   try {
     for await (const chunk of stream) {

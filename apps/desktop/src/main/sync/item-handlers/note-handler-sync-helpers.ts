@@ -1,4 +1,3 @@
-import fs from 'fs'
 import { and, isNull, sql } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
@@ -6,8 +5,8 @@ import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
-import { refuseOutsideVaultSync } from '../../lib/paths'
+import { getVaultRoot } from '../../vault/notes'
+import { readVaultFileSync } from '../../lib/paths'
 import { parseNote } from '../../vault/frontmatter'
 import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
@@ -57,10 +56,9 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
   // `undefined` omits the key, which tells peers nothing: the file could not be
   // read, or this note has had no cover here. `null` is a local removal only.
   let cover: NoteCoverSync | null | undefined
-  const absolutePath = toAbsolutePath(cached.path)
   try {
-    refuseOutsideVaultSync(getVaultRoot(), cached.path)
-    const raw = fs.readFileSync(absolutePath, 'utf-8')
+    const raw = readVaultFileSync(getVaultRoot(), cached.path)
+    if (raw === null) throw new Error(`Note file is missing: ${cached.path}`)
     const parsed = parseNote(raw)
     content = operation === 'create' ? parsed.content : null
     tags = parsed.frontmatter.tags ?? []
@@ -105,8 +103,8 @@ export function settlePushedNoteCover(db: DrizzleDb, itemId: string): void {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached) return null
     try {
-      refuseOutsideVaultSync(getVaultRoot(), cached.path)
-      return parseNote(fs.readFileSync(toAbsolutePath(cached.path), 'utf-8')).frontmatter
+      const raw = readVaultFileSync(getVaultRoot(), cached.path)
+      return raw === null ? null : parseNote(raw).frontmatter
     } catch {
       return null
     }

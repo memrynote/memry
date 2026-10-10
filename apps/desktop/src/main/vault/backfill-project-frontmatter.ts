@@ -38,9 +38,8 @@ import { readProjectNames, withProjectName } from '../notes/project-property'
 import { getNoteCacheById, getNoteTags } from '../notes/store'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../database'
 import { extractProperties, parseNote } from './frontmatter'
-import { safeRead } from './file-ops'
-import { getVaultRoot, toAbsolutePath } from './notes-io'
-import { refuseOutsideVault } from '../lib/paths'
+import { getVaultRoot } from './notes-io'
+import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import type { DataDb } from '../database'
@@ -101,8 +100,7 @@ async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   const cached = getNoteCacheById(getIndexDatabase(), noteId)
   if (!cached) return { kind: 'missing' }
 
-  await refuseOutsideVault(getVaultRoot(), cached.path)
-  const raw = await safeRead(toAbsolutePath(cached.path))
+  const raw = await readVaultFile(getVaultRoot(), cached.path)
   if (raw === null) {
     // File unreadable — fall back to the cached record. The write that follows
     // will fail on the same missing file and land in the residual snapshot, so

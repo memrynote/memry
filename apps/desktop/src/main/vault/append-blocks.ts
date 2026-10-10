@@ -35,9 +35,9 @@ import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
-import { safeRead, atomicWrite } from './file-ops'
+import { atomicWrite } from './file-ops'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('AppendBlocks')
@@ -72,9 +72,8 @@ export async function appendBlocksToNote(
   const source = getNoteCacheById(db, sourceNoteId)
   if (!source) throw new Error(`Source note not found: ${sourceNoteId}`)
 
-  await refuseOutsideVault(getVaultRoot(), target.path)
   const absolutePath = toAbsolutePath(target.path)
-  const original = await safeRead(absolutePath)
+  const original = await readVaultFile(getVaultRoot(), target.path)
   if (original === null) throw new Error(`Target note is unreadable: ${target.path}`)
 
   // Attachment/image refs in the moved slice are resolved against the SOURCE

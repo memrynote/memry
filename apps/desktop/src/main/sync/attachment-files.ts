@@ -7,7 +7,7 @@ import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getFileType } from '@memry/shared/file-types'
 import { hasPendingUpload } from './attachment-outbox'
 import { STORED_PREFIX_RE } from '../vault/attachment-heal'
-import { refuseOutsideVault, resolveVaultFile, resolveVaultFileSync } from '../lib/paths'
+import { readVaultFile, resolveVaultFile, resolveVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('AttachmentFiles')
@@ -380,8 +380,8 @@ async function linkedPathOf(
   if (getFileType(path.extname(name)) !== null) return null
   const note = getNoteMetadataById(db, noteId)
   if (!note?.path.endsWith('.md')) return null
-  await refuseOutsideVault(vaultPath, note.path)
-  const markdown = await fs.promises.readFile(path.join(vaultPath, note.path), 'utf8')
+  const markdown = await readVaultFile(vaultPath, note.path)
+  if (markdown === null) return null
   if (referencedVaultFiles(markdown, vaultPath, note.path, noteId).includes(path.resolve(file))) {
     return null
   }

@@ -51,10 +51,20 @@ vi.mock('./notes-io', () => ({
   getVaultRoot: () => realVault.path,
   toAbsolutePath: (relativePath: string) => `/vault/${relativePath}`
 }))
-vi.mock('./file-ops', () => ({
-  safeRead: (absolutePath: string) =>
-    Promise.resolve(diskFiles.get(absolutePath.replace('/vault/', '')) ?? null)
-}))
+// File bodies live in memory; the outside-vault check still runs on the real vault.
+vi.mock('../lib/paths', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const { OutsideVaultError } = await import('../lib/errors')
+  return {
+    ...actual,
+    readVaultFile: async (vault: string, relativePath: string) => {
+      if ((await actual.resolveVaultFile(vault, relativePath)).kind === 'outside') {
+        throw new OutsideVaultError(relativePath)
+      }
+      return diskFiles.get(relativePath) ?? null
+    }
+  }
+})
 vi.mock('../database', () => ({
   getIndexDatabase: () => ({ kind: 'index-db' }),
   isIndexDatabaseInitialized: () => indexAvailable

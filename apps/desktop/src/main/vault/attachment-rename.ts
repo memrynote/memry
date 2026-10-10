@@ -20,7 +20,7 @@
  * the body: see `attachment-rename-reconcile.ts`.
  */
 
-import { rename, readFile } from 'fs/promises'
+import { rename } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import type { AttachmentRenameResult } from '@memry/contracts/notes-api'
@@ -33,7 +33,7 @@ import { resolveAttachment } from './attachment-actions'
 import { reconcileDownloadedAttachmentName } from './attachment-rename-reconcile'
 import { getAttachmentRef, getNoteAttachmentsDir } from './attachments'
 import { getVaultRoot } from './notes-io'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import { STORED_PREFIX_RE } from './attachment-heal'
 import { assertNoteWritable } from '../vault-locks/registry'
 
@@ -182,8 +182,8 @@ export async function applyDownloadedAttachmentName(
     const notePath = getNoteCacheById(getIndexDatabase(), noteId)?.path
     if (!notePath) return
     const vaultPath = getVaultRoot()
-    await refuseOutsideVault(vaultPath, notePath)
-    const markdown = await readFile(path.join(vaultPath, notePath), 'utf-8')
+    const markdown = await readVaultFile(vaultPath, notePath)
+    if (markdown === null) return
     reconcileDownloadedAttachmentName(noteId, downloadedPath, markdown, vaultPath)
   } catch (error) {
     logger.warn('Could not reconcile a downloaded attachment name', { noteId, error })

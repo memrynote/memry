@@ -105,11 +105,11 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
 
   const { getIndexDatabase } = await import('../database')
   const { getNoteCacheById } = await import('@main/database/queries/notes')
-  const { safeRead, atomicWrite } = await import('../vault/file-ops')
+  const { atomicWrite } = await import('../vault/file-ops')
   const { parseNote, serializeParsedNote } = await import('../vault/frontmatter')
   const { syncNoteToCache } = await import('../vault/note-sync')
   const { emitNoteEvent, getVaultRoot, toAbsolutePath } = await import('../vault/notes-io')
-  const { refuseOutsideVault } = await import('../lib/paths')
+  const { readVaultFile } = await import('../lib/paths')
   const { markWritebackIgnored } = await import('../sync/crdt-writeback')
   const { feedExternalEditToCrdt } = await import('../sync/crdt-external-feed')
 
@@ -121,9 +121,8 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
     return
   }
 
-  await refuseOutsideVault(getVaultRoot(), cached.path)
   const absolutePath = toAbsolutePath(cached.path)
-  const original = await safeRead(absolutePath)
+  const original = await readVaultFile(getVaultRoot(), cached.path)
   if (original === null) return
 
   const parsedOriginal = parseNote(original, cached.path)

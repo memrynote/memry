@@ -72,6 +72,11 @@ vi.mock('../vault/notes', () => ({
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   maybeCreateSignificantSnapshot: () => null
 }))
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  readVaultFile: async (_vault: string, relative: string) =>
+    h.files.get(`/vault/${relative}`) ?? null
+}))
 vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {

@@ -1,5 +1,3 @@
-import fs from 'fs/promises'
-import path from 'path'
 import { sql } from 'drizzle-orm'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
@@ -18,7 +16,7 @@ import {
   MAX_EMBEDDING_INPUT_LENGTH
 } from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
-import { refuseOutsideVault } from '../../lib/paths'
+import { readVaultFile } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
@@ -99,8 +97,8 @@ async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): P
   if (note.fileType && note.fileType !== 'markdown') {
     return readFileTextOpening(note.id)
   }
-  await refuseOutsideVault(vaultPath, note.path)
-  const raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
+  const raw = await readVaultFile(vaultPath, note.path)
+  if (raw === null) throw new Error(`Note file is missing: ${note.path}`)
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
 

@@ -1,4 +1,12 @@
-import { closeSync, constants, fstatSync, lstatSync, openSync, realpathSync } from 'fs'
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  realpathSync
+} from 'fs'
 import type { BigIntStats } from 'fs'
 import { lstat, open, realpath } from 'fs/promises'
 import type { FileHandle } from 'fs/promises'
@@ -182,16 +190,9 @@ export function resolveVaultFileSync(vaultPath: string, relativePath: string): V
 }
 
 /**
- * Throws `OutsideVaultError` for a vault file linked outside the vault, so a
- * reader refuses it instead of following the link. A reader that passes reads
- * the joined path as before, and a missing file still reads as missing.
+ * Throws `OutsideVaultError` for a vault file linked outside the vault. A reader
+ * reads through `readVaultFile` instead, since the file can be swapped after this check.
  */
-export async function refuseOutsideVault(vaultPath: string, relativePath: string): Promise<void> {
-  const resolved = await resolveVaultFile(vaultPath, relativePath)
-  if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
-}
-
-/** `refuseOutsideVault` for readers inside a sync transaction, which cannot await. */
 export function refuseOutsideVaultSync(vaultPath: string, relativePath: string): void {
   const resolved = resolveVaultFileSync(vaultPath, relativePath)
   if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
@@ -215,7 +216,9 @@ export async function openVaultFile(
   vaultPath: string,
   relativePath: string
 ): Promise<FileHandle | null> {
-  await refuseOutsideVault(vaultPath, relativePath)
+  if ((await resolveVaultFile(vaultPath, relativePath)).kind === 'outside') {
+    throw new OutsideVaultError(relativePath)
+  }
   const joined = path.join(vaultPath, relativePath)
   const handle = await open(joined, openFlags(), OPEN_MODE).catch((err: NodeJS.ErrnoException) => {
     if (err.code === 'ENOENT') return null
@@ -258,6 +261,31 @@ export function openVaultFileSync(vaultPath: string, relativePath: string): numb
   }
   closeSync(fd)
   throw new OutsideVaultError(relativePath)
+}
+
+/** A vault file's text read through `openVaultFile`'s handle, or null when it is missing. */
+export async function readVaultFile(
+  vaultPath: string,
+  relativePath: string
+): Promise<string | null> {
+  const handle = await openVaultFile(vaultPath, relativePath)
+  if (handle === null) return null
+  try {
+    return await handle.readFile('utf-8')
+  } finally {
+    await handle.close()
+  }
+}
+
+/** `readVaultFile` for callers that cannot await. */
+export function readVaultFileSync(vaultPath: string, relativePath: string): string | null {
+  const fd = openVaultFileSync(vaultPath, relativePath)
+  if (fd === null) return null
+  try {
+    return readFileSync(fd, 'utf-8')
+  } finally {
+    closeSync(fd)
+  }
 }
 
 function attempt<T>(read: () => T): T | null {

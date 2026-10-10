@@ -115,18 +115,19 @@ describe('migrateTemplateFilesToDb', () => {
     expect(getSetting(testDb.db as never, 'templates.importedFromFiles')).toBe('1')
   })
 
-  it('does not read built-in files it is only going to discard', () => {
-    writeTemplateFile('blank', { id: 'blank', name: 'Blank Note', isBuiltIn: true }, '')
-    writeTemplateFile('keep', { id: 'keep', name: 'Keep', isBuiltIn: false }, 'body')
+  // An unreadable file fails the read and holds the one-shot flag back, so the
+  // flag landing proves the built-in file was never opened.
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'does not read built-in files it is only going to discard',
+    () => {
+      writeTemplateFile('blank', { id: 'blank', name: 'Blank Note', isBuiltIn: true }, '')
+      writeTemplateFile('keep', { id: 'keep', name: 'Keep', isBuiltIn: false }, 'body')
+      fs.chmodSync(path.join(vaultPath, '.memry', 'templates', 'blank.md'), 0o000)
 
-    const readSpy = vi.spyOn(fs, 'readFileSync')
-    expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
-
-    const readFiles = readSpy.mock.calls.map(([p]) => path.basename(String(p)))
-    expect(readFiles).toContain('keep.md')
-    expect(readFiles).not.toContain('blank.md')
-    readSpy.mockRestore()
-  })
+      expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
+      expect(getSetting(testDb.db as never, 'templates.importedFromFiles')).toBe('1')
+    }
+  )
 
   it('skips unparseable files without aborting the migration', () => {
     const dir = path.join(vaultPath, '.memry', 'templates')

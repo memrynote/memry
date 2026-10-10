@@ -44,6 +44,14 @@ const h = vi.hoisted(() => ({
   failNextRead: false
 }))
 
+async function readMockFile(absolute: string): Promise<string | null> {
+  if (h.failNextRead) {
+    h.failNextRead = false
+    throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
+  }
+  return h.files.get(absolute) ?? null
+}
+
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', getVersion: () => '0.0.0' },
   BrowserWindow: { fromId: () => null, getAllWindows: () => [] }
@@ -86,18 +94,16 @@ vi.mock('../vault/notes', async () => {
   }
 })
 vi.mock('../vault/file-ops', () => ({
-  safeRead: async (absolute: string) => {
-    if (h.failNextRead) {
-      h.failNextRead = false
-      throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
-    }
-    return h.files.get(absolute) ?? null
-  },
+  safeRead: readMockFile,
   atomicWrite: async (absolute: string, content: string) => {
     h.files.set(absolute, content)
   },
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn()
+}))
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  readVaultFile: (_vault: string, relative: string) => readMockFile(`/vault/${relative}`)
 }))
 vi.mock('../vault/journal', () => ({
   getJournalPath: (date: string) => `/vault/journal/${date}.md`

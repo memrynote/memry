@@ -8,7 +8,6 @@
  * @module vault/journal
  */
 
-import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
@@ -19,7 +18,7 @@ import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './f
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { OutsideVaultError, VaultError, VaultErrorCode } from '../lib/errors'
-import { refuseOutsideVaultSync, resolveVaultFile } from '../lib/paths'
+import { readVaultFileSync, resolveVaultFile } from '../lib/paths'
 import {
   generateJournalId,
   calculateActivityLevel,
@@ -248,13 +247,11 @@ async function readJournalText(date: string): Promise<string | null> {
 }
 
 /**
- * The entry file's text for the sync paths, which cannot await. Throws ENOENT
- * for a missing file, as `fs.readFileSync` does, and `OutsideVaultError` for a
- * file linked outside the vault.
+ * The entry file's text for the sync paths, which cannot await, or null for a
+ * missing file. Throws `OutsideVaultError` for a file linked outside the vault.
  */
-export function readJournalTextSync(date: string): string {
-  refuseOutsideVaultSync(getVaultPath(), getContentStore().getJournalRelativePath(date))
-  return fs.readFileSync(getJournalPath(date), 'utf-8')
+export function readJournalTextSync(date: string): string | null {
+  return readVaultFileSync(getVaultPath(), getContentStore().getJournalRelativePath(date))
 }
 
 /**

@@ -20,12 +20,10 @@ vi.mock('../../database', () => ({
   getRawIndexDatabase
 }))
 
-vi.mock('fs/promises', () => ({
-  default: { readFile },
-  readFile
+vi.mock('../../lib/paths', () => ({
+  readVaultFile: (vault: string, relativePath: string) =>
+    readFile(`${vault}/${relativePath}`, 'utf-8')
 }))
-
-vi.mock('../../lib/paths', () => ({ refuseOutsideVault: async () => undefined }))
 
 vi.mock('@main/database/queries/settings', () => ({
   getSetting,

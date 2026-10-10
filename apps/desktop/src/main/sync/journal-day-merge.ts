@@ -288,7 +288,8 @@ export function fallbackClientId(foreignId: string, deviceId: string): number {
 
 export function readDayBody(date: string): string | null {
   try {
-    return parseJournalEntry(readJournalTextSync(date), date).content
+    const raw = readJournalTextSync(date)
+    return raw === null ? null : parseJournalEntry(raw, date).content
   } catch (error) {
     log.warn('Could not read a journal day file', { date, error })
     return null

@@ -59,7 +59,9 @@ vi.mock('../vault/notes-io', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: vi.fn((p: string) => `/vault/${p}`)
 }))
-vi.mock('../lib/paths', () => ({ refuseOutsideVault: async () => undefined }))
+vi.mock('../lib/paths', () => ({
+  readVaultFile: async (_vault: string, p: string) => files.get(`/vault/${p}`) ?? null
+}))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))

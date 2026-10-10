@@ -13,8 +13,6 @@
  * next open.
  */
 
-import { readFile } from 'fs/promises'
-import path from 'path'
 import { blankMarkdownCode } from '@memry/shared/markdown-code'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import {
@@ -26,7 +24,7 @@ import { getSetting, setSetting } from '@main/database/queries/settings'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { parseNote } from './frontmatter'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import type { DataDb, IndexDb } from '../database'
 
 const logger = createLogger('CodeLinkReindex')
@@ -72,10 +70,10 @@ async function rewriteCodeLinks(input: CodeLinkReindexInput): Promise<number | n
     const before = getNoteCacheById(indexDb, noteId)
     if (!before) continue
 
-    let raw: string
+    let raw: string | null
     try {
-      await refuseOutsideVault(vaultPath, before.path)
-      raw = await readFile(path.join(vaultPath, before.path), 'utf-8')
+      raw = await readVaultFile(vaultPath, before.path)
+      if (raw === null) throw new Error(`Note file is missing: ${before.path}`)
     } catch (error) {
       logger.warn('Skipping note, file unreadable', { noteId, error })
       continue

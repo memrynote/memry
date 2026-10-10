@@ -69,6 +69,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
     let properties: Record<string, unknown> | null = null
     try {
       const raw = readJournalTextSync(date)
+      if (raw === null) throw new Error(`Journal file is missing: ${date}`)
       const parsed = parseJournalEntry(raw, date)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
