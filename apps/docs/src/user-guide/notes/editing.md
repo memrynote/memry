@@ -647,7 +647,7 @@ for other notes that use an attachment, opening a canvas, and reading text from 
 file, reading text from an image, showing an image to an agent, uploading a file for sync, the canvas
 index that is rebuilt when a vault opens, and the canvas shapes library also hold when the file is swapped for such a link while Memry is checking it: they act on
 the file they opened and checked, not whatever the path points to a moment later. An embedded image,
-PDF, audio or video file that is such a link does not display, also when it is swapped for one while
+PDF, audio, video or HTML file that is such a link does not display, also when it is swapped for one while
 Memry is checking it. The link stays as you made it. A symlink to another file inside the vault works
 as usual.
 
