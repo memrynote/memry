@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const logError = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/logger', () => ({ createLogger: () => ({ error: logError }) }))
 
 import {
   appendMemryFileBlocks,
@@ -72,5 +75,32 @@ describe('memry-file blocks', () => {
       PROMPT_FILES_MAX_BYTES - 5
     )
     expect(result).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  describe('when the file cannot be read', () => {
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('refuses with read_failed, not not_text, and logs the error with the file', async () => {
+      const failure = new DOMException('The file could not be read.', 'NotReadableError')
+      class FailingReader {
+        error: DOMException | null = null
+        onload: (() => void) | null = null
+        onerror: (() => void) | null = null
+        readAsArrayBuffer(): void {
+          this.error = failure
+          queueMicrotask(() => this.onerror?.())
+        }
+      }
+      vi.stubGlobal('FileReader', FailingReader)
+
+      const result = await readPromptFile(textFile('app.log', 'ERROR boom'), 0)
+
+      expect(result).toEqual({ ok: false, reason: 'read_failed' })
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to read attached file',
+        expect.objectContaining({ name: 'app.log', bytes: 10 }),
+        expect.objectContaining({ cause: failure })
+      )
+    })
   })
 })
