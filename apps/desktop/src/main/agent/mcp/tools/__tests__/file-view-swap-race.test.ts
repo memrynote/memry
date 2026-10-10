@@ -36,7 +36,7 @@ describe('vault_view_file against an image swapped for an outside link (#3098)',
     fileRow: () => ({ id: 'shot', path: 'Screens/login.png', title: 'login', fileType: 'image' }),
     prepareImage: async (source: ViewImageSource) => {
       // Whatever the image worker would decode: the bytes it was handed, or the file it opens.
-      const bytes = 'path' in source ? fs.readFileSync(source.path as string) : source.data
+      const bytes = source.data
       seen.push(Buffer.from(bytes).toString('utf8'))
       return {
         data: new Uint8Array([1]),

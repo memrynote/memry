@@ -16,7 +16,7 @@ describe('OCR reader', () => {
   it('reads the text of an image file with the English data shipped in the app', async () => {
     const reader = createOcrReader(ENGLISH)
 
-    const text = await reader.read({ kind: 'file', path: FIXTURE })
+    const text = await reader.read({ data: fs.readFileSync(FIXTURE) })
 
     expect(text.trim()).toBe('Heron count at dawn')
   }, 30_000)
@@ -26,14 +26,14 @@ describe('OCR reader', () => {
     const notAnImage = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-ocr-')), 'x.png')
     fs.writeFileSync(notAnImage, 'not an image')
 
-    await expect(reader.read({ kind: 'file', path: notAnImage })).rejects.toThrow()
-    const text = await reader.read({ kind: 'png', data: new Uint8Array(fs.readFileSync(FIXTURE)) })
+    await expect(reader.read({ data: fs.readFileSync(notAnImage) })).rejects.toThrow()
+    const text = await reader.read({ data: new Uint8Array(fs.readFileSync(FIXTURE)) })
 
     expect(text.trim()).toBe('Heron count at dawn')
   }, 30_000)
 
   it('reads a small image at twice its size, grey and without transparency', async () => {
-    const png = await toOcrPng({ kind: 'file', path: FIXTURE })
+    const png = await toOcrPng({ data: fs.readFileSync(FIXTURE) })
 
     expect(await sharp(png).metadata()).toMatchObject({
       width: 1440,
@@ -50,7 +50,7 @@ describe('OCR reader', () => {
       .png()
       .toBuffer()
 
-    const png = await toOcrPng({ kind: 'png', data: new Uint8Array(huge) })
+    const png = await toOcrPng({ data: new Uint8Array(huge) })
 
     expect(await sharp(png).metadata()).toMatchObject({ width: 4000, height: 2000 })
   })

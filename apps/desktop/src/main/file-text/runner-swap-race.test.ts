@@ -66,10 +66,7 @@ describe('the file text runner against files swapped for outside links (#3095)',
       appVersion: '1.0.0',
       getDb: () => db,
       // Whatever OCR would read: the bytes it was handed, or the file it opens.
-      recognize: async (source) =>
-        Buffer.from(
-          'path' in source ? fs.readFileSync(source.path as string) : source.data
-        ).toString('utf8'),
+      recognize: async (source) => Buffer.from(source.data).toString('utf8'),
       ocrLanguages: () => ['eng'],
       openPdf: async () => {
         throw new Error('no pdf')

@@ -63,7 +63,7 @@ vi.mock('./ocr-languages', () => ({ ocrLanguageSet: () => languageSet.current })
 
 import { recognizeText, stopOcr } from './ocr-engine'
 
-const source = { kind: 'file', path: '/vault/scan.png' } as const
+const source = { data: Uint8Array.of(7) }
 
 describe('OCR engine', () => {
   afterEach(() => {
@@ -75,9 +75,7 @@ describe('OCR engine', () => {
 
   it('answers with the text the worker read, from one worker for every request', async () => {
     await expect(recognizeText(source)).resolves.toBe('Heron count')
-    await expect(recognizeText({ kind: 'png', data: Uint8Array.of(1) })).resolves.toBe(
-      'Heron count'
-    )
+    await expect(recognizeText({ data: Uint8Array.of(1) })).resolves.toBe('Heron count')
 
     expect(workers).toHaveLength(1)
   })

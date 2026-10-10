@@ -219,6 +219,7 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   if (attachmentService) return attachmentService
 
   attachmentService = new AttachmentSyncService({
+    getVaultPath: () => getVaultStatus().path,
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
     getVaultKey: async () => {

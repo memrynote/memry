@@ -34,7 +34,7 @@ vi.mock('./ocr-reader', () => ({
     reads.languages = languages
     return {
       read: async (source: OcrImageSource) => {
-        if (source.kind === 'file' && source.path.endsWith('.txt')) {
+        if (new TextDecoder().decode(source.data) === 'not an image') {
           throw new Error('Input file contains unsupported image format')
         }
         return 'Heron count'
@@ -81,8 +81,12 @@ describe('OCR worker', () => {
   })
 
   it('answers a request with the text read, or with the reason it failed', async () => {
-    send({ type: 'recognize', requestId: 1, source: { kind: 'file', path: '/vault/a.png' } })
-    send({ type: 'recognize', requestId: 2, source: { kind: 'file', path: '/vault/b.txt' } })
+    send({ type: 'recognize', requestId: 1, source: { data: Uint8Array.of(1, 2, 3) } })
+    send({
+      type: 'recognize',
+      requestId: 2,
+      source: { data: new TextEncoder().encode('not an image') }
+    })
 
     await expect(replyTo(1)).resolves.toEqual({
       type: 'recognized',

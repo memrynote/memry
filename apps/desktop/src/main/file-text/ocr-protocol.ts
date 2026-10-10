@@ -9,8 +9,14 @@ export interface OcrLanguageSet {
   downloadDir: string
 }
 
-/** An image file on disk, or a PNG rendered from a PDF page. */
-export type OcrImageSource = { kind: 'file'; path: string } | { kind: 'png'; data: Uint8Array }
+/**
+ * Image bytes: a vault image read in the main process through the file it
+ * checked, or a PNG rendered from a PDF page. Never a path, which the worker
+ * would open by name after the check.
+ */
+export interface OcrImageSource {
+  data: Uint8Array
+}
 
 export type OcrMainToWorkerMessage =
   { type: 'recognize'; requestId: number; source: OcrImageSource } | { type: 'shutdown' }

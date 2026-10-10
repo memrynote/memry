@@ -54,6 +54,7 @@ import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import type { DataDb } from '../database'
+import { OutsideVaultError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
@@ -74,8 +75,8 @@ import {
   folderOfCanvasPath,
   listCanvasFiles,
   portableCanvasFolder,
-  readCanvasFileSync,
   readCanvasMeta,
+  readCanvasVaultFileSync,
   removeCanvasFolderDirIfEmpty,
   resolveCanvasFile,
   stripCanvasMeta,
@@ -86,6 +87,17 @@ import { releaseRemovedCanvasPaths } from './store'
 import { getLegacyCanvasVaultKey } from './vault-key'
 
 const log = createLogger('CanvasReconcile')
+
+/** A canvas document's text, or null when it is missing or links outside the vault. */
+function readInsideCanvasFile(vaultPath: string, filePath: string): string | null {
+  try {
+    return readCanvasVaultFileSync(vaultPath, filePath)
+  } catch (err) {
+    if (!(err instanceof OutsideVaultError)) throw err
+    log.warn('Skipping a canvas document that links outside the vault', { filePath })
+    return null
+  }
+}
 
 export interface CanvasReconcileResult {
   migrated: number
@@ -506,7 +518,7 @@ export async function reconcileCanvasFiles(
 
   for (const filePath of canvasFilesOnDisk) {
     if (knownPaths.has(canvasPathKey(filePath))) continue
-    const content = readCanvasFileSync(resolveCanvasFile(vaultPath, filePath))
+    const content = readInsideCanvasFile(vaultPath, filePath)
     if (content === null) continue
 
     const meta = readCanvasMeta(content)
@@ -766,7 +778,7 @@ export async function reconcileCanvasFiles(
   db.transaction((tx) => {
     for (const row of currentPaths) {
       if (!row.filePath) continue
-      const content = readCanvasFileSync(resolveCanvasFile(vaultPath, row.filePath))
+      const content = readInsideCanvasFile(vaultPath, row.filePath)
       if (content === null) {
         result.missingFiles += 1
         continue

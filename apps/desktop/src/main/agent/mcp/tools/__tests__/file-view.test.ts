@@ -22,6 +22,8 @@ const ROWS = {
   legacy: { id: 'legacy', path: 'Notes/old.md', title: 'Old', fileType: null }
 } as const
 
+const RENDERED_PAGE = new Uint8Array([1, 2, 3])
+
 let vault: string
 let prepared: Array<{ source: ViewImageSource; maxEdge: number }>
 let rendered: Array<{ page: number; maxEdge: number }>
@@ -34,7 +36,7 @@ function pdf(pageCount: number): PdfDocument {
     pageText: async () => '',
     renderPage: async (page, maxEdge) => {
       rendered.push({ page, maxEdge })
-      return { png: new Uint8Array([1, 2, 3]), width: 1210, height: 1568 }
+      return { png: RENDERED_PAGE, width: 1210, height: 1568 }
     },
     close: async () => {
       closed += 1
@@ -48,7 +50,7 @@ function deps(overrides: Partial<FileViewDeps> = {}): FileViewDeps {
     fileRow: (id) => (ROWS as Record<string, FileViewRow>)[id],
     prepareImage: async (source, maxEdge) => {
       prepared.push({ source, maxEdge })
-      return source.kind === 'png'
+      return Buffer.from(source.data).equals(Buffer.from(RENDERED_PAGE))
         ? {
             data: new Uint8Array([9, 9]),
             mimeType: 'image/png',
@@ -116,7 +118,7 @@ describe('viewVaultFile', () => {
 
     expect(prepared).toEqual([
       {
-        source: { kind: 'file', path: path.join(vault, 'Screens/login.png') },
+        source: { data: fs.readFileSync(path.join(vault, 'Screens/login.png')) },
         maxEdge: VIEW_IMAGE_MAX_EDGE
       }
     ])
@@ -148,9 +150,7 @@ describe('viewVaultFile', () => {
       { path: path.join(vault, 'Scans/contract.pdf'), size: 'pdf-bytes'.length }
     ])
     expect(rendered).toEqual([{ page: 2, maxEdge: VIEW_IMAGE_MAX_EDGE }])
-    expect(prepared).toEqual([
-      { source: { kind: 'png', data: new Uint8Array([1, 2, 3]) }, maxEdge: VIEW_IMAGE_MAX_EDGE }
-    ])
+    expect(prepared).toEqual([{ source: { data: RENDERED_PAGE }, maxEdge: VIEW_IMAGE_MAX_EDGE }])
     expect(closed).toBe(1)
     expect(result.reply).toEqual({
       id: 'scan',
@@ -186,8 +186,7 @@ describe('viewVaultFile', () => {
     const page = await viewVaultFile(deps(), { id: 'note', attachment: 'receipt.pdf' })
 
     expect(prepared[0]?.source).toEqual({
-      kind: 'file',
-      path: path.join(vault, 'attachments/note/photo.jpg')
+      data: fs.readFileSync(path.join(vault, 'attachments/note/photo.jpg'))
     })
     expect(image.reply).toMatchObject({
       id: 'note',
@@ -335,8 +334,7 @@ describe('viewVaultFile', () => {
       const result = await viewVaultFile(deps(), { id: 'note', attachment: 'alias.png' })
 
       expect(prepared[0]?.source).toEqual({
-        kind: 'file',
-        path: path.join(vault, 'Screens/login.png')
+        data: fs.readFileSync(path.join(vault, 'Screens/login.png'))
       })
       expect(result.reply).toMatchObject({ file: 'attachments/note/alias.png' })
     })

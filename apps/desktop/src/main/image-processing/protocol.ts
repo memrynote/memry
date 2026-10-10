@@ -17,8 +17,14 @@ export interface InboxImageProcessingPayload {
   thumbnailData: Uint8Array | null
 }
 
-/** A file on disk, or PNG bytes such as a rendered PDF page. */
-export type ViewImageSource = { kind: 'file'; path: string } | { kind: 'png'; data: Uint8Array }
+/**
+ * Image bytes: a vault image read in the main process through the file it
+ * checked, or a rendered PDF page. Never a path, which the worker would open by
+ * name after the check.
+ */
+export interface ViewImageSource {
+  data: Uint8Array
+}
 
 /** An image an agent can look at, and the size of the image it came from. */
 export interface ViewImagePayload {

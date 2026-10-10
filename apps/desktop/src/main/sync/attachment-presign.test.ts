@@ -138,6 +138,7 @@ describe('direct-to-R2 attachment transfers (#1836)', () => {
     fetchFn: ReturnType<typeof createRecordingFetch>,
     overrides?: Partial<AttachmentSyncDeps>
   ): AttachmentSyncDeps => ({
+    getVaultPath: () => tmpDir,
     getAccessToken: vi.fn().mockResolvedValue('test-token'),
     getVaultKey: vi.fn().mockResolvedValue(generateFileKey()),
     getSigningKeys: vi.fn().mockResolvedValue(null),

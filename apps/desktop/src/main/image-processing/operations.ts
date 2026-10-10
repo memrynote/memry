@@ -80,7 +80,7 @@ export async function prepareViewImage(
   maxEdge: number
 ): Promise<ViewImagePayload> {
   const sharp = await loadSharp()
-  const input = source.kind === 'file' ? source.path : Buffer.from(source.data)
+  const input = Buffer.from(source.data)
   const upright = sharp(input).rotate()
   const metadata = await upright.metadata()
   if (!metadata.width || !metadata.height) throw new Error('The file has no image size')

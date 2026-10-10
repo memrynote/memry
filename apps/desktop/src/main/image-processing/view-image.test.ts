@@ -39,7 +39,7 @@ describe('prepareViewImage', () => {
   it('downscales a large image so its long edge is 1568 px and reports the source size', async () => {
     const file = await writePng('wide.png', 3136, 2000)
 
-    const result = await prepareViewImage({ kind: 'file', path: file }, MAX_EDGE)
+    const result = await prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)
 
     expect(result).toMatchObject({
       mimeType: 'image/png',
@@ -54,7 +54,7 @@ describe('prepareViewImage', () => {
   it('keeps a small image at its own size', async () => {
     const file = await writePng('small.png', 400, 300)
 
-    const result = await prepareViewImage({ kind: 'file', path: file }, MAX_EDGE)
+    const result = await prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)
 
     expect(result).toMatchObject({ width: 400, height: 300, sourceWidth: 400, sourceHeight: 300 })
   })
@@ -66,7 +66,7 @@ describe('prepareViewImage', () => {
       .withMetadata({ orientation: 6 })
       .toFile(file)
 
-    const result = await prepareViewImage({ kind: 'file', path: file }, MAX_EDGE)
+    const result = await prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)
 
     expect(result).toMatchObject({
       width: 784,
@@ -84,7 +84,7 @@ describe('prepareViewImage', () => {
       .png()
       .toBuffer()
 
-    const result = await prepareViewImage({ kind: 'png', data: noise }, MAX_EDGE)
+    const result = await prepareViewImage({ data: noise }, MAX_EDGE)
 
     expect(result.mimeType).toBe('image/jpeg')
     expect(result.data.byteLength).toBeLessThan(noise.byteLength)
@@ -98,7 +98,7 @@ describe('prepareViewImage', () => {
       .png()
       .toBuffer()
 
-    const result = await prepareViewImage({ kind: 'png', data: png }, MAX_EDGE)
+    const result = await prepareViewImage({ data: png }, MAX_EDGE)
 
     expect(result).toMatchObject({ mimeType: 'image/png', width: 1200, height: 1553 })
   })
@@ -107,6 +107,6 @@ describe('prepareViewImage', () => {
     const file = path.join(dir, 'broken.png')
     fs.writeFileSync(file, 'not an image')
 
-    await expect(prepareViewImage({ kind: 'file', path: file }, MAX_EDGE)).rejects.toThrow()
+    await expect(prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)).rejects.toThrow()
   })
 })
