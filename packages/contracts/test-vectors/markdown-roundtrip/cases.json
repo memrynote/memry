@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 168,
+    "exportedCaseCount": 171,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 178,
+    "caseCount": 181,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1170,6 +1170,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "ea239176f6eb4470b2efc038ee21fd362eec02f5ab1bf06c98c8273c96ae06ea"
+    },
+    {
+      "name": "code span with a leading space after a cell break (BBF-90)",
+      "markdown": "| h |\n| - |\n| a<br>` x` |",
+      "canonical": "| h      |\n| ------ |\n| a ` x` |",
+      "pending": null,
+      "sha256": "ec640c131a85ba0922d3b317bc879f03f6546fe7d9b0e23544f5ede41c982c8f"
+    },
+    {
+      "name": "code span with two inner spaces in a cell (BBF-90)",
+      "markdown": "| h        |\n| -------- |\n| `a  b` c |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "871759214166a2c27102e5ae78c4807386bf9d9baa39021c2dc962c90c5ecf83"
+    },
+    {
+      "name": "code span with a trailing space in a cell (BBF-90)",
+      "markdown": "| h      |\n| ------ |\n| `x ` b |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "33684f5b3474c71db4876658eba6f11090159af8748697eee1645d64c1e6dd5b"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",

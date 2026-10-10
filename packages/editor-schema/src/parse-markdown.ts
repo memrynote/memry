@@ -13,6 +13,7 @@ import {
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
 import { restoreDetailsMarkup } from './blocks/markdown'
+import { maskCellCodeSpaces, restoreCellCodeSpaces } from './inline/cell-code-spaces'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 
@@ -106,6 +107,8 @@ interface Masks {
   breaks: string[]
   /** The `((…))` payloads, by placeholder index. */
   tokens: string[]
+  /** The whitespace masked in table-cell code spans, by placeholder index. */
+  spaces: string[]
 }
 
 /**
@@ -138,7 +141,10 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
-    run.text = restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens)
+    run.text = restoreCellCodeSpaces(
+      restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
+      masks.spaces
+    )
   }
 }
 
@@ -262,7 +268,9 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const { markdown: masked, breaks } = maskHardBreaks(source)
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
-  const { markdown: withTokensMasked, tokens } = maskInlineTokens(masked)
+  const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
+  // A table cell collapses the whitespace in its code spans.
+  const { markdown: withTokensMasked, spaces } = maskCellCodeSpaces(tokensMasked)
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
   // nothing but the lifted images, and a note with none keeps the direct call.
@@ -272,6 +280,6 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const parsed = (await (lifted === null
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(lifted))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens })
+  repairBlocks(parsed, { breaks, tokens, spaces })
   return parsed as T[]
 }
