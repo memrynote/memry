@@ -252,19 +252,23 @@ else `\n` — and `hadTrailingNewline`, and **never trims the body**
 
 ### 12.4.2 The preservation rule
 
-**Normative** (`packages/app-core/src/markdown.ts:54-74`):
+**Normative** (`packages/app-core/src/markdown.ts:46-77`):
 
 - unless the frontmatter was edited, **the original raw block is re-emitted
-  verbatim** (`:86-88`), which is what preserves comments, key order, quoting, CR
+  verbatim** (`:64-66`), which is what preserves comments, key order, quoting, CR
   bytes and the BOM;
-- if the body is unchanged **it too is emitted verbatim** (`:90-92`);
+- if the body is unchanged **it too is emitted verbatim** (`:68-70`);
 - an edited body has its EOLs converted to the file's dominant EOL and the file's
-  final-newline presence re-applied (`:94-96`). **Per-line EOL preservation is
-  out of scope by design** (`:75-76`).
+  final-newline presence re-applied (`:72-73`). **Per-line EOL preservation is
+  out of scope by design** (`:50-52`);
+- when the written file has a frontmatter block, **the blank lines the file had
+  between the block and the body are kept byte for byte**, and the edited body's
+  own leading blank lines are dropped (`:74-76`). A file with none gets none, so
+  the separator never changes on a save.
 
 New files are written **LF only with a single trailing newline**, and user
 content never flows through `matter.stringify`
-(`packages/app-core/src/markdown.ts:104-115`).
+(`packages/app-core/src/markdown.ts:117-130`).
 
 ### 12.4.3 The decision: the only guarantee is the verbatim path
 
@@ -280,7 +284,7 @@ all.**
 The regenerated order is a composition of JavaScript semantics and js-yaml
 defaults, **not a policy**: `stringifyFrontmatterBlock` drops `undefined`, emits
 `''` for zero keys, and hands the object to `matter.stringify`
-(`packages/app-core/src/markdown.ts:102-111`); gray-matter 4.0.3 does
+(`packages/app-core/src/markdown.ts:103-115`); gray-matter 4.0.3 does
 `Object.assign({}, file.data, data)` and calls `yaml.safeDump`; js-yaml 3.15.1
 defaults are `sortKeys: false`, `lineWidth: 80`, `noCompatMode: false`.
 
@@ -291,7 +295,7 @@ Per path:
 | CRDT write-back   | `{ ...existing }`, and `merged.tags = yjsTags` only when there is no file yet (`apps/desktop/src/main/sync/crdt-writeback.ts:1052-1063`) — existing keys hold position and an existing file keeps its own `tags:`. Journal `{ ...existing, date }` (`:966`) still takes a non-empty array                                   |
 | remote tags       | assignment or `delete` in place (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:357-361`, `:404-408`)                                                                                                                                                                                                            |
 | remote properties | `replacePropertiesOnRoot` normalises, deletes every property key, then re-adds them in the **record's** order (`apps/desktop/src/main/vault/frontmatter.ts:414-434`, `:438-449`, `:452-461`). **Editing one property moves every property to the end of the block.**                                                        |
-| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:107-115`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
+| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:121-130`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
 
 **Value re-spelling is part of the same loss.** `parseNote` uses js-yaml
 `safeLoad`, so `date: 2026-07-05` becomes a `Date`

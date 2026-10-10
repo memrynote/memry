@@ -49,7 +49,9 @@ export interface SerializeParsedOptions {
  * parsed.content`) is emitted verbatim, an unedited frontmatter block is the
  * raw original substring. An edited body gets its EOLs converted to the
  * file's dominant EOL and the file's final-newline presence re-applied
- * (per-line EOL preservation is out of scope by design).
+ * (per-line EOL preservation is out of scope by design). The blank lines the
+ * file had between its frontmatter block and its body are kept as they were:
+ * an edited body comes back from the editor without them.
  */
 export function serializeParsedMarkdownNote(
   parsed: Pick<
@@ -69,7 +71,9 @@ export function serializeParsedMarkdownNote(
 
   let body = stripTrailingNewlines(content.replace(/\r?\n/g, parsed.eol))
   if (parsed.hadTrailingNewline) body += parsed.eol
-  return block + body
+  if (block === '') return body
+  const separator = /^(?:\r?\n)*/.exec(parsed.content)![0]
+  return block + separator + body.replace(/^(?:\r?\n)+/, '')
 }
 
 /** Linear-time trailing-newline strip (no backtracking-prone regex). */
