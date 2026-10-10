@@ -1,7 +1,6 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The seam: right after the outside-vault check resolves the requested file,
@@ -21,12 +20,6 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 
-// Electron's file:// fetch, which reads by name.
-vi.mock('electron', () => ({
-  net: {
-    fetch: async (url: string) => new Response(fs.readFileSync(fileURLToPath(url)))
-  }
-}))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: () => undefined }))
 
 import { serveMemryFile } from './memry-file-protocol'
@@ -40,7 +33,7 @@ describe('memry-file:// (#3112)', () => {
   let outside: string
   let secret: string
 
-  const get = (file: string, headers: Record<string, string> = {}): Promise<Response> =>
+  const get = (file: string, headers: HeadersInit = {}): Promise<Response> =>
     serveMemryFile(new Request(toMemryFileUrl(file), { headers }), userData, [vault, null])
 
   const text = async (response: Response): Promise<string> =>
@@ -77,6 +70,10 @@ describe('memry-file:// (#3112)', () => {
     expect(range.status).toBe(206)
     expect(range.headers.get('Content-Range')).toBe('bytes 5-8/15')
     expect(await text(range)).toBe('0123')
+
+    const tail = await get(file, { Range: 'bytes=11-' })
+    expect(tail.headers.get('Content-Range')).toBe('bytes 11-14/15')
+    expect(await text(tail)).toBe('6789')
   })
 
   it('serves a userData file', async () => {
@@ -85,6 +82,16 @@ describe('memry-file:// (#3112)', () => {
     const response = await get(file)
     expect(response.status).toBe(200)
     expect(await text(response)).toBe('png bytes')
+  })
+
+  it('serves a path from another device and a renamed attachment', async () => {
+    write('attachments/n1/abc123-photo.png', 'png bytes')
+
+    const remapped = await get('/Users/other/vault/attachments/n1/abc123-photo.png')
+    expect(await text(remapped)).toBe('png bytes')
+
+    const healed = await get(path.join(vault, 'attachments/n1/abc123-old-name.png'))
+    expect(await text(healed)).toBe('png bytes')
   })
 
   it('answers a missing image with the blank png and a missing pdf with 404', async () => {
@@ -99,7 +106,7 @@ describe('memry-file:// (#3112)', () => {
     fs.mkdirSync(path.dirname(link), { recursive: true })
     fs.symlinkSync(secret, link)
 
-    for (const headers of [{}, { Range: 'bytes=0-6' }]) {
+    for (const headers of [{}, { Range: 'bytes=0-6' }] as HeadersInit[]) {
       const response = await get(link, headers)
       expect(response.status).toBe(403)
       expect(await text(response)).not.toContain('outside')
@@ -107,7 +114,7 @@ describe('memry-file:// (#3112)', () => {
   })
 
   it.skipIf(isWindows)('refuses a file swapped for an outside link after the check', async () => {
-    for (const headers of [{}, { Range: 'bytes=0-6' }]) {
+    for (const headers of [{}, { Range: 'bytes=0-6' }] as HeadersInit[]) {
       const file = write('attachments/n1/scan.pdf', '%PDF-inside')
       race.target = file
       race.swap = () => {

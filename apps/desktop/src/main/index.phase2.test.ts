@@ -92,8 +92,7 @@ const sendAppNavigationSwipeCommandMock = vi.fn()
 const isDevMock = { dev: false }
 const existsSyncMock = vi.fn(() => false)
 const readdirSyncMock = vi.fn(() => [])
-const statSyncMock = vi.fn(() => ({ size: 10 }))
-const createReadStreamMock = vi.fn()
+const serveMemryFileMock = vi.fn(async () => new Response('file'))
 const webRequestOnHeadersReceivedMock = vi.fn()
 const webRequestOnBeforeSendHeadersMock = vi.fn()
 const protocolHandleMock = vi.fn()
@@ -108,7 +107,6 @@ const globalShortcutRegisterMock = vi.fn(() => true)
 const globalShortcutUnregisterMock = vi.fn()
 const globalShortcutUnregisterAllMock = vi.fn()
 const menuSetApplicationMenuMock = vi.fn()
-const netFetchMock = vi.fn(async () => new Response('file'))
 const createCloseSnapshotMock = vi.fn(async (_noteId: string) => false)
 const disableConsoleTransportMock = vi.fn()
 const applyPackagedLogLevelsMock = vi.fn()
@@ -376,9 +374,11 @@ vi.mock('./app-identity', () => ({
 
 vi.mock('node:fs', () => ({
   existsSync: existsSyncMock,
-  readdirSync: readdirSyncMock,
-  statSync: statSyncMock,
-  createReadStream: createReadStreamMock
+  readdirSync: readdirSyncMock
+}))
+
+vi.mock('./lib/memry-file-protocol', () => ({
+  serveMemryFile: serveMemryFileMock
 }))
 
 vi.mock('@electron-toolkit/utils', () => ({
@@ -416,9 +416,6 @@ vi.mock('electron', () => ({
   protocol: {
     registerSchemesAsPrivileged: protocolRegisterSchemesMock,
     handle: protocolHandleMock
-  },
-  net: {
-    fetch: netFetchMock
   },
   crashReporter: {
     start: crashReporterStartMock
@@ -555,7 +552,6 @@ describe('main index phase2 exports', () => {
     createCloseSnapshotMock.mockResolvedValue(false)
     existsSyncMock.mockReturnValue(false)
     readdirSyncMock.mockReturnValue([])
-    statSyncMock.mockReturnValue({ size: 10 })
     BrowserWindowMock.getAllWindows.mockImplementation(() => browserWindows)
     BrowserWindowMock.getFocusedWindow.mockImplementation(() => browserWindows[0] ?? null)
     process.env = { ...ORIGINAL_ENV }
@@ -1214,77 +1210,9 @@ describe('main index phase2 exports', () => {
     })
   })
 
-  it('serves memry-file protocol only from allowed paths', async () => {
-    whenReadyMock.mockResolvedValue(undefined)
-
-    await importMainModule()
-    await flushReadyWork()
-
-    const protocolHandler = protocolHandleMock.mock.calls
-      .find(([scheme]) => scheme === 'memry-file')
-      ?.at(1) as (request: Request) => Promise<Response>
-    expect(protocolHandler).toBeTypeOf('function')
-
-    const blocked = await protocolHandler(new Request('memry-file://local/tmp/secret.txt'))
-    expect(blocked.status).toBe(403)
-
-    const missingImage = await protocolHandler(
-      new Request('memry-file://local/mock/userData/thumb.png')
-    )
-    expect(missingImage.status).toBe(200)
-    expect(missingImage.headers.get('Content-Type')).toBe('image/png')
-
-    const missingText = await protocolHandler(
-      new Request('memry-file://local/mock/userData/missing.txt')
-    )
-    expect(missingText.status).toBe(404)
-  })
-
-  it('serves existing memry-file requests with full and ranged responses', async () => {
-    whenReadyMock.mockResolvedValue(undefined)
-    existsSyncMock.mockReturnValue(true)
-    statSyncMock.mockReturnValue({ size: 10 })
-    createReadStreamMock.mockReturnValue([Buffer.from('range')])
-
-    await importMainModule()
-    await flushReadyWork()
-
-    const protocolHandler = protocolHandleMock.mock.calls
-      .find(([scheme]) => scheme === 'memry-file')
-      ?.at(1) as (request: Request) => Promise<Response>
-
-    const full = await protocolHandler(new Request('memry-file://local/mock/userData/file.txt'))
-    expect(full.status).toBe(200)
-    expect(netFetchMock).toHaveBeenCalledWith('file:///mock/userData/file.txt')
-
-    const ranged = await protocolHandler(
-      new Request('memry-file://local/mock/userData/audio.mp3', {
-        headers: { Range: 'bytes=2-6' }
-      })
-    )
-    expect(ranged.status).toBe(206)
-    expect(ranged.headers.get('Content-Range')).toBe('bytes 2-6/10')
-    expect(await ranged.text()).toBe('range')
-    expect(createReadStreamMock).toHaveBeenCalledWith('/mock/userData/audio.mp3', {
-      start: 2,
-      end: 6
-    })
-
-    statSyncMock.mockImplementationOnce(() => {
-      throw new Error('stat failed')
-    })
-    const statFailed = await protocolHandler(
-      new Request('memry-file://local/mock/userData/broken.txt')
-    )
-    expect(statFailed.status).toBe(404)
-  })
-
-  it('serves memry-file paths with the vault allow-list and open-ended ranges', async () => {
+  it('serves memry-file requests with userData and the vault paths', async () => {
     whenReadyMock.mockResolvedValue(undefined)
     getCurrentVaultPathMock.mockReturnValue('/vault')
-    existsSyncMock.mockReturnValue(true)
-    statSyncMock.mockReturnValue({ size: 10 })
-    createReadStreamMock.mockReturnValue([Buffer.from('tail')])
 
     await importMainModule()
     await flushReadyWork()
@@ -1292,18 +1220,9 @@ describe('main index phase2 exports', () => {
     const protocolHandler = protocolHandleMock.mock.calls
       .find(([scheme]) => scheme === 'memry-file')
       ?.at(1) as (request: Request) => Promise<Response>
-
-    const allowed = await protocolHandler(
-      new Request('memry-file://local/vault/media/audio.mp3', {
-        headers: { Range: 'bytes=4-' }
-      })
-    )
-
-    expect(allowed.status).toBe(206)
-    expect(createReadStreamMock).toHaveBeenCalledWith('/vault/media/audio.mp3', {
-      start: 4,
-      end: 9
-    })
+    const request = new Request('memry-file://local/vault/media/audio.mp3')
+    expect(await (await protocolHandler(request)).text()).toBe('file')
+    expect(serveMemryFileMock).toHaveBeenCalledWith(request, '/mock/userData', ['/vault', null])
   })
 
   it('applies CSP only to app-owned pages', async () => {
