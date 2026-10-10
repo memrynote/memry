@@ -961,7 +961,9 @@ is that nothing is _lost_ on the way through:
   break stays a break rather than becoming a paragraph gap, in a quote or list item too. A line
   ending in a backslash is saved the same way. A `<br>` inside a paragraph is saved
   as a line ending in two spaces, so it stays a line break in other Markdown apps too. A
-  heading is one line, so the line under it is its own paragraph.
+  heading is one line, so the line under it is its own paragraph. A hard break inside link text
+  ends the link there and starts it again on the next line, both halves pointing at the same
+  address.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.
