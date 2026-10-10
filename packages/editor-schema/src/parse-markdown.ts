@@ -67,6 +67,10 @@ const BREAK_ARTIFACT = /\n[^\S\n]/g
  * with a real space (`**bold** tail` gives `" tail"`), and a fenced block's
  * first line may be indented on purpose. A block's first run may not: every
  * markdown block grammar eats its own leading whitespace.
+ *
+ * A later run that follows a run ending in a newline opens a line too, so it
+ * gets the same strip (BBF-76): `**a**\nc` parses as bold `a\n` and ` c`, and
+ * each write-back added one more space before `c`.
  */
 const LEADING_BREAK_ARTIFACT = /^[^\S\n]/
 
@@ -116,12 +120,15 @@ function unmaskRun(text: string, code: boolean, breaks: string[]): string {
 function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
   for (const [index, run] of runs.entries()) {
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
+    // CommonMark keeps a code span's one-sided leading space: it is the author's.
+    const codeSpan = (run as StyledRun).styles?.code === true
+    const opensLine = index === 0 || (!codeSpan && runs[index - 1]?.text?.endsWith('\n') === true)
     // A newline followed by a space is the parser's artifact in prose and the
     // author's own indentation in a code block, so the strip is prose-only.
     let stripped = run.text
     if (!code) {
       stripped = stripped.replace(BREAK_ARTIFACT, '\n')
-      if (index === 0) stripped = stripped.replace(LEADING_BREAK_ARTIFACT, '')
+      if (opensLine) stripped = stripped.replace(LEADING_BREAK_ARTIFACT, '')
     }
     // Unmask after stripping, never before: the token sits directly against
     // the newline it marks, and the phantom space lands between the two.
@@ -136,7 +143,7 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
 }
 
 interface StyledRun extends InlineRun {
-  styles?: unknown
+  styles?: { code?: boolean }
   content?: unknown
 }
 

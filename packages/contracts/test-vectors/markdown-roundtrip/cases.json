@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 155,
+    "exportedCaseCount": 157,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 165,
+    "caseCount": 167,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1079,6 +1079,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "7fc4e05ba8436951df79cdd1388cc242d8dbba82bac051f33247f55ac64b8468"
+    },
+    {
+      "name": "comment after a hard break after bold (BBF-76)",
+      "markdown": "**a**<br><!-- b --> c",
+      "canonical": "**a**\n<!-- b --> c",
+      "pending": null,
+      "sha256": "3d0118e42225ee23f1a08ed6e48424af2bd6529b513d9769410ed90b34b0709e"
+    },
+    {
+      "name": "code span with a leading space after a hard break (BBF-76)",
+      "markdown": "a  \n` x` y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ea239176f6eb4470b2efc038ee21fd362eec02f5ab1bf06c98c8273c96ae06ea"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",
