@@ -52,7 +52,7 @@ pub(super) fn inline_content(
     let mut html = parse_inline(&chars)?;
     normalize_whitespace(&mut html);
     let mut nodes = Vec::new();
-    flatten(&html, &SeedMarks::default(), &mut nodes);
+    flatten(&html, &SeedMarks::default(), false, &mut nodes);
     let mut runs = to_runs(nodes);
     repair(&mut runs, breaks);
     Ok(expand(runs))
@@ -311,9 +311,28 @@ enum PmNode {
     Break,
 }
 
+/// The CommonMark code span for `code`: a fence no backtick run in it
+/// matches, padded when needed (`link-code-spans.ts` `codeSpan`).
+fn code_span(code: &str) -> String {
+    let mut fence = "`".to_owned();
+    while code.split(|c| c != '`').any(|run| run.len() == fence.len()) {
+        fence.push('`');
+    }
+    let pad = code.chars().any(|c| c != ' ')
+        && ((code.starts_with(' ') && code.ends_with(' '))
+            || code.starts_with('`')
+            || code.ends_with('`'));
+    if pad {
+        format!("{fence} {code} {fence}")
+    } else {
+        format!("{fence}{code}{fence}")
+    }
+}
+
 /// Stage 3a: ProseMirror's marks. A code mark excludes every other mark, the
-/// way tiptap's `Code` declares `excludes: "_"`.
-fn flatten(nodes: &[Html], marks: &SeedMarks, out: &mut Vec<PmNode>) {
+/// way tiptap's `Code` declares `excludes: "_"`, so a code span inside a link
+/// is the link's own text with its backticks (desktop's `linkCodeAsText`).
+fn flatten(nodes: &[Html], marks: &SeedMarks, in_link: bool, out: &mut Vec<PmNode>) {
     for node in nodes {
         match node {
             Html::Text(text) if !text.is_empty() => {
@@ -321,6 +340,7 @@ fn flatten(nodes: &[Html], marks: &SeedMarks, out: &mut Vec<PmNode>) {
             }
             Html::Text(_) => {}
             Html::Br => out.push(PmNode::Break),
+            Html::Code(code) if in_link => out.push(PmNode::Text(code_span(code), marks.clone())),
             Html::Code(code) => {
                 if !code.is_empty() {
                     let code_only = SeedMarks {
@@ -339,14 +359,14 @@ fn flatten(nodes: &[Html], marks: &SeedMarks, out: &mut Vec<PmNode>) {
                         Tag::Del => inner.strike = true,
                     }
                 }
-                flatten(children, &inner, out);
+                flatten(children, &inner, in_link, out);
             }
             Html::Link { href, children } => {
                 let mut inner = marks.clone();
                 if !href.is_empty() && allowed_href(href) && !inner.code {
                     inner.link = Some(href.clone());
                 }
-                flatten(children, &inner, out);
+                flatten(children, &inner, true, out);
             }
         }
     }
