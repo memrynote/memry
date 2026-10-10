@@ -41,11 +41,13 @@ async function walkFolders(
   const folders: string[] = []
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue
-    const relative = normalizePath(path.join(current, entry.name))
+    // Walk the raw name: on POSIX a folder may be named `a\b`, which desktop reports as `a/b`.
+    const fsRelative = path.join(current, entry.name)
+    const relative = normalizePath(fsRelative)
     // Both hiding rules cover whole subtrees, so a hidden folder's children are skipped too.
     if (!isListed(relative)) continue
     folders.push(relative)
-    folders.push(...(await walkFolders(root, isListed, relative)))
+    folders.push(...(await walkFolders(root, isListed, fsRelative)))
   }
   return folders
 }

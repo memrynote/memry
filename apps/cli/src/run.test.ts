@@ -2618,3 +2618,24 @@ test('runs core commands against a vault and prints JSON output', async () => {
 
   assert.deepEqual(stderr, [])
 })
+
+test(
+  'folders list reports a folder named with a backslash like desktop does',
+  { skip: process.platform === 'win32' && 'backslash is a path separator on Windows' },
+  async () => {
+    const vaultPath = await makeVault()
+    await fs.mkdir(path.join(vaultPath, 'a\\b', 'c'), { recursive: true })
+    const stdout: string[] = []
+    const stderr: string[] = []
+
+    const code = await runCli(['--vault', vaultPath, '--json', 'folders', 'list'], {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    })
+
+    assert.equal(code, 0, stderr.join('\n'))
+    const paths = (JSON.parse(stdout.at(-1) ?? '[]') as Array<{ path: string }>).map((f) => f.path)
+    assert.ok(paths.includes('a/b'), JSON.stringify(paths))
+    assert.ok(paths.includes('a/b/c'), JSON.stringify(paths))
+  }
+)
