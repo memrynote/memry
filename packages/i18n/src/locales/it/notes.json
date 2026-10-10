@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Elimina anche l'attività contenuta} other {Elimina anche le # attività contenute}}",
     "description": "{count, plural, one {Se lasci la casella deselezionata, resta in Attività.} other {Se lasci la casella deselezionata, restano in Attività.}}",
-    "failed": "Impossibile eliminare le attività. Sono ancora nella pagina Attività."
+    "failed": "Impossibile eliminare le attività. Sono ancora nella pagina Attività.",
+    "checkFailed": "Impossibile controllare le attività all’interno. Quelle presenti resteranno in Attività."
   },
   "cover": {
     "add": "Aggiungi copertina",

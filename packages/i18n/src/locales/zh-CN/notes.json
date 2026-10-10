@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, other {同时删除其中的 # 个任务}}",
     "description": "{count, plural, other {不勾选则保留在任务中。}}",
-    "failed": "无法删除这些任务，它们仍保留在任务中。"
+    "failed": "无法删除这些任务，它们仍保留在任务中。",
+    "checkFailed": "无法检查其中的任务。如有任务，将保留在“任务”中。"
   },
   "cover": {
     "add": "添加封面",

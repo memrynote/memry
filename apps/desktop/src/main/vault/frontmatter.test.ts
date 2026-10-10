@@ -5,6 +5,7 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
+  serializeUpdatedNote,
   validateNoteId,
   extractTitleFromPath,
   extractTags,
@@ -151,6 +152,30 @@ describe('frontmatter serialization', () => {
     expect(output).toMatch(/^status: active$/m)
     expect(output).toMatch(/^owner: Kaan$/m)
     expect(output).not.toMatch(/^properties:/m)
+  })
+})
+
+describe('the separator between frontmatter and body (BBF-77)', () => {
+  // The editor hands back a body with no leading blank line, whatever the file had.
+  const cases = [
+    ['LF blank line', '---\nkind: x\n---\n\nbody\n', '---\nkind: x\n---\n\nbody!\n'],
+    [
+      'CRLF blank line',
+      '---\r\nkind: x\r\n---\r\n\r\nbody\r\n',
+      '---\r\nkind: x\r\n---\r\n\r\nbody!\r\n'
+    ],
+    ['no blank line', '---\nkind: x\n---\nbody\n', '---\nkind: x\n---\nbody!\n']
+  ] as const
+
+  it.each(cases)('%s survives a body edit', (_name, raw, expected) => {
+    const parsed = parseNote(raw, '/vault/Note.md')
+    expect(serializeParsedNote(parsed, 'body!\n', { frontmatterEdited: false })).toBe(expected)
+  })
+
+  it.each(cases)('%s survives a frontmatter edit with a body edit', (_name, raw, expected) => {
+    const parsed = parseNote(raw, '/vault/Note.md')
+    const out = serializeUpdatedNote(parsed, { kind: 'z' }, 'body!\n', { frontmatterEdited: true })
+    expect(out).toBe(expected.replace('kind: x', 'kind: z'))
   })
 })
 

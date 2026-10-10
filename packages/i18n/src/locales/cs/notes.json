@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Smazat i úkol v poznámce} few {Smazat i # úkoly v poznámce} other {Smazat i # úkolů v poznámce}}",
     "description": "{count, plural, one {Pokud políčko nezaškrtnete, úkol zůstane v úkolech.} few {Pokud políčko nezaškrtnete, úkoly zůstanou v úkolech.} other {Pokud políčko nezaškrtnete, úkoly zůstanou v úkolech.}}",
-    "failed": "Úkoly se nepodařilo smazat. Zůstávají v úkolech."
+    "failed": "Úkoly se nepodařilo smazat. Zůstávají v úkolech.",
+    "checkFailed": "Nepodařilo se zkontrolovat úkoly uvnitř. Případné úkoly zůstanou v Úkolech."
   },
   "cover": {
     "add": "Přidat obálku",

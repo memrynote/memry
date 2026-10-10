@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Tanggalin din ang gawain sa loob} other {Tanggalin din ang # gawain sa loob}}",
     "description": "{count, plural, one {Kapag hindi naka-check, mananatili ito sa Mga gawain.} other {Kapag hindi naka-check, mananatili ang mga ito sa Mga gawain.}}",
-    "failed": "Hindi matanggal ang mga gawain. Nasa Mga gawain pa rin ang mga ito."
+    "failed": "Hindi matanggal ang mga gawain. Nasa Mga gawain pa rin ang mga ito.",
+    "checkFailed": "Hindi masuri kung may mga gawain sa loob. Mananatili sa Mga Gawain ang anumang naroon."
   },
   "cover": {
     "add": "Magdagdag ng cover",

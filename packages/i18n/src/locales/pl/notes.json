@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Usuń też zadanie z tej notatki} few {Usuń też # zadania z tej notatki} many {Usuń też # zadań z tej notatki} other {Usuń też # zadania z tej notatki}}",
     "description": "{count, plural, one {Jeśli tego nie zaznaczysz, zadanie pozostanie w Zadaniach.} few {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.} many {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.} other {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.}}",
-    "failed": "Nie udało się usunąć zadań. Nadal są w Zadaniach."
+    "failed": "Nie udało się usunąć zadań. Nadal są w Zadaniach.",
+    "checkFailed": "Nie udało się sprawdzić zadań w środku. Ewentualne zadania zostaną w Zadaniach."
   },
   "cover": {
     "add": "Dodaj okładkę",

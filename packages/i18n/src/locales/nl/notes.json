@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Ook de taak in deze notitie verwijderen} other {Ook de # taken in deze notitie verwijderen}}",
     "description": "{count, plural, one {Als je dit niet aanvinkt, blijft de taak in Taken.} other {Als je dit niet aanvinkt, blijven de taken in Taken.}}",
-    "failed": "Kan de taken niet verwijderen. Ze staan nog in Taken."
+    "failed": "Kan de taken niet verwijderen. Ze staan nog in Taken.",
+    "checkFailed": "Kon niet controleren op taken erin. Eventuele taken blijven in Taken."
   },
   "cover": {
     "add": "Omslag toevoegen",

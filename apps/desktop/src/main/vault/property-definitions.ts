@@ -22,6 +22,7 @@ import {
   readPropertyDefinitionRow
 } from './property-definition-sync-effects'
 import { eq, isNotNull } from 'drizzle-orm'
+import { retypeIndexedProperties } from './property-type-reindex'
 
 const logger = createLogger('PropertyDefinitions')
 
@@ -105,7 +106,7 @@ export class PropertyDefinitionsService {
       this.unparsed.clear()
       this.fileUnreadable = false
       const gained = this.mergeDatabaseDefinitions(includeUnclocked)
-      this.rebuildDbCache()
+      await this.rebuildDbCache()
       if (gained) await this.persistToFile()
       return true
     }
@@ -129,7 +130,7 @@ export class PropertyDefinitionsService {
       this.applyParsedData({ properties: parsed.valid })
       const healed = parsed.healed
       const gained = this.mergeDatabaseDefinitions(includeUnclocked)
-      this.rebuildDbCache()
+      await this.rebuildDbCache()
       // A definition that arrived over sync exists only as a data DB row until
       // this write. `applyParsedData` above clears the cache from the file, so
       // without the union plus this persist the very next pull would rebuild
@@ -252,7 +253,7 @@ export class PropertyDefinitionsService {
     await this.enqueueWrite(async () => {
       this.cache.set(normalized.name, normalized)
       await this.persistToFile()
-      this.rebuildDbCache()
+      await this.rebuildDbCache()
       enqueuePropertyDefinitionUpsert(normalized.name)
     })
   }
@@ -262,7 +263,7 @@ export class PropertyDefinitionsService {
     await this.enqueueWrite(async () => {
       this.cache.delete(name)
       await this.persistToFile()
-      this.rebuildDbCache()
+      await this.rebuildDbCache()
       // The row is gone by now, so the tombstone has to carry the copy taken
       // before the rebuild — a delete with no payload has no clock, and peers
       // treat a clockless tombstone as older than what they hold and skip it.
@@ -282,7 +283,7 @@ export class PropertyDefinitionsService {
         this.cache.set(name, { ...existing, showOnCalendar: false })
       }
       await this.persistToFile()
-      this.rebuildDbCache()
+      await this.rebuildDbCache()
       if (this.cache.has(name)) enqueuePropertyDefinitionUpsert(name)
       else enqueuePropertyDefinitionDelete(name, null)
     })
@@ -456,13 +457,33 @@ export class PropertyDefinitionsService {
     return matter.stringify('', { properties })
   }
 
-  private rebuildDbCache(): void {
+  private async rebuildDbCache(): Promise<void> {
+    let retype: string[]
     try {
       this.rebuildSingleDbCache(getDatabase())
-      this.rebuildSingleDbCache(getIndexDatabase())
+      const indexDb = getIndexDatabase()
+      const before = new Map(
+        indexDb
+          .select({ name: propertyDefinitionsTable.name, type: propertyDefinitionsTable.type })
+          .from(propertyDefinitionsTable)
+          .all()
+          .map((row) => [row.name, row.type])
+      )
+      this.rebuildSingleDbCache(indexDb)
       logger.debug('Rebuilt DB cache with', this.cache.size, 'definitions')
+      // Names new to the index have no rows typed under an older definition.
+      retype = [...before]
+        .filter(([name, type]) => this.cache.get(name)?.type !== type)
+        .map(([name]) => name)
     } catch (err) {
       logger.warn('Failed to rebuild property definitions DB cache:', err)
+      return
+    }
+    if (retype.length === 0) return
+    try {
+      await retypeIndexedProperties(getIndexDatabase(), this.vaultPath, retype)
+    } catch (err) {
+      logger.warn('Failed to re-type indexed property rows:', { names: retype, err })
     }
   }
 
