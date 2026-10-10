@@ -783,6 +783,7 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '`a` **x** `c`'
   },
   { name: 'bold run past a link (BBF-62)', markdown: '**[a](https://example.com) x c**' },
+  { name: 'link with italic text inside bold (BBF-71)', markdown: '**[a *b*](https://e.com) c**' },
   {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
