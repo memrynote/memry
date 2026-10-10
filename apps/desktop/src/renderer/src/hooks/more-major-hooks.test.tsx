@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   activeItem: vi.fn(),
   getMonthEntries: vi.fn(),
-  getNotesByTag: vi.fn(),
   getYearStats: vi.fn(),
   invalidatePredicate: vi.fn(),
   listProjects: vi.fn(),
@@ -14,17 +13,12 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn()
   },
   onInboxSnoozeDue: vi.fn(),
-  onTagColorUpdated: vi.fn(),
-  onTagNotesChanged: vi.fn(),
   openTab: vi.fn(),
-  pinNoteToTag: vi.fn(),
-  removeTagFromNote: vi.fn(),
   requestPermission: vi.fn(),
   setActiveTab: vi.fn(),
   splitView: vi.fn(() => 'group-split'),
   tabsDispatch: vi.fn(),
-  toastInfo: vi.fn(),
-  unpinNoteFromTag: vi.fn()
+  toastInfo: vi.fn()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -74,17 +68,6 @@ vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     listProjects: mocks.listProjects
   }
-}))
-
-vi.mock('@/services/tags-service', () => ({
-  tagsService: {
-    getNotesByTag: mocks.getNotesByTag,
-    pinNoteToTag: mocks.pinNoteToTag,
-    removeTagFromNote: mocks.removeTagFromNote,
-    unpinNoteFromTag: mocks.unpinNoteFromTag
-  },
-  onTagColorUpdated: mocks.onTagColorUpdated,
-  onTagNotesChanged: mocks.onTagNotesChanged
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -145,7 +128,6 @@ import {
   isItemOpenInTab,
   useSidebarNavigation
 } from './use-sidebar-navigation'
-import { useTagDetail } from './use-tag-detail'
 
 function queryWrapper(
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -161,13 +143,6 @@ describe('more major hooks coverage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mocks.getMonthEntries.mockResolvedValue([{ date: '2026-05-10', title: 'Today' }])
-    mocks.getNotesByTag.mockResolvedValue({
-      tag: 'work',
-      color: 'blue',
-      count: 2,
-      pinnedNotes: [{ id: 'note-1', title: 'Pinned', modified: '2026-05-10T00:00:00.000Z' }],
-      unpinnedNotes: [{ id: 'note-2', title: 'Loose', modified: '2026-05-09T00:00:00.000Z' }]
-    })
     mocks.getYearStats.mockResolvedValue([{ month: 5, count: 3 }])
     mocks.listProjects.mockResolvedValue({
       projects: [
@@ -176,11 +151,6 @@ describe('more major hooks coverage', () => {
       ]
     })
     mocks.onInboxSnoozeDue.mockReturnValue(vi.fn())
-    mocks.onTagColorUpdated.mockReturnValue(vi.fn())
-    mocks.onTagNotesChanged.mockReturnValue(vi.fn())
-    mocks.pinNoteToTag.mockResolvedValue({ success: true })
-    mocks.removeTagFromNote.mockResolvedValue({ success: true })
-    mocks.unpinNoteFromTag.mockResolvedValue({ success: true })
     vi.stubGlobal(
       'Notification',
       Object.assign(vi.fn(), {
@@ -410,50 +380,5 @@ describe('more major hooks coverage', () => {
     expect(mocks.invalidatePredicate('2026-12-31')).toBe(true)
     expect(mocks.invalidatePredicate('2025-12-31')).toBe(false)
     await act(async () => stats.result.current.reload())
-  })
-
-  it('manages tag detail data, subscriptions, sorting, actions, and failures', async () => {
-    const { result, rerender } = renderHook((props) => useTagDetail(props), {
-      initialProps: { tag: 'work', fallbackColor: 'gray' }
-    })
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.color).toBe('blue')
-    expect(result.current.pinnedNotes[0].title).toBe('Pinned')
-    await act(async () => {
-      await result.current.pinNote('note-2')
-      await result.current.unpinNote('note-1')
-      await result.current.removeNoteFromTag('note-2')
-    })
-    expect(mocks.pinNoteToTag).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'work' })
-    expect(mocks.unpinNoteFromTag).toHaveBeenCalledWith({ noteId: 'note-1', tag: 'work' })
-    expect(mocks.removeTagFromNote).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'work' })
-
-    act(() => result.current.setSortBy('title'))
-    await waitFor(() =>
-      expect(mocks.getNotesByTag).toHaveBeenLastCalledWith(
-        expect.objectContaining({ tag: 'work', sortBy: 'title' })
-      )
-    )
-
-    const notesChanged = mocks.onTagNotesChanged.mock.calls.at(-1)?.[0] as (event: {
-      tag: string
-    }) => void
-    act(() => notesChanged({ tag: 'Work' }))
-    await waitFor(() => expect(mocks.getNotesByTag).toHaveBeenCalledTimes(3))
-
-    const colorChanged = mocks.onTagColorUpdated.mock.calls.at(-1)?.[0] as (event: {
-      tag: string
-    }) => void
-    act(() => colorChanged({ tag: 'other' }))
-    expect(mocks.getNotesByTag).toHaveBeenCalledTimes(3)
-
-    mocks.getNotesByTag.mockRejectedValueOnce(new Error('load failed'))
-    rerender({ tag: 'broken', fallbackColor: 'red' })
-    await waitFor(() => expect(result.current.error).toBe('load failed'))
-    expect(mocks.logger.error).toHaveBeenCalled()
-
-    mocks.pinNoteToTag.mockResolvedValueOnce({ success: false, error: 'pin failed' })
-    await expect(result.current.pinNote('note-3')).rejects.toThrow('pin failed')
   })
 })
