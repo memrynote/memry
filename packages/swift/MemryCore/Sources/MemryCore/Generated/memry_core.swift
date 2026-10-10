@@ -5207,9 +5207,10 @@ public protocol NotesProtocol: AnyObject, Sendable {
     /**
      * The live notes carrying one tag (N600).
      *
-     * Matched by the column's own `COLLATE NOCASE`, so a screen opened from
-     * `#café` finds a note that spelled it `#Café`. That is FR-047's
-     * "letter-case behaviour identical to desktop".
+     * Matched by the tag fold (`tag_fold`, protocol §13.7.7), so a screen
+     * opened from `#café` finds a note that spelled it `#Café`, and `#iş`
+     * finds `#İş`. That is FR-047's "letter-case behaviour identical to
+     * desktop".
      */
     func notesTagged(tag: String) throws  -> [NoteSummary]
     
@@ -5559,9 +5560,10 @@ open func metadata(id: String)throws  -> NoteMetadata?  {
     /**
      * The live notes carrying one tag (N600).
      *
-     * Matched by the column's own `COLLATE NOCASE`, so a screen opened from
-     * `#café` finds a note that spelled it `#Café`. That is FR-047's
-     * "letter-case behaviour identical to desktop".
+     * Matched by the tag fold (`tag_fold`, protocol §13.7.7), so a screen
+     * opened from `#café` finds a note that spelled it `#Café`, and `#iş`
+     * finds `#İş`. That is FR-047's "letter-case behaviour identical to
+     * desktop".
      */
 open func notesTagged(tag: String)throws  -> [NoteSummary]  {
     return try  FfiConverterSequenceTypeNoteSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -33144,7 +33146,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_metadata() != 14748) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_notes_tagged() != 9661) {
+    if (uniffi_memry_core_checksum_method_notes_notes_tagged() != 60547) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
