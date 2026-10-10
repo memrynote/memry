@@ -51,6 +51,30 @@ export function setNoteProperties(
   setPropertyRefs(db, noteId, properties)
 }
 
+/** Every indexed row of one property, with the note it belongs to. */
+export function listNotePropertyRowsByName(
+  db: IndexDb,
+  name: string
+): Array<{ noteId: string; type: string }> {
+  return db
+    .select({ noteId: noteProperties.noteId, type: noteProperties.type })
+    .from(noteProperties)
+    .where(eq(noteProperties.name, name))
+    .all()
+}
+
+export function setNotePropertyType(
+  db: IndexDb,
+  noteId: string,
+  name: string,
+  type: PropertyType
+): void {
+  db.update(noteProperties)
+    .set({ type })
+    .where(and(eq(noteProperties.noteId, noteId), eq(noteProperties.name, name)))
+    .run()
+}
+
 export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
   const results = db
     .select()
