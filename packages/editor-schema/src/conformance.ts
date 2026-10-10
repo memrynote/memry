@@ -791,6 +791,11 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '**a**\n<!-- b --> c'
   },
   {
+    // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
+    name: 'code span with a leading space after a hard break (BBF-76)',
+    markdown: 'a  \n` x` y'
+  },
+  {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
   },
