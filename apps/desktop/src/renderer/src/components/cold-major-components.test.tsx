@@ -360,7 +360,7 @@ vi.mock('@/components/ui/select', async () => {
 
 vi.mock('@/components/tasks/date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
-    <button type="button" onClick={() => onSelect(new Date('2026-05-10T00:00:00.000Z'))}>
+    <button type="button" onClick={() => onSelect(new Date(2026, 4, 10))}>
       pick date
     </button>
   )
@@ -781,9 +781,7 @@ describe('cold major renderer components', () => {
       />
     )
     fireEvent.click(screen.getByText('pick date'))
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ value: '2026-05-10T00:00:00.000Z' })
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ value: '2026-05-10' }))
 
     fireEvent.click(
       screen.getByRole('button', {
