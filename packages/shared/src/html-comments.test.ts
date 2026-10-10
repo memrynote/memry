@@ -136,6 +136,17 @@ describe('maskHtmlComments with a fence after an inline <!-- (BBF-46)', () => {
   })
 })
 
+describe('maskHtmlComments with a <!-- that never closes (BBF-101)', () => {
+  it('masks only the <!-- and leaves the text after it to the parser', () => {
+    const out = maskHtmlComments('<!-- never closes\nmore [[F]]')
+    expect(splitHtmlCommentTokens(out.split('\n')[0])).toEqual([
+      { kind: 'comment', source: '<!--' },
+      { kind: 'text', text: ' never closes' }
+    ])
+    expect(out.split('\n')[1]).toBe('more [[F]]')
+  })
+})
+
 describe('maskHtmlComments with a <!-- reopened after an HTML block ends (BBF-78)', () => {
   it('leaves the reopened <!-- as text', () => {
     const out = maskHtmlComments('<!-- a --> <!-- b\nmore [[More]]\nc -->')

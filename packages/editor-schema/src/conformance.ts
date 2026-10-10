@@ -773,6 +773,8 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '| a             | b |\n| ------------- | - |\n| 1 <!-- td --> | 2 |'
   },
   { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' },
+  { name: 'unclosed <!-- opening the note (BBF-101)', markdown: '<!-- never closes\nmore [[F]]' },
+  { name: 'unclosed <!-- after a paragraph (BBF-101)', markdown: 'Top\n\n<!-- open\n\n# Heading' },
   { name: 'comment inside bold (BBF-52)', markdown: '**a <!-- b [[Alpha]] --> c**' },
   { name: 'obsidian comment inside italic (BBF-52)', markdown: '*a %% b %% c*' },
   { name: 'italic nested in bold (BBF-62)', markdown: '**alpha *x y* omega**' },
