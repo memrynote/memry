@@ -72,6 +72,11 @@ interface IpcOrigin {
 
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
+/**
+ * An update this size or smaller holds no items and no deletes: an empty doc
+ * encodes to 2 bytes, and any struct or delete adds more than 2.
+ */
+export const EMPTY_DOC_UPDATE_BYTES = 4
 const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
@@ -1472,7 +1477,7 @@ export class CrdtProvider {
       const entry = this.docs.get(noteId)
       const base = await this.readPushBase(noteId)
       const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
-      if (state.length <= 4) {
+      if (state.length <= EMPTY_DOC_UPDATE_BYTES) {
         if (!wasOpen) await this.closeIfInactive(noteId)
         return null
       }
@@ -1532,7 +1537,7 @@ export class CrdtProvider {
     const wasOpen = this.docs.has(noteId)
     try {
       const state = Y.encodeStateAsUpdate(await this.open(noteId, undefined, { skipSeed: true }))
-      return state.length <= 4 ? null : state
+      return state.length <= EMPTY_DOC_UPDATE_BYTES ? null : state
     } finally {
       if (!wasOpen) await this.closeIfInactive(noteId)
     }
@@ -1543,7 +1548,7 @@ export class CrdtProvider {
     const wasOpen = this.docs.has(noteId)
     try {
       const doc = await this.open(noteId, undefined, { skipSeed: true })
-      return Y.encodeStateAsUpdate(doc).length > 4
+      return Y.encodeStateAsUpdate(doc).length > EMPTY_DOC_UPDATE_BYTES
     } finally {
       if (!wasOpen) await this.closeIfInactive(noteId)
     }
@@ -1589,7 +1594,7 @@ export class CrdtProvider {
     } finally {
       if (!wasOpen) await this.closeIfInactive(foreignId)
     }
-    if (state.length <= 4) return false
+    if (state.length <= EMPTY_DOC_UPDATE_BYTES) return false
 
     const doc = await this.open(targetId, undefined, { skipSeed: true })
     Y.applyUpdate(doc, state, ORIGIN_LOCAL)
@@ -1925,7 +1930,7 @@ export class CrdtProvider {
         if (this.persistence) {
           try {
             const existing = await this.persistence.getYDoc(entry.id)
-            const hasContent = Y.encodeStateAsUpdate(existing).length > 4
+            const hasContent = Y.encodeStateAsUpdate(existing).length > EMPTY_DOC_UPDATE_BYTES
             existing.destroy()
             if (hasContent) continue
           } catch (err) {

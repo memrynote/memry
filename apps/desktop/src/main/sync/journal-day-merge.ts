@@ -33,7 +33,7 @@ import { createJournalEntry } from '../journal/create-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
-import { getCrdtProvider } from './crdt-provider'
+import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
 import { getJournalSyncService } from './journal-sync'
 import { recordPendingDelete } from './pending-deletes'
 
@@ -146,9 +146,11 @@ export interface JournalDayMergeDeps {
   /** Whether `id`'s local doc holds any Yjs state. */
   hasBody: (id: string) => Promise<boolean>
   /**
-   * Whether `id` holds anything right now: its day file text, when it holds
-   * `date`, or its open doc's state. Synchronous, so no typing lands between
-   * this check and a forget's row removal (#3008).
+   * Whether `id` holds anything right now: an editor window has it open, its
+   * day file text, when it holds `date`, or its open doc's state. Synchronous,
+   * so no typing lands between this check and a forget's row removal (#3008).
+   * An open editor counts because main has not applied the edits it sent yet
+   * (#3019); they arrive before its close, on the same IPC channel.
    */
   holdsTextNow: (id: string, date: string) => boolean
   /**
@@ -345,8 +347,9 @@ export async function runJournalDayMerges(
       getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === id ? readDayBody(date) : null,
     hasBody: (id) => provider.hasDocState(id),
     holdsTextNow: (id, date) => {
+      if (provider.getOpenNoteIds({ active: true }).includes(id)) return true
       const doc = provider.getDoc(id)
-      if (doc && Y.encodeStateAsUpdate(doc).length > 4) return true
+      if (doc && Y.encodeStateAsUpdate(doc).length > EMPTY_DOC_UPDATE_BYTES) return true
       return getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === id
         ? readDayBody(date)?.trim() !== ''
         : false
