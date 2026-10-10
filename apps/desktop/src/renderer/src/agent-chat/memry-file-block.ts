@@ -12,6 +12,10 @@
  * fence. Builds without this parser show the plain fenced block.
  */
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('AgentChatFiles')
+
 export interface PromptFile {
   name: string
   bytes: number
@@ -21,7 +25,7 @@ export interface PromptFile {
 export type UserTextSegment =
   { kind: 'text'; text: string } | { kind: 'file'; name: string; bytes: number; content: string }
 
-export type PromptFileRefusal = 'unsupported_type' | 'not_text' | 'too_large'
+export type PromptFileRefusal = 'unsupported_type' | 'not_text' | 'too_large' | 'read_failed'
 
 export const PROMPT_FILES_MAX_BYTES = 100 * 1024
 export const PROMPT_FILE_EXTENSIONS = [
@@ -76,7 +80,7 @@ function readBytes(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as ArrayBuffer)
-    reader.onerror = () => reject(reader.error)
+    reader.onerror = () => reject(new Error('FileReader failed', { cause: reader.error }))
     reader.readAsArrayBuffer(file)
   })
 }
@@ -90,9 +94,16 @@ export async function readPromptFile(
     return { ok: false, reason: 'unsupported_type' }
   }
   if (usedBytes + file.size > PROMPT_FILES_MAX_BYTES) return { ok: false, reason: 'too_large' }
+  let bytes: ArrayBuffer
+  try {
+    bytes = await readBytes(file)
+  } catch (error) {
+    log.error('Failed to read attached file', { name: file.name, bytes: file.size }, error)
+    return { ok: false, reason: 'read_failed' }
+  }
   let text: string
   try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(await readBytes(file)))
+    text = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
   } catch {
     return { ok: false, reason: 'not_text' }
   }
