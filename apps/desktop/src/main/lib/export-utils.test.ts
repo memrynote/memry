@@ -49,14 +49,17 @@ describe('export-utils', () => {
     expect(html).toContain('<code>&lt;!-- kept --&gt;</code>')
   })
 
-  it('markdownToHtml keeps the HTML block a stripped comment started (BBF-87)', () => {
+  it('markdownToHtml prints the text after a comment reopened on its close line (BBF-87)', () => {
     for (const markdown of [
       '<!-- a --> <!-- b\nmore [[F]]\nc -->',
       '<!-- a\nx --> <!-- b\nmore [[F]]\nc -->'
     ]) {
       const html = markdownToHtml(markdown)
-      expect(html).toContain('<p>more <span class="wiki-link">F</span><br>c --&gt;</p>')
+      expect(html).toContain('more <span class="wiki-link">F</span><br>c --&gt;</p>')
       expect(html).not.toContain('x -->')
+      // A raw `<!-- b` would open a comment in the browser and hide the rest.
+      expect(html).toContain('&lt;!-- b')
+      expect(html).not.toContain('<!-- b')
     }
   })
 
