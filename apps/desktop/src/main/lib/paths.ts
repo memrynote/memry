@@ -1,5 +1,7 @@
-import { lstatSync, realpathSync } from 'fs'
-import { lstat, realpath } from 'fs/promises'
+import { closeSync, constants, fstatSync, lstatSync, openSync, realpathSync } from 'fs'
+import type { BigIntStats } from 'fs'
+import { lstat, open, realpath } from 'fs/promises'
+import type { FileHandle } from 'fs/promises'
 import path from 'path'
 import { OutsideVaultError } from './errors'
 
@@ -193,6 +195,67 @@ export async function refuseOutsideVault(vaultPath: string, relativePath: string
 export function refuseOutsideVaultSync(vaultPath: string, relativePath: string): void {
   const resolved = resolveVaultFileSync(vaultPath, relativePath)
   if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
+}
+
+// O_NONBLOCK keeps a FIFO named like a note from hanging the open; it is 0 on Windows.
+const OPEN_FLAGS = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)
+
+const sameFile = (a: BigIntStats, b: BigIntStats): boolean => a.dev === b.dev && a.ino === b.ino
+
+/**
+ * Opens a vault file for reading, or null when it is missing. Checking a path
+ * and then using it by name leaves a window in which the file can be swapped
+ * for a link outside the vault, so the check runs again once the file is open:
+ * the opened file must be the file the path still resolves to inside the vault,
+ * else `OutsideVaultError`. Read, stat and chmod through the returned handle.
+ */
+export async function openVaultFile(
+  vaultPath: string,
+  relativePath: string
+): Promise<FileHandle | null> {
+  await refuseOutsideVault(vaultPath, relativePath)
+  const joined = path.join(vaultPath, relativePath)
+  const handle = await open(joined, OPEN_FLAGS).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === 'ENOENT') return null
+    throw err
+  })
+  if (handle === null) return null
+  try {
+    const opened = await handle.stat({ bigint: true })
+    const now = await resolveVaultFile(vaultPath, relativePath)
+    if (now.kind === 'inside' && sameFile(opened, await lstat(now.path, { bigint: true }))) {
+      return handle
+    }
+  } catch (err) {
+    await handle.close()
+    throw err
+  }
+  await handle.close()
+  throw new OutsideVaultError(relativePath)
+}
+
+/** `openVaultFile` for callers that cannot await. Returns a file descriptor. */
+export function openVaultFileSync(vaultPath: string, relativePath: string): number | null {
+  refuseOutsideVaultSync(vaultPath, relativePath)
+  let fd: number
+  try {
+    fd = openSync(path.join(vaultPath, relativePath), OPEN_FLAGS)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw err
+  }
+  try {
+    const opened = fstatSync(fd, { bigint: true })
+    const now = resolveVaultFileSync(vaultPath, relativePath)
+    if (now.kind === 'inside' && sameFile(opened, lstatSync(now.path, { bigint: true }))) {
+      return fd
+    }
+  } catch (err) {
+    closeSync(fd)
+    throw err
+  }
+  closeSync(fd)
+  throw new OutsideVaultError(relativePath)
 }
 
 function attempt<T>(read: () => T): T | null {
