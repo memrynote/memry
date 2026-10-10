@@ -785,6 +785,12 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'bold run past a link (BBF-62)', markdown: '**[a](https://example.com) x c**' },
   { name: 'link with italic text inside bold (BBF-71)', markdown: '**[a *b*](https://e.com) c**' },
   {
+    // A `<br>` reads back as the newline a soft break also reads back as.
+    name: 'comment after a hard break after bold (BBF-76)',
+    markdown: '**a**<br><!-- b --> c',
+    canonical: '**a**\n<!-- b --> c'
+  },
+  {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
   },
