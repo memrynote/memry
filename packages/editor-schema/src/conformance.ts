@@ -857,6 +857,38 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: 'p [a](u)  \n[b](u) q'
   },
   { name: 'hard break inside image alt text (BBF-103)', markdown: '![a  \nb](i.png)' },
+  // A break in link text splits the link; marks stay whole and no space grows (BBF-104).
+  {
+    name: 'soft break inside link text (BBF-104)',
+    markdown: '[a\nb](u)',
+    canonical: '[a](u)\n[b](u)'
+  },
+  { name: 'soft break between two links (BBF-104)', markdown: '[a](u)\n[b](u)' },
+  {
+    name: 'soft break inside link text mid-paragraph (BBF-104)',
+    markdown: 'p [a\nb](u) q',
+    canonical: 'p [a](u)\n[b](u) q'
+  },
+  {
+    name: 'italic before a soft break inside link text (BBF-104)',
+    markdown: '[*a*\nb](u)',
+    canonical: '*[a](u)*\n[b](u)'
+  },
+  {
+    name: 'bold before a hard break inside link text (BBF-104)',
+    markdown: '[**a**  \nb](u)',
+    canonical: '**[a](u)**  \n[b](u)'
+  },
+  {
+    name: 'code span before a hard break inside link text (BBF-104)',
+    markdown: '[`a`  \nb](u)',
+    canonical: '[`a`](u)  \n[b](u)'
+  },
+  {
+    name: 'bold across a soft break inside link text (BBF-104)',
+    markdown: '[**a\nb**](u)',
+    canonical: '**[a](u)\n[b](u)**'
+  },
   { name: 'leading space in link text mid-line (BBF-103)', markdown: 'x [ a](u) y' },
   { name: 'leading space in link text at line start (BBF-103)', markdown: '[ a](u)' },
   { name: 'leading space in link text after a hard break (BBF-103)', markdown: 'a  \n[ b](u)' },
