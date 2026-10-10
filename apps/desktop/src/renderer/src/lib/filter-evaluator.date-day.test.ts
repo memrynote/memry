@@ -17,7 +17,7 @@ const note = (due: unknown): NoteWithProperties => ({
 
 describe('date filters compare date-only values as calendar days', () => {
   // Runs in the host zone; filter-date-compare.test.ts covers other zones.
-  // The date picker stores the picked day as local midnight in ISO form.
+  // Builds before BBF-74 stored the picked day as local midnight in ISO form; saved filters keep it.
   const picked = (day: number): string => new Date(2026, 9, day).toISOString()
 
   it('is matches the same day', () => {
@@ -50,5 +50,13 @@ describe('date filters compare date-only values as calendar days', () => {
     expect(evaluateFilter(note('2026-10-07T10:00:00Z'), 'due after "2026-10-07T09:00:00Z"')).toBe(
       true
     )
+  })
+})
+
+describe('text values compare as text', () => {
+  it('does not treat a date-like text value as a calendar day', () => {
+    expect(evaluateFilter(note('Oct 7 2026'), 'due == "2026-10-07"')).toBe(false)
+    expect(evaluateFilter(note('2026-10-07'), 'due == "Oct 7 2026"')).toBe(false)
+    expect(evaluateFilter(note('2026-10-07'), 'due != "Oct 7 2026"')).toBe(true)
   })
 })
