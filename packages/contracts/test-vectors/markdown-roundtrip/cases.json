@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 157,
+    "exportedCaseCount": 160,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 167,
+    "caseCount": 170,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1083,9 +1083,30 @@
     {
       "name": "comment after a hard break after bold (BBF-76)",
       "markdown": "**a**<br><!-- b --> c",
-      "canonical": "**a**\n<!-- b --> c",
+      "canonical": "**a**  \n<!-- b --> c",
       "pending": null,
       "sha256": "3d0118e42225ee23f1a08ed6e48424af2bd6529b513d9769410ed90b34b0709e"
+    },
+    {
+      "name": "html break inside a paragraph (BBF-85)",
+      "markdown": "a<br>c",
+      "canonical": "a  \nc",
+      "pending": null,
+      "sha256": "76860a04ebc9f27314848ab498199ca51192e2740c04c928ff6df1c7ec6b1d7a"
+    },
+    {
+      "name": "self-closing html break at a line end (BBF-85)",
+      "markdown": "a<br />\nc",
+      "canonical": "a  \nc",
+      "pending": null,
+      "sha256": "883c6c43561825378ccb6ec2e7ef08cf48977964c7dbbf2b34a9da8f958f066c"
+    },
+    {
+      "name": "html break inside a code span (BBF-85)",
+      "markdown": "`a<br>c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "46526c244bbf3bf350bbbba480d3689f679cc220208ba68d7e75e2a64d4c8ea2"
     },
     {
       "name": "code span with a leading space after a hard break (BBF-76)",

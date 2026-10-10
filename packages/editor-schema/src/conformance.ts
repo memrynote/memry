@@ -785,11 +785,18 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'bold run past a link (BBF-62)', markdown: '**[a](https://example.com) x c**' },
   { name: 'link with italic text inside bold (BBF-71)', markdown: '**[a *b*](https://e.com) c**' },
   {
-    // A `<br>` reads back as the newline a soft break also reads back as.
+    // House style spells every hard break with two trailing spaces (BBF-85).
     name: 'comment after a hard break after bold (BBF-76)',
     markdown: '**a**<br><!-- b --> c',
-    canonical: '**a**\n<!-- b --> c'
+    canonical: '**a**  \n<!-- b --> c'
   },
+  { name: 'html break inside a paragraph (BBF-85)', markdown: 'a<br>c', canonical: 'a  \nc' },
+  {
+    name: 'self-closing html break at a line end (BBF-85)',
+    markdown: 'a<br />\nc',
+    canonical: 'a  \nc'
+  },
+  { name: 'html break inside a code span (BBF-85)', markdown: '`a<br>c` d' },
   {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
     name: 'code span with a leading space after a hard break (BBF-76)',
