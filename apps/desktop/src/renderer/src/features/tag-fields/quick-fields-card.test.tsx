@@ -204,8 +204,6 @@ describe('QuickFieldsCard', () => {
         relation: { target: 'company', many: false, inverse: null }
       })
     ])
-
-    console.log(document.body.innerHTML.replace(/<svg.*?<\/svg>/g, ''))
     await userEvent.click(screen.getByRole('button', { name: 'Employer' }))
     await userEvent.click(await screen.findByRole('option', { name: /Acme/ }))
 
