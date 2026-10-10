@@ -857,7 +857,8 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: 'p [a](u)  \n[b](u) q'
   },
   { name: 'hard break inside image alt text (BBF-103)', markdown: '![a  \nb](i.png)' },
-  // Image alt text never reaches the unmask, so the tag is left alone there.
+  { name: 'leading space in link text mid-line (BBF-103)', markdown: 'x [ a](u) y' },
+  // A `<br>` in image alt text is never masked, so the tag is left alone there.
   { name: 'html break inside image alt text (BBF-85)', markdown: '![x<br>y](i.png)' },
   {
     name: 'html break in a table row with no leading pipe (BBF-85)',
