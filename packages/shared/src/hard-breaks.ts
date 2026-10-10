@@ -56,12 +56,18 @@ const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
 const HTML_BREAK_MID_LINE = /(?<!<br\s*\/?>[^\S\n]*)<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
 
 // Only a plain paragraph line. A table row is one line by grammar (a line with
-// a pipe may be one), and a hard break in a heading, quote or list item does
-// not survive the write-back on any spelling, so there the tag keeps the soft
-// break it parsed to before. A lazy line continues the block above it.
+// a pipe may be one), and a heading is one line too. In a quote or list item
+// the tag keeps the soft break it parsed to before BBF-85. A lazy line
+// continues the block above it.
 const NOT_PARAGRAPH_LINE = /^(?:[ \t]|[>#]|[-*+][ \t]|\d+[.)][ \t])|\|/
 
 const LINK_SYNTAX = /[[\]]|<a\b/i
+
+const LIST_ITEM_START = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
+
+// A line that opens a block of its own rather than continuing a paragraph.
+const BLOCK_START =
+  /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|>|#{1,6}(?:[ \t]|$)|\||```|~~~|(?:[-*_=][ \t]*){3,}$)/
 
 export interface MaskedHardBreaks {
   markdown: string
@@ -99,10 +105,14 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
 
   const lines = text.split('\n')
   let inOtherBlock = false
+  let inListItem = false
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]
     if (line.trim() === '') inOtherBlock = false
     else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
+    if (line.trim() === '') inListItem = false
+    else if (LIST_ITEM_START.test(line)) inListItem = true
+    else if (BLOCK_START.test(line)) inListItem = false
     // Link and image text and URLs never reach the unmask, so a line with any
     // link syntax keeps its tags as they were rather than risk a token in the file.
     if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
@@ -124,6 +134,15 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       breaks.push(spelling)
       return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
     })
+    // BlockNote's parser turns a list item's continuation line into a child
+    // paragraph, or ends the list on a lazy one, so the break is lost (BBF-99).
+    // Joined with the `<br>` the item parses to instead, the token lands
+    // against that newline; the joined line is scanned again for its own break.
+    if (inListItem && !BLOCK_START.test(lines[index + 1])) {
+      lines[index] += `<br>${lines[index + 1].trimStart()}`
+      lines.splice(index + 1, 1)
+      index--
+    }
   }
   return lines.join('\n')
 }

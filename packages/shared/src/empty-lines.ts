@@ -345,7 +345,9 @@ export function normalizeSerializedMarkdown(markdown: string): string {
 // one. Collapsing both to a plain newline turned an author's `<br>` into a
 // paragraph gap (#1909). Three or more in a row have no spelling inside a
 // paragraph — a second blank-ish line ends it — so those keep the old collapse.
-const BACKSLASH_BREAK_RUN = /(?:\\\n)+/g
+// Inside a quote or list item each break line carries the block's prefix
+// (`> ` or the item indent), which the run keeps (BBF-99).
+const BACKSLASH_BREAK_RUN = /(?:\\\n([^\S\n]*(?:>[^\S\n]?)*))+/g
 const HARD_BREAK = '  \n'
 
 /** A line that opens a table row. Its cells may not span more than one line. */
@@ -383,12 +385,39 @@ function joinBrokenTableRows(lines: string[]): string[] {
   return out
 }
 
+const LIST_ITEM_PREFIX = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/
+
+/**
+ * Indent the line a hard break inside a list item continues onto (BBF-99).
+ * The serializer writes it flush left, a lazy spelling the item's own indent
+ * replaces, so `- a  \n  b` comes back as written.
+ */
+function indentListItemBreaks(lines: string[]): string[] {
+  let indent = ''
+  return lines.map((line, index) => {
+    const item = LIST_ITEM_PREFIX.exec(line)
+    if (item) {
+      indent = ' '.repeat(item[0].length)
+      return line
+    }
+    if (!indent || !lines[index - 1]?.endsWith('\\')) {
+      indent = ''
+      return line
+    }
+    // Only after a hard break's lone `\` line: a soft break keeps the lazy
+    // spelling, which the parser reads the same way it did before.
+    const afterHardBreak = lines[index - 1].trim() === '\\' && lines[index - 2]?.endsWith('\\')
+    return afterHardBreak && !/^\s/.test(line) ? indent + line : line
+  })
+}
+
 function normalizeProseMarkdown(text: string): string {
-  const lines = joinBrokenTableRows(text.split('\n'))
+  const lines = indentListItemBreaks(joinBrokenTableRows(text.split('\n')))
     .join('\n')
-    .replace(BACKSLASH_BREAK_RUN, (run) =>
-      run.length === 4 ? HARD_BREAK : '\n'.repeat(run.length / 2)
-    )
+    .replace(BACKSLASH_BREAK_RUN, (run, prefix: string) => {
+      const count = run.split('\n').length - 1
+      return count === 2 ? HARD_BREAK + prefix : `\n${prefix}`.repeat(count)
+    })
     .split('\n')
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {

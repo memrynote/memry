@@ -806,8 +806,7 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
   {
-    // A hard break in a quote does not survive on any spelling yet, so the tag
-    // keeps the soft break it always parsed to.
+    // In a quote the tag keeps the soft break it always parsed to.
     name: 'html break inside a quote stays soft (BBF-85)',
     markdown: '> a<br>b',
     canonical: '> a\n> b'
@@ -830,6 +829,13 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '- a  \nb',
     canonical: '- a  \n  b'
   },
+  {
+    name: 'hard breaks in an ordered list item (BBF-99)',
+    markdown: '1. a  \n   b\\\n   c',
+    canonical: '1. a  \n   b  \n   c'
+  },
+  { name: 'soft break in a list item next to a hard one (BBF-99)', markdown: '- a  \n  b\n- c' },
+  { name: 'hard break in a nested list item (BBF-99)', markdown: '- a\n  - b  \n    c' },
   {
     // An ATX heading is one line, so the next line is a paragraph of its own.
     name: 'trailing spaces on a heading (BBF-99)',
