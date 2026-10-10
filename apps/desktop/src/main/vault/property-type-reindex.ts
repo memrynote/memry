@@ -10,8 +10,6 @@
  * not, and the index stores both as the same string.
  */
 
-import { readFile } from 'fs/promises'
-import path from 'path'
 import {
   getNoteCacheById,
   getPropertyType,
@@ -19,7 +17,7 @@ import {
   setNotePropertyType
 } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
-import { refuseOutsideVault } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
 import { extractProperties, parseNote } from './frontmatter'
 import { inferPropertyType } from './property-type'
 import type { IndexDb } from '../database'
@@ -38,10 +36,10 @@ export async function retypeIndexedProperties(
       const before = getNoteCacheById(db, row.noteId)
       if (!before) continue
 
-      let raw: string
+      let raw: string | null
       try {
-        await refuseOutsideVault(vaultPath, before.path)
-        raw = await readFile(path.join(vaultPath, before.path), 'utf-8')
+        raw = await readVaultFile(vaultPath, before.path)
+        if (raw === null) throw new Error('Note file missing')
       } catch (error) {
         logger.warn('Skipping note, file unreadable', { noteId: row.noteId, error })
         continue
