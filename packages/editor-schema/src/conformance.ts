@@ -831,6 +831,12 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: 'a  \n` x` y'
   },
   {
+    // The cell break collapses to a space; the code span keeps its own leading space.
+    name: 'code span with a leading space after a cell break (BBF-90)',
+    markdown: '| h |\n| - |\n| a<br>` x` |',
+    canonical: '| h      |\n| ------ |\n| a ` x` |'
+  },
+  {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
   },
