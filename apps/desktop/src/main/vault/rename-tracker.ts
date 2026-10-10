@@ -48,11 +48,22 @@ interface PendingDelete {
   timestamp: number
   /**
    * Timeout handle for processing real delete. Null for a deferred delete,
-   * which waits for `settleDeferredDeletes` instead of a clock.
+   * which waits for `settleDeferredDeletes` on its batch instead of a clock.
    */
   timeout: NodeJS.Timeout | null
   /** Callback to execute if this is a real delete (not a rename) */
   onRealDelete: () => Promise<void>
+}
+
+/**
+ * The deferred deletes one rescan tracked, in tracking order. Settling a batch
+ * settles only its own deletes, so overlapping rescans never settle each
+ * other's while the other is still adding files.
+ */
+export type DeferredDeletes = Set<PendingDelete>
+
+export function createDeferredDeletes(): DeferredDeletes {
+  return new Set()
 }
 
 export interface RenameMatch {
@@ -154,9 +165,10 @@ function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDel
  * @param onRealDelete - Callback to execute if this is a real delete
  * @param statKey - Size + mtime of the deleted file, for a row that has no
  *   cached content hash yet. Ignored when a hash is available.
- * @param deferred - Arm no window. A caller that knows every add up front (a
- *   rescan) adds them all, then settles the unmatched with
- *   `settleDeferredDeletes`, so a slow batch of adds cannot outlast a clock.
+ * @param deferred - Arm no window and record the delete in this batch. A
+ *   caller that knows every add up front (a rescan) adds them all, then
+ *   settles the batch's unmatched deletes with `settleDeferredDeletes`, so a
+ *   slow batch of adds cannot outlast a clock.
  */
 export function trackPendingDelete(
   id: string,
@@ -164,7 +176,7 @@ export function trackPendingDelete(
   relativePath: string,
   onRealDelete: () => Promise<void>,
   statKey?: string | null,
-  deferred = false
+  deferred: DeferredDeletes | null = null
 ): void {
   // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
@@ -188,6 +200,7 @@ export function trackPendingDelete(
     onRealDelete
   }
 
+  deferred?.add(entry)
   addToIndex(pendingDeletes, contentHash, entry)
   if (entry.statKey !== null) addToIndex(pendingDeletesByStat, entry.statKey, entry)
 }
@@ -260,15 +273,15 @@ export function clearAllPendingDeletes(): void {
 }
 
 /**
- * Process every deferred delete no add has claimed as a real delete, in the
- * order they were tracked.
+ * Process the batch's deferred deletes that are still pending as real
+ * deletes, in the order they were tracked. One an add claimed, or a later
+ * track of the same id replaced, is no longer pending and is skipped.
  */
-export async function settleDeferredDeletes(): Promise<void> {
-  const unmatched = new Set<PendingDelete>()
-  for (const bucket of pendingDeletes.values()) {
-    for (const pending of bucket) if (pending.timeout === null) unmatched.add(pending)
-  }
+export async function settleDeferredDeletes(batch: DeferredDeletes): Promise<void> {
+  const unmatched = [...batch]
+  batch.clear()
   for (const pending of unmatched) {
+    if (!pendingDeletes.get(pending.contentHash)?.includes(pending)) continue
     removePending(pending)
     logger.debug(`No rename detected for ${pending.id}, processing as delete`)
     await pending.onRealDelete()

@@ -19,6 +19,17 @@ const baseMessage = (overrides: Partial<Message>): Message => ({
 })
 
 describe('Prompt assembler', () => {
+  it('hands an attached memry-file block to the model inside the user message', () => {
+    const block = '```memry-file name="app.log" bytes=16\nERROR disk full\n\n```'
+    const out = assemblePrompt({
+      history: [],
+      userMessage: `what failed?\n\n${block}`,
+      attachments: []
+    })
+
+    expect(out.endsWith(`User: what failed?\n\n${block}`)).toBe(true)
+  })
+
   it('starts with the system header', () => {
     const out = assemblePrompt({
       history: [],
