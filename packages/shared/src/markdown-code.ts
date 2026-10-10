@@ -90,6 +90,9 @@ function mayHoldCode(markdown: string): boolean {
 const INDENTED = /^(?: {0,3}\t| {4})/
 const INDENTED_LINE = new RegExp(INDENTED.source, 'm')
 
+/** A line that opens a CommonMark HTML block with a comment. */
+const HTML_BLOCK_COMMENT = /^ {0,3}<!--/
+
 /** A list item or footnote definition, whose indented lines are its content. */
 const CONTAINER_START = /^ {0,3}(?:[-*+]|\d{1,9}[.)]|\[\^[^\]\s]+\]:)(?:\s|$)/
 
@@ -120,7 +123,12 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
   const lines = markdown.split('\n')
   const fence = createFenceTracker()
   const out: string[] = []
-  let pending: { prefix: string; source: string; close: CommentClose | null } | null = null
+  let pending: {
+    prefix: string
+    source: string
+    close: CommentClose | null
+    htmlBlock: boolean
+  } | null = null
   let blockStart = true
   let indentedCode = false
   let container = false
@@ -129,6 +137,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     let line = lines[index]
     let result = ''
     let closesComment = false
+    let htmlBlock = false
 
     if (pending) {
       if (pending.close?.line !== index) {
@@ -140,6 +149,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
       const { end } = pending.close
       result =
         pending.prefix + visit.comment(pending.source + '\n' + line.slice(0, end), true, false)
+      htmlBlock = pending.htmlBlock
       pending = null
       line = line.slice(end)
       closesComment = true
@@ -161,6 +171,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
     }
     blockStart = false
     indentedCode = false
+    if (!closesComment) htmlBlock = HTML_BLOCK_COMMENT.test(line)
 
     const tableRow = TABLE_ROW_LINE.test(line)
     let i = 0
@@ -187,13 +198,23 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
           continue
         }
         const inline = closesComment || line.slice(0, at).trim() !== ''
-        const later = findLaterClose(lines, index, form, inline)
+        // An HTML block ends on the line holding its `-->`, so a `<!--` after
+        // that close is block text and cannot reach a later line (BBF-78).
+        const reopened: boolean = htmlBlock && !form.proseOnly && (closesComment || i > 0)
+        const later: CommentClose | 'text' | null = reopened
+          ? 'text'
+          : findLaterClose(lines, index, form, inline)
         if (later === 'text' || (form.proseOnly && !later)) {
           result += line.slice(i, at + form.open.length)
           i = at + form.open.length
           continue
         }
-        pending = { prefix: result + line.slice(i, at), source: line.slice(at), close: later }
+        pending = {
+          prefix: result + line.slice(i, at),
+          source: line.slice(at),
+          close: later,
+          htmlBlock
+        }
         break
       }
 
