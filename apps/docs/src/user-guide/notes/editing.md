@@ -670,7 +670,7 @@ Select the lines — a whole pasted block of them if you like — and press **Bu
 
 ## Text Formatting
 
-Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`). Formatting inside formatting, such as italic words in a bold sentence, is written as one span inside another (`**a bold *and italic* sentence**`), so the note reads the same in Memry and in other Markdown apps.
+Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`). Formatting inside formatting, such as italic words in a bold sentence, is written as one span inside another (`**a bold *and italic* sentence**`), and a link whose text mixes formatting stays one link (`**[a *b*](https://example.com) c**`), so the note reads the same in Memry and in other Markdown apps.
 
 Markdown has no syntax for underline, text color or highlight, so those are written as inline HTML, which Obsidian renders:
 
