@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Padam juga tugas di dalamnya} other {Padam juga # tugas di dalamnya}}",
     "description": "{count, plural, one {Jika tidak ditanda, tugas itu kekal dalam Tugas.} other {Jika tidak ditanda, semua tugas itu kekal dalam Tugas.}}",
-    "failed": "Tidak dapat memadam tugas. Tugas masih ada dalam Tugas."
+    "failed": "Tidak dapat memadam tugas. Tugas masih ada dalam Tugas.",
+    "checkFailed": "Tidak dapat menyemak tugasan di dalamnya. Tugasan yang ada akan kekal dalam Tugasan."
   },
   "cover": {
     "add": "Tambah kulit",

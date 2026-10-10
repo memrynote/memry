@@ -20,12 +20,16 @@ import { LabeledCheckbox } from '@/components/ui/labeled-checkbox'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
 
+const log = createLogger('Component:DeleteNoteTasks')
 const NONE: string[] = []
 
 export interface NoteTasksChoice {
   /** Tasks the notes carry. Empty until main answers, and when there are none. */
   taskIds: string[]
+  /** Main could not say which tasks the notes carry; the delete goes ahead without them. */
+  checkFailed: boolean
   deleteTasks: boolean
   setDeleteTasks: (value: boolean) => void
   /** What the confirm handler deletes: the carried tasks when ticked, else nothing. */
@@ -37,9 +41,23 @@ export function useNoteTasksChoice(
   noteIds: string[],
   folderPaths: string[] = NONE
 ): NoteTasksChoice {
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ['notes', 'carried-tasks', noteIds, folderPaths],
-    queryFn: async () => (await notesService.getCarriedTasks({ noteIds, folderPaths })).taskIds,
+    queryFn: async () => {
+      try {
+        return (await notesService.getCarriedTasks({ noteIds, folderPaths })).taskIds
+      } catch (error) {
+        log.warn(
+          'Could not check the notes being deleted for tasks',
+          {
+            noteCount: noteIds.length,
+            folderCount: folderPaths.length
+          },
+          error
+        )
+        throw error
+      }
+    },
     enabled: open && (noteIds.length > 0 || folderPaths.length > 0),
     // Asked fresh every time the dialog opens: the note may have gained a task
     // since the last delete prompt.
@@ -58,6 +76,7 @@ export function useNoteTasksChoice(
 
   return {
     taskIds,
+    checkFailed: isError,
     deleteTasks,
     setDeleteTasks,
     taskIdsToDelete: deleteTasks ? taskIds : NONE
@@ -73,6 +92,9 @@ export function DeleteNoteTasksOption({
 }): React.JSX.Element | null {
   const { t } = useT('notes')
   const count = choice.taskIds.length
+  if (choice.checkFailed) {
+    return <p className="mt-1 text-sm text-muted-foreground">{t('deleteNoteTasks.checkFailed')}</p>
+  }
   if (count === 0) return null
 
   return (

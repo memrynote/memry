@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {İçindeki görevi de sil} other {İçindeki # görevi de sil}}",
     "description": "{count, plural, one {İşaretlenmezse Görevler sayfasında kalır.} other {İşaretlenmezse Görevler sayfasında kalırlar.}}",
-    "failed": "Görevler silinemedi. Görevler sayfasında duruyorlar."
+    "failed": "Görevler silinemedi. Görevler sayfasında duruyorlar.",
+    "checkFailed": "İçindeki görevler kontrol edilemedi. Varsa Görevler’de kalacaklar."
   },
   "cover": {
     "add": "Kapak ekle",

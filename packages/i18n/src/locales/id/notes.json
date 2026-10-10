@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, =1 {Hapus juga tugas di dalamnya} other {Hapus juga # tugas di dalamnya}}",
     "description": "{count, plural, other {Jika tidak dicentang, tugas tetap ada di daftar tugas.}}",
-    "failed": "Tidak dapat menghapus tugas. Tugas masih ada di daftar tugas."
+    "failed": "Tidak dapat menghapus tugas. Tugas masih ada di daftar tugas.",
+    "checkFailed": "Tidak dapat memeriksa tugas di dalamnya. Tugas yang ada akan tetap di Tugas."
   },
   "cover": {
     "add": "Tambahkan sampul",

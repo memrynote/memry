@@ -843,7 +843,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Also delete the task inside} other {Also delete the # tasks inside}}",
     "description": "{count, plural, one {Left unticked, it stays in Tasks.} other {Left unticked, they stay in Tasks.}}",
-    "failed": "Could not delete the tasks. They are still in Tasks."
+    "failed": "Could not delete the tasks. They are still in Tasks.",
+    "checkFailed": "Could not check for tasks inside. Any there will stay in Tasks."
   },
   "cover": {
     "add": "Add cover",

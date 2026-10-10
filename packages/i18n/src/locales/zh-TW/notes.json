@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, other {同時刪除其中的 # 項任務}}",
     "description": "{count, plural, other {若不勾選，任務會保留在任務頁面中。}}",
-    "failed": "無法刪除任務，它們仍在任務頁面中。"
+    "failed": "無法刪除任務，它們仍在任務頁面中。",
+    "checkFailed": "無法檢查其中的任務。如有任務，將保留在「任務」中。"
   },
   "cover": {
     "add": "新增封面",

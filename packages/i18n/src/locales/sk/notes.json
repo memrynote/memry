@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Odstrániť aj úlohu v poznámke} few {Odstrániť aj # úlohy v poznámke} other {Odstrániť aj # úloh v poznámke}}",
     "description": "{count, plural, one {Ak políčko nezačiarknete, úloha zostane v Úlohách.} few {Ak políčko nezačiarknete, úlohy zostanú v Úlohách.} other {Ak políčko nezačiarknete, úlohy zostanú v Úlohách.}}",
-    "failed": "Úlohy sa nepodarilo odstrániť. Stále sú v Úlohách."
+    "failed": "Úlohy sa nepodarilo odstrániť. Stále sú v Úlohách.",
+    "checkFailed": "Nepodarilo sa skontrolovať úlohy vnútri. Prípadné úlohy zostanú v Úlohách."
   },
   "cover": {
     "add": "Pridať obálku",

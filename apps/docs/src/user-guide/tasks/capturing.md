@@ -354,7 +354,9 @@ Deleting a whole note, several notes, or a folder works the same way. When the n
 lines, the delete dialog offers **Also delete the tasks inside**, unticked. Left unticked, the tasks
 stay in Tasks and the deleted note is dropped from their linked notes. Only tasks actually written in
 the notes count: a task that is also linked to a note you are keeping is left alone, and so is one
-that was only linked to the deleted note from its **Related** section.
+that was only linked to the deleted note from its **Related** section. If memrynote cannot check the notes for
+tasks, the dialog says so instead of offering the option, and the delete still goes ahead with any
+tasks left in Tasks.
 
 While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
 

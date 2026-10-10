@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Slett også oppgaven i notatet} other {Slett også de # oppgavene i notatet}}",
     "description": "{count, plural, one {Hvis du ikke krysser av, blir oppgaven liggende i Oppgaver.} other {Hvis du ikke krysser av, blir oppgavene liggende i Oppgaver.}}",
-    "failed": "Kunne ikke slette oppgavene. De ligger fortsatt i Oppgaver."
+    "failed": "Kunne ikke slette oppgavene. De ligger fortsatt i Oppgaver.",
+    "checkFailed": "Kunne ikke sjekke etter oppgaver inni. Eventuelle oppgaver blir værende i Oppgaver."
   },
   "cover": {
     "add": "Legg til omslag",
