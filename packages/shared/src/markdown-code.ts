@@ -55,8 +55,9 @@ export function stripMarkdownComments(markdown: string): string {
  * text, delimiters and line breaks included. `wholeLine` is true when a
  * one-line comment is alone on its line. `blockGoesOn` is true for an HTML
  * comment that opens a CommonMark HTML block with text after its `-->`: that
- * text is part of the block, not a paragraph. Code and a comment that never
- * closes stay as written, except that a `<!--` read as text becomes `textOpen`.
+ * text is part of the block, not a paragraph. Code stays as written. A `<!--`
+ * read as text, or one that never closes, becomes `textOpen` and the text
+ * after it stays.
  */
 export function replaceMarkdownComments(
   markdown: string,
@@ -69,7 +70,7 @@ export function replaceMarkdownComments(
     textOpen: (open) => (open === '<!--' ? textOpen : open),
     codeSpan: (source) => source,
     comment: (source, closed, wholeLine, blockGoesOn) =>
-      closed ? replace(source, wholeLine, blockGoesOn) : source
+      closed ? replace(source, wholeLine, blockGoesOn) : textOpen + source.slice('<!--'.length)
   })
 }
 
