@@ -105,9 +105,10 @@ async function readVaultConfig(configPath: string): Promise<Partial<VaultConfig>
 export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig> {
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
 
-  const stored = await readVaultConfig(getConfigPath(vaultPath))
+  const configPath = getConfigPath(vaultPath)
+  const stored = await readVaultConfig(configPath)
   const merged = { ...structuredClone(defaultVaultConfig), ...stored }
-  if (stored) await writeVaultConfig(vaultPath, merged)
+  if (stored) await fs.writeFile(configPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf-8')
 
   // Same normalization as desktop's getConfig (main/vault/index.ts).
   const config: VaultConfig = {
