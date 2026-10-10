@@ -94,6 +94,24 @@ describe('memry-file:// (#3112)', () => {
     expect(await text(healed)).toBe('png bytes')
   })
 
+  it('refuses a path outside every root', async () => {
+    expect((await get(secret)).status).toBe(403)
+  })
+
+  it('serves an attached html file as plain text', async () => {
+    const file = write('attachments/n1/page.html', '<script>alert(1)</script>')
+    const response = await get(file)
+    expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
+  })
+
+  it('answers 404 when the path cannot be read as a file', async () => {
+    fs.mkdirSync(path.join(vault, 'attachments/n1/folder.pdf'), { recursive: true })
+    expect(
+      (await get(path.join(vault, 'attachments/n1/folder.pdf'), { Range: 'bytes=0-3' })).status
+    ).toBe(404)
+  })
+
   it('answers a missing image with the blank png and a missing pdf with 404', async () => {
     const png = await get(path.join(vault, 'attachments/n1/gone.png'))
     expect(png.status).toBe(200)
