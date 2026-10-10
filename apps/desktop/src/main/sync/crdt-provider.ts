@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import fsp from 'fs/promises'
+import type { FileHandle } from 'fs/promises'
 import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -39,9 +39,9 @@ import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { takeOwedFile } from './crdt-external-feed'
-import { getVaultRoot, toAbsolutePath } from '../vault/notes'
-import { resolveVaultFile } from '../lib/paths'
-import { safeRead } from '../vault/file-ops'
+import { getVaultRoot } from '../vault/notes'
+import { openVaultFile } from '../lib/paths'
+import { OutsideVaultError } from '../lib/errors'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { repairEmptyBlockIds } from './repair-block-ids'
@@ -827,8 +827,9 @@ export class CrdtProvider {
       if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
-      if (await linksOutsideVault(noteId, cached.path)) return true
-      const raw = await safeRead(toAbsolutePath(cached.path))
+      const file = await openNoteFile(noteId, cached.path)
+      if (file === OUTSIDE_VAULT) return true
+      const raw = file === null ? null : await readAndClose(file)
       if (raw === null) {
         clearOwedFileBody(noteId)
         log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
@@ -1758,17 +1759,17 @@ export class CrdtProvider {
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
-    if (await linksOutsideVault(noteId, cached.path)) return
-
-    const absolutePath = toAbsolutePath(cached.path)
+    const file = await openNoteFile(noteId, cached.path)
+    if (file === OUTSIDE_VAULT) return
 
     // Classify from `stat` before reading. The byte ceiling settles a large
     // file on its own, and the vault-wide sweep reaches every note on every
     // pass — reading 17 MB into the main process each time only to refuse it
     // is the read this guard exists to avoid. Same order as `getNoteById`.
-    const stats = await fsp.stat(absolutePath).catch(() => null)
+    const stats = file === null ? null : await file.stat().catch(() => null)
     const bySize = stats ? classifyMarkdownStat(stats.size) : null
     if (bySize) {
+      await file?.close()
       log.warn('Refusing to seed a large-file-class note into CRDT', {
         noteId,
         reason: bySize.reason,
@@ -1777,7 +1778,7 @@ export class CrdtProvider {
       return
     }
 
-    const raw = await safeRead(absolutePath)
+    const raw = file === null ? null : await readAndClose(file)
     if (!raw) {
       // An empty file seeds nothing, but its zero bytes WERE read and the empty
       // doc represents them faithfully. Recording the hash is what lets the
@@ -2433,11 +2434,31 @@ export class CrdtProvider {
   }
 }
 
-/** A note file linked outside the vault gives the doc nothing: refuse, never follow (#2804). */
-async function linksOutsideVault(noteId: string, relativePath: string): Promise<boolean> {
-  if ((await resolveVaultFile(getVaultRoot(), relativePath)).kind !== 'outside') return false
-  log.warn('Refusing a note file that links outside the vault', { noteId })
-  return true
+const OUTSIDE_VAULT = Symbol('outside vault')
+
+/**
+ * The note file opened for reading, or null when it is missing. A file linked
+ * outside the vault gives the doc nothing: refuse, never follow (#2804).
+ */
+async function openNoteFile(
+  noteId: string,
+  relativePath: string
+): Promise<FileHandle | null | typeof OUTSIDE_VAULT> {
+  try {
+    return await openVaultFile(getVaultRoot(), relativePath)
+  } catch (err) {
+    if (!(err instanceof OutsideVaultError)) throw err
+    log.warn('Refusing a note file that links outside the vault', { noteId })
+    return OUTSIDE_VAULT
+  }
+}
+
+async function readAndClose(file: FileHandle): Promise<string> {
+  try {
+    return await file.readFile('utf-8')
+  } finally {
+    await file.close()
+  }
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

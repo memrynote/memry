@@ -5,7 +5,8 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
-import { resolveVaultFileSync } from '../lib/paths'
+import { openVaultFileSync, resolveVaultFileSync } from '../lib/paths'
+import { OutsideVaultError } from '../lib/errors'
 import { getCurrentVaultPath } from '../store'
 import { queueUploadIfAbsent } from './attachment-outbox'
 import {
@@ -158,20 +159,26 @@ function embeddedFilesOf(
 ): string[] {
   // A binary note's file IS the attachment; it has no body to scan.
   if (!note.path.endsWith('.md')) return []
-  if (resolveVaultFileSync(vaultPath, note.path).kind === 'outside') {
-    log.warn('Note file points outside the vault; its embeds are not offered', { noteId: note.id })
-    return []
-  }
   const notePath = path.join(vaultPath, note.path)
   let markdown: string
   let version: string
+  let fd: number | null = null
   try {
-    const stats = fs.statSync(notePath)
+    fd = openVaultFileSync(vaultPath, note.path)
+    if (fd === null) return []
+    const stats = fs.fstatSync(fd)
     version = `${stats.mtimeMs}:${stats.size}`
     if (notesWithoutEmbeds.get(notePath) === version) return []
-    markdown = fs.readFileSync(notePath, 'utf8')
-  } catch {
+    markdown = fs.readFileSync(fd, 'utf8')
+  } catch (err) {
+    if (err instanceof OutsideVaultError) {
+      log.warn('Note file points outside the vault; its embeds are not offered', {
+        noteId: note.id
+      })
+    }
     return []
+  } finally {
+    if (fd !== null) fs.closeSync(fd)
   }
   const files = embeddedFilesOutsideNoteFolders(db, markdown, vaultPath, note.path, note.id)
   if (files.length === 0) notesWithoutEmbeds.set(notePath, version)

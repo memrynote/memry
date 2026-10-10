@@ -42,9 +42,10 @@ vi.mock('./notes-io', () => ({
 
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/paths')>()),
-  resolveVaultFile: async (_vault: string, relative: string) => ({
-    kind: 'inside',
-    path: `/vault/${relative}`
+  openVaultFile: async (_vault: string, relative: string) => ({
+    stat: () => mocks.stat(`/vault/${relative}`),
+    readFile: () => mocks.safeRead(`/vault/${relative}`),
+    close: async () => undefined
   })
 }))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), getIndexDatabase: vi.fn(() => ({})) }))

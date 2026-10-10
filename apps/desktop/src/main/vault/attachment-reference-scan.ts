@@ -21,13 +21,13 @@
  * @module vault/attachment-reference-scan
  */
 
-import { readFileSync } from 'fs'
 import path from 'path'
 import { getAllNoteRefRows } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getVaultRoot } from './notes-io'
-import { resolveVaultFileSync } from '../lib/paths'
+import { readVaultFileSync } from '../lib/paths'
+import { OutsideVaultError } from '../lib/errors'
 
 const logger = createLogger('AttachmentReferenceScan')
 
@@ -95,18 +95,17 @@ export function findNotesReferencingAttachment(
   const referencedBy: string[] = []
   for (const row of rows) {
     if (row.id === options?.excludeNoteId) continue
-    if (resolveVaultFileSync(vaultPath, row.path).kind === 'outside') {
+    let body: string | null
+    try {
+      body = readVaultFileSync(vaultPath, row.path)
+    } catch (err) {
+      if (!(err instanceof OutsideVaultError)) continue
       logger.warn('A note links outside the vault; treating the file as shared', {
         noteId: row.id
       })
       return { referencedBy, complete: false }
     }
-    let body: string
-    try {
-      body = readFileSync(path.join(vaultPath, row.path), 'utf-8')
-    } catch {
-      continue
-    }
+    if (body === null) continue
     if (body.includes(needle)) referencedBy.push(row.id)
   }
   return { referencedBy, complete: true }

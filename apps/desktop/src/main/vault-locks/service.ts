@@ -17,9 +17,10 @@ import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/not
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
-import { resolveVaultFile } from '../lib/paths'
+import { readVaultFile } from '../lib/paths'
+import { OutsideVaultError } from '../lib/errors'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { atomicWrite, safeRead } from '../vault/file-ops'
+import { atomicWrite } from '../vault/file-ops'
 import { folderExists } from '../vault/folders'
 import { generateContentHash } from '../vault/frontmatter'
 import { getStatus } from '../vault/index'
@@ -82,15 +83,21 @@ function getNoteIdByPath(relativePath: string): string | null {
   return getNoteCacheByPath(getIndexDatabase(), relativePath)?.id ?? null
 }
 
-/** True, and logged, for a locked note file linked outside the vault, which is never read. */
-async function isLinkedOutside(
+const OUTSIDE_VAULT = Symbol('outside vault')
+
+/** A locked note file's text, null when missing, or OUTSIDE_VAULT (logged) for a file linked outside the vault, which is never read. */
+async function readLockedNote(
   noteId: string,
   relativePath: string,
   root: string
-): Promise<boolean> {
-  if ((await resolveVaultFile(root, relativePath)).kind !== 'outside') return false
-  log.warn('A locked note file points outside the vault; not reading it', { noteId })
-  return true
+): Promise<string | null | typeof OUTSIDE_VAULT> {
+  try {
+    return await readVaultFile(root, relativePath)
+  } catch (err) {
+    if (!(err instanceof OutsideVaultError)) throw err
+    log.warn('A locked note file points outside the vault; not reading it', { noteId })
+    return OUTSIDE_VAULT
+  }
 }
 
 /**
@@ -99,13 +106,9 @@ async function isLinkedOutside(
  */
 async function protectNoteFile(noteId: string, relativePath: string, root: string): Promise<void> {
   const absolutePath = path.join(root, relativePath)
-  if (
-    relativePath.endsWith('.md') &&
-    !getBaseline(getDatabase(), noteId) &&
-    !(await isLinkedOutside(noteId, relativePath, root))
-  ) {
-    const content = await safeRead(absolutePath)
-    if (content !== null) {
+  if (relativePath.endsWith('.md') && !getBaseline(getDatabase(), noteId)) {
+    const content = await readLockedNote(noteId, relativePath, root)
+    if (typeof content === 'string') {
       writeBaseline(getDatabase(), noteId, content, generateContentHash(content))
     }
   }
@@ -296,8 +299,8 @@ export async function checkLockedFilesAtOpen(): Promise<void> {
   for (const noteId of listBaselineNoteIds(getDatabase())) {
     const relative = notePath(noteId)
     if (relative === null || !isNoteLocked(noteId, relative)) continue
-    if (await isLinkedOutside(noteId, relative, root)) continue
-    const onDisk = await safeRead(path.join(root, relative))
+    const onDisk = await readLockedNote(noteId, relative, root)
+    if (onDisk === OUTSIDE_VAULT) continue
     await restoreLockedNoteFile(noteId, onDisk)
   }
   await reconcileLockedFiles()

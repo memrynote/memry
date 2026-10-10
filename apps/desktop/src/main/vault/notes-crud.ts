@@ -34,7 +34,6 @@ import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/mar
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
   atomicWrite,
-  safeRead,
   deleteFile,
   ensureDirectory,
   listDirectories,
@@ -62,8 +61,8 @@ import {
   placeNewItemAtTop
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
-import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
-import { openVaultFile, resolveVaultFile } from '../lib/paths'
+import { NoteError, NoteErrorCode } from '../lib/errors'
+import { openVaultFile, readVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -433,35 +432,37 @@ export async function getNoteById(id: string): Promise<Note | null> {
     return null
   }
 
-  const resolved = await resolveVaultFile(getVaultRoot(), cached.path)
-  if (resolved.kind === 'outside') throw new OutsideVaultError(cached.path)
-  const absolutePath = resolved.kind === 'inside' ? resolved.path : toAbsolutePath(cached.path)
-
-  // Classify before reading. A file over the byte ceiling must never become a
-  // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a
-  // main-process allocation and GC pause on its own. `stat` settles those
-  // without touching the bytes.
-  const stats = await fs.stat(absolutePath).catch(() => null)
-  const bySize = stats ? classifyMarkdownStat(stats.size) : null
-  if (bySize) {
-    logger.info('Note is large-file class by size; body not read', {
-      id,
-      path: cached.path,
-      fileBytes: bySize.fileBytes
-    })
-    return {
-      ...largeFileNote(db, id, cached),
-      sizeClass: bySize.sizeClass,
-      largeFile: {
-        reason: bySize.reason,
-        fileBytes: bySize.fileBytes,
-        largestBlockBytes: bySize.largestBlockBytes
-      },
-      contentOmitted: true
+  const file = await openVaultFile(getVaultRoot(), cached.path)
+  let fileContent: string | null = null
+  try {
+    // Classify before reading. A file over the byte ceiling must never become a
+    // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a
+    // main-process allocation and GC pause on its own. `stat` settles those
+    // without touching the bytes.
+    const stats = file === null ? null : await file.stat().catch(() => null)
+    const bySize = stats ? classifyMarkdownStat(stats.size) : null
+    if (bySize) {
+      logger.info('Note is large-file class by size; body not read', {
+        id,
+        path: cached.path,
+        fileBytes: bySize.fileBytes
+      })
+      return {
+        ...largeFileNote(db, id, cached),
+        sizeClass: bySize.sizeClass,
+        largeFile: {
+          reason: bySize.reason,
+          fileBytes: bySize.fileBytes,
+          largestBlockBytes: bySize.largestBlockBytes
+        },
+        contentOmitted: true
+      }
     }
-  }
 
-  const fileContent = await safeRead(absolutePath)
+    fileContent = file === null ? null : await file.readFile('utf-8')
+  } finally {
+    await file?.close()
+  }
 
   // `null` = file truly missing (ENOENT). An empty string is a VALID empty
   // note — since the frontmatter diet (#697) a note with no tags/properties and
@@ -681,7 +682,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
 
   const absolutePath = toAbsolutePath(existing.path)
-  const currentRaw = await safeRead(absolutePath)
+  const currentRaw = await readVaultFile(getVaultRoot(), existing.path)
   if (currentRaw !== null && input.content !== undefined && input.content !== existing.content) {
     const snap = maybeCreateSignificantSnapshot(
       input.id,

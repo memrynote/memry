@@ -132,7 +132,16 @@ vi.mock('../../vault/notes', () => ({
 vi.mock('../../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/paths')>()),
   readVaultFile: async (_vault: string, relative: string) =>
-    h.files.get(`/vault/${relative}`) ?? null
+    h.files.get(`/vault/${relative}`) ?? null,
+  openVaultFile: async (_vault: string, relative: string) => {
+    const content = h.files.get(`/vault/${relative}`)
+    if (content === undefined) return null
+    return {
+      stat: async () => ({ size: Buffer.byteLength(content) }),
+      readFile: async () => content,
+      close: async () => undefined
+    }
+  }
 }))
 vi.mock('../../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
