@@ -97,8 +97,11 @@ function mayHoldCode(markdown: string): boolean {
 const INDENTED = /^(?: {0,3}\t| {4})/
 const INDENTED_LINE = new RegExp(INDENTED.source, 'm')
 
-/** A line that opens a CommonMark HTML block with a comment. */
-const HTML_BLOCK_COMMENT = /^ {0,3}<!--/
+/**
+ * A line that opens a CommonMark HTML block with a comment, after any
+ * blockquote and list item markers that start the block inside them (BBF-89).
+ */
+const HTML_BLOCK_COMMENT = /^(?: {0,3}(?:>[ \t]?|(?:[-*+]|\d{1,9}[.)]) {1,4}(?! )))* {0,3}<!--/
 
 /** A list item or footnote definition, whose indented lines are its content. */
 const CONTAINER_START = /^ {0,3}(?:[-*+]|\d{1,9}[.)]|\[\^[^\]\s]+\]:)(?:\s|$)/

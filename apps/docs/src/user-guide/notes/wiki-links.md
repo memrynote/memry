@@ -305,7 +305,7 @@ A `%%` with no partner is plain text.
 An HTML comment that opens after other text on its line, such as `a <!--`, or on the line
 where an earlier comment closes, such as `--> <!--`, ends before a code block that starts below it. If its `-->` is inside that code block, the `<!--` is plain text
 and the code block stays code. An HTML comment that starts its line runs to the first `-->`,
-code blocks included. Another `<!--` after that `-->` on the same line, as in
+code blocks included, also when it starts a list item or a quote line (`- <!--`, `> <!--`). Another `<!--` after that `-->` on the same line, as in
 `<!-- a --> <!-- b`, is plain text unless it also closes on that line. A PDF or HTML export
 prints that `<!-- b` and the text below it.
 
