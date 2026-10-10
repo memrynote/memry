@@ -703,9 +703,11 @@ House style writes each run of neighbouring inline items that hold `bold`,
 edges outside them (BBF-62). `**alpha *x y* omega**` comes back as written, not
 as one emphasis per text run. The mark spanning the most items opens first, ties
 in the order `bold, italic, strike`. A link counts as holding a mark when all
-of its text does. `code` holds no other mark, so ``**`a` x `c`**`` reads back
-as bold `x` only and is written `` `a` **x** `c` ``
-(`packages/editor-schema/src/inline/emphasis-runs.ts:62`, `:93`).
+of its text does. Text runs inside a link that hold the same remaining marks
+are joined, so `**[a *b*](u) c**` stays one link (BBF-71). `code` holds no
+other mark, so ``**`a` x `c`**`` reads back as bold `x` only and is written
+`` `a` **x** `c` ``
+(`packages/editor-schema/src/inline/emphasis-runs.ts:66`, `:82`, `:116`).
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 
