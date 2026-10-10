@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, other {안에 있는 작업 #개도 삭제}}",
     "description": "{count, plural, other {선택하지 않으면 작업 페이지에 그대로 남습니다.}}",
-    "failed": "작업을 삭제하지 못했습니다. 작업 페이지에 그대로 남아 있습니다."
+    "failed": "작업을 삭제하지 못했습니다. 작업 페이지에 그대로 남아 있습니다.",
+    "checkFailed": "안에 있는 할 일을 확인할 수 없습니다. 있는 할 일은 할 일 목록에 남습니다."
   },
   "cover": {
     "add": "커버 추가",

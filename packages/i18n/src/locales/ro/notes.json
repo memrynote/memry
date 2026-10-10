@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Șterge și sarcina din notiță} few {Șterge și cele # sarcini din notiță} other {Șterge și cele # de sarcini din notiță}}",
     "description": "{count, plural, one {Dacă nu bifați, rămâne în Sarcini.} few {Dacă nu bifați, rămân în Sarcini.} other {Dacă nu bifați, rămân în Sarcini.}}",
-    "failed": "Nu s-au putut șterge sarcinile. Acestea sunt încă în Sarcini."
+    "failed": "Nu s-au putut șterge sarcinile. Acestea sunt încă în Sarcini.",
+    "checkFailed": "Nu s-au putut verifica sarcinile din interior. Cele existente rămân în Sarcini."
   },
   "cover": {
     "add": "Adaugă copertă",

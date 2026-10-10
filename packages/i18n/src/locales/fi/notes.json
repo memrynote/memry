@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Poista myös muistiinpanon tehtävä} other {Poista myös muistiinpanon # tehtävää}}",
     "description": "{count, plural, one {Jos ruutua ei valita, tehtävä säilyy Tehtävissä.} other {Jos ruutua ei valita, tehtävät säilyvät Tehtävissä.}}",
-    "failed": "Tehtävien poistaminen epäonnistui. Ne ovat yhä Tehtävissä."
+    "failed": "Tehtävien poistaminen epäonnistui. Ne ovat yhä Tehtävissä.",
+    "checkFailed": "Sisällä olevia tehtäviä ei voitu tarkistaa. Mahdolliset tehtävät jäävät Tehtäviin."
   },
   "cover": {
     "add": "Lisää kansikuva",

@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, other {Xóa luôn # công việc bên trong}}",
     "description": "{count, plural, other {Nếu không chọn, công việc vẫn nằm trong Công việc.}}",
-    "failed": "Không thể xóa công việc. Chúng vẫn còn trong Công việc."
+    "failed": "Không thể xóa công việc. Chúng vẫn còn trong Công việc.",
+    "checkFailed": "Không thể kiểm tra các việc bên trong. Việc nào có sẽ vẫn ở trong Công việc."
   },
   "cover": {
     "add": "Thêm ảnh bìa",

@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Auch die enthaltene Aufgabe löschen} other {Auch die # enthaltenen Aufgaben löschen}}",
     "description": "{count, plural, one {Ohne Häkchen bleibt sie in Aufgaben.} other {Ohne Häkchen bleiben sie in Aufgaben.}}",
-    "failed": "Die Aufgaben konnten nicht gelöscht werden und bleiben in Aufgaben."
+    "failed": "Die Aufgaben konnten nicht gelöscht werden und bleiben in Aufgaben.",
+    "checkFailed": "Aufgaben darin konnten nicht geprüft werden. Vorhandene bleiben in Aufgaben."
   },
   "cover": {
     "add": "Titelbild hinzufügen",

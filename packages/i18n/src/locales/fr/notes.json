@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Supprimer aussi la tâche qu'elle contient} other {Supprimer aussi les # tâches qu'elle contient}}",
     "description": "{count, plural, one {Si la case n'est pas cochée, elle reste dans Tâches.} other {Si la case n'est pas cochée, elles restent dans Tâches.}}",
-    "failed": "Impossible de supprimer les tâches. Elles sont toujours dans Tâches."
+    "failed": "Impossible de supprimer les tâches. Elles sont toujours dans Tâches.",
+    "checkFailed": "Impossible de vérifier les tâches à l’intérieur. Celles qui s’y trouvent resteront dans Tâches."
   },
   "cover": {
     "add": "Ajouter une couverture",

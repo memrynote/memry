@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Eliminar también la tarea que contiene} other {Eliminar también las # tareas que contiene}}",
     "description": "{count, plural, one {Si no la marcas, se queda en Tareas.} other {Si no las marcas, se quedan en Tareas.}}",
-    "failed": "No se pudieron eliminar las tareas. Siguen en Tareas."
+    "failed": "No se pudieron eliminar las tareas. Siguen en Tareas.",
+    "checkFailed": "No se pudieron comprobar las tareas de dentro. Las que haya seguirán en Tareas."
   },
   "cover": {
     "add": "Añadir portada",

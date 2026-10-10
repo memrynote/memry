@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Slet også opgaven i noten} other {Slet også de # opgaver i noten}}",
     "description": "{count, plural, one {Hvis feltet ikke er markeret, forbliver den i Opgaver.} other {Hvis feltet ikke er markeret, forbliver de i Opgaver.}}",
-    "failed": "Kunne ikke slette opgaverne. De er stadig i Opgaver."
+    "failed": "Kunne ikke slette opgaverne. De er stadig i Opgaver.",
+    "checkFailed": "Kunne ikke tjekke for opgaver indeni. Eventuelle opgaver bliver i Opgaver."
   },
   "cover": {
     "add": "Tilføj cover",

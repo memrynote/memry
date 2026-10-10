@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, =1 {Izbriši i pripadajući zadatak} one {Izbriši i # pripadajući zadatak} few {Izbriši i # pripadajuća zadatka} other {Izbriši i # pripadajućih zadataka}}",
     "description": "{count, plural, =1 {Ako ne označite, ostaje u Zadacima.} one {Ako ne označite, ostaju u Zadacima.} few {Ako ne označite, ostaju u Zadacima.} other {Ako ne označite, ostaju u Zadacima.}}",
-    "failed": "Nije moguće izbrisati zadatke. I dalje su u Zadacima."
+    "failed": "Nije moguće izbrisati zadatke. I dalje su u Zadacima.",
+    "checkFailed": "Nije moguće provjeriti zadatke unutra. Postojeći zadaci ostat će u Zadacima."
   },
   "cover": {
     "add": "Dodaj naslovnu sliku",

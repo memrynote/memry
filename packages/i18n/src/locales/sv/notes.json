@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Radera även uppgiften i anteckningen} other {Radera även de # uppgifterna i anteckningen}}",
     "description": "{count, plural, one {Om du inte kryssar i rutan finns den kvar i Uppgifter.} other {Om du inte kryssar i rutan finns de kvar i Uppgifter.}}",
-    "failed": "Det gick inte att radera uppgifterna. De finns kvar i Uppgifter."
+    "failed": "Det gick inte att radera uppgifterna. De finns kvar i Uppgifter.",
+    "checkFailed": "Det gick inte att söka efter uppgifter inuti. Eventuella uppgifter blir kvar i Uppgifter."
   },
   "cover": {
     "add": "Lägg till omslag",

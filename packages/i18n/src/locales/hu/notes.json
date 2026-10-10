@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {A benne lévő feladat törlése is} other {A benne lévő # feladat törlése is}}",
     "description": "{count, plural, one {Ha nincs bejelölve, a feladat megmarad a Feladatokban.} other {Ha nincs bejelölve, a feladatok megmaradnak a Feladatokban.}}",
-    "failed": "Nem sikerült törölni a feladatokat. Továbbra is megtalálhatók a Feladatokban."
+    "failed": "Nem sikerült törölni a feladatokat. Továbbra is megtalálhatók a Feladatokban.",
+    "checkFailed": "Nem sikerült ellenőrizni a benne lévő feladatokat. Az esetleges feladatok a Feladatokban maradnak."
   },
   "cover": {
     "add": "Borítókép hozzáadása",

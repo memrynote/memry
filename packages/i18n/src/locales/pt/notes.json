@@ -733,7 +733,8 @@
   "deleteNoteTasks": {
     "label": "{count, plural, one {Excluir também a tarefa desta nota} other {Excluir também as # tarefas desta nota}}",
     "description": "{count, plural, one {Com esta opção desmarcada, a tarefa continua em Tarefas.} other {Com esta opção desmarcada, as tarefas continuam em Tarefas.}}",
-    "failed": "Não foi possível excluir as tarefas. Elas continuam em Tarefas."
+    "failed": "Não foi possível excluir as tarefas. Elas continuam em Tarefas.",
+    "checkFailed": "Não foi possível verificar as tarefas internas. As que existirem ficarão em Tarefas."
   },
   "cover": {
     "add": "Adicionar capa",
