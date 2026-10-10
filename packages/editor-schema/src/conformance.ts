@@ -808,6 +808,19 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '> a\n> b'
   },
   {
+    // A lazy continuation line belongs to the quote above it.
+    name: 'html break on a lazy quote line stays soft (BBF-85)',
+    markdown: '> a\nb<br>c',
+    canonical: '> a\n> b\n> c'
+  },
+  // Image alt text never reaches the unmask, so the tag is left alone there.
+  { name: 'html break inside image alt text (BBF-85)', markdown: '![x<br>y](i.png)' },
+  {
+    name: 'html break in a table row with no leading pipe (BBF-85)',
+    markdown: 'a | b\n--|--\nc<br>d | e',
+    canonical: '| a   | b |\n| --- | - |\n| c d | e |'
+  },
+  {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
     name: 'code span with a leading space after a hard break (BBF-76)',
     markdown: 'a  \n` x` y'

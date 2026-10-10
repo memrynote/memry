@@ -477,6 +477,12 @@ describe('normalizeSerializedMarkdown', () => {
 // ---------------------------------------------------------------------------
 
 describe('hard break masking', () => {
+  it('leaves a <br> inside link or image text unmarked, since that text is never unmasked', () => {
+    for (const md of ['[a<br>b](u)', '![x<br>y](i.png)', 'see [a<br>b](u) now']) {
+      expect(maskHardBreaks(md)).toEqual({ markdown: md, breaks: [] })
+    }
+  })
+
   it('marks a two-space hard break and leaves a soft break alone', () => {
     // #given 0.51's parser maps both spellings onto one newline, so the hard
     // one has to be marked before it reaches the parser.

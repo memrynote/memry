@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 164,
+    "exportedCaseCount": 167,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 174,
+    "caseCount": 177,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1135,6 +1135,27 @@
       "canonical": "> a\n> b",
       "pending": null,
       "sha256": "ac9d2939be1cb47b91c020bec2e19b5ca156b2e73fa80dfea4e97ce5222fd728"
+    },
+    {
+      "name": "html break on a lazy quote line stays soft (BBF-85)",
+      "markdown": "> a\nb<br>c",
+      "canonical": "> a\n> b\n> c",
+      "pending": null,
+      "sha256": "8d1db2a4d797eed81ba3d0b897bb678c33ad1e0b124fd47c6567064edb6a33fd"
+    },
+    {
+      "name": "html break inside image alt text (BBF-85)",
+      "markdown": "![x<br>y](i.png)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c09b468e68c0063ca42109bc04fb74827448391326ca0d2aeed4a4cd3e039a75"
+    },
+    {
+      "name": "html break in a table row with no leading pipe (BBF-85)",
+      "markdown": "a | b\n--|--\nc<br>d | e",
+      "canonical": "| a   | b |\n| --- | - |\n| c d | e |",
+      "pending": null,
+      "sha256": "e585300e05890a5d402055e02a6bf396022a28a1907196a317856d329d469671"
     },
     {
       "name": "code span with a leading space after a hard break (BBF-76)",
