@@ -254,7 +254,9 @@ note or reopened it a few times. Opening the note is now enough.
 
 ## Link Syntax in Code
 
-Link syntax written inside inline code or a fenced code block is text, not a link. A note
+Link syntax written inside inline code, a fenced code block or an indented code block (lines
+indented four spaces or one tab, after a blank line) is text, not a link. An indented line
+that continues a paragraph, a list item or a footnote is not code, so its links count. A note
 that documents the syntax, such as `` `[[Example]]` `` or a code block of sample markdown,
 adds no backlink, no outgoing link and no graph node for it. This holds for files saved with
 Windows line endings too. A PDF or HTML export prints it as written, brackets included.
