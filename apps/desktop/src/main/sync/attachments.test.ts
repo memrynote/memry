@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { writeFile, mkdtemp, rm } from 'node:fs/promises'
+import { writeFile, mkdtemp, rm, symlink } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import sodium from 'libsodium-wrappers-sumo'
@@ -86,6 +86,7 @@ function createTestDeps(fetchFn: ReturnType<typeof vi.fn>): AttachmentSyncDeps {
     }),
     getDevicePublicKey: vi.fn().mockResolvedValue(sodium.crypto_sign_keypair().publicKey),
     getSyncServerUrl: () => 'http://localhost:8787',
+    getVaultPath: () => tmpDir,
     fetchFn
   }
 }
@@ -266,6 +267,29 @@ describe('AttachmentSyncService', () => {
 
       await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow()
     })
+
+    it.skipIf(process.platform === 'win32')(
+      'never uploads a queued file that became a link outside the vault (#3098)',
+      async () => {
+        const outside = await mkdtemp(path.join(os.tmpdir(), 'memry-upload-outside-'))
+        try {
+          const secret = path.join(outside, 'private.txt')
+          await writeFile(secret, 'outside secret')
+          // Queued while it was a vault file, swapped for a link before the upload reads it.
+          const queued = path.join(tmpDir, 'scan.txt')
+          await symlink(secret, queued)
+          const mockFetch = createMockFetch(new Map())
+          const service = new AttachmentSyncService(createTestDeps(mockFetch))
+
+          await expect(service.uploadAttachment('note-1', queued)).rejects.toThrow(
+            /outside the vault/
+          )
+          expect(mockFetch).not.toHaveBeenCalled()
+        } finally {
+          await rm(outside, { recursive: true, force: true })
+        }
+      }
+    )
 
     it('should reject empty files', async () => {
       const testFile = path.join(tmpDir, 'empty.bin')

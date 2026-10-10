@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs'
-import { stat, open, rename, readFile, writeFile, unlink } from 'node:fs/promises'
+import { stat, open, rename, readFile, writeFile, unlink, type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
 import { net } from 'electron'
@@ -7,6 +7,7 @@ import { net } from 'electron'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { secureDeleteFile } from '../lib/secure-fs'
+import { openUploadFile } from './upload-file'
 import { ensureDirectory, sanitizeFilename } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
@@ -210,6 +211,8 @@ export interface AttachmentSyncDeps {
    * upload whose content matches one of them returns it instead of a new id.
    */
   getReusableAttachmentIds?: (noteId: string, filePath: string) => string[]
+  /** The open vault; an upload reads only files inside it. */
+  getVaultPath: () => string | null
   fetchFn?: FetchFn
 }
 
@@ -223,10 +226,10 @@ function formatBytes(bytes: number): string {
 // Helpers — File Chunking (T148)
 // ============================================================================
 
-async function readFileChunks(filePath: string): Promise<Buffer[]> {
+async function readFileChunks(file: FileHandle): Promise<Buffer[]> {
   const chunks: Buffer[] = []
   return new Promise((resolve, reject) => {
-    const stream = createReadStream(filePath, { highWaterMark: CHUNK_SIZE })
+    const stream = file.createReadStream({ highWaterMark: CHUNK_SIZE, start: 0, autoClose: false })
     let currentChunk = Buffer.alloc(0)
 
     stream.on('data', (data: Buffer) => {
@@ -410,9 +413,13 @@ export class AttachmentSyncService {
     // Set once the session is registered below, so the finally can drop it on
     // every exit — success, throw, or abort — instead of only the happy path.
     let trackedSessionId: string | null = null
+    let file: FileHandle | null = null
 
     try {
-      const fileStat = await stat(filePath)
+      const vaultPath = this.deps.getVaultPath()
+      if (!vaultPath) throw new Error('No vault is open')
+      file = await openUploadFile(vaultPath, filePath)
+      const fileStat = await file.stat()
       if (fileStat.size > MAX_ATTACHMENT_SIZE) {
         throw new Error(
           getMainI18n().t('errors:attachment.exceedsMaxSize', {
@@ -445,7 +452,9 @@ export class AttachmentSyncService {
       const filename = path.basename(filePath)
       log.info('starting upload', { attachmentId, noteId, filename, size: fileStat.size })
 
-      const chunks = await readFileChunks(filePath)
+      const chunks = await readFileChunks(file)
+      await file.close()
+      file = null
       const totalChunks = chunks.length
 
       const netOpts: { signal?: AbortSignal; isOnline?: () => boolean } = {}
@@ -686,6 +695,7 @@ export class AttachmentSyncService {
       // this call, so the entry can only ever be ours (cancelUpload may have
       // dropped it already — deleting a missing key is a no-op).
       if (trackedSessionId !== null) this.activeUploads.delete(trackedSessionId)
+      await file?.close()
       secureCleanup(fileKey)
       secureCleanup(signingKeys.secretKey)
     }

@@ -10,7 +10,8 @@ import { getExtension, getFileType } from '@memry/shared/file-types'
 
 import type { PdfDocument } from '../../../file-text/pdf-host'
 import type { ViewImagePayload, ViewImageSource } from '../../../image-processing/protocol'
-import { resolveVaultFile } from '../../../lib/paths'
+import { OutsideVaultError } from '../../../lib/errors'
+import { openVaultFile, resolveVaultFile } from '../../../lib/paths'
 import { AgentToolError } from '../errors'
 import { ImageToolResult } from '../tool-image'
 
@@ -114,24 +115,58 @@ function resolveTarget(row: FileViewRow, input: FileViewInput): ViewTarget {
   }
 }
 
-async function locate(
+function targetDetails(target: ViewTarget): Record<string, unknown> {
+  return { id: target.id, ...(target.attachment ? { attachment: target.attachment } : {}) }
+}
+
+function outsideVault(target: ViewTarget): AgentToolError {
+  return new AgentToolError(
+    'PERMISSION_DENIED',
+    `${target.file} points outside the vault. vault_view_file reads only files inside the vault.`,
+    targetDetails(target)
+  )
+}
+
+function notInVault(target: ViewTarget): AgentToolError {
+  return new AgentToolError(
+    'NOT_FOUND',
+    `${target.file} is not in the vault.`,
+    targetDetails(target)
+  )
+}
+
+/**
+ * A PDF's path and size for the PDF host. The host reads the file by name in
+ * byte ranges through memry-file://, so a swap after this check is not caught
+ * here (#3098).
+ */
+async function locatePdf(
   vaultPath: string,
   target: ViewTarget
 ): Promise<{ absolutePath: string; size: number }> {
-  const details = { id: target.id, ...(target.attachment ? { attachment: target.attachment } : {}) }
   const resolved = await resolveVaultFile(vaultPath, target.file)
-  if (resolved.kind === 'outside') {
-    throw new AgentToolError(
-      'PERMISSION_DENIED',
-      `${target.file} points outside the vault. vault_view_file reads only files inside the vault.`,
-      details
-    )
-  }
+  if (resolved.kind === 'outside') throw outsideVault(target)
   if (resolved.kind === 'inside') {
     const stats = await stat(resolved.path).catch(() => null)
     if (stats?.isFile()) return { absolutePath: resolved.path, size: stats.size }
   }
-  throw new AgentToolError('NOT_FOUND', `${target.file} is not in the vault.`, details)
+  throw notInVault(target)
+}
+
+/** An image's bytes, read through the file the vault check opened. */
+async function readImage(vaultPath: string, target: ViewTarget): Promise<Uint8Array> {
+  const handle = await openVaultFile(vaultPath, target.file).catch((error: unknown) => {
+    throw error instanceof OutsideVaultError ? outsideVault(target) : unreadable(target, error)
+  })
+  if (handle === null) throw notInVault(target)
+  try {
+    if (!(await handle.stat()).isFile()) throw notInVault(target)
+    return await handle.readFile()
+  } catch (error) {
+    throw error instanceof AgentToolError ? error : unreadable(target, error)
+  } finally {
+    await handle.close()
+  }
 }
 
 function unreadable(target: ViewTarget, error: unknown): AgentToolError {
@@ -163,12 +198,8 @@ function identity(target: ViewTarget): Record<string, unknown> {
   }
 }
 
-async function viewImage(
-  deps: FileViewDeps,
-  target: ViewTarget,
-  absolutePath: string
-): Promise<ImageToolResult> {
-  const image = await prepare(deps, target, { kind: 'file', path: absolutePath })
+async function viewImage(deps: FileViewDeps, target: ViewTarget): Promise<ImageToolResult> {
+  const image = await prepare(deps, target, { data: await readImage(deps.vaultPath, target) })
   const downscaled =
     image.width !== image.sourceWidth || image.height !== image.sourceHeight
       ? `, downscaled from ${image.sourceWidth} x ${image.sourceHeight} px`
@@ -190,10 +221,9 @@ async function viewImage(
 async function viewPdfPage(
   deps: FileViewDeps,
   target: ViewTarget,
-  absolutePath: string,
-  size: number,
   page: number
 ): Promise<ImageToolResult> {
+  const { absolutePath, size } = await locatePdf(deps.vaultPath, target)
   let pdf: PdfDocument
   try {
     pdf = await deps.openPdf(absolutePath, size)
@@ -210,7 +240,7 @@ async function viewPdfPage(
       )
     }
     const rendered = await pdf.renderPage(page, VIEW_IMAGE_MAX_EDGE)
-    const image = await prepare(deps, target, { kind: 'png', data: rendered.png })
+    const image = await prepare(deps, target, { data: rendered.png })
     return new ImageToolResult(
       {
         ...identity(target),
@@ -243,8 +273,7 @@ export async function viewVaultFile(
     })
   }
 
-  const { absolutePath, size } = await locate(deps.vaultPath, target)
   return target.fileType === 'image'
-    ? viewImage(deps, target, absolutePath)
-    : viewPdfPage(deps, target, absolutePath, size, input.page ?? 1)
+    ? viewImage(deps, target)
+    : viewPdfPage(deps, target, input.page ?? 1)
 }

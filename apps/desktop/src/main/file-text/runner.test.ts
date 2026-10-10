@@ -42,7 +42,7 @@ function createHarness(index: TestDatabaseResult, vaultDir: string): Harness {
         appVersion: '1.0.0',
         getDb: () => db,
         recognize: async (source: OcrImageSource) => {
-          if (source.kind === 'file') return harness.imageText
+          if (fileBytes(source) !== null) return harness.imageText
           const page = harness.pages[source.data[0] - 1]
           if ('scanned' in page) return page.scanned
           throw new Error('OCR failed')
@@ -76,6 +76,11 @@ function openFakePdf(harness: Harness): PdfDocument {
     },
     async close() {}
   }
+}
+
+/** A vault file's text; null for a rendered PDF page, whose bytes are just its page number. */
+function fileBytes(source: OcrImageSource): string | null {
+  return source.data.length > 1 ? Buffer.from(source.data).toString('utf8') : null
 }
 
 function seedFile(harness: Harness, id: string, relativePath: string, fileType: string): void {
@@ -356,11 +361,15 @@ describe('FileTextRunner', () => {
 
     const runner = start({
       recognize: async (source) => {
-        if (source.kind === 'file' && source.path.endsWith('first.png')) {
+        if (fileBytes(source) === 'bytes of first.png') {
           fs.writeFileSync(path.join(vaultDir, 'second.png'), 'rewritten with more bytes')
           return 'first file'
         }
-        if (source.kind === 'file' && source.path.endsWith('second.png')) secondReads++
+        if (
+          fileBytes(source) === 'rewritten with more bytes' ||
+          fileBytes(source) === 'bytes of second.png'
+        )
+          secondReads++
         return 'new words'
       }
     })
@@ -475,7 +484,7 @@ describe('FileTextRunner', () => {
       recognize: async (source) => {
         ocrCalls++
         await ocrGate
-        if (source.kind === 'file') return harness.imageText
+        if (fileBytes(source) !== null) return harness.imageText
         return (harness.pages[source.data[0] - 1] as { scanned: string }).scanned
       }
     })
@@ -525,7 +534,7 @@ describe('FileTextRunner', () => {
     const failing = start({
       ocrLanguages: () => ['eng', 'deu'],
       recognize: async (source) => {
-        if (source.kind === 'file') return 'later'
+        if (fileBytes(source) !== null) return 'later'
         pageReads++
         if (source.data[0] === 1) throw new Error('OCR worker exited (code 1)')
         return 'Straße'

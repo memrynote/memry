@@ -170,7 +170,7 @@ describe('image-processing bridge', () => {
   })
 
   it('prepares an image for an agent to view through the utility process', async () => {
-    const viewPromise = prepareViewImageInImageProcess({ kind: 'file', path: '/v/shot.png' }, 1568)
+    const viewPromise = prepareViewImageInImageProcess({ data: Uint8Array.of(1, 2, 3) }, 1568)
 
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
     await vi.waitFor(() => {
@@ -180,7 +180,7 @@ describe('image-processing bridge', () => {
     expect(requestMessage).toEqual(
       expect.objectContaining({
         type: 'prepare-view-image',
-        source: { kind: 'file', path: '/v/shot.png' },
+        source: { data: Uint8Array.of(1, 2, 3) },
         maxEdge: 1568
       })
     )

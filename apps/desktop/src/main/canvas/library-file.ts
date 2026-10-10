@@ -12,12 +12,13 @@
  */
 
 import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
+import { OutsideVaultError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import {
   CANVAS_DIR,
   CANVAS_LIBRARY_FILE,
-  readCanvasFileSync,
+  readCanvasVaultFileSync,
   resolveCanvasFile,
   writeCanvasFileSync
 } from './scene-file'
@@ -43,8 +44,8 @@ export function libraryFileRelativePath(): string {
  * canvas surface down with it.
  */
 export function readCanvasLibrary(vaultPath: string): CanvasLibraryItem[] {
-  const content = readCanvasFileSync(resolveCanvasFile(vaultPath, libraryFileRelativePath()))
-  if (!content) return []
+  const content = readLibraryFile(vaultPath)
+  if (content === OUTSIDE || !content) return []
   try {
     const parsed = JSON.parse(content) as LibraryFileShape
     if (!Array.isArray(parsed.libraryItems)) return []
@@ -79,8 +80,21 @@ export function writeCanvasLibrary(
     null,
     2
   )
-  const absolute = resolveCanvasFile(vaultPath, relativePath)
-  if (readCanvasFileSync(absolute) === next) return false
-  writeCanvasFileSync(absolute, next)
+  const current = readLibraryFile(vaultPath)
+  // A link outside the vault is the user's to keep: never replace it with a file.
+  if (current === OUTSIDE || current === next) return false
+  writeCanvasFileSync(resolveCanvasFile(vaultPath, relativePath), next)
   return true
+}
+
+const OUTSIDE = Symbol('outside the vault')
+
+function readLibraryFile(vaultPath: string): string | null | typeof OUTSIDE {
+  try {
+    return readCanvasVaultFileSync(vaultPath, libraryFileRelativePath())
+  } catch (err) {
+    if (!(err instanceof OutsideVaultError)) throw err
+    log.warn('Canvas library file links outside the vault; it is neither read nor saved')
+    return OUTSIDE
+  }
 }

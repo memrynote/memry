@@ -9,7 +9,7 @@ const MAX_EDGE = 4000
 
 /** Upright, flattened onto white, grey, and at a size Tesseract reads well. */
 export async function toOcrPng(source: OcrImageSource): Promise<Buffer> {
-  const input = source.kind === 'file' ? source.path : Buffer.from(source.data)
+  const input = Buffer.from(source.data)
   const { width = 0, height = 0 } = await sharp(input).metadata()
   const longEdge = Math.max(width, height)
   const target = longEdge < UPSCALE_BELOW_EDGE ? longEdge * 2 : Math.min(longEdge, MAX_EDGE)

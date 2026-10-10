@@ -22,7 +22,7 @@ import {
   folderOfCanvasPath,
   listCanvasFiles,
   portableCanvasFolder,
-  readCanvasFileSync,
+  readCanvasVaultFileSync,
   readCanvasMeta,
   renameCanvasFile,
   resolveCanvasFile,
@@ -30,6 +30,10 @@ import {
   withCanvasMeta,
   writeCanvasFileSync
 } from './scene-file'
+
+function readCanvasFileSync(absolutePath: string): string | null {
+  return readCanvasVaultFileSync(vault, path.relative(vault, absolutePath))
+}
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
 vi.mock('../lib/logger', () => ({

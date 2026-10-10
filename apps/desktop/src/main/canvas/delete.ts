@@ -18,9 +18,8 @@ import { trackPendingDelete, type DeferredDeletes } from '../vault/rename-tracke
 import {
   canvasPathKey,
   listCanvasFiles,
-  readCanvasFileSync,
   readCanvasMeta,
-  resolveCanvasFile
+  readCanvasVaultFileSync
 } from './scene-file'
 import { deleteCanvas } from './store'
 import { syncCanvasDelete } from './sync-bridge'
@@ -139,7 +138,7 @@ function mayStillHoldCanvas(db: DataDb, vaultPath: string, id: string): boolean 
     .some((filePath) => {
       let content: string | null
       try {
-        content = readCanvasFileSync(resolveCanvasFile(vaultPath, filePath))
+        content = readCanvasVaultFileSync(vaultPath, filePath)
       } catch (error) {
         log.warn('Canvas file cannot be read; keeping the removed canvas', { id, filePath, error })
         return true

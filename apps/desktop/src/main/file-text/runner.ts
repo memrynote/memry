@@ -87,6 +87,7 @@ export interface FileTextDeps {
   recognize: (source: OcrImageSource) => Promise<string>
   /** The Tesseract languages `recognize` reads with now. */
   ocrLanguages: () => readonly string[]
+  /** The PDF host reads `absolutePath` by name, in ranges, after the vault check (#3098). */
   openPdf: (absolutePath: string, size: number) => Promise<PdfDocument>
   /** Tear down the OCR process and PDF host so in-flight calls fail now. */
   release: () => void
@@ -258,7 +259,13 @@ export class FileTextRunner {
         (entry) => entry.isFile() && !entry.name.startsWith('.') && attachmentKind(entry.name)
       )
       if (candidates.length === 0) continue
-      const body = await readVaultFile(this.deps.vaultPath, note.path).catch(() => null)
+      const body = await readVaultFile(this.deps.vaultPath, note.path).catch((error: unknown) => {
+        logger.warn('Could not read a note body to match its attachments', {
+          noteId: note.id,
+          error: errorText(error)
+        })
+        return null
+      })
       if (body === null) {
         unread.add(note.id)
         continue
@@ -439,7 +446,9 @@ export class FileTextRunner {
     }
 
     if (file.fileType === 'image') {
-      const result = await this.readTwice(() => this.ocr({ kind: 'file', path: absolutePath }))
+      const result = await this.readTwice(async () =>
+        this.ocr({ data: await readVaultBytes(this.deps.vaultPath, file.path) })
+      )
       if (!this.owns(file, signature)) return
       setFileTextPageCount(db, file, 1)
       save(1, result)
@@ -521,7 +530,7 @@ export class FileTextRunner {
     const layer = normalizeExtractedText(await pdf.pageText(page))
     if (layer) return { method: 'pdf-text', text: layer }
     const rendered = await pdf.renderPage(page, OCR_RENDER_MAX_EDGE)
-    return this.ocr({ kind: 'png', data: rendered.png })
+    return this.ocr({ data: rendered.png })
   }
 
   private async ocr(source: OcrImageSource): Promise<PageText> {

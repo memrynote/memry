@@ -43,6 +43,7 @@ vi.mock('fs', async (importOriginal) => {
 
 const isWindows = process.platform === 'win32'
 const EMBED = '<!-- file:{"url":"../attachments/md-1/chart.html","mimeType":"text/html"} -->\n'
+const IMAGE_EMBED = '![](../attachments/md-1/shot.png)\n'
 
 describe('the file text runner against files swapped for outside links (#3095)', () => {
   let index: TestDatabaseResult
@@ -64,7 +65,8 @@ describe('the file text runner against files swapped for outside links (#3095)',
       vaultPath: vaultDir,
       appVersion: '1.0.0',
       getDb: () => db,
-      recognize: async () => '',
+      // Whatever OCR would read: the bytes it was handed, or the file it opens.
+      recognize: async (source) => Buffer.from(source.data).toString('utf8'),
       ocrLanguages: () => ['eng'],
       openPdf: async () => {
         throw new Error('no pdf')
@@ -143,6 +145,39 @@ describe('the file text runner against files swapped for outside links (#3095)',
         'outside secret'
       )
       expect(getFileTextJob(db, { noteId: 'md-1', source: 'chart.html' })?.status).toBe('failed')
+    }
+  )
+  it.skipIf(isWindows)(
+    'never reads text from an image swapped outside before it is read',
+    async () => {
+      const file = path.join(vaultDir, 'attachments', 'md-1', 'shot.png')
+      const secret = path.join(outside, 'private.png')
+      fs.writeFileSync(secret, 'outside secret')
+      fs.writeFileSync(file, 'vault image txt')
+      fs.truncateSync(file, 'outside secret'.length)
+      const mtime = new Date('2026-01-01T00:00:00.000Z')
+      fs.utimesSync(file, mtime, mtime)
+      fs.utimesSync(secret, mtime, mtime)
+      fs.writeFileSync(path.join(vaultDir, 'notes', 'plan.md'), IMAGE_EMBED)
+      addNote()
+      race.target = file
+      race.swap = () => {
+        fs.rmSync(file)
+        fs.symlinkSync(secret, file)
+      }
+
+      start()
+      await vi.waitFor(() =>
+        expect(getFileTextJob(db, { noteId: 'md-1', source: 'shot.png' })?.status).toMatch(
+          /done|failed/
+        )
+      )
+
+      expect(race.target).toBe('')
+      expect(JSON.stringify(db.all(sql`SELECT text FROM extracted_text`))).not.toContain(
+        'outside secret'
+      )
+      expect(getFileTextJob(db, { noteId: 'md-1', source: 'shot.png' })?.status).toBe('failed')
     }
   )
 })

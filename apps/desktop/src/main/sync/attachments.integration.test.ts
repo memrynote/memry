@@ -124,6 +124,7 @@ function createDeps(
     // Mirrors sync-attachment-handlers wiring this to the entitlement cache.
     // Undefined = the handler had no cached limit (cold or stale) and defers.
     ...(opts?.getMaxFileSize ? { getMaxFileSize: opts.getMaxFileSize } : {}),
+    getVaultPath: () => tmpDir,
     getAccessToken: async () => user.token,
     getVaultKey: async () => vaultKey,
     getSigningKeys: async () => ({

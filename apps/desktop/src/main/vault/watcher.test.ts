@@ -126,7 +126,7 @@ vi.mock('./journal-folder-follow', async (importOriginal) => ({
 
 vi.mock('../canvas/scene-file', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../canvas/scene-file')>()
-  return { ...actual, readCanvasFileSync: vi.fn(actual.readCanvasFileSync) }
+  return { ...actual, readCanvasVaultFileSync: vi.fn(actual.readCanvasVaultFileSync) }
 })
 
 const buildAssetServiceContext = vi.hoisted(() => vi.fn((): unknown => null))
@@ -170,7 +170,7 @@ import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { canvases } from '@memry/db-schema/data-schema'
 import { createCanvas } from '../canvas/store'
-import { readCanvasFileSync, resolveCanvasFile } from '../canvas/scene-file'
+import { readCanvasVaultFileSync, resolveCanvasFile } from '../canvas/scene-file'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
 import { listAssetsByCanvas, recordAsset } from '../canvas/assets/asset-store'
@@ -1862,8 +1862,8 @@ describe('vault watcher', () => {
 
     function canvasReads(): string[] {
       return vi
-        .mocked(readCanvasFileSync)
-        .mock.calls.map(([filePath]) => filePath)
+        .mocked(readCanvasVaultFileSync)
+        .mock.calls.map(([vaultPath, relativePath]) => path.join(vaultPath, relativePath))
         .filter((filePath) => filePath.endsWith('.excalidraw'))
     }
 
@@ -1875,7 +1875,7 @@ describe('vault watcher', () => {
 
       const movedPath = path.join(path.dirname(absolutePath), 'Elsewhere.excalidraw')
       fs.renameSync(absolutePath, movedPath)
-      vi.mocked(readCanvasFileSync).mockClear()
+      vi.mocked(readCanvasVaultFileSync).mockClear()
       trigger('unlink', absolutePath)
       await waitOutRenameWindow()
 
