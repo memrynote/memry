@@ -8,7 +8,7 @@ import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { TagGlyph } from './object-avatar'
 import { useTagLookLookup } from './object-look'
 import { useLinkedHere } from './use-linked-here'
-import { useOptionalObjectIdentity } from './use-optional-object-identity'
+import { objectIdentityOf, useTagSchemas } from './use-tag-schemas'
 import { openTagTable } from './open-tag-table'
 
 const NEWEST = 2
@@ -28,20 +28,29 @@ export function LinkedHereOrBacklinks({
   noteId: string
   fallback: ReactNode
 }): ReactNode {
-  const identity = useOptionalObjectIdentity(noteId)
-  if (!identity) return fallback
+  const { data: snapshot, isLoading } = useTagSchemas()
+  // Until the snapshot loads, the note's object-ness is unknown, and showing
+  // the fallback would flash References before Linked here replaces it. A
+  // failed read is not loading, so it still falls back to plain backlinks.
+  if (isLoading) return <LinkedHerePending />
+  if (!objectIdentityOf(snapshot, noteId)) return fallback
   return <LinkedHereSection noteId={noteId} />
+}
+
+function LinkedHerePending(): React.JSX.Element {
+  return <div aria-busy="true" data-testid="linked-here-pending" />
 }
 
 export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Element | null {
   const { t } = useT('notes')
   const [mentionsExpanded, setMentionsExpanded] = useState(false)
-  const { groups } = useLinkedHere(noteId, NEWEST)
+  const { groups, isLoading } = useLinkedHere(noteId, NEWEST)
   const expanded = useLinkedHere(noteId, mentionsExpanded ? EXPANDED : NEWEST)
   const lookOf = useTagLookLookup()
   const { openTab } = useTabActions()
   const openTaskDetail = useOpenTaskDetail()
 
+  if (isLoading) return <LinkedHerePending />
   if (groups.length === 0) return null
 
   const openNote = (item: LinkedNoteItem): void =>

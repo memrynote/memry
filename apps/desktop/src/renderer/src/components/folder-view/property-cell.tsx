@@ -13,8 +13,7 @@
 
 import { foldTag } from '@memry/shared/tag-fold'
 import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
-import { format } from 'date-fns'
-import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
+import { formatDateValue } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import {
   Check,
@@ -129,19 +128,6 @@ interface TagsCellProps {
 // ============================================================================
 // Utility Functions
 // ============================================================================
-
-/**
- * Format a date for display in the table.
- * Format: dd.MM.yyyy - HH:mm:ss
- */
-function formatDate(dateStr: string, df: DateFormat): string {
-  try {
-    const date = new Date(dateStr)
-    return `${applyDateFormat(date, df)} - ${format(date, 'HH:mm:ss')}`
-  } catch {
-    return String(dateStr)
-  }
-}
 
 // ============================================================================
 // T117: Truncated Tooltip Component
@@ -585,7 +571,7 @@ export const DateCell = memo(function DateCell({
   const dateFormat = useDateFormat()
   return (
     <span className={cn('text-muted-foreground whitespace-nowrap', className)} title={value}>
-      {formatDate(value, dateFormat)}
+      {formatDateValue(value, dateFormat)}
     </span>
   )
 })
