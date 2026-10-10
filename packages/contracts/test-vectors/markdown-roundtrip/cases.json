@@ -1103,10 +1103,10 @@
     },
     {
       "name": "html break inside a code span (BBF-85)",
-      "markdown": "`a<br>c` d",
+      "markdown": "`a <br>c` d",
       "canonical": null,
       "pending": null,
-      "sha256": "46526c244bbf3bf350bbbba480d3689f679cc220208ba68d7e75e2a64d4c8ea2"
+      "sha256": "db050a1ec7a6a3f8033c9ac29d49a6f90ee6e1263fc85678a4d19ea7aef6490c"
     },
     {
       "name": "html break between spaces (BBF-85)",

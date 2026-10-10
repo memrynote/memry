@@ -347,8 +347,11 @@ const HARD_BREAK_TOKEN_PREFIX = 'MEMRYHBK'
 /** `MEMRYHBK<index>;`, as written by `maskHardBreaks`. */
 const HARD_BREAK_TOKEN = /MEMRYHBK(\d+);/g
 
-/** The same token, with the newline it marks when it still has one. */
-const HARD_BREAK_TOKEN_WITH_NEWLINE = /MEMRYHBK\d+;(\n?)/g
+/**
+ * The same token, with the spaces before it and the newline it marks when it
+ * still has one. Spaces before a break are part of its spelling, never text.
+ */
+const HARD_BREAK_TOKEN_WITH_NEWLINE = /([^\S\n]*)MEMRYHBK\d+;(\n?)/g
 
 // A hard break is a line ending in two or more spaces, or in a single
 // backslash. Both only count when a non-blank line follows: otherwise the line
@@ -357,11 +360,10 @@ const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
 
 // An author's `<br>` with more text after it on the same line (BBF-85). The
 // parser turns the tag into the same newline a soft break gives, so the token
-// goes in front of the tag, eating the spaces before it, and lands against that
-// newline. A `<br>` that ends its line already parses as two newlines, and two
-// tags in a row already give a hard break, so neither is marked.
-const HTML_BREAK_MID_LINE =
-  /(?<!<br\s*\/?>[^\S\n]*)[^\S\n]*<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
+// goes in front of the tag and lands against that newline. A `<br>` that ends
+// its line already parses as two newlines, and two tags in a row already give
+// a hard break, so neither is marked.
+const HTML_BREAK_MID_LINE = /(?<!<br\s*\/?>[^\S\n]*)<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/gi
 
 // Only a plain paragraph line. A table row is one line by grammar, and a hard
 // break in a heading, quote or list item does not survive the write-back on
@@ -409,7 +411,7 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       // `<pre>` block the tag's own newline is all it ever meant.
       lines[index] = lines[index].replace(HTML_BREAK_MID_LINE, (tag) => {
         breaks.push('')
-        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag.trimStart()}`
+        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
       })
     }
     if (index === lines.length - 1) continue
@@ -437,8 +439,8 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
  */
 export function unmaskHardBreaks(text: string): string {
   if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
-  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, newline: string) =>
-    newline ? '\n\n' : ''
+  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, spaces: string, newline: string) =>
+    newline ? '\n\n' : spaces
   )
 }
 

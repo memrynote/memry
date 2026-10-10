@@ -796,7 +796,7 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: 'a<br />\nc',
     canonical: 'a  \nc'
   },
-  { name: 'html break inside a code span (BBF-85)', markdown: '`a<br>c` d' },
+  { name: 'html break inside a code span (BBF-85)', markdown: '`a <br>c` d' },
   { name: 'html break between spaces (BBF-85)', markdown: 'a <br> b', canonical: 'a  \nb' },
   { name: 'two html breaks in a row (BBF-85)', markdown: 'a<br><br>b', canonical: 'a  \nb' },
   { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
