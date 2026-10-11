@@ -19,7 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { readStructuredQuoteRun } from './quote'
+import { readStructuredQuoteRun } from './quote.ts'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
