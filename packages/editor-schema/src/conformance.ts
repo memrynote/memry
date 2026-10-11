@@ -915,6 +915,17 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'soft break inside nested list-item link text (BBF-106)',
     markdown: '- p\n  - [a\nb](u)'
   },
+  // Shapes the join leaves alone keep main's output (BBF-106).
+  {
+    name: 'escaped bracket before a soft break in a list item (BBF-106)',
+    markdown: '- [a\\]\nb](u)',
+    canonical: '- [a]\n\nb](u)'
+  },
+  {
+    name: 'html break opening a list-item link text line (BBF-106)',
+    markdown: '- [a\n<br>b](u)',
+    canonical: '- [a\n\nb](u)'
+  },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',
     markdown: '- [**a**\nb](u)'
