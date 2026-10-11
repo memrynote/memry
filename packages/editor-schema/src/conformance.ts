@@ -906,6 +906,19 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '[**a\nb**](u)',
     canonical: '**[a](u)\n[b](u)**'
   },
+  // A soft break in list-item link text stays one link, no blank line (BBF-106).
+  { name: 'soft break inside list-item link text (BBF-106)', markdown: '- [a\nb](u)' },
+  { name: 'soft break inside list-item link text mid-line (BBF-106)', markdown: '- x [a\nb](u) y' },
+  { name: 'two soft breaks inside list-item link text (BBF-106)', markdown: '1. [a\nb\nc](u)' },
+  { name: 'soft break inside task-item link text (BBF-106)', markdown: '- [ ] [a\nb](u)' },
+  {
+    name: 'soft break inside nested list-item link text (BBF-106)',
+    markdown: '- p\n  - [a\nb](u)'
+  },
+  {
+    name: 'bold before a soft break inside list-item link text (BBF-106)',
+    markdown: '- [**a**\nb](u)'
+  },
   { name: 'leading space in link text mid-line (BBF-103)', markdown: 'x [ a](u) y' },
   { name: 'leading space in link text at line start (BBF-103)', markdown: '[ a](u)' },
   { name: 'leading space in link text after a hard break (BBF-103)', markdown: 'a  \n[ b](u)' },
