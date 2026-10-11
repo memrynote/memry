@@ -182,19 +182,21 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
 
 /**
  * True when `line` ends inside link text that the last line of its paragraph
- * closes. An image, a code span or a tag other than `<br>` keeps the old split.
+ * closes. An image, a code span, an escaped bracket, a link title, a tag
+ * other than `<br>` or a `<br>` against a line end keeps the old split.
  */
 function endsInsideLinkText(line: string, after: string[]): boolean {
   const end = after.findIndex((next) => next.trim() === '' || BLOCK_START.test(next))
   const rest = end < 0 ? after : after.slice(0, end)
-  if (!rest.at(-1)?.includes('](') || /`|<(?!br>)|!\[/i.test([line, ...rest].join('\n'))) {
+  const paragraph = [line, ...rest].join('\n')
+  if (
+    !rest.at(-1)?.includes('](') ||
+    /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>|\]\([^)\s]*\s/i.test(paragraph)
+  ) {
     return false
   }
   let depth = 0
-  for (const [bracket] of line
-    .replace(TASK_ITEM_BOX, '$1')
-    .replace(/\\./g, '')
-    .matchAll(/[[\]]/g)) {
+  for (const [bracket] of line.replace(TASK_ITEM_BOX, '$1').matchAll(/[[\]]/g)) {
     depth = Math.max(0, depth + (bracket === '[' ? 1 : -1))
   }
   return depth > 0

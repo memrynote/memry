@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 209,
+    "exportedCaseCount": 212,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 219,
+    "caseCount": 222,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1387,6 +1387,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "80ab4befdacd71a34a8d8f907c1b0457639d8f3c0ca2792013175ff3d7cbcd69"
+    },
+    {
+      "name": "escaped bracket before a soft break in a list item (BBF-106)",
+      "markdown": "- [a\\]\nb](u)",
+      "canonical": "- [a]\n\nb](u)",
+      "pending": null,
+      "sha256": "07a26d9df5f2c8100f857ace894fb1aef16a2ed8ad69aaa1f6e4ec1aed31924a"
+    },
+    {
+      "name": "link title after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb](u \"t\")",
+      "canonical": "- [a\n\nb](u \"t\")",
+      "pending": null,
+      "sha256": "5870525c4289e22dc72274faeacb63af42b7a5b286d6e2b5c4350d5b2a6c9485"
+    },
+    {
+      "name": "html break opening a list-item link text line (BBF-106)",
+      "markdown": "- [a\n<br>b](u)",
+      "canonical": "- [a\n\nb](u)",
+      "pending": null,
+      "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
     },
     {
       "name": "bold before a soft break inside list-item link text (BBF-106)",
