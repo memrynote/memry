@@ -160,22 +160,25 @@ function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
 }
 
 /**
- * The serializer escapes each parenthesis of a link address, and the parser
- * keeps a backslash in the address, so `[a](u(y))` gained backslashes on every
- * save (BBF-107). Balanced parentheses are valid unescaped, so they travel as
- * tokens. An address with a backslash keeps the serializer's output.
+ * The serializer escapes each parenthesis and backslash of a link address, and
+ * the parser keeps both as written, so `[a](u(y))` (BBF-107) and `[a](u\(y\))`
+ * (BBF-108) gained backslashes on every save. An address whose unescaped
+ * parentheses balance is valid as written, so its parentheses and backslashes
+ * travel as tokens.
  */
 function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
   const href = item.href
-  if (item.type !== 'link' || !href?.includes('(') || /[\\\s<>]/.test(href)) return item
+  if (item.type !== 'link' || !href || !/[\\()]/.test(href) || /[\s<>]/.test(href)) return item
   let depth = 0
-  for (const char of href) {
-    if (char === '(') depth++
-    else if (char === ')' && --depth < 0) return item
+  for (let at = 0; at < href.length; at++) {
+    if (href[at] === '\\') {
+      if (++at === href.length) return item
+    } else if (href[at] === '(') depth++
+    else if (href[at] === ')' && --depth < 0) return item
   }
   if (depth !== 0) return item
-  const paren = (char: string): string => codeToken(marks.push({ code: char }) - 1)
-  return { ...item, href: href.replace(/[()]/g, paren) }
+  const token = (char: string): string => codeToken(marks.push({ code: char }) - 1)
+  return { ...item, href: href.replace(/[\\()]/g, token) }
 }
 
 /** `items` with every run of a mark between tokens; `marks` maps each token to its span. */

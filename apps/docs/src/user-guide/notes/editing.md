@@ -971,6 +971,8 @@ is that nothing is _lost_ on the way through:
   file keeps the code span.
 - **Parentheses in a link address stay as written.** `[a](https://e.com/x_(y))` is saved as it
   is, with no backslashes added before the parentheses on each save.
+- **Backslash escapes in a link address stay as written.** `[a](u\(y\))` and `[a](u\_y)` are
+  saved as they are, with no backslashes added on each save.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.
