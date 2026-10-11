@@ -964,7 +964,8 @@ is that nothing is _lost_ on the way through:
   heading is one line, so the line under it is its own paragraph. A line break inside link text,
   hard or soft, ends the link there and starts it again on the next line, both halves pointing at
   the same address. Bold, italic and strikethrough in that text are kept, written around the link,
-  and saving again does not change the line.
+  and saving again does not change the line. In a list item, a soft line break inside link text
+  stays inside one link, so the item keeps its link and gains no blank line.
 - **Code inside link text keeps the link.** ``[`a`](https://…)`` stays a link. The editor
   cannot style text as both code and a link, so it shows the backticks inside the link, and the
   file keeps the code span.
