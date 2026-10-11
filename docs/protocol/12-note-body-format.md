@@ -729,11 +729,26 @@ The parse rebuilds the span from its code: the shortest backtick fence no run
 in it matches, with one space on each side when the code opens or closes with
 a backtick or with a space on both ends
 (`packages/editor-schema/src/inline/link-code-spans.ts:16`, `:25`,
-`packages/editor-schema/src/parse-markdown.ts:315`;
+`packages/editor-schema/src/parse-markdown.ts:326`;
 `crates/memry-core/src/crdt/markdown_seed/inline.rs:316`, `:343`). House style
 writes each code-span-shaped run of link text without escapes, so
 ``[`a*b`](u)`` comes back as written
 (`packages/editor-schema/src/inline/emphasis-runs.ts:127`).
+
+A link destination whose bytes hold whitespace is the link's `href` as
+written, title and angle brackets included (BBF-109). `[a](u "t")` parses to
+`href` `u "t"` and `[a](<u (y)>)` to `<u (y)>`, because the link mark has no
+field for a title. The destination counts only when it has no leading or
+trailing whitespace, no newline and no backtick, and the link mark accepts both
+it and its address half; anything else keeps BlockNote's address half
+(`packages/editor-schema/src/inline/link-destinations.ts:56`, `:97`,
+`packages/editor-schema/src/parse-markdown.ts:309`;
+`crates/memry-core/src/crdt/markdown_seed/links.rs:44`). House style writes an
+`href` with whitespace back unescaped, so the bytes survive every save
+(`packages/editor-schema/src/inline/emphasis-runs.ts:170`). A reader that opens
+the link uses the address half (`linkDestination`,
+`packages/editor-schema/src/inline/link-destinations.ts:43`). Builds before
+BBF-109 kept only the address half.
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 

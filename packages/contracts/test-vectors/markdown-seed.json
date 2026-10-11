@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, restoreUntaggedFenceLanguages, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 28
+    "caseCount": 29
   },
   "cases": [
     {
@@ -125,6 +125,12 @@
       "pins": "the fence is rebuilt from the code, and the link keeps the marks around it",
       "markdown": "[**``a`b``** c](https://example.com)",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"``a`b``\" bold={} link={\"href\":\"https://example.com\"}\n3 text \" c\" link={\"href\":\"https://example.com\"}"
+    },
+    {
+      "name": "journal: link title and escaped space in an address",
+      "pins": "a destination with whitespace is the href as written, title and escape included (BBF-109)",
+      "markdown": "[a](https://example.com \"T here\") and [b](u\\ y)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"https://example.com \\\"T here\\\"\"}\n3 text \" and \"\n3 text \"b\" link={\"href\":\"u\\\\ y\"}"
     },
     {
       "name": "journal: unsafe link is text",

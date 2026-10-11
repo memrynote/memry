@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
+import { linkDestination } from '@memry/editor-schema/inline'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
@@ -184,7 +185,7 @@ export function useBlockNoteSetup({
         const href = link.getAttribute('href')
         if (href && !href.startsWith('#')) {
           mouseEvent.preventDefault()
-          onLinkClick?.(href)
+          onLinkClick?.(linkDestination(href))
         }
       }
     }

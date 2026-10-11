@@ -108,6 +108,11 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'the fence is rebuilt from the code, and the link keeps the marks around it'
     },
     {
+      name: 'journal: link title and escaped space in an address',
+      markdown: '[a](https://example.com "T here") and [b](u\\ y)',
+      pins: 'a destination with whitespace is the href as written, title and escape included (BBF-109)'
+    },
+    {
       name: 'journal: unsafe link is text',
       markdown: '[click](javascript:alert)',
       pins: 'a link the mark refuses keeps its text unmarked'

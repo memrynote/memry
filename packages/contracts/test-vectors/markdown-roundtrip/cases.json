@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 220,
+    "exportedCaseCount": 228,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 230,
+    "caseCount": 238,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1450,6 +1450,62 @@
       "canonical": null,
       "pending": null,
       "sha256": "35aabeb2c002e5798d3fc276a92ea1253f06795a345ed99fbbd5d4a8cb4a4f9b"
+    },
+    {
+      "name": "double-quoted link title (BBF-109)",
+      "markdown": "[a](u \"t\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "98ff66d0d31374e15a0f05fb3c11c2bdb8ea2e895b62513506ebc100143fe756"
+    },
+    {
+      "name": "single-quoted link title (BBF-109)",
+      "markdown": "[a](u 't')",
+      "canonical": null,
+      "pending": null,
+      "sha256": "62dba65e3e7e2831363e54e49c4a697f161bb90a1e0c5ea9f5fa396643c7bf2e"
+    },
+    {
+      "name": "parenthesised link title (BBF-109)",
+      "markdown": "[a](u (t))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0c44a6a326f2303bf2e03070548123d8ecd6c6a7f7ecd54133baba4097954dd4"
+    },
+    {
+      "name": "link title on a full url (BBF-109)",
+      "markdown": "[a](https://e.com/x \"T here\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "63024c9b6b9bcceb84d74ad592c9e8c7305d8787260f7b24741cd24765211310"
+    },
+    {
+      "name": "angle-bracket address with a space (BBF-109)",
+      "markdown": "[a](<u (y)>)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "70787ca8bab886b3acd52687dcaa1e3220551642b0002d27d04e8360d4810f0e"
+    },
+    {
+      "name": "angle brackets inside a link address (BBF-109)",
+      "markdown": "[a](u(<y>))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4c9907e6e1d8d90f660506b8e992898162947e08de5a3ebbd73cd747e17236df"
+    },
+    {
+      "name": "escaped space in a link address (BBF-111)",
+      "markdown": "[a](u\\ y)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1fa5cb0b7c20357e1e3ec3772caf868e00b249ce7ea03b7f4c169a7fe31c8208"
+    },
+    {
+      "name": "placeholder-shaped text beside a link title (BBF-109)",
+      "markdown": "MEMRYLNK0X and [a](u \"t\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1582b7acab33e8d3358c0e3e44d039bea3e78768cfb892c506acde13f29d66f8"
     },
     {
       "name": "hard break after a soft break in list-item link text (BBF-106)",
