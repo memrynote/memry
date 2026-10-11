@@ -16,6 +16,7 @@ export type InlineItem = {
   styles?: Styles
   props?: Styles
   content?: unknown
+  href?: string
 }
 
 const DELIMITERS = { bold: '**', italic: '*', strike: '~~' } as const
@@ -158,6 +159,25 @@ function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
   })
 }
 
+/**
+ * The serializer escapes each parenthesis of a link address, and the parser
+ * keeps a backslash in the address, so `[a](u(y))` gained backslashes on every
+ * save (BBF-107). Balanced parentheses are valid unescaped, so they travel as
+ * tokens. An address with a backslash keeps the serializer's output.
+ */
+function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
+  const href = item.href
+  if (item.type !== 'link' || !href?.includes('(') || /[\\\s<>]/.test(href)) return item
+  let depth = 0
+  for (const char of href) {
+    if (char === '(') depth++
+    else if (char === ')' && --depth < 0) return item
+  }
+  if (depth !== 0) return item
+  const paren = (char: string): string => codeToken(marks.push({ code: char }) - 1)
+  return { ...item, href: href.replace(/[()]/g, paren) }
+}
+
 /** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
 export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): InlineItem[] {
   items = splitLinksAtBreaks(items)
@@ -175,7 +195,7 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
       out.push(
         Array.isArray(item.content)
           ? {
-              ...item,
+              ...hrefParenTokens(item, marks),
               content: joinTexts(
                 tokenizeEmphasisRuns(codeTokens(item.content as InlineItem[], marks), marks)
               )

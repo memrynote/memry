@@ -182,9 +182,10 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
 
 /**
  * True when `line` ends inside link text that the last line of its paragraph
- * closes. An image, a code span, an escaped bracket, a link title, a `(` in
- * the address, a tag other than `<br>`, a `<br>` against a line end or a hard
- * break on a later line keeps the old split.
+ * closes. An image, a code span, an escaped bracket, a link title, an
+ * address the writer cannot spell back (`addressKeepsSplit`), a tag other than
+ * `<br>`, a `<br>` against a line end or a hard break on a later line keeps
+ * the old split.
  */
 function endsInsideLinkText(line: string, after: string[]): boolean {
   const end = after.findIndex((next) => next.trim() === '' || BLOCK_START.test(next))
@@ -192,7 +193,8 @@ function endsInsideLinkText(line: string, after: string[]): boolean {
   const paragraph = [line, ...rest].join('\n')
   if (
     !rest.at(-1)?.includes('](') ||
-    /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>|\]\([^)\s]*[\s(]/i.test(paragraph) ||
+    /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>/i.test(paragraph) ||
+    addressKeepsSplit(paragraph) ||
     /<br/i.test(rest.join('\n')) ||
     rest.slice(0, -1).some((next) => HARD_BREAK_LINE.test(next))
   ) {
@@ -203,6 +205,33 @@ function endsInsideLinkText(line: string, after: string[]): boolean {
     depth = Math.max(0, depth + (bracket === '[' ? 1 : -1))
   }
   return depth > 0
+}
+
+/**
+ * True when an address in `paragraph` holds a title or a space, or holds a
+ * parenthesis that is unbalanced or next to a backslash, which the writer
+ * escapes again on every save (BBF-107).
+ */
+function addressKeepsSplit(paragraph: string): boolean {
+  for (const open of paragraph.matchAll(/\]\(/g)) {
+    let depth = 0
+    let paren = false
+    let backslash = false
+    let closed = false
+    for (const char of paragraph.slice(open.index + 2)) {
+      if (/\s/.test(char)) return true
+      if (char === '\\') backslash = true
+      else if (char === '(') {
+        paren = true
+        depth++
+      } else if (char === ')' && depth-- === 0) {
+        closed = true
+        break
+      }
+    }
+    if (paren && (!closed || backslash)) return true
+  }
+  return false
 }
 
 /**

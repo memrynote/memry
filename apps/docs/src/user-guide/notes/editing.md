@@ -969,6 +969,8 @@ is that nothing is _lost_ on the way through:
 - **Code inside link text keeps the link.** ``[`a`](https://…)`` stays a link. The editor
   cannot style text as both code and a link, so it shows the backticks inside the link, and the
   file keeps the code span.
+- **Parentheses in a link address stay as written.** `[a](https://e.com/x_(y))` is saved as it
+  is, with no backslashes added before the parentheses on each save.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.

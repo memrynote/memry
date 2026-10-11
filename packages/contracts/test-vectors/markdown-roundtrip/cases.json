@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 214,
+    "exportedCaseCount": 218,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 224,
+    "caseCount": 228,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1403,11 +1403,39 @@
       "sha256": "5870525c4289e22dc72274faeacb63af42b7a5b286d6e2b5c4350d5b2a6c9485"
     },
     {
-      "name": "parenthesised url after a soft break in list-item link text (BBF-106)",
+      "name": "parenthesised url after a soft break in list-item link text (BBF-107)",
       "markdown": "- [a\nb](u(y))",
-      "canonical": "- [a\n\nb](u(y))",
+      "canonical": null,
       "pending": null,
       "sha256": "e17d1db2975cb01482725bc9c9347151e13058fcbb99f94eaae55fd5ee83cd04"
+    },
+    {
+      "name": "parenthesised link address (BBF-107)",
+      "markdown": "[ab](https://e.com/x_(y))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "74990f88a9eea1b3eb76513e03144c63dac15747ef93cc3eafc30edd6937b589"
+    },
+    {
+      "name": "parenthesised list-item link address (BBF-107)",
+      "markdown": "- [ab](https://e.com/x_(y))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c69d514f1d347e2465df2a04675834fac78c4c6f40fb9d765869e62964c8c4ee"
+    },
+    {
+      "name": "soft break in list-item link text, parenthesised address (BBF-107)",
+      "markdown": "- [a\nb](https://e.com/x_(y))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c9199b876957d124eb8149329a5e54d78267283d162cef7110c04467a13a2a55"
+    },
+    {
+      "name": "nested parentheses in a link address (BBF-107)",
+      "markdown": "[a](u((y))z(w))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9ba5a4264073f33070e84dc883fada2e9e3e074757eced9b036201dfcaec7644"
     },
     {
       "name": "hard break after a soft break in list-item link text (BBF-106)",
