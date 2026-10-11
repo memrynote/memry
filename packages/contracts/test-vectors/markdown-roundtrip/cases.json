@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 212,
+    "exportedCaseCount": 214,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 222,
+    "caseCount": 224,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1401,6 +1401,20 @@
       "canonical": "- [a\n\nb](u \"t\")",
       "pending": null,
       "sha256": "5870525c4289e22dc72274faeacb63af42b7a5b286d6e2b5c4350d5b2a6c9485"
+    },
+    {
+      "name": "parenthesised url after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb](u(y))",
+      "canonical": "- [a\n\nb](u(y))",
+      "pending": null,
+      "sha256": "e17d1db2975cb01482725bc9c9347151e13058fcbb99f94eaae55fd5ee83cd04"
+    },
+    {
+      "name": "hard break after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb  \nc](u)",
+      "canonical": "- [a\n\nb  \nc](u)",
+      "pending": null,
+      "sha256": "b47794e401002cdd11c9d3c4463a513fc40c9ea7f318c8e1f11964d182996f8f"
     },
     {
       "name": "html break opening a list-item link text line (BBF-106)",
