@@ -953,6 +953,10 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'angle brackets inside a link address (BBF-109)', markdown: '[a](u(<y>))' },
   { name: 'escaped space in a link address (BBF-111)', markdown: '[a](u\\ y)' },
   {
+    name: 'placeholder-shaped text beside a link title (BBF-109)',
+    markdown: 'MEMRYLNK0X and [a](u "t")'
+  },
+  {
     name: 'hard break after a soft break in list-item link text (BBF-106)',
     markdown: '- [a\nb  \nc](u)',
     canonical: '- [a\n\nb  \nc](u)'
