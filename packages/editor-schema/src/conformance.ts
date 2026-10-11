@@ -927,10 +927,20 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '- [a\n\nb](u "t")'
   },
   {
-    name: 'parenthesised url after a soft break in list-item link text (BBF-106)',
-    markdown: '- [a\nb](u(y))',
-    canonical: '- [a\n\nb](u(y))'
+    name: 'parenthesised url after a soft break in list-item link text (BBF-107)',
+    markdown: '- [a\nb](u(y))'
   },
+  // Balanced parentheses in a link address are written as they are (BBF-107).
+  { name: 'parenthesised link address (BBF-107)', markdown: '[ab](https://e.com/x_(y))' },
+  {
+    name: 'parenthesised list-item link address (BBF-107)',
+    markdown: '- [ab](https://e.com/x_(y))'
+  },
+  {
+    name: 'soft break in list-item link text, parenthesised address (BBF-107)',
+    markdown: '- [a\nb](https://e.com/x_(y))'
+  },
+  { name: 'nested parentheses in a link address (BBF-107)', markdown: '[a](u((y))z(w))' },
   {
     name: 'hard break after a soft break in list-item link text (BBF-106)',
     markdown: '- [a\nb  \nc](u)',
