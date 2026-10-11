@@ -741,13 +741,13 @@ written, title and angle brackets included (BBF-109). `[a](u "t")` parses to
 field for a title. The destination counts only when it has no leading or
 trailing whitespace, no newline and no backtick, and the link mark accepts both
 it and its address half; anything else keeps BlockNote's address half
-(`packages/editor-schema/src/inline/link-destinations.ts:51`, `:92`,
+(`packages/editor-schema/src/inline/link-destinations.ts:56`, `:97`,
 `packages/editor-schema/src/parse-markdown.ts:309`;
 `crates/memry-core/src/crdt/markdown_seed/links.rs:44`). House style writes an
 `href` with whitespace back unescaped, so the bytes survive every save
 (`packages/editor-schema/src/inline/emphasis-runs.ts:170`). A reader that opens
 the link uses the address half (`linkDestination`,
-`packages/editor-schema/src/inline/link-destinations.ts:38`). Builds before
+`packages/editor-schema/src/inline/link-destinations.ts:43`). Builds before
 BBF-109 kept only the address half.
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6

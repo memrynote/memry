@@ -12,7 +12,12 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
  * keeps the same `href` (`crates/memry-core/src/crdt/markdown_seed/links.rs`).
  */
 
-const placeholder = (index: number): string => `MEMRYLNK${index}X`
+// Per process, so note text does not hold a placeholder (as in `emphasis-runs.ts`).
+const PROCESS_WORD = String.fromCharCode(
+  ...crypto.getRandomValues(new Uint8Array(12)).map((byte) => 65 + (byte % 26))
+)
+const placeholder = (index: number): string => `MEMRYLNK${PROCESS_WORD}${index}X`
+const PLACEHOLDER = new RegExp(`MEMRYLNK${PROCESS_WORD}(\\d+)X`, 'g')
 
 // BlockNote's `isAllowedUri` (link.ts). A destination its link mark refuses is
 // left to the parser, which keeps only the link text.
@@ -114,8 +119,5 @@ export function maskLinkDestinations(markdown: string): MaskedLinkDestinations {
 /** Put back the destinations `maskLinkDestinations` hid, in a run's text or a link's `href`. */
 export function restoreLinkDestinations(text: string, destinations: string[]): string {
   if (destinations.length === 0 || !text.includes('MEMRYLNK')) return text
-  return text.replace(
-    /MEMRYLNK(\d+)X/g,
-    (whole, index: string) => destinations[Number(index)] ?? whole
-  )
+  return text.replace(PLACEHOLDER, (whole, index: string) => destinations[Number(index)] ?? whole)
 }

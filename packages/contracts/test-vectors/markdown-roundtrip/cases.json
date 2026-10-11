@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 227,
+    "exportedCaseCount": 228,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 237,
+    "caseCount": 238,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1499,6 +1499,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "1fa5cb0b7c20357e1e3ec3772caf868e00b249ce7ea03b7f4c169a7fe31c8208"
+    },
+    {
+      "name": "placeholder-shaped text beside a link title (BBF-109)",
+      "markdown": "MEMRYLNK0X and [a](u \"t\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1582b7acab33e8d3358c0e3e44d039bea3e78768cfb892c506acde13f29d66f8"
     },
     {
       "name": "hard break after a soft break in list-item link text (BBF-106)",

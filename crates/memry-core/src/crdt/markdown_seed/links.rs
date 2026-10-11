@@ -43,7 +43,10 @@ pub(super) fn link(text: &[char], start: usize) -> Option<(String, &[char], usiz
 /// (`packages/editor-schema/src/inline/link-destinations.ts`, BBF-109).
 fn kept_whole(raw: &[char]) -> Option<String> {
     let text = collect(raw);
-    let spaced = text.chars().any(|c| c.is_whitespace() || c == '\u{feff}');
+    // JavaScript's `\s`: Unicode whitespace without U+0085, plus U+FEFF.
+    let spaced = text
+        .chars()
+        .any(|c| (c.is_whitespace() && c != '\u{85}') || c == '\u{feff}');
     let kept = text == crate::domain::journal_rules::js_trim(&text)
         && spaced
         && !text.contains(['\n', '`'])
