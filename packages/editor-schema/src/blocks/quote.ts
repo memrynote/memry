@@ -31,7 +31,21 @@ export interface QuoteRun {
    * literal text (#1881).
    */
   nested: boolean
+  /**
+   * The run holds a list. BlockNote's flat quote keeps only the items' text, so
+   * declining it drops every marker: `> - a` came back `> a` (BBF-110).
+   */
+  listed: boolean
 }
+
+/** A list item that can open a list anywhere, even inside a paragraph. */
+const INTERRUPTING_ITEM = /^ {0,3}([-*+]|1[.)])[ \t]+\S/
+/** A list item that opens a list where no paragraph runs on. */
+const LIST_ITEM = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]|$)/
+/** A line that starts a block of its own instead of continuing a paragraph. */
+const BLOCK_START =
+  /^ {0,3}(>|#{1,6}([ \t]|$)|```|~~~|<|\||[-*_=]+[ \t]*$|[-*_]([ \t]*[-*_]){2,}[ \t]*$)/
+const FENCE = /^ {0,3}(```|~~~)/
 
 /**
  * Read a blockquote run at `lines[start]` whose inner structure BlockNote
@@ -40,9 +54,10 @@ export interface QuoteRun {
  * BlockNote parses a whole blockquote into ONE block of inline content, so a
  * blank `>` separator and a `> >` nesting level are gone before serialization
  * ever runs: `> A\n>\n> B` comes back as `> A\n> B` and a nested callout comes
- * back unnested (#1881). Those two are exactly the shapes claimed here. A run
- * with neither is already flat and stays on the untouched path, so no quote
- * that round-trips today changes.
+ * back unnested (#1881). A list loses every marker the same way: `> - a` comes
+ * back `> a` (BBF-110). Those three are exactly the shapes claimed here. A run
+ * with none of them is already flat and stays on the untouched path, so no
+ * quote that round-trips today changes.
  *
  * Strict on the prefix: only `>` alone and `> …` are read. A `>text` line —
  * valid CommonMark, never bytes Memry writes — refuses the whole run rather
@@ -55,6 +70,7 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
   let end = start
   let separated = false
   let nested = false
+  let listed = false
 
   while (end < lines.length && lines[end].startsWith('>')) {
     const line = lines[end]
@@ -65,14 +81,37 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
       const stripped = line.slice(2)
       inner.push(stripped)
       if (stripped.startsWith('>')) nested = true
+      const opensItem = inner.length === 1 || inner[inner.length - 2] === ''
+      if (INTERRUPTING_ITEM.test(stripped) || (opensItem && LIST_ITEM.test(stripped))) listed = true
     } else {
       return null
     }
     end++
   }
 
-  if (!separated && !nested) return null
-  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end, nested }
+  // A line after a listed run that neither opens a block nor follows a gap
+  // continues the item's paragraph lazily: `> - [a\nb](u)` is one item, and
+  // ending the run before `b](u)` tore its link in two (BBF-110).
+  if (listed && inner[inner.length - 1] !== '' && !inner.some((line) => FENCE.test(line))) {
+    while (
+      end < lines.length &&
+      lines[end].trim() !== '' &&
+      !LIST_ITEM.test(lines[end]) &&
+      !BLOCK_START.test(lines[end])
+    ) {
+      inner.push(lines[end])
+      end++
+    }
+  }
+
+  if (!separated && !nested && !listed) return null
+  return {
+    innerMarkdown: inner.join('\n'),
+    raw: lines.slice(start, end).join('\n'),
+    end,
+    nested,
+    listed
+  }
 }
 
 /**
@@ -95,7 +134,10 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
  * `> > [!warning]` callout demoted to literal text (#1881). So a nested run is
  * claimed when its canonical form settles — when re-reading and re-parsing
  * those bytes reproduces them — which trades an unreachable byte identity for a
- * one-step normalization that keeps the nesting.
+ * one-step normalization that keeps the nesting. A run holding a list gets the
+ * same chance, because the flat fallback deletes every marker in it: a line
+ * that continues an item lazily gains its `>`, and a list right under a
+ * paragraph gains the blank `>` line the serializer writes between blocks.
  *
  * A leading paragraph becomes the quote's own content and the rest its
  * children, which is the list `serializeQuoteBlock` is handed on the way out.
@@ -108,14 +150,28 @@ export async function resolveQuoteRun(
   const parsed = await parseMarkdown(run.innerMarkdown)
   const claimed = splitQuoteBlocks(parsed)
   if (!claimed) return null
+  if (run.listed && parsed.some(itemHoldsNonList)) return null
 
   const canonical = serializeQuoteBlock((await serializeBlocks(parsed)).trim())
   if (canonical !== run.raw) {
-    if (!run.nested) return null
+    if (!run.nested && !run.listed) return null
     if (!(await settles(canonical, parseMarkdown, serializeBlocks))) return null
   }
 
   return claimed
+}
+
+const LIST_BLOCKS = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
+
+/**
+ * A list item that owns a block other than a list item. The writer spells that
+ * child with nesting markers, which no parse reads back inside a quote, so
+ * `> - x\n>   y` would grow on every save.
+ */
+function itemHoldsNonList(block: ParsedBlockShape): boolean {
+  const children = (block.children ?? []) as ParsedBlockShape[]
+  if (!LIST_BLOCKS.has(block.type as string)) return false
+  return children.some((child) => !LIST_BLOCKS.has(child.type as string) || itemHoldsNonList(child))
 }
 
 /**
@@ -126,7 +182,8 @@ export async function resolveQuoteRun(
  * nested level (`> > Inner only`) has no own line: its inner markdown parses to
  * a lone `quote`, so the quote keeps empty own content and every parsed block
  * as a child (#1896). Empty own content serializes to nothing ahead of the
- * children, so the bytes reproduce. Any other leading block declines, as before.
+ * children, so the bytes reproduce. A run that opens on a list item has no own
+ * line either (BBF-110). Any other leading block declines, as before.
  *
  * No children means a flat quote, which the untouched path already serializes
  * correctly — claiming it would only route identical bytes through more code.
@@ -135,7 +192,9 @@ function splitQuoteBlocks(
   parsed: ParsedBlockShape[]
 ): { content: unknown; children: ParsedBlockShape[] } | null {
   const [first, ...rest] = parsed
-  if (!first || first.children?.length) return null
+  if (!first) return null
+  if (LIST_BLOCKS.has(first.type as string)) return { content: [], children: parsed }
+  if (first.children?.length) return null
   if (first.type === 'quote') return { content: [], children: parsed }
   if (first.type !== 'paragraph' || rest.length === 0) return null
   return { content: first.content ?? [], children: rest }

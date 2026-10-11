@@ -19,6 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { readStructuredQuoteRun } from './quote'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
@@ -82,6 +83,9 @@ export function readCalloutRun(
   if (!atParagraphStart) return null
 
   const quoted = lines[start].match(MEMRY_CALLOUT_MARKER_REGEX)
+  // A callout body holds one paragraph, so a list in it always declined and
+  // the run went flat without its markers. Read as a quote it keeps them (BBF-110).
+  if (quoted && readStructuredQuoteRun(lines, start)?.listed) return null
   if (quoted) {
     const contentLines: string[] = []
     let end = start + 1

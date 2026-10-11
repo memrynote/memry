@@ -421,7 +421,8 @@ describe('readStructuredQuoteRun', () => {
       innerMarkdown: 'One\n\nTwo',
       raw: '> One\n>\n> Two',
       end: 3,
-      nested: false
+      nested: false,
+      listed: false
     })
   })
 

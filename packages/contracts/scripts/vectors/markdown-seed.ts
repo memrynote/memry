@@ -86,7 +86,7 @@ function refuseUnreproduced(name: string, markdown: string): void {
     ['inline token', /\(\((mention|date):/],
     ['task block', /\{task:/],
     ['plain checkbox', /\{check\}/],
-    ['structured quote', /^(>|> >.*)$/m],
+    ['structured quote', /^(>|> >.*|> {1,4}([-*+]|\d{1,9}[.)])([ \t].*)?)$/m],
     ['table', /^\s*\|.*\|\s*$/m],
     ['masking token', /MEMRY/],
     ['line terminator', /[\r\u2028\u2029]/]
