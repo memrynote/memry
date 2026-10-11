@@ -944,6 +944,14 @@ const htmlCommentCases: RoundtripCase[] = [
   // Backslash escapes in a link address are written as they are (BBF-108).
   { name: 'escaped parentheses in a link address (BBF-108)', markdown: '[a](u\\(y\\))' },
   { name: 'escaped underscore in a link address (BBF-108)', markdown: '[a](u\\_y)' },
+  // A link title and a spaced address are written as they are (BBF-109).
+  { name: 'double-quoted link title (BBF-109)', markdown: '[a](u "t")' },
+  { name: 'single-quoted link title (BBF-109)', markdown: "[a](u 't')" },
+  { name: 'parenthesised link title (BBF-109)', markdown: '[a](u (t))' },
+  { name: 'link title on a full url (BBF-109)', markdown: '[a](https://e.com/x "T here")' },
+  { name: 'angle-bracket address with a space (BBF-109)', markdown: '[a](<u (y)>)' },
+  { name: 'angle brackets inside a link address (BBF-109)', markdown: '[a](u(<y>))' },
+  { name: 'escaped space in a link address (BBF-111)', markdown: '[a](u\\ y)' },
   {
     name: 'hard break after a soft break in list-item link text (BBF-106)',
     markdown: '- [a\nb  \nc](u)',
