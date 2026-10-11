@@ -91,8 +91,8 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
   }
 
   // A checkbox in a structured quote is promoted to a task when the note
-  // opens, which writes the task id into the file. A quote main read flat
-  // keeps its checkboxes flat, so the file is not rewritten on open.
+  // opens, which writes the task id into the file. A quote older builds read
+  // flat keeps its checkboxes flat, so opening it does not rewrite the file.
   if (inner.some((line) => CHECKBOX_ITEM.test(line))) listed = false
 
   // A line after a listed run that neither opens a block nor follows a gap
