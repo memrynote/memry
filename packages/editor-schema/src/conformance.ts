@@ -915,6 +915,23 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'soft break inside nested list-item link text (BBF-106)',
     markdown: '- p\n  - [a\nb](u)'
   },
+  // A list in a quote or a callout keeps its markers and the link (BBF-110).
+  { name: 'list in a quote (BBF-110)', markdown: '> - a\n> - b' },
+  { name: 'soft break in quoted list-item link text (BBF-110)', markdown: '> - [a\n> b](u)' },
+  {
+    name: 'lazy soft break in quoted list-item link text (BBF-110)',
+    markdown: '> - [a\nb](u)',
+    canonical: '> - [a\n> b](u)'
+  },
+  {
+    name: 'soft break in callout list-item link text (BBF-110)',
+    markdown: '> [!note]\n>\n> - [a\n> b](u)'
+  },
+  {
+    name: 'lazy soft break in callout list-item link text (BBF-110)',
+    markdown: '> [!note]\n> - [a\nb](u)',
+    canonical: '> [!note]\n>\n> - [a\n> b](u)'
+  },
   // Shapes the join leaves alone keep main's output (BBF-106).
   {
     name: 'escaped bracket before a soft break in a list item (BBF-106)',
