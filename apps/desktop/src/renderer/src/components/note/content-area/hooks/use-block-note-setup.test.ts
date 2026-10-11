@@ -383,6 +383,26 @@ describe('useBlockNoteSetup', () => {
     window.removeEventListener('wikilink:click', wikiEvent)
   })
 
+  // A link's title and a spaced address live in its href (BBF-109).
+  it.each([
+    ['a title', 'https://memry.app &quot;Memry&quot;', 'https://memry.app'],
+    ['a spaced address and a title', '&lt;docs/a b.md&gt; &quot;t&quot;', 'docs/a b.md']
+  ])('opens the address of a link whose href holds %s', (_label, attribute, address) => {
+    const { editor } = createEditor()
+    const onLinkClick = vi.fn()
+    const editorElement = document.createElement('div')
+    editorElement.className = 'bn-editor'
+    editorElement.innerHTML = `<a href="${attribute}">titled</a>`
+    editorContainerRef.current!.appendChild(editorElement)
+    renderHook(() => useBlockNoteSetup({ editor, editorContainerRef, onLinkClick }))
+
+    editorElement
+      .querySelector('a')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    expect(onLinkClick).toHaveBeenCalledWith(address)
+  })
+
   it('binds each split-view pane to its own editor surface', () => {
     const left = createPane('https://left.example')
     const right = createPane('https://right.example')

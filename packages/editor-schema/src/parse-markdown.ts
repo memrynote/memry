@@ -14,6 +14,7 @@ import {
 import { restoreDetailsMarkup } from './blocks/markdown'
 import { maskCellCodeSpaces, restoreCellCodeSpaces } from './inline/cell-code-spaces'
 import { linkCodeAsText } from './inline/link-code-spans'
+import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 
@@ -110,6 +111,8 @@ interface Masks {
   tokens: string[]
   /** The whitespace masked in table-cell code spans, by placeholder index. */
   spaces: string[]
+  /** The spaced link destinations, by placeholder index. */
+  destinations: string[]
 }
 
 /**
@@ -137,6 +140,8 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
   for (const [index, run] of runs.entries()) {
     // Link text is prose too, and a hard break in it carries a token (BBF-103).
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
+    const link = run as StyledRun | undefined
+    if (link?.href) link.href = restoreLinkDestinations(link.href, masks.destinations)
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent as InlineRun[], code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
@@ -159,9 +164,12 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
-    run.text = restoreCellCodeSpaces(
-      restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
-      masks.spaces
+    run.text = restoreLinkDestinations(
+      restoreCellCodeSpaces(
+        restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
+        masks.spaces
+      ),
+      masks.destinations
     )
     if (stripped === '' && original !== '') emptied.add(run)
   }
@@ -175,6 +183,7 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
 interface StyledRun extends InlineRun {
   styles?: { code?: boolean }
   content?: unknown
+  href?: string
 }
 
 /**
@@ -295,7 +304,9 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
-  const { markdown: masked, breaks } = maskHardBreaks(source)
+  const { markdown: breaksMasked, breaks } = maskHardBreaks(source)
+  // A link's title and a spaced address live in its `href` (BBF-109).
+  const { markdown: masked, destinations } = maskLinkDestinations(breaksMasked)
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
   const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
@@ -316,6 +327,6 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens, spaces })
+  repairBlocks(parsed, { breaks, tokens, spaces, destinations })
   return parsed as T[]
 }

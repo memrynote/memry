@@ -33,8 +33,23 @@ pub(super) fn link(text: &[char], start: usize) -> Option<(String, &[char], usiz
         return None;
     }
     let paren_end = closing(text, text_end + 1, '(', ')')?;
-    let href = destination(&text[text_end + 2..paren_end]);
+    let raw = &text[text_end + 2..paren_end];
+    let href = kept_whole(raw).unwrap_or_else(|| destination(raw));
     Some((href, &text[start + 1..text_end], paren_end + 1))
+}
+
+/// A destination with whitespace is the link's `href` as written, title and
+/// angle brackets included, as desktop's `maskLinkDestinations` keeps it
+/// (`packages/editor-schema/src/inline/link-destinations.ts`, BBF-109).
+fn kept_whole(raw: &[char]) -> Option<String> {
+    let text = collect(raw);
+    let spaced = text.chars().any(|c| c.is_whitespace() || c == '\u{feff}');
+    let kept = text == crate::domain::journal_rules::js_trim(&text)
+        && spaced
+        && !text.contains(['\n', '`'])
+        && allowed_href(&text)
+        && allowed_href(&destination(raw));
+    kept.then_some(text)
 }
 
 /// The URL half of `parseDestinationAndTitle`. The title is dropped: the link

@@ -18,6 +18,7 @@ export * from './date-mention'
 export * from './inline-image'
 export * from './inline-checkbox'
 export * from './html-comment'
+export { linkDestination } from './link-destinations'
 
 /**
  * The specs each process supplies for itself. The config and the serialization
