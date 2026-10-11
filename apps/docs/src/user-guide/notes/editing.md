@@ -419,7 +419,7 @@ above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quo
 is added on the first save, and the file stops changing after that. Markdown reads both
 spellings as the same nested quote, and a note can only be saved in one of them.
 
-A list inside a quote or a callout keeps its bullets, numbers and checkboxes when the
+A list inside a quote or a callout keeps its bullets and numbers when the
 quote is edited. Some spellings are saved in a standard form on the first save: a line
 that continues an item without its `>` gets one, and a callout or a paragraph followed
 directly by a list gets a blank quote line before the list. After that the file stops
