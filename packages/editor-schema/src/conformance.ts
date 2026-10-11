@@ -927,6 +927,16 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '- [a\n\nb](u "t")'
   },
   {
+    name: 'parenthesised url after a soft break in list-item link text (BBF-106)',
+    markdown: '- [a\nb](u(y))',
+    canonical: '- [a\n\nb](u(y))'
+  },
+  {
+    name: 'hard break after a soft break in list-item link text (BBF-106)',
+    markdown: '- [a\nb  \nc](u)',
+    canonical: '- [a\n\nb  \nc](u)'
+  },
+  {
     name: 'html break opening a list-item link text line (BBF-106)',
     markdown: '- [a\n<br>b](u)',
     canonical: '- [a\n\nb](u)'
