@@ -906,6 +906,45 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '[**a\nb**](u)',
     canonical: '**[a](u)\n[b](u)**'
   },
+  // A soft break in list-item link text stays one link, no blank line (BBF-106).
+  { name: 'soft break inside list-item link text (BBF-106)', markdown: '- [a\nb](u)' },
+  { name: 'soft break inside list-item link text mid-line (BBF-106)', markdown: '- x [a\nb](u) y' },
+  { name: 'two soft breaks inside list-item link text (BBF-106)', markdown: '1. [a\nb\nc](u)' },
+  { name: 'soft break inside task-item link text (BBF-106)', markdown: '- [ ] [a\nb](u)' },
+  {
+    name: 'soft break inside nested list-item link text (BBF-106)',
+    markdown: '- p\n  - [a\nb](u)'
+  },
+  // Shapes the join leaves alone keep main's output (BBF-106).
+  {
+    name: 'escaped bracket before a soft break in a list item (BBF-106)',
+    markdown: '- [a\\]\nb](u)',
+    canonical: '- [a]\n\nb](u)'
+  },
+  {
+    name: 'link title after a soft break in list-item link text (BBF-106)',
+    markdown: '- [a\nb](u "t")',
+    canonical: '- [a\n\nb](u "t")'
+  },
+  {
+    name: 'parenthesised url after a soft break in list-item link text (BBF-106)',
+    markdown: '- [a\nb](u(y))',
+    canonical: '- [a\n\nb](u(y))'
+  },
+  {
+    name: 'hard break after a soft break in list-item link text (BBF-106)',
+    markdown: '- [a\nb  \nc](u)',
+    canonical: '- [a\n\nb  \nc](u)'
+  },
+  {
+    name: 'html break opening a list-item link text line (BBF-106)',
+    markdown: '- [a\n<br>b](u)',
+    canonical: '- [a\n\nb](u)'
+  },
+  {
+    name: 'bold before a soft break inside list-item link text (BBF-106)',
+    markdown: '- [**a**\nb](u)'
+  },
   { name: 'leading space in link text mid-line (BBF-103)', markdown: 'x [ a](u) y' },
   { name: 'leading space in link text at line start (BBF-103)', markdown: '[ a](u)' },
   { name: 'leading space in link text after a hard break (BBF-103)', markdown: 'a  \n[ b](u)' },

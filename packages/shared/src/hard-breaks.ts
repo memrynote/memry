@@ -101,15 +101,23 @@ export function maskHardBreaks(markdown: string): MaskedHardBreaks {
   for (const region of regions) {
     out += region.isCode ? region.text : maskProseHardBreaks(region.text, breaks)
   }
-  return breaks.length === 0 ? { markdown, breaks: [] } : { markdown: out, breaks }
+  return { markdown: out, breaks }
 }
 
 function maskProseHardBreaks(text: string, breaks: string[]): string {
-  // Cheap reject on the characters a hard break is spelled with. `$` in
+  // Cheap reject on the characters a hard break or a link is spelled with. `$` in
   // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
   // meaningful once the text is split into lines.
   const hasBr = /<br/i.test(text)
-  if (!hasBr && !text.includes('  ') && !text.includes('\t') && !text.includes('\\')) return text
+  if (
+    !hasBr &&
+    !text.includes('  ') &&
+    !text.includes('\t') &&
+    !text.includes('\\') &&
+    !text.includes('](')
+  ) {
+    return text
+  }
 
   const lines = text.split('\n')
   let inOtherBlock = false
@@ -133,6 +141,20 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     }
     if (index === lines.length - 1) continue
     if (lines[index + 1].trim() === '') continue
+    // The parser ends a list item at a soft break inside link text too, so
+    // `- [a\nb](u)` lost its link and gained a blank line (BBF-106). Joined
+    // with a `<br>`, the item keeps one link with a soft break in it.
+    if (
+      inListItem &&
+      !HARD_BREAK_LINE.test(line) &&
+      !BLOCK_START.test(lines[index + 1]) &&
+      endsInsideLinkText(line, lines.slice(index + 1))
+    ) {
+      lines[index] += `<br>${lines[index + 1].trimStart()}`
+      lines.splice(index + 1, 1)
+      index--
+      continue
+    }
     if (line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
     // The marker replaces the spelling rather than joining it: leaving the two
     // trailing spaces in place would hand the parser a break it already knows
@@ -156,6 +178,31 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     }
   }
   return lines.join('\n')
+}
+
+/**
+ * True when `line` ends inside link text that the last line of its paragraph
+ * closes. An image, a code span, an escaped bracket, a link title, a `(` in
+ * the address, a tag other than `<br>`, a `<br>` against a line end or a hard
+ * break on a later line keeps the old split.
+ */
+function endsInsideLinkText(line: string, after: string[]): boolean {
+  const end = after.findIndex((next) => next.trim() === '' || BLOCK_START.test(next))
+  const rest = end < 0 ? after : after.slice(0, end)
+  const paragraph = [line, ...rest].join('\n')
+  if (
+    !rest.at(-1)?.includes('](') ||
+    /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>|\]\([^)\s]*[\s(]/i.test(paragraph) ||
+    /<br/i.test(rest.join('\n')) ||
+    rest.slice(0, -1).some((next) => HARD_BREAK_LINE.test(next))
+  ) {
+    return false
+  }
+  let depth = 0
+  for (const [bracket] of line.replace(TASK_ITEM_BOX, '$1').matchAll(/[[\]]/g)) {
+    depth = Math.max(0, depth + (bracket === '[' ? 1 : -1))
+  }
+  return depth > 0
 }
 
 /**

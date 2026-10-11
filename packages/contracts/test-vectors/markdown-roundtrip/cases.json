@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 203,
+    "exportedCaseCount": 214,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 213,
+    "caseCount": 224,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1352,6 +1352,83 @@
       "canonical": "**[a](u)\n[b](u)**",
       "pending": null,
       "sha256": "b9cd45b0e9467eeb63c6464016a9904e2acb830d9d6d91c94405a5deed267272"
+    },
+    {
+      "name": "soft break inside list-item link text (BBF-106)",
+      "markdown": "- [a\nb](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a328ffc0b1d454ed0c1c592d5eccdfbd20f43ee3f9ccf2c16c23b0443a96b0b1"
+    },
+    {
+      "name": "soft break inside list-item link text mid-line (BBF-106)",
+      "markdown": "- x [a\nb](u) y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ad235d9ac0c6b715377fc317888fa9b4fce3c2440a9f415a5627c75fc50bb258"
+    },
+    {
+      "name": "two soft breaks inside list-item link text (BBF-106)",
+      "markdown": "1. [a\nb\nc](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ff5d93a29c931f85e0f58886a0c8f0e49ba73876ba7487f09569efee6dcecec3"
+    },
+    {
+      "name": "soft break inside task-item link text (BBF-106)",
+      "markdown": "- [ ] [a\nb](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6744b73e0ba6dc670b8e2cfda3f023e44e1d0ec6117cd5b359bc08aae44ef537"
+    },
+    {
+      "name": "soft break inside nested list-item link text (BBF-106)",
+      "markdown": "- p\n  - [a\nb](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "80ab4befdacd71a34a8d8f907c1b0457639d8f3c0ca2792013175ff3d7cbcd69"
+    },
+    {
+      "name": "escaped bracket before a soft break in a list item (BBF-106)",
+      "markdown": "- [a\\]\nb](u)",
+      "canonical": "- [a]\n\nb](u)",
+      "pending": null,
+      "sha256": "07a26d9df5f2c8100f857ace894fb1aef16a2ed8ad69aaa1f6e4ec1aed31924a"
+    },
+    {
+      "name": "link title after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb](u \"t\")",
+      "canonical": "- [a\n\nb](u \"t\")",
+      "pending": null,
+      "sha256": "5870525c4289e22dc72274faeacb63af42b7a5b286d6e2b5c4350d5b2a6c9485"
+    },
+    {
+      "name": "parenthesised url after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb](u(y))",
+      "canonical": "- [a\n\nb](u(y))",
+      "pending": null,
+      "sha256": "e17d1db2975cb01482725bc9c9347151e13058fcbb99f94eaae55fd5ee83cd04"
+    },
+    {
+      "name": "hard break after a soft break in list-item link text (BBF-106)",
+      "markdown": "- [a\nb  \nc](u)",
+      "canonical": "- [a\n\nb  \nc](u)",
+      "pending": null,
+      "sha256": "b47794e401002cdd11c9d3c4463a513fc40c9ea7f318c8e1f11964d182996f8f"
+    },
+    {
+      "name": "html break opening a list-item link text line (BBF-106)",
+      "markdown": "- [a\n<br>b](u)",
+      "canonical": "- [a\n\nb](u)",
+      "pending": null,
+      "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
+    },
+    {
+      "name": "bold before a soft break inside list-item link text (BBF-106)",
+      "markdown": "- [**a**\nb](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "55e632215e5b35ec7fc39cc3033c7767f6db256754c246a4e9412a24a659fd8c"
     },
     {
       "name": "leading space in link text mid-line (BBF-103)",

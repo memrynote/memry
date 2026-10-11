@@ -121,6 +121,28 @@ function splitLinksAtBreaks(items: InlineItem[]): InlineItem[] {
 }
 
 /**
+ * Each soft break in a list item's link text, as a token inside the link. Split
+ * at the break, the second link lands on a lazy line that reads back as a
+ * paragraph of its own, so `- [a\nb](u)` gained a blank line (BBF-106).
+ */
+export function listLinkBreakTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
+  return items.map((item) => {
+    if (item.type !== 'link' || !Array.isArray(item.content)) return item
+    const content = (item.content as InlineItem[]).map((child) =>
+      child.text?.includes('\n')
+        ? {
+            ...child,
+            text: child.text.replace(/(?<!\n)\n(?!\n)/g, () =>
+              codeToken(marks.push({ code: '\n' }) - 1)
+            )
+          }
+        : child
+    )
+    return { ...item, content }
+  })
+}
+
+/**
  * A code span in link text is the link's own text (`link-code-spans.ts`).
  * Each travels as a token so the serializer escapes none of it (BBF-105).
  */

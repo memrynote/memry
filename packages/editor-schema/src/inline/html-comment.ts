@@ -29,6 +29,7 @@ import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core
 import type { CustomInlineContentImplementation } from '@blocknote/core'
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
 import {
+  listLinkBreakTokens,
   restoreEmphasisRuns,
   tokenizeEmphasisRuns,
   type Span,
@@ -50,7 +51,7 @@ export function createHtmlCommentContent(source: string) {
 let markdownWrites = 0
 
 type Styles = Record<string, unknown>
-type BlockItem = { content?: unknown; children?: BlockItem[] }
+type BlockItem = { type?: string; content?: unknown; children?: BlockItem[] }
 
 function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): InlineItem | undefined {
   let at = index + step
@@ -118,7 +119,9 @@ function commentsInMarks(items: InlineItem[]): InlineItem[] {
   return out
 }
 
-type Inline = (items: InlineItem[]) => InlineItem[]
+const LIST_ITEMS = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
+
+type Inline = (items: InlineItem[], blockType?: string) => InlineItem[]
 
 // A table cell is a bare inline array in the legacy shape and `{ content }` in BlockNote 0.47+.
 function mapCell(cell: unknown, inline: Inline): unknown {
@@ -131,7 +134,7 @@ function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
   return blocks.map((block) => {
     const next = { ...block }
     const table = block.content as { type?: string; rows: Array<{ cells: unknown[] }> } | undefined
-    if (Array.isArray(block.content)) next.content = inline(block.content)
+    if (Array.isArray(block.content)) next.content = inline(block.content, block.type)
     else if (table?.type === 'tableContent') {
       next.content = {
         ...table,
@@ -161,8 +164,11 @@ export function writeHtmlCommentTokens<B>(
   const marks: Span[] = []
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
-  const marked = mapInline(blocks as BlockItem[], (items) =>
-    tokenizeEmphasisRuns(commentsInMarks(items), marks)
+  const marked = mapInline(blocks as BlockItem[], (items, blockType) =>
+    tokenizeEmphasisRuns(
+      commentsInMarks(LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(items, marks) : items),
+      marks
+    )
   ) as B[]
   const restore = (markdown: string): string => restoreEmphasisRuns(markdown, marks)
   markdownWrites++
