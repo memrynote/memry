@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   parseWhiteboardLine,
   readMathRun,
-  readStructuredQuoteRun,
   restoreDetailsMarkup,
   serializeMathBlock,
-  serializeQuoteBlock,
   serializeToggleBlock,
   serializeWhiteboard,
   splitMarkdownByToggles,
   whiteboardUrl
 } from './markdown'
+import { readStructuredQuoteRun, serializeQuoteBlock } from './quote'
 
 /**
  * A declined `<details>` line leaves here with its `<` hidden behind a token,
