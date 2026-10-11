@@ -46,6 +46,7 @@ const LIST_ITEM = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]|$)/
 const BLOCK_START =
   /^ {0,3}(>|#{1,6}([ \t]|$)|```|~~~|<|\||[-*_=]+[ \t]*$|[-*_]([ \t]*[-*_]){2,}[ \t]*$)/
 const FENCE = /^ {0,3}(```|~~~)/
+const CHECKBOX_ITEM = /^\s*([-*+]|\d{1,9}[.)])[ \t]+\[[ xX]\]/
 
 /**
  * Read a blockquote run at `lines[start]` whose inner structure BlockNote
@@ -88,6 +89,11 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
     }
     end++
   }
+
+  // A checkbox in a structured quote is promoted to a task when the note
+  // opens, which writes the task id into the file. A quote main read flat
+  // keeps its checkboxes flat, so the file is not rewritten on open.
+  if (inner.some((line) => CHECKBOX_ITEM.test(line))) listed = false
 
   // A line after a listed run that neither opens a block nor follows a gap
   // continues the item's paragraph lazily: `> - [a\nb](u)` is one item, and
