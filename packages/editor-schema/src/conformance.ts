@@ -941,6 +941,9 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '- [a\nb](https://e.com/x_(y))'
   },
   { name: 'nested parentheses in a link address (BBF-107)', markdown: '[a](u((y))z(w))' },
+  // Backslash escapes in a link address are written as they are (BBF-108).
+  { name: 'escaped parentheses in a link address (BBF-108)', markdown: '[a](u\\(y\\))' },
+  { name: 'escaped underscore in a link address (BBF-108)', markdown: '[a](u\\_y)' },
   {
     name: 'hard break after a soft break in list-item link text (BBF-106)',
     markdown: '- [a\nb  \nc](u)',
