@@ -15,6 +15,7 @@ import {
 } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { LinkAddressToolbarController } from '@/components/note/content-area/link-address-toolbar'
 import { useTheme } from 'next-themes'
 
 import '@blocknote/shadcn/style.css'
@@ -143,7 +144,9 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
         onChange={() => void handleChange()}
         theme={editorTheme}
         sideMenu={false}
+        linkToolbar={false}
       >
+        <LinkAddressToolbarController />
         <SideMenuController
           sideMenu={DragHandleOnlySideMenu}
           floatingUIOptions={SIDE_MENU_FLOATING_OPTIONS}

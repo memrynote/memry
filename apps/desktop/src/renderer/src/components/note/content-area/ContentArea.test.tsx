@@ -110,6 +110,7 @@ vi.mock('@blocknote/react', () => ({
   BasicTextStyleButton: () => <button type="button">style</button>,
   ColorStyleButton: () => <button type="button">color</button>,
   CreateLinkButton: () => <button type="button">link</button>,
+  LinkToolbarController: () => null,
   useBlockNoteEditor: vi.fn(() => contentAreaMocks.editor),
   useComponentsContext: vi.fn(() => ({
     FormattingToolbar: {

@@ -42,6 +42,8 @@ mod write;
 
 use yrs::{ReadTxn as _, XmlFragment as _};
 
+pub(crate) use links::destination as link_destination;
+
 use crate::crdt::errors::CrdtError;
 use crate::crdt::{BODY_FRAGMENT, Document};
 

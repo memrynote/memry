@@ -107,6 +107,7 @@ import { isMac } from '@/lib/shortcut-registry'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
+import { LinkAddressToolbarController } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
 import { TaskRemovalDialog } from './task-removal-dialog'
@@ -2911,6 +2912,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             slashMenu={false}
             emojiPicker={false}
             filePanel={false}
+            linkToolbar={false}
             // `BlockSideMenuController` below replaces the stock side menu.
             // Left on, BlockNote renders its own on top and the default
             // AddBlockButton's icon intercepts clicks meant for our drag handle.
@@ -2958,6 +2960,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
             <FilePanelController filePanel={VaultFilePanel} />
+            <LinkAddressToolbarController />
             <SlashMenuFallbackContext value={slashMenuFallbacks}>
               <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
                 triggerCharacter="/"

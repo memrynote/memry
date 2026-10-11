@@ -8,6 +8,7 @@ import { memo, useCallback, useEffect, useRef } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { LinkAddressToolbarController } from '@/components/note/content-area/link-address-toolbar'
 import { useTheme } from 'next-themes'
 
 // BlockNote styles
@@ -174,7 +175,10 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         editable={editable}
         onChange={() => void handleChange()}
         theme={editorTheme}
-      />
+        linkToolbar={false}
+      >
+        <LinkAddressToolbarController />
+      </BlockNoteView>
     </section>
   )
 })

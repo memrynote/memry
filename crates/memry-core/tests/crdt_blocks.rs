@@ -197,12 +197,20 @@ fn a_link_target_is_the_address_half_of_its_href() {
         let document = built(|txn, body| {
             let paragraph = block(txn, body, "paragraph", "");
             let text = paragraph.push_back(txn, XmlTextPrelim::new("a"));
-            text.format(txn, 0, 1, [("link".into(), mark_attrs(&[("href", href)]))].into());
+            text.format(
+                txn,
+                0,
+                1,
+                [("link".into(), mark_attrs(&[("href", href)]))].into(),
+            );
         });
         let blocks = extract_blocks(&document).expect("blocks");
         let run = &blocks[0].inline[0];
         assert_eq!(run.target.as_deref(), Some(address), "{href}");
-        assert_eq!(run.mark_attrs.get("link.href").map(String::as_str), Some(href));
+        assert_eq!(
+            run.mark_attrs.get("link.href").map(String::as_str),
+            Some(href)
+        );
     }
 }
 
