@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 196,
+    "exportedCaseCount": 203,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 206,
+    "caseCount": 213,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1293,9 +1293,58 @@
     {
       "name": "code span before a hard break inside link text (BBF-104)",
       "markdown": "[`a`  \nb](u)",
-      "canonical": "`a`  \n[b](u)",
+      "canonical": "[`a`](u)  \n[b](u)",
       "pending": null,
       "sha256": "9c26e47c24ff9731ba8102ca8316c49dda3ecb5de1574feb69343a3a541a9711"
+    },
+    {
+      "name": "code span as link text (BBF-105)",
+      "markdown": "[`a`](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dec85277150e3fedf213d01643b70c38b5e70218397e0eb0511ccdcfbed33102"
+    },
+    {
+      "name": "code span as link text mid-line (BBF-105)",
+      "markdown": "x [`a`](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "aaad520b8e11c18f583f9b9b9293ff5be9d0d137ae102326654ebb5542352e33"
+    },
+    {
+      "name": "code span then text in link text (BBF-105)",
+      "markdown": "[`a` b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d07a45db91bfdd82fcc63c9c6ccf3414ad670c08199bdc07772d70091f22b43d"
+    },
+    {
+      "name": "code span with a backtick in link text (BBF-105)",
+      "markdown": "[``a`b``](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a8b47313390b5eddc61bab8381a12bc4ba6af62d044a76840dc518315e8e9342"
+    },
+    {
+      "name": "code span with markdown syntax in link text (BBF-105)",
+      "markdown": "[`a*b_[c]`](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "14b3931e033676a8ec00803c4bed908d652e1218e0cc7fbbe325130cdfa3387f"
+    },
+    {
+      "name": "bold code span in link text (BBF-105)",
+      "markdown": "[**`a`**](u)",
+      "canonical": "**[`a`](u)**",
+      "pending": null,
+      "sha256": "6b02743164f9e98ad60937be69daff2687da9d7738d39117aa84a91071df0dfb"
+    },
+    {
+      "name": "code span before a soft break in link text (BBF-105)",
+      "markdown": "[`a`\nb](u)",
+      "canonical": "[`a`](u)\n[b](u)",
+      "pending": null,
+      "sha256": "cfa1b4f160a4b29956a85e82cc2e9ddf9177bdf63a69caaf80a33c4820cedda4"
     },
     {
       "name": "bold across a soft break inside link text (BBF-104)",

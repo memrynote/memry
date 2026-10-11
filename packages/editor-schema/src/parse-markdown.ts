@@ -13,6 +13,7 @@ import {
 } from '@memry/shared/html-comments'
 import { restoreDetailsMarkup } from './blocks/markdown'
 import { maskCellCodeSpaces, restoreCellCodeSpaces } from './inline/cell-code-spaces'
+import { linkCodeAsText } from './inline/link-code-spans'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 
@@ -302,13 +303,19 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const { markdown: withTokensMasked, spaces } = maskCellCodeSpaces(tokensMasked)
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
-  // nothing but the lifted images, and a note with none keeps the direct call.
-  const lifted = /!\[|<img\b/i.test(withTokensMasked)
-    ? liftImagesOutOfTextBlocks(markdownToHTML(withTokensMasked))
-    : null
-  const parsed = (await (lifted === null
+  // nothing but the lifted images and the code in link text, and a note with
+  // neither keeps the direct call.
+  const linkCode = withTokensMasked.includes('`') && /\]|<a\b/i.test(withTokensMasked)
+  const html =
+    linkCode || /!\[|<img\b/i.test(withTokensMasked) ? markdownToHTML(withTokensMasked) : null
+  const lifted =
+    html !== null && /!\[|<img\b/i.test(withTokensMasked)
+      ? (liftImagesOutOfTextBlocks(html) ?? html)
+      : html
+  const repaired = lifted === null ? null : linkCodeAsText(lifted)
+  const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
-    : editor.tryParseHTMLToBlocks(lifted))) as BlockLike[]
+    : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
   repairBlocks(parsed, { breaks, tokens, spaces })
   return parsed as T[]
 }

@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, restoreUntaggedFenceLanguages, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 27
+    "caseCount": 28
   },
   "cases": [
     {
@@ -116,9 +116,15 @@
     },
     {
       "name": "journal: code span drops other marks",
-      "pins": "the code mark excludes bold and link",
+      "pins": "the code mark excludes bold; a code span in a link is the link text with its backticks",
       "markdown": "**`x`** and [`y`](https://example.com)",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\" code={}\n3 text \" and \"\n3 text \"y\" code={}"
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\" code={}\n3 text \" and \"\n3 text \"`y`\" link={\"href\":\"https://example.com\"}"
+    },
+    {
+      "name": "journal: code span with backticks in a bold link",
+      "pins": "the fence is rebuilt from the code, and the link keeps the marks around it",
+      "markdown": "[**``a`b``** c](https://example.com)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"``a`b``\" bold={} link={\"href\":\"https://example.com\"}\n3 text \" c\" link={\"href\":\"https://example.com\"}"
     },
     {
       "name": "journal: unsafe link is text",

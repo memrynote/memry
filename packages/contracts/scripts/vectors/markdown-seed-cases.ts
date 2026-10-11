@@ -100,7 +100,12 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
     {
       name: 'journal: code span drops other marks',
       markdown: '**`x`** and [`y`](https://example.com)',
-      pins: 'the code mark excludes bold and link'
+      pins: 'the code mark excludes bold; a code span in a link is the link text with its backticks'
+    },
+    {
+      name: 'journal: code span with backticks in a bold link',
+      markdown: '[**``a`b``** c](https://example.com)',
+      pins: 'the fence is rebuilt from the code, and the link keeps the marks around it'
     },
     {
       name: 'journal: unsafe link is text',

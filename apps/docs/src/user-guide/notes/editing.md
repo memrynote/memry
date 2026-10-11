@@ -965,6 +965,9 @@ is that nothing is _lost_ on the way through:
   hard or soft, ends the link there and starts it again on the next line, both halves pointing at
   the same address. Bold, italic and strikethrough in that text are kept, written around the link,
   and saving again does not change the line.
+- **Code inside link text keeps the link.** ``[`a`](https://…)`` stays a link. The editor
+  cannot style text as both code and a link, so it shows the backticks inside the link, and the
+  file keeps the code span.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.

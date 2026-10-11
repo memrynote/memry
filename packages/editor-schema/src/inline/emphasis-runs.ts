@@ -7,6 +7,8 @@
  * broke the same way: `` **`a` x `c`** `` became `` `a`** x** `c` `` (BBF-62).
  */
 
+import { codeSpanRanges } from './link-code-spans'
+
 type Styles = Record<string, unknown>
 export type InlineItem = {
   type: string
@@ -18,6 +20,8 @@ export type InlineItem = {
 
 const DELIMITERS = { bold: '**', italic: '*', strike: '~~' } as const
 export type EmphasisMark = keyof typeof DELIMITERS
+/** A token's meaning: a mark around a run, or a code span's own bytes. */
+export type Span = EmphasisMark | { code: string }
 const MARKS = Object.keys(DELIMITERS) as EmphasisMark[]
 
 // Per process, so note text does not hold a token (BBF-30).
@@ -26,7 +30,8 @@ const PROCESS_WORD = String.fromCharCode(
 )
 const openToken = (index: number): string => `MEMRYEMO${PROCESS_WORD}${index};`
 const closeToken = (index: number): string => `MEMRYEMC${PROCESS_WORD}${index};`
-const TOKEN = new RegExp(`MEMRYEM([OC])${PROCESS_WORD}(\\d+);`, 'g')
+const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
+const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
 const EDGES = /^((?:\\\n|\s)*)([\s\S]*?)((?:\\\n|\s)*)$/
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
@@ -115,8 +120,24 @@ function splitLinksAtBreaks(items: InlineItem[]): InlineItem[] {
   return out
 }
 
-/** `items` with every run of a mark between tokens; `marks` maps each token pair to its mark. */
-export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[]): InlineItem[] {
+/**
+ * A code span in link text is the link's own text (`link-code-spans.ts`).
+ * Each travels as a token so the serializer escapes none of it (BBF-105).
+ */
+function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
+  return items.map((item) => {
+    if (item.type !== 'text' || item.styles?.code === true || !item.text?.includes('`')) return item
+    let text = item.text
+    for (const [at, length] of codeSpanRanges(text).reverse()) {
+      const token = codeToken(marks.push({ code: text.slice(at, at + length) }) - 1)
+      text = text.slice(0, at) + token + text.slice(at + length)
+    }
+    return { ...item, text }
+  })
+}
+
+/** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
+export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): InlineItem[] {
   items = splitLinksAtBreaks(items)
   const out: InlineItem[] = []
   let at = 0
@@ -133,7 +154,9 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[])
         Array.isArray(item.content)
           ? {
               ...item,
-              content: joinTexts(tokenizeEmphasisRuns(item.content as InlineItem[], marks))
+              content: joinTexts(
+                tokenizeEmphasisRuns(codeTokens(item.content as InlineItem[], marks), marks)
+              )
             }
           : item
       )
@@ -151,19 +174,24 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: EmphasisMark[])
 }
 
 /** Each token pair in `markdown` turned into its delimiters. */
-export function restoreEmphasisRuns(markdown: string, marks: EmphasisMark[]): string {
+export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
   const open: string[] = ['']
   let last = 0
   for (const token of markdown.matchAll(TOKEN)) {
     open[open.length - 1] += markdown.slice(last, token.index)
     last = token.index + token[0].length
+    const span = marks[Number(token[2])]
+    if (token[1] === 'K') {
+      open[open.length - 1] += typeof span === 'object' ? span.code : ''
+      continue
+    }
     if (token[1] === 'O') {
       open.push('')
       continue
     }
     if (open.length === 1) continue
     const run = open.pop() ?? ''
-    const delimiter = DELIMITERS[marks[Number(token[2])]]
+    const delimiter = typeof span === 'string' ? DELIMITERS[span] : ''
     const [, before, content, after] = EDGES.exec(run) ?? []
     open[open.length - 1] += content ? `${before}${delimiter}${content}${delimiter}${after}` : run
   }

@@ -31,7 +31,7 @@ import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
 import {
   restoreEmphasisRuns,
   tokenizeEmphasisRuns,
-  type EmphasisMark,
+  type Span,
   type InlineItem
 } from './emphasis-runs'
 
@@ -158,7 +158,7 @@ export function writeHtmlCommentTokens<B>(
   blocks: B[],
   serialize: (blocks: B[]) => string | Promise<string>
 ): string | Promise<string> {
-  const marks: EmphasisMark[] = []
+  const marks: Span[] = []
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
   const marked = mapInline(blocks as BlockItem[], (items) =>
