@@ -815,6 +815,17 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.blockNoteOptions.tables).toMatchObject({ headers: true })
   })
 
+  // BBF-112: BlockNote's own link click opened the raw href next to the
+  // address the `onLinkClick` listener opens, so a titled link opened twice.
+  it('leaves a link click to onLinkClick when it is given', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<ContentArea noteId="note-1" onLinkClick={vi.fn()} />)
+
+    expect(contentAreaMocks.blockNoteOptions.links.onClick(new MouseEvent('click'))).toBe(true)
+    expect(open).not.toHaveBeenCalled()
+    open.mockRestore()
+  })
+
   // Same default, same consequence: BlockNote hides the cell colour menu unless
   // both flags are on, which left a table the one place in a note where colour
   // could not be reached (#1639).
