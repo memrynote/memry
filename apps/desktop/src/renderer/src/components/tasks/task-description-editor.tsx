@@ -15,7 +15,10 @@ import {
 } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
-import { LinkAddressToolbarController } from '@/components/note/content-area/link-address-toolbar'
+import {
+  LinkAddressToolbarController,
+  openLinkAddress
+} from '@/components/note/content-area/link-address-toolbar'
 import { useTheme } from 'next-themes'
 
 import '@blocknote/shadcn/style.css'
@@ -72,6 +75,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     // Same header-row toggle the note body gets — the same markdown round-trip
     // applies here, so the two surfaces have to agree about tables.
     tables: { headers: true },
+    links: { onClick: openLinkAddress },
     placeholders: {
       default: placeholder,
       heading: 'Heading',

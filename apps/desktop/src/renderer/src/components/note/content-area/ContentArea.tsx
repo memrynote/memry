@@ -107,7 +107,7 @@ import { isMac } from '@/lib/shortcut-registry'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
-import { LinkAddressToolbarController } from './link-address-toolbar'
+import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
 import { TaskRemovalDialog } from './task-removal-dialog'
@@ -660,6 +660,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // unreachable (#1639). What the cell holds is written back through the
       // `<!-- table-colors:… -->` marker, so the colour survives the save.
       tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
+      // With `onLinkClick` the click listener in `useBlockNoteSetup` opens the
+      // link; BlockNote's own opener would open it a second time (BBF-112).
+      links: { onClick: onLinkClick ? () => true : openLinkAddress },
       uploadFile,
       resolveFileUrl,
       placeholders: {
