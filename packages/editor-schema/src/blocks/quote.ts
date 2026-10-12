@@ -1,3 +1,4 @@
+import { createFenceTracker, listCodeFenceInfoStrings } from '@memry/shared/markdown-fences'
 import type { ParsedBlockShape } from './markdown'
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,9 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
   let separated = false
   let nested = false
   let listed = false
+  // `- x` inside a fence is code, not an item: claiming `> ```\n> - x\n> ```` as
+  // a list made the two pipelines split on a following lazy line (BBF-113).
+  const fence = createFenceTracker()
 
   while (end < lines.length && lines[end].startsWith('>')) {
     const line = lines[end]
@@ -83,7 +87,8 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
       inner.push(stripped)
       if (stripped.startsWith('>')) nested = true
       const opensItem = inner.length === 1 || inner[inner.length - 2] === ''
-      if (INTERRUPTING_ITEM.test(stripped) || (opensItem && LIST_ITEM.test(stripped))) listed = true
+      const isItem = INTERRUPTING_ITEM.test(stripped) || (opensItem && LIST_ITEM.test(stripped))
+      if (!fence.consume(stripped) && isItem) listed = true
     } else {
       return null
     }
@@ -157,6 +162,7 @@ export async function resolveQuoteRun(
   const claimed = splitQuoteBlocks(parsed)
   if (!claimed) return null
   if (run.listed && parsed.some(itemHoldsNonList)) return null
+  clearInventedFenceLanguages(run.innerMarkdown, claimed.children)
 
   const canonical = serializeQuoteBlock((await serializeBlocks(parsed)).trim())
   if (canonical !== run.raw) {
@@ -165,6 +171,32 @@ export async function resolveQuoteRun(
   }
 
   return claimed
+}
+
+/**
+ * The parser stamps `javascript` on a fence that carried no language, and the
+ * top-level restore in each pipeline cannot see a fence behind `> `, so a bare
+ * fence in a claimed quote came back tagged (BBF-113). The inner markdown is
+ * unquoted, so its fences line up with the parsed code blocks in order; on a
+ * count mismatch nothing is cleared rather than guessed at.
+ */
+function clearInventedFenceLanguages(innerMarkdown: string, blocks: ParsedBlockShape[]): void {
+  const infoStrings = listCodeFenceInfoStrings(innerMarkdown)
+  if (!infoStrings.includes('')) return
+
+  const codeBlocks: ParsedBlockShape[] = []
+  const visit = (list: ParsedBlockShape[]): void => {
+    for (const block of list) {
+      if (block.type === 'codeBlock') codeBlocks.push(block)
+      visit((block.children ?? []) as ParsedBlockShape[])
+    }
+  }
+  visit(blocks)
+
+  if (codeBlocks.length !== infoStrings.length) return
+  for (const [index, info] of infoStrings.entries()) {
+    if (info === '') (codeBlocks[index] as { props: { language: string } }).props.language = ''
+  }
 }
 
 const LIST_BLOCKS = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
@@ -223,6 +255,7 @@ async function settles(
 
   const reparsed = await parseMarkdown(reread.innerMarkdown)
   if (!splitQuoteBlocks(reparsed)) return false
+  clearInventedFenceLanguages(reread.innerMarkdown, reparsed)
 
   return serializeQuoteBlock((await serializeBlocks(reparsed)).trim()) === canonical
 }
