@@ -70,6 +70,28 @@ function renderUnlistedLanguageAsPlainText(
   }
 }
 
+/**
+ * A `<pre><code>` with no language class, which is what an untagged fence
+ * parses to, keeps no language instead of taking the schema default. Without
+ * this every bare ``` came back as ```javascript, and each pipeline cleared it
+ * again by counting fences against code blocks, which missed any fence behind
+ * a `> ` (BBF-113, BBF-114). New code blocks still get the default.
+ */
+function parseUntaggedFenceAsUntagged(spec: CodeBlockSpec): CodeBlockSpec {
+  const parse = spec.implementation.parse
+  if (!parse) return spec
+  return {
+    ...spec,
+    implementation: {
+      ...spec.implementation,
+      parse(el) {
+        const props = parse(el)
+        return props && { ...props, language: props.language ?? '' }
+      }
+    }
+  }
+}
+
 type CodeBlockRender = CodeBlockSpec['implementation']['render']
 
 /**
@@ -134,7 +156,7 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
     ...defaultBlockSpecs,
     codeBlock: renderCodeLanguageViews(
       renderUnlistedLanguageAsPlainText(
-        createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
+        parseUntaggedFenceAsUntagged(createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS)),
         impl.codeBlock ?? CODE_BLOCK_DEFAULTS
       ),
       impl.codeBlockViews

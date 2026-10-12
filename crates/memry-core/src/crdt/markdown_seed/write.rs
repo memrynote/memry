@@ -67,12 +67,7 @@ fn prop_value(kind: &SeedKind, name: &str, default: &PropValue) -> Any {
         (SeedKind::NumberedListItem { start: Some(start) }, "start") => {
             Any::Number(f64::from(*start))
         }
-        (
-            SeedKind::CodeBlock {
-                language: Some(language),
-            },
-            "language",
-        ) => Any::String(language.as_str().into()),
+        (SeedKind::CodeBlock { language }, "language") => Any::String(language.as_str().into()),
         (SeedKind::Image { url }, "url") => Any::String(url.as_str().into()),
         _ => default.to_any(),
     }

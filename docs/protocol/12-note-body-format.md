@@ -48,7 +48,10 @@ set is the block types templates use: paragraphs, headings, bullet, numbered and
 quotes, code blocks, dividers, and inline bold, italic, strike, code and links. A construct
 outside it keeps its source lines as literal text, one paragraph per non-blank line. A construct
 that changes how desktop reads the whole text, such as a toggle, CriticMarkup, a link reference
-definition or a carriage return, sends every line there. No text is dropped (`:20-33`). An
+definition or a carriage return, sends every line there. No text is dropped (`:20-33`). A code
+block's `language` is its fence's info string, `""` for an untagged fence or an indented run,
+never BlockNote's `javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
+`crates/memry-core/src/crdt/markdown_seed/blocks.rs:147-158`). An
 append also reads a line that is only an image as an image block, as desktop's editor does
 (`:206-209`).
 

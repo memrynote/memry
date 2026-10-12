@@ -152,8 +152,6 @@ describe('opening a collaborative note promotes its hash tags', () => {
       '#other'
     ].join('\n')
     await seedFromMarkdown(editor, markdown)
-    // Compared against the seeded doc rather than the source: the serializer
-    // spells an unlabelled fence as ```javascript, which is not this change.
     const seeded = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
     // #when

@@ -6,7 +6,7 @@
     "class": "markdown-seed",
     "canonical": "packages/contracts/scripts/fragment-canonical.ts",
     "fragmentName": "prosemirror",
-    "authoredBy": "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, restoreUntaggedFenceLanguages, blocksToYXmlFragment",
+    "authoredBy": "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
     "caseCount": 29
@@ -55,10 +55,10 @@
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"plain\""
     },
     {
-      "name": "journal: indented code keeps the default language",
-      "pins": "an indented run becomes a code block; no fence in the source, so javascript stays",
+      "name": "journal: indented code has no language",
+      "pins": "an indented run becomes a code block with language \"\", like an untagged fence (BBF-114)",
       "markdown": "Log:\n\n    tail -f app.log",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Log:\"\n1 element blockContainer\n2 element codeBlock language=\"javascript\"\n3 text \"tail -f app.log\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Log:\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"tail -f app.log\""
     },
     {
       "name": "journal: quote",
