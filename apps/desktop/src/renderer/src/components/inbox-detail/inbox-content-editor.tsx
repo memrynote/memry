@@ -8,6 +8,10 @@ import { memo, useCallback, useEffect, useRef } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
+import {
+  LinkAddressToolbarController,
+  openLinkAddress
+} from '@/components/note/content-area/link-address-toolbar'
 import { useTheme } from 'next-themes'
 
 // BlockNote styles
@@ -69,6 +73,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
     // Same header-row toggle the note body gets — the same markdown round-trip
     // applies here, so the two surfaces have to agree about tables.
     tables: { headers: true },
+    links: { onClick: openLinkAddress },
     placeholders: {
       default: placeholder,
       heading: 'Heading',
@@ -174,7 +179,10 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         editable={editable}
         onChange={() => void handleChange()}
         theme={editorTheme}
-      />
+        linkToolbar={false}
+      >
+        <LinkAddressToolbarController />
+      </BlockNoteView>
     </section>
   )
 })

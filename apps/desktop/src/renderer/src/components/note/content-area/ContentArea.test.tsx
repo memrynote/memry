@@ -110,6 +110,7 @@ vi.mock('@blocknote/react', () => ({
   BasicTextStyleButton: () => <button type="button">style</button>,
   ColorStyleButton: () => <button type="button">color</button>,
   CreateLinkButton: () => <button type="button">link</button>,
+  LinkToolbarController: () => null,
   useBlockNoteEditor: vi.fn(() => contentAreaMocks.editor),
   useComponentsContext: vi.fn(() => ({
     FormattingToolbar: {
@@ -812,6 +813,17 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     expect(contentAreaMocks.blockNoteOptions.tables).toMatchObject({ headers: true })
+  })
+
+  // BBF-112: BlockNote's own link click opened the raw href next to the
+  // address the `onLinkClick` listener opens, so a titled link opened twice.
+  it('leaves a link click to onLinkClick when it is given', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<ContentArea noteId="note-1" onLinkClick={vi.fn()} />)
+
+    expect(contentAreaMocks.blockNoteOptions.links.onClick(new MouseEvent('click'))).toBe(true)
+    expect(open).not.toHaveBeenCalled()
+    open.mockRestore()
   })
 
   // Same default, same consequence: BlockNote hides the cell colour menu unless

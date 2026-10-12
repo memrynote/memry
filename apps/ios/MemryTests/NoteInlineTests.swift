@@ -155,4 +155,19 @@ struct NoteInlineTests {
         #expect(url.scheme == "https")
         #expect(NoteInline.wikiTarget(of: url) == nil, "the note router must not claim a web link")
     }
+
+    @Test("a titled link opens its address, not the whole href (BBF-112)")
+    func titledLinkOpensItsAddress() throws {
+        // A Yjs update holding `docs` linked to `https://example.com/a "Title"`,
+        // the href BBF-109 keeps for `[docs](https://example.com/a "Title")`.
+        let update = Data(hex: "0106010007010b70726f73656d6972726f72030e626c6f636b436f6e7461696e6572"
+            + "070001000309706172616772617068070001010606000102046c696e6b2a7b2268726566223a22"
+            + "68747470733a2f2f6578616d706c652e636f6d2f61205c225469746c655c22227d84010304646f"
+            + "6373860107046c696e6b046e756c6c00")
+        let link = try #require(try blocksFromUpdate(update: update).first?.inline.first)
+
+        let url = try #require(NoteInline.attributed(link).link)
+
+        #expect(url.absoluteString == "https://example.com/a")
+    }
 }
