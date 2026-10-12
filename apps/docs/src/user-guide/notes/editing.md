@@ -423,7 +423,8 @@ A list inside a quote or a callout keeps its bullets and numbers when the
 quote is edited. Some spellings are saved in a standard form on the first save: a line
 that continues an item without its `>` gets one, and a callout or a paragraph followed
 directly by a list gets a blank quote line before the list. After that the file stops
-changing.
+changing. A code block in a quoted list stays a code block, and a code block written
+without a language is saved without one.
 
 ## Toggle lists
 

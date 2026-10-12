@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 233,
+    "exportedCaseCount": 236,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 243,
+    "caseCount": 246,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1422,6 +1422,27 @@
       "canonical": "> [!note]\n>\n> - [a\n> b](u)",
       "pending": null,
       "sha256": "23199d06a4f4c52b86c5aa6a50ab493a1970e5414900ce43412a2737100810bf"
+    },
+    {
+      "name": "quoted fence, lazy line (BBF-113)",
+      "markdown": "> ```\n> - x\n> ```\nz",
+      "canonical": "> - xz",
+      "pending": null,
+      "sha256": "0e7e0968dd25467e2bd31238367c7c330b81d6c7805174e29b6ce8a32b0d9611"
+    },
+    {
+      "name": "quoted item, bare fence (BBF-113)",
+      "markdown": "> - a\n> ```\n> b\n> ```",
+      "canonical": "> - a\n>\n> ```\n> b\n> ```",
+      "pending": null,
+      "sha256": "e57dfc86d7b3f73277ac569d3e3acf43ed1226f118ed62900d9c5ea6ed06105b"
+    },
+    {
+      "name": "quoted item, gap, bare fence (BBF-113)",
+      "markdown": "> - a\n>\n> ```\n> b\n> ```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "cd617679983a9edc36f4547808de8b2ee09761f820de9265ca51850a155c134e"
     },
     {
       "name": "escaped bracket before a soft break in a list item (BBF-106)",
