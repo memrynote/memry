@@ -932,6 +932,20 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '> [!note]\n> - [a\nb](u)',
     canonical: '> [!note]\n>\n> - [a\n> b](u)'
   },
+  // A fence in a quote stays a fence: `- ` inside it is code, not a list, and
+  // an untagged fence stays untagged (BBF-113). A fence-only quote keeps main's
+  // flat bytes, the same in both pipelines.
+  {
+    name: 'quoted fence, lazy line (BBF-113)',
+    markdown: '> ```\n> - x\n> ```\nz',
+    canonical: '> - xz'
+  },
+  {
+    name: 'quoted item, bare fence (BBF-113)',
+    markdown: '> - a\n> ```\n> b\n> ```',
+    canonical: '> - a\n>\n> ```\n> b\n> ```'
+  },
+  { name: 'quoted item, gap, bare fence (BBF-113)', markdown: '> - a\n>\n> ```\n> b\n> ```' },
   // Shapes the join leaves alone keep main's output (BBF-106).
   {
     name: 'escaped bracket before a soft break in a list item (BBF-106)',
