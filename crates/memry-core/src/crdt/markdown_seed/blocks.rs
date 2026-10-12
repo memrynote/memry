@@ -5,8 +5,7 @@ use crate::domain::journal_rules::js_trim;
 
 use super::inline::inline_content;
 use super::prepare::{
-    code_fence_info_strings, fence_indented_code, line_fallback, mask_hard_breaks,
-    restore_hard_break_spelling,
+    fence_indented_code, line_fallback, mask_hard_breaks, restore_hard_break_spelling,
 };
 use super::tokens::{ListType, Token, TokenKind, tokenize};
 use super::{SeedBlock, SeedFallback, SeedInline, SeedKind, SeedMarks, Unsupported};
@@ -154,8 +153,12 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
                     marks: SeedMarks::default(),
                 }]
             };
-            let language = (!language.is_empty()).then(|| language.clone());
-            SeedBlock::new(SeedKind::CodeBlock { language }, content)
+            SeedBlock::new(
+                SeedKind::CodeBlock {
+                    language: language.clone(),
+                },
+                content,
+            )
         }
         // BlockNote's quote block holds one paragraph's inline content. A
         // quote holding anything else becomes a block with children on
@@ -177,43 +180,4 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
         TokenKind::ListItem { .. } => return Err(Unsupported("list item")),
     };
     Ok(block)
-}
-
-/// `restoreUntaggedFenceLanguages` (`blocknote-converter.ts`): when every
-/// fence in the source became a code block, a fence that carried no language
-/// gets `""` instead of BlockNote's invented default.
-pub(super) fn restore_untagged_fence_languages(markdown: &str, blocks: &mut [SeedBlock]) {
-    let infos = code_fence_info_strings(markdown);
-    if !infos.iter().any(String::is_empty) {
-        return;
-    }
-    if count_code_blocks(blocks) != infos.len() {
-        return;
-    }
-    clear_untagged(blocks, &infos, &mut 0);
-}
-
-/// Code blocks in document order: a block, then its children.
-fn count_code_blocks(blocks: &[SeedBlock]) -> usize {
-    blocks
-        .iter()
-        .map(|block| {
-            usize::from(matches!(block.kind, SeedKind::CodeBlock { .. }))
-                + count_code_blocks(&block.children)
-        })
-        .sum()
-}
-
-fn clear_untagged(blocks: &mut [SeedBlock], infos: &[String], next: &mut usize) {
-    for block in blocks {
-        if matches!(block.kind, SeedKind::CodeBlock { .. }) {
-            if infos.get(*next).is_some_and(String::is_empty) {
-                block.kind = SeedKind::CodeBlock {
-                    language: Some(String::new()),
-                };
-            }
-            *next += 1;
-        }
-        clear_untagged(&mut block.children, infos, next);
-    }
 }

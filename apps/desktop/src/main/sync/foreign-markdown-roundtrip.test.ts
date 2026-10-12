@@ -165,7 +165,8 @@ const UNTAGGED_FENCE_CASES: ForeignCase[] = [
  *   save and the second disagreed \u2014 `para\n\n const x = 1` then
  *   `para\n\nconst x = 1` \u2014 which is two devices writing different bytes for
  *   one edit. A fence is the only spelling the editor has for a code block
- *   and the one every build up to 0.50 wrote, so that is what it becomes.
+ *   and the one every build up to 0.50 wrote, so that is what it becomes,
+ *   untagged like the code it came from (BBF-114).
  * - a raw `<pre>` block is prose to the hard-break mask and a CODE BLOCK to
  *   0.51's HTML step, and the repair pass used to skip code blocks whole \u2014 so
  *   the mask token was written into the user's file and stayed there on every
@@ -176,17 +177,17 @@ const NON_FENCE_CODE_CASES: ForeignCase[] = [
   {
     name: 'an indented code block stays a code block',
     markdown: 'para\n\n    const x = 1\n    const y = 2',
-    canonical: 'para\n\n```javascript\nconst x = 1\nconst y = 2\n```'
+    canonical: 'para\n\n```\nconst x = 1\nconst y = 2\n```'
   },
   {
     name: 'a tab-indented code block stays a code block',
     markdown: 'para\n\n\tconst x = 1',
-    canonical: 'para\n\n```javascript\nconst x = 1\n```'
+    canonical: 'para\n\n```\nconst x = 1\n```'
   },
   {
     name: 'a blank line inside an indented code block does not end it',
     markdown: 'para\n\n    a\n\n    b',
-    canonical: 'para\n\n```javascript\na\n\nb\n```'
+    canonical: 'para\n\n```\na\n\nb\n```'
   },
   {
     name: 'three spaces are prose, not code',

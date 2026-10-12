@@ -350,10 +350,6 @@ const mathCases: RoundtripCase[] = [
     markdown: '$$\nE = mc^2'
   },
   {
-    // Tagged, because an UNTAGGED fence is a different bug: the renderer
-    // pipeline stamps the schema's default language on one and main clears it
-    // again (`restoreUntaggedFenceLanguages`), so a bare ``` here would assert
-    // that gap rather than the math claim.
     name: 'a math fence inside a code block stays code',
     markdown: '```text\n$$\nE = mc^2\n$$\n```'
   }
@@ -608,8 +604,6 @@ const whiteboardCases: RoundtripCase[] = [
     markdown: '![whiteboard](https://example.com/board.png)'
   },
   {
-    // Tagged for the reason the math fence case gives: an untagged fence is a
-    // different, pre-existing gap between the two pipelines.
     name: 'a whiteboard marker inside a code block stays code',
     markdown: `\`\`\`text\n${serializeWhiteboard(WHITEBOARD_ID)}\n\`\`\``
   }

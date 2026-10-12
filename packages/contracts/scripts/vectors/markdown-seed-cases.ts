@@ -48,9 +48,9 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'an untagged fence gets language "" instead of BlockNote\'s default'
     },
     {
-      name: 'journal: indented code keeps the default language',
+      name: 'journal: indented code has no language',
       markdown: 'Log:\n\n    tail -f app.log',
-      pins: 'an indented run becomes a code block; no fence in the source, so javascript stays'
+      pins: 'an indented run becomes a code block with language "", like an untagged fence (BBF-114)'
     },
     {
       name: 'journal: quote',

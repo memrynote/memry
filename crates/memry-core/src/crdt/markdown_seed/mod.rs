@@ -73,10 +73,10 @@ pub enum SeedKind {
         checked: bool,
     },
     Quote,
-    /// `None` is a code block with no language: BlockNote's default,
-    /// `javascript`, is written.
+    /// `""` for an untagged fence: Memry's schema parses one with no
+    /// language rather than the `javascript` default (BBF-114).
     CodeBlock {
-        language: Option<String>,
+        language: String,
     },
     Divider,
     /// Only [`append_markdown_in`] builds one, from a line that is just an
@@ -174,7 +174,6 @@ pub fn plan(markdown: &str) -> SeedPlan {
         }
         out.extend((0..trailing_gap).map(|_| SeedBlock::empty_paragraph()));
     }
-    blocks::restore_untagged_fence_languages(markdown, &mut out);
     SeedPlan {
         blocks: out,
         fallbacks,

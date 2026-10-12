@@ -42,7 +42,6 @@ import {
   createServerInlineSpecs
 } from '@memry/editor-schema/server'
 import { splitMarkdownPreservingBlanks } from '../../../shared/src/empty-lines.ts'
-import { listCodeFenceInfoStrings } from '../../../shared/src/markdown-fences.ts'
 
 import { canonicalFragment } from '../fragment-canonical'
 import { MARKDOWN_SEED_CASES } from './markdown-seed-cases'
@@ -123,26 +122,7 @@ async function markdownToBlocks(markdown: string): Promise<SeedBlock[]> {
       }
     }
   }
-  restoreUntaggedFenceLanguages(markdown, blocks)
   return blocks
-}
-
-/** `blocknote-converter.ts` `restoreUntaggedFenceLanguages`, verbatim. */
-function restoreUntaggedFenceLanguages(markdown: string, blocks: SeedBlock[]): void {
-  const infoStrings = listCodeFenceInfoStrings(markdown)
-  if (!infoStrings.includes('')) return
-  const codeBlocks: SeedBlock[] = []
-  const visit = (list: SeedBlock[]): void => {
-    for (const block of list) {
-      if (block.type === 'codeBlock') codeBlocks.push(block)
-      visit(block.children ?? [])
-    }
-  }
-  visit(blocks)
-  if (codeBlocks.length !== infoStrings.length) return
-  for (const [index, info] of infoStrings.entries()) {
-    if (info === '') (codeBlocks[index].props as { language: string }).language = ''
-  }
 }
 
 /** Fixed ids in place of `ensureBlockIds`' random ones; stripped below anyway. */
@@ -184,7 +164,7 @@ export async function buildMarkdownSeed(): Promise<Record<string, unknown>> {
       canonical: 'packages/contracts/scripts/fragment-canonical.ts',
       fragmentName: 'prosemirror',
       authoredBy:
-        "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, restoreUntaggedFenceLanguages, blocksToYXmlFragment",
+        "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
       provenAgainst: 'apps/desktop/src/main/sync/markdown-seed-vectors.test.ts',
       blockIds: 'removed from every blockContainer line: BlockNote mints them at random',
       caseCount: cases.length

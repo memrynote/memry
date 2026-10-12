@@ -987,9 +987,10 @@ is that nothing is _lost_ on the way through:
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
-  which is what an Obsidian Kanban board's settings block needs to keep working.
+  wherever it sits, inside a quote or not, which is what an Obsidian Kanban board's settings
+  block needs to keep working.
 - **An indented code block stays a code block.** A run of lines indented four spaces or one tab
-  stays code, and a line break inside a table cell keeps its row intact rather than cutting the
+  stays code, written back as a fence with no language, and a line break inside a table cell keeps its row intact rather than cutting the
   table off there.
 
 Within an edited region some cosmetic details are normalized to one house style: `*` and `+`

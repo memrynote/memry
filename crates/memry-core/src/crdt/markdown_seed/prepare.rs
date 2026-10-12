@@ -413,33 +413,6 @@ pub(super) fn restore_hard_break_spelling(text: &str, breaks: &[String]) -> Stri
     out
 }
 
-/// `listCodeFenceInfoStrings` (`shared/markdown-fences.ts`): every fence's
-/// info string in document order, `""` for an untagged one.
-pub(super) fn code_fence_info_strings(markdown: &str) -> Vec<String> {
-    let mut open: Option<(char, usize)> = None;
-    let mut infos = Vec::new();
-    for line in markdown.split('\n') {
-        let Some((fence_char, length, info)) = fence_line(line) else {
-            continue;
-        };
-        match open {
-            None => {
-                if fence_char == '`' && info.contains('`') {
-                    continue;
-                }
-                open = Some((fence_char, length));
-                infos.push(js_trim(info).to_owned());
-            }
-            Some((char, open_length)) => {
-                if fence_char == char && length >= open_length && js_trim(info).is_empty() {
-                    open = None;
-                }
-            }
-        }
-    }
-    infos
-}
-
 /// `^ {0,3}(`{3,}|~{3,})(.*)$`: the fence character, the run length and the
 /// rest of the line.
 pub(super) fn fence_line(line: &str) -> Option<(char, usize, &str)> {
@@ -499,13 +472,5 @@ mod tests {
         assert_eq!(fence_indented_code("p\n\n    x"), "p\n\n```\nx\n```");
         assert_eq!(fence_indented_code("- a\n\n    x"), "- a\n\n    x");
         assert_eq!(fence_indented_code("    x"), "```\nx\n```");
-    }
-
-    #[test]
-    fn untagged_fences_report_an_empty_info_string() {
-        assert_eq!(
-            code_fence_info_strings("```\na\n```\n~~~ py \nb\n~~~"),
-            vec![String::new(), "py".to_owned()]
-        );
     }
 }

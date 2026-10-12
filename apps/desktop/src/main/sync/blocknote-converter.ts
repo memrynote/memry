@@ -80,7 +80,7 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
-import { createFenceTracker, listCodeFenceInfoStrings } from '@memry/shared/markdown-fences'
+import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   inlineLinkReferences,
   readLinkReferencesFromYDoc,
@@ -479,45 +479,12 @@ export async function markdownToBlocks(
     const editor = getEditor()
     // HTML comments come off before anything splits the note into lines, so a
     // multi-line comment holding blank lines or a fence stays one comment
-    // (AF-015). The fences counted below are then the ones the parse sees.
+    // (AF-015).
     const masked = parsesHtmlComments() ? maskHtmlComments(markdown) : markdown
-    const blocks = await markdownToBlocksPreserving(editor, masked, notePath)
-    restoreUntaggedFenceLanguages(masked, blocks)
-    return blocks
+    return await markdownToBlocksPreserving(editor, masked, notePath)
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)
     return null
-  }
-}
-
-/**
- * Un-invent the language BlockNote stamps on a fence that carried none.
- *
- * A bare ``` ``` ``` parses to a `codeBlock` whose `language` is the schema
- * default, `javascript`, and the source is the only place that still knows the
- * author left it bare. So the fences are counted off the markdown and matched
- * against the code blocks in document order — the same order both are written
- * in — and only the invented language is cleared. A count mismatch means some
- * fence did not become a code block (a declined toggle body, an unclosed
- * fence), and the whole pass is abandoned rather than guessed at: today's
- * wrong language is better than a language moved onto the wrong block.
- */
-function restoreUntaggedFenceLanguages(markdown: string, blocks: Block[]): void {
-  const infoStrings = listCodeFenceInfoStrings(markdown)
-  if (!infoStrings.includes('')) return
-
-  const codeBlocks: Block[] = []
-  const visit = (list: Block[]): void => {
-    for (const block of list) {
-      if (block.type === 'codeBlock') codeBlocks.push(block)
-      visit((block.children ?? []) as Block[])
-    }
-  }
-  visit(blocks)
-
-  if (codeBlocks.length !== infoStrings.length) return
-  for (const [index, info] of infoStrings.entries()) {
-    if (info === '') (codeBlocks[index].props as { language: string }).language = ''
   }
 }
 
