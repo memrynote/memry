@@ -946,6 +946,17 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '> - a\n>\n> ```\n> b\n> ```'
   },
   { name: 'quoted item, gap, bare fence (BBF-113)', markdown: '> - a\n>\n> ```\n> b\n> ```' },
+  // An untagged fence stays untagged wherever it sits, the quoted one and the
+  // top-level one beside it alike (BBF-114).
+  { name: 'bare fence (BBF-114)', markdown: '```\nc\n```' },
+  {
+    name: 'bare fence beside a quoted bare fence (BBF-114)',
+    markdown: '> a\n>\n> ```\n> b\n> ```\n\n```\nc\n```'
+  },
+  {
+    name: 'bare fence beside a quoted item and bare fence (BBF-114)',
+    markdown: '> - a\n>\n> ```\n> b\n> ```\n\n```\nc\n```'
+  },
   // Shapes the join leaves alone keep main's output (BBF-106).
   {
     name: 'escaped bracket before a soft break in a list item (BBF-106)',
