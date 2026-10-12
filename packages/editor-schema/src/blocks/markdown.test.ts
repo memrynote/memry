@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   parseWhiteboardLine,
   readMathRun,
-  readStructuredQuoteRun,
   restoreDetailsMarkup,
   serializeMathBlock,
-  serializeQuoteBlock,
   serializeToggleBlock,
   serializeWhiteboard,
   splitMarkdownByToggles,
   whiteboardUrl
 } from './markdown'
+import { readStructuredQuoteRun, serializeQuoteBlock } from './quote'
 
 /**
  * A declined `<details>` line leaves here with its `<` hidden behind a token,
@@ -422,7 +421,8 @@ describe('readStructuredQuoteRun', () => {
       innerMarkdown: 'One\n\nTwo',
       raw: '> One\n>\n> Two',
       end: 3,
-      nested: false
+      nested: false,
+      listed: false
     })
   })
 
@@ -443,6 +443,16 @@ describe('readStructuredQuoteRun', () => {
 
   it('declines a flat run, which BlockNote already round-trips', () => {
     expect(read('> One\n> Two')).toBeNull()
+  })
+
+  it('reads a quoted list, with the line that continues its item lazily', () => {
+    expect(read('> - [a\nb](u)\n\nc')).toMatchObject({ innerMarkdown: '- [a\nb](u)', end: 2 })
+  })
+
+  // A claimed checkbox becomes a task on open, which writes into the file.
+  it('leaves a quoted checkbox list flat, so opening the note does not make it a task', () => {
+    expect(read('> - [ ] t')).toBeNull()
+    expect(read('> - [x] t\n> - u')).toBeNull()
   })
 
   it('declines a line that is not a quote at all', () => {

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 228,
+    "exportedCaseCount": 233,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 238,
+    "caseCount": 243,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1387,6 +1387,41 @@
       "canonical": null,
       "pending": null,
       "sha256": "80ab4befdacd71a34a8d8f907c1b0457639d8f3c0ca2792013175ff3d7cbcd69"
+    },
+    {
+      "name": "list in a quote (BBF-110)",
+      "markdown": "> - a\n> - b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "43d3f814aee3412139e6aace2f3fcaba048b427a35d6b5c9cd25e01142399730"
+    },
+    {
+      "name": "soft break in quoted list-item link text (BBF-110)",
+      "markdown": "> - [a\n> b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ce099edf2413d940e04e50761fda8fcfc562f22cf88e58b727269c4e9293dbda"
+    },
+    {
+      "name": "lazy soft break in quoted list-item link text (BBF-110)",
+      "markdown": "> - [a\nb](u)",
+      "canonical": "> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "b3b052d9369e32a9c49f95c105676541bea7c4aa696212cfd4f40ccfe8e1efde"
+    },
+    {
+      "name": "soft break in callout list-item link text (BBF-110)",
+      "markdown": "> [!note]\n>\n> - [a\n> b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1d6eac1969b71e5c2518230cbbb9012d32aafcd46ab547a857191e63c5c2de0b"
+    },
+    {
+      "name": "lazy soft break in callout list-item link text (BBF-110)",
+      "markdown": "> [!note]\n> - [a\nb](u)",
+      "canonical": "> [!note]\n>\n> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "23199d06a4f4c52b86c5aa6a50ab493a1970e5414900ce43412a2737100810bf"
     },
     {
       "name": "escaped bracket before a soft break in a list item (BBF-106)",
