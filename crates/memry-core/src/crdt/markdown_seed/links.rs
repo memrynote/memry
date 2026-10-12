@@ -57,7 +57,7 @@ fn kept_whole(raw: &[char]) -> Option<String> {
 
 /// The URL half of `parseDestinationAndTitle`. The title is dropped: the link
 /// mark keeps only `href`.
-pub(super) fn destination(raw: &[char]) -> String {
+pub(crate) fn destination(raw: &[char]) -> String {
     let raw = collect(raw);
     let raw: Vec<char> = crate::domain::journal_rules::js_trim(&raw)
         .chars()

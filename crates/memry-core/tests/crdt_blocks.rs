@@ -184,6 +184,36 @@ fn an_inline_mark_carries_its_value() {
     );
 }
 
+/// BBF-112: a link whose `href` keeps its title or angle brackets (BBF-109)
+/// points at its address, so a tap opens the address, not the whole `href`.
+#[test]
+fn a_link_target_is_the_address_half_of_its_href() {
+    let hrefs = [
+        ("https://e.com/x \"T\"", "https://e.com/x"),
+        ("<https://e.com/a b> 'T'", "https://e.com/a b"),
+        ("https://e.com/plain", "https://e.com/plain"),
+    ];
+    for (href, address) in hrefs {
+        let document = built(|txn, body| {
+            let paragraph = block(txn, body, "paragraph", "");
+            let text = paragraph.push_back(txn, XmlTextPrelim::new("a"));
+            text.format(
+                txn,
+                0,
+                1,
+                [("link".into(), mark_attrs(&[("href", href)]))].into(),
+            );
+        });
+        let blocks = extract_blocks(&document).expect("blocks");
+        let run = &blocks[0].inline[0];
+        assert_eq!(run.target.as_deref(), Some(address), "{href}");
+        assert_eq!(
+            run.mark_attrs.get("link.href").map(String::as_str),
+            Some(href)
+        );
+    }
+}
+
 /// N013: a table with a header row, a header column, a set `colwidth` and a
 /// coloured cell — the four things the flat block list could not carry.
 #[test]

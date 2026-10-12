@@ -981,7 +981,8 @@ is that nothing is _lost_ on the way through:
 - **Backslash escapes in a link address stay as written.** `[a](u\(y\))` and `[a](u\_y)` are
   saved as they are, with no backslashes added on each save.
 - **Link titles and spaced link addresses stay as written.** `[a](u "t")` keeps its title,
-  and `[a](<u (y)>)` and `[a](u\ y)` are saved as they are. The link's address field shows the title after the address.
+  and `[a](<u (y)>)` and `[a](u\ y)` are saved as they are. Clicking such a link, its toolbar's open button, or tapping it on iOS
+  opens the address. The toolbar's address field shows only the address, and editing it keeps the title.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
   definition both survive, including a definition several links share. The link stays a working,
   clickable link while the note is open. Definitions are gathered at the end of the file.

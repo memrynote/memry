@@ -197,6 +197,8 @@ pub(super) fn scalar(value: &Any) -> String {
 }
 
 /// A link mark's address, which is an attribute rather than the mark's value.
+/// It is the address half of `href`: a spaced destination keeps its title and
+/// angle brackets in `href` (BBF-109), and a tap opens the address (BBF-112).
 pub(super) fn link_target(marks: &[String], attrs: &HashMap<String, String>) -> Option<String> {
     marks
         .iter()
@@ -205,8 +207,8 @@ pub(super) fn link_target(marks: &[String], attrs: &HashMap<String, String>) -> 
             attrs
                 .get(&format!("{mark}.href"))
                 .or_else(|| attrs.get(mark))
-                .cloned()
         })
+        .map(|href| crate::crdt::markdown_seed::link_destination(&href.chars().collect::<Vec<_>>()))
 }
 
 /// `yrs::Out`'s `to_string` quotes a string value; the text itself is wanted.

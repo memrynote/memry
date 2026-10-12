@@ -53,6 +53,20 @@ export function linkDestination(href: string): string {
   return raw
 }
 
+/**
+ * `href` with its address half replaced and the rest, a title or nothing, kept
+ * as written: the link toolbar edits the address only (BBF-112). An address
+ * with whitespace, or one that was angled, is written in angle brackets.
+ */
+export function withLinkDestination(href: string, address: string): string {
+  const raw = href.trim()
+  const angled = raw.startsWith('<') && raw.includes('>')
+  const rest = angled ? raw.slice(raw.indexOf('>') + 1) : raw.slice(linkDestination(raw).length)
+  const spaced = /\s/.test(address)
+  if (rest === '' && !spaced) return address
+  return (angled || spaced ? `<${address}>` : address) + rest
+}
+
 function keptWhole(raw: string): boolean {
   return (
     raw === raw.trim() &&
