@@ -21,7 +21,7 @@ You don't see conflict UI for notes because there's nothing to resolve.
 
 ### A Note Deleted on Another Device
 
-When you delete a note or a journal day on one device, the delete wins everywhere. If another device holds text for that note that never reached the first device, such as edits made offline, that device saves the text to your **Inbox** before it removes the note. The copy is titled `<note title> (kept from deleted note)` or `Journal <date> (kept from deleted day)`. File it as a note, or archive it if you don't need it. A note you delete after all devices have synced makes no copy.
+When you delete a note or a journal day on one device, the delete wins everywhere. If another device holds text for that note that never reached the first device, such as edits made offline, that device saves the text to your **Inbox** before it removes the note. The copy is titled `<note title> (kept from deleted note)` or `Journal <date> (kept from deleted day)`. This also covers a delete made while the deleting device was offline: text another device synced in the meantime is kept, even if the delete reaches the server hours later. File it as a note, or archive it if you don't need it. A note you delete after all devices have synced makes no copy.
 
 ### Field-Level Merge (Tasks / Projects)
 
