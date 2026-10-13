@@ -243,7 +243,12 @@ function SelectPropertyRenderer({
   }
 
   if (property.type === 'multiselect') {
-    const val = Array.isArray(property.value) ? (property.value as string[]) : []
+    // A value written while the property was a select is one bare name.
+    const val = Array.isArray(property.value)
+      ? (property.value as string[])
+      : typeof property.value === 'string' && property.value
+        ? [property.value]
+        : []
     return (
       <MultiselectEditor
         value={val}

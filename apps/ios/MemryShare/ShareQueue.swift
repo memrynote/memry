@@ -36,7 +36,7 @@ struct ShareDrop: Codable, Equatable, Sendable {
 }
 
 enum ShareQueue {
-    static let appGroup = "group.com.memry.app"
+    static let appGroup = "group.com.memrynote.app"
     static let payloadName = "payload"
 
     /// The app group container, or nil where the entitlement is missing.

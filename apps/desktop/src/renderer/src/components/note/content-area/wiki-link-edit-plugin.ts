@@ -51,6 +51,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Mark, Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
 import { wikiLinkToText } from './wiki-link'
+import type { WikiLinkOpenTarget } from './types'
 
 export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey<WikiLinkEditPluginState>('wikiLinkEdit')
 
@@ -345,14 +346,62 @@ interface PressedChip {
  * ProseMirror untouched.
  */
 function wikiLinkTargetAtCoords(view: EditorView, event: MouseEvent): string | null {
-  const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+  return wikiLinkAtCoords(view, event.clientX, event.clientY)?.target ?? null
+}
+
+/** The wiki-link chip under the pointer: its node, position and trimmed target. */
+export function wikiLinkAtCoords(
+  view: EditorView,
+  x: number,
+  y: number
+): { node: ProseMirrorNode; pos: number; target: string } | null {
+  const pos = view.posAtCoords({ left: x, top: y })
   if (!pos || pos.inside < 0) return null
 
   const node = view.state.doc.nodeAt(pos.inside)
   if (node?.type.name !== 'wikiLink') return null
 
   const target = typeof node.attrs.target === 'string' ? node.attrs.target.trim() : ''
-  return target || null
+  return target ? { node, pos: pos.inside, target } : null
+}
+
+/**
+ * Opens the chip at `pos` as raw `[[…]]` text bound to the suggestion menu — the
+ * same state Backspace beside a chip produces, so "Edit Link" and the key share
+ * one path. Returns false when `pos` is not an editable chip.
+ */
+export function editWikiLinkAt(
+  view: EditorView,
+  pos: number,
+  openMenu: (() => void) | undefined
+): boolean {
+  const node = view.state.doc.nodeAt(pos)
+  if (node?.type.name !== 'wikiLink') return false
+
+  const target = typeof node.attrs.target === 'string' ? node.attrs.target : ''
+  const tr = unpromote(view.state, node, pos)
+  if (!tr) return false
+
+  view.dispatch(tr)
+
+  // Bind the raw text to a live suggestion session. Three steps, and the
+  // order is the whole trick: `unpromote` left the caret right after the
+  // `[[`, the menu anchors its query window at the caret, and only then
+  // does the caret move to the end of the target — which makes the query
+  // the target itself. Typing `#` extends that query, so the heading
+  // picker opens on a note whose title is exact by construction.
+  openMenu?.()
+
+  // Unconditional: with no menu to open, the caret still belongs at the
+  // end of the target rather than parked between the brackets.
+  const end = pos + 2 + target.length
+  if (end <= view.state.doc.content.size) {
+    const move = view.state.tr.setSelection(TextSelection.create(view.state.doc, end))
+    move.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+    view.dispatch(move)
+  }
+
+  return true
 }
 
 /**
@@ -473,7 +522,7 @@ export interface WikiLinkEditPluginOptions {
    * The plugin owns navigation because only the plugin knows where the press
    * LANDED rather than where the click ended up — see `handleDOMEvents`.
    */
-  onNavigate?: (target: string) => void
+  onNavigate?: (target: string, open?: WikiLinkOpenTarget) => void
 }
 
 export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}): Plugin {
@@ -647,12 +696,19 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
           // keeps ProseMirror's click handling exactly as it is today.
           if (!options.onNavigate) return false
 
+          // Middle button on a chip opens it in a background tab, from
+          // `auxclick`. Claimed here so PM does not move the caret (and Linux
+          // does not paste the primary selection) under the press.
+          if (event.button === 1) {
+            if (!wikiLinkTargetAtCoords(view, event)) return false
+            event.preventDefault()
+            return true
+          }
+
           // Shift extends a selection and has to keep doing so. ⌘/⌃/⌥ follow
-          // the link like a plain click does: nothing downstream of `onNavigate`
-          // reads a modifier — there is no background tab and no split pane to
-          // route them to — so excluding them would only make a modified click
-          // on a link do nothing at all, which is what it did between the DOM
-          // listener being removed and this handler landing.
+          // the link like a plain click does; other tabs and panes are reached
+          // by middle-click and the right-click menu. Excluding them would only
+          // make a modified click on a link do nothing at all.
           if (event.button !== 0 || event.shiftKey) return false
 
           const target = wikiLinkTargetAtCoords(view, event)
@@ -660,6 +716,15 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
 
           pressed = { target, x: event.clientX, y: event.clientY }
           event.preventDefault()
+          return true
+        },
+
+        auxclick(view: EditorView, event: MouseEvent): boolean {
+          if (event.button !== 1 || !options.onNavigate) return false
+          const target = wikiLinkTargetAtCoords(view, event)
+          if (!target) return false
+          event.preventDefault()
+          options.onNavigate(target, 'backgroundTab')
           return true
         },
 
@@ -692,31 +757,7 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
         const before = wikiLinkBeforeCursor(view.state)
         if (!before) return false
 
-        const target = typeof before.node.attrs.target === 'string' ? before.node.attrs.target : ''
-        const tr = unpromote(view.state, before.node, before.pos)
-        if (!tr) return false
-
-        view.dispatch(tr)
-
-        // Bind the raw text to a live suggestion session. Three steps, and the
-        // order is the whole trick: `unpromote` left the caret right after the
-        // `[[`, the menu anchors its query window at the caret, and only then
-        // does the caret move to the end of the target — which makes the query
-        // the target itself. Typing `#` extends that query, so the heading
-        // picker opens on a note whose title is exact by construction, with no
-        // typing it out and no typo to get wrong.
-        if (options.openMenu) options.openMenu()
-
-        // Unconditional: with no menu to open, the caret still belongs at the
-        // end of the target rather than parked between the brackets.
-        const end = before.pos + 2 + target.length
-        if (end <= view.state.doc.content.size) {
-          const move = view.state.tr.setSelection(TextSelection.create(view.state.doc, end))
-          move.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
-          view.dispatch(move)
-        }
-
-        return true
+        return editWikiLinkAt(view, before.pos, options.openMenu)
       }
     },
 

@@ -131,7 +131,11 @@
   },
   "ai": {
     "inlineDisabled": "Yapay zeka ile satır içi düzenleme devre dışı",
-    "listOllamaModelsFailed": "Ollama modelleri listelenemedi"
+    "listOllamaModelsFailed": "Ollama modelleri listelenemedi",
+    "apiKeyMissing": "Yazma araçlarını kullanmak için Ayarlar → Yapay Zeka bölümüne {provider} API anahtarını ekle.",
+    "apiKeyInvalid": "{provider} API anahtarın reddedildi. Ayarlar → Yapay Zeka bölümünden kontrol et.",
+    "ollamaUnreachable": "Ollama çalışmıyor. \"ollama serve\" ile başlat ya da Ayarlar → Yapay Zeka bölümünden başka bir sağlayıcı seç.",
+    "providerUnreachable": "{provider} sunucusuna ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene."
   },
   "auth": {
     "notAuthenticated": "Kimlik doğrulanmadı",

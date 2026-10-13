@@ -38,6 +38,9 @@ export interface HeadingInfo {
  */
 export type InlineTagsOrigin = 'load' | 'edit'
 
+/** Where a wiki link opens when not by a plain click: middle-click or the link's menu. */
+export type WikiLinkOpenTarget = 'newTab' | 'backgroundTab' | 'side'
+
 // =============================================================================
 // SELECTION TYPES
 // =============================================================================
@@ -142,8 +145,8 @@ export interface ContentAreaProps {
   onSelectionChange?: (selection: SelectionInfo) => void
   /** Callback when external link is clicked */
   onLinkClick?: (href: string) => void
-  /** Callback when internal [[wiki-link]] is clicked (note id or title) */
-  onInternalLinkClick?: (noteIdOrTitle: string) => void
+  /** Callback when internal [[wiki-link]] is clicked (note id or title). No `open`: a plain click. */
+  onInternalLinkClick?: (noteIdOrTitle: string, open?: WikiLinkOpenTarget) => void
   /** Additional CSS classes */
   className?: string
   /** Initial highlight info to scroll to and highlight (from reminder navigation) */

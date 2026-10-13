@@ -133,7 +133,11 @@
   "ai": {
     "inlineDisabled": "AI inline editing is disabled",
     "listOllamaModelsFailed": "Failed to list Ollama models",
-    "writingAssistInvalid": "That request could not be sent to the AI model."
+    "writingAssistInvalid": "That request could not be sent to the AI model.",
+    "apiKeyMissing": "Add your {provider} API key in Settings → AI to use writing tools.",
+    "apiKeyInvalid": "Your {provider} API key was rejected. Check it in Settings → AI.",
+    "ollamaUnreachable": "Ollama is not running. Start it with \"ollama serve\", or choose another provider in Settings → AI.",
+    "providerUnreachable": "Could not reach {provider}. Check your internet connection and try again."
   },
   "auth": {
     "notAuthenticated": "Not authenticated",

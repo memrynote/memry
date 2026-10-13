@@ -161,7 +161,13 @@ import {
   isDateMentionActive,
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
-import { createWikiLinkEditPlugin } from './wiki-link-edit-plugin'
+import { createWikiLinkEditPlugin, editWikiLinkAt, wikiLinkAtCoords } from './wiki-link-edit-plugin'
+import {
+  WikiLinkContextMenu,
+  type WikiLinkMenuAction,
+  type WikiLinkMenuTarget
+} from './wiki-link-context-menu'
+import { wikiLinkToText } from './wiki-link'
 import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
 import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
@@ -1121,16 +1127,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Backspace/ArrowLeft next to a wiki-link chip opens it as raw `[[…]]` text so
   // a heading can be typed into it. Prepended for the same reason as above: the
   // default Backspace keymap would delete the chip before we saw the key.
+  // `deleteTriggerCharacter: false` because the `[[` is already in the
+  // document — the slash item above passes `true` precisely because there it
+  // is not. Without this the heading picker is unreachable from the path
+  // users actually take: pick a note from the dropdown, then try to add `#`.
+  const openWikiLinkSuggestions = useCallback(
+    () =>
+      editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+        deleteTriggerCharacter: false
+      }),
+    [editor]
+  )
+
   useEffect(() => {
     const plugin = createWikiLinkEditPlugin({
-      // `deleteTriggerCharacter: false` because the `[[` is already in the
-      // document — the slash item above passes `true` precisely because there it
-      // is not. Without this the heading picker is unreachable from the path
-      // users actually take: pick a note from the dropdown, then try to add `#`.
-      openMenu: () =>
-        editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
-          deleteTriggerCharacter: false
-        }),
+      openMenu: openWikiLinkSuggestions,
       // Following a link lives in the plugin rather than in a DOM click
       // listener — `handleDOMEvents` there says why, and why it fires at
       // mousedown. Both halves of what the listener did, in the same order, so
@@ -1138,13 +1149,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // and the window event is kept because it was broadcast before (nothing in
       // the renderer subscribes to it today, so dropping it would be a silent
       // contract change for anything outside).
-      onNavigate: (target) => {
+      onNavigate: (target, open) => {
         window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target } }))
-        onInternalLinkClickRef.current?.(target)
+        onInternalLinkClickRef.current?.(target, open)
       }
     })
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
-  }, [editor])
+  }, [editor, openWikiLinkSuggestions])
 
   // A chevron beside every bullet that has nested blocks, folding them away.
   // Appended, not prepended: it handles mousedown on its own button only, so
@@ -2105,6 +2116,50 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // at the click point, and a hover "⋯" button floats over the image.
   const [imageMenuTarget, setImageMenuTarget] = useState<ImageMenuTarget | null>(null)
 
+  // Right-click on a wiki-link chip: open it here, in a new tab or beside, or
+  // edit / copy / unlink it. The chip is `contenteditable="false"`, so the
+  // editor's own menu skips it.
+  const [wikiLinkMenu, setWikiLinkMenu] = useState<WikiLinkMenuTarget | null>(null)
+
+  const runWikiLinkMenuAction = useCallback(
+    (menu: WikiLinkMenuTarget, action: WikiLinkMenuAction) => {
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      switch (action) {
+        case 'open':
+          onInternalLinkClickRef.current?.(menu.target)
+          return
+        case 'openInNewTab':
+          onInternalLinkClickRef.current?.(menu.target, 'newTab')
+          return
+        case 'openToTheSide':
+          onInternalLinkClickRef.current?.(menu.target, 'side')
+          return
+        case 'copy':
+          navigator.clipboard
+            .writeText(wikiLinkToText(menu.target, menu.alias))
+            .catch((err: unknown) =>
+              toast.error(extractErrorMessage(err, t('wikiLinkMenu.copyFailed')))
+            )
+          return
+      }
+      // Edit and unlink act on the chip as it was when the menu opened; a remote
+      // edit since then may have moved or removed it.
+      const node = view?.state.doc.nodeAt(menu.pos)
+      if (!view || node?.type.name !== 'wikiLink' || node.attrs.target?.trim() !== menu.target)
+        return
+      view.focus()
+      if (action === 'edit') {
+        editWikiLinkAt(view, menu.pos, openWikiLinkSuggestions)
+        return
+      }
+      const label = menu.alias || menu.target
+      view.dispatch(
+        view.state.tr.replaceWith(menu.pos, menu.pos + node.nodeSize, view.state.schema.text(label))
+      )
+    },
+    [editor, openWikiLinkSuggestions, t]
+  )
+
   // From a DOM element inside an image block to the block's raw stored props.
   const resolveImageFromElement = useCallback(
     (element: HTMLElement): { url: string; name: string; blockId: string } | null => {
@@ -2451,6 +2506,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         e.preventDefault()
         convertCheckboxToTask(blockId)
+        return
+      }
+
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const chip = view ? wikiLinkAtCoords(view, e.clientX, e.clientY) : null
+      if (chip) {
+        e.preventDefault()
+        const alias = typeof chip.node.attrs.alias === 'string' ? chip.node.attrs.alias : ''
+        setWikiLinkMenu({ x: e.clientX, y: e.clientY, pos: chip.pos, target: chip.target, alias })
         return
       }
 
@@ -2885,6 +2949,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onAction={handleEditorMenuAction}
               onReplaceSpelling={handleEditorMenuSpelling}
               onClose={() => setEditorMenu(null)}
+            />
+          )}
+          {wikiLinkMenu && (
+            <WikiLinkContextMenu
+              x={wikiLinkMenu.x}
+              y={wikiLinkMenu.y}
+              editable={editable}
+              onClose={() => setWikiLinkMenu(null)}
+              onAction={(action) => {
+                const menu = wikiLinkMenu
+                setWikiLinkMenu(null)
+                // After the menu lets go of focus, so the editor can take it.
+                window.setTimeout(() => runWikiLinkMenuAction(menu, action), 0)
+              }}
             />
           )}
           {imageMenuTarget && (

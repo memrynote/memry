@@ -126,7 +126,16 @@ export function AIInlineSettings(): React.JSX.Element {
           window.electron.ipcRenderer.invoke('ai-inline:get-server-port') as Promise<number | null>
         ])
         setSettings(result)
-        setServerPort(port)
+        // A running proxy port does not prove Ollama is reachable; probe it the
+        // same way the Test button does so the status reflects reality on open.
+        if (port && result.enabled && result.provider === 'ollama') {
+          const probe = (await window.electron.ipcRenderer.invoke(
+            'ai-inline:list-ollama-models'
+          )) as { success: boolean }
+          setServerPort(probe.success ? port : null)
+        } else {
+          setServerPort(result.provider === 'ollama' || result.apiKey ? port : null)
+        }
       } catch (error) {
         log.error('Failed to load AI inline settings:', error)
       } finally {

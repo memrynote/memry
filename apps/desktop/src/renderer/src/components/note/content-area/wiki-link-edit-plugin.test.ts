@@ -622,7 +622,7 @@ describe('pressing a chip follows the link', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(plugin.spec as any).view(view)
 
-    function fire(type: 'mousedown' | 'mouseup', props: Partial<MouseEvent> = {}) {
+    function fire(type: 'mousedown' | 'mouseup' | 'auxclick', props: Partial<MouseEvent> = {}) {
       let prevented = false
       const event = {
         button: 0,
@@ -686,9 +686,8 @@ describe('pressing a chip follows the link', () => {
     expect(onNavigate).toHaveBeenCalledWith('Continent#North America')
   })
 
-  // Nothing downstream of `onNavigate` reads a modifier — there is no
-  // background tab and no split pane to route one to — so a modified press
-  // follows the link like a plain one. Excluding them (which the handler this
+  // A modified press follows the link like a plain one: other tabs and panes
+  // are middle-click and the link menu. Excluding them (which the handler this
   // replaces did) only made ⌘/⌥+click on a link do nothing at all.
   const navigating: Array<[string, Partial<MouseEvent>]> = [
     ['meta', { metaKey: true }],
@@ -715,10 +714,31 @@ describe('pressing a chip follows the link', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
-  it('leaves a middle or right button press alone', () => {
+  it('leaves a right button press alone', () => {
     const { fire, onNavigate } = harness()
 
+    expect(fire('mousedown', { button: 2 })).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // Middle-click is "open in a new tab" everywhere else in the app (the sidebar
+  // trees), in the background like a browser. The press is claimed so PM does
+  // not move the caret onto the chip, which would paint its markdown.
+  it('opens the link in a background tab on a middle click', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { button: 1 })).toEqual({ handled: true, prevented: true })
+    expect(fire('auxclick', { button: 1 })).toEqual({ handled: true, prevented: true })
+
+    expect(onNavigate).toHaveBeenCalledTimes(1)
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı', 'backgroundTab')
+  })
+
+  it('leaves a middle click beside a chip alone', () => {
+    const { fire, onNavigate } = harness({ inside: 1 })
+
     expect(fire('mousedown', { button: 1 })).toEqual({ handled: false, prevented: false })
+    expect(fire('auxclick', { button: 1 }).handled).toBe(false)
     expect(onNavigate).not.toHaveBeenCalled()
   })
 

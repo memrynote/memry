@@ -78,7 +78,8 @@ import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { useOpenPage } from '@/hooks/use-open-target'
+import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
+import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -1301,9 +1302,15 @@ export function NotePage({ noteId }: NotePageProps) {
   // must not clobber an unrelated tab (same guard as the file conversion
   // above). Dedup still runs first: a target already open just gets focused.
   const { reuseActiveTab: reusePreferred } = useOpenPage()
+  const { openInNewTab, openToTheSide } = useOpenTarget()
   const openLinked = useCallback(
-    (tab: Parameters<typeof openTab>[0]) => {
-      if (
+    (tab: Parameters<typeof openTab>[0], open?: WikiLinkOpenTarget) => {
+      // An explicit gesture (middle-click, the link menu) beats the preference.
+      if (open === 'side') {
+        openToTheSide(tab)
+      } else if (open) {
+        openInNewTab(tab, { background: open === 'backgroundTab' })
+      } else if (
         reusePreferred &&
         activeTab != null &&
         activeTab.entityId === noteId &&
@@ -1314,11 +1321,11 @@ export function NotePage({ noteId }: NotePageProps) {
         openTab(tab)
       }
     },
-    [openTab, reusePreferred, activeTab, noteId]
+    [openTab, openInNewTab, openToTheSide, reusePreferred, activeTab, noteId]
   )
 
   const handleInternalLinkClick = useCallback(
-    async (linkedNoteIdOrTitle: string) => {
+    async (linkedNoteIdOrTitle: string, open?: WikiLinkOpenTarget) => {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
 
@@ -1337,51 +1344,60 @@ export function NotePage({ noteId }: NotePageProps) {
         switch (resolution.type) {
           case 'file':
             // Open file in appropriate viewer (image, video, PDF, audio)
-            openLinked({
-              type: 'file',
-              title: resolution.title,
-              icon: resolution.icon,
-              path: `/file/${resolution.id}`,
-              entityId: resolution.id,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false
-            })
+            openLinked(
+              {
+                type: 'file',
+                title: resolution.title,
+                icon: resolution.icon,
+                path: `/file/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              },
+              open
+            )
             break
 
           case 'note':
             // Open note in editor, carrying the heading the link named. The
             // target page consumes it once its own editor has produced headings
             // — text is all we have, and block ids only exist over there.
-            openLinked({
-              type: 'note',
-              title: resolution.title,
-              icon: 'file-text',
-              path: `/notes/${resolution.id}`,
-              entityId: resolution.id,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false,
-              ...(resolution.heading && { viewState: { headingText: resolution.heading } })
-            })
+            openLinked(
+              {
+                type: 'note',
+                title: resolution.title,
+                icon: 'file-text',
+                path: `/notes/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false,
+                ...(resolution.heading && { viewState: { headingText: resolution.heading } })
+              },
+              open
+            )
             break
 
           case 'canvas':
             // A canvas has no editor to land inside, so there is no heading to
             // carry: the link opens the board itself (#1983).
-            openLinked({
-              type: 'canvas',
-              title: resolution.title,
-              icon: 'pen-tool',
-              path: `/canvas/${resolution.id}`,
-              entityId: resolution.id,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false
-            })
+            openLinked(
+              {
+                type: 'canvas',
+                title: resolution.title,
+                icon: 'pen-tool',
+                path: `/canvas/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              },
+              open
+            )
             break
 
           case 'create':

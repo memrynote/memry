@@ -9,10 +9,10 @@
 /* Begin PBXBuildFile section */
 		B1000001 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000000 /* MemryCore */; };
 		B1000003 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002 /* MemryCore */; };
-		B1000011 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000010 /* MemryCore */; };
 		B1000005 /* test-vectors in Resources */ = {isa = PBXBuildFile; fileRef = A0000040 /* test-vectors */; };
 		B1000007 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = B1000006 /* Inject */; };
 		B1000009 /* MemryShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A0000014 /* MemryShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B1000011 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000010 /* MemryCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,7 +90,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				MemryShare.entitlements,
 			);
 			target = F0000005 /* MemryShare */;
 		};
@@ -143,8 +142,8 @@
 		C0000006 /* MemryShare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				C1000002 /* Exceptions for "MemryShare" folder in "MemryShare" target */,
 				C1000003 /* Exceptions for "MemryShare" folder in "Memry" target */,
+				C1000002 /* Exceptions for "MemryShare" folder in "MemryShare" target */,
 			);
 			path = MemryShare;
 			sourceTree = "<group>";
@@ -564,6 +563,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memry/Memry.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TV343Q4W8A;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Memry/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -571,7 +571,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -585,6 +585,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memry/Memry.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TV343Q4W8A;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Memry/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -592,7 +593,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -607,7 +608,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
@@ -622,7 +623,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
@@ -636,7 +637,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Memry;
@@ -650,7 +651,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Memry;
@@ -665,7 +666,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.conformance;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.conformance;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
@@ -680,7 +681,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.conformance;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.conformance;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
@@ -702,7 +703,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -724,7 +725,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memrynote.app.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -817,14 +818,14 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = MemryCore;
 		};
-		B1000010 /* MemryCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MemryCore;
-		};
 		B1000006 /* Inject */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 13000002 /* XCRemoteSwiftPackageReference "Inject" */;
 			productName = Inject;
+		};
+		B1000010 /* MemryCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MemryCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

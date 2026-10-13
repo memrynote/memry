@@ -177,7 +177,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const openTaskDetail = useOpenTaskDetail()
   const syncingRef = useRef(false)
 
-  const isNewBlockRef = useRef(true)
   const wasDraftRef = useRef(!taskId)
   const [isEditingTitle, setIsEditingTitle] = useState(!taskId)
   const [editTitle, setEditTitle] = useState(title)
@@ -240,18 +239,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     [isEditingTitle, editTitle, task?.title, displayTask, projects]
   )
 
-  // Auto-enter edit mode for newly created blocks. The cancellation flag +
-  // cleanup return mark this as a synchronization effect (so the
-  // unnecessary-effect lints recognize it as legitimate) and lets us drop the
-  // pending editor.updateBlock call if the component unmounts mid-flight.
+  // Only a block that mounted as a draft (`taskId: ''`) starts in edit mode;
+  // every creation path mounts one. A saved block whose task is still loading
+  // (note reopened, back navigation) must not take focus: doing so stole the
+  // caret and scrolled the note away from where the user left it. The
+  // cancellation flag + cleanup return mark this as a synchronization effect
+  // and drop the pending editor.updateBlock call on unmount.
   useEffect(() => {
     let cancelled = false
-    if (isNewBlockRef.current && taskId && !task) {
-      setIsEditingTitle(true)
-      if (!wasDraftRef.current) setEditTitle(title)
-    }
     if (task) {
-      isNewBlockRef.current = false
       if (wasDraftRef.current) {
         wasDraftRef.current = false
         // Shorthand still being typed is the commit's to apply; writing it now
@@ -274,7 +270,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     return () => {
       cancelled = true
     }
-  }, [taskId, task, title, editTitle, block, editor])
+  }, [taskId, task, editTitle, block, editor])
 
   // Focus title input when editing starts (double-rAF to beat ProseMirror focus restoration)
   useEffect(() => {
@@ -511,7 +507,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         e.preventDefault()
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        isNewBlockRef.current = false
         setIsEditingTitle(false)
         // Emptying the title and pressing Backspace is deleting the task, not
         // just its line, so the editor's removal prompt stays out of it.
@@ -561,7 +556,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
 
         const trimmed = editTitle.trim()
         if (trimmed) {
-          isNewBlockRef.current = false
           const committed = commitTitleEdit(editTitle) || trimmed
           setEditTitle(committed)
           void saveTitleToDb(committed)
@@ -585,7 +579,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
             'after'
           )
         } else {
-          isNewBlockRef.current = false
           setIsEditingTitle(false)
           if (taskId) {
             markTaskRemovalsHandled(editor, [taskId])

@@ -2,7 +2,6 @@ import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useCallback, useMemo } from 'react'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagChip, Tag } from './TagChip'
 import { defaultTagColorName } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
@@ -164,68 +163,66 @@ export function TagInputPopup({
           placeholder={t('tagsRow.inputPlaceholder')}
         />
 
-        <ScrollArea className="max-h-[260px]">
-          <Picker.List className="flex-wrap gap-1.5">
-            {filteredRecentTags.length > 0 && !searchQuery && (
-              <Picker.Section label={t('tagsRow.recent')}>
-                <div className="flex flex-wrap gap-1.5 px-2 pb-1">
-                  {filteredRecentTags.slice(0, 8).map((tag) => (
-                    <TagChip key={tag.id} tag={tag} onClick={() => handleTagClick(tag)} />
-                  ))}
-                </div>
-              </Picker.Section>
-            )}
+        <Picker.List className="max-h-[260px] gap-1.5">
+          {filteredRecentTags.length > 0 && !searchQuery && (
+            <Picker.Section label={t('tagsRow.recent')}>
+              <div className="flex flex-wrap gap-1.5 px-2 pb-1">
+                {filteredRecentTags.slice(0, 8).map((tag) => (
+                  <TagChip key={tag.id} tag={tag} onClick={() => handleTagClick(tag)} />
+                ))}
+              </div>
+            </Picker.Section>
+          )}
 
-            {fieldRows.length > 0 && (
-              <div className="flex flex-col gap-0.5 px-1 pb-1" role="listbox">
-                {fieldRows.map((row, index) => (
-                  <FieldTagRow
-                    key={row.tag.id}
-                    tag={row.tag}
-                    resolved={row.resolved}
-                    bodyEmpty={fieldHints?.bodyEmpty ?? false}
-                    active={index === activeIndex}
-                    onPick={() => handleTagClick(row.tag)}
+          {fieldRows.length > 0 && (
+            <div className="flex flex-col gap-0.5 px-1 pb-1" role="listbox">
+              {fieldRows.map((row, index) => (
+                <FieldTagRow
+                  key={row.tag.id}
+                  tag={row.tag}
+                  resolved={row.resolved}
+                  bodyEmpty={fieldHints?.bodyEmpty ?? false}
+                  active={index === activeIndex}
+                  onPick={() => handleTagClick(row.tag)}
+                />
+              ))}
+            </div>
+          )}
+
+          {chipTags.length > 0 && (
+            <Picker.Section label={searchQuery ? t('tagsRow.matching') : t('tagsRow.all')}>
+              <div className="flex flex-wrap gap-1.5 px-2 pb-1">
+                {chipTags.map((tag, index) => (
+                  <TagChip
+                    key={tag.id}
+                    tag={tag}
+                    isFocused={index + fieldRows.length === activeIndex}
+                    onClick={() => handleTagClick(tag)}
                   />
                 ))}
               </div>
-            )}
+            </Picker.Section>
+          )}
 
-            {chipTags.length > 0 && (
-              <Picker.Section label={searchQuery ? t('tagsRow.matching') : t('tagsRow.all')}>
-                <div className="flex flex-wrap gap-1.5 px-2 pb-1">
-                  {chipTags.map((tag, index) => (
-                    <TagChip
-                      key={tag.id}
-                      tag={tag}
-                      isFocused={index + fieldRows.length === activeIndex}
-                      onClick={() => handleTagClick(tag)}
-                    />
-                  ))}
-                </div>
-              </Picker.Section>
-            )}
+          {filteredTags.length === 0 && searchQuery && !fieldHints && (
+            <Picker.Empty message={t('tagsRow.none')} />
+          )}
 
-            {filteredTags.length === 0 && searchQuery && !fieldHints && (
-              <Picker.Empty message={t('tagsRow.none')} />
-            )}
-
-            {fieldHints && searchQuery.trim() && !exactMatchExists && (
-              <button
-                type="button"
-                className="mx-1 mt-1 flex items-center gap-2 rounded-[5px] border-t border-border/60 px-2 py-1.5 text-start text-[13px] text-foreground hover:bg-accent"
-                onClick={() => {
-                  const trimmed = searchQuery.trim()
-                  onCreateTag(trimmed, defaultTagColorName(trimmed))
-                  handleOpenChange(false)
-                }}
-              >
-                <Plus className="size-3.5 text-text-tertiary" aria-hidden="true" />
-                {t('tagFields.picker.create', { tag: searchQuery.trim() })}
-              </button>
-            )}
-          </Picker.List>
-        </ScrollArea>
+          {fieldHints && searchQuery.trim() && !exactMatchExists && (
+            <button
+              type="button"
+              className="mx-1 mt-1 flex items-center gap-2 rounded-[5px] border-t border-border/60 px-2 py-1.5 text-start text-[13px] text-foreground hover:bg-accent"
+              onClick={() => {
+                const trimmed = searchQuery.trim()
+                onCreateTag(trimmed, defaultTagColorName(trimmed))
+                handleOpenChange(false)
+              }}
+            >
+              <Plus className="size-3.5 text-text-tertiary" aria-hidden="true" />
+              {t('tagFields.picker.create', { tag: searchQuery.trim() })}
+            </button>
+          )}
+        </Picker.List>
       </Picker.Content>
     </Picker>
   )
