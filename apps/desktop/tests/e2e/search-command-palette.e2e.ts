@@ -119,7 +119,9 @@ test.describe('Search and command palette E2E', () => {
 
     const commandDialog = page.locator('[role="dialog"]').filter({ has: searchInput }).first()
     await expect(commandDialog.getByText(seeded.noteTitle, { exact: true }).first()).toBeVisible()
-    await commandDialog.locator('button').filter({ hasText: 'Tasks' }).first().click()
+    // The palette scopes types from the keyboard (or the "/" menu) since #2823; ⌘3 is Tasks.
+    await page.keyboard.press(`${MOD}+3`)
+    await expect(commandDialog.getByRole('button', { name: /^Remove Tasks?$/ })).toBeVisible()
     await expect(commandDialog.getByText(seeded.noteTitle, { exact: true }).first()).toBeHidden()
     await searchInput.fill(seeded.taskTitle)
     await expect(commandDialog.getByText(seeded.taskTitle, { exact: true }).first()).toBeVisible()

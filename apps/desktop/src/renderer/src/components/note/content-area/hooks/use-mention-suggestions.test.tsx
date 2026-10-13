@@ -207,6 +207,37 @@ describe('useMentionSuggestions', () => {
     expect(onInsertDate).toHaveBeenCalledWith(value)
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
+  it('commits the live query when the listed date row is still from an earlier keystroke', async () => {
+    mocks.listNotes.mockResolvedValue({ notes: [] })
+    const onInsertDate = vi.fn()
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useMentionSuggestions(editor, options({ onInsertDate })))
+
+    let stale: MentionSuggestionItem[] = []
+    await act(async () => {
+      stale = await result.current.getMentionItems('next monday at 14p')
+    })
+    const staleDate = stale.find((i) => i.kind === 'date')
+    expect(staleDate?.kind === 'date' && staleDate.value.hasTime).toBe(false)
+
+    // The next keystroke's lookup is still in flight when Tab selects the old row.
+    let pending: Promise<MentionSuggestionItem[]> = Promise.resolve([])
+    act(() => {
+      pending = result.current.getMentionItems('next monday at 14pm')
+    })
+    act(() => {
+      result.current.handleMentionSelect(staleDate!)
+    })
+    await act(async () => {
+      await pending
+    })
+
+    expect(onInsertDate).toHaveBeenCalledTimes(1)
+    const inserted = onInsertDate.mock.calls[0][0]
+    expect(inserted.hasTime).toBe(true)
+    expect(new Date(inserted.dateISO).getHours()).toBe(14)
+  })
+
   it('leads the Date group with Now for @now and a partial @no, any case', async () => {
     mocks.listNotes.mockResolvedValue({ notes: [{ id: 'a', title: 'Unrelated note' }] })
     const editor = { insertInlineContent: vi.fn() }

@@ -203,6 +203,8 @@ const openFlags = (): number => constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)
 // Never used, since the flags create nothing; CodeQL reads a missing mode as a world-readable create.
 const OPEN_MODE = 0o600
 
+const REPLACED_RETRIES = 3
+
 const sameFile = (a: BigIntStats, b: BigIntStats): boolean => a.dev === b.dev && a.ino === b.ino
 
 /**
@@ -216,51 +218,66 @@ export async function openVaultFile(
   vaultPath: string,
   relativePath: string
 ): Promise<FileHandle | null> {
-  if ((await resolveVaultFile(vaultPath, relativePath)).kind === 'outside') {
-    throw new OutsideVaultError(relativePath)
-  }
-  const joined = path.join(vaultPath, relativePath)
-  const handle = await open(joined, openFlags(), OPEN_MODE).catch((err: NodeJS.ErrnoException) => {
-    if (err.code === 'ENOENT') return null
-    throw err
-  })
-  if (handle === null) return null
-  try {
-    const opened = await handle.stat({ bigint: true })
-    const now = await resolveVaultFile(vaultPath, relativePath)
-    if (now.kind === 'inside' && sameFile(opened, await lstat(now.path, { bigint: true }))) {
-      return handle
+  // A save renames a new file over the note, so the path can name another
+  // file inside the vault by the time the opened one is checked: open again.
+  for (let attempt = 1; ; attempt++) {
+    if ((await resolveVaultFile(vaultPath, relativePath)).kind === 'outside') {
+      throw new OutsideVaultError(relativePath)
     }
-  } catch (err) {
+    const joined = path.join(vaultPath, relativePath)
+    const handle = await open(joined, openFlags(), OPEN_MODE).catch(
+      (err: NodeJS.ErrnoException) => {
+        if (err.code === 'ENOENT') return null
+        throw err
+      }
+    )
+    if (handle === null) return null
+    let now: VaultFileResolution
+    try {
+      const opened = await handle.stat({ bigint: true })
+      now = await resolveVaultFile(vaultPath, relativePath)
+      if (now.kind === 'inside' && sameFile(opened, await lstat(now.path, { bigint: true }))) {
+        return handle
+      }
+    } catch (err) {
+      await handle.close()
+      throw err
+    }
     await handle.close()
-    throw err
+    if (now.kind === 'outside') throw new OutsideVaultError(relativePath)
+    if (attempt === REPLACED_RETRIES)
+      throw new Error(`${relativePath} kept changing while it was opened`)
   }
-  await handle.close()
-  throw new OutsideVaultError(relativePath)
 }
 
 /** `openVaultFile` for callers that cannot await. Returns a file descriptor. */
 export function openVaultFileSync(vaultPath: string, relativePath: string): number | null {
-  refuseOutsideVaultSync(vaultPath, relativePath)
-  let fd: number
-  try {
-    fd = openSync(path.join(vaultPath, relativePath), openFlags(), OPEN_MODE)
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
-    throw err
-  }
-  try {
-    const opened = fstatSync(fd, { bigint: true })
-    const now = resolveVaultFileSync(vaultPath, relativePath)
-    if (now.kind === 'inside' && sameFile(opened, lstatSync(now.path, { bigint: true }))) {
-      return fd
+  // See `openVaultFile`: a file renamed over the path inside the vault is opened again.
+  for (let attempt = 1; ; attempt++) {
+    refuseOutsideVaultSync(vaultPath, relativePath)
+    let fd: number
+    try {
+      fd = openSync(path.join(vaultPath, relativePath), openFlags(), OPEN_MODE)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw err
     }
-  } catch (err) {
+    let now: VaultFileResolution
+    try {
+      const opened = fstatSync(fd, { bigint: true })
+      now = resolveVaultFileSync(vaultPath, relativePath)
+      if (now.kind === 'inside' && sameFile(opened, lstatSync(now.path, { bigint: true }))) {
+        return fd
+      }
+    } catch (err) {
+      closeSync(fd)
+      throw err
+    }
     closeSync(fd)
-    throw err
+    if (now.kind === 'outside') throw new OutsideVaultError(relativePath)
+    if (attempt === REPLACED_RETRIES)
+      throw new Error(`${relativePath} kept changing while it was opened`)
   }
-  closeSync(fd)
-  throw new OutsideVaultError(relativePath)
 }
 
 /** A vault file's text read through `openVaultFile`'s handle, or null when it is missing. */
