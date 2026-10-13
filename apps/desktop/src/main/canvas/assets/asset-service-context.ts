@@ -13,6 +13,7 @@
 import { getOrCreateVaultUuid } from '../../agent/storage/vault-id'
 import { getOrInitializeLocalVaultKey } from '../../crypto/vault-key-state'
 import { getDatabase, isDatabaseInitialized } from '../../database/client'
+import type { DataDb } from '../../database/types'
 import { getCanvasAssetIO } from '../../ipc/sync-attachment-handlers'
 import { markWritebackIgnored } from '../../sync/crdt-writeback'
 import { getSyncEngine } from '../../sync/runtime'
@@ -29,6 +30,16 @@ import { holdCanvasAssetChunks, releaseCanvasAssetHolds, type ChunkHoldDeps } fr
 
 const log = createLogger('CanvasAssetContext')
 
+/** The real server deps of chunk holds, also used by the revived-note probe (#3054). */
+export function chunkHoldDeps(db: DataDb, vaultId: string): ChunkHoldDeps {
+  return {
+    getAccessToken: () => getValidAccessToken(),
+    getSyncServerUrl: () => resolveSyncServerUrl(),
+    getVaultId: () => vaultId,
+    getVaultKey: () => getOrInitializeLocalVaultKey(db, vaultId).catch(() => null)
+  }
+}
+
 /**
  * Assemble the real asset-service context, or `null` when the vault is not
  * open / the database is not initialized (read handlers degrade to empty,
@@ -43,15 +54,8 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
   const db = getDatabase()
   const vaultId = getOrCreateVaultUuid(db)
 
-  const dereferenceDeps: DereferenceDeps = {
-    getAccessToken: () => getValidAccessToken(),
-    getSyncServerUrl: () => resolveSyncServerUrl(),
-    getVaultId: () => vaultId
-  }
-  const holdDeps: ChunkHoldDeps = {
-    ...dereferenceDeps,
-    getVaultKey: () => getOrInitializeLocalVaultKey(db, vaultId).catch(() => null)
-  }
+  const holdDeps = chunkHoldDeps(db, vaultId)
+  const dereferenceDeps: DereferenceDeps = holdDeps
 
   return {
     db,

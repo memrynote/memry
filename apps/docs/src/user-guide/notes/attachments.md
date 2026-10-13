@@ -296,7 +296,7 @@ On the receiving device you do not have to reopen anything either. A note that i
 
 Files that are no longer referenced by any note are pruned during periodic vacuum. You don't need to clean them up manually.
 
-Deleting a note keeps its attachments synced for 30 days, so a note put back from the trash in that time still shows them on every device. After 30 days, the device you deleted the note on releases the synced copies that no other note or canvas still uses, once it has synced with your other devices and sync isn't paused, and they stop counting against your storage quota. The files in your vault's `attachments/` folder stay where they are; a note put back after that uploads them again.
+Deleting a note keeps its attachments synced for 30 days, so a note put back from the trash in that time still shows them on every device. After 30 days, the device you deleted the note on releases the synced copies that no other note or canvas still uses, once it has synced with your other devices and sync isn't paused, and they stop counting against your storage quota. The files in your vault's `attachments/` folder stay where they are; a note put back after that uploads them again. The same happens when an edit made on another device brings the note back after the 30 days: that device uploads the attachments it still has again, so the note shows them everywhere.
 
 ## Sync Behavior
 

@@ -318,7 +318,48 @@ from a canvas releases that pair first
 (`apps/desktop/src/main/canvas/assets/asset-service.ts:293`), and the 30-day
 release of a deleted canvas releases all of its pairs
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:203`). Note attachments and
-the iOS core do not use holds.
+the iOS core hold nothing past the probe of §14.8.2.
+
+### 14.8.2 Revived notes re-upload freed attachments (#3054)
+
+**Client behaviour, desktop only; no wire, D1 or format change.** A note's
+attachments are freed by dereference 30 days after the delete, unless the note
+is live again on the deleting device by then
+(`apps/desktop/src/main/sync/deleted-asset-release.ts:276`). A device whose
+local clock happens after a pulled note tombstone skips it, and its push revives
+the note (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:731-735`).
+If that happens after the release, the note names chunks that are gone. The
+reviving device still has the files, so it checks each attachment the note
+references, in the next upload re-drive
+(`apps/desktop/src/main/sync/attachment-upload-redriver.ts:55`,
+`apps/desktop/src/main/sync/note-attachment-revival.ts:57-60`):
+
+- An attachment whose manifest the server does not have is gone (`:81`).
+- Otherwise its chunks are probed with `POST /sync/attachments/holds` (`:84`),
+  which refuses a dead chunk because it requires `ref_count > 0` or another
+  hold (`apps/sync-server/src/services/chunk-holds.ts:54`).
+  `HEAD /attachments/chunks/:chunk_hash` and `presign-batch` answer from the
+  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:826`, `:765`),
+  and a dereferenced chunk keeps that row until the sweep, so neither can tell
+  a freed chunk from a live one. The probe releases its holds at once
+  (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:215`). Its holder id is
+  BLAKE2b-256 keyed by the vault key over
+  `"memry/note-attachment-probe/v1" \0 noteId \0 attachmentId`
+  (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:190`), so a probe whose
+  release was lost is released by the next probe of the same pair. No other
+  device derives it, so it is not a cross-implementation contract. A server
+  that predates holds (404) skips the probe.
+- For each attachment that is gone, the device drops the id from the note's
+  `attachmentReferences`, so the upload's dedup cannot reuse its still-present
+  manifest, and queues its local file in the upload outbox
+  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-99`). The upload
+  adds the new id and pushes the note, as any upload does
+  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`).
+
+Chunk holds are not used for this: a hold ends with the grace period, so a
+peer offline for longer than that would still revive a note whose chunks are
+gone. Pending checks live in memory, so a restart before a check settles loses
+it.
 
 **Disposition of Q14.3: answered (safe; quota is consumed by uploads only).**
 

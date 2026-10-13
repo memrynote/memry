@@ -1,5 +1,6 @@
 /**
- * Server chunk holds for canvas image assets (#3022, protocol 14 §14.8).
+ * Server chunk holds for canvas image assets (#3022, protocol 14 §14.8), and
+ * the liveness probe for a revived note's attachments (#3054).
  *
  * A canvas that shows an image it did not upload (a dedup hit, a duplicate, a
  * conflict copy) holds that image's chunks before the canvas is pushed, under
@@ -17,6 +18,7 @@ import { createLogger } from '../../lib/logger'
 const log = createLogger('CanvasAssetHolds')
 
 const HOLDER_DOMAIN = 'memry/canvas-asset-hold/v1'
+const PROBE_DOMAIN = 'memry/note-attachment-probe/v1'
 // The server caps a request at 64 holders (ChunkHoldRequestSchema).
 const HOLDERS_PER_REQUEST = 64
 
@@ -34,7 +36,7 @@ export interface AssetHold {
 }
 
 /**
- * - `ok`: every image not in `missing` is held.
+ * - `ok`: every image (or probed attachment) not in `missing` is held.
  * - `unsupported`: the server predates holds (404); nothing was held.
  * - `failed`: no token, no vault key, offline, or a server error. `retryable`
  *   is false for a 4xx other than 404, 408 and 429: the same request fails the
@@ -44,6 +46,11 @@ export type HoldOutcome =
   | { status: 'ok'; missing: Set<string> }
   | { status: 'unsupported' }
   | { status: 'failed'; retryable: boolean; httpStatus: number }
+
+export interface AttachmentChunks {
+  attachmentId: string
+  chunkHashes: string[]
+}
 
 /** BLAKE2b-256 keyed by the vault key over `domain \0 canvasId \0 contentHash`, hex. */
 export function canvasAssetHolderId(
@@ -81,20 +88,11 @@ async function post(
   }
 }
 
-/** Holds each image's chunks for one canvas. `missing` names images by content hash. */
-export async function holdCanvasAssetChunks(
-  canvasId: string,
-  holds: AssetHold[],
+/** Holds each holder's chunks. `missing` names holders by their `key`. */
+async function holdEach(
+  byHolder: Map<string, { key: string; chunkHashes: string[] }>,
   deps: ChunkHoldDeps
 ): Promise<HoldOutcome> {
-  if (holds.length === 0) return { status: 'ok', missing: new Set() }
-  await sodium.ready
-  const vaultKey = await deps.getVaultKey()
-  if (!vaultKey) return { status: 'failed', retryable: true, httpStatus: 0 }
-
-  const byHolder = new Map(
-    holds.map((hold) => [canvasAssetHolderId(vaultKey, canvasId, hold.contentHash), hold])
-  )
   const entries = [...byHolder].map(([holderId, hold]) => ({
     holderId,
     chunkHashes: hold.chunkHashes
@@ -113,10 +111,50 @@ export async function holdCanvasAssetChunks(
     }
     for (const holderId of (res.json as { missing?: string[] }).missing ?? []) {
       const hold = byHolder.get(holderId)
-      if (hold) missing.add(hold.contentHash)
+      if (hold) missing.add(hold.key)
     }
   }
   return { status: 'ok', missing }
+}
+
+/** Drops every hold of these holders. A server that predates holds (404) has none: `ok`. */
+async function releaseHolderIds(
+  holderIds: string[],
+  deps: ChunkHoldDeps
+): Promise<{ ok: boolean }> {
+  for (let i = 0; i < holderIds.length; i += HOLDERS_PER_REQUEST) {
+    const res = await post(deps, '/attachments/holds/release', {
+      holderIds: holderIds.slice(i, i + HOLDERS_PER_REQUEST)
+    })
+    if (res.status === 404) return { ok: true }
+    if (res.status !== 200) {
+      log.warn('chunk hold release failed', { status: res.status })
+      return { ok: false }
+    }
+  }
+  return { ok: true }
+}
+
+/** Holds each image's chunks for one canvas. `missing` names images by content hash. */
+export async function holdCanvasAssetChunks(
+  canvasId: string,
+  holds: AssetHold[],
+  deps: ChunkHoldDeps
+): Promise<HoldOutcome> {
+  if (holds.length === 0) return { status: 'ok', missing: new Set() }
+  await sodium.ready
+  const vaultKey = await deps.getVaultKey()
+  if (!vaultKey) return { status: 'failed', retryable: true, httpStatus: 0 }
+
+  return holdEach(
+    new Map(
+      holds.map((hold) => [
+        canvasAssetHolderId(vaultKey, canvasId, hold.contentHash),
+        { key: hold.contentHash, chunkHashes: hold.chunkHashes }
+      ])
+    ),
+    deps
+  )
 }
 
 /**
@@ -133,18 +171,48 @@ export async function releaseCanvasAssetHolds(
   const vaultKey = await deps.getVaultKey()
   if (!vaultKey) return { ok: false }
 
-  const holderIds = [...new Set(contentHashes)].map((hash) =>
-    canvasAssetHolderId(vaultKey, canvasId, hash)
+  return releaseHolderIds(
+    [...new Set(contentHashes)].map((hash) => canvasAssetHolderId(vaultKey, canvasId, hash)),
+    deps
   )
-  for (let i = 0; i < holderIds.length; i += HOLDERS_PER_REQUEST) {
-    const res = await post(deps, '/attachments/holds/release', {
-      holderIds: holderIds.slice(i, i + HOLDERS_PER_REQUEST)
-    })
-    if (res.status === 404) return { ok: true }
-    if (res.status !== 200) {
-      log.warn('chunk hold release failed', { status: res.status })
-      return { ok: false }
-    }
-  }
-  return { ok: true }
+}
+
+/**
+ * Which of a note's attachments have a chunk the server no longer keeps
+ * (#3054). Each attachment's chunks are held under a probe holder and released
+ * at once: the hold route refuses a dead chunk, which `HEAD` on a chunk and
+ * presign cannot tell from a live one, since both answer from the row alone and
+ * a dereferenced chunk keeps its row until the sweep. `missing` names
+ * attachment ids. The holder id is BLAKE2b-256 keyed by the vault key over
+ * `domain \0 noteId \0 attachmentId`, so a probe whose release was lost is
+ * released by the next probe of the same pair.
+ */
+export async function probeNoteAttachments(
+  noteId: string,
+  attachments: AttachmentChunks[],
+  deps: ChunkHoldDeps
+): Promise<HoldOutcome> {
+  if (attachments.length === 0) return { status: 'ok', missing: new Set() }
+  await sodium.ready
+  const vaultKey = await deps.getVaultKey()
+  if (!vaultKey) return { status: 'failed', retryable: true, httpStatus: 0 }
+
+  const byHolder = new Map(
+    attachments.map((attachment) => [
+      sodium.to_hex(
+        sodium.crypto_generichash(
+          32,
+          sodium.from_string(`${PROBE_DOMAIN}\0${noteId}\0${attachment.attachmentId}`),
+          vaultKey
+        )
+      ),
+      { key: attachment.attachmentId, chunkHashes: attachment.chunkHashes }
+    ])
+  )
+  const outcome = await holdEach(byHolder, deps)
+  if (outcome.status === 'unsupported') return outcome
+  // Released even after a failed hold: an earlier batch may have held.
+  const released = await releaseHolderIds([...byHolder.keys()], deps)
+  if (outcome.status === 'failed' || released.ok) return outcome
+  return { status: 'failed', retryable: true, httpStatus: 0 }
 }
