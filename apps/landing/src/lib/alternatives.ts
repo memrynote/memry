@@ -1502,6 +1502,277 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       }
     ],
     footnote: COMPARISON_FOOTNOTE
+  },
+  {
+    pageKey: 'standardNotesAlternative',
+    competitor: 'Standard Notes',
+    eyebrow: 'Standard Notes alternative',
+    heading: 'The encrypted Standard Notes alternative with',
+    headingAccent: 'your notes as plain files.',
+    intro:
+      'memrynote is an end-to-end encrypted alternative to Standard Notes that keeps every note as a plain Markdown file in a folder you own. Sync is zero-knowledge: notes are encrypted on your device with XChaCha20-Poly1305 and the server only stores ciphertext. Beyond notes, memrynote ships tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox in the same encrypted vault, so your whole day lives in one private place. It runs on macOS, Windows, and Linux, works fully offline without an account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+    rows: [
+      { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
+      { feature: 'Open source', memry: true, competitor: true },
+      { feature: 'Notes as plain Markdown files on disk', memry: true, competitor: false },
+      { feature: 'Wiki-links & backlinks', memry: true, competitor: 'partial' },
+      { feature: 'Task projects with Kanban & calendar views', memry: true, competitor: false },
+      { feature: 'Built-in calendar', memry: true, competitor: false },
+      { feature: 'Daily journal', memry: true, competitor: 'partial' },
+      { feature: 'Works offline', memry: true, competitor: true }
+    ],
+    reasons: [
+      {
+        title: 'Files, not a vault format',
+        body: 'Every note is a .md file in a folder you choose, readable in any editor with no export step.'
+      },
+      {
+        title: 'Encryption you can verify',
+        body: 'Zero-knowledge sync built on libsodium, with the full source published under AGPL-3.0.'
+      },
+      {
+        title: 'Your whole day, encrypted',
+        body: 'Tasks, a calendar, a journal, and an inbox sit in the same encrypted vault as your notes.'
+      },
+      {
+        title: 'Free locally',
+        body: 'Use every feature on one machine for free. Add encrypted sync only when you need it.'
+      }
+    ],
+    sections: [
+      {
+        heading: 'Is memrynote a good Standard Notes alternative?',
+        body: 'Yes, if you want end-to-end encryption and your notes as plain files. Like Standard Notes, memrynote encrypts everything before it syncs, so the server never reads your content. Unlike Standard Notes, memrynote keeps the working copy of each note as a Markdown file in your own folder, and it adds tasks, a calendar, and a daily journal as native features. It runs offline on macOS, Windows, and Linux with no account required.'
+      },
+      {
+        heading: 'Plain Markdown files instead of an app vault',
+        body: 'Standard Notes keeps notes inside its own encrypted storage and offers exports. memrynote stores every note as a portable .md file with YAML frontmatter, so your notes are already readable by any editor, searchable with any tool, and easy to back up or version with git. Encryption applies to what leaves your device; the copy on your disk stays yours to use however you like.'
+      },
+      {
+        heading: 'Zero-knowledge sync, open source',
+        body: 'memrynote derives keys on your device with Argon2id, encrypts each item with XChaCha20-Poly1305, and signs changes with a per-device Ed25519 key. The sync server stores only ciphertext and routing metadata, and the code is public under AGPL-3.0, so you can check exactly what the app does with your data.'
+      },
+      {
+        heading: 'Tasks, calendar, and journal in one encrypted vault',
+        body: 'memrynote goes beyond notes. Tasks live in projects with custom statuses, subtasks, and Kanban, list, and calendar views. A daily journal shows the schedule and tasks for each day beside the entry, and an inbox catches quick captures and web clips. All of it syncs with the same end-to-end encryption as your notes.'
+      }
+    ],
+    pricing: {
+      memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
+      competitor: 'Free plan; paid Productivity and Professional plans add features and storage.'
+    },
+    migration: {
+      importer: 'Markdown',
+      steps: [
+        'In Standard Notes, export your notes in plaintext or Markdown.',
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported files.',
+        'Your notes land as Markdown files in your vault; turn on encrypted sync to reach your other devices.'
+      ]
+    },
+    faqs: [
+      {
+        question: 'Is memrynote end-to-end encrypted like Standard Notes?',
+        answer:
+          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync, using keys the server never receives. The server stores only ciphertext.'
+      },
+      {
+        question: 'Can I move my notes from Standard Notes to memrynote?',
+        answer:
+          'Yes. Export your notes from Standard Notes in plaintext or Markdown, then use the Markdown importer in memrynote → Settings → Import.'
+      },
+      {
+        question: 'Does memrynote have a mobile app?',
+        answer:
+          'memrynote is a desktop app for macOS, Windows, and Linux today, with mobile apps planned. Because your vault is plain Markdown, your notes stay readable in any app on any device.'
+      },
+      {
+        question: 'Is memrynote free?',
+        answer:
+          'Yes. Local use is free and open source. Hosted end-to-end encrypted sync starts at $5/mo.'
+      }
+    ],
+    footnote: COMPARISON_FOOTNOTE
+  },
+  {
+    pageKey: 'notesnookAlternative',
+    competitor: 'Notesnook',
+    eyebrow: 'Notesnook alternative',
+    heading: 'The private Notesnook alternative with',
+    headingAccent: 'tasks, calendar & journal built in.',
+    intro:
+      'memrynote is an end-to-end encrypted, local-first alternative to Notesnook. Your notes are plain Markdown files in a folder you own, and sync is zero-knowledge: each item is encrypted on your device with XChaCha20-Poly1305 so the server only stores ciphertext. Where a notes app stops at notes, memrynote adds task projects with Kanban and calendar views, a calendar, a daily journal, and a capture inbox in the same encrypted vault. It runs on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+    rows: [
+      { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
+      { feature: 'Open source', memry: true, competitor: true },
+      { feature: 'Notes as plain Markdown files on disk', memry: true, competitor: false },
+      { feature: 'Task projects with Kanban & calendar views', memry: true, competitor: false },
+      { feature: 'Built-in calendar', memry: true, competitor: false },
+      { feature: 'Daily journal with day context', memry: true, competitor: false },
+      { feature: 'Capture inbox & web clipper', memry: true, competitor: 'partial' },
+      { feature: 'Works offline', memry: true, competitor: true }
+    ],
+    reasons: [
+      {
+        title: 'Notes you can open anywhere',
+        body: 'Every note is a .md file in your folder, readable in VS Code, iA Writer, or a terminal.'
+      },
+      {
+        title: 'More than notes',
+        body: 'Tasks, a calendar, a journal, and an inbox are native, so your day lives in one encrypted vault.'
+      },
+      {
+        title: 'Zero-knowledge sync',
+        body: 'Items are encrypted on your device before upload. The server never sees your keys or content.'
+      },
+      {
+        title: 'Open & free locally',
+        body: 'AGPL-3.0 source, every feature free on one machine, and sync only when you want it.'
+      }
+    ],
+    sections: [
+      {
+        heading: 'Is memrynote a good Notesnook alternative?',
+        body: 'Yes, if you want encrypted notes plus the rest of your day in the same place. memrynote shares the core privacy promise: everything is encrypted on your device before it syncs, and the code is open source. It differs in two ways. Your notes are plain Markdown files in a folder you own, and tasks, a calendar, a daily journal, and an inbox are built in. It runs offline on macOS, Windows, and Linux with no account required.'
+      },
+      {
+        heading: 'Markdown files in your own folder',
+        body: 'Notesnook keeps notes in its own encrypted storage and offers exports. memrynote stores every note as a .md file with YAML frontmatter in a vault folder you choose, so there is no export step between you and your writing. Wiki-links, backlinks, and properties travel with the files, and you can back them up or version them with any tool.'
+      },
+      {
+        heading: 'Encrypted tasks, calendar, and journal',
+        body: "In memrynote, tasks live in projects with custom statuses, subtasks, and Kanban, list, and calendar views. The daily journal shows the day's schedule, tasks, and linked notes beside the entry, and the inbox collects quick captures, voice memos, and web clips. Every one of these syncs with the same end-to-end encryption as your notes."
+      },
+      {
+        heading: 'How memrynote encrypts your vault',
+        body: 'memrynote derives keys on your device with Argon2id, encrypts each item with XChaCha20-Poly1305, and signs changes with a per-device Ed25519 key. The sync server stores ciphertext and the metadata needed to route it, nothing more. If you never turn on sync, nothing leaves your machine at all.'
+      }
+    ],
+    pricing: {
+      memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
+      competitor: 'Free with unlimited notes; paid plans from $1.99/mo add storage and features.'
+    },
+    migration: {
+      importer: 'Markdown',
+      steps: [
+        'In Notesnook, export your notes as Markdown from the backup and export settings.',
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported files.',
+        'Your notes land as Markdown files in your vault; turn on encrypted sync to reach your other devices.'
+      ]
+    },
+    faqs: [
+      {
+        question: 'Is memrynote end-to-end encrypted like Notesnook?',
+        answer:
+          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync. The server only stores ciphertext and never receives your keys.'
+      },
+      {
+        question: 'Can I import my Notesnook notes?',
+        answer:
+          'Yes. Export your notes from Notesnook as Markdown, then use the Markdown importer in memrynote → Settings → Import.'
+      },
+      {
+        question: 'Does memrynote have a mobile app?',
+        answer:
+          'memrynote is a desktop app for macOS, Windows, and Linux today, with mobile apps planned. Your vault is plain Markdown, so your notes stay readable on any device.'
+      },
+      {
+        question: 'Is memrynote open source?',
+        answer:
+          'Yes. memrynote is open source under AGPL-3.0, so you can read exactly how it encrypts and syncs your data.'
+      }
+    ],
+    footnote: COMPARISON_FOOTNOTE
+  },
+  {
+    pageKey: 'dayOneAlternative',
+    competitor: 'Day One',
+    eyebrow: 'Day One alternative',
+    heading: 'The private Day One alternative for',
+    headingAccent: 'Windows, macOS & Linux.',
+    intro:
+      'memrynote is a private journaling alternative to Day One that stores each daily entry as a plain Markdown file in a folder you own. Entries sync with zero-knowledge, end-to-end encryption: they are encrypted on your device with XChaCha20-Poly1305 and the server only stores ciphertext. Your journal sits in the same vault as your notes, tasks, and calendar, so each entry can show what you planned and finished that day. memrynote runs natively on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+    rows: [
+      { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
+      { feature: 'Entries as plain Markdown files on disk', memry: true, competitor: false },
+      { feature: 'Native apps for Windows & Linux', memry: true, competitor: false },
+      { feature: 'Journal templates & prompts', memry: true, competitor: true },
+      { feature: 'Day context: schedule, tasks & notes', memry: true, competitor: false },
+      { feature: 'Notes with wiki-links & backlinks', memry: true, competitor: false },
+      { feature: 'Built-in tasks & calendar', memry: true, competitor: false },
+      { feature: 'Open source', memry: true, competitor: false }
+    ],
+    reasons: [
+      {
+        title: 'A journal that outlives apps',
+        body: 'One Markdown file per day, in your folder, readable in any editor decades from now.'
+      },
+      {
+        title: 'Private by design',
+        body: 'Entries are encrypted on your device before sync. The server never holds your keys.'
+      },
+      {
+        title: 'Your day beside the page',
+        body: 'See the schedule, tasks, and linked notes for each date next to the entry you are writing.'
+      },
+      {
+        title: 'Every desktop',
+        body: 'Native on macOS, Windows, and Linux, fully offline, with no account required.'
+      }
+    ],
+    sections: [
+      {
+        heading: 'Is memrynote a good Day One alternative?',
+        body: 'Yes, for journaling on the desktop with files you own. memrynote stores each daily entry as a Markdown file in your vault and encrypts it end to end when it syncs. It runs natively on macOS, Windows, and Linux, where Day One focuses on Apple and mobile devices plus the web. The journal also sits next to your notes, tasks, and calendar, so reflection and planning happen in one place.'
+      },
+      {
+        heading: 'Entries as Markdown files you own',
+        body: 'Day One keeps entries in its own app storage and offers exports. memrynote writes one .md file per day with YAML frontmatter, in a folder you choose, so your journal is readable in any text editor without an export step. If you ever stop using memrynote, your journal stays exactly where it is.'
+      },
+      {
+        heading: 'A journal that knows your day',
+        body: 'Each memrynote entry can start from your own templates and prompts. A side panel shows the schedule, tasks, and linked notes for that date, so an evening entry can reflect on what actually happened. Highlights and revisit reminders bring past entries back when they matter, and a year view shows the habit forming.'
+      },
+      {
+        heading: 'Zero-knowledge encryption for every entry',
+        body: 'When you sync, memrynote encrypts each entry on your device with XChaCha20-Poly1305 using keys derived on your machine. The server stores only ciphertext. If you never turn on sync, your journal never leaves your computer.'
+      }
+    ],
+    pricing: {
+      memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
+      competitor:
+        'Free Basic plan; paid Silver and Gold plans add multi-device sync and more media.'
+    },
+    migration: {
+      importer: 'Markdown',
+      steps: [
+        "In Day One, export your journal from the app's export menu in a text format.",
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported files.',
+        'Keep writing in the memrynote journal; turn on encrypted sync to reach your other devices.'
+      ]
+    },
+    faqs: [
+      {
+        question: "Is memrynote's journal end-to-end encrypted?",
+        answer:
+          'Yes. When you sync, every journal entry is encrypted on your device with XChaCha20-Poly1305. The server only stores ciphertext and never receives your keys.'
+      },
+      {
+        question: 'Does memrynote run on Windows and Linux?',
+        answer:
+          'Yes. memrynote is a native desktop app for macOS, Windows, and Linux, and the journal works fully offline on all three.'
+      },
+      {
+        question: 'Does memrynote have a mobile journaling app?',
+        answer:
+          'Not yet. Mobile apps are planned. Today memrynote is a desktop app, and your entries are plain Markdown files that any app can read.'
+      },
+      {
+        question: 'Can I bring my existing journal?',
+        answer:
+          'Yes. memrynote imports Apple Journal and Markdown folders. For Day One, export your journal in a text format and use the Markdown importer.'
+      }
+    ],
+    footnote: COMPARISON_FOOTNOTE
   }
 ]
 
@@ -1572,5 +1843,17 @@ export const COMPARE_CARDS: Record<string, { logo: string; tagline: string }> = 
   heptabaseAlternative: {
     logo: 'heptabase.png',
     tagline: 'An all-in-one daily workspace vs a visual canvas'
+  },
+  standardNotesAlternative: {
+    logo: 'standard-notes.png',
+    tagline: 'Encrypted Markdown files vs an encrypted app vault'
+  },
+  notesnookAlternative: {
+    logo: 'notesnook.svg',
+    tagline: 'Encrypted notes, tasks & journal vs encrypted notes'
+  },
+  dayOneAlternative: {
+    logo: 'day-one.png',
+    tagline: 'A Markdown journal on every desktop vs a mobile-first diary'
   }
 }

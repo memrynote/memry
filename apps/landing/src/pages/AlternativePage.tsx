@@ -323,3 +323,15 @@ export function TanaAlternativePage() {
 export function HeptabaseAlternativePage() {
   return <AlternativePage config={byKey('heptabaseAlternative')} />
 }
+
+export function StandardNotesAlternativePage() {
+  return <AlternativePage config={byKey('standardNotesAlternative')} />
+}
+
+export function NotesnookAlternativePage() {
+  return <AlternativePage config={byKey('notesnookAlternative')} />
+}
+
+export function DayOneAlternativePage() {
+  return <AlternativePage config={byKey('dayOneAlternative')} />
+}

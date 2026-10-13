@@ -47,7 +47,13 @@ const HUB_BLURBS: Record<AlternativeConfig['pageKey'], string> = {
   tanaAlternative:
     "Tana structures your workspace with supertags in a proprietary cloud graph that isn't end-to-end encrypted. memrynote stores each note as a portable Markdown file, encrypts sync so the server never reads your content, and ships tasks, a calendar, and a journal with no schema to design first.",
   heptabaseAlternative:
-    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote trades the canvas for a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption."
+    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote trades the canvas for a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption.",
+  standardNotesAlternative:
+    'Standard Notes and memrynote both encrypt everything before it syncs and publish their source. memrynote keeps the working copy of each note as a plain Markdown file in your own folder, and adds task projects, a calendar, and a daily journal to the same encrypted vault.',
+  notesnookAlternative:
+    'Notesnook and memrynote share an open-source, end-to-end encrypted foundation. memrynote stores notes as Markdown files you can open in any editor, and brings tasks, a calendar, a daily journal, and a capture inbox into the same encrypted vault.',
+  dayOneAlternative:
+    'Day One centres on Apple and mobile devices plus the web. memrynote is a native journal for macOS, Windows, and Linux that writes one end-to-end encrypted Markdown file per day, right next to your notes, tasks, and calendar.'
 }
 
 export function ComparePage() {

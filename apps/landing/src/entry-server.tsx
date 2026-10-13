@@ -47,7 +47,10 @@ import {
   JoplinAlternativePage,
   GoogleKeepAlternativePage,
   TanaAlternativePage,
-  HeptabaseAlternativePage
+  HeptabaseAlternativePage,
+  StandardNotesAlternativePage,
+  NotesnookAlternativePage,
+  DayOneAlternativePage
 } from '@/pages/AlternativePage'
 import { ComparePage } from '@/pages/ComparePage'
 import { BlogIndexPage } from '@/pages/BlogIndex'
@@ -56,7 +59,10 @@ import {
   E2EEncryptionPostPage,
   LocalFirstOfflinePostPage,
   TerminalPkmPostPage,
-  MarkdownMigrationPostPage
+  MarkdownMigrationPostPage,
+  BestE2EENotesPostPage,
+  PrivateNotionAlternativesPostPage,
+  PrivateJournalingAppsPostPage
 } from '@/pages/BlogPost'
 import { NotFound } from '@/pages/NotFound'
 
@@ -102,6 +108,9 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/google-keep-alternative': () => <GoogleKeepAlternativePage />,
   '/tana-alternative': () => <TanaAlternativePage />,
   '/heptabase-alternative': () => <HeptabaseAlternativePage />,
+  '/standard-notes-alternative': () => <StandardNotesAlternativePage />,
+  '/notesnook-alternative': () => <NotesnookAlternativePage />,
+  '/day-one-alternative': () => <DayOneAlternativePage />,
   '/pricing': () => <PricingPage />,
   '/faq': () => <FaqPage />,
   '/changelog': () => <ChangelogPage />,
@@ -117,6 +126,11 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/blog/local-first-vs-cloud-first-note-taking-apps': () => <LocalFirstOfflinePostPage />,
   '/blog/running-a-pkm-from-the-terminal': () => <TerminalPkmPostPage />,
   '/blog/migrating-from-evernote-notion-to-markdown': () => <MarkdownMigrationPostPage />,
+  '/blog/best-end-to-end-encrypted-notes-apps': () => <BestE2EENotesPostPage />,
+  '/blog/private-notion-alternatives-that-work-offline': () => (
+    <PrivateNotionAlternativesPostPage />
+  ),
+  '/blog/most-private-journaling-apps': () => <PrivateJournalingAppsPostPage />,
   // Client-only app routes: no SEO value, but they must be prerendered as static
   // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
   // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.

@@ -196,10 +196,28 @@ export const PAGE_META: Record<string, PageMeta> = {
       'A practical, step-by-step guide to exporting your knowledge base from Evernote or Notion into clean, portable Markdown with frontmatter, wiki-links, and attachments intact.',
     path: '/blog/migrating-from-evernote-notion-to-markdown'
   },
+  blogBestE2EENotes: {
+    title: 'The best end-to-end encrypted notes apps in 2026, and how to pick one — memrynote',
+    description:
+      'How to choose an end-to-end encrypted notes app: who holds the keys, where notes live on disk, and what works offline. memrynote and four others compared.',
+    path: '/blog/best-end-to-end-encrypted-notes-apps'
+  },
+  blogPrivateNotionAlternatives: {
+    title: 'Private Notion alternatives that work offline — memrynote',
+    description:
+      'A Notion alternative that stays private and works offline: what to check, how memrynote does it, and how Anytype, AFFiNE, and Obsidian differ.',
+    path: '/blog/private-notion-alternatives-that-work-offline'
+  },
+  blogPrivateJournalingApps: {
+    title: 'The most private journaling apps in 2026 — memrynote',
+    description:
+      'What makes a journaling app private: encryption, local storage, and files you can read without the app. memrynote, Day One, and Apple Journal compared.',
+    path: '/blog/most-private-journaling-apps'
+  },
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:
-      'Compare memrynote to Obsidian, Notion, Evernote, and 13 more — a private, local-first notes, tasks, calendar, and journal app with Markdown files you own.',
+      'Compare memrynote to Obsidian, Notion, Evernote, and 16 more — a private, local-first notes, tasks, calendar, and journal app with Markdown files you own.',
     path: '/compare'
   },
   obsidianAlternative: {
@@ -297,6 +315,24 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'A local-first Heptabase alternative with plain Markdown files you own, E2E encrypted sync, and built-in tasks, calendar, and journal. Open source.',
     path: '/heptabase-alternative'
+  },
+  standardNotesAlternative: {
+    title: 'Standard Notes alternative — memrynote',
+    description:
+      'An end-to-end encrypted Standard Notes alternative that keeps notes as plain Markdown files you own, with built-in tasks, calendar, and journal. Open source.',
+    path: '/standard-notes-alternative'
+  },
+  notesnookAlternative: {
+    title: 'Notesnook alternative — memrynote',
+    description:
+      'A Notesnook alternative with zero-knowledge encrypted sync, plain Markdown files on your disk, and built-in tasks, calendar, and journal. Free for local use.',
+    path: '/notesnook-alternative'
+  },
+  dayOneAlternative: {
+    title: 'Day One alternative for Windows, Mac & Linux — memrynote',
+    description:
+      'A private Day One alternative: an end-to-end encrypted daily journal stored as plain Markdown files, next to your notes, tasks, and calendar. Free for local use.',
+    path: '/day-one-alternative'
   }
 }
 

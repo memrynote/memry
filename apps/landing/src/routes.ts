@@ -47,7 +47,10 @@ const AlternativePages = {
   joplin: lazyPage(() => import('@/pages/AlternativePage'), 'JoplinAlternativePage'),
   googleKeep: lazyPage(() => import('@/pages/AlternativePage'), 'GoogleKeepAlternativePage'),
   tana: lazyPage(() => import('@/pages/AlternativePage'), 'TanaAlternativePage'),
-  heptabase: lazyPage(() => import('@/pages/AlternativePage'), 'HeptabaseAlternativePage')
+  heptabase: lazyPage(() => import('@/pages/AlternativePage'), 'HeptabaseAlternativePage'),
+  standardNotes: lazyPage(() => import('@/pages/AlternativePage'), 'StandardNotesAlternativePage'),
+  notesnook: lazyPage(() => import('@/pages/AlternativePage'), 'NotesnookAlternativePage'),
+  dayOne: lazyPage(() => import('@/pages/AlternativePage'), 'DayOneAlternativePage')
 }
 
 const BlogPages = {
@@ -56,7 +59,13 @@ const BlogPages = {
   e2eEncryption: lazyPage(() => import('@/pages/BlogPost'), 'E2EEncryptionPostPage'),
   localFirstOffline: lazyPage(() => import('@/pages/BlogPost'), 'LocalFirstOfflinePostPage'),
   terminalPkm: lazyPage(() => import('@/pages/BlogPost'), 'TerminalPkmPostPage'),
-  markdownMigration: lazyPage(() => import('@/pages/BlogPost'), 'MarkdownMigrationPostPage')
+  markdownMigration: lazyPage(() => import('@/pages/BlogPost'), 'MarkdownMigrationPostPage'),
+  bestE2EENotes: lazyPage(() => import('@/pages/BlogPost'), 'BestE2EENotesPostPage'),
+  privateNotionAlternatives: lazyPage(
+    () => import('@/pages/BlogPost'),
+    'PrivateNotionAlternativesPostPage'
+  ),
+  privateJournalingApps: lazyPage(() => import('@/pages/BlogPost'), 'PrivateJournalingAppsPostPage')
 }
 
 /** Routes whose element is just a page component, in the order App renders them. */
@@ -116,6 +125,9 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   { path: '/google-keep-alternative', Component: AlternativePages.googleKeep },
   { path: '/tana-alternative', Component: AlternativePages.tana },
   { path: '/heptabase-alternative', Component: AlternativePages.heptabase },
+  { path: '/standard-notes-alternative', Component: AlternativePages.standardNotes },
+  { path: '/notesnook-alternative', Component: AlternativePages.notesnook },
+  { path: '/day-one-alternative', Component: AlternativePages.dayOne },
   { path: '/pricing', Component: lazyPage(() => import('@/pages/Pricing'), 'PricingPage') },
   { path: '/faq', Component: lazyPage(() => import('@/pages/Faq'), 'FaqPage') },
   { path: '/checkout', Component: lazyPage(() => import('@/pages/Checkout'), 'CheckoutPage') },
@@ -144,6 +156,18 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   {
     path: '/blog/migrating-from-evernote-notion-to-markdown',
     Component: BlogPages.markdownMigration
+  },
+  {
+    path: '/blog/best-end-to-end-encrypted-notes-apps',
+    Component: BlogPages.bestE2EENotes
+  },
+  {
+    path: '/blog/private-notion-alternatives-that-work-offline',
+    Component: BlogPages.privateNotionAlternatives
+  },
+  {
+    path: '/blog/most-private-journaling-apps',
+    Component: BlogPages.privateJournalingApps
   },
   { path: '/login', Component: lazyPage(() => import('@/pages/Login'), 'LoginPage') },
   {

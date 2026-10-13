@@ -376,6 +376,24 @@ export function MarkdownMigrationPostPage() {
   return <BlogPostView post={post} />
 }
 
+export function BestE2EENotesPostPage() {
+  const post = getPostBySlug('best-end-to-end-encrypted-notes-apps')
+  if (!post) return <NotFound />
+  return <BlogPostView post={post} />
+}
+
+export function PrivateNotionAlternativesPostPage() {
+  const post = getPostBySlug('private-notion-alternatives-that-work-offline')
+  if (!post) return <NotFound />
+  return <BlogPostView post={post} />
+}
+
+export function PrivateJournalingAppsPostPage() {
+  const post = getPostBySlug('most-private-journaling-apps')
+  if (!post) return <NotFound />
+  return <BlogPostView post={post} />
+}
+
 // Generalized dynamic client route fallback
 export function DynamicBlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
