@@ -38,12 +38,21 @@ export interface CreateJournalEntryInput {
  * create path will settle on.
  */
 export function resolveJournalEntryId(date: string): string {
+  return findStoredJournalEntry(date)?.id ?? generateJournalId(date)
+}
+
+/**
+ * The stored row for `date`'s entry, canonical (data.db) first, then the index
+ * cache. Its id and timestamps are the entry's real identity; the file alone
+ * carries neither (a parsed file defaults both timestamps to "now").
+ */
+export function findStoredJournalEntry(
+  date: string
+): { id: string; createdAt: string; modifiedAt: string } | undefined {
   const db = getIndexDatabase()
-  const dataDb = getDatabase()
-  const journalPath = getJournalRelativePath(date)
-  const cached = getJournalEntryByDate(db, date) ?? getNoteCacheByPath(db, journalPath)
-  const canonical = getCanonicalJournalByDate(dataDb, date)
-  return canonical?.id ?? cached?.id ?? generateJournalId(date)
+  const canonical = getCanonicalJournalByDate(getDatabase(), date)
+  if (canonical) return canonical
+  return getJournalEntryByDate(db, date) ?? getNoteCacheByPath(db, getJournalRelativePath(date))
 }
 
 export async function createJournalEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {

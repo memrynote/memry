@@ -189,6 +189,33 @@ describe('journal-handlers', () => {
     expect(result).toEqual(expect.objectContaining({ id: 'canonical-1' }))
   })
 
+  // The file carries no created time, so readJournalEntry fills in "now". The
+  // Home widget showed that as the entry's time (#2977).
+  it('gets an entry with the stored timestamps, not the read-time defaults', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({
+      ...baseEntry,
+      createdAt: '2099-01-01T18:21:00.000Z',
+      modifiedAt: '2099-01-01T18:21:00.000Z'
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({
+      id: 'cache-1',
+      createdAt: '2025-01-01T09:15:00.000Z',
+      modifiedAt: '2025-01-01T10:00:00.000Z'
+    })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        createdAt: '2025-01-01T09:15:00.000Z',
+        modifiedAt: '2025-01-01T10:00:00.000Z'
+      })
+    )
+  })
+
   it('keeps the deterministic id when nothing is indexed for the date', async () => {
     registerJournalHandlers()
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })

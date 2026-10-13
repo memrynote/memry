@@ -28,7 +28,7 @@ import {
 } from '@memry/contracts/journal-api'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
-import { createJournalEntry, resolveJournalEntryId } from '../journal/create-entry'
+import { createJournalEntry, findStoredJournalEntry } from '../journal/create-entry'
 import {
   readJournalEntry,
   writeJournalEntryWithContent,
@@ -113,7 +113,12 @@ export function registerJournalHandlers(): void {
       // through note_cache: the `linkedNoteIds` of a task created inside the
       // entry, bookmarks, backlinks, the CRDT doc. Hand back the id the cache
       // actually holds — the same one create/update settle on.
-      return { ...entry, id: resolveJournalEntryId(input.date) }
+      // Timestamps come from the same row: the file carries no created time,
+      // so `readJournalEntry` fills in "now", which the Home widget showed as
+      // the entry's time (#2977).
+      const stored = findStoredJournalEntry(input.date)
+      if (!stored) return entry
+      return { ...entry, id: stored.id, createdAt: stored.createdAt, modifiedAt: stored.modifiedAt }
     })
   )
 
