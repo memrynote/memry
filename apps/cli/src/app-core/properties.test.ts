@@ -62,3 +62,27 @@ test('definition writes leave an unreadable properties.md untouched', async () =
     app.close()
   }
 })
+
+test('definitions with an unknown type are rejected and never reach properties.md', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    await assert.rejects(
+      app.properties.createDefinition({ name: 'bogus', type: 'not-a-type' }),
+      /Unknown property type: not-a-type\. Allowed types: text, number/
+    )
+    await app.properties.createDefinition({ name: 'mood', type: 'text' })
+    await assert.rejects(
+      app.properties.updateDefinition('mood', { type: 'not-a-type' }),
+      /Unknown property type/
+    )
+    assert.deepEqual(
+      (await app.properties.definitions()).map((d) => [d.name, d.type]),
+      [['mood', 'text']]
+    )
+    const written = matter(await fs.readFile(propertiesFile(vaultPath), 'utf8')).data.properties
+    assert.deepEqual(Object.keys(written), ['mood'])
+  } finally {
+    app.close()
+  }
+})
