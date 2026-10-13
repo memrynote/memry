@@ -188,7 +188,8 @@ export function AppRail({
         aria-label={tCommon('sidebar.railLabel')}
         // Spacing follows the macOS sidebar-rail convention (ChatGPT desktop as the
         // reference): 36px targets on a 44px pitch, first one 14px below the chrome row.
-        className="flex flex-col items-center gap-2 pt-3.5"
+        // In a short window the icons scroll and the dock below stays on screen (#2449).
+        className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto pt-3.5 pb-2"
       >
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {items.map((item, index) => {
@@ -280,10 +281,9 @@ export function AppRail({
           })}
         </SortableContext>
       </nav>
-      <div className="flex-1" />
       <div
         data-testid="app-rail-dock"
-        className="flex flex-col items-center gap-2 [&_[data-slot=dock-button]]:size-9"
+        className="flex shrink-0 flex-col items-center gap-2 [&_[data-slot=dock-button]]:size-9"
       >
         {dock}
       </div>
