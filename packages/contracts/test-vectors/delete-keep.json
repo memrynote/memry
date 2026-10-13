@@ -6,7 +6,7 @@
     "class": "delete-keep",
     "chapter": "docs/protocol/05-record-sync.md",
     "implementation": "packages/sync-client/src/delete-keep.ts",
-    "caseCount": 15
+    "caseCount": 21
   },
   "skewMs": 60000,
   "cases": [
@@ -23,7 +23,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -43,7 +45,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": null
+        "lastLocalBodyAt": null,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -63,7 +67,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -84,7 +90,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -104,7 +112,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": null
+        "lastLocalBodyAt": null,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -124,7 +134,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791547205000
+        "lastLocalBodyAt": 1791547205000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -144,7 +156,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791547140000
+        "lastLocalBodyAt": 1791547140000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -164,7 +178,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791547139999
+        "lastLocalBodyAt": 1791547139999,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -184,7 +200,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200,
-        "lastLocalBodyAt": 1791547205000
+        "lastLocalBodyAt": 1791547205000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -204,7 +222,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -224,7 +244,9 @@
           "device-a": 5
         },
         "deletedAt": null,
-        "lastLocalBodyAt": 1791547205000
+        "lastLocalBodyAt": 1791547205000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -244,7 +266,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -264,7 +288,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,
@@ -282,7 +308,9 @@
           "device-a": 5
         },
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": true,
@@ -300,7 +328,141 @@
         },
         "tombstoneClock": null,
         "deletedAt": 1791547200000,
-        "lastLocalBodyAt": 1791543600000
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": null,
+        "localBodyStateVector": null
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "offline-deleter-missed-pushed-text-is-kept",
+      "pins": "#3037: text pushed long before the delete push, but outside the deleter body state vector",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": "AQcM",
+        "localBodyStateVector": "AgkeBww="
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "deleter-saw-pushed-text-is-not-kept",
+      "pins": "the deleter body state vector covers every local item",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": "AgkeBww=",
+        "localBodyStateVector": "AgkeBww="
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "deleter-saw-more-is-not-kept",
+      "pins": "a deleter ahead on every client, and a client this device lacks, covers it",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": "AgkfBw4=",
+        "localBodyStateVector": "AQke"
+      },
+      "expected": {
+        "keep": false,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "covering-vector-still-keeps-inside-skew",
+      "pins": "rule 4 only adds keeps: a body push after the delete still keeps under rule 3",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791547205000,
+        "deleterBodyStateVector": "AQke",
+        "localBodyStateVector": "AQke"
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "undecodable-vector-is-kept",
+      "pins": "a bodyStateVector that is not a Yjs v1 state vector counts as not covering",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": "/w==",
+        "localBodyStateVector": "AQke"
+      },
+      "expected": {
+        "keep": true,
+        "deletedAtMs": 1791547200000
+      }
+    },
+    {
+      "name": "no-local-body-state-uses-other-rules",
+      "pins": "no local body state recorded: rule 4 is silent, an old push stays seen",
+      "facts": {
+        "bodyBlank": false,
+        "waitingChanges": false,
+        "localClock": {
+          "device-a": 4
+        },
+        "tombstoneClock": {
+          "device-a": 5
+        },
+        "deletedAt": 1791547200000,
+        "lastLocalBodyAt": 1791543600000,
+        "deleterBodyStateVector": "AQcM",
+        "localBodyStateVector": null
       },
       "expected": {
         "keep": false,

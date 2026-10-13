@@ -33,26 +33,17 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
     clock: VectorClock,
     _date: string
   ): JournalSyncPayload {
-    // A tombstone deliberately carries NO user-visible data, matching notes.
-    // Nothing consumes it: ItemApplier short-circuits `operation === 'delete'`
-    // and calls applyDelete(ctx, itemId, clock) without ever decoding the
-    // payload bytes, and SyncItemHandler.applyDelete has no data parameter to
-    // receive them with. journal-handler.applyDelete resolves the day from the
-    // local row (`existing.journalDate`), never from the body. The date was
-    // therefore dead weight that still got encrypted and uploaded on every
-    // journal delete — and sat in plaintext in the local sync queue until the
-    // push drained.
-    //
-    // Backward compatible in both directions. New sender → old receiver: no
-    // shipped build has ever parsed a delete body (the short-circuit is in the
-    // first ItemApplier commit, d52dbf875), so the missing field is unreadable
-    // either way. Old sender → new receiver: `date` stays accepted, it is only
-    // optional now. The `clock` MUST stay —
-    // push-coordinator.extractPayloadMetadata lifts it out of this string to
-    // stamp the server-side item version, so dropping it would break delete
-    // ordering across devices.
+    // A tombstone deliberately carries NO user-visible data, matching notes:
+    // the date stays off the wire, since journal-handler.applyDelete resolves
+    // the day from the local row (`existing.journalDate`). A receiver reads
+    // only `bodyStateVector`, the doc's Yjs state vector, to keep body text
+    // this delete never saw (chapter 05 §5.8, #3037); older builds never
+    // decode a delete body, and `date` stays accepted, only optional. The
+    // `clock` MUST stay — push-coordinator.extractPayloadMetadata lifts it
+    // out of this string to stamp the server-side item version.
     return {
       clock,
+      bodyStateVector: this.bodyStateVector(cached?.id),
       createdAt: cached?.createdAt,
       modifiedAt: cached?.modifiedAt
     }

@@ -322,7 +322,10 @@ export const NoteSyncPayloadSchema = z.object({
   cover: NoteCoverSyncSchema.nullable().optional().catch(undefined),
   clock: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
-  modifiedAt: SyncTimestampSchema.optional()
+  modifiedAt: SyncTimestampSchema.optional(),
+  // Delete tombstones only: base64 Yjs v1 state vector of the deleter's body
+  // (chapter 05 §5.8, #3037).
+  bodyStateVector: z.string().optional()
 })
 
 export const JournalSyncPayloadSchema = z.object({
@@ -339,7 +342,9 @@ export const JournalSyncPayloadSchema = z.object({
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
-  modifiedAt: SyncTimestampSchema.optional()
+  modifiedAt: SyncTimestampSchema.optional(),
+  // Delete tombstones only, as on notes (chapter 05 §5.8, #3037).
+  bodyStateVector: z.string().optional()
 })
 
 export const TagDefinitionSyncPayloadSchema = z.object({

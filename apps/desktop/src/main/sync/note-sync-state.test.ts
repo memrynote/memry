@@ -247,6 +247,7 @@ describe('note sync state (#2647)', () => {
         lastFailedAt: null,
         lastRejectedAt: null,
         lastSnapshotAt: null,
+        pushedStateVector: null,
         updatedAt: T0 + 1
       }
     ])

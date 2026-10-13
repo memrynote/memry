@@ -498,8 +498,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
       const projectSync = initProjectSyncService(recordSyncDeps)
       const settingsSync = initSettingsSync(recordSyncDeps)
-      const noteSync = initNoteSyncService({ queue, getDeviceId })
-      const journalSync = initJournalSyncService({ queue, getDeviceId })
+      const getStateVector = (id: string): Uint8Array | null => getCrdtProvider().getStateVector(id)
+      const noteSync = initNoteSyncService({ queue, getDeviceId, getStateVector })
+      const journalSync = initJournalSyncService({ queue, getDeviceId, getStateVector })
       const tagDefinitionSync = initTagDefinitionSyncService(recordSyncDeps)
       const tagCategorySync = initTagCategorySyncService(recordSyncDeps)
       const propertyDefinitionSync = initPropertyDefinitionSyncService(recordSyncDeps)
@@ -659,7 +660,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const noteBodyOutbox = new NoteBodyOutbox({
         queue,
         push: pushNoteBody,
-        recordPush: (noteId, event) => recordNoteBodyPush(noteId, event, Date.now(), db),
+        recordPush: (noteId, event, pushed) =>
+          recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
         requestSnapshot: (noteId) => snapshotScheduler.request(noteId)
       })
 

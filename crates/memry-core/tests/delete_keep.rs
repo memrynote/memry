@@ -2,8 +2,9 @@
 //! as an inbox note first (#3029, chapter 05 §5.8 client behavior).
 //!
 //! Real `PullLoop`, `HttpClient`, SQLite, update log, outbox and `yrs`. The
-//! transport and the record cipher are fakes; a tombstone's body is never
-//! decoded, so a cipher that opens nothing is enough.
+//! transport and the record cipher are fakes. A tombstone is opened only for
+//! its `bodyStateVector` (#3037); a cipher that opens nothing is a delete
+//! without one.
 
 mod http_fakes;
 
@@ -11,6 +12,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::update_log;
@@ -25,7 +28,10 @@ use memry_core::storage::{Db, open_data};
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use rusqlite::Connection;
 use serde_json::{Value as Json, json};
+use yrs::Update;
 use yrs::XmlTextPrelim;
+use yrs::updates::decoder::Decode as _;
+use yrs::updates::encoder::Encode as _;
 use yrs::{Doc, ReadTxn as _, Transact as _, Xml as _, XmlElementPrelim, XmlFragment as _};
 
 const DATE: &str = "2026-10-09";
@@ -60,6 +66,25 @@ async fn deliver_the_delete(db: &Db, clock: Json) {
 }
 
 async fn deliver_a_delete(db: &Db, item_type: &str, item_id: &str, clock: Json) {
+    deliver_with_payload(db, item_type, item_id, clock, None).await;
+}
+
+/// Opens every record to one fixed plaintext.
+struct OpensTo(Vec<u8>);
+
+impl RecordCipher for OpensTo {
+    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(self.0.clone())
+    }
+}
+
+async fn deliver_with_payload(
+    db: &Db,
+    item_type: &str,
+    item_id: &str,
+    clock: Json,
+    payload: Option<Json>,
+) {
     let tombstone = json!({
         "id": item_id,
         "type": item_type,
@@ -90,7 +115,12 @@ async fn deliver_a_delete(db: &Db, item_type: &str, item_id: &str, clock: Json) 
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        match payload {
+            Some(payload) => {
+                Arc::new(OpensTo(payload.to_string().into_bytes())) as Arc<dyn RecordCipher>
+            }
+            None => Arc::new(NeverOpens),
+        },
     )
     .with_clock_device(DEVICE)
     .pull_page()
@@ -290,6 +320,82 @@ async fn a_note_edited_offline_is_kept_under_its_title() {
     .expect("check");
 }
 
+/// #3037: A was offline from long before B pushed, so A's `deletedAt` (its
+/// push time) is no guide. The vector A carries says it never held B's text.
+#[tokio::test]
+async fn text_pushed_long_before_an_offline_delete_is_kept_by_the_body_vector() {
+    let db = scratch_db("vector-unseen");
+    db.call_blocking(|conn| {
+        type_on_the_day(conn, "Pushed at 9:30", DELETED_AT - 3_600_000);
+        conn.execute("DELETE FROM outbox", []).expect("ack");
+        Ok(())
+    })
+    .expect("seed");
+
+    deliver_with_payload(
+        &db,
+        "journal",
+        DAY,
+        json!({"device-desktop": 5, DEVICE: 1}),
+        Some(json!({"clock": {"device-desktop": 5, DEVICE: 1}, "bodyStateVector": "AA=="})),
+    )
+    .await;
+
+    db.call_blocking(|conn| {
+        assert_eq!(
+            inbox(conn).0,
+            vec![(KEPT_TITLE.to_owned(), "Pushed at 9:30".to_owned())]
+        );
+        assert!(day_is_deleted(conn));
+        Ok(())
+    })
+    .expect("check");
+}
+
+#[tokio::test]
+async fn text_inside_the_deleters_body_vector_is_not_kept() {
+    let db = scratch_db("vector-seen");
+    let body = server_paragraph("Old news");
+    let seen = Update::decode_v1(&body)
+        .expect("an update")
+        .state_vector()
+        .encode_v1();
+    db.call_blocking(move |conn| {
+        sync_items::apply_remote(
+            conn,
+            &sync_items::InboundRecord {
+                item_type: "journal".to_owned(),
+                item_id: DAY.to_owned(),
+                payload_json: json!({"date": DATE, "clock": {"device-desktop": 4}}).to_string(),
+                server_cursor: Some(3),
+                signer_device_id: Some("device-desktop".to_owned()),
+                updated_at: DELETED_AT - 3_600_000,
+                deleted_at: None,
+            },
+            DELETED_AT - 3_600_000,
+        )?;
+        update_log::append_server_update(conn, DAY, 1, &body, 1).expect("server body");
+        Ok(())
+    })
+    .expect("seed");
+
+    deliver_with_payload(
+        &db,
+        "journal",
+        DAY,
+        json!({"device-desktop": 5}),
+        Some(json!({"clock": {"device-desktop": 5}, "bodyStateVector": BASE64.encode(seen)})),
+    )
+    .await;
+
+    db.call_blocking(|conn| {
+        assert_eq!(inbox(conn), (vec![], 0));
+        assert!(day_is_deleted(conn));
+        Ok(())
+    })
+    .expect("check");
+}
+
 /// A one-paragraph body authored elsewhere, as a server update.
 fn server_paragraph(text: &str) -> Vec<u8> {
     let doc = Doc::new();
@@ -301,4 +407,47 @@ fn server_paragraph(text: &str) -> Vec<u8> {
     let paragraph = container.insert(&mut txn, 0, XmlElementPrelim::empty("paragraph"));
     paragraph.insert(&mut txn, 0, XmlTextPrelim::new(text));
     txn.encode_state_as_update_v1(&yrs::StateVector::default())
+}
+
+#[test]
+fn a_local_note_delete_carries_its_body_vector() {
+    const NOTE: &str = "abc123def457";
+    let db = scratch_db("deleter");
+    db.call_blocking(|conn| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: NOTE,
+                title: "Plans",
+                folder_path: None,
+                content: "Some text",
+                tags: &[],
+                properties: None,
+                emoji: None,
+            },
+            DEVICE,
+            DELETED_AT - 7_200_000,
+        )?;
+        let edit = BlockEdit::InsertParagraph {
+            after_block_id: None,
+            text: "Some text".to_owned(),
+            new_block_id: "b1".to_owned(),
+        };
+        body_write::edit_block(conn, NOTE, &edit, DEVICE, DELETED_AT - 3_600_000)
+            .expect("the edit");
+        notes::delete(conn, NOTE, DEVICE, DELETED_AT)?.acknowledge();
+        let row = sync_items::load(conn, "note", NOTE)?.expect("the tombstone");
+        let payload: Json = serde_json::from_str(&row.payload.expect("a payload")).expect("json");
+        let vector = BASE64
+            .decode(
+                payload["bodyStateVector"]
+                    .as_str()
+                    .expect("bodyStateVector"),
+            )
+            .expect("base64");
+        let vector = yrs::StateVector::decode_v1(&vector).expect("a state vector");
+        assert!(vector.iter().any(|(_, clock)| *clock > 0));
+        Ok(())
+    })
+    .expect("check");
 }

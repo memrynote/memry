@@ -48,7 +48,7 @@ use crate::protocol::types::{ArrivingItemType, Declaration};
 use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
-use super::apply::{self, ApplyTotals, Pending};
+use super::apply::{self, ApplyTotals, DOCUMENT_TYPES, Pending};
 use super::body_debt;
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
@@ -471,12 +471,13 @@ impl PullLoop {
         }
 
         // §5.12: a present `deletedAt` overrides the declared operation, and
-        // the body is never decoded.
+        // the body is never applied, only read for `bodyStateVector` (§5.8).
         let deleted_at = envelope
             .deleted_at
             .or_else(|| (envelope.operation == SyncOperation::Delete).then(now_ms));
         if let Some(deleted_at) = deleted_at {
             return Ok(Pending::Tombstone {
+                body_state_vector: self.tombstone_body_state_vector(&envelope),
                 item_type: envelope.item_type.clone(),
                 item_id: envelope.id.clone(),
                 deleted_at,
@@ -501,6 +502,21 @@ impl PullLoop {
             updated_at: now_ms(),
             deleted_at: None,
         }))
+    }
+
+    /// A note or journal tombstone's `bodyStateVector` (§5.8, #3037). `None`
+    /// for other types and for a payload that does not open (an old build's
+    /// delete, a shed marker): the keep rule then decides as before.
+    fn tombstone_body_state_vector(&self, envelope: &RecordEnvelope) -> Option<String> {
+        if !DOCUMENT_TYPES.contains(&envelope.item_type.as_str()) {
+            return None;
+        }
+        let plaintext = self.cipher.open(envelope).ok()?;
+        let payload: Json = serde_json::from_slice(&plaintext).ok()?;
+        payload
+            .get("bodyStateVector")
+            .and_then(Json::as_str)
+            .map(str::to_owned)
     }
 
     /// Records a corrupt item against its row when the wire told us enough to

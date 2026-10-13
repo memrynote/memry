@@ -30,6 +30,25 @@ export interface ApplyItemInput {
 /** 'schema_invalid': the payload failed this build's schema; the pull records it for a retry (#2285). */
 export type ApplyItemResult = ApplyResult | 'schema_invalid'
 
+/**
+ * A note or journal tombstone's optional `bodyStateVector` (chapter 05 §5.8,
+ * #3037). Undefined for any other type and for a payload that does not parse:
+ * an old build's delete, or a purged marker with no payload. The keep rule
+ * then decides without it, as before.
+ */
+function tombstoneBodyStateVector(input: ApplyItemInput): string | undefined {
+  if (input.type !== 'note' && input.type !== 'journal') return undefined
+  try {
+    const payload: unknown = JSON.parse(new TextDecoder().decode(input.content))
+    if (typeof payload !== 'object' || payload === null) return undefined
+    const vector = (payload as { bodyStateVector?: unknown }).bodyStateVector
+    return typeof vector === 'string' ? vector : undefined
+  } catch {
+    // Empty or non-JSON content: a delete without a vector.
+    return undefined
+  }
+}
+
 export class ItemApplier {
   /** Applies that changed a local row ('applied' or 'conflict') since construction. */
   changedCount = 0
@@ -90,6 +109,7 @@ export class ItemApplier {
     }
 
     if (input.operation === 'delete') {
+      const bodyStateVector = tombstoneBodyStateVector(input)
       const result = adapter
         ? adapter.applyRemoteMutation({
             db,
@@ -98,9 +118,10 @@ export class ItemApplier {
             operation: 'delete',
             clock: input.clock,
             deletedAt: input.deletedAt,
+            bodyStateVector,
             vaultKey: input.vaultKey
           })
-        : handler!.applyDelete(ctx, input.itemId, input.clock, input.deletedAt)
+        : handler!.applyDelete(ctx, input.itemId, input.clock, input.deletedAt, bodyStateVector)
       // #2409: recorded whatever the result, on the page's db so it commits with
       // the delete and the cursor. An absent row is how a fresh install learns
       // the clock; a skipped delete means the local row is already past it.

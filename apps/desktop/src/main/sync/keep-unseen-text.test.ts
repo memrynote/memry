@@ -6,6 +6,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import * as Y from 'yjs'
 import {
   asClientDb,
   asSyncDb,
@@ -130,14 +131,18 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
   }
 
   /** Pull one tombstone through a page, commit it, and land its file ops. */
-  const pullDelete = async (type: 'journal' | 'note', itemId: string): Promise<string> => {
+  const pullDelete = async (
+    type: 'journal' | 'note',
+    itemId: string,
+    payload: Record<string, unknown> = {}
+  ): Promise<string> => {
     const page = beginPageApply(asSyncDb(testDb.db))
     const result = new ItemApplier(asSyncDb(testDb.db), vi.fn()).apply(
       {
         itemId,
         type,
         operation: 'delete',
-        content: new Uint8Array(),
+        content: new TextEncoder().encode(JSON.stringify(payload)),
         clock: TOMBSTONE,
         deletedAt: DELETED_S
       },
@@ -226,5 +231,48 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
     expect(await pullDelete('journal', DAY)).toBe('skipped')
 
     expect(inbox().map((item) => item.content)).toEqual(['Only once'])
+  })
+
+  /** A Yjs update with one paragraph of `text` from Yjs client `client`. */
+  const bodyUpdate = (client: number, text: string): Uint8Array => {
+    const doc = new Y.Doc()
+    doc.clientID = client
+    doc.getText('t').insert(0, text)
+    return Y.encodeStateAsUpdate(doc)
+  }
+  const vectorOf = (update: Uint8Array): string =>
+    Buffer.from(Y.encodeStateVectorFromUpdate(update)).toString('base64')
+
+  // #3037: A was offline from 9:00, this device pushed at 9:30, A deleted at
+  // 10:00 and pushed at 11:00. `deletedAt` is A's push time, so the push looks
+  // old; A's body vector says A never held it.
+  it('keeps text pushed long before an offline delete that its body vector does not cover', async () => {
+    seedNote({ a: 4 }, 'Pushed at 9:30\n')
+    const held = bodyUpdate(1, 'Old')
+    const pushedHere = bodyUpdate(2, 'Pushed at 9:30')
+    recordNoteBodyPush(NOTE, 'confirmed', DELETED_MS - 5_400_000, asClientDb(testDb.db), [
+      held,
+      pushedHere
+    ])
+
+    expect(
+      await pullDelete('note', NOTE, { clock: TOMBSTONE, bodyStateVector: vectorOf(held) })
+    ).toBe('applied')
+
+    expect(inbox().map((item) => item.content)).toEqual(['Pushed at 9:30\n'])
+    expect(rowOf(NOTE)).toBeUndefined()
+  })
+
+  it('makes no copy when the body vector covers every update this device pushed', async () => {
+    seedDay({ a: 4 }, 'Seen by the deleter\n')
+    const pushedHere = bodyUpdate(2, 'Seen by the deleter')
+    recordNoteBodyPush(DAY, 'confirmed', DELETED_MS - 5_400_000, asClientDb(testDb.db), [
+      pushedHere
+    ])
+
+    await pullDelete('journal', DAY, { clock: TOMBSTONE, bodyStateVector: vectorOf(pushedHere) })
+
+    expect(inbox()).toEqual([])
+    expect(fs.existsSync(dayFile)).toBe(false)
   })
 })
