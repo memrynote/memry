@@ -145,6 +145,29 @@ describe('useTabViewState', () => {
     expect(result.current[0]).toBe('board')
   })
 
+  it('keeps each pick when the stored value lags one write behind', () => {
+    // The provider syncs the state `getTab` reads in an effect, so the render a
+    // write triggers still sees the previous write.
+    let committed: Record<string, unknown> = {}
+    let visible: Record<string, unknown> = {}
+    mocks.getTab.mockImplementation(() => tabWith(visible))
+    mocks.dispatch.mockImplementation((action: { payload: { viewState: object } }) => {
+      visible = committed
+      committed = { ...committed, ...action.payload.viewState }
+    })
+
+    const { result } = renderHook(() =>
+      useTabViewState({ key: 'mode', defaultValue: 'list' as const, parse: parseMode })
+    )
+
+    act(() => result.current[1]('board'))
+    expect(result.current[0]).toBe('board')
+    act(() => result.current[1]('list'))
+    expect(result.current[0]).toBe('list')
+    act(() => result.current[1]('board'))
+    expect(result.current[0]).toBe('board')
+  })
+
   it('reads a legacy alias key when the current key is absent', () => {
     mocks.getTab.mockReturnValue(tabWith({ activeTab: 'board' }))
 
