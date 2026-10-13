@@ -490,7 +490,7 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
       const claimed = await resolveCalloutRun(
         cseg.run,
         async (md) => parseMarkdown(editor, md),
-        async (block) => serializeBlocks(editor, [block as Block])
+        async (parsed) => serializeBlocks(editor, parsed as Block[])
       )
       if (claimed) {
         // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
@@ -498,7 +498,8 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
         const callout = {
           type: 'callout' as const,
           props: { type: claimed.type },
-          content: claimed.content
+          content: claimed.content,
+          children: claimed.children
         } as unknown as Block
         applyMarkers(cseg.markers, callout)
         blocks.push(callout)
@@ -652,8 +653,14 @@ export async function serializeBlocksPreservingBlanks(
       // becoming a `<br>`: a two-line callout came back as `> OneTwo`.
       // SAFETY: a paragraph carrying this block's own inline content; `props`
       // is cleared because a paragraph's propSchema has no `type` key.
+      // Children are written inside the blockquote after the own line, the
+      // shape `resolveCalloutRun` reads back (#3186).
       const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
-      const contentMd = await serializeBlocks(editor, [own])
+      const children = (block.children ?? []) as Block[]
+      const contentMd =
+        children.length > 0
+          ? await serializeBlocksPreservingBlanks(editor, [own, ...children])
+          : await serializeBlocks(editor, [own])
       const calloutMd = serializeCalloutBlock(calloutType, contentMd.trim())
       segments.push({
         type: 'content',
