@@ -3692,12 +3692,14 @@ describe('callouts on the CRDT path (#1846)', () => {
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
-  it('a callout holding a checkbox list stays a quote, so opening it writes no task id', async () => {
+  it('a callout holding a checkbox list keeps it as checkboxes, not tasks (#3192)', async () => {
     const doc = new Y.Doc()
     await markdownToYFragment('> [!info]\n> - [ ] a', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+    expect(blocks?.[0]?.type).toBe('callout')
+    expect(blocks?.[0]?.children?.map((b) => b.type)).toEqual(['checkListItem'])
+    expect(await yDocToMarkdown(doc)).toBe('> [!info]\n> - [ ] a')
   })
 
   it('a colored callout keeps its colors marker through the round trip', async () => {

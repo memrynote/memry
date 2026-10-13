@@ -443,7 +443,8 @@ without a language is saved without one.
 
 A callout can hold other blocks: lists, headings, more paragraphs, quotes. Press
 <kbd>Tab</kbd> on the block under a callout to move it inside. A checkbox list inside a
-callout stays a quote, so opening the note never adds task ids to the file.
+quote or a callout keeps its checkboxes and is never turned into tasks, so opening the
+note never adds task ids to the file.
 
 ## Toggle lists
 

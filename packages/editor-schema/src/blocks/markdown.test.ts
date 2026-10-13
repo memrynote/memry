@@ -450,9 +450,9 @@ describe('readStructuredQuoteRun', () => {
   })
 
   // A claimed checkbox becomes a task on open, which writes into the file.
-  it('leaves a quoted checkbox list flat, so opening the note does not make it a task', () => {
-    expect(read('> - [ ] t')).toBeNull()
-    expect(read('> - [x] t\n> - u')).toBeNull()
+  it('claims a quoted checkbox list, so its markers survive (#3192)', () => {
+    expect(read('> - [ ] t')?.listed).toBe(true)
+    expect(read('> - [x] t\n> - u')?.listed).toBe(true)
   })
 
   it('declines a line that is not a quote at all', () => {

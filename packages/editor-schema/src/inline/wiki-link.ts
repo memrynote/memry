@@ -184,6 +184,29 @@ const wikiLinkToExternalHTML = (inlineContent: { props: WikiLinkProps }): { dom:
   return { dom }
 }
 
+const BLOCK_TAGS = new Set([
+  'P',
+  'LI',
+  'UL',
+  'OL',
+  'BLOCKQUOTE',
+  'TD',
+  'TH',
+  'TR',
+  'TABLE',
+  'DIV',
+  'PRE',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'DETAILS',
+  'SUMMARY',
+  'FIGURE'
+])
+
 export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
   render: (inlineContent) => {
     const props = inlineContent.props as WikiLinkProps
@@ -219,6 +242,11 @@ export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
       }
     }
 
+    // Text-only promotion is for inline elements. On a block element (`<li>`,
+    // `<p>`, `<blockquote>`, `<td>`) it swallows the block around the link,
+    // so `- [[Note]]` lost its bullet (#3191). The `[[X]]` text inside still
+    // becomes a wiki link through the normal token promotion.
+    if (BLOCK_TAGS.has(element.tagName)) return undefined
     const parsed = parseWikiLinkText(element.textContent ?? '')
     if (!parsed) return undefined
     return { target: parsed.target, alias: parsed.alias }
