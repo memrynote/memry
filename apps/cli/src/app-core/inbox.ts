@@ -1,5 +1,16 @@
 import type { InboxRecord, InboxBulkResponse, InboxService } from '@memry/app-core/service-types'
-export type { InboxRecord, CaptureTextInput, CaptureLinkInput, CaptureFileInput, UpdateInboxInput, InboxFileResponse, InboxBulkResponse, InboxFilingHistoryEntry, InboxCapturePattern, InboxService } from '@memry/app-core/service-types'
+export type {
+  InboxRecord,
+  CaptureTextInput,
+  CaptureLinkInput,
+  CaptureFileInput,
+  UpdateInboxInput,
+  InboxFileResponse,
+  InboxBulkResponse,
+  InboxFilingHistoryEntry,
+  InboxCapturePattern,
+  InboxService
+} from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { and, asc, eq } from 'drizzle-orm'
@@ -153,7 +164,7 @@ function markFiled(
   dataDb: DataDb,
   id: string,
   filedTo: string,
-  filedAction: 'folder' | 'note' | 'linked'
+  filedAction: 'folder' | 'note' | 'linked' | 'task'
 ): void {
   const now = nowIso()
   dataDb
@@ -526,7 +537,7 @@ export function createInboxService({
         description: item.content ?? item.sourceUrl,
         tags: uniqueTags([...item.tags, 'inbox'])
       })
-      markFiled(dataDb, id, `task:${task.id}`, 'note')
+      markFiled(dataDb, id, task.id, 'task')
       return { success: true, filedTo: `task:${task.id}`, taskId: task.id }
     },
 
