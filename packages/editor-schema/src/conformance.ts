@@ -135,12 +135,12 @@ const calloutCases: RoundtripCase[] = [
     markdown: serializeCalloutBlock('info', 'One\nTwo')
   },
   {
-    name: 'Obsidian > [!note] callout keeps its bytes',
-    markdown: '> [!note]\n> An Obsidian note callout'
+    name: 'external > [!note] callout keeps its bytes',
+    markdown: '> [!note]\n> A note callout from another app'
   },
   {
     name: 'foreign > [!danger] callout passes through untouched',
-    markdown: '> [!danger]\n> An Obsidian danger callout'
+    markdown: '> [!danger]\n> A danger callout from another app'
   },
   {
     name: 'uppercase > [!NOTE] alert passes through untouched',

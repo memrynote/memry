@@ -231,18 +231,18 @@
       "sha256": "12661c8d5427ce4d8c05903114de0e5ec98ed3a49fd01ddd44d7dc39e6977724"
     },
     {
-      "name": "Obsidian > [!note] callout keeps its bytes",
-      "markdown": "> [!note]\n> An Obsidian note callout",
+      "name": "external > [!note] callout keeps its bytes",
+      "markdown": "> [!note]\n> A note callout from another app",
       "canonical": null,
       "pending": null,
-      "sha256": "1800a0c894b1b78d00b7ebb6ef507014f145f4f6d88da1811b1ffbad79468d18"
+      "sha256": "7dd4957b73bc99b6b5acc4d59a4706ad98aa4f403e10b8468a6e3db4485c1fe9"
     },
     {
       "name": "foreign > [!danger] callout passes through untouched",
-      "markdown": "> [!danger]\n> An Obsidian danger callout",
+      "markdown": "> [!danger]\n> A danger callout from another app",
       "canonical": null,
       "pending": null,
-      "sha256": "fd6ad6482048a483a5538b0e2715e8ed2fe9276047641d7d348719a7848d6858"
+      "sha256": "afa5ad37f7bcd6788d3df1a9e7873b3d17ee88b8ff2b32270aec6f3cf7d018c3"
     },
     {
       "name": "uppercase > [!NOTE] alert passes through untouched",

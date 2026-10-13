@@ -15,10 +15,10 @@ title: Callout round-trip corpus
 > All done
 
 > [!note]
-> An Obsidian type Memry shares
+> A type Memry shares with other apps
 
 > [!tip]
 > So is this one
 
 > [!danger]
-> A foreign Obsidian type stays byte-identical
+> A foreign type stays byte-identical

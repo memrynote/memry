@@ -1663,7 +1663,7 @@ correspondingly tolerant: a token written by an older build can carry a stray sp
 escape, and it is repaired on open rather than left broken.
 
 Callouts are parsed back **only in the exact shape Memry itself writes**: a marker that is
-one of the `CALLOUT_TYPE_VALUES` (lowercase, Obsidian's names past the original four) with
+one of the `CALLOUT_TYPE_VALUES` (lowercase; the common Markdown callout names past the original four) with
 nothing after the `]`, followed by one `> ` per body line. The claim is proven per note — the
 body is re-serialized and must reproduce the file byte-for-byte, or the run is declined.
 Everything else — `> [!danger]`, `> [!NOTE]`, a title after the marker, a blank `>` line, a

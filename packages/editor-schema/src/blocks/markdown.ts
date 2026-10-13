@@ -26,8 +26,8 @@ import { readStructuredQuoteRun } from './quote.ts'
 // ---------------------------------------------------------------------------
 
 /**
- * The first four are the original types. The rest share Obsidian's names, so
- * an imported vault's `> [!note]` reads as a callout here too. The `type` prop
+ * The first four are the original types. The rest use the common Markdown
+ * callout names, so an imported `> [!note]` reads as a callout here too. The `type` prop
  * is a free string in the CRDT, and builds before these types render an
  * unknown one as `info` and write it back unchanged.
  */

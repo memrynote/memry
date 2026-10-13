@@ -1087,7 +1087,7 @@ async function parseContentWithMarkers(
     // Callouts are claimed here ONLY in the exact shapes this feature owns —
     // see parseCalloutRunAt. Everything else `> `-prefixed stays a quote block
     // and its bytes stay untouched, which is what keeps `> [!danger]` or a
-    // titled callout in an Obsidian vault byte-identical through Memry.
+    // titled callout from another app byte-identical through Memry.
     if (!insideFence) {
       const afterSidecarMarker = buffer.length === 0 && pending.length > 0
       const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker

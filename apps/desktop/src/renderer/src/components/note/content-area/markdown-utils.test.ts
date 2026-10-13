@@ -131,7 +131,7 @@ describe('parseMarkdownPreservingBlanks', () => {
 
     const blocks = await parseMarkdownPreservingBlanks(
       editor,
-      ['> [!danger]\n> An Obsidian type', '', '> [!warning] A title\n> and a body'].join('\n')
+      ['> [!danger]\n> A foreign type', '', '> [!warning] A title\n> and a body'].join('\n')
     )
 
     expect(blocks.some((b) => (b.type as string) === 'callout')).toBe(false)

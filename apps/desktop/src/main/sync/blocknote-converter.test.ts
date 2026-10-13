@@ -1894,8 +1894,8 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     // byte-round-trip guard; foreign types and titled markers stay quote
     // blocks. Either way the bytes must not move (#1846).
     '> [!info]\n> Heads up',
-    '> [!note]\n> An Obsidian type Memry shares',
-    '> [!danger]\n> An Obsidian type this schema has no value for',
+    '> [!note]\n> A type Memry shares with other apps',
+    '> [!danger]\n> A type this schema has no value for',
     '> [!info] A title on the marker line\n> and a body',
     // A marker inside a fence is the author's text, not a marker.
     '```md\n![bookmark](https://example.com)\n<!-- file:{"url":"u","name":"n","size":1,"mimeType":"m"} -->\n```',
@@ -3656,7 +3656,7 @@ describe('callouts on the CRDT path (#1846)', () => {
   })
 
   it.each([
-    ['a foreign Obsidian type', '> [!danger]\n> body text'],
+    ['a foreign type', '> [!danger]\n> body text'],
     ['an uppercase GitHub alert', '> [!NOTE]\n> body text'],
     ['a title after the marker', '> [!info] A title\n> body text']
   ])('%s stays a quote block and stays byte-identical', async (_name, markdown) => {
