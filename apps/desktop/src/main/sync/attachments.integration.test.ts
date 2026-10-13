@@ -13,7 +13,7 @@
  * `net` import is never dereferenced.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { randomUUID, randomBytes } from 'node:crypto'
 import path from 'node:path'
 import os from 'node:os'
@@ -37,9 +37,14 @@ import {
 } from './attachments'
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { createTestDataDb } from '../../test/helpers/test-data-db'
 import { dereferenceChunks } from '../canvas/assets/attachment-dereference'
+import { probeNoteAttachments } from '../canvas/assets/chunk-holds'
 import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-asset-release'
+import { recordAttachmentFile } from './attachment-files'
+import { listPendingUploads } from './attachment-outbox'
+import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -127,8 +132,9 @@ function createDeps(
     getVaultPath: () => tmpDir,
     getAccessToken: async () => user.token,
     getVaultKey: async () => vaultKey,
+    // A copy per call, as the keychain returns: an upload wipes the key it signed with.
     getSigningKeys: async () => ({
-      secretKey: signing.privateKey,
+      secretKey: signing.privateKey.slice(),
       publicKey: signing.publicKey,
       deviceId: user.deviceId
     }),
@@ -592,5 +598,111 @@ describe('deleted note attachment release against the real sync-server', () => {
     expect(replay.ok).toBe(true)
     expect(await refCounts()).toEqual([0])
     expect(await storageUsed()).toBe(charged - chunkBytes)
+  }, 120_000)
+})
+
+// #3054: a peer whose edit beats a note's delete revives the note after the
+// deleting device freed its attachments. The reviving device still has the
+// files, so it uploads the freed ones again.
+describe('revived note attachments against the real sync-server', () => {
+  it('queues the freed attachment for upload and leaves the stored one alone', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const svc = new AttachmentSyncService(createDeps(user))
+    const d1 = await server.getD1()
+    const serverDeps = {
+      getAccessToken: async () => user.token,
+      getSyncServerUrl: () => baseUrl,
+      getVaultId: () => 'default',
+      fetchFn: (input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input as RequestInfo, init as RequestInit)
+    }
+
+    const noteId = 'note-revived'
+    await mkdir(path.join(tmpDir, 'attachments', noteId), { recursive: true })
+    const freedFile = await writeTempFile(
+      path.join('attachments', noteId, 'freed.png'),
+      randomBytes(32 * 1024)
+    )
+    const storedFile = await writeTempFile(
+      path.join('attachments', noteId, 'stored.png'),
+      randomBytes(32 * 1024)
+    )
+    const freed = await svc.uploadAttachment(noteId, freedFile)
+    const stored = await svc.uploadAttachment(noteId, storedFile)
+
+    const db = createTestDataDb()
+    const iso = new Date().toISOString()
+    db.insert(noteMetadata)
+      .values({
+        id: noteId,
+        path: `${noteId}.md`,
+        title: 'Revived',
+        attachmentReferences: [freed.attachmentId, stored.attachmentId],
+        createdAt: iso,
+        modifiedAt: iso
+      })
+      .run()
+    recordAttachmentFile(db, tmpDir, noteId, freedFile, freed.attachmentId)
+    recordAttachmentFile(db, tmpDir, noteId, storedFile, stored.attachmentId)
+
+    // The deleting device's 30-day release freed one of them.
+    const released = await dereferenceChunks(
+      freed.manifest.chunks.map((c) => c.encryptedHash),
+      serverDeps
+    )
+    expect(released.ok).toBe(true)
+    const storageBefore = await d1
+      .prepare('SELECT storage_used FROM users WHERE id = ?')
+      .bind(user.userId)
+      .first<number>('storage_used')
+
+    noteRevived(noteId)
+    await settleRevivedNotes({
+      db,
+      vaultPath: tmpDir,
+      chunkHashesOf: (id) => svc.chunkHashesOf(id),
+      probe: (id, attachments) =>
+        probeNoteAttachments(id, attachments, {
+          ...serverDeps,
+          getVaultKey: async () => sodium.randombytes_buf(32)
+        })
+    })
+
+    expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([freedFile])
+    // The freed id is dead for good: an upload of the same bytes must not reuse it.
+    expect(getNoteMetadataById(db, noteId)?.attachmentReferences).toEqual([stored.attachmentId])
+    // The probe holds nothing afterwards and charged or refunded nothing.
+    const holds = await d1
+      .prepare('SELECT COUNT(*) AS n FROM attachment_chunk_holds WHERE user_id = ?')
+      .bind(user.userId)
+      .first<number>('n')
+    expect(holds).toBe(0)
+    expect(
+      await d1
+        .prepare('SELECT storage_used FROM users WHERE id = ?')
+        .bind(user.userId)
+        .first<number>('storage_used')
+    ).toBe(storageBefore)
+
+    // Settled: a second pass probes nothing.
+    let requests = 0
+    await settleRevivedNotes({
+      db,
+      vaultPath: tmpDir,
+      chunkHashesOf: async () => {
+        requests++
+        return []
+      },
+      probe: async () => {
+        requests++
+        return { status: 'unsupported' }
+      }
+    })
+    expect(requests).toBe(0)
   }, 120_000)
 })

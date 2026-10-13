@@ -314,6 +314,38 @@ export function recordedFileOf(
 }
 
 /**
+ * The files on disk that hold these attachments of a note (#3054). An id no
+ * record names (a note from before the record) can be any of the note's files
+ * not recorded under another attachment, so all of those are returned.
+ */
+export function filesOfAttachments(
+  db: DrizzleDb,
+  vaultPath: string,
+  note: AttachmentNote,
+  attachmentIds: Set<string>
+): string[] {
+  const rows = db
+    .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+    .from(attachmentFiles)
+    .where(eq(attachmentFiles.noteId, note.id))
+    .all()
+  const named = new Set(rows.map((row) => row.attachmentId))
+  const files = new Set<string>()
+  const otherAttachments = new Set<string>()
+  for (const row of rows) {
+    if (row.attachmentId === null) continue
+    if (attachmentIds.has(row.attachmentId)) files.add(path.join(vaultPath, ...row.path.split('/')))
+    else otherAttachments.add(row.path)
+  }
+  if ([...attachmentIds].some((id) => !named.has(id))) {
+    for (const file of noteFilesOnDisk(db, vaultPath, note)) {
+      if (!otherAttachments.has(recordPathOf(vaultPath, file) ?? '')) files.add(file)
+    }
+  }
+  return existingFiles([...files])
+}
+
+/**
  * Record a file the server has: an upload of it succeeded or a download put it
  * here. The first record of an older note counts its other files first, or the
  * next backfill would read every one of them as new.

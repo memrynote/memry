@@ -1110,6 +1110,19 @@ then pushes without them as before. Removing an image from a canvas, and the
 that takes a held chunk to zero refunds nothing; the release of its last hold
 does.
 
+Notes do not hold their attachments (#3054, protocol §14.8.2). A device
+whose edit happens after a pulled note tombstone skips it, and its push brings
+the note back. If the deleting device already freed the note's attachments,
+the revived note would name chunks that are gone. So the reviving device, which
+still has the files, checks each attachment in its next upload re-drive: a
+missing manifest means gone, and otherwise it holds the chunks and releases the
+hold at once, because the server refuses to hold a freed chunk. A freed
+attachment's id is dropped from the note, and its local file is queued for
+upload again, which adds the new id and pushes the note. Holds would not cover
+this: a hold ends with the 30-day grace period, and a device can stay offline
+longer. The pending checks live in memory, so a restart before one settles
+loses it.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.

@@ -120,6 +120,11 @@ vi.mock('../crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
 }))
 
+const mockNoteRevived = vi.fn()
+vi.mock('../note-attachment-revival', () => ({
+  noteRevived: (...args: unknown[]) => mockNoteRevived(...args)
+}))
+
 const mockApplyPinnedTags = vi.fn()
 vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   applyPinnedTags: (...args: unknown[]) => mockApplyPinnedTags(...args)
@@ -626,6 +631,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     // A remote delete must run the same project-link cleanup as the local path,
     // otherwise the receiving device keeps orphan links + a dangling home note.
     expect(mockCleanupProjectLinksForDeletedNote).toHaveBeenCalledWith('note-1')
+    expect(mockNoteRevived).not.toHaveBeenCalled()
 
     vi.clearAllMocks()
     mockGetNoteMetadataById.mockReturnValue({
@@ -637,6 +643,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
     expect(deleteNoteFromCache).not.toHaveBeenCalled()
     expect(mockCleanupProjectLinksForDeletedNote).not.toHaveBeenCalled()
+    // This device's push revives the note; its freed attachments are checked (#3054).
+    expect(mockNoteRevived).toHaveBeenCalledWith('note-1')
   })
 
   it('re-checks the note folder after a remote delete, for a folder deleted on the peer (#2512)', () => {

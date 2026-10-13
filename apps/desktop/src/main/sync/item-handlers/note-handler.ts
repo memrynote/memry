@@ -19,6 +19,7 @@ import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
+import { noteRevived } from '../note-attachment-revival'
 import { keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
@@ -729,6 +730,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const resolution = this.resolveDeleteClock(existing.clock, clock)
       if (resolution.skip) {
         log.info('Skipping remote note delete, local is ahead of the tombstone', { itemId })
+        // This device's push revives the note, maybe after its attachments were freed.
+        noteRevived(itemId)
         return 'skipped'
       }
     }
