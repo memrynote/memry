@@ -90,6 +90,9 @@ function announceLinkChanges(
   }
 }
 
+/** Older than any file mtime, so every freshness check re-reads the body. */
+const BODY_UNREAD = new Date(0).toISOString()
+
 function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdown' }>): void {
   const db = getIndexDatabase()
   const existing = getNoteCacheById(db, note.noteId)
@@ -103,7 +106,15 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       db,
       note.noteId,
       bodyUnread
-        ? { path: note.path, title: note.title, modifiedAt: note.modifiedAt }
+        ? // `indexed_at` says when the body was last read. Stamping it now
+          // would tell search reconcile the old FTS row is current, so a
+          // body the backfill never reached stayed unsearchable (#3162).
+          {
+            path: note.path,
+            title: note.title,
+            modifiedAt: note.modifiedAt,
+            indexedAt: BODY_UNREAD
+          }
         : {
             path: note.path,
             title: note.title,
