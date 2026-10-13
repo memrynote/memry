@@ -13,6 +13,7 @@ import type { DataDb } from './database.ts'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
 import { ATTACHMENTS_DIR, normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import type { NotesService } from './notes.ts'
+import { propertiesFromFrontmatter } from './note-properties.ts'
 
 export interface AttachmentResult {
   success: boolean
@@ -394,14 +395,6 @@ function renderNoteHtml(
   </article>
 </body>
 </html>`
-}
-
-function propertiesFromFrontmatter(
-  frontmatter: Record<string, unknown>
-): Record<string, unknown> | null {
-  const properties = frontmatter.properties
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null
-  return properties as Record<string, unknown>
 }
 
 function indexImportedMarkdown(

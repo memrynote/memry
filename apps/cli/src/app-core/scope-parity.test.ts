@@ -510,3 +510,53 @@ test('config updates to one vault do not leak into the next vault opened in the 
     second.close()
   }
 })
+
+test('note properties are top-level frontmatter keys, as desktop writes them (#2975)', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    const note = await app.notes.create({
+      title: 'Props',
+      tags: ['a'],
+      properties: { status: 'draft', priority: 2 }
+    })
+    const file = path.join(vaultPath, note.path)
+    assert.deepEqual(matter(await fs.readFile(file, 'utf-8')).data, {
+      tags: ['a'],
+      status: 'draft',
+      priority: 2
+    })
+    assert.deepEqual(note.properties, { status: 'draft', priority: 2 })
+
+    const updated = await app.notes.update({ id: note.id, properties: { status: 'done' } })
+    assert.deepEqual(updated.properties, { status: 'done' })
+    assert.deepEqual(matter(await fs.readFile(file, 'utf-8')).data, { tags: ['a'], status: 'done' })
+  } finally {
+    app.close()
+  }
+})
+
+test('notes written by older CLI builds under nested properties: still read, and update moves them to the root', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    const note = await app.notes.create({ title: 'Legacy', content: 'body' })
+    const file = path.join(vaultPath, note.path)
+    await fs.writeFile(
+      file,
+      '---\ntags:\n  - a\nstatus: root\nproperties:\n  status: stale\n  owner: kaan\n---\nbody\n',
+      'utf-8'
+    )
+    const read = await app.notes.get(note.id)
+    assert.deepEqual(read?.properties, { status: 'root', owner: 'kaan' })
+
+    await app.notes.update({ id: note.id, properties: { owner: 'kaan', due: '2026-10-13' } })
+    assert.deepEqual(matter(await fs.readFile(file, 'utf-8')).data, {
+      tags: ['a'],
+      owner: 'kaan',
+      due: '2026-10-13'
+    })
+  } finally {
+    app.close()
+  }
+})
