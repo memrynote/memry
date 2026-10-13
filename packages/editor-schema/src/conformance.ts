@@ -146,11 +146,19 @@ const calloutCases: RoundtripCase[] = [
     markdown: '> [!info] Title here\n> Body'
   },
   {
-    // #1875 declines blank-`>`-line shapes from the callout claim, so the run
-    // stays a blockquote; #1881 is what makes that blockquote keep its blank
-    // separator instead of collapsing to `> [!info]\n> One\n> Two`.
+    // The second paragraph is the callout's child block (#3186).
     name: 'callout with a multi-paragraph body',
     markdown: '> [!info]\n> One\n>\n> Two'
+  },
+  // A callout owns child blocks: a list, a heading, a list under its own line (#3186).
+  { name: 'callout holding a bullet list', markdown: '> [!info]\n> - a\n> - b' },
+  { name: 'callout holding a numbered list', markdown: '> [!success]\n> 1. a\n> 2. b' },
+  { name: 'callout holding a heading', markdown: '> [!warning]\n> # Title\n>\n> Body' },
+  { name: 'callout line then a list', markdown: '> [!info]\n> Intro\n>\n> - see [[Note]]\n> - b' },
+  {
+    name: 'callout line with a lazy list',
+    markdown: '> [!info]\n> Intro\n> - a',
+    canonical: '> [!info]\n> Intro\n>\n> - a'
   },
   {
     name: 'nested foreign callouts pass through untouched',

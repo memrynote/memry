@@ -3670,15 +3670,29 @@ describe('callouts on the CRDT path (#1846)', () => {
   })
 
   it.each([
-    ['a blank `>` line in the body', '> [!info]\n> line one\n>\n> line two'],
-    ['a list in the body', '> [!info]\n> - item one\n> - item two']
-  ])('%s declines the claim and stays a quote block', async (_name, markdown) => {
-    // serializeCalloutBlock never writes these shapes, so claiming them could
-    // not reproduce the bytes; they stay on the quote path exactly as before
-    // this feature. (That path's own normalization of these shapes predates
-    // #1846 and is the conformance suite’s to pin down.)
+    ['a second paragraph', '> [!info]\n> line one\n>\n> line two', ['paragraph']],
+    [
+      'a bullet list',
+      '> [!info]\n> - item one\n> - item two',
+      ['bulletListItem', 'bulletListItem']
+    ],
+    ['a heading', '> [!info]\n> # Title', ['heading']]
+  ])('a callout holding %s keeps it as child blocks (#3186)', async (_name, markdown, types) => {
+    // Each used to decline to a quote block that showed `[!info]` as text, and
+    // the heading was written back as `> [!info]Title`.
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.map((b) => b.type)).toEqual(['callout'])
+    expect(blocks?.[0]?.children?.map((c) => c.type)).toEqual(types)
+    writeMarkdownSourceToYDoc(doc, null)
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('a callout holding a checkbox list stays a quote, so opening it writes no task id', async () => {
+    const doc = new Y.Doc()
+    await markdownToYFragment('> [!info]\n> - [ ] a', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
