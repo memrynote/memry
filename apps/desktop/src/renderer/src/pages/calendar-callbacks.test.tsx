@@ -79,6 +79,7 @@ const mocks = vi.hoisted(() => ({
   openForDayView: vi.fn(),
   openTab: vi.fn(),
   promoteExternal: vi.fn(),
+  reminderGet: vi.fn(),
   setCalendarGoogleSettings: vi.fn(),
   taskUpdate: vi.fn(),
   setDayPanelDate: vi.fn(),
@@ -210,6 +211,17 @@ vi.mock('@/components/calendar', () => ({
           }
         >
           select external
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onSelectItem(
+              mocks.calendarItems.find((entry) => entry.sourceType === 'reminder'),
+              rect
+            )
+          }
+        >
+          select reminder
         </button>
         <button
           type="button"
@@ -385,6 +397,10 @@ vi.mock('@/services/inbox-service', () => ({
   }
 }))
 
+vi.mock('@/services/reminder-service', () => ({
+  reminderService: { get: mocks.reminderGet }
+}))
+
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     update: mocks.taskUpdate
@@ -415,6 +431,7 @@ beforeEach(() => {
     item('event', 'event-1', 'memrynote event'),
     item('task', 'task-1', 'Task due'),
     item('inbox_snooze', 'snooze-1', 'Inbox snooze'),
+    item('reminder', 'reminder-1', 'Call back', { visualType: 'reminder', endAt: null }),
     item('external_event', 'external-1', 'External meeting', {
       source: {
         provider: 'google',
@@ -662,6 +679,42 @@ describe('CalendarPage callback coverage', () => {
       })
     )
     expect(mocks.taskUpdate).not.toHaveBeenCalled()
+  })
+
+  it('opens the target a calendar reminder is for (#3197, #3166)', async () => {
+    mocks.reminderGet.mockResolvedValue({
+      id: 'reminder-1',
+      targetType: 'task',
+      targetId: 'task-9',
+      targetTitle: 'Pay rent',
+      projectId: 'project-1'
+    })
+    renderPage()
+
+    fireEvent.click(screen.getByText('select reminder'))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+          title: 'Pay rent',
+          viewState: expect.objectContaining({ openTaskId: 'task-9' })
+        })
+      )
+    )
+    expect(mocks.reminderGet).toHaveBeenCalledWith('reminder-1')
+  })
+
+  it('reports a calendar reminder whose target is gone instead of doing nothing', async () => {
+    mocks.reminderGet.mockResolvedValue(null)
+    renderPage()
+
+    fireEvent.click(screen.getByText('select reminder'))
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith('Calendar reminder has no openable target', {
+        reminderId: 'reminder-1'
+      })
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
   it('opens inbox snoozes, records snooze errors, and handles delete success and failure', async () => {
