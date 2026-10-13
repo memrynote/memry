@@ -567,7 +567,7 @@ are not plain CommonMark:
 
 | Block            | On-disk form                                                                                                                                               | Anchor                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| callout          | `> [!info\|warning\|error\|success]` alone on its line, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:32`, `:57-61`                         |
+| callout          | `> [!info\|warning\|error\|success]` alone on its line, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:28`, `:53-57`                         |
 | structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                                           | `:166-171`                              |
 | youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                                                     | `:331`, `:340`                          |
 | bookmark         | `![bookmark](url)`                                                                                                                                         | `:305`, `:347`                          |
@@ -587,11 +587,11 @@ are not plain CommonMark:
 - the callout marker regex is strict — `> [!note]` and `> [!info] A title` are
   deliberately **not** claimed
   (`packages/editor-schema/src/blocks/markdown.ts:33-37`);
-- a run abutting more quote lines is refused whole (`:127`);
+- a run abutting more quote lines is refused whole (`:123`);
 - **a run is claimed only by proof**: the body must re-serialise byte for byte
-  (`:197`), except a body with a list or a `> >` level, which is claimed when
-  its canonical form settles (`:198-201`); a body with a checkbox is never
-  claimed (`:213`). A leading paragraph is the callout's own line and every
+  (`:193`), except a body with a list or a `> >` level, which is claimed when
+  its canonical form settles (`:194-197`); a body with a checkbox is never
+  claimed (`:209`). A leading paragraph is the callout's own line and every
   later block its child;
 - structured quotes refuse a `>text` line and claim only a run that is separated
   or nested (`:221-227`);
