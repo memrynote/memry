@@ -1,7 +1,12 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { createNote, SELECTORS } from './utils/electron-helpers'
+import { createNote, ensureDayPanelClosed, SELECTORS } from './utils/electron-helpers'
+import { createNoteWithBody } from './utils/note-sync-helpers'
+
+type EditorWindow = Window & {
+  __memryEditor?: { document: Array<{ type: string; content?: Array<{ text?: string }> }> }
+}
 
 /**
  * Regression: autosave used to echo a notes:updated event back to the saving
@@ -25,6 +30,21 @@ async function firstBlock(page: Page) {
     const block = editor.document[0]
     return { id: block?.id as string | undefined, props: (block?.props ?? {}) as any }
   })
+}
+
+async function blockTypeOf(page: Page, text: string): Promise<string | undefined> {
+  return page.evaluate((wanted) => {
+    const editor = (window as unknown as EditorWindow).__memryEditor
+    const textOf = (block: { content?: Array<{ text?: string }> }) =>
+      (block.content ?? []).map((node) => node.text ?? '').join('')
+    return editor?.document.find((block) => textOf(block) === wanted)?.type
+  }, text)
+}
+
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox()
+  if (!box) throw new Error('element is not rendered')
+  return box
 }
 
 async function openDragHandleMenu(page: Page): Promise<void> {
@@ -101,6 +121,58 @@ test.describe('Drag handle menu E2E', () => {
         page.evaluate(() => (window as any).__memryEditor?.document?.[0]?.type as string)
       )
       .toBe('heading')
+  })
+
+  // #3185: on a short window the tall Turn into submenu shifts up to fit, so
+  // reaching Heading 1 is a diagonal across open editor space. The submenu used
+  // to close 40 ms after the pointer stopped there, so a brief hesitation (a
+  // touchpad re-swipe) dropped the click onto the editor and nothing converted.
+  test('keeps the Turn into submenu open through a hesitation on the way to it', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await ensureDayPanelClosed(page)
+    // Returns once the autosave is on disk. Input sent while main is still
+    // saving reaches the page late, which would stretch the pause below.
+    await createNoteWithBody(
+      page,
+      uniqueLabel('Drag Menu Hesitation'),
+      Array.from({ length: 40 }, (_, i) => `Line ${i + 1}`).join('\n')
+    )
+
+    const target = page.locator('.bn-block-content', { hasText: /^Line 20$/ })
+    await target.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    await target.hover()
+    await page.locator('[data-test="dragHandle"]').first().click()
+    const turnInto = page.getByRole('menuitem', { name: 'Turn into' }).first()
+    await turnInto.hover()
+    const heading1 = page.getByRole('menuitem', { name: 'Heading 1' }).first()
+    await expect(heading1).toBeVisible()
+
+    const trigger = await boxOf(turnInto)
+    const submenu = await boxOf(
+      page.getByRole('menu').filter({ has: page.getByRole('menuitem', { name: 'Heading 1' }) })
+    )
+    const item = await boxOf(heading1)
+    const from = { x: trigger.x + trigger.width / 2, y: trigger.y + trigger.height / 2 }
+    const to = { x: item.x + item.width / 2, y: item.y + item.height / 2 }
+    expect(to.y, 'the submenu shifted up, above its trigger').toBeLessThan(trigger.y)
+    // Fractions of the straight path: where it leaves Turn into's top edge and
+    // where it reaches the submenu. The pause sits between them, over neither menu.
+    const leavesTrigger = (from.y - trigger.y) / (from.y - to.y)
+    const reachesSubmenu = (submenu.x - from.x) / (to.x - from.x)
+    expect(leavesTrigger).toBeLessThan(reachesSubmenu)
+    const pause = (leavesTrigger + reachesSubmenu) / 2
+
+    await page.mouse.move(from.x + (to.x - from.x) * pause, from.y + (to.y - from.y) * pause, {
+      steps: 4
+    })
+    await page.waitForTimeout(100)
+    await page.mouse.move(to.x, to.y, { steps: 4 })
+    await expect(heading1).toBeVisible()
+    await heading1.click()
+
+    await expect.poll(() => blockTypeOf(page, 'Line 20')).toBe('heading')
   })
 
   test('duplicates a block via the menu, directly below the original', async ({ page }) => {

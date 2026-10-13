@@ -611,6 +611,10 @@ type under **Turn into**.
 | **Delete**                      | Removes the block.                                                                                                                                                                                       |
 | **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                                                  |
 
+Pointing at **Turn into** or **Colors** opens a submenu beside the block menu. The
+submenu stays open while you move the pointer across to it, even if you pause on the
+way, so you can head straight for the item you want.
+
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
 appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,
 equations, whiteboards and tables. **Move to…** is hidden on blocks that hold an attachment, because the
