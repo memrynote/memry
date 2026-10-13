@@ -172,6 +172,33 @@ describe('useWeekInfiniteScroll', () => {
     expect(scroller.scrollLeft).toBe(pinnedDay * 150)
   })
 
+  it('reports the scrolled-to day when the browser truncates a fractional scrollLeft', () => {
+    let current: UseWeekInfiniteScrollResult | null = null
+
+    function Harness(): React.JSX.Element {
+      current = useWeekInfiniteScroll({ initialDate: '2026-05-14', totalDays: 90 })
+      return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
+    }
+
+    const { getByTestId } = render(<Harness />)
+    const scroller = getByTestId('week-scroller') as HTMLDivElement
+    // 874 / 7 = 124.857...px columns. Chromium keeps scrollLeft on whole device
+    // pixels, so day 2477 (309271.71px) lands at 309271 — just short of the
+    // boundary. Flooring that raw value reported day 2476, and Next/Previous
+    // stepped from the wrong day, drifting another day on every press.
+    defineReadonlyNumber(scroller, 'clientWidth', 874)
+    act(() => {
+      ResizeObserverMock.instances[0].trigger()
+    })
+
+    act(() => {
+      scroller.scrollLeft = Math.floor(2477 * (874 / 7))
+      scroller.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(current?.visibleDayStart).toBe(2477)
+  })
+
   it('fits exactly seven columns in the scroll container, leaving no partial eighth day', () => {
     let current: UseWeekInfiniteScrollResult | null = null
 
