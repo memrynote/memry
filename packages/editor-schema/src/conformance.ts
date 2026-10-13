@@ -154,6 +154,12 @@ const calloutCases: RoundtripCase[] = [
   { name: 'callout holding a bullet list', markdown: '> [!info]\n> - a\n> - b' },
   { name: 'callout holding a numbered list', markdown: '> [!success]\n> 1. a\n> 2. b' },
   { name: 'callout holding a heading', markdown: '> [!warning]\n> # Title\n>\n> Body' },
+  // #3192: the flat quote path dropped the `[ ]` markers. The editor never
+  // promotes these to tasks, so the structured path writes no task ids.
+  { name: 'callout holding a checkbox list', markdown: '> [!info]\n> - [ ] a\n> - [x] b' },
+  { name: 'quote holding a checkbox list', markdown: '> - [ ] a\n> - [x] b' },
+  // #3191: the renderer's wiki-link paste rule promoted the whole `<li>`.
+  { name: 'bullet holding only a wiki link', markdown: '- [[Note]]\n- b' },
   { name: 'callout line then a list', markdown: '> [!info]\n> Intro\n>\n> - see [[Note]]\n> - b' },
   {
     name: 'callout line with a lazy list',
@@ -417,11 +423,10 @@ const containerCases: RoundtripCase[] = [
     markdown: tableOf(['a', 'b'], ['[[Roadmap\\|the plan]]', '**bold** *it* ~~s~~'])
   },
   {
-    // Main keeps the bold; the renderer's `WikiLink.toExternalHTML` does not
-    // emit the marks it carries in props, and a cell serializes through it.
+    // The renderer's wiki-link paste rule used to promote the whole `<td>`,
+    // dropping the bold around the link (#3191).
     name: 'marked wiki link in a table cell',
-    markdown: tableOf(['a', 'b'], ['**[[A]]**', date(dateMentionData())]),
-    pending: { renderer: 2365 }
+    markdown: tableOf(['a', 'b'], ['**[[A]]**', date(dateMentionData())])
   },
   {
     name: 'mention and date tokens in list items',

@@ -33,6 +33,21 @@ const para = (id: string, text = ''): any => ({
 })
 
 describe('analyzeTaskIntents', () => {
+  describe('checkbox in a quote or callout (#3192)', () => {
+    it.each(['quote', 'callout'])('never offers a checkbox inside a %s', (type) => {
+      const container = { ...para('q1', 'Intro'), type, children: [cl('cl1', 'a'), cl('cl2', '')] }
+      const intents = analyzeTaskIntents([container], new Set())
+      expect(intents.standaloneCandidate).toBeNull()
+      expect(intents.emptyCheckbox).toBeNull()
+    })
+
+    it('still converts a checkbox outside the quote', () => {
+      const quote = { ...para('q1', 'Intro'), type: 'quote', children: [cl('cl1', 'a')] }
+      const intents = analyzeTaskIntents([quote, cl('cl2', 'b')], new Set())
+      expect(intents.standaloneCandidate).toEqual({ blockId: 'cl2' })
+    })
+  })
+
   describe('empty checkbox', () => {
     it('reports a freshly typed empty checkbox so it can show as a draft task', () => {
       const intents = analyzeTaskIntents([cl('cl1', '')], new Set())

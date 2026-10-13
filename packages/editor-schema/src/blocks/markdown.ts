@@ -175,9 +175,9 @@ export interface ResolvedCallout {
  *
  * A body with a list or a `> >` level may also claim when its canonical form
  * settles, because the quote fallback would drop the markers or the nesting.
- * A bare damaged run heals only into a single paragraph, as before. A body
- * with a checkbox declines: claiming would promote it to a task and write the
- * task id into a file older builds read flat.
+ * A bare damaged run heals only into a single paragraph, as before. A
+ * checkbox in the body stays a checkbox: the editor never promotes one inside
+ * a callout or a quote to a task, so claiming writes no task id (#3192).
  */
 export async function resolveCalloutRun(
   run: CalloutRun,
@@ -206,7 +206,7 @@ async function parseCalloutBody(
 ): Promise<{ content: unknown; children: ParsedBlockShape[]; markdown: string } | null> {
   const parsed = await parseMarkdown(content)
   const [first, ...rest] = parsed
-  if (!first || parsed.some(holdsCheckbox) || parsed.some(itemHoldsNonList)) return null
+  if (!first || parsed.some(itemHoldsNonList)) return null
   const ownLine = first.type === 'paragraph'
   if (ownLine && first.children?.length) return null
 
@@ -215,11 +215,6 @@ async function parseCalloutBody(
     children: ownLine ? rest : parsed,
     markdown: (await serializeBlocks(parsed)).trim()
   }
-}
-
-function holdsCheckbox(block: ParsedBlockShape): boolean {
-  if (block.type === 'checkListItem') return true
-  return ((block.children ?? []) as ParsedBlockShape[]).some(holdsCheckbox)
 }
 
 /**
