@@ -113,6 +113,11 @@ export async function findVaultFiles(
       // Skip hidden files and directories
       if (entry.name.startsWith('.')) continue
 
+      // The app's attachments live in <vault>/attachments only. A nested folder
+      // with that name is the user's own (Obsidian's "subfolder under current
+      // folder" setting makes them) and its notes are ordinary notes (#3161).
+      if (dirPath === basePath && entry.name === ATTACHMENTS_DIR) continue
+
       // Skip excluded patterns (exact match or prefix match)
       if (excludePatterns.some((p) => entry.name === p || entry.name.startsWith(`${p}/`))) continue
 
@@ -381,9 +386,7 @@ export async function indexVault(
   }
 
   // Scan the entire vault root. findVaultFiles skips dotfolders (.memry,
-  // .obsidian, .git) and excludePatterns; also exclude the attachments folder so
-  // binaries are not indexed as notes.
-  const scanExcludes = [...excludePatterns, ATTACHMENTS_DIR]
+  // .obsidian, .git), excludePatterns and the root attachments folder.
   const foldersToScan = [vaultPath]
 
   // Find all supported files (respecting exclude patterns)
@@ -392,7 +395,7 @@ export async function indexVault(
     try {
       const folderStat = await stat(folder)
       if (folderStat.isDirectory()) {
-        const files = await findVaultFiles(folder, vaultPath, scanExcludes, activity)
+        const files = await findVaultFiles(folder, vaultPath, excludePatterns, activity)
         allFiles.push(...files)
       }
     } catch {

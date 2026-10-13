@@ -244,15 +244,16 @@ export class VaultWatcher {
     this.isReady = false
 
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
-    // (.memry, .obsidian, .git) and excluded dirs; the attachments folder is added
-    // to the exclude set so binaries are not watched/indexed as notes.
+    // (.memry, .obsidian, .git) and excluded dirs, and the root attachments folder so
+    // binaries are not watched/indexed as notes.
     const watchPaths = [vaultPath]
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
 
     // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = [...this.excludePatterns, ATTACHMENTS_DIR]
+    const userExcludePatterns = this.excludePatterns
+    const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
     this.watcher = chokidar.watch(watchPaths, {
@@ -264,6 +265,11 @@ export class VaultWatcher {
 
         // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
+
+        // Only the root attachments folder is the app's; nested ones hold notes (#3161).
+        if (filePath === attachmentsRoot || filePath.startsWith(attachmentsRoot + path.sep)) {
+          return true
+        }
 
         // Check user-defined exclude patterns
         for (const pattern of userExcludePatterns) {
@@ -447,8 +453,7 @@ export class VaultWatcher {
 
     const added: string[] = []
     const changed: string[] = []
-    const excludes = [...this.excludePatterns, ATTACHMENTS_DIR]
-    for (const relativePath of await findVaultFiles(vaultPath, vaultPath, excludes)) {
+    for (const relativePath of await findVaultFiles(vaultPath, vaultPath, this.excludePatterns)) {
       if (!isCurrent()) return
       const absolutePath = path.join(vaultPath, relativePath)
       const cached = getNoteCacheByPath(db, relativePath)
