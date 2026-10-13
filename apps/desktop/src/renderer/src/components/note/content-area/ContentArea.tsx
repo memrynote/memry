@@ -46,6 +46,7 @@ import {
   writeCriticMarkupMarksToYDoc
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
+import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
@@ -2911,6 +2912,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               applyTaskIntents(context.getChanges())
             }}
             theme={editorTheme}
+            shadCNComponents={blockNoteShadCNComponents}
             formattingToolbar={false}
             slashMenu={false}
             emojiPicker={false}

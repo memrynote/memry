@@ -21,6 +21,7 @@ import '@blocknote/shadcn/style.css'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { extractTitleFromBlocks } from '@/lib/blocknote-title'
+import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:InboxContentEditor')
@@ -179,6 +180,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         editable={editable}
         onChange={() => void handleChange()}
         theme={editorTheme}
+        shadCNComponents={blockNoteShadCNComponents}
         linkToolbar={false}
       >
         <LinkAddressToolbarController />

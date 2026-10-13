@@ -144,7 +144,9 @@ vi.mock('@blocknote/shadcn', () => ({
         Change content
       </button>
     </div>
-  )
+  ),
+  // Read at import by `@/lib/blocknote-shadcn-components`.
+  ShadCNDefaultComponents: { DropdownMenu: {} }
 }))
 
 vi.mock('@/lib/blocknote-title', () => ({
