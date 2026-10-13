@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 257,
+    "exportedCaseCount": 260,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 267,
+    "caseCount": 270,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -285,6 +285,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "1be4ef6df49560559daeb957943d5325d64bbf5ac1aa51a22967b716d716126f"
+    },
+    {
+      "name": "callout holding a checkbox list",
+      "markdown": "> [!info]\n> - [ ] a\n> - [x] b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "cff770b90a99bf04e2a6b9151eca25a2bd8550f0d54b981e51270959f7a69c55"
+    },
+    {
+      "name": "quote holding a checkbox list",
+      "markdown": "> - [ ] a\n> - [x] b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "aef3b955b0de16fea6f2d2c881c648ba361ae0481d0e47380c432e037bb2d7d8"
+    },
+    {
+      "name": "bullet holding only a wiki link",
+      "markdown": "- [[Note]]\n- b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "73eabd48adc5a27e61356f3075b84bad1976c342b83dd0e599e937f38ac5765f"
     },
     {
       "name": "callout line then a list",
@@ -605,9 +626,7 @@
       "name": "marked wiki link in a table cell",
       "markdown": "| a         | b                                                                                                                                                                                        |\n| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| **[[A]]** | ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) |",
       "canonical": null,
-      "pending": {
-        "renderer": 2365
-      },
+      "pending": null,
       "sha256": "b73e795a7532c0b16cc3a679cad2d20e1883f2d804b0a2379ae5a30c824a3976"
     },
     {
