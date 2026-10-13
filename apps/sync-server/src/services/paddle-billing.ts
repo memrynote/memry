@@ -143,38 +143,38 @@ export async function createPaddlePortalSession(
     )
   }
 
-  const apiKey = normalizePaddleApiKey(env.PADDLE_API_KEY)
-  if (!apiKey) {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Paddle API key is not configured', 503)
-  }
-
-  const body =
-    entitlement.paddle_subscription_id != null
-      ? { subscription_ids: [entitlement.paddle_subscription_id] }
-      : {}
-  const response = await (env.fetch ?? fetch)(
-    `${getPaddleBaseUrl(env)}/customers/${encodeURIComponent(
-      entitlement.paddle_customer_id
-    )}/portal-sessions`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
+  const path = `/customers/${encodeURIComponent(entitlement.paddle_customer_id)}/portal-sessions`
+  const failureMessage = 'Could not create billing portal session'
+  type PortalSession = { urls?: { general?: { overview?: string } } }
+  let session: PortalSession
+  try {
+    session = await paddleFetch<PortalSession>(
+      env,
+      path,
+      {
+        method: 'POST',
+        body: entitlement.paddle_subscription_id
+          ? { subscription_ids: [entitlement.paddle_subscription_id] }
+          : {}
       },
-      body: JSON.stringify(body)
-    }
-  )
-
-  if (!response.ok) {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not create billing portal session', 502)
+      failureMessage
+    )
+  } catch (error) {
+    // A stored subscription id can go stale (canceled, paused, or moved to another customer) and
+    // Paddle then rejects the whole request. The general portal still works without it.
+    if (!entitlement.paddle_subscription_id || !(error instanceof AppError)) throw error
+    logger.warn('Portal session with subscription failed, retrying without it', {
+      subscriptionId: entitlement.paddle_subscription_id
+    })
+    session = await paddleFetch<PortalSession>(
+      env,
+      path,
+      { method: 'POST', body: {} },
+      failureMessage
+    )
   }
 
-  const payload = (await response.json()) as PaddleResponse<{
-    urls?: { general?: { overview?: string } }
-  }>
-  const portalUrl = payload.data?.urls?.general?.overview
+  const portalUrl = session.urls?.general?.overview
   if (!portalUrl) {
     throw new AppError(
       ErrorCodes.INTERNAL_ERROR,

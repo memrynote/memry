@@ -587,6 +587,39 @@ describe('auth routes', () => {
       })
     })
 
+    it('retries the portal session without a stale subscription id', async () => {
+      const paddleFetch = vi
+        .fn()
+        .mockResolvedValueOnce(Response.json({ error: { code: 'bad_request' } }, { status: 400 }))
+        .mockResolvedValueOnce(
+          Response.json(
+            {
+              data: { urls: { general: { overview: 'https://customer-portal.paddle.com/cpl_1' } } }
+            },
+            { status: 201 }
+          )
+        )
+      env = createEnv({
+        paddleFetch,
+        firstRows: [{ paddle_customer_id: 'ctm_1', paddle_subscription_id: 'sub_stale' }]
+      })
+
+      const res = await app.request(
+        '/auth/billing/portal-session',
+        { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } },
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(paddleFetch).toHaveBeenLastCalledWith(
+        'https://sandbox-api.paddle.com/customers/ctm_1/portal-sessions',
+        expect.objectContaining({ method: 'POST', body: '{}' })
+      )
+      await expect(res.json()).resolves.toEqual({
+        portalUrl: 'https://customer-portal.paddle.com/cpl_1'
+      })
+    })
+
     it('returns 409 for portal sessions before Paddle customer creation', async () => {
       env = createEnv({ firstRows: [{ paddle_customer_id: null, paddle_subscription_id: null }] })
 
