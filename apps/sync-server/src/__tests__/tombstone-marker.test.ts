@@ -323,6 +323,30 @@ describe('cleanupExpiredTombstones sheds the payload and keeps the row (#2302)',
     expect(row('task-t')).toEqual(before)
   })
 
+  // #3053: the Rust core pushes deletedAt in ms, desktop in seconds.
+  it('sheds an expired tombstone whose deletedAt was pushed in ms', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 1 } }])
+    await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 2 }, deletedAt: Date.now() }])
+    backdateDelete('task-t', (now() - 31 * DAY) * 1000)
+
+    expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(1)
+
+    expect(row('task-t').payload_purged_at).toEqual(expect.any(Number))
+  })
+
+  // #3053
+  it('keeps a ms deletedAt inside the retention window', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 1 } }])
+    await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 2 }, deletedAt: Date.now() }])
+    const before = row('task-t')
+
+    expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(0)
+
+    expect(row('task-t')).toEqual(before)
+  })
+
   // #2302 review: a marker never lands in front of an object that is still stored.
   it('leaves the row unshed when the object delete fails, and sheds it on the next tick', async () => {
     const app = buildApp()
