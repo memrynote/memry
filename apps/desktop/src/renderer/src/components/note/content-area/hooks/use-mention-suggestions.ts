@@ -224,7 +224,13 @@ export function useMentionSuggestions(
       } else if (item.kind === 'now') {
         onInsertDate(buildNowMentionValue())
       } else {
-        onInsertDate(item.value)
+        // The listed value can lag the typed query: items arrive after async
+        // lookups, so a fast Tab/Enter on "@today at 23:00" would commit the row
+        // built for "@today at 2" (no time). Rebuild from the live query.
+        const query = lastQueryRef.current.trim()
+        const live = query ? buildDateMentionEntry(query).suggestion : null
+        const liveValue = live && (item.kind === 'date' ? live.dateValue : live.remindValue)
+        onInsertDate(liveValue ?? item.value)
       }
       setExpanded(false)
     },

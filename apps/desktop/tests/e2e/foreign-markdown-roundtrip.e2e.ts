@@ -83,6 +83,8 @@ const KANBAN_BODY = [
   '%%'
 ].join('\n')
 
+const KANBAN_COMMENT = KANBAN_BODY.slice(KANBAN_BODY.indexOf('%%'))
+
 /**
  * Every spelling #1915 is about, in one body: a setext heading, `*` bullets, a
  * four-space nested indent, a list glued to its paragraph, underscore emphasis
@@ -264,6 +266,25 @@ async function waitForWritebackToSettle(
  * are one block or two. Empty blocks are dropped so BlockNote's trailing
  * paragraph does not have to be predicted.
  */
+async function editorCommentSources(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const editor = (window as any).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+
+    const sources: string[] = []
+    const walk = (parts: any): void => {
+      if (!Array.isArray(parts)) return
+      for (const part of parts) {
+        if (part?.type === 'htmlComment') sources.push(part.props?.source as string)
+        walk(part?.content)
+        walk(part?.children)
+      }
+    }
+    walk(editor.document)
+    return sources
+  })
+}
+
 async function visibleBlocks(
   page: Page
 ): Promise<Array<{ type: string; language: string; text: string }>> {
@@ -438,11 +459,9 @@ test.describe('Foreign markdown round-trip', () => {
     await nudgeDocument(pageA)
     await waitForWritebackToSettle(electronAppA, baseline.id)
 
-    // Whole-file byte identity is the wrong assertion for this row. The round
-    // trip inserts a blank line after `%% kanban:settings` and before the
-    // closing `%%`, which is pinned as canonical in the unit sibling and is
-    // harmless: the plugin's backwards scan tolerates blank lines. The info
-    // string and the JSON are what it cannot tolerate.
+    // The info string and the JSON are what the plugin cannot tolerate, so
+    // they are asserted directly. Since #2835 the editor holds the whole `%%`
+    // comment, fence included, as one htmlComment marker, not as a code block.
     await expect
       .poll(
         async () => {
@@ -454,9 +473,7 @@ test.describe('Foreign markdown round-trip', () => {
             taggedJavascript: file.includes('```javascript'),
             docFenceTag: openingFenceInfo(doc),
             docFenced: fencedBody(doc),
-            ui: (await visibleBlocks(pageA))
-              .filter((block) => block.type === 'codeBlock')
-              .map((block) => ({ language: block.language, text: block.text }))
+            ui: await editorCommentSources(pageA)
           }
         },
         { timeout: 30_000 }
@@ -467,7 +484,7 @@ test.describe('Foreign markdown round-trip', () => {
         taggedJavascript: false,
         docFenceTag: '',
         docFenced: KANBAN_SETTINGS_JSON,
-        ui: [{ language: '', text: KANBAN_SETTINGS_JSON }]
+        ui: [KANBAN_COMMENT]
       })
     expect((await getWritebackDebugById(electronAppA, baseline.id))?.lastError).toBeNull()
 
