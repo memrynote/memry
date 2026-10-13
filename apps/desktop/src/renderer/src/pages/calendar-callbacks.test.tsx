@@ -717,6 +717,20 @@ describe('CalendarPage callback coverage', () => {
     expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
+  it('logs a calendar reminder that fails to load', async () => {
+    mocks.reminderGet.mockRejectedValue(new Error('IPC down'))
+    renderPage()
+
+    fireEvent.click(screen.getByText('select reminder'))
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith('Failed to open reminder from calendar', {
+        reminderId: 'reminder-1',
+        error: 'IPC down'
+      })
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
   it('opens inbox snoozes, records snooze errors, and handles delete success and failure', async () => {
     renderPage()
 
