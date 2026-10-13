@@ -122,6 +122,11 @@ memrynote folder-view set-config Projects '{"formulas":{"score":"priority * 2"}}
 memrynote folder-view views Projects
 memrynote folder-view set-view Projects '{"name":"Table","type":"table","default":true,"columns":[{"id":"title"},{"id":"state"}]}'
 memrynote folder-view delete-view Projects Table
+```
+
+`properties define` and `properties update-definition` accept these types: `text`, `number`, `checkbox`, `date`, `url`, `status`, `select`, `multiselect`, `relation`, `project`. Any other type exits non-zero and lists the allowed types.
+
+```bash
 memrynote folder-view list Projects
 memrynote folder-view properties Projects
 memrynote folder-view suggestions note_abc123

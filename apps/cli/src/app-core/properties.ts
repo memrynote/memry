@@ -9,6 +9,7 @@ import {
 } from '@memry/storage-data'
 import {
   PropertyDefinitionSchema,
+  PropertyTypes,
   parsePropertyDefinitionEntries
 } from '@memry/contracts/property-types'
 import type { NewPropertyDefinition, PropertyDefinition } from '@memry/db-schema/data-schema'
@@ -51,6 +52,17 @@ export interface PropertiesService {
 const portableDefinitionTypes = new Set<string>(
   PropertyDefinitionSchema.options.map((member) => member.shape.type.value)
 )
+
+const knownPropertyTypes: readonly string[] = Object.values(PropertyTypes)
+
+/** Desktop discards definitions whose type it does not know, so refuse them here. */
+function assertKnownPropertyType(type: string): void {
+  if (!knownPropertyTypes.includes(type)) {
+    throw new Error(
+      `Unknown property type: ${type}. Allowed types: ${knownPropertyTypes.join(', ')}`
+    )
+  }
+}
 
 function parseJson(value: string | null | undefined): unknown {
   if (!value) return null
@@ -198,6 +210,7 @@ export function createPropertiesService({
     },
 
     async createDefinition(input) {
+      assertKnownPropertyType(input.type)
       const definition = upsertPropertyDefinition(dataDb, {
         name: input.name,
         type: input.type,
@@ -212,6 +225,7 @@ export function createPropertiesService({
     async updateDefinition(name, updates) {
       const existing = getPropertyDefinition(dataDb, name)
       if (!existing) return null
+      if (updates.type !== undefined) assertKnownPropertyType(updates.type)
 
       const definition = upsertPropertyDefinition(dataDb, {
         name,

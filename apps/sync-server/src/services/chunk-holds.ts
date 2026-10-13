@@ -14,8 +14,6 @@
  * go refunds the chunk's bytes, exactly once.
  */
 
-import { adjustStorageUsed } from './quota'
-
 /** SQL predicate: some hold names the `blob_chunks` row referred to as `chunk`. */
 export const chunkHeldSql = (
   chunk: string
@@ -78,33 +76,48 @@ export const holdChunks = async (
 /**
  * Drops every hold of these holders. A replay finds no rows and changes
  * nothing. A chunk left with no hold and no ref refunds its bytes here.
+ *
+ * Each hold's delete and its refund run in one batch, so they commit as one
+ * transaction (#3034). The refund fires only when that delete removed the row
+ * (`changes()`) and left the chunk free, so two concurrent releases of a
+ * chunk's last holds, or a release racing the last dereference, refund once.
  */
 export const releaseHolds = async (
   db: D1Database,
   userId: string,
   vaultId: string,
-  holderIds: string[]
+  holderIds: string[],
+  now = Math.floor(Date.now() / 1000)
 ): Promise<number> => {
   let released = 0
   for (const holderId of new Set(holderIds)) {
     const rows = await db
       .prepare(
-        `DELETE FROM attachment_chunk_holds WHERE user_id = ? AND vault_id = ? AND holder_id = ?
-         RETURNING chunk_hash`
+        `SELECT chunk_hash FROM attachment_chunk_holds WHERE user_id = ? AND vault_id = ? AND holder_id = ?`
       )
       .bind(userId, vaultId, holderId)
       .all<{ chunk_hash: string }>()
     for (const { chunk_hash: hash } of rows.results ?? []) {
-      released++
-      const freed = await db
-        .prepare(
-          `SELECT size_bytes FROM blob_chunks c
-           WHERE c.user_id = ? AND c.vault_id = ? AND c.hash = ? AND c.ref_count <= 0
-             AND NOT ${chunkHeldSql('c')}`
-        )
-        .bind(userId, vaultId, hash)
-        .first<number>('size_bytes')
-      if (freed !== null) await adjustStorageUsed(db, userId, -freed)
+      const [deleted] = await db.batch([
+        db
+          .prepare(
+            `DELETE FROM attachment_chunk_holds
+             WHERE user_id = ? AND vault_id = ? AND holder_id = ? AND chunk_hash = ?`
+          )
+          .bind(userId, vaultId, holderId, hash),
+        db
+          .prepare(
+            `UPDATE users SET storage_used = MAX(0, storage_used - (
+               SELECT c.size_bytes FROM blob_chunks c
+               WHERE c.user_id = ? AND c.vault_id = ? AND c.hash = ?)), updated_at = ?
+             WHERE id = ? AND changes() > 0 AND EXISTS (
+               SELECT 1 FROM blob_chunks c
+               WHERE c.user_id = ? AND c.vault_id = ? AND c.hash = ? AND c.ref_count <= 0
+                 AND NOT ${chunkHeldSql('c')})`
+          )
+          .bind(userId, vaultId, hash, now, userId, userId, vaultId, hash)
+      ])
+      released += deleted.meta.changes
     }
   }
   return released

@@ -122,7 +122,11 @@ export function useWeekInfiniteScroll({
     if (!el) return
     const onScroll = (): void => {
       if (columnWidth <= 0) return
-      const nextStart = Math.floor(el.scrollLeft / columnWidth)
+      // Chromium keeps scrollLeft on whole device pixels, so a programmatic
+      // scroll to a fractional day boundary can land up to 1px short of it.
+      // Without the slack that reads as the previous day, and Next/Previous
+      // (which step from this value) drift a day further on every press.
+      const nextStart = Math.floor((el.scrollLeft + 1) / columnWidth)
       notifyVisibleDayStart(nextStart)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
