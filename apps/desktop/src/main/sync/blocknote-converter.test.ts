@@ -17,6 +17,7 @@ import {
   MEMRY_INLINE_CONTENT_TYPES
 } from '@memry/editor-schema'
 import {
+  CALLOUT_TYPE_VALUES,
   MEMRY_BLOCK_TYPES,
   serializeBookmark,
   serializeCalloutBlock,
@@ -1893,7 +1894,8 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     // byte-round-trip guard; foreign types and titled markers stay quote
     // blocks. Either way the bytes must not move (#1846).
     '> [!info]\n> Heads up',
-    '> [!note]\n> An Obsidian type this schema has no value for',
+    '> [!note]\n> An Obsidian type Memry shares',
+    '> [!danger]\n> An Obsidian type this schema has no value for',
     '> [!info] A title on the marker line\n> and a body',
     // A marker inside a fence is the author's text, not a marker.
     '```md\n![bookmark](https://example.com)\n<!-- file:{"url":"u","name":"n","size":1,"mimeType":"m"} -->\n```',
@@ -3623,8 +3625,8 @@ describe('callouts on the CRDT path (#1846)', () => {
   // vault file demoted `> [!info]` on reopen and the callout UI never came
   // back. Now main claims exactly the bytes Memry's own serializer writes —
   // proven per note by re-serializing the body — and declines everything else,
-  // which is what keeps a foreign `> [!note]` byte-identical.
-  it.each(['info', 'warning', 'error', 'success'] as const)(
+  // which is what keeps a foreign `> [!danger]` byte-identical.
+  it.each(CALLOUT_TYPE_VALUES)(
     '`> [!%s]` with a multi-line body claims as a callout and writes identical bytes',
     async (type) => {
       // #given the bytes serializeCalloutBlock writes for this type
@@ -3654,8 +3656,8 @@ describe('callouts on the CRDT path (#1846)', () => {
   })
 
   it.each([
-    ['a foreign Obsidian type', '> [!note]\n> body text'],
-    ['another foreign type', '> [!tip]\n> body text'],
+    ['a foreign Obsidian type', '> [!danger]\n> body text'],
+    ['an uppercase GitHub alert', '> [!NOTE]\n> body text'],
     ['a title after the marker', '> [!info] A title\n> body text']
   ])('%s stays a quote block and stays byte-identical', async (_name, markdown) => {
     // #given bytes Memry never writes — an Obsidian vault's, typically

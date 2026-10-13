@@ -25,22 +25,44 @@ import { readStructuredQuoteRun } from './quote.ts'
 // callout — `> [!type]` followed by the content, one `> ` per line
 // ---------------------------------------------------------------------------
 
-export const CALLOUT_TYPE_VALUES = ['info', 'warning', 'error', 'success'] as const
+/**
+ * The first four are the original types. The rest share Obsidian's names, so
+ * an imported vault's `> [!note]` reads as a callout here too. The `type` prop
+ * is a free string in the CRDT, and builds before these types render an
+ * unknown one as `info` and write it back unchanged.
+ */
+export const CALLOUT_TYPE_VALUES = [
+  'info',
+  'warning',
+  'error',
+  'success',
+  'note',
+  'abstract',
+  'todo',
+  'tip',
+  'important',
+  'question',
+  'example',
+  'quote',
+  'bug'
+] as const
 
 export type CalloutTypeValue = (typeof CALLOUT_TYPE_VALUES)[number]
 
 /**
- * Exactly the marker `serializeCalloutBlock` writes: one of the four Memry
- * types, nothing after the `]`. `> [!note]` and `> [!info] A title` are NOT
- * this — those are someone else's bytes (Obsidian's, usually) and claiming
- * them would rewrite a file Memry never wrote.
+ * Exactly the marker `serializeCalloutBlock` writes: one Memry type in
+ * lowercase, nothing after the `]`. `> [!NOTE]`, `> [!danger]` and
+ * `> [!info] A title` are NOT this. Claiming them would rewrite bytes
+ * `serializeCalloutBlock` cannot reproduce.
  */
-const MEMRY_CALLOUT_MARKER_REGEX = /^> \[!(info|warning|error|success)\]$/
+const MEMRY_CALLOUT_MARKER_REGEX = new RegExp(`^> \\[!(${CALLOUT_TYPE_VALUES.join('|')})\\]$`)
 
 /**
  * The damaged form #1846 heals: the marker alone on its line, its `> ` prefix
  * already lost. Healed only at a paragraph start with the body directly below
- * — a lone `[!info]` with nothing under it stays the author's text.
+ * — a lone `[!info]` with nothing under it stays the author's text. Only the
+ * original four types: those are the ones the #1846 damage hit, and a bare
+ * `[!note]` line is ordinary text someone typed.
  */
 const BARE_CALLOUT_MARKER_REGEX = /^\[!(info|warning|error|success)\]$/
 

@@ -567,7 +567,7 @@ are not plain CommonMark:
 
 | Block            | On-disk form                                                                                                                    | Anchor                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                                | `:27`, `:46-51`                         |
+| callout          | `> [!<type>]` alone on its line, `<type>` one of `CALLOUT_TYPE_VALUES` in lowercase, then one `> ` per non-empty content line   | `:34-48`, `:69-74`                      |
 | structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:166-171`                              |
 | youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                          | `:331`, `:340`                          |
 | bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:347`                          |
@@ -584,12 +584,18 @@ are not plain CommonMark:
   is kept in the block's `alt` prop (default `embed`) and written back
   unchanged, so another app's `![](url)` keeps its bytes. Builds before this
   rule claimed only alt `embed` and read any other alt as an `image`;
-- the callout marker regex is strict — `> [!note]` and `> [!info] A title` are
-  deliberately **not** claimed
-  (`packages/editor-schema/src/blocks/markdown.ts:33-37`);
-- a run abutting more quote lines is refused whole (`:94`);
+- the callout marker regex is strict — a type outside `CALLOUT_TYPE_VALUES`
+  (`> [!danger]`), an uppercase marker (`> [!NOTE]`) and `> [!info] A title`
+  are deliberately **not** claimed
+  (`packages/editor-schema/src/blocks/markdown.ts:52-58`). Older builds
+  claimed only `info`, `warning`, `error` and `success`, and read the
+  other nine types as quotes. The CRDT `type` prop is a free string, so those
+  builds keep a newer type through sync and render it as `info`;
+- the bare damaged marker (`[!info]` without its `> `) is healed only for the
+  original four types (`:60-67`);
+- a run abutting more quote lines is refused whole (`:120`);
 - **a run is claimed only by proof**: the body must re-serialise byte for byte
-  (`:146`);
+  (`:177`);
 - structured quotes refuse a `>text` line and claim only a run that is separated
   or nested (`:221-227`);
 - a math run is claimed only when it OWNS its paragraph at both ends and

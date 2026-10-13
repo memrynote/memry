@@ -18,6 +18,7 @@
 
 import { serializeLinkMentionToken } from './inline/link-mention'
 import {
+  CALLOUT_TYPE_VALUES,
   serializeCalloutBlock,
   serializeMathBlock,
   serializeToggleBlock,
@@ -125,7 +126,7 @@ const dateCases: RoundtripCase[] = [
 ]
 
 const calloutCases: RoundtripCase[] = [
-  ...(['info', 'warning', 'error', 'success'] as const).map((type) => ({
+  ...CALLOUT_TYPE_VALUES.map((type) => ({
     name: `${type} callout`,
     markdown: serializeCalloutBlock(type, 'Heads up')
   })),
@@ -134,12 +135,16 @@ const calloutCases: RoundtripCase[] = [
     markdown: serializeCalloutBlock('info', 'One\nTwo')
   },
   {
-    name: 'foreign > [!note] callout passes through untouched',
+    name: 'Obsidian > [!note] callout keeps its bytes',
     markdown: '> [!note]\n> An Obsidian note callout'
   },
   {
-    name: 'foreign > [!tip] callout passes through untouched',
-    markdown: '> [!tip]\n> An Obsidian tip callout'
+    name: 'foreign > [!danger] callout passes through untouched',
+    markdown: '> [!danger]\n> An Obsidian danger callout'
+  },
+  {
+    name: 'uppercase > [!NOTE] alert passes through untouched',
+    markdown: '> [!NOTE]\n> A GitHub alert'
   },
   {
     name: 'callout with a title after the marker',
@@ -1192,10 +1197,9 @@ function fuzzDateMarkdown(random: () => number): string {
 }
 
 function fuzzCalloutMarkdown(random: () => number): string {
-  const types = ['info', 'warning', 'error', 'success'] as const
   const lines = 1 + Math.floor(random() * 3)
   const body = Array.from({ length: lines }, () => inertLine(random)).join('\n')
-  return serializeCalloutBlock(pick(random, types), body)
+  return serializeCalloutBlock(pick(random, CALLOUT_TYPE_VALUES), body)
 }
 
 /**
@@ -1368,7 +1372,8 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     pins: 'the callout `type` survives, which `extract_text` drops',
     blocks: [
       { type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' },
-      { type: 'callout', props: { type: 'info' }, content: 'For your information.' }
+      { type: 'callout', props: { type: 'info' }, content: 'For your information.' },
+      { type: 'callout', props: { type: 'note' }, content: 'Worth noting.' }
     ]
   },
   {

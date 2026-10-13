@@ -1,9 +1,11 @@
 import { createReactBlockSpec } from '@blocknote/react'
 import {
+  CALLOUT_TYPE_VALUES,
   calloutConfig,
   readCalloutRun,
   readStructuredQuoteRun,
   type CalloutRun,
+  type CalloutTypeValue,
   type QuoteRun
 } from '@memry/editor-schema/blocks'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
@@ -16,50 +18,126 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
-import { Info, AlertTriangle, XCircle, CheckCircle } from '@/lib/icons'
+import {
+  Info,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+  Pencil,
+  FileText,
+  ListChecks,
+  Lightbulb,
+  Flag,
+  HelpCircle,
+  List,
+  Quote,
+  Bug,
+  type AppIcon
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
-const CALLOUT_TYPES = [
-  {
-    value: 'info' as const,
-    label: 'Info',
+interface CalloutStyle {
+  icon: AppIcon
+  color: string
+  bg: string
+  darkBg: string
+  border: string
+}
+
+const CALLOUT_STYLES: Record<CalloutTypeValue, CalloutStyle> = {
+  info: {
     icon: Info,
     color: 'text-blue-500',
     bg: 'bg-blue-500/10',
     darkBg: 'dark:bg-blue-500/20',
     border: 'border-s-blue-500'
   },
-  {
-    value: 'warning' as const,
-    label: 'Warning',
+  warning: {
     icon: AlertTriangle,
     color: 'text-amber-500',
     bg: 'bg-amber-500/10',
     darkBg: 'dark:bg-amber-500/20',
     border: 'border-s-amber-500'
   },
-  {
-    value: 'error' as const,
-    label: 'Error',
+  error: {
     icon: XCircle,
     color: 'text-red-500',
     bg: 'bg-red-500/10',
     darkBg: 'dark:bg-red-500/20',
     border: 'border-s-red-500'
   },
-  {
-    value: 'success' as const,
-    label: 'Success',
+  success: {
     icon: CheckCircle,
     color: 'text-green-500',
     bg: 'bg-green-500/10',
     darkBg: 'dark:bg-green-500/20',
     border: 'border-s-green-500'
+  },
+  note: {
+    icon: Pencil,
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-500/10',
+    darkBg: 'dark:bg-indigo-500/20',
+    border: 'border-s-indigo-500'
+  },
+  abstract: {
+    icon: FileText,
+    color: 'text-teal-500',
+    bg: 'bg-teal-500/10',
+    darkBg: 'dark:bg-teal-500/20',
+    border: 'border-s-teal-500'
+  },
+  todo: {
+    icon: ListChecks,
+    color: 'text-sky-500',
+    bg: 'bg-sky-500/10',
+    darkBg: 'dark:bg-sky-500/20',
+    border: 'border-s-sky-500'
+  },
+  tip: {
+    icon: Lightbulb,
+    color: 'text-cyan-500',
+    bg: 'bg-cyan-500/10',
+    darkBg: 'dark:bg-cyan-500/20',
+    border: 'border-s-cyan-500'
+  },
+  important: {
+    icon: Flag,
+    color: 'text-fuchsia-500',
+    bg: 'bg-fuchsia-500/10',
+    darkBg: 'dark:bg-fuchsia-500/20',
+    border: 'border-s-fuchsia-500'
+  },
+  question: {
+    icon: HelpCircle,
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/10',
+    darkBg: 'dark:bg-orange-500/20',
+    border: 'border-s-orange-500'
+  },
+  example: {
+    icon: List,
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/10',
+    darkBg: 'dark:bg-purple-500/20',
+    border: 'border-s-purple-500'
+  },
+  quote: {
+    icon: Quote,
+    color: 'text-stone-500',
+    bg: 'bg-stone-500/10',
+    darkBg: 'dark:bg-stone-500/20',
+    border: 'border-s-stone-500'
+  },
+  bug: {
+    icon: Bug,
+    color: 'text-rose-500',
+    bg: 'bg-rose-500/10',
+    darkBg: 'dark:bg-rose-500/20',
+    border: 'border-s-rose-500'
   }
-] as const
-
-type CalloutTypeValue = (typeof CALLOUT_TYPES)[number]['value']
+}
 
 interface CalloutBlock {
   props: {
@@ -81,20 +159,30 @@ interface CalloutBlockRendererProps {
   contentRef: React.Ref<HTMLDivElement>
 }
 
-function getCalloutConfig(type: string) {
-  return CALLOUT_TYPES.find((t) => t.value === type) ?? CALLOUT_TYPES[0]
+// A type from a newer build renders as info and keeps its value.
+function getCalloutStyle(type: string): CalloutStyle {
+  return CALLOUT_STYLES[type as CalloutTypeValue] ?? CALLOUT_STYLES.info
 }
 
 function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendererProps) {
   const { t } = useT('notes')
   const calloutEditor = editor as CalloutEditor
-  const calloutType = getCalloutConfig(block.props.type)
+  const calloutType = getCalloutStyle(block.props.type)
   const Icon = calloutType.icon
   const labels: Record<CalloutTypeValue, string> = {
     info: t('editor.callout.info'),
     warning: t('editor.callout.warning'),
     error: t('editor.callout.error'),
-    success: t('editor.callout.success')
+    success: t('editor.callout.success'),
+    note: t('editor.callout.note'),
+    abstract: t('editor.callout.abstract'),
+    todo: t('editor.callout.todo'),
+    tip: t('editor.callout.tip'),
+    important: t('editor.callout.important'),
+    question: t('editor.callout.question'),
+    example: t('editor.callout.example'),
+    quote: t('editor.callout.quote'),
+    bug: t('editor.callout.bug')
   }
 
   return (
@@ -124,20 +212,20 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
         <DropdownMenuContent align="start" sideOffset={8}>
           <DropdownMenuLabel>{t('editor.callout.menuLabel')}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {CALLOUT_TYPES.map((type) => {
-            const ItemIcon = type.icon
+          {CALLOUT_TYPE_VALUES.map((value) => {
+            const { icon: ItemIcon, color } = CALLOUT_STYLES[value]
             return (
               <DropdownMenuItem
-                key={type.value}
+                key={value}
                 onClick={() =>
                   calloutEditor.updateBlock(block, {
                     type: 'callout',
-                    props: { type: type.value }
+                    props: { type: value }
                   })
                 }
               >
-                <ItemIcon className={cn('h-4 w-4', type.color)} />
-                {labels[type.value]}
+                <ItemIcon className={cn('h-4 w-4', color)} />
+                {labels[value]}
               </DropdownMenuItem>
             )
           })}
@@ -187,7 +275,7 @@ export function getCalloutSlashMenuItem(
 // The `> [!type]` form AND the claim rules live in @memry/editor-schema/blocks
 // so both processes read and write the same bytes. The reader is strict on
 // purpose: only the exact shape `serializeCalloutBlock` writes (plus the bare
-// damaged shape #1846 heals) is claimed — `> [!note]` and a title after the
+// damaged shape #1846 heals) is claimed — `> [!danger]` and a title after the
 // marker are someone else's bytes and stay quote blocks, on this path exactly
 // as on the CRDT one.
 export { serializeCalloutBlock } from '@memry/editor-schema/blocks'

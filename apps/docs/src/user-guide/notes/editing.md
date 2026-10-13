@@ -394,6 +394,21 @@ Common markdown shortcuts work inline:
 | `` `code` `` | `code`        |
 | ` ``` `      | Code block    |
 
+## Callouts
+
+`/callout` inserts an info callout. Click its icon to change the type. Each type has its
+own colour and icon: info, warning, error, success, note, summary, to-do, tip, important,
+question, example, quote and bug.
+
+A callout is saved as an Obsidian-style marker, `> [!type]` on its own line with one `> `
+line per body line. The new types use Obsidian's names (summary is saved as `abstract`), so
+a `> [!note]` or `> [!tip]` callout from an Obsidian vault opens as a callout here. A
+callout with a title after the marker, a type Memry does not have (such as `[!danger]`), or
+an uppercase marker such as GitHub's `> [!NOTE]` opens as a quote and keeps its bytes.
+
+On the iPhone app, types that share a colour are told apart by their icon. An older Memry
+version shows the newer types as info callouts and keeps their type.
+
 ## Quotes
 
 A quote can hold more than one paragraph. A blank quote line separates them, and a quote
