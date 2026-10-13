@@ -117,6 +117,25 @@ describe('attachment chunk holds (#3022)', () => {
     expect(storageUsed()).toBe(900)
   })
 
+  // #3034: two devices releasing the last two holds at once must refund once.
+  it('refunds a chunk once when its last two holds are released concurrently', async () => {
+    insertChunk('h1', 0)
+    d1.raw
+      .prepare(
+        `INSERT INTO attachment_chunk_holds (user_id, vault_id, holder_id, chunk_hash, created_at)
+         VALUES (?, ?, ?, 'h1', 1), (?, ?, ?, 'h1', 1)`
+      )
+      .run(USER_ID, VAULT_ID, HOLDER_A, USER_ID, VAULT_ID, HOLDER_B)
+
+    const released = await Promise.all([
+      releaseHolds(d1.db, USER_ID, VAULT_ID, [HOLDER_A]),
+      releaseHolds(d1.db, USER_ID, VAULT_ID, [HOLDER_B])
+    ])
+
+    expect(released).toEqual([1, 1])
+    expect(storageUsed()).toBe(900)
+  })
+
   it('does not refund a released chunk that an upload still references', async () => {
     insertChunk('h1', 1)
     await holdChunks(d1.db, USER_ID, VAULT_ID, [{ holderId: HOLDER_A, chunkHashes: ['h1'] }])
