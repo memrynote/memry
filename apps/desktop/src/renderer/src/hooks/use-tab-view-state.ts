@@ -109,16 +109,33 @@ export function useTabViewState<T>({
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
   // Also re-seed when the stored value changes under a mounted page: opening a
   // task from Home merges `openTaskId` into the Tasks tab that is already open.
-  // A value this hook wrote itself reads back as what it already holds.
+  // `getTab` reads a ref the provider syncs in an effect, so `stored` lags one
+  // commit: a render triggered by a write still sees this hook's PREVIOUS write.
+  // Writes not yet seen in `stored` are queued, and a `stored` that matches one
+  // is that write arriving late, not an outside change; re-seeding from it
+  // would revert the value the user just picked.
   const identityKey = identity ? `${identity.groupId}:${identity.tabId}` : ''
   const [seededFor, setSeededFor] = useState(identityKey)
   const [seenStored, setSeenStored] = useState(stored)
-  if (seededFor !== identityKey || seenStored !== stored) {
+  const unseenWritesRef = useRef<unknown[]>([])
+  if (seededFor !== identityKey) {
     setSeededFor(identityKey)
     setSeenStored(stored)
+    unseenWritesRef.current = []
     const seeded = read()
     valueRef.current = seeded
     setValue(seeded)
+  } else if (seenStored !== stored) {
+    setSeenStored(stored)
+    const echoed = unseenWritesRef.current.indexOf(stored)
+    if (echoed >= 0) {
+      unseenWritesRef.current = unseenWritesRef.current.slice(echoed + 1)
+    } else {
+      unseenWritesRef.current = []
+      const seeded = read()
+      valueRef.current = seeded
+      setValue(seeded)
+    }
   }
 
   const setTabViewState = useCallback<TabViewStateSetter<T>>(
@@ -130,6 +147,7 @@ export function useTabViewState<T>({
 
       const current = identityRef.current
       if (!current || !dispatch) return
+      unseenWritesRef.current.push(resolved)
       const viewState: Record<string, unknown> = { [key]: resolved }
       if (aliasToken !== '') {
         for (const alias of aliasToken.split(ALIAS_SEPARATOR)) viewState[alias] = resolved
