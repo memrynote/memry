@@ -182,8 +182,8 @@ export function createTagsService({
       if (!normalized) throw new Error('Tag name is required')
       dataDb
         .insert(tagDefinitions)
-        .values({ name: normalized, color })
-        .onConflictDoUpdate({ target: tagDefinitions.name, set: { color } })
+        .values({ name: normalized, color, colorAuthored: true })
+        .onConflictDoUpdate({ target: tagDefinitions.name, set: { color, colorAuthored: true } })
         .run()
 
       return (
