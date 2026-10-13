@@ -4,7 +4,12 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
 
-import { calendarExternalEvents, calendarSources, syncState } from '@memry/db-schema/data-schema'
+import {
+  calendarExternalEvents,
+  calendarSources,
+  syncState,
+  tagDefinitions
+} from '@memry/db-schema/data-schema'
 import { extractedText, noteCache } from '@memry/db-schema/index-schema'
 
 import { openDatabases } from './database.ts'
@@ -917,6 +922,37 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.ok((await app.graph.local(note.id, 1)).nodes.some((node) => node.id === linkedNote.id))
 
   app.close()
+})
+
+test('setting a tag colour marks it user-authored, like the desktop colour picker', async () => {
+  const vaultPath = await makeVault()
+  const databases = openDatabases(vaultPath)
+  databases.dataDb.insert(tagDefinitions).values({ name: 'minted', color: '#111111' }).run()
+  databases.close()
+
+  const app = await createMemryApp({ vaultPath })
+  await app.tags.setColor('fresh', '#123456')
+  await app.tags.setColor('minted', '#654321')
+  app.close()
+
+  const check = openDatabases(vaultPath)
+  try {
+    const rows = check.dataDb
+      .select({
+        name: tagDefinitions.name,
+        color: tagDefinitions.color,
+        authored: tagDefinitions.colorAuthored
+      })
+      .from(tagDefinitions)
+      .all()
+      .sort((a, b) => a.name.localeCompare(b.name))
+    assert.deepEqual(rows, [
+      { name: 'fresh', color: '#123456', authored: true },
+      { name: 'minted', color: '#654321', authored: true }
+    ])
+  } finally {
+    check.close()
+  }
 })
 
 test('exports tasks without their ids unless the caller keeps them', async () => {
