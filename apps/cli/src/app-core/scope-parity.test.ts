@@ -511,6 +511,23 @@ test('config updates to one vault do not leak into the next vault opened in the 
   }
 })
 
+test('inbox convertToTask files the item as a task under its task id, as desktop does (#2973)', async () => {
+  const app = await createMemryApp({ vaultPath: await makeVault() })
+  try {
+    const capture = await app.inbox.captureText({ title: 'Task from inbox', content: 'Do it' })
+    const result = await app.inbox.convertToTask(capture.id)
+    assert.equal(result.success, true)
+    const filed = await app.inbox.get(capture.id)
+    assert.equal(filed?.filedAction, 'task')
+    assert.equal(filed?.filedTo, result.taskId)
+    const [entry] = (await app.inbox.filingHistory()).entries
+    assert.equal(entry?.filedAction, 'task')
+    assert.equal(entry?.filedTo, result.taskId)
+  } finally {
+    app.close()
+  }
+})
+
 test('note properties are top-level frontmatter keys, as desktop writes them (#2975)', async () => {
   const vaultPath = await makeVault()
   const app = await createMemryApp({ vaultPath })
