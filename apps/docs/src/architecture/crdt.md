@@ -1663,16 +1663,17 @@ correspondingly tolerant: a token written by an older build can carry a stray sp
 escape, and it is repaired on open rather than left broken.
 
 Callouts are parsed back **only in the exact shape Memry itself writes**: a marker that is
-one of the four supported types with nothing after the `]`, followed by one `> ` per body
-line. The claim is proven per note — the body is re-serialized and must reproduce the file
-byte-for-byte, or the run is declined. Everything else — `> [!note]`, `> [!tip]`, a title
-after the marker, a blank `>` line, a list in the body — stays a quote block and its bytes
+one of the `CALLOUT_TYPE_VALUES` (lowercase; the common Markdown callout names past the original four) with
+nothing after the `]`, followed by one `> ` per body line. The claim is proven per note — the
+body is re-serialized and must reproduce the file byte-for-byte, or the run is declined.
+Everything else — `> [!danger]`, `> [!NOTE]`, a title after the marker, a blank `>` line, a
+list in the body — stays a quote block and its bytes
 stay untouched, which is what keeps an Obsidian-authored vault byte-identical through Memry.
 Both processes share the claim rules (`readCalloutRun` / `resolveCalloutRun` in
 `@memry/editor-schema/blocks`), so a callout survives create → sync → main-process
 write-back → reopen on the collaborative and non-collaborative paths alike. A note already
 damaged into a bare `[!info]` line with its body directly below heals into a callout on
-parse; a lone marker, a marker mid-paragraph, or a body the schema could not reproduce stays
+parse (only the original four types heal; a bare `[!note]` line is text someone typed); a lone marker, a marker mid-paragraph, or a body the schema could not reproduce stays
 the author's text.
 
 ## Files Worth Knowing

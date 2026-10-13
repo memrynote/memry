@@ -136,42 +136,55 @@ struct QuoteRow: View {
     }
 }
 
+/// A callout's type: its name, symbol and hue. Desktop's
+/// `CALLOUT_TYPE_VALUES` in the same order. The hues are the nearest of the
+/// nine content colours to desktop's, so some types share one; the symbol
+/// tells them apart, in greyscale and under a colour-blind eye too.
+struct CalloutKind {
+    let id: String
+    let name: String
+    let symbol: String
+    let hue: String
+
+    static let all: [CalloutKind] = [
+        .init(id: "info", name: "Info", symbol: "info.circle", hue: "blue"),
+        .init(id: "warning", name: "Warning", symbol: "exclamationmark.triangle", hue: "yellow"),
+        .init(id: "error", name: "Error", symbol: "xmark.circle", hue: "red"),
+        .init(id: "success", name: "Success", symbol: "checkmark.circle", hue: "green"),
+        .init(id: "note", name: "Note", symbol: "pencil", hue: "blue"),
+        .init(id: "abstract", name: "Summary", symbol: "doc.text", hue: "green"),
+        .init(id: "todo", name: "To-do", symbol: "checklist", hue: "blue"),
+        .init(id: "tip", name: "Tip", symbol: "lightbulb", hue: "brown"),
+        .init(id: "important", name: "Important", symbol: "flag", hue: "pink"),
+        .init(id: "question", name: "Question", symbol: "questionmark.circle", hue: "orange"),
+        .init(id: "example", name: "Example", symbol: "list.bullet", hue: "purple"),
+        .init(id: "quote", name: "Quote", symbol: "quote.opening", hue: "gray"),
+        .init(id: "bug", name: "Bug", symbol: "ladybug", hue: "red"),
+    ]
+
+    /// A type from a newer build draws as info, as desktop does.
+    static func named(_ id: String) -> CalloutKind {
+        all.first { $0.id == id } ?? all[0]
+    }
+}
+
 struct CalloutRow: View {
     let type: String
     let text: AttributedString
 
-    private var symbol: String {
-        switch type {
-        case "warning": "exclamationmark.triangle"
-        case "error": "xmark.circle"
-        case "success": "checkmark.circle"
-        default: "info.circle"
-        }
-    }
-
-    /// Desktop's callout colours: blue, amber, red and green, carried by the
-    /// symbol, a leading bar and a tinted fill. The symbol keeps the type
-    /// readable in greyscale and under a colour-blind eye.
-    private var hue: String {
-        switch type {
-        case "warning": "yellow"
-        case "error": "red"
-        case "success": "green"
-        default: "blue"
-        }
-    }
+    private var kind: CalloutKind { CalloutKind.named(type) }
 
     private var ink: Color {
-        (Tokens.Content.ink(named: hue) ?? Tokens.Text.secondary).color
+        (Tokens.Content.ink(named: kind.hue) ?? Tokens.Text.secondary).color
     }
 
     private var fill: Color {
-        (Tokens.Content.fill(named: hue) ?? Tokens.Canvas.surface).color
+        (Tokens.Content.fill(named: kind.hue) ?? Tokens.Canvas.surface).color
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: Tokens.Space.medium) {
-            Image(systemName: symbol)
+            Image(systemName: kind.symbol)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(ink)
                 .accessibilityHidden(true)
@@ -185,7 +198,7 @@ struct CalloutRow: View {
         }
         .clipShape(.rect(cornerRadius: Tokens.Radius.control))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(type) callout")
+        .accessibilityLabel("\(kind.name) callout")
     }
 }
 

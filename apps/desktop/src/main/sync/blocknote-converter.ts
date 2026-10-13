@@ -1109,8 +1109,8 @@ async function parseContentWithMarkers(
 
     // Callouts are claimed here ONLY in the exact shapes this feature owns —
     // see parseCalloutRunAt. Everything else `> `-prefixed stays a quote block
-    // and its bytes stay untouched, which is what keeps `> [!note]` in an
-    // Obsidian vault byte-identical through Memry.
+    // and its bytes stay untouched, which is what keeps `> [!danger]` or a
+    // titled callout from another app byte-identical through Memry.
     if (!insideFence) {
       const afterSidecarMarker = buffer.length === 0 && pending.length > 0
       const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker
@@ -1207,7 +1207,7 @@ async function parseContentWithMarkers(
  *
  * The claim is proven, not pattern-matched: `resolveCalloutRun` re-serializes
  * the body and claims only when `serializeCalloutBlock` would write the run
- * back byte-for-byte. `> [!note]`, `> [!tip]`, a title after the marker, a
+ * back byte-for-byte. A type outside `CALLOUT_TYPE_VALUES`, a title after the marker, a
  * blank `>` line, a list in the body — all decline and stay quote blocks with
  * their bytes untouched, which is the Obsidian-vault guarantee the old
  * "never parse callouts" rule existed to protect (#1846). What that rule cost

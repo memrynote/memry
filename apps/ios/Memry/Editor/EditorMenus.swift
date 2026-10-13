@@ -221,16 +221,9 @@ struct CalloutTypeMenu: View {
     let type: String
     let setType: (String) -> Void
 
-    private static let types: [(id: String, name: String, symbol: String)] = [
-        ("info", "Info", "info.circle"),
-        ("warning", "Warning", "exclamationmark.triangle"),
-        ("error", "Error", "xmark.octagon"),
-        ("success", "Success", "checkmark.circle"),
-    ]
-
     var body: some View {
         Menu {
-            ForEach(Self.types, id: \.id) { entry in
+            ForEach(CalloutKind.all, id: \.id) { entry in
                 Button {
                     setType(entry.id)
                 } label: {
@@ -238,7 +231,7 @@ struct CalloutTypeMenu: View {
                 }
             }
         } label: {
-            Image(systemName: Self.types.first { $0.id == type }?.symbol ?? "info.circle")
+            Image(systemName: CalloutKind.named(type).symbol)
         }
         .accessibilityLabel("Callout type: \(type)")
     }

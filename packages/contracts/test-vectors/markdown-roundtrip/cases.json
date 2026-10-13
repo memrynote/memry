@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 244,
+    "exportedCaseCount": 257,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 254,
+    "caseCount": 267,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -161,6 +161,69 @@
       "sha256": "364342a7670b6118a683cbafef674863828e340a00eee0b5c4b2403c4cb671e1"
     },
     {
+      "name": "note callout",
+      "markdown": "> [!note]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f48061c6588ab02252687164f1d264359d295c3fd7eaa16e76ae52fb60552c13"
+    },
+    {
+      "name": "abstract callout",
+      "markdown": "> [!abstract]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "58611aedd17d89a44414bf2bb13d1a644b39eb310f05e92a8ab0faa52c0bbf6e"
+    },
+    {
+      "name": "todo callout",
+      "markdown": "> [!todo]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0f92e7cbbd69a2d4f2181eb102275e21035428c3e5b13f52f42d3a07a654c974"
+    },
+    {
+      "name": "tip callout",
+      "markdown": "> [!tip]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d0dc12ae427c3de9ee967cb0987683128ab2cf8a1c148316300a8e3130b972a5"
+    },
+    {
+      "name": "important callout",
+      "markdown": "> [!important]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9ba6bc3d50971a6852ba7adbcd89784f6a99cd05c5841150a4aa06ee46f85a82"
+    },
+    {
+      "name": "question callout",
+      "markdown": "> [!question]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a3161ef644640e26bedbec8b007be81081839a33a97c0cc0e4adf38763726b0c"
+    },
+    {
+      "name": "example callout",
+      "markdown": "> [!example]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "935ec1dec10366262066dd1dc4a98c69f68cb692fec94067923bc8cf49ac54b6"
+    },
+    {
+      "name": "quote callout",
+      "markdown": "> [!quote]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2a104938b0ff8fd25ff60b2bc3b3d4451717ac595e2bb16baef174fc7b859999"
+    },
+    {
+      "name": "bug callout",
+      "markdown": "> [!bug]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "04b9cbf55e975137a389297b9b2e02f5354ad46013d84031e72a34dc4fea26da"
+    },
+    {
       "name": "callout with a multi-line body",
       "markdown": "> [!info]\n> One\n> Two",
       "canonical": null,
@@ -168,18 +231,25 @@
       "sha256": "12661c8d5427ce4d8c05903114de0e5ec98ed3a49fd01ddd44d7dc39e6977724"
     },
     {
-      "name": "foreign > [!note] callout passes through untouched",
-      "markdown": "> [!note]\n> An Obsidian note callout",
+      "name": "external > [!note] callout keeps its bytes",
+      "markdown": "> [!note]\n> A note callout from another app",
       "canonical": null,
       "pending": null,
-      "sha256": "1800a0c894b1b78d00b7ebb6ef507014f145f4f6d88da1811b1ffbad79468d18"
+      "sha256": "7dd4957b73bc99b6b5acc4d59a4706ad98aa4f403e10b8468a6e3db4485c1fe9"
     },
     {
-      "name": "foreign > [!tip] callout passes through untouched",
-      "markdown": "> [!tip]\n> An Obsidian tip callout",
+      "name": "foreign > [!danger] callout passes through untouched",
+      "markdown": "> [!danger]\n> A danger callout from another app",
       "canonical": null,
       "pending": null,
-      "sha256": "6d093e7086a1de68536ad5ce9e6343804d63e82e9bd5c611501e35244f42eca7"
+      "sha256": "afa5ad37f7bcd6788d3df1a9e7873b3d17ee88b8ff2b32270aec6f3cf7d018c3"
+    },
+    {
+      "name": "uppercase > [!NOTE] alert passes through untouched",
+      "markdown": "> [!NOTE]\n> A GitHub alert",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8abdcea1f1e95b24d9e00c4921a01194367e95881ad0ff02063d0be96352a080"
     },
     {
       "name": "callout with a title after the marker",
@@ -1445,18 +1515,39 @@
       "sha256": "b3b052d9369e32a9c49f95c105676541bea7c4aa696212cfd4f40ccfe8e1efde"
     },
     {
-      "name": "soft break in callout list-item link text (BBF-110)",
-      "markdown": "> [!note]\n>\n> - [a\n> b](u)",
+      "name": "soft break in foreign callout list-item link text (BBF-110)",
+      "markdown": "> [!danger]\n>\n> - [a\n> b](u)",
       "canonical": null,
       "pending": null,
-      "sha256": "1d6eac1969b71e5c2518230cbbb9012d32aafcd46ab547a857191e63c5c2de0b"
+      "sha256": "d41cf3f25c0c56281289ee1d0e777ec8f1192efa85f858b5a9c482418015c9b9"
+    },
+    {
+      "name": "lazy soft break in foreign callout list-item link text (BBF-110)",
+      "markdown": "> [!danger]\n> - [a\nb](u)",
+      "canonical": "> [!danger]\n>\n> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "549150c497b0d8a9859c3fd3576ffe78d5a252c5a914f655a6ee6cfc4ae3dce9"
+    },
+    {
+      "name": "soft break in callout list-item link text (BBF-110)",
+      "markdown": "> [!note]\n> - [a\n> b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "84a2cf38e8061f193bb0ca2633796ae39d77e3007f84b0901c5d9de6b2caffd7"
     },
     {
       "name": "lazy soft break in callout list-item link text (BBF-110)",
       "markdown": "> [!note]\n> - [a\nb](u)",
-      "canonical": "> [!note]\n>\n> - [a\n> b](u)",
+      "canonical": "> [!note]\n> - [a\n> b](u)",
       "pending": null,
       "sha256": "23199d06a4f4c52b86c5aa6a50ab493a1970e5414900ce43412a2737100810bf"
+    },
+    {
+      "name": "blank line before a callout list normalizes away",
+      "markdown": "> [!note]\n>\n> - [a\n> b](u)",
+      "canonical": "> [!note]\n> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "1d6eac1969b71e5c2518230cbbb9012d32aafcd46ab547a857191e63c5c2de0b"
     },
     {
       "name": "quoted fence, lazy line (BBF-113)",

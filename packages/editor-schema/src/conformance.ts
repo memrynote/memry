@@ -18,6 +18,7 @@
 
 import { serializeLinkMentionToken } from './inline/link-mention'
 import {
+  CALLOUT_TYPE_VALUES,
   serializeCalloutBlock,
   serializeMathBlock,
   serializeToggleBlock,
@@ -125,7 +126,7 @@ const dateCases: RoundtripCase[] = [
 ]
 
 const calloutCases: RoundtripCase[] = [
-  ...(['info', 'warning', 'error', 'success'] as const).map((type) => ({
+  ...CALLOUT_TYPE_VALUES.map((type) => ({
     name: `${type} callout`,
     markdown: serializeCalloutBlock(type, 'Heads up')
   })),
@@ -134,12 +135,16 @@ const calloutCases: RoundtripCase[] = [
     markdown: serializeCalloutBlock('info', 'One\nTwo')
   },
   {
-    name: 'foreign > [!note] callout passes through untouched',
-    markdown: '> [!note]\n> An Obsidian note callout'
+    name: 'external > [!note] callout keeps its bytes',
+    markdown: '> [!note]\n> A note callout from another app'
   },
   {
-    name: 'foreign > [!tip] callout passes through untouched',
-    markdown: '> [!tip]\n> An Obsidian tip callout'
+    name: 'foreign > [!danger] callout passes through untouched',
+    markdown: '> [!danger]\n> A danger callout from another app'
+  },
+  {
+    name: 'uppercase > [!NOTE] alert passes through untouched',
+    markdown: '> [!NOTE]\n> A GitHub alert'
   },
   {
     name: 'callout with a title after the marker',
@@ -926,13 +931,30 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '> - [a\n> b](u)'
   },
   {
+    name: 'soft break in foreign callout list-item link text (BBF-110)',
+    markdown: '> [!danger]\n>\n> - [a\n> b](u)'
+  },
+  {
+    name: 'lazy soft break in foreign callout list-item link text (BBF-110)',
+    markdown: '> [!danger]\n> - [a\nb](u)',
+    canonical: '> [!danger]\n>\n> - [a\n> b](u)'
+  },
+  {
+    // A Memry callout whose body opens on a list has an empty own line and
+    // writes the list directly under the marker, as `callout holding a bullet
+    // list` does.
     name: 'soft break in callout list-item link text (BBF-110)',
-    markdown: '> [!note]\n>\n> - [a\n> b](u)'
+    markdown: '> [!note]\n> - [a\n> b](u)'
   },
   {
     name: 'lazy soft break in callout list-item link text (BBF-110)',
     markdown: '> [!note]\n> - [a\nb](u)',
-    canonical: '> [!note]\n>\n> - [a\n> b](u)'
+    canonical: '> [!note]\n> - [a\n> b](u)'
+  },
+  {
+    name: 'blank line before a callout list normalizes away',
+    markdown: '> [!note]\n>\n> - [a\n> b](u)',
+    canonical: '> [!note]\n> - [a\n> b](u)'
   },
   // A fence in a quote stays a fence: `- ` inside it is code, not a list, and
   // an untagged fence stays untagged (BBF-113). A fence-only quote keeps main's
@@ -1200,10 +1222,9 @@ function fuzzDateMarkdown(random: () => number): string {
 }
 
 function fuzzCalloutMarkdown(random: () => number): string {
-  const types = ['info', 'warning', 'error', 'success'] as const
   const lines = 1 + Math.floor(random() * 3)
   const body = Array.from({ length: lines }, () => inertLine(random)).join('\n')
-  return serializeCalloutBlock(pick(random, types), body)
+  return serializeCalloutBlock(pick(random, CALLOUT_TYPE_VALUES), body)
 }
 
 /**
@@ -1376,7 +1397,8 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     pins: 'the callout `type` survives, which `extract_text` drops',
     blocks: [
       { type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' },
-      { type: 'callout', props: { type: 'info' }, content: 'For your information.' }
+      { type: 'callout', props: { type: 'info' }, content: 'For your information.' },
+      { type: 'callout', props: { type: 'note' }, content: 'Worth noting.' }
     ]
   },
   {

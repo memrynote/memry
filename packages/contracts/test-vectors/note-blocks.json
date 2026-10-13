@@ -642,7 +642,7 @@
     {
       "name": "callout",
       "pins": "the callout `type` survives, which `extract_text` drops",
-      "updateHex": "0111f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030763616c6c6f75740700f2da95eb0602060400f2da95eb06030d4d696e6420746865206761702e2800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb060204747970650177077761726e696e672800f2da95eb060102696401770963616c6c6f75742d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb0615030763616c6c6f75740700f2da95eb0616060400f2da95eb061715466f7220796f757220696e666f726d6174696f6e2e2800f2da95eb06160d74657874416c69676e6d656e740177046c6566742800f2da95eb06160974657874436f6c6f7201770764656661756c742800f2da95eb06160474797065017704696e666f2800f2da95eb061502696401770963616c6c6f75742d3100",
+      "updateHex": "0119f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030763616c6c6f75740700f2da95eb0602060400f2da95eb06030d4d696e6420746865206761702e2800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb060204747970650177077761726e696e672800f2da95eb060102696401770963616c6c6f75742d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb0615030763616c6c6f75740700f2da95eb0616060400f2da95eb061715466f7220796f757220696e666f726d6174696f6e2e2800f2da95eb06160d74657874416c69676e6d656e740177046c6566742800f2da95eb06160974657874436f6c6f7201770764656661756c742800f2da95eb06160474797065017704696e666f2800f2da95eb061502696401770963616c6c6f75742d3187f2da95eb0615030e626c6f636b436f6e7461696e65720700f2da95eb0631030763616c6c6f75740700f2da95eb0632060400f2da95eb06330d576f727468206e6f74696e672e2800f2da95eb06320d74657874416c69676e6d656e740177046c6566742800f2da95eb06320974657874436f6c6f7201770764656661756c742800f2da95eb063204747970650177046e6f74652800f2da95eb063102696401770963616c6c6f75742d3200",
       "expectedBlocks": [
         {
           "id": "callout-0",
@@ -697,9 +697,36 @@
               "target": null
             }
           ]
+        },
+        {
+          "id": "callout-2",
+          "kind": "callout",
+          "depth": 0,
+          "props": [
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            },
+            {
+              "name": "type",
+              "value": "note"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Worth noting.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"callout-0\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"warning\"\n3 text \"Mind the gap.\"\n1 element blockContainer id=\"callout-1\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"For your information.\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"callout-0\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"warning\"\n3 text \"Mind the gap.\"\n1 element blockContainer id=\"callout-1\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"For your information.\"\n1 element blockContainer id=\"callout-2\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"Worth noting.\""
     },
     {
       "name": "codeBlock",

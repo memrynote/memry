@@ -267,7 +267,16 @@
       "info": "Info",
       "warning": "Warning",
       "error": "Error",
-      "success": "Success"
+      "success": "Success",
+      "note": "Note",
+      "abstract": "Summary",
+      "todo": "To-do",
+      "tip": "Tip",
+      "important": "Important",
+      "question": "Question",
+      "example": "Example",
+      "quote": "Quote",
+      "bug": "Bug"
     },
     "columns": {
       "group": "Basic blocks",

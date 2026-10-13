@@ -113,7 +113,7 @@ describe('parseMarkdownPreservingBlanks', () => {
   })
 
   it('leaves foreign and titled callout markers as markdown instead of claiming them', async () => {
-    // `> [!note]` and `> [!warning] A title` are bytes Memry never writes —
+    // `> [!danger]` and `> [!warning] A title` are bytes Memry never writes —
     // claiming them would rewrite an Obsidian vault on the next save (#1846).
     const editor = {
       tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
@@ -131,11 +131,13 @@ describe('parseMarkdownPreservingBlanks', () => {
 
     const blocks = await parseMarkdownPreservingBlanks(
       editor,
-      ['> [!note]\n> An Obsidian type', '', '> [!warning] A title\n> and a body'].join('\n')
+      ['> [!danger]\n> A foreign type', '', '> [!warning] A title\n> and a body'].join('\n')
     )
 
     expect(blocks.some((b) => (b.type as string) === 'callout')).toBe(false)
-    expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(expect.stringContaining('[!note]'))
+    expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
+      expect.stringContaining('[!danger]')
+    )
   })
 
   it('heals a bare callout marker whose body sits directly below (#1846)', async () => {
