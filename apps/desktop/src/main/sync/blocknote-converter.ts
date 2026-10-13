@@ -16,6 +16,7 @@ import {
   readStructuredQuoteRun,
   resolveCalloutRun,
   resolveQuoteRun,
+  serializeCalloutBlock,
   serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
@@ -895,6 +896,10 @@ function isStructuredQuote(block: Block): boolean {
   return (block.type as string) === 'quote' && ((block.children ?? []) as Block[]).length > 0
 }
 
+function isCalloutWithChildren(block: Block): boolean {
+  return (block.type as string) === 'callout' && ((block.children ?? []) as Block[]).length > 0
+}
+
 /**
  * A quote block that owns children writes them INSIDE the blockquote, one `> `
  * per line and a bare `>` per gap — the bytes `readStructuredQuoteRun` reads
@@ -912,6 +917,24 @@ async function serializeQuote(editor: ServerBlockNoteEditor, block: Block): Prom
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
   return serializeQuoteBlock(inner.trim())
+}
+
+/**
+ * A callout that owns children writes them inside its blockquote, after its
+ * own line, the shape `resolveCalloutRun` reads back (#3186). BlockNote's own
+ * serializer would put them after the callout. A callout without children
+ * keeps the `calloutDom` path.
+ */
+async function serializeCalloutWithChildren(
+  editor: ServerBlockNoteEditor,
+  block: Block
+): Promise<string> {
+  // SAFETY: the callout's own inline content as a bare paragraph; `props` is
+  // cleared because a paragraph's propSchema has no `type` key.
+  const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+  const children = (block.children ?? []) as Block[]
+  const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
+  return serializeCalloutBlock((block.props as { type: string }).type, inner.trim())
 }
 
 /**
@@ -1099,7 +1122,8 @@ async function parseContentWithMarkers(
         const callout = {
           type: 'callout',
           props: { type: claimed.type },
-          content: claimed.content
+          content: claimed.content,
+          children: claimed.children
         } as unknown as Block
         applyPending(callout)
         blocks.push(callout)
@@ -1200,18 +1224,23 @@ async function parseCalloutRunAt(
   lines: readonly string[],
   i: number,
   atParagraphStart: boolean
-): Promise<{ type: string; content: unknown; end: number } | null> {
+): Promise<{ type: string; content: unknown; children: Block[]; end: number } | null> {
   const run = readCalloutRun(lines, i, atParagraphStart)
   if (!run) return null
 
   const claimed = await resolveCalloutRun(
     run,
     async (md) => (await parseMarkdownToBlocks(editor, md)) as never[],
-    async (block) => serializeBlocks(editor, [block as PartialBlock])
+    async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
   )
   if (!claimed) return null
 
-  return { type: claimed.type, content: claimed.content, end: run.end }
+  return {
+    type: claimed.type,
+    content: claimed.content,
+    children: claimed.children as Block[],
+    end: run.end
+  }
 }
 
 /**
@@ -1403,10 +1432,12 @@ async function blocksToMarkdownPreserving(
           blocksToMarkdownPreserving(editor, children)
         )
       })
-    } else if (isStructuredQuote(block)) {
+    } else if (isStructuredQuote(block) || isCalloutWithChildren(block)) {
       await flushContentGroup()
       flushGap()
-      const quoted = await serializeQuote(editor, block)
+      const quoted = isStructuredQuote(block)
+        ? await serializeQuote(editor, block)
+        : await serializeCalloutWithChildren(editor, block)
       segments.push({
         type: 'content',
         text: markers.length > 0 ? `${markers.join('\n')}\n${quoted}` : quoted

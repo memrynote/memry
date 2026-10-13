@@ -179,7 +179,7 @@ const LIST_BLOCKS = new Set(['bulletListItem', 'numberedListItem', 'checkListIte
  * child with nesting markers, which no parse reads back inside a quote, so
  * `> - x\n>   y` would grow on every save.
  */
-function itemHoldsNonList(block: ParsedBlockShape): boolean {
+export function itemHoldsNonList(block: ParsedBlockShape): boolean {
   const children = (block.children ?? []) as ParsedBlockShape[]
   if (!LIST_BLOCKS.has(block.type as string)) return false
   return children.some((child) => !LIST_BLOCKS.has(child.type as string) || itemHoldsNonList(child))

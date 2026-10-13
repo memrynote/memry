@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 249,
+    "exportedCaseCount": 257,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 259,
+    "caseCount": 267,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -264,6 +264,41 @@
       "canonical": null,
       "pending": null,
       "sha256": "e16d2bca4e95e613e8d6e10beb9b5b9a9cc163c21dec709642ed82d0801bcd1e"
+    },
+    {
+      "name": "callout holding a bullet list",
+      "markdown": "> [!info]\n> - a\n> - b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7ec6c5166af7bb3d0161fb9ac7d274e107e4ebfb1132c5c53c29b9ee2355aec2"
+    },
+    {
+      "name": "callout holding a numbered list",
+      "markdown": "> [!success]\n> 1. a\n> 2. b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "bccc722bdab72ba334cee73f5fa14aed133a4ac513da58efd65267278ca30905"
+    },
+    {
+      "name": "callout holding a heading",
+      "markdown": "> [!warning]\n> # Title\n>\n> Body",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1be4ef6df49560559daeb957943d5325d64bbf5ac1aa51a22967b716d716126f"
+    },
+    {
+      "name": "callout line then a list",
+      "markdown": "> [!info]\n> Intro\n>\n> - see [[Note]]\n> - b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e63b5694221871f6116b8c889542747badb38f8f99de931ae0dbbc4ca2d59d79"
+    },
+    {
+      "name": "callout line with a lazy list",
+      "markdown": "> [!info]\n> Intro\n> - a",
+      "canonical": "> [!info]\n> Intro\n>\n> - a",
+      "pending": null,
+      "sha256": "1343f9db1b907b8518fee4a197734310640f97899d06b71130687038795703ab"
     },
     {
       "name": "nested foreign callouts pass through untouched",
@@ -1480,18 +1515,39 @@
       "sha256": "b3b052d9369e32a9c49f95c105676541bea7c4aa696212cfd4f40ccfe8e1efde"
     },
     {
-      "name": "soft break in callout list-item link text (BBF-110)",
-      "markdown": "> [!note]\n>\n> - [a\n> b](u)",
+      "name": "soft break in foreign callout list-item link text (BBF-110)",
+      "markdown": "> [!danger]\n>\n> - [a\n> b](u)",
       "canonical": null,
       "pending": null,
-      "sha256": "1d6eac1969b71e5c2518230cbbb9012d32aafcd46ab547a857191e63c5c2de0b"
+      "sha256": "d41cf3f25c0c56281289ee1d0e777ec8f1192efa85f858b5a9c482418015c9b9"
+    },
+    {
+      "name": "lazy soft break in foreign callout list-item link text (BBF-110)",
+      "markdown": "> [!danger]\n> - [a\nb](u)",
+      "canonical": "> [!danger]\n>\n> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "549150c497b0d8a9859c3fd3576ffe78d5a252c5a914f655a6ee6cfc4ae3dce9"
+    },
+    {
+      "name": "soft break in callout list-item link text (BBF-110)",
+      "markdown": "> [!note]\n> - [a\n> b](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "84a2cf38e8061f193bb0ca2633796ae39d77e3007f84b0901c5d9de6b2caffd7"
     },
     {
       "name": "lazy soft break in callout list-item link text (BBF-110)",
       "markdown": "> [!note]\n> - [a\nb](u)",
-      "canonical": "> [!note]\n>\n> - [a\n> b](u)",
+      "canonical": "> [!note]\n> - [a\n> b](u)",
       "pending": null,
       "sha256": "23199d06a4f4c52b86c5aa6a50ab493a1970e5414900ce43412a2737100810bf"
+    },
+    {
+      "name": "blank line before a callout list normalizes away",
+      "markdown": "> [!note]\n>\n> - [a\n> b](u)",
+      "canonical": "> [!note]\n> - [a\n> b](u)",
+      "pending": null,
+      "sha256": "1d6eac1969b71e5c2518230cbbb9012d32aafcd46ab547a857191e63c5c2de0b"
     },
     {
       "name": "quoted fence, lazy line (BBF-113)",

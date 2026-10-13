@@ -441,6 +441,10 @@ directly by a list gets a blank quote line before the list. After that the file 
 changing. A code block in a quoted list stays a code block, and a code block written
 without a language is saved without one.
 
+A callout can hold other blocks: lists, headings, more paragraphs, quotes. Press
+<kbd>Tab</kbd> on the block under a callout to move it inside. A checkbox list inside a
+callout stays a quote, so opening the note never adds task ids to the file.
+
 ## Toggle lists
 
 A toggle is written to disk as a `<details>` section, so GitHub and Obsidian render it as

@@ -19,7 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { readStructuredQuoteRun } from './quote.ts'
+import { itemHoldsNonList, readStructuredQuoteRun, serializeQuoteBlock } from './quote.ts'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
@@ -66,11 +66,16 @@ const MEMRY_CALLOUT_MARKER_REGEX = new RegExp(`^> \\[!(${CALLOUT_TYPE_VALUES.joi
  */
 const BARE_CALLOUT_MARKER_REGEX = /^\[!(info|warning|error|success)\]$/
 
+/**
+ * `contentMarkdown` is the callout's own line followed by its child blocks,
+ * separated by blank lines; each blank line becomes a bare `>`, the same inner
+ * shape `serializeQuoteBlock` writes for a quote that owns children (#3186).
+ * A callout without children has no blank line, so its bytes are unchanged.
+ */
 export function serializeCalloutBlock(type: string, contentMarkdown: string): string {
-  const lines = contentMarkdown.split('\n').filter((l) => l.length > 0)
-  if (lines.length === 0) return `> [!${type}]`
-  const quoted = lines.map((line) => `> ${line}`).join('\n')
-  return `> [!${type}]\n${quoted}`
+  const body = contentMarkdown.replace(/^\n+|\n+$/g, '')
+  if (body === '') return `> [!${type}]`
+  return `> [!${type}]\n${serializeQuoteBlock(body)}`
 }
 
 export interface CalloutRun {
@@ -81,6 +86,15 @@ export interface CalloutRun {
   raw: string
   /** Index of the first line after the run. */
   end: number
+  /** The damaged shape #1846 heals: marker without its `> `. */
+  bare: boolean
+  /**
+   * The body holds a list or a `> >` level. Declining it is not free: the quote
+   * fallback drops the list markers or the nesting, so a one-step
+   * normalization that settles is claimed instead (same rule as
+   * `resolveQuoteRun`).
+   */
+  reshapes: boolean
 }
 
 /**
@@ -105,10 +119,21 @@ export function readCalloutRun(
   if (!atParagraphStart) return null
 
   const quoted = lines[start].match(MEMRY_CALLOUT_MARKER_REGEX)
-  // A callout body holds one paragraph, so a list in it always declined and
-  // the run went flat without its markers. Read as a quote it keeps them (BBF-110).
-  if (quoted && readStructuredQuoteRun(lines, start)?.listed) return null
   if (quoted) {
+    // A body with a blank `>` line, a list or a `> >` level is read the way a
+    // structured quote is, lazy list continuations included (BBF-110), so it
+    // can become the callout's child blocks (#3186).
+    const structured = readStructuredQuoteRun(lines, start + 1)
+    if (structured) {
+      return {
+        type: quoted[1] as CalloutTypeValue,
+        contentLines: structured.innerMarkdown.split('\n'),
+        raw: lines.slice(start, structured.end).join('\n'),
+        end: structured.end,
+        bare: false,
+        reshapes: structured.listed || structured.nested
+      }
+    }
     const contentLines: string[] = []
     let end = start + 1
     while (end < lines.length) {
@@ -122,7 +147,9 @@ export function readCalloutRun(
       type: quoted[1] as CalloutTypeValue,
       contentLines,
       raw: lines.slice(start, end).join('\n'),
-      end
+      end,
+      bare: false,
+      reshapes: false
     }
   }
 
@@ -139,7 +166,9 @@ export function readCalloutRun(
       type: bare[1] as CalloutTypeValue,
       contentLines,
       raw: lines.slice(start, end).join('\n'),
-      end
+      end,
+      bare: true,
+      reshapes: false
     }
   }
 
@@ -152,31 +181,85 @@ export interface ParsedBlockShape {
   children?: unknown[]
 }
 
+export interface ResolvedCallout {
+  type: CalloutTypeValue
+  content: unknown
+  children: ParsedBlockShape[]
+}
+
 /**
  * Decide whether a run may become a callout block, by proof rather than by
  * pattern: parse the body, and claim only if serializing it back reproduces
  * the body byte-for-byte (so `serializeCalloutBlock` reproduces the whole run
- * on the way out). Anything the schema would normalize — a list in the body, a
- * nested quote, a second paragraph — declines, and the caller leaves the bytes
- * exactly as they were.
+ * on the way out). A leading paragraph is the callout's own line and every
+ * later block a child; a body that opens on another block (a list, a heading)
+ * has an empty own line (#3186).
+ *
+ * A body with a list or a `> >` level may also claim when its canonical form
+ * settles, because the quote fallback would drop the markers or the nesting.
+ * A bare damaged run heals only into a single paragraph, as before. A body
+ * with a checkbox declines: claiming would promote it to a task and write the
+ * task id into a file older builds read flat.
  */
 export async function resolveCalloutRun(
   run: CalloutRun,
   parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
-  serializeBlock: (block: ParsedBlockShape) => Promise<string>
-): Promise<{ type: CalloutTypeValue; content: unknown } | null> {
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<ResolvedCallout | null> {
   const content = run.contentLines.join('\n')
-  if (content === '') return { type: run.type, content: [] }
+  if (content === '') return { type: run.type, content: [], children: [] }
 
+  const body = await parseCalloutBody(content, parseMarkdown, serializeBlocks)
+  if (!body) return null
+  if (run.bare && body.children.length > 0) return null
+  if (body.markdown !== content) {
+    if (!run.reshapes) return null
+    const canonical = serializeCalloutBlock(run.type, body.markdown)
+    if (!(await calloutSettles(canonical, parseMarkdown, serializeBlocks))) return null
+  }
+
+  return { type: run.type, content: body.content, children: body.children }
+}
+
+async function parseCalloutBody(
+  content: string,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<{ content: unknown; children: ParsedBlockShape[]; markdown: string } | null> {
   const parsed = await parseMarkdown(content)
-  if (parsed.length !== 1) return null
-  const block = parsed[0]
-  if (block.type !== 'paragraph' || block.children?.length) return null
+  const [first, ...rest] = parsed
+  if (!first || parsed.some(holdsCheckbox) || parsed.some(itemHoldsNonList)) return null
+  const ownLine = first.type === 'paragraph'
+  if (ownLine && first.children?.length) return null
 
-  const roundTripped = (await serializeBlock(block)).trim()
-  if (roundTripped !== content) return null
+  return {
+    content: ownLine ? (first.content ?? []) : [],
+    children: ownLine ? rest : parsed,
+    markdown: (await serializeBlocks(parsed)).trim()
+  }
+}
 
-  return { type: run.type, content: block.content ?? [] }
+function holdsCheckbox(block: ParsedBlockShape): boolean {
+  if (block.type === 'checkListItem') return true
+  return ((block.children ?? []) as ParsedBlockShape[]).some(holdsCheckbox)
+}
+
+/**
+ * Whether `canonical` is a fixed point: it reads back as one whole callout
+ * run, and re-parsing its body reproduces it, so the file stops moving after
+ * the first write.
+ */
+async function calloutSettles(
+  canonical: string,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<boolean> {
+  const lines = canonical.split('\n')
+  const reread = readCalloutRun(lines, 0, true)
+  if (!reread || reread.end !== lines.length) return false
+  const content = reread.contentLines.join('\n')
+  const body = await parseCalloutBody(content, parseMarkdown, serializeBlocks)
+  return body?.markdown === content
 }
 
 // ---------------------------------------------------------------------------
