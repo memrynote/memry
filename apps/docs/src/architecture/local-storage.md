@@ -113,7 +113,9 @@ re-read and re-parsed on every call.
 
 The config's `attachmentsFolder` field is kept so older builds can read the file, but nothing
 uses it. Desktop and the CLI always keep attachments in `attachments/<noteId>/`
-(`ATTACHMENTS_DIR`), and the indexer, the watcher and the folder tree skip that folder. A vault
+(`ATTACHMENTS_DIR`), and the indexer, the watcher and the folder tree skip that folder. Only the vault-root folder is skipped: a
+nested folder named `attachments` (Obsidian's per-folder attachments layout) is the user's own,
+and its notes are indexed like any other (#3161). A vault
 whose config names another folder keeps its files there; that folder is indexed like any other
 vault folder.
 
