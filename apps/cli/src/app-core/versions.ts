@@ -7,6 +7,7 @@ import type { IndexDb } from './database.ts'
 import { createId } from '@memry/app-core/ids'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
 import type { NotesService } from './notes.ts'
+import { propertiesFromFrontmatter } from './note-properties.ts'
 
 export interface SnapshotListItem {
   id: string
@@ -156,12 +157,7 @@ export function createVersionsService({
       const tags = Array.isArray(parsed.frontmatter.tags)
         ? parsed.frontmatter.tags.map((tag) => String(tag))
         : []
-      const properties =
-        parsed.frontmatter.properties &&
-        typeof parsed.frontmatter.properties === 'object' &&
-        !Array.isArray(parsed.frontmatter.properties)
-          ? (parsed.frontmatter.properties as Record<string, unknown>)
-          : {}
+      const properties = propertiesFromFrontmatter(parsed.frontmatter)
 
       return notes.update({
         id: snapshot.noteId,

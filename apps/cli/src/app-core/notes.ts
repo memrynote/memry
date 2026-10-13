@@ -33,6 +33,7 @@ import {
   wordCount,
   writeMarkdownNote
 } from '@memry/app-core/markdown'
+import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import {
   noteLinkStem,
@@ -67,12 +68,6 @@ function tagsFromFrontmatter(frontmatter: Record<string, unknown>): string[] {
     result.push(trimmed)
   }
   return result
-}
-
-function propertiesFromFrontmatter(frontmatter: Record<string, unknown>): Record<string, unknown> {
-  const properties = frontmatter.properties
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return {}
-  return { ...(properties as Record<string, unknown>) }
 }
 
 function wikilinks(content: string): string[] {
@@ -280,12 +275,10 @@ export function createNotesService({
       )
       const id = createId('note')
       // User keys only — Memry identity/dates live in the metadata DB
-      const frontmatter = {
-        ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
-        ...(input.properties && Object.keys(input.properties).length > 0
-          ? { properties: input.properties }
-          : {})
-      }
+      const frontmatter = frontmatterWithProperties(
+        input.tags && input.tags.length > 0 ? { tags: input.tags } : {},
+        input.properties ?? {}
+      )
       const content = input.content ?? ''
       await fs.mkdir(path.dirname(path.join(vaultPath, relativePath)), { recursive: true })
       await fs.writeFile(
@@ -348,16 +341,15 @@ export function createNotesService({
         (input.append ? `${parsed.content}\n${input.append}`.trim() : parsed.content)
       // User keys only — Memry identity/title/dates live in the metadata DB
       const nextTags = input.tags ?? tagsFromFrontmatter(parsed.frontmatter)
-      const nextFrontmatter: Record<string, unknown> = {
-        ...parsed.frontmatter,
-        ...(Object.keys(nextProperties).length > 0 ? { properties: nextProperties } : {})
-      }
+      const nextFrontmatter =
+        input.properties !== undefined
+          ? frontmatterWithProperties(parsed.frontmatter, input.properties)
+          : { ...parsed.frontmatter }
       if (nextTags.length > 0) {
         nextFrontmatter.tags = nextTags
       } else {
         delete nextFrontmatter.tags
       }
-      if (Object.keys(nextProperties).length === 0) delete nextFrontmatter.properties
       let nextPath = row.path
       const renamedFromTitle =
         input.title && input.title !== row.title && !row.journalDate ? row.title : null
