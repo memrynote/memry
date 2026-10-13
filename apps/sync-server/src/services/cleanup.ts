@@ -219,6 +219,8 @@ export const cleanupExpiredTombstones = async (
 ): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
 
+  // deleted_at is stored as pushed: seconds from desktop, ms from the Rust
+  // core (#3053, docs/protocol ch.04). Values at or above 10^11 are ms.
   const expired = await db
     .prepare(
       `SELECT si.id, si.blob_key, si.user_id, si.size_bytes, si.server_cursor
@@ -226,7 +228,8 @@ export const cleanupExpiredTombstones = async (
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
        WHERE si.deleted_at IS NOT NULL
          AND si.blob_key <> ''
-         AND si.deleted_at < ? - (COALESCE(e.version_history_days, 0) * 86400)
+         AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
+             < ? - (COALESCE(e.version_history_days, 0) * 86400)
        ORDER BY si.user_id
        LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )

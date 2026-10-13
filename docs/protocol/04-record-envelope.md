@@ -178,7 +178,7 @@ decode, and throws `invalid base64 input` on a non-alphabet character
 | `signerDeviceId`    | string                             | yes              |
 | `clock`             | `Record<string, non-negative int>` | optional         |
 | `stateVector`       | string                             | optional         |
-| `deletedAt`         | non-negative int (epoch ms)        | optional         |
+| `deletedAt`         | non-negative int (epoch s or ms)   | optional         |
 | `deleteAttestation` | base64, 64 bytes decoded           | optional; §4.8.4 |
 
 **`signerDeviceId` is the id of the device whose Ed25519 signing key produced
@@ -433,7 +433,9 @@ stores its own time, which a device cannot sign in advance.
 sign it Ed25519 detached with the same device key as `signature`, and base64
 the 64 bytes. The desktop pushes `deletedAt` in seconds and the Rust core in
 milliseconds; the server stores and serves the pushed value, so neither is
-normalised. Writers: `apps/desktop/src/main/sync/encrypt.ts`,
+normalised. Readers treat a value below `10^11` as seconds and any other as
+ms, including the server's tombstone expiry
+(`apps/sync-server/src/services/cleanup.ts`, #3053). Writers: `apps/desktop/src/main/sync/encrypt.ts`,
 `packages/sync-client/src/push/record-encrypt.ts`,
 `crates/memry-core/src/protocol/delete_attestation.rs`. Vectors:
 `packages/contracts/test-vectors/delete-attestation.json`.
