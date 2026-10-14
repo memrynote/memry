@@ -118,11 +118,7 @@ struct ViewBlockView: View {
     private func icon(_ row: ViewBlockRow) -> some View {
         switch row.kind {
         case .note, .journal:
-            if let emoji = row.emoji, !emoji.isEmpty {
-                Text(emoji)
-            } else {
-                Image(systemName: "doc.text")
-            }
+            StoredIconView(value: row.emoji, fallback: "doc.text")
         case let .task(done):
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
         }

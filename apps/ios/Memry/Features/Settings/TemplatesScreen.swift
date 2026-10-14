@@ -75,7 +75,7 @@ struct TemplatesScreen: View {
 
     private func label(_ template: TemplateItem) -> some View {
         SettingsRowLabel(
-            title: [template.icon, template.name].compactMap(\.self).joined(separator: " "),
+            title: [ProjectIconValue.emoji(template.icon), template.name].compactMap(\.self).joined(separator: " "),
             detail: template.isBuiltIn ? TemplatesCopy.builtIn : template.modifiedAt.flatMap(TemplatesCopy.edited)
         )
         .accessibilityIdentifier("settings.template.\(template.name)")

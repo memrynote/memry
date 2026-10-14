@@ -146,7 +146,7 @@ private struct TagRow: View {
                 .fill(Tokens.Palette.color(tag.color, tag: tag.name))
                 .frame(width: Tokens.Space.medium, height: Tokens.Space.medium)
                 .accessibilityHidden(true)
-            if let icon = tag.icon, !icon.hasPrefix("icon:") { Text(icon).accessibilityHidden(true) }
+            StoredIconView(value: tag.icon).accessibilityHidden(true)
             SettingsRowLabel(title: "#\(tag.name)", value: "\(tag.notes + tag.journals + tag.tasks)")
         }
     }

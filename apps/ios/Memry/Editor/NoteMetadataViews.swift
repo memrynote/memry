@@ -118,11 +118,11 @@ struct NoteTitleEditor: View {
                 Button {
                     pickingIcon = true
                 } label: {
-                    Text(icon)
+                    StoredIconView(value: icon)
                         .font(Tokens.Typography.sectionTitle.font)
                 }
                 .disabled(!canEdit)
-                .accessibilityLabel("Icon, \(icon)")
+                .accessibilityLabel(ProjectIconValue.emoji(icon).map { "Icon, \($0)" } ?? "Icon")
             }
 
             if canEdit {
@@ -718,7 +718,7 @@ struct NoteRelationPicker: View {
                 } label: {
                     HStack(spacing: Tokens.Space.small) {
                         if let emoji = note.emoji, !emoji.isEmpty {
-                            Text(emoji).accessibilityHidden(true)
+                            StoredIconView(value: emoji).accessibilityHidden(true)
                         } else {
                             Image(systemName: "doc.text")
                                 .foregroundStyle(Tokens.Text.tertiary.color)
