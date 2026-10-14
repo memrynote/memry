@@ -776,6 +776,27 @@ describe('vault lifecycle', () => {
     )
   })
 
+  it('re-applies locks once the open-time walk has indexed new notes (#2978)', async () => {
+    mocks.indexVault.mockResolvedValue({ indexed: 2, skipped: 0, errors: 0, cancelled: false })
+
+    await selectVault({ path: '/vault/empty-index' })
+
+    // The first check ran against an empty index and skipped the locked notes.
+    await vi.waitFor(() => expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(2))
+    expect(mocks.indexVault.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.checkLockedFilesAtOpen.mock.invocationCallOrder[1]
+    )
+  })
+
+  it('does not re-check locks when the walk indexed nothing new (#2978)', async () => {
+    mocks.indexVault.mockResolvedValue({ indexed: 0, skipped: 5, errors: 0, cancelled: false })
+
+    await selectVault({ path: '/vault/current-index' })
+
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('still prunes missing files when the locked-file check fails (#2606)', async () => {
     mocks.checkLockedFilesAtOpen.mockRejectedValue(new Error('disk gone'))
 
