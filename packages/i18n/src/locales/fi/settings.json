@@ -1319,6 +1319,10 @@
         "none": "Älä nimeä uudelleen"
       },
       "namingError": "Äänimuistioiden nimeämisasetuksen päivittäminen epäonnistui",
+      "language": "Puhuttu kieli",
+      "languageDescription": "Kieli, jota puhut ääniviesteissä",
+      "languageDefault": "Oletus",
+      "languageError": "Litterointikielen päivitys epäonnistui",
       "localModel": "Paikallinen malli",
       "localModelDescription": "Whisper Small ladataan tarvittaessa ja säilytetään paikallisessa välimuistissa",
       "status": {

@@ -1319,6 +1319,10 @@
         "none": "Nie zmieniaj nazwy"
       },
       "namingError": "Nie udało się zaktualizować nazewnictwa notatek głosowych",
+      "language": "Język mówiony",
+      "languageDescription": "Język, w którym mówisz w notatkach głosowych",
+      "languageDefault": "Domyślny",
+      "languageError": "Nie udało się zmienić języka transkrypcji",
       "localModel": "Model lokalny",
       "localModelDescription": "Whisper Small jest pobierany na żądanie i przechowywany lokalnie w pamięci podręcznej",
       "status": {

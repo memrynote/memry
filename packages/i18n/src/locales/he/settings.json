@@ -1319,6 +1319,10 @@
         "none": "ללא שינוי שם"
       },
       "namingError": "עדכון מתן שמות לתזכירים קוליים נכשל",
+      "language": "שפת הדיבור",
+      "languageDescription": "השפה שבה אתה מדבר בתזכורות קוליות",
+      "languageDefault": "ברירת מחדל",
+      "languageError": "עדכון שפת התמלול נכשל",
       "localModel": "מודל מקומי",
       "localModelDescription": "Whisper Small יורד לפי דרישה ונשמר במטמון מקומי",
       "status": {

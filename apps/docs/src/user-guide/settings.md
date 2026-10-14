@@ -444,6 +444,7 @@ quick-capture voice capture.
 ### Voice Transcription
 
 - **Provider** — local Whisper Small (private) or OpenAI Whisper API
+- **Spoken language** — language your voice memos are transcribed in (unset: English locally, auto-detect on OpenAI)
 - **Local Model** — status, download button
 - **OpenAI API Key** — password field, only shown for the OpenAI provider
 
@@ -578,5 +579,5 @@ Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. No
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`
-- Voice Transcription: `provider`
+- Voice Transcription: `provider`, `memoNameMode`, `language`
 - Keyboard Shortcuts: `overrides` (keybinding map), `globalCapture`

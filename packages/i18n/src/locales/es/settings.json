@@ -1319,6 +1319,10 @@
         "none": "No renombrar"
       },
       "namingError": "No se pudo actualizar cómo se nombran las notas de voz",
+      "language": "Idioma hablado",
+      "languageDescription": "Idioma en el que hablas en las notas de voz",
+      "languageDefault": "Predeterminado",
+      "languageError": "No se pudo actualizar el idioma de transcripción",
       "localModel": "Modelo local",
       "localModelDescription": "Whisper Small se descarga bajo demanda y permanece almacenado en caché localmente",
       "status": {

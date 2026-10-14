@@ -1319,6 +1319,10 @@
         "none": "عدم إعادة التسمية"
       },
       "namingError": "تعذّر تحديث تسمية المذكرات الصوتية",
+      "language": "لغة التحدث",
+      "languageDescription": "اللغة التي تتحدث بها في المذكرات الصوتية",
+      "languageDefault": "افتراضي",
+      "languageError": "تعذّر تحديث لغة النسخ",
       "localModel": "النموذج المحلي",
       "localModelDescription": "يُنزَّل Whisper Small عند الطلب ويبقى مخزّنًا محليًا",
       "status": {

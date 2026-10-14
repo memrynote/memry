@@ -1319,6 +1319,10 @@
         "none": "Adı olduğu gibi bırak"
       },
       "namingError": "Sesli not adlandırması güncellenemedi",
+      "language": "Konuşulan dil",
+      "languageDescription": "Sesli notlarda konuştuğunuz dil",
+      "languageDefault": "Varsayılan",
+      "languageError": "Transkripsiyon dili güncellenemedi",
       "localModel": "Yerel model",
       "localModelDescription": "Whisper Small gerektiğinde indirilir ve yerel olarak önbellekte tutulur",
       "status": {

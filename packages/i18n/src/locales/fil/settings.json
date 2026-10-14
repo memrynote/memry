@@ -1319,6 +1319,10 @@
         "none": "Huwag palitan ang pangalan"
       },
       "namingError": "Hindi ma-update ang pagpapangalan ng voice memo",
+      "language": "Wikang sinasalita",
+      "languageDescription": "Wikang ginagamit mo sa mga voice memo",
+      "languageDefault": "Default",
+      "languageError": "Hindi na-update ang wika ng transcription",
       "localModel": "Lokal na modelo",
       "localModelDescription": "Dina-download ang Whisper Small kapag kailangan at nananatiling naka-cache sa device",
       "status": {

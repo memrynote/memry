@@ -1319,6 +1319,10 @@
         "none": "Niet hernoemen"
       },
       "namingError": "Kan de naamgeving van spraakmemo’s niet bijwerken",
+      "language": "Gesproken taal",
+      "languageDescription": "Taal die je spreekt in spraakmemo's",
+      "languageDefault": "Standaard",
+      "languageError": "Transcriptietaal bijwerken mislukt",
       "localModel": "Lokaal model",
       "localModelDescription": "Whisper Small wordt gedownload wanneer nodig en blijft lokaal in de cache",
       "status": {

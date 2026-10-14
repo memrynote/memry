@@ -1319,6 +1319,10 @@
         "none": "Không đổi tên"
       },
       "namingError": "Không thể cập nhật cách đặt tên bản ghi âm",
+      "language": "Ngôn ngữ nói",
+      "languageDescription": "Ngôn ngữ bạn nói trong ghi chú giọng nói",
+      "languageDefault": "Mặc định",
+      "languageError": "Không thể cập nhật ngôn ngữ chép lời",
       "localModel": "Mô hình cục bộ",
       "localModelDescription": "Whisper Small được tải xuống khi cần và lưu đệm trên thiết bị",
       "status": {

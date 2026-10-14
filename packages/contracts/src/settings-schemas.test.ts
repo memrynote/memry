@@ -419,6 +419,19 @@ describe('VoiceTranscriptionSettingsSchema', () => {
     const result = VoiceTranscriptionSettingsSchema.safeParse(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS)
     expect(result.success).toBe(true)
     expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.memoNameMode).toBe('transcript')
+    expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.language).toBeUndefined()
+  })
+
+  it('accepts Whisper language codes and rejects unknown ones', () => {
+    const base = { provider: 'local', memoNameMode: 'transcript' } as const
+    expect(VoiceTranscriptionSettingsSchema.safeParse({ ...base, language: 'de' }).success).toBe(
+      true
+    )
+    const result = VoiceTranscriptionSettingsSchema.safeParse({ ...base, language: 'klingon' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('language')
+    }
   })
 
   it('rejects unsupported provider', () => {

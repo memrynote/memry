@@ -1319,6 +1319,10 @@
         "none": "Omdøb ikke"
       },
       "namingError": "Kunne ikke opdatere navngivningen af stemmememoer",
+      "language": "Talt sprog",
+      "languageDescription": "Det sprog, du taler i stemmememoer",
+      "languageDefault": "Standard",
+      "languageError": "Kunne ikke opdatere transskriptionssprog",
       "localModel": "Lokal model",
       "localModelDescription": "Whisper Small hentes efter behov og gemmes lokalt i cachen",
       "status": {

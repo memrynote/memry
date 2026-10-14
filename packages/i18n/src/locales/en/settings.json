@@ -1355,6 +1355,10 @@
         "none": "Do not rename"
       },
       "namingError": "Failed to update voice memo naming",
+      "language": "Spoken language",
+      "languageDescription": "Language you speak in voice memos",
+      "languageDefault": "Default",
+      "languageError": "Failed to update transcription language",
       "localModel": "Local Model",
       "localModelDescription": "Whisper Small downloads on demand and stays cached locally",
       "status": {

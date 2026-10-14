@@ -37,6 +37,13 @@ model can release memory.
 
 Whisper Small handles dozens of languages well. For unusual languages, larger Whisper models tend to do better — see the open-source Whisper docs for tradeoffs.
 
+## Spoken Language
+
+Set the language you speak in Settings → AI → Voice memos → **Spoken language**. Both backends
+transcribe in that language. Until you pick one, local Whisper transcribes English and OpenAI
+detects the language itself. The setting applies to new transcriptions
+and retries; existing transcripts are not changed.
+
 ## OpenAI Whisper API
 
 For machines that struggle with local Whisper or when you want maximum accuracy:

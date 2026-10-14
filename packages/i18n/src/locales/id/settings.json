@@ -1319,6 +1319,10 @@
         "none": "Jangan ganti nama"
       },
       "namingError": "Gagal memperbarui penamaan memo suara",
+      "language": "Bahasa lisan",
+      "languageDescription": "Bahasa yang Anda gunakan dalam memo suara",
+      "languageDefault": "Default",
+      "languageError": "Gagal memperbarui bahasa transkripsi",
       "localModel": "Model lokal",
       "localModelDescription": "Whisper Small diunduh saat diperlukan dan tetap di-cache secara lokal",
       "status": {

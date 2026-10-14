@@ -238,7 +238,9 @@ export async function transcribeAudioData(
 
     if (settings.provider === 'local') {
       log.info(`Starting local transcription for ${logContext}`)
-      return { transcription: await transcribeWithLocalModel(audioBuffer) }
+      return {
+        transcription: await transcribeWithLocalModel(audioBuffer, settings.language ?? 'en')
+      }
     }
 
     const apiKey = await getVoiceTranscriptionOpenAIApiKey()
@@ -257,6 +259,8 @@ export async function transcribeAudioData(
     const response = await openai.audio.transcriptions.create({
       file,
       model: envConfig.whisperModel || 'whisper-1',
+      // Unset language: let OpenAI auto-detect, as before #3172.
+      ...(settings.language ? { language: settings.language } : {}),
       response_format: 'text'
     })
 

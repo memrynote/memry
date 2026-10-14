@@ -1319,6 +1319,10 @@
         "none": "名前を変更しない"
       },
       "namingError": "ボイスメモの命名設定を更新できませんでした",
+      "language": "話す言語",
+      "languageDescription": "ボイスメモで話す言語",
+      "languageDefault": "デフォルト",
+      "languageError": "文字起こしの言語を更新できませんでした",
       "localModel": "ローカルモデル",
       "localModelDescription": "Whisper Small は必要なときにダウンロードされ、ローカルにキャッシュされます",
       "status": {
