@@ -184,7 +184,8 @@ struct TemplateEditorScreen: View {
     }
 
     private var iconField: Binding<String> {
-        Binding(get: { draft?.icon ?? "" }, set: { draft?.icon = $0.isEmpty ? nil : String($0.prefix(8)) })
+        Binding(get: { ProjectIconValue.emoji(draft?.icon) ?? "" },
+                set: { draft?.icon = ProjectIconValue.saved(stored: draft?.icon, typed: $0) })
     }
 
     private func load() async {
