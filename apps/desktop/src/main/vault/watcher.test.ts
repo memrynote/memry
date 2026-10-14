@@ -787,6 +787,10 @@ describe('vault watcher', () => {
     expect(ignored(path.join(vault.path, 'attachments', 'n1', 'a.md'), file)).toBe(true)
     expect(ignored(path.join(vault.path, 'files'), dir)).toBe(false)
     expect(ignored(path.join(vault.path, 'files', 'note.md'), file)).toBe(false)
+    // #3161: a nested attachments folder is the user's, not the app's.
+    expect(ignored(path.join(vault.path, 'Projects', 'attachments'), dir)).toBe(false)
+    expect(ignored(path.join(vault.path, 'Projects', 'attachments', 'a.md'), file)).toBe(false)
+    expect(ignored(path.join(vault.path, 'attachments-old', 'a.md'), file)).toBe(false)
     await watcher.stop()
   })
 

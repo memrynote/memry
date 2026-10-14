@@ -269,7 +269,15 @@ describe('indexer', () => {
       })
       createTestNote(tempVault, { title: 'Visible', content: 'Content' })
       createTestNote(tempVault, { title: 'Filed', content: 'Content', folder: 'files' })
-      createTestNote(tempVault, { title: 'Attached', content: 'Content', folder: 'attachments/n1' })
+      // The app's attachments folder is <vault>/attachments.
+      fs.mkdirSync(path.join(tempVault.path, 'attachments', 'n1'), { recursive: true })
+      fs.writeFileSync(
+        path.join(tempVault.path, 'attachments', 'n1', 'Attached.md'),
+        '# Attached\n'
+      )
+      // Obsidian's "subfolder under current folder" layout: a user folder named
+      // attachments below the root holds ordinary notes (#3161).
+      createTestNote(tempVault, { title: 'Nested', content: '![[pic.png]]', folder: 'attachments' })
 
       await indexer.indexVault(tempVault.path)
 
@@ -278,7 +286,7 @@ describe('indexer', () => {
         .from(noteCache)
         .all()
         .map((row) => row.title)
-      expect(titles.sort()).toEqual(['Filed', 'Visible'])
+      expect(titles.sort()).toEqual(['Filed', 'Nested', 'Visible'])
     })
 
     it('T374: handles nested subfolders', async () => {
