@@ -100,7 +100,8 @@ vi.mock('./sync/crdt-provider', () => ({
     initForNote: mocks.initForNote,
     updateMeta: mocks.updateMeta,
     setNoteLocalOnly: vi.fn(),
-    purge: mocks.purge
+    purge: mocks.purge,
+    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue()
   })
 }))
 
@@ -259,7 +260,7 @@ describe('main zero-covered runtime surfaces', () => {
     notes.syncNoteCreate('note-1', 'Title', ['tag'])
     notes.syncNoteUpdate('note-1', 'Renamed')
     notes.syncNoteUpdate('note-2')
-    notes.syncNoteDelete('note-1')
+    await notes.syncNoteDelete('note-1')
     notes.emitNoteAttachmentSaved('note-1', 'files/a.pdf')
     notes.setNoteLocalOnlyState('note-1', true)
     notes.setNoteLocalOnlyState('note-1', false)
