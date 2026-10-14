@@ -10,7 +10,7 @@
  * each reproduce the same constant necessarily agree with each other.
  *
  * `pending` marks a case that FAILS against current main because the fix it
- * asserts ships in the named issue (siblings of epic #1843, and #2365). The
+ * asserts ships in the named issue (siblings of epic #1843). The
  * suites run those with `it.fails`, so the moment the fix lands the inverted
  * expectation turns red and forces the flag's removal. Remove the flag, never
  * the case.
@@ -455,11 +455,8 @@ const containerCases: RoundtripCase[] = [
 ]
 
 /**
- * A block indented under a list item: the bytes main writes today. Neither
- * pipeline reads them back as the same tree — the nesting markers are dropped
- * and the block lands at the top level — and the renderer does not write them
- * at all for most types. Identical on BlockNote 0.47.1 and 0.54.2, so this is
- * not upgrade fallout; it is pinned here so the fix has a target (#2365).
+ * A block indented under a list item, written with nesting markers. Both
+ * pipelines read it back under its parent and write the same bytes (#2365).
  */
 function nestedUnderBullet(child: string): string {
   return [
@@ -473,30 +470,25 @@ function nestedUnderBullet(child: string): string {
 const nestedUnderListCases: RoundtripCase[] = [
   {
     name: 'callout nested under a list item',
-    markdown: nestedUnderBullet(serializeCalloutBlock('info', 'Heads up')),
-    pending: { renderer: 2365, main: 2365 }
+    markdown: nestedUnderBullet(serializeCalloutBlock('info', 'Heads up'))
   },
   {
     name: 'task block nested under a list item',
-    markdown: nestedUnderBullet('- [ ] a task {task:t1}'),
-    pending: { renderer: 2365, main: 2365 }
+    markdown: nestedUnderBullet('- [ ] a task {task:t1}')
   },
   {
     name: 'file marker nested under a list item',
     markdown: nestedUnderBullet(
       '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
-    ),
-    pending: { renderer: 2365, main: 2365 }
+    )
   },
   {
     name: 'youtube embed marker nested under a list item',
-    markdown: nestedUnderBullet('![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'),
-    pending: { renderer: 2365, main: 2365 }
+    markdown: nestedUnderBullet('![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)')
   },
   {
     name: 'bookmark marker nested under a list item',
-    markdown: nestedUnderBullet('![bookmark](https://example.com/a)'),
-    pending: { renderer: 2365, main: 2365 }
+    markdown: nestedUnderBullet('![bookmark](https://example.com/a)')
   }
 ]
 

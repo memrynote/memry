@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   createBlockNestingMarker,
+  foldBlockNestingMarkers,
+  parseMarkdownWithNestingMarkers,
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from './block-nesting'
@@ -49,6 +51,25 @@ describe('block nesting helpers', () => {
 
     expect(restoreBlockNesting(blocks, [0, 1, 0])).toEqual([
       { id: 'parent', children: [{ id: 'child', children: [] }] },
+      { id: 'sibling', children: [] }
+    ])
+  })
+
+  it('keeps a level across blocks parsed by separate calls (#2365)', async () => {
+    type B = { id: string; children?: B[] }
+    const parse = async (md: string): Promise<B[]> => [{ id: md, children: [] }]
+    const before = await parseMarkdownWithNestingMarkers(
+      ['- parent', '', createBlockNestingMarker(1)].join('\n'),
+      parse
+    )
+    const claimedElsewhere: B = { id: 'callout', children: [] }
+    const after = await parseMarkdownWithNestingMarkers(
+      [createBlockNestingMarker(0), '', 'sibling'].join('\n'),
+      parse
+    )
+
+    expect(foldBlockNestingMarkers([...before, claimedElsewhere, ...after])).toEqual([
+      { id: '- parent', children: [{ id: 'callout', children: [] }] },
       { id: 'sibling', children: [] }
     ])
   })
