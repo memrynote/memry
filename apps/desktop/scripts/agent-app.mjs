@@ -14,6 +14,9 @@
  *   node scripts/agent-app.mjs eval "process.mainModule.require('electron').app.getVersion()"
  *   node scripts/agent-app.mjs status
  *   node scripts/agent-app.mjs stop
+ *
+ * Optional env for start: MEMRY_AGENT_VAULT_TEMPLATE=<vault dir> opens a copy of that
+ * vault instead (tutorial recordings use this), and MEMRY_AGENT_SCALE=2 renders at 2x.
  */
 
 import { spawn, spawnSync } from 'node:child_process'
@@ -27,7 +30,9 @@ import { parseKeychainDump } from './purge-e2e-keychain.mjs'
 
 const DESKTOP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAIN_ENTRY = path.join(DESKTOP_DIR, 'out/main/index.js')
-const VAULT_TEMPLATE = path.join(DESKTOP_DIR, 'tests/e2e/fixtures/test-vault')
+// Override to demo a richer vault (e.g. tutorial recordings). It is copied, never opened in place.
+const VAULT_TEMPLATE =
+  process.env.MEMRY_AGENT_VAULT_TEMPLATE ?? path.join(DESKTOP_DIR, 'tests/e2e/fixtures/test-vault')
 const NATIVE_STAMP = path.join(DESKTOP_DIR, 'node_modules/.native-build-target')
 const STATE_FILE = path.join(os.tmpdir(), 'memry-agent-app.json')
 const CDP_PORT = Number(process.env.MEMRY_AGENT_CDP_PORT ?? 9222)
@@ -118,7 +123,9 @@ async function start() {
 
   const deviceId = `e2e-agent-${randomUUID()}`
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-agent-userdata-'))
-  const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-agent-'))
+  const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-agent-'))
+  // The sidebar shows the vault folder's name, so the copy keeps the template's.
+  const vaultPath = path.join(vaultRoot, path.basename(VAULT_TEMPLATE))
   fs.cpSync(VAULT_TEMPLATE, vaultPath, { recursive: true })
   const logDir = path.join(userDataDir, 'logs')
 
@@ -139,13 +146,17 @@ async function start() {
       `--inspect=${INSPECT_PORT}`,
       `--remote-debugging-port=${CDP_PORT}`,
       `--user-data-dir=${userDataDir}`,
+      // Renders at 2x on a 1x display, so recordings stay sharp when zoomed.
+      ...(process.env.MEMRY_AGENT_SCALE
+        ? [`--force-device-scale-factor=${process.env.MEMRY_AGENT_SCALE}`]
+        : []),
       MAIN_ENTRY
     ],
     { env, detached: true, stdio: 'ignore' }
   )
   child.unref()
 
-  const state = { pid: child.pid, deviceId, userDataDir, vaultPath, logDir }
+  const state = { pid: child.pid, deviceId, userDataDir, vaultPath, vaultRoot, logDir }
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
 
   try {
@@ -165,8 +176,11 @@ async function start() {
 function cleanup(state) {
   // MEMRY_DEVICE makes Electron resolve userData to `<--user-data-dir>-<device>`.
   const resolvedUserDataDir = `${state.userDataDir}-${state.deviceId}`
-  for (const dir of [state.userDataDir, resolvedUserDataDir, state.vaultPath]) {
-    if (dir?.startsWith(os.tmpdir())) fs.rmSync(dir, { recursive: true, force: true })
+  for (const dir of [state.userDataDir, resolvedUserDataDir, state.vaultRoot ?? state.vaultPath]) {
+    // Electron helpers can still be writing to userData after the main pid exits (ENOTEMPTY).
+    if (dir?.startsWith(os.tmpdir())) {
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+    }
   }
   purgeKeychain(state.deviceId)
   fs.rmSync(STATE_FILE, { force: true })

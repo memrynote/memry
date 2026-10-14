@@ -70,7 +70,7 @@ This directory owns the Electron app (`@memry/desktop`), the reference implement
 Verify in the running app when a change affects what the user sees or does, such as UI, an IPC flow, or main-process behavior behind a UI action, and one window can exercise the flow. Skip it for pure refactors, tests, docs, sync-server-only changes, and flows that need two synced devices.
 
 1. Build with `pnpm --filter @memry/desktop exec electron-vite build`. Native modules must be built for Electron, and `agent-app.mjs start` fails fast when they are not.
-2. Start with `node apps/desktop/scripts/agent-app.mjs start`. It opens a copy of the E2E test vault with a temp profile and an `e2e-agent-*` keychain device, never real data. One instance runs at a time, on CDP port 9222 and inspector port 9229.
+2. Start with `node apps/desktop/scripts/agent-app.mjs start`. It opens a copy of the E2E test vault (or of `MEMRY_AGENT_VAULT_TEMPLATE`) with a temp profile and an `e2e-agent-*` keychain device, never real data. One instance runs at a time, on CDP port 9222 and inspector port 9229.
 3. Drive the flow with the `playwright-memry` MCP server from `.pi/mcp.json`. Snapshot, click, type, and take screenshots.
 4. When the change writes data, check it from main with `node apps/desktop/scripts/agent-app.mjs eval "__memryDebug.query('SELECT ...')"`. That SQL is read-only. Seed through the UI or `__memryTestHooks`.
 5. Stop with `node apps/desktop/scripts/agent-app.mjs stop`, which removes the temp directories and keychain items.
