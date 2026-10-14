@@ -1,8 +1,16 @@
+import { DndContext } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+
+// The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
+const CalendarPageInDndContext = () => (
+  <DndContext sensors={[]}>
+    <CalendarPage />
+  </DndContext>
+)
 
 const { mockUseCalendarRange, mockListSources, mockCreateEvent, mockUpdateEvent, mockGetEvent } =
   vi.hoisted(() => ({
@@ -103,7 +111,7 @@ describe('CalendarPage event colour', () => {
 
   it('creates the event with the colour picked in the form', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
     await user.click(await screen.findByRole('button', { name: 'Create event' }))
     await screen.findByTestId('event-edit-popover')
 
@@ -121,7 +129,7 @@ describe('CalendarPage event colour', () => {
   it('opens a coloured event with its colour selected and saves it back', async () => {
     showItems([colouredEvent()])
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(await screen.findByRole('button', { name: /Standup/ }))
     await screen.findByTestId('event-edit-popover')
@@ -139,7 +147,7 @@ describe('CalendarPage event colour', () => {
   it('opens an event that shows its calendar colour with Default color selected', async () => {
     showItems([colouredEvent({ color: null, displayColor: '#4285f4' })])
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(await screen.findByRole('button', { name: /Standup/ }))
     await screen.findByTestId('event-edit-popover')

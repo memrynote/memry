@@ -1,3 +1,4 @@
+import { DndContext } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
@@ -5,6 +6,13 @@ import { CalendarPage } from '@/pages/calendar'
 import { CreateCalendarEventSchema } from '@memry/contracts/calendar-api'
 import type { TimeGridSelection } from '@/components/calendar/use-time-grid-marquee'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
+
+// The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
+const CalendarPageInDndContext = () => (
+  <DndContext sensors={[]}>
+    <CalendarPage />
+  </DndContext>
+)
 
 const {
   mockUseCalendarRange,
@@ -106,7 +114,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
       event: { id: 'event-new' }
     })
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Clicked save')
@@ -122,7 +130,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
       event: { id: 'event-new' }
     })
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     const popover = await screen.findByTestId('quick-create-popover')
     expect(popover).toBeInTheDocument()
@@ -146,7 +154,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
       event: { id: 'event-new' }
     })
     const user = userEvent.setup()
-    const { queryClient } = renderWithProviders(<CalendarPage />)
+    const { queryClient } = renderWithProviders(<CalendarPageInDndContext />)
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
     await screen.findByTestId('quick-create-popover')
@@ -165,7 +173,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
   it('keeps the popover mounted and surfaces an error message when createEvent rejects', async () => {
     mockCreateEvent.mockRejectedValue(new Error('Database locked'))
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')
@@ -185,7 +193,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
       error: 'Validation failed: startAt: Invalid datetime'
     })
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')

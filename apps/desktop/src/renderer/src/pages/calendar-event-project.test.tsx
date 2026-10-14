@@ -1,9 +1,17 @@
+import { DndContext } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
+
+// The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
+const CalendarPageInDndContext = () => (
+  <DndContext sensors={[]}>
+    <CalendarPage />
+  </DndContext>
+)
 
 const {
   mockUseCalendarRange,
@@ -102,7 +110,7 @@ describe('CalendarPage · create with a project selected', () => {
 
   it('links the created event to the drafted project', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
     await openCreatePopover(user)
 
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
@@ -130,7 +138,7 @@ describe('CalendarPage · create with a project selected', () => {
 
   it('does not link when no project was selected', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
     await openCreatePopover(user)
 
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
@@ -143,7 +151,7 @@ describe('CalendarPage · create with a project selected', () => {
   it('keeps the created event when linking fails', async () => {
     mockLinkProjectItem.mockResolvedValue({ success: false, error: 'link failed' })
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
     await openCreatePopover(user)
 
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
