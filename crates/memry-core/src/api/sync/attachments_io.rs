@@ -243,23 +243,49 @@ impl VaultSync {
     /// Presign is tried once. `STORAGE_PRESIGN_UNAVAILABLE` is permanent for
     /// the deployment, so the proxied path is used for the rest of this file
     /// and the route is not asked again within it.
+    ///
+    /// **Resumable per chunk** (#1829). Each verified plaintext chunk lands in
+    /// `images/.partial/<attachment_id>/<index>` before the next is asked for,
+    /// so a download that fails part way keeps what arrived and the retry asks
+    /// only for the rest. A landed chunk is re-checked against its manifest
+    /// hash before reuse; one that fails is fetched again. The directory goes
+    /// once the whole file is assembled.
     pub(super) async fn download_chunks(
         &self,
+        attachment_id: &str,
         manifest: &protocol::attachment_manifest::AttachmentManifest,
         file_key: &[u8],
     ) -> Result<Vec<u8>, SyncError> {
-        let hashes: Vec<String> = manifest
-            .chunks
+        let partial = self.partial_dir(attachment_id);
+        std::fs::create_dir_all(&partial).map_err(storage_error)?;
+
+        let mut decoded: Vec<(u32, Vec<u8>)> = Vec::with_capacity(manifest.chunks.len());
+        let mut missing = Vec::new();
+        for chunk in &manifest.chunks {
+            match std::fs::read(partial.join(chunk.index.to_string())) {
+                Ok(bytes)
+                    if bytes.len() as u64 == chunk.size
+                        && protocol_attachments::hex_sha256(&bytes) == chunk.hash =>
+                {
+                    decoded.push((chunk.index, bytes));
+                }
+                _ => missing.push(chunk),
+            }
+        }
+
+        let hashes: Vec<String> = missing
             .iter()
             .map(|chunk| chunk.encrypted_hash.clone())
             .collect();
-        let presigned =
+        let presigned = if hashes.is_empty() {
+            None
+        } else {
             protocol_attachments::presign_all(&self.session.http(), &self.vault_id, &hashes)
                 .await
-                .map_err(attachment_error)?;
+                .map_err(attachment_error)?
+        };
 
-        let mut decoded: Vec<(u32, Vec<u8>)> = Vec::with_capacity(manifest.chunks.len());
-        for chunk in &manifest.chunks {
+        for chunk in missing {
             let framed = match presigned
                 .as_ref()
                 .and_then(|batch| batch.urls.get(&chunk.encrypted_hash))
@@ -285,10 +311,20 @@ impl VaultSync {
                 chunk.size,
             )
             .map_err(attachment_error)?;
+            std::fs::write(partial.join(chunk.index.to_string()), &plaintext)
+                .map_err(storage_error)?;
             decoded.push((chunk.index, plaintext));
         }
 
         protocol_attachments::assemble(manifest, decoded).map_err(attachment_error)
+    }
+
+    /// Where one attachment's landed chunks wait for the rest.
+    pub(super) fn partial_dir(&self, attachment_id: &str) -> PathBuf {
+        PathBuf::from(&self.directory)
+            .join("images")
+            .join(".partial")
+            .join(attachment_id)
     }
 
     /// Writes the bytes under `images/` and returns the path the row records.
@@ -301,17 +337,17 @@ impl VaultSync {
         bytes: &[u8],
     ) -> Result<String, SyncError> {
         let images = PathBuf::from(&self.directory).join("images");
-        std::fs::create_dir_all(&images).map_err(|error| SyncError::Storage {
-            source: StorageError::Failed {
-                what: error.to_string(),
-            },
-        })?;
-        std::fs::write(images.join(attachment_id), bytes).map_err(|error| SyncError::Storage {
-            source: StorageError::Failed {
-                what: error.to_string(),
-            },
-        })?;
+        std::fs::create_dir_all(&images).map_err(storage_error)?;
+        std::fs::write(images.join(attachment_id), bytes).map_err(storage_error)?;
         Ok(attachment_id.to_owned())
+    }
+}
+
+pub(super) fn storage_error(error: std::io::Error) -> SyncError {
+    SyncError::Storage {
+        source: StorageError::Failed {
+            what: error.to_string(),
+        },
     }
 }
 
