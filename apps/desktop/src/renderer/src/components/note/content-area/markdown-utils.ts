@@ -30,8 +30,9 @@ import {
 } from '@memry/shared/inline-colors'
 import {
   createBlockNestingMarker,
-  restoreBlockNesting,
-  splitMarkdownByBlockNestingMarkers
+  foldBlockNestingMarkers,
+  isBlockNestingMarker,
+  parseMarkdownWithNestingMarkers
 } from '@memry/shared/block-nesting'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
@@ -136,29 +137,6 @@ function parseMarkdown(editor: any, markdown: string): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown)
 }
 
-async function parseMarkdownChunkPreservingNesting(
-  editor: any,
-  markdown: string
-): Promise<Block[]> {
-  const chunks = splitMarkdownByBlockNestingMarkers(markdown)
-  if (chunks.length === 0) return []
-
-  if (chunks.length === 1 && chunks[0].level === 0) {
-    return parseMarkdown(editor, chunks[0].text)
-  }
-
-  const blocks: Block[] = []
-  const levels: number[] = []
-
-  for (const chunk of chunks) {
-    const parsed = await parseMarkdown(editor, chunk.text)
-    blocks.push(...parsed)
-    levels.push(...parsed.map(() => chunk.level))
-  }
-
-  return restoreBlockNesting(blocks, levels)
-}
-
 // Funnel every BlockNote serialization through the shared normalizer so the
 // renderer save path matches the main/CRDT path (blocknote-converter.ts): `-`
 // bullets, tight lists, and single-newline paragraphs instead of remark's raw
@@ -186,27 +164,17 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
       currentLevel = level
     }
 
-    // Twin of the main process's `serializeBlocksWithNestingMarkers`: a nested
-    // block loses the top-level walk's per-type dispatch, and the file marker
-    // is a DOM comment that only reaches the vault while BlockNote's
-    // HTML→markdown step passes raw HTML through. Same bytes either way — the
-    // spec builds the comment from `fileBlockCommentData`, which is what
-    // `serializeFileBlock` wraps.
+    // A nested block takes the same per-type dispatch as a top-level one.
+    // BlockNote's own exporter would render custom blocks through their React
+    // `toExternalHTML`, which drops a task, a callout's marker or a bookmark's
+    // target (#2365). A toggle is the exception: nested, it flattens to a
+    // bullet exactly as main writes it.
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown =
-      (block.type as string) === 'file'
-        ? serializeFileBlock(block.props as FileBlockProps)
-        : (block.type as string) === 'mathBlock'
-          ? // Twin of main's nested case: the `$$` fence is three lines of one
-            // paragraph in the block spec's DOM, so a nested formula is written
-            // from the shared serializer rather than through BlockNote.
-            serializeMathBlock((block.props as { latex?: string }).latex ?? '')
-          : (block.type as string) === 'whiteboard'
-            ? // Main writes this through the server spec's `<img>`; written from
-              // the shared serializer here so the bytes do not depend on the
-              // React spec's export HTML.
-              whiteboardMarkdown(block)
-            : (await serializeBlocks(editor, [shallowBlock])).trim()
+    const markdown = (
+      (block.type as string) === 'toggleListItem'
+        ? await serializeBlocks(editor, [shallowBlock])
+        : await serializeBlocksPreservingBlanks(editor, [shallowBlock])
+    ).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -513,7 +481,9 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
     }
   }
 
-  return blocks
+  // Twin of main's: levels apply across the whole run, since a list item and
+  // the callout nested under it are claimed by different parsers (#2365).
+  return foldBlockNestingMarkers(blocks)
 }
 
 function applyMarkers(markers: string[], block: Block): void {
@@ -562,10 +532,13 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
             props: { canvasId: part.canvasId }
           } as unknown as Block)
         } else {
-          const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
-          if (parsed[0]) {
+          const parsed = await parseMarkdownWithNestingMarkers(part.text, (md) =>
+            parseMarkdown(editor, md)
+          )
+          const first = parsed.find((block) => !isBlockNestingMarker(block))
+          if (first) {
             // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
-            const marked = parsed[0] as unknown as MarkedBlock
+            const marked = first as unknown as MarkedBlock
             for (const apply of part.patches ?? []) apply(marked)
           }
           blocks.push(...parsed)

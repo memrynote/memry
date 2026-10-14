@@ -26,6 +26,7 @@ export function splitMarkdownByBlockNestingMarkers(markdown: string): MarkdownBl
     if (text.trim()) chunks.push({ level: currentLevel, text })
     buffer = []
   }
+  const lastLevel = (): number => chunks[chunks.length - 1]?.level ?? 0
 
   for (const line of lines) {
     const fenceMatch = line.match(/^( {0,3})(```|~~~)/)
@@ -53,7 +54,59 @@ export function splitMarkdownByBlockNestingMarkers(markdown: string): MarkdownBl
   }
 
   flush()
+  // A marker with no text after it still moves the level for whatever the
+  // caller parses next (the `=0` that closes a nested run before a callout,
+  // say), so it comes back as an empty chunk.
+  if (currentLevel !== lastLevel()) chunks.push({ level: currentLevel, text: '' })
   return chunks
+}
+
+/**
+ * Stand-ins for nesting markers in a flat block list. A list item's nested
+ * child is often claimed by a different parser than its parent (a callout, a
+ * task, a file marker), so the level has to outlive the chunk it was read in;
+ * `foldBlockNestingMarkers` applies it once the whole run is parsed (#2365).
+ */
+const nestingMarkerLevels = new WeakMap<object, number>()
+
+/**
+ * `markdown` parsed chunk by chunk, with a level marker block before each
+ * chunk. Pass the result through `foldBlockNestingMarkers` before use.
+ */
+export async function parseMarkdownWithNestingMarkers<T extends object>(
+  markdown: string,
+  parse: (markdown: string) => Promise<T[]>
+): Promise<T[]> {
+  const blocks: T[] = []
+  for (const chunk of splitMarkdownByBlockNestingMarkers(markdown)) {
+    const marker = {} as T
+    nestingMarkerLevels.set(marker, chunk.level)
+    blocks.push(marker)
+    if (chunk.text) blocks.push(...(await parse(chunk.text)))
+  }
+  return blocks
+}
+
+export function isBlockNestingMarker(block: object): boolean {
+  return nestingMarkerLevels.has(block)
+}
+
+/** The blocks with every level marker removed and its level applied. */
+export function foldBlockNestingMarkers<T extends BlockWithChildren<T>>(blocks: readonly T[]): T[] {
+  if (!blocks.some(isBlockNestingMarker)) return [...blocks]
+  const content: T[] = []
+  const levels: number[] = []
+  let level = 0
+  for (const block of blocks) {
+    const markerLevel = nestingMarkerLevels.get(block)
+    if (markerLevel === undefined) {
+      content.push(block)
+      levels.push(level)
+    } else {
+      level = markerLevel
+    }
+  }
+  return levels.some((l) => l > 0) ? restoreBlockNesting(content, levels) : content
 }
 
 export function restoreBlockNesting<T extends BlockWithChildren<T>>(
