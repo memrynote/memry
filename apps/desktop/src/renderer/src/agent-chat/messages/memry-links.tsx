@@ -28,6 +28,7 @@ import {
   memryLinkChipClassName,
   memryLinkClassName
 } from './memry-links-constants'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import { useVaultItemIcon } from './use-vault-item-icon'
 
 export function useMemryLinkNavigation(): (href: string, title?: string) => boolean {
@@ -180,6 +181,7 @@ type LinkIconComponent = ComponentType<{ className?: string }>
 type LinkIconDescriptor =
   | { kind: 'component'; label: string; Icon: LinkIconComponent }
   | { kind: 'note'; label: string; noteIcon: string }
+  | { kind: 'project'; label: string; projectIcon: string }
   | { kind: 'glyph'; label: string; glyph: string }
 
 const INBOX_TYPE_ICONS: Record<InboxItemType, LinkIconComponent> = {
@@ -218,6 +220,11 @@ function resolveMemryLinkIcon(
 
   // An item's own icon always wins over the per-type default.
   if (customIcon) {
+    // Projects may still store a legacy lucide name ("Folder"), which only
+    // ProjectIcon knows how to draw.
+    if (kind === 'project') {
+      return { kind: 'project', label: 'project-custom', projectIcon: customIcon }
+    }
     return {
       kind: 'note',
       label: kind === 'note' ? 'note-custom' : `${kind}-custom`,
@@ -321,6 +328,12 @@ export function MemryLinkIcon({
         <NoteIconDisplay
           value={resolved.noteIcon}
           className={cn(iconClassName, 'text-[0.8125rem]')}
+        />
+      ) : resolved.kind === 'project' ? (
+        <ProjectIcon
+          icon={resolved.projectIcon}
+          className={cn(iconClassName, 'text-[0.8125rem]')}
+          fallback={<Folder className={iconClassName} />}
         />
       ) : resolved.kind === 'glyph' ? (
         <span className={cn(iconClassName, 'font-heading text-[0.75rem] font-bold leading-none')}>
