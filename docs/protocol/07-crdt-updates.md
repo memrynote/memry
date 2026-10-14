@@ -379,9 +379,9 @@ Cost: a note whose pre-`0011` rows sit above its pinned watermark keeps them.
   The legacy sweep is the only writer of `done`, so it stays (#2421): a new
   device, a device whose run from cursor 0 or rollback deleted the key, and a
   device after a CRDT store epoch reset claim again only once it has run.
-  - `encodeForPush` (`apps/desktop/src/main/sync/crdt-provider.ts:331`) is the
+  - `encodeForPush` (`apps/desktop/src/main/sync/crdt-provider.ts:454`) is the
     only way to produce push bytes: it reads the base revision first (the
-    persisted snapshot watermark, `readPushBase`, `:314`), then the claim and
+    persisted snapshot watermark, `readPushBase`, `:442`), then the claim and
     the encode in one synchronous step, because a feed page can land bodies and
     move `LAST_CURSOR` during any await. A reader that throws claims nothing.
   - The provider withholds the claim when the doc cannot vouch for itself
@@ -409,7 +409,7 @@ Cost: a note whose pre-`0011` rows sit above its pinned watermark keeps them.
     start. The refusal and local-only owes are durable debts (§7.17.5).
   - A body the feed merges while the doc is compacting is only buffered, so it
     is reported not landed and the note is owed its whole body
-    (`mergeRemoteUpdate`, `crdt-provider.ts:887`); a compaction that drops a
+    (`mergeRemoteUpdate`, `crdt-provider.ts:1297-1300`); a compaction that drops a
     non-empty buffer (its push threw, or no live doc is left) owes the note too,
     as a durable `compaction` debt.
   - The data DB and the CRDT store share one random epoch id
@@ -646,10 +646,10 @@ form for a document **only when all of**:
    bounds the prune by what the claim covers, but the condition stands: a
    server that predates the field ignores it;
 2. the document is neither local-only
-   (`apps/desktop/src/main/sync/crdt-provider.ts:564`, `:870-873`) nor purged
-   (`:654`);
+   (`apps/desktop/src/main/sync/crdt-provider.ts:1044`, `:1537-1540`) nor purged
+   (`:1198`);
 3. the encoded state is non-empty
-   (`apps/desktop/src/main/sync/crdt-provider.ts:881-884`).
+   (`apps/desktop/src/main/sync/crdt-provider.ts:1553-1556`).
 
 **Otherwise the client MUST NOT use the snapshot endpoint.** It MAY push the same
 full state to `POST /sync/crdt/updates`, which prunes nothing
@@ -669,9 +669,9 @@ edited document's log does not grow unboundedly:
 | Trigger                         | Rule                                                               | Source                                                                                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | after its own incremental batch | 30 s quiet, 120 s cap from the first request                       | `packages/sync-client/src/crdt-snapshot-scheduler.ts:9` (`SNAPSHOT_QUIET_MS = 30_000`), `:16` (`SNAPSHOT_MAX_WAIT_MS = 120_000`), `:51`; requested at `apps/desktop/src/main/sync/runtime.ts:577-580` |
-| document close                  | when `pendingSnapshotBytes > 0` and the document is not local-only | `apps/desktop/src/main/sync/crdt-provider.ts:564-570`; debt is bytes of non-network-origin updates, `:1249-1252`                                                                                      |
-| shutdown                        | `pushAllSnapshots` for documents holding debt                      | `apps/desktop/src/main/sync/crdt-provider.ts:814-828`                                                                                                                                                 |
-| local compaction                | encoded size over 1 MiB, no editor open, 60 s check interval       | `apps/desktop/src/main/sync/crdt-provider.ts:47-49`, `:1385-1400`                                                                                                                                     |
+| document close                  | when `pendingSnapshotBytes > 0` and the document is not local-only | `apps/desktop/src/main/sync/crdt-provider.ts:1044-1060`; debt is bytes of non-network-origin updates, `:2046-2049`                                                                                    |
+| shutdown                        | `pushAllSnapshots` for documents holding debt                      | `apps/desktop/src/main/sync/crdt-provider.ts:1476`                                                                                                                                                    |
+| local compaction                | encoded size over 1 MiB, no editor open, 60 s check interval       | `apps/desktop/src/main/sync/crdt-provider.ts:81`, `:2196-2219`                                                                                                                                        |
 | oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:554-575`                                                                                                                                                       |
 
 ### 7.13.4 What the platform-free engine does today, and #2187
@@ -1144,7 +1144,7 @@ Per page of a declaring run
     and the markdown write-back see it.
   - An update that changed the doc is also stored explicitly. The landing
     awaits that write and rejects if it fails
-    (`apps/desktop/src/main/sync/crdt-provider.ts:828`). An update that
+    (`apps/desktop/src/main/sync/crdt-provider.ts:1311`). An update that
     changed nothing, such as this device's own echo, is not stored again.
 
   Nothing else is ever stored. Bytes the store holds but no live doc merged
@@ -1245,7 +1245,7 @@ Per page of a declaring run
     owed is not recorded, since the CRDT pull would then skip the baseline the
     note is owed;
   - the revision the server returns for a snapshot this device pushed
-    (`crdt-provider.ts:852`; `apps/desktop/src/main/sync/crdt-snapshot-push.ts:110`,
+    (`crdt-provider.ts:1325-1332`; `apps/desktop/src/main/sync/crdt-snapshot-push.ts:110`,
     `apps/desktop/src/main/sync/crdt-snapshot-batch.ts:162`). This device's own
     snapshot then comes back through the feed as a skipped entry, not a
     download.
