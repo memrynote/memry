@@ -993,8 +993,29 @@ export function NotePage({ noteId }: NotePageProps) {
         return
       }
 
+      // Notes in different folders may share a title (#3164). Looked up before
+      // the rename so the resolver cannot answer with this note itself.
+      const twinLookup = notesService.resolveByTitle(newTitle).catch((err: unknown) => {
+        log.warn('Duplicate-title lookup failed:', err)
+        return null
+      })
       try {
-        await renameNote.mutateAsync({ id: noteId, newTitle })
+        const result = await renameNote.mutateAsync({ id: noteId, newTitle })
+        const twin = await twinLookup
+        // A same-folder clash gets a numbered filename, so no twin then.
+        if (
+          twin &&
+          twin.id !== noteId &&
+          result.note?.title.toLowerCase() === twin.title.toLowerCase()
+        ) {
+          const slash = twin.path.lastIndexOf('/')
+          toast.info(
+            t('page.toast.duplicateTitle', {
+              title: twin.title,
+              folder: slash === -1 ? '/' : twin.path.slice(0, slash)
+            })
+          )
+        }
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         log.error('Failed to rename note:', err)
