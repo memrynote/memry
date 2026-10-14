@@ -29,7 +29,10 @@ import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { clearCanvasEdges, rewriteCanvasEdges } from '../../canvas/edge-index'
 import { readMemryAssets, sceneWithCurrentAssetRows } from '../../canvas/assets/memry-assets'
 import { ensureAssetsPresent } from '../../canvas/assets/asset-service'
-import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
+import {
+  buildAssetServiceContext,
+  releaseUnshownCanvasHolds
+} from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { trackMainEvent } from '../../telemetry/track'
 import { trackMainLog } from '../../telemetry/diagnostics'
@@ -111,6 +114,22 @@ async function restoreCanvasAssets(
   } catch (err) {
     log.warn('canvas asset restore failed after apply', { canvasId, err })
   }
+}
+
+// Waits out the rest of a pull, so the release reads the newest applied scene
+// rather than an intermediate version a later page supersedes (#3035).
+const HOLD_RELEASE_DELAY_MS = 10_000
+const pendingHoldReleases = new Map<string, ReturnType<typeof setTimeout>>()
+
+function scheduleUnshownHoldRelease(canvasId: string): void {
+  clearTimeout(pendingHoldReleases.get(canvasId))
+  pendingHoldReleases.set(
+    canvasId,
+    setTimeout(() => {
+      pendingHoldReleases.delete(canvasId)
+      void releaseUnshownCanvasHolds(canvasId)
+    }, HOLD_RELEASE_DELAY_MS)
+  )
 }
 
 /**
@@ -329,6 +348,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     if ((result !== 'skipped' || identicalSkip) && descriptors.length > 0) {
       void restoreCanvasAssets(itemId, descriptors)
     }
+    if (result !== 'skipped') scheduleUnshownHoldRelease(itemId)
     return result
   }
 
