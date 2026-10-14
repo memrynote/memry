@@ -287,11 +287,7 @@ struct ProjectLinkLabel: View {
     var body: some View {
         HStack(spacing: Tokens.Space.medium) {
             Group {
-                if let emoji = item?.emoji, !emoji.isEmpty {
-                    Text(emoji)
-                } else {
-                    Image(systemName: symbol).foregroundStyle(tint)
-                }
+                StoredIconView(value: item?.emoji, fallback: symbol).foregroundStyle(tint)
             }
             .font(Tokens.Typography.body.font)
             .frame(width: TaskLayout.lane)

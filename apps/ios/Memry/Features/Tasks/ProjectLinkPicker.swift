@@ -97,12 +97,8 @@ struct ProjectRelatedLabel: View {
                 }
             }
         } icon: {
-            if let emoji = item.emoji, !emoji.isEmpty {
-                Text(emoji)
-            } else {
-                Image(systemName: item.kind == "file" ? "doc" : "doc.text")
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
+            StoredIconView(value: item.emoji, fallback: item.kind == "file" ? "doc" : "doc.text")
+                .foregroundStyle(Tokens.Text.secondary.color)
         }
     }
 }

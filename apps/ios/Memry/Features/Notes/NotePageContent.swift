@@ -88,7 +88,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     model: metadataModel,
                     reload: { await model.reload() },
                     noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
-                    noteIcon: { id in model.vaultNotes.first { $0.id == id }?.emoji },
+                    noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
                     tagColors: model.tagColors,
                     tagSuggestions: model.vaultTagNames,
                     relationCandidates: model.vaultNotes

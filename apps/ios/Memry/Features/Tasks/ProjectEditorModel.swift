@@ -58,6 +58,12 @@ enum ProjectIconValue {
         return icon
     }
 
+    /// Whether the value names an uploaded `custom:<id>` image
+    /// (`isCustomIconValue` in `emoji-icon-utils.ts`).
+    static func isCustom(_ icon: String?) -> Bool {
+        icon?.hasPrefix("custom:") == true
+    }
+
     /// The last emoji typed into the icon field, or `nil` for plain text.
     static func sanitize(_ typed: String) -> String? {
         guard let last = typed.last else { return nil }
