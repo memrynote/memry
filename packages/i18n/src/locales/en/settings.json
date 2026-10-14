@@ -1091,7 +1091,8 @@
         "refreshFailed": "Could not refresh billing status",
         "billingActive": "Billing is active",
         "activationPending": "Activation pending",
-        "portalFailed": "Could not open billing portal"
+        "portalFailed": "Could not open billing portal. Try again in a few minutes.",
+        "portalNoCustomer": "No billing account found yet. If you just paid, choose Refresh status and try again."
       }
     },
     "storage": {
