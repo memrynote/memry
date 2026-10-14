@@ -51,6 +51,8 @@ picker at `memrynote.com/account/sync` in your browser — no separate web login
 choose a plan (Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing
 to Paddle checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
 **Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
+If Memry has no billing account for you yet, it says so; right after paying, choose **Refresh status**
+and try again.
 
 On an active monthly plan, Billing also offers **Switch to yearly**. The first click prices the
 switch and shows the exact amount due today; the second confirms it. You do not cancel first and

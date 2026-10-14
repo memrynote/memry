@@ -5,7 +5,7 @@ export interface MainIpcInvokeHandlers {
   "account:changePlan": (...args: [any]) => Awaited<Promise<import("../billing/paddle-billing").BillingStatus | (import("../billing/paddle-billing").BillingActionResult & { status?: undefined; })>>
   "account:getBillingStatus": (...args: []) => Awaited<Promise<import("../billing/paddle-billing").BillingStatus | (import("../billing/paddle-billing").BillingActionResult & { status?: undefined; })>>
   "account:getInfo": (...args: []) => Awaited<import("./account-handlers").AccountInfo>
-  "account:openBillingPortal": (...args: []) => Awaited<Promise<import("../billing/paddle-billing").BillingActionResult & { portalUrl?: string | undefined; }>>
+  "account:openBillingPortal": (...args: []) => Awaited<Promise<import("../billing/paddle-billing").BillingActionResult & { portalUrl?: string | undefined; reason?: "no-billing-customer" | undefined; }>>
   "account:previewPlanChange": (...args: [any]) => Awaited<Promise<import("../billing/paddle-billing").PlanChangePreview | (import("../billing/paddle-billing").BillingActionResult & { plan?: undefined; })>>
   "account:refreshBillingStatus": (...args: [any]) => Awaited<Promise<import("../billing/paddle-billing").BillingStatus | (import("../billing/paddle-billing").BillingActionResult & { status?: undefined; })>>
   "account:signOut": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>

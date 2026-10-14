@@ -1,5 +1,5 @@
 import { shell } from 'electron'
-import { getFromServer, postToServer } from '../sync/http-client'
+import { getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
 import { startSyncRuntime } from '../sync/runtime'
 import { createLogger } from '../lib/logger'
@@ -102,15 +102,26 @@ export async function refreshBillingStatus(input?: {
   return result
 }
 
-export async function openBillingPortal(): Promise<BillingActionResult & { portalUrl?: string }> {
+export async function openBillingPortal(): Promise<
+  BillingActionResult & { portalUrl?: string; reason?: 'no-billing-customer' }
+> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to manage billing' }
 
-  const response = await postToServer<{ portalUrl: string }>(
-    '/auth/billing/portal-session',
-    {},
-    token
-  )
+  let response: { portalUrl: string }
+  try {
+    response = await postToServer<{ portalUrl: string }>('/auth/billing/portal-session', {}, token)
+  } catch (error) {
+    if (!(error instanceof SyncServerError)) throw error
+    log.warn('Billing portal session failed', {
+      statusCode: error.statusCode,
+      error: error.message
+    })
+    // 409: the server has no Paddle customer for this account (never paid, or webhook pending).
+    return error.statusCode === 409
+      ? { success: false, reason: 'no-billing-customer' }
+      : { success: false }
+  }
   await shell.openExternal(response.portalUrl)
   return { success: true, portalUrl: response.portalUrl }
 }
