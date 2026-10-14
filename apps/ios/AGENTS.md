@@ -13,7 +13,7 @@ This directory owns the native iOS app, a SwiftUI shell over the Rust core in [c
 ## Build and simulators
 
 - After a core change, run `crates/memry-core/build-xcframework.sh` before building, or Swift links against a stale core. `pnpm dev:mobile` does this first.
-- Agents build, test, and install only on `-destination 'platform=iOS Simulator,name=iPhone 17'`. `iPhone 17 Pro` runs Kaan's `pnpm dev:mobile` hot-reload session, and any `xcodebuild test` or `simctl install` there kills his running app. Never touch it.
+- Agents build, test, and install only on `-destination 'platform=iOS Simulator,name=iPhone 17'`. `iPhone 17 Pro` runs Kaan's `pnpm dev:mobile` session, and any `xcodebuild test` or `simctl install` there kills his running app. Never touch it.
 - There is no pnpm entry point for tests. Use `xcodebuild` with the `Memry` scheme:
 
 ```bash

@@ -4,7 +4,7 @@
 #   pnpm dev:mobile             # iPhone 17 Pro
 #   pnpm dev:mobile "iPhone Air" # any available simulator
 #
-# iPhone 17 Pro is Kaan's hot-reload simulator. Agents build and test on
+# iPhone 17 Pro is Kaan's dev simulator. Agents build and test on
 # iPhone 17 (see apps/ios/AGENTS.md) so their installs never kill this app.
 #
 # Rebuilds the Rust core first: the committed xcframework goes stale whenever
@@ -17,15 +17,8 @@ device="${1:-${MEMRY_IOS_DEVICE:-iPhone 17 Pro}}"
 "$repo_root/crates/memry-core/build-xcframework.sh"
 
 cd "$repo_root/apps/ios"
-# Default DerivedData on purpose: InjectionNext finds the build log there to
-# learn how to recompile a saved file. A custom -derivedDataPath hides it.
 xcodebuild -project Memry.xcodeproj -scheme Memry -configuration Debug \
   -destination "platform=iOS Simulator,name=$device" build
-
-# Hot reload daemon. Menu bar icon: orange = app connected, green = recompiling.
-if [ -d /Applications/InjectionNext.app ]; then
-  open -a InjectionNext --args -projectPath "$repo_root/apps/ios"
-fi
 
 xcrun simctl boot "$device" 2>/dev/null || true
 open "/Applications/Xcode.app/Contents/Applications/DeviceHub.app" 2>/dev/null ||
@@ -36,6 +29,4 @@ app="$(xcodebuild -project Memry.xcodeproj -scheme Memry -configuration Debug \
   awk '/ BUILT_PRODUCTS_DIR = /{print $3; exit}')/Memry.app"
 bundle_id="$(defaults read "$app/Info.plist" CFBundleIdentifier)"
 xcrun simctl install "$device" "$app"
-# SIMCTL_CHILD_* passes through to the app: the scheme's env vars are Xcode-only.
-SIMCTL_CHILD_INJECTION_PROJECT_ROOT="$repo_root/apps/ios" \
-  xcrun simctl launch --console-pty "$device" "$bundle_id"
+xcrun simctl launch --console-pty "$device" "$bundle_id"
