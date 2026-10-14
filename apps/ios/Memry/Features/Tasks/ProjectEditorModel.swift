@@ -64,6 +64,15 @@ enum ProjectIconValue {
         let text = String(last)
         return emoji(text)
     }
+
+    /// What a text icon field saves. The field only shows an emoji
+    /// (`emoji(stored)`), so an untouched field keeps the stored value byte
+    /// for byte, including desktop's `icon:<Name>`, `custom:<id>` and legacy
+    /// lucide names, which the field cannot show or edit.
+    static func saved(stored: String?, typed: String) -> String? {
+        if typed == (emoji(stored) ?? "") { return stored }
+        return typed.isEmpty ? nil : String(typed.prefix(8))
+    }
 }
 
 /// One status row of the editor. `localId` keys the row; `id` is the stored

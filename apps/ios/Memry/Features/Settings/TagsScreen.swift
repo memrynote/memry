@@ -216,7 +216,7 @@ struct TagStyleSheet: View {
                 } header: {
                     Text(TagsCopy.icon)
                 } footer: {
-                    SettingsFooter(TagsCopy.iconFooter)
+                    SettingsFooter(ProjectIconValue.emoji(tag.icon) == nil && tag.icon != nil ? TagsCopy.iconFromDesktop : TagsCopy.iconFooter)
                 }
             }
             .navigationTitle("#\(tag.name)")
@@ -225,14 +225,14 @@ struct TagStyleSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button(SettingsCopy.cancel, systemImage: "xmark") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(SettingsCopy.done, systemImage: "checkmark") {
-                        save(color, icon.isEmpty ? nil : String(icon.prefix(8)))
+                        save(color, ProjectIconValue.saved(stored: tag.icon, typed: icon))
                     }
                     .buttonStyle(.glassProminent)
                 }
             }
             .onAppear {
                 color = tag.color
-                icon = tag.icon ?? ""
+                icon = ProjectIconValue.emoji(tag.icon) ?? ""
             }
         }
         .presentationDetents([.medium, .large])
@@ -263,5 +263,6 @@ enum TagsCopy {
     static let icon = "Icon"
     static let iconPlaceholder = "An emoji"
     static let noIcon = "None"
+    static let iconFromDesktop = "Icon set on desktop. Type an emoji to replace it."
     static let iconFooter = "Shows beside the tag in notes, tasks and the tag list. Shared with your other devices."
 }

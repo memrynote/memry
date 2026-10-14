@@ -93,6 +93,21 @@ struct TasksProjectsTests {
         #expect(ProjectIconValue.emoji("🚀") == "🚀")
     }
 
+    /// #2598: opening and saving an icon field without editing it keeps
+    /// every desktop icon shape byte for byte.
+    @Test(arguments: ["icon:StarIcon", "custom:i4D0i_NKqVZr0a9eb-6B3", "👨‍👩‍👧‍👦", "Folder", "BookOpenText"])
+    func an_untouched_icon_field_saves_the_stored_icon(stored: String) {
+        let shown = ProjectIconValue.emoji(stored) ?? ""
+        let saved = ProjectIconValue.saved(stored: stored, typed: shown)
+        #expect(saved.map { Array($0.utf8) } == Array(stored.utf8))
+    }
+
+    @Test func an_edited_icon_field_saves_the_edit() {
+        #expect(ProjectIconValue.saved(stored: "icon:StarIcon", typed: "📚") == "📚")
+        #expect(ProjectIconValue.saved(stored: "🚀", typed: "") == nil)
+        #expect(ProjectIconValue.saved(stored: nil, typed: "") == nil)
+    }
+
     @Test func the_palette_is_desktops() {
         #expect(ProjectPalette.swatches.count == 10)
         #expect(ProjectPalette.swatch(for: "#6366F1")?.id == "indigo")
