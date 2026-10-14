@@ -69,6 +69,9 @@ title and writes the path, so the link opens the note you picked: `[[Projects/Ro
 `[[/Roadmap]]` for the one at the top of the vault. A note whose title is unique is still
 written as `[[Roadmap]]`. Typing `#` after a path lists that note's headings.
 
+Renaming a note to a title that a note in another folder already has keeps both notes as
+they are and shows a message naming the other note's folder.
+
 Moving a note to another folder, or renaming a folder, updates every path link that points
 into it. Links written by title do not change, because the title stays the same.
 
