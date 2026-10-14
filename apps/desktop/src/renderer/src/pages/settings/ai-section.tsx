@@ -695,7 +695,7 @@ export function AISettings({
                 description={t('ai.voice.languageDescription')}
               >
                 <Select
-                  value={voiceSettings.language}
+                  value={voiceSettings.language ?? ''}
                   onValueChange={(value) =>
                     void handleVoiceLanguageChange(value as VoiceTranscriptionLanguage)
                   }

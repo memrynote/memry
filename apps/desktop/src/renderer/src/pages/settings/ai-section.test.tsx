@@ -252,6 +252,25 @@ describe('AISettings', () => {
     await waitFor(() => expect(languageSelect).toHaveTextContent('German'))
   })
 
+  it('keeps the spoken language and shows an error when saving fails', async () => {
+    api.settings.setVoiceTranscriptionSettings = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: 'language rejected' })
+      .mockRejectedValueOnce(new Error('language exploded'))
+
+    render(<AISettings />)
+
+    const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'German' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language rejected'))
+
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'French' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language exploded'))
+    expect(languageSelect).toHaveTextContent('Default')
+  })
+
   it('switches the voice provider with the segmented control', async () => {
     render(<AISettings />)
 
