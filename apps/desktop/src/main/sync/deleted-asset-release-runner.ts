@@ -21,10 +21,11 @@ let caughtUp: () => boolean = () => false
  */
 async function run(): Promise<void> {
   if (running || !caughtUp()) return
-  const ctx = buildAssetServiceContext()
-  if (!ctx || !isVaultReachable(ctx.vaultPath)) return
   running = true
   try {
+    // Setup sits inside the try: it throws when the database closes mid-startup (#3052).
+    const ctx = buildAssetServiceContext()
+    if (!ctx || !isVaultReachable(ctx.vaultPath)) return
     const settled = await releaseExpiredDeletedAssets({
       db: ctx.db,
       vaultPath: ctx.vaultPath,

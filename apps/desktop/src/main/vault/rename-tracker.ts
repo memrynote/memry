@@ -289,6 +289,22 @@ export async function settleDeferredDeletes(batch: DeferredDeletes): Promise<voi
 }
 
 /**
+ * Drop the batch's deferred deletes that are still pending without running
+ * them, for a rescan that failed before its adds finished. Every row stays, and
+ * the next rescan finds the files missing again and decides then (#3055).
+ */
+export function discardDeferredDeletes(batch: DeferredDeletes): number {
+  let dropped = 0
+  for (const pending of batch) {
+    if (!pendingDeletes.get(pending.contentHash)?.includes(pending)) continue
+    removePending(pending)
+    dropped++
+  }
+  batch.clear()
+  return dropped
+}
+
+/**
  * Rename key for a file whose body has not been read. A rename changes neither
  * size nor mtime, so the pair identifies the same bytes at a new path without
  * opening the file.

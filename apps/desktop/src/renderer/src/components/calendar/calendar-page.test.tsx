@@ -1,3 +1,4 @@
+import { DndContext } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
@@ -7,6 +8,13 @@ import type {
   CalendarRangeResponse,
   CalendarSourceRecord
 } from '@/services/calendar-service'
+
+// The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
+const CalendarPageInDndContext = () => (
+  <DndContext sensors={[]}>
+    <CalendarPage />
+  </DndContext>
+)
 
 const {
   mockUseCalendarRange,
@@ -314,7 +322,7 @@ describe('CalendarPage', () => {
     it('#given a Google connection and no answer yet #then the prompt opens on first calendar visit', async () => {
       mockConsent(null)
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
@@ -325,7 +333,7 @@ describe('CalendarPage', () => {
       mockConsent(null)
       mockListSources.mockResolvedValue({ sources: [] })
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() => expect(mockListSources).toHaveBeenCalled())
       expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
@@ -334,7 +342,7 @@ describe('CalendarPage', () => {
     it('#given the user already answered #then the prompt stays closed', async () => {
       mockConsent(false)
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() => expect(window.api.settings.getCalendarGoogleSettings).toHaveBeenCalled())
       expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
@@ -344,7 +352,7 @@ describe('CalendarPage', () => {
       const user = userEvent.setup()
       mockConsent(null)
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
@@ -364,7 +372,7 @@ describe('CalendarPage', () => {
       mockConsent(null)
       vi.mocked(window.api.settings.setCalendarGoogleSettings).mockResolvedValue({ success: false })
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
@@ -382,7 +390,7 @@ describe('CalendarPage', () => {
       const user = userEvent.setup()
       mockConsent(null)
 
-      renderWithProviders(<CalendarPage />)
+      renderWithProviders(<CalendarPageInDndContext />)
 
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
@@ -400,7 +408,7 @@ describe('CalendarPage', () => {
 
   it('switches between day, week, month, year, and timeline views', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Day' })).toBeInTheDocument())
 
@@ -428,7 +436,7 @@ describe('CalendarPage', () => {
       new Date(now.getFullYear(), now.getMonth() + 1, 1)
     )
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() =>
       expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'timeline')
@@ -443,7 +451,7 @@ describe('CalendarPage', () => {
     const user = userEvent.setup()
     localStorage.setItem('calendar-view', 'year')
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() =>
       expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'year')
@@ -458,7 +466,7 @@ describe('CalendarPage', () => {
 
   it('filters imported Google calendars separately from memrynote items', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() => expect(screen.getByText('Customer call')).toBeInTheDocument())
 
@@ -480,7 +488,7 @@ describe('CalendarPage', () => {
 
   it('filters projection items by event type with color swatches in the filter popover', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
 
@@ -504,7 +512,7 @@ describe('CalendarPage', () => {
 
   it('opens the event editor popover for create and edit flows', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Create event' })).toBeInTheDocument()
@@ -528,7 +536,7 @@ describe('CalendarPage', () => {
       }
     })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('Planning block')).toBeInTheDocument()
@@ -537,7 +545,7 @@ describe('CalendarPage', () => {
   it('opens the create dialog for a create-event click made just now', async () => {
     mockUseActiveTab.mockReturnValue({ viewState: { createEventAt: Date.now() } })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     expect(await screen.findByRole('dialog', { name: 'Create calendar event' })).toBeInTheDocument()
   })
@@ -547,7 +555,7 @@ describe('CalendarPage', () => {
     // Calendar always landed with the event-creation dialog already open.
     mockUseActiveTab.mockReturnValue({ viewState: { createEventAt: Date.now() - 86_400_000 } })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Create event' })).toBeInTheDocument()
@@ -556,7 +564,7 @@ describe('CalendarPage', () => {
   })
 
   it('lands on today when nothing is stored', async () => {
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await waitFor(() => expect(mockUseCalendarRange).toHaveBeenCalled())
     const today = localDateString()
@@ -571,7 +579,7 @@ describe('CalendarPage', () => {
     const user = userEvent.setup()
     mockCreateEvent.mockResolvedValue({ success: true })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Create event' }))
     await user.type(await screen.findByPlaceholderText('New Event'), 'Launch day')
@@ -593,7 +601,7 @@ describe('CalendarPage', () => {
     const user = userEvent.setup()
     mockUpdateEvent.mockResolvedValueOnce({ success: true })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(await screen.findByText('Planning block'))
     fireEvent.pointerDown(await screen.findByTestId('event-edit-save'), { button: 0 })
@@ -610,7 +618,7 @@ describe('CalendarPage', () => {
 
   it('renders projected task, reminder, and snooze items with distinct styling markers', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
 
@@ -630,7 +638,7 @@ describe('CalendarPage', () => {
 
   it('opens inbox snooze actions from projected snooze items', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
     await user.click((await screen.findAllByText('Review investor email'))[0])
@@ -678,7 +686,7 @@ describe('CalendarPage', () => {
       conferenceData: null
     })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(await screen.findByText('Customer call'))
 
@@ -734,7 +742,7 @@ describe('CalendarPage', () => {
       error: null
     })
 
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
     await user.click(await screen.findByText('Club match'))
 
     const popover = await screen.findByTestId('calendar-subscribed-event-popover')
@@ -748,7 +756,7 @@ describe('CalendarPage', () => {
     showContextMenu.mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
     const chip = await screen.findByText('Planning block')
@@ -776,7 +784,7 @@ describe('CalendarPage', () => {
     vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
     const chip = await screen.findByText('Synced standup')
@@ -796,7 +804,7 @@ describe('CalendarPage', () => {
     vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
     const chip = await screen.findByText('Planning block')
@@ -812,7 +820,7 @@ describe('CalendarPage', () => {
     const showContextMenu = vi.mocked(window.api.showContextMenu)
 
     const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
+    renderWithProviders(<CalendarPageInDndContext />)
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
     const taskChip = (await screen.findAllByText('Due draft'))[0]

@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { CalendarItemChip } from './calendar-item-chip'
+import { isEventDateMovable } from './use-event-date-drop'
 import { cn } from '@/lib/utils'
 import type { AnchorRect } from './types'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
@@ -14,8 +15,9 @@ interface DraggableTaskChipProps {
 }
 
 /**
- * Task chips are date-draggable via dnd-kit; event chips are draggable only so
- * they can be dropped on a spatial canvas. Every other chip renders untouched.
+ * Task chips are date-draggable via dnd-kit. Event chips drag onto a spatial
+ * canvas, and movable ones also onto a calendar date cell (use-event-date-drop).
+ * Every other chip renders untouched.
  */
 export function DraggableTaskChip({
   item,
@@ -85,7 +87,9 @@ function DraggableCanvasChipInner({
     data: {
       type: 'canvas-entity',
       entityType: 'calendar_event',
-      entityId: item.sourceId
+      entityId: item.sourceId,
+      // Read by use-event-date-drop; absent on events the user cannot move.
+      ...(isEventDateMovable(item) ? { calendarItem: item } : {})
     }
   })
 
