@@ -323,8 +323,9 @@ of these holds: a local change to the item still waits for the server; the
 local clock is concurrent with the tombstone; or this device's latest own
 body text reached the server (desktop: the last confirmed body push) or was
 written (the core, which pulls before it pushes) no earlier than `deletedAt`
-minus 60 s. A body edit never moves the record clock, so the clock alone
-cannot answer this. The rule is `keepsUnseenText`
+minus 60 s; or the tombstone carries `bodyStateVector` and this device's body
+state holds a Yjs item that vector does not cover. A body edit never moves the
+record clock, so the clock alone cannot answer this. The rule is `keepsUnseenText`
 (`packages/sync-client/src/delete-keep.ts`) and `keeps_unseen_text`
 (`crates/memry-core/src/sync/delete_keep.rs`), pinned by `delete-keep.json`.
 The copy commits in the delete's own transaction, so a redelivered delete
@@ -332,6 +333,37 @@ finds no live row and makes no second copy. `deletedAt` is read as whole
 seconds when it is below `10^11`: desktop has always pushed seconds
 (`apps/desktop/src/main/sync/sync-crypto-batch.ts:74`), while chapter 04 and
 the core use ms.
+
+**The delete carries what it covered (#3037).** `deletedAt` is when the
+deleter pushed the delete, not what it had seen: a device offline from 9:00
+that deletes at 10:00 and pushes at 11:00 stamps 11:00, so text a peer pushed
+at 9:30 looks seen under the 60 s rule. A `note` or `journal` delete therefore
+puts an optional `bodyStateVector` inside its encrypted payload: the standard
+base64 of the Yjs v1 state vector of the deleter's body doc at delete time
+(desktop: the loaded doc, `ContentSyncService.bodyStateVector`; the core: its
+whole update log, `body_state_vector`). It is no text, travels end to end
+encrypted, and needs no server, D1 or envelope change. The receiver compares it
+with its own body state: desktop with the merged state vector of every body
+update the server confirmed from it (`note_body_sync.pushed_state_vector`, data
+migration `0074`), the core with its whole update log. A vector that does not
+decode counts as not covering.
+
+The clause only adds keeps, and compatibility rests on that:
+
+- An older build never decodes a delete payload, so it ignores the field and
+  keeps its old rule.
+- A delete without the field (an older build's, one raised while the desktop
+  sync runtime was down, a doc that would not load, an empty doc, or a purged
+  marker whose payload was shed, §5.12.3) is decided by the other clauses
+  exactly as before. A receiver that cannot open the payload does the same.
+- A receiver with no recorded body state (desktop before its first confirmed
+  push after the upgrade) is decided by the other clauses too.
+
+The limits that remain: a desktop receiver records body pushes only from its
+body outbox, so text that reached the server only in a scheduled snapshot is
+decided by the 60 s clause; the 60 s clause still assumes clock skew under
+60 s; a desktop file-read error skips the copy with a log line; and a core
+body-read failure fails the pull page, which retries with the cursor unmoved.
 
 ### A re-create seeds its clock from the tombstone (#2409)
 
@@ -771,7 +803,9 @@ instead of two (`apps/sync-server/src/services/sync.ts:1096`).
   (`packages/sync-client/src/pull/engine.ts:27-28`).
 - **A present `deletedAt` overrides the declared `operation`**
   (`packages/sync-client/src/pull/engine.ts:229`).
-- Tombstone bodies are **never decoded** (`packages/sync-client/src/pull/engine.ts:230-240`).
+- Tombstone bodies are **never applied** (`packages/sync-client/src/pull/engine.ts:230-240`).
+  A `note` or `journal` tombstone is read only for its optional
+  `bodyStateVector` (§5.8, #3037).
 - An id in `deleted` with no ref row has **no type on the wire**; the client
   marks any existing row deleted and otherwise records a bare tombstone
   (`packages/sync-client/src/pull/engine.ts:415-418`).

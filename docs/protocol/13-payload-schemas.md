@@ -273,8 +273,11 @@ name is not a payload field.
 
 **`date` is optional ONLY so a delete tombstone can omit it** (`:274-280`). A
 create or update without it is rejected by **an explicit guard in the handler,
-not by the schema**. Deletes never reach any parser at all: the applier
-short-circuits `operation === 'delete'` before decoding the body.
+not by the schema**. Deletes never reach the payload parser: the applier
+short-circuits `operation === 'delete'` and reads only the optional
+`bodyStateVector` out of a `note` or `journal` tombstone (chapter 05 §5.8,
+#3037). Both schemas list `bodyStateVector` as an optional string; it appears
+only on a delete.
 
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.

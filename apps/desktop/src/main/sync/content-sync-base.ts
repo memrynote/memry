@@ -1,3 +1,4 @@
+import * as Y from 'yjs'
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
@@ -10,6 +11,8 @@ import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 export interface ContentSyncDeps {
   queue: SyncQueueManager
   getDeviceId: () => string | null
+  /** The open doc's Yjs state vector, or null when the doc is not open (#3037). */
+  getStateVector?: (itemId: string) => Uint8Array | null
 }
 
 /**
@@ -29,11 +32,13 @@ export abstract class ContentSyncService<
   protected abstract readonly log: Logger.LogFunctions
   abstract readonly itemType: Extract<SyncItemType, 'note' | 'journal'>
   private readonly getDeviceId: () => string | null
+  private readonly getStateVector: (itemId: string) => Uint8Array | null
   private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
   constructor(deps: ContentSyncDeps) {
     this.queue = deps.queue
     this.getDeviceId = deps.getDeviceId
+    this.getStateVector = deps.getStateVector ?? (() => null)
   }
 
   protected abstract buildSnapshotPayload(
@@ -48,6 +53,17 @@ export abstract class ContentSyncService<
     clock: VectorClock,
     ...extra: TArgs
   ): TPayload | null
+
+  /**
+   * Base64 state vector of the item's open doc, for its tombstone's
+   * `bodyStateVector` (chapter 05 §5.8, #3037). Undefined when the doc is not
+   * open or holds nothing: a peer then decides as it did before #3037.
+   */
+  protected bodyStateVector(itemId: string | undefined): string | undefined {
+    const vector = itemId ? this.getStateVector(itemId) : null
+    if (!vector || Y.decodeStateVector(vector).size === 0) return undefined
+    return Buffer.from(vector).toString('base64')
+  }
 
   enqueueCreate(itemId: string, ...extra: TArgs): void {
     this.getController().enqueueCreate(itemId, ...extra)

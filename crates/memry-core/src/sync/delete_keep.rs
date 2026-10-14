@@ -17,17 +17,23 @@
 //! 3. this device's latest own body update was written no earlier than the
 //!    delete minus [`DELETE_KEEP_SKEW_MS`]. The core pulls before it pushes in
 //!    a pass, so an edit made before the delete is still in the outbox when
-//!    the delete is applied, unless it was pushed in an earlier pass.
+//!    the delete is applied, unless it was pushed in an earlier pass;
+//! 4. the tombstone carries the deleter's body state vector and this device's
+//!    body log holds an item it does not cover (#3037).
 //!
 //! The core never writes markdown, so the copy holds [`extract_text`]'s plain
 //! text: words, headings and list markers, without inline formatting.
 
 use std::sync::Arc;
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use rusqlite::{Connection, OptionalExtension as _, params};
+use yrs::StateVector;
+use yrs::updates::decoder::Decode as _;
 
 use crate::api::errors::StorageError;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink};
+use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::inbox::write::{NewCapture, capture_in};
@@ -53,6 +59,10 @@ pub struct UnseenTextFacts {
     pub deleted_at: Option<i64>,
     /// Epoch ms of this device's latest own body text (rule 3).
     pub last_local_body_at: Option<i64>,
+    /// Base64 Yjs v1 state vector the tombstone carries (`bodyStateVector`).
+    pub deleter_body_state_vector: Option<String>,
+    /// Base64 Yjs v1 state vector of this device's body log (rule 4).
+    pub local_body_state_vector: Option<String>,
 }
 
 /// `deletedAtMs`: desktop sends whole seconds, the core sends ms.
@@ -79,22 +89,47 @@ pub fn keeps_unseen_text(facts: &UnseenTextFacts) -> bool {
     if facts.waiting_changes || order == Some(ClockOrder::Concurrent) {
         return true;
     }
+    if let (Some(deleter), Some(local)) = (
+        &facts.deleter_body_state_vector,
+        &facts.local_body_state_vector,
+    ) && !state_vector_covers(deleter, local)
+    {
+        return true;
+    }
     match (facts.deleted_at, facts.last_local_body_at) {
         (Some(deleted_at), Some(last)) => last >= deleted_at_ms(deleted_at) - DELETE_KEEP_SKEW_MS,
         _ => false,
     }
 }
 
+/// `stateVectorCovers`: every Yjs client clock in `local` is at most the one
+/// in `deleter`. A vector that does not decode covers nothing (rule 4 keeps).
+pub fn state_vector_covers(deleter: &str, local: &str) -> bool {
+    let decode = |text: &str| {
+        BASE64
+            .decode(text)
+            .ok()
+            .and_then(|bytes| StateVector::decode_v1(&bytes).ok())
+    };
+    let (Some(seen), Some(held)) = (decode(deleter), decode(local)) else {
+        return false;
+    };
+    held.iter()
+        .all(|(client, clock)| *clock <= seen.get(client))
+}
+
 /// Runs inside the tombstone's transaction, before the row, its projection
 /// and its body log are deleted. Keeps nothing for a type other than `note`
 /// or `journal`, a row already deleted, a foreign journal id (the day merge
 /// holds those, #2984) or a blank body.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn keep(
     tx: &Connection,
     item_type: &str,
     item_id: &str,
     deleted_at: i64,
     tombstone: Option<&VectorClock>,
+    deleter_body_state_vector: Option<&str>,
     clock_device: Option<&str>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
@@ -126,11 +161,25 @@ pub(crate) fn keep(
             )
             .map_err(failed)?,
         body_blank: false,
+        deleter_body_state_vector: deleter_body_state_vector.map(str::to_owned),
+        local_body_state_vector: None,
+    };
+    let document = if facts.deleter_body_state_vector.is_some() {
+        let document = open_body(tx, item_id)?;
+        facts.local_body_state_vector =
+            Some(BASE64.encode(document.state_vector().map_err(crdt_failed(item_id))?));
+        Some(document)
+    } else {
+        None
     };
     if !keeps_unseen_text(&facts) {
         return Ok(());
     }
-    let text = body_text(tx, item_id)?;
+    let document = match document {
+        Some(document) => document,
+        None => open_body(tx, item_id)?,
+    };
+    let text = extract_text(&document).map_err(crdt_failed(item_id))?;
     facts.body_blank = text.trim().is_empty();
     if !keeps_unseen_text(&facts) {
         return Ok(());
@@ -189,19 +238,31 @@ fn copy_title(
     }))
 }
 
-fn body_text(tx: &Connection, doc_id: &str) -> Result<String, StorageError> {
-    let crdt = |error| StorageError::Failed {
-        what: format!("read the body of {doc_id} before its delete: {error}"),
-    };
-    let plan = update_log::load_plan(tx, doc_id).map_err(crdt)?;
+/// Base64 Yjs v1 state vector of `doc_id`'s whole body log: the
+/// `bodyStateVector` a note or journal delete carries (§5.8, #3037).
+pub(crate) fn body_state_vector(tx: &Connection, doc_id: &str) -> Result<String, StorageError> {
+    let document = open_body(tx, doc_id)?;
+    Ok(BASE64.encode(document.state_vector().map_err(crdt_failed(doc_id))?))
+}
+
+fn open_body(tx: &Connection, doc_id: &str) -> Result<Arc<Document>, StorageError> {
+    let plan = update_log::load_plan(tx, doc_id).map_err(crdt_failed(doc_id))?;
     let sink: UpdateSink = Arc::new(|_, _| {});
     let document = DocumentRegistry::new(READER_DEVICE_ID, sink)
         .get_or_open(doc_id)
-        .map_err(crdt)?;
+        .map_err(crdt_failed(doc_id))?;
     for blob in plan.blobs() {
-        document.apply_durable_update(blob).map_err(crdt)?;
+        document
+            .apply_durable_update(blob)
+            .map_err(crdt_failed(doc_id))?;
     }
-    extract_text(&document).map_err(crdt)
+    Ok(document)
+}
+
+fn crdt_failed<E: std::fmt::Display>(doc_id: &str) -> impl Fn(E) -> StorageError + '_ {
+    move |error| StorageError::Failed {
+        what: format!("read the body of {doc_id} before its delete: {error}"),
+    }
 }
 
 fn failed(error: rusqlite::Error) -> StorageError {

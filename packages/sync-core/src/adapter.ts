@@ -35,6 +35,8 @@ export interface RemoteSyncAdapter<TDb = unknown, TEmit = unknown, TPayload = un
     clock?: VectorClock
     /** A delete's `deletedAt`, as it came off the wire. */
     deletedAt?: number
+    /** A note or journal tombstone's `bodyStateVector` (chapter 05 §5.8, #3037). */
+    bodyStateVector?: string
     vaultKey?: Uint8Array
   }): RemoteApplyResult
   fetchLocal?(db: TDb, itemId: string): Record<string, unknown> | undefined

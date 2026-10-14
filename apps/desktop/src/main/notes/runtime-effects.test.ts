@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   initForNote: vi.fn(async () => ({}) as never),
   setNoteLocalOnly: vi.fn(),
   purge: vi.fn(async () => undefined),
+  withDocLoaded: vi.fn(async (_id: string, enqueue: () => void) => enqueue()),
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
@@ -14,7 +15,8 @@ vi.mock('../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({
     initForNote: mocks.initForNote,
     setNoteLocalOnly: mocks.setNoteLocalOnly,
-    purge: mocks.purge
+    purge: mocks.purge,
+    withDocLoaded: mocks.withDocLoaded
   })
 }))
 
@@ -111,13 +113,15 @@ describe('syncNoteDelete', () => {
     // A doc left in the provider's map is swept every 5 minutes, pulled with a
     // network origin, and written back — and with no index row left, write-back
     // re-creates the note in the default folder.
-    syncNoteDelete('note-1')
+    await syncNoteDelete('note-1')
     await vi.waitFor(() => expect(mocks.purge).toHaveBeenCalledWith('note-1'))
   })
 
-  it('enqueues the tombstone before the doc is purged', () => {
-    syncNoteDelete('note-1')
+  it('enqueues the tombstone with the doc loaded, before the doc is purged', async () => {
+    await syncNoteDelete('note-1')
 
+    // #3037: loaded so the tombstone carries the doc's body state vector.
+    expect(mocks.withDocLoaded).toHaveBeenCalledWith('note-1', expect.any(Function))
     expect(mocks.enqueueLocalSyncDelete).toHaveBeenCalledWith('note', 'note-1')
     expect(mocks.enqueueLocalSyncDelete.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.purge.mock.invocationCallOrder[0]

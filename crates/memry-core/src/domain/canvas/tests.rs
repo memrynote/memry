@@ -338,6 +338,7 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
         deleted_at: NOW,
         server_cursor: None,
         clock: Some(clock),
+        body_state_vector: None,
     };
     db.call_blocking(|conn| {
         seed(

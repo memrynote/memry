@@ -36,6 +36,8 @@ export interface UnseenTextDelete {
   localClock: VectorClock | null
   tombstoneClock: VectorClock | undefined
   deletedAt: number | undefined
+  /** The tombstone's `bodyStateVector` (#3037). */
+  bodyStateVector: string | undefined
   /** The item's markdown body, read only when a copy may be needed. */
   readBody: () => string | null
 }
@@ -59,7 +61,9 @@ export function keepUnseenText(ctx: ApplyContext, del: UnseenTextDelete): void {
       localClock: del.localClock,
       tombstoneClock: del.tombstoneClock ?? null,
       deletedAt: del.deletedAt ?? null,
-      lastLocalBodyAt: facts.confirmedAt
+      lastLocalBodyAt: facts.confirmedAt,
+      deleterBodyStateVector: del.bodyStateVector ?? null,
+      localBodyStateVector: facts.pushedStateVector
     })
   if (!decide(false)) return
   const body = del.readBody()

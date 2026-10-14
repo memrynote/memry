@@ -17,8 +17,11 @@ export function enqueueJournalUpdate(noteId: string, date: string): void {
   enqueueLocalSyncUpdate('journal', noteId, date)
 }
 
-export function enqueueJournalDelete(noteId: string, date: string): void {
-  enqueueLocalSyncDelete('journal', noteId, date)
+/** Loads the day's doc first, for the tombstone's body vector (chapter 05 §5.8, #3037). */
+export async function enqueueJournalDelete(noteId: string, date: string): Promise<void> {
+  await getCrdtProvider().withDocLoaded(noteId, () =>
+    enqueueLocalSyncDelete('journal', noteId, date)
+  )
 }
 
 export async function initializeJournalCrdt(

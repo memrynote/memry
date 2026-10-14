@@ -1,5 +1,7 @@
+import * as Y from 'yjs'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { compare } from './vector-clock'
+import { base64ToBytes } from './pull/base64'
 
 /**
  * Whether a pulled note or journal delete would erase text this device wrote
@@ -20,6 +22,12 @@ import { compare } from './vector-clock'
  *    records the push confirmation) or was written (the core, which pushes only
  *    after its pull) at about the time of the delete or after it. The slack
  *    absorbs clock skew between the two devices.
+ * 4. The tombstone carries the deleter's body state vector (#3037) and this
+ *    device's body state holds an item it does not cover: text the deleter's
+ *    doc never held when the user deleted, however long ago it was pushed.
+ *    Rule 3 alone loses it when the deleter was offline: its `deletedAt` is
+ *    the push time, not what it had seen. A vector or state that does not
+ *    decode counts as not covered.
  *
  * Text pushed well before the delete, with nothing waiting and a clock the
  * tombstone covers, is text the deleter could see: no copy. A blank body never
@@ -37,6 +45,10 @@ export interface UnseenTextFacts {
   deletedAt: number | null
   /** Epoch ms of this device's latest own body text, as defined in rule 3. */
   lastLocalBodyAt: number | null
+  /** Base64 Yjs v1 state vector the tombstone carries (`bodyStateVector`), rule 4. */
+  deleterBodyStateVector: string | null
+  /** Base64 Yjs v1 state vector of this device's body text, as defined in rule 4. */
+  localBodyStateVector: string | null
 }
 
 /**
@@ -56,6 +68,30 @@ export function keepsUnseenText(facts: UnseenTextFacts): boolean {
       : null
   if (order === 'after') return false
   if (facts.waitingChanges || order === 'concurrent') return true
+  if (
+    facts.deleterBodyStateVector !== null &&
+    facts.localBodyStateVector !== null &&
+    !stateVectorCovers(facts.deleterBodyStateVector, facts.localBodyStateVector)
+  ) {
+    return true
+  }
   if (facts.deletedAt === null || facts.lastLocalBodyAt === null) return false
   return facts.lastLocalBodyAt >= deletedAtMs(facts.deletedAt) - DELETE_KEEP_SKEW_MS
+}
+
+/** Whether every Yjs client clock in `local` is at most the one in `deleter`. */
+export function stateVectorCovers(deleter: string, local: string): boolean {
+  let seen: Map<number, number>
+  let held: Map<number, number>
+  try {
+    seen = Y.decodeStateVector(base64ToBytes(deleter))
+    held = Y.decodeStateVector(base64ToBytes(local))
+  } catch {
+    // Not a state vector: rule 4 keeps the text rather than guess (#3037).
+    return false
+  }
+  for (const [client, clock] of held) {
+    if (clock > (seen.get(client) ?? 0)) return false
+  }
+  return true
 }

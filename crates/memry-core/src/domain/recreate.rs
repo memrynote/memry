@@ -117,6 +117,7 @@ mod tests {
             deleted_at: NOW + 1,
             server_cursor: Some(7),
             clock: Some(clock),
+            body_state_vector: None,
         }
     }
 

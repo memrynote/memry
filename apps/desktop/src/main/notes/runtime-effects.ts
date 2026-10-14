@@ -62,7 +62,8 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
 
 /**
  * The tombstone goes first, because `enqueueLocalSyncDelete` reads the note's
- * vector clock out of the cache the caller is about to drop.
+ * vector clock out of the cache the caller is about to drop. Callers await it
+ * before they drop the cache.
  *
  * Everything after it exists because a deleted note used to keep its Y.Doc.
  * The doc stayed in the provider's open map, so the inactive-doc sweep kept
@@ -70,8 +71,9 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
  * a write-back that finds no index row and re-creates the note in the default
  * folder. The purge closes that, and drops the note's queued body rows with it.
  */
-export function syncNoteDelete(noteId: string): void {
-  enqueueLocalSyncDelete('note', noteId)
+export async function syncNoteDelete(noteId: string): Promise<void> {
+  // Loaded so the tombstone carries the doc's body vector (chapter 05 §5.8, #3037).
+  await getCrdtProvider().withDocLoaded(noteId, () => enqueueLocalSyncDelete('note', noteId))
   recordLocalItemDelete('note', noteId)
   void getCrdtProvider()
     ?.purge(noteId)

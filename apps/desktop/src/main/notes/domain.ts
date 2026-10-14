@@ -161,8 +161,9 @@ export async function deleteFolderCommand(folderPath: string): Promise<void> {
 export async function deleteNoteCommand(id: string): Promise<void> {
   // Before the sync delete is queued: a refused delete must not reach peers.
   assertNoteWritable(id)
-  // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector clock
-  syncNoteDelete(id)
+  // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector
+  // clock, and the loaded doc for the tombstone's body vector (#3037)
+  await syncNoteDelete(id)
   await deleteNote(id)
   // Drop the note's project links + clear any project home note pointing at it,
   // only once the note is actually gone (spec §4 "Cleanup rules").
