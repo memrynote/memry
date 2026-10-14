@@ -39,6 +39,12 @@ use super::first_sync_store::{read_meta, write_meta};
 /// run of fully applied packs. Packs at or below it are not re-read.
 pub const META_PACKS_APPLIED_THROUGH: &str = "pack_bootstrap.applied_through_cursor";
 
+/// Pack ids applied above the watermark, a JSON string array. Packs transfer
+/// newest first, so the watermark cannot move until the oldest pack lands; a
+/// run that iOS suspends in between would otherwise download every finished
+/// pack again. Written after each pack, pruned as the watermark passes them.
+pub const META_PACKS_COMPLETED: &str = "pack_bootstrap.completed_pack_ids";
+
 /// Packs per `GET /sync/packs` page (the server caps at 50).
 pub const PACK_LIST_PAGE_LIMIT: u32 = 50;
 
@@ -130,9 +136,17 @@ impl PackBootstrap {
             .collect();
         packs.sort_by_key(|pack| std::cmp::Reverse(pack.max_cursor));
 
-        let mut completed = HashSet::new();
+        let mut completed: HashSet<String> = self
+            .db
+            .call(|conn| read_meta(conn, META_PACKS_COMPLETED))
+            .await?
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default();
         let mut relisted: Option<Vec<PackSummary>> = None;
         for pack in &packs {
+            if completed.contains(&pack.id) {
+                continue;
+            }
             let url = if pack.live(now()) {
                 pack.url.clone()
             } else {
@@ -158,6 +172,7 @@ impl PackBootstrap {
             match self.apply_pack(&url, &mut report).await? {
                 Ok(()) => {
                     completed.insert(pack.id.clone());
+                    self.write_completed(&completed).await?;
                     report.packs_applied += 1;
                 }
                 Err(reason) => report
@@ -178,8 +193,25 @@ impl PackBootstrap {
                 })
                 .await?;
             report.applied_through_cursor = Some(watermark);
+            completed.retain(|id| {
+                packs
+                    .iter()
+                    .any(|pack| pack.id == *id && pack.max_cursor > watermark)
+            });
+            self.write_completed(&completed).await?;
         }
         Ok(report)
+    }
+
+    async fn write_completed(&self, completed: &HashSet<String>) -> Result<(), StorageError> {
+        let mut ids: Vec<&String> = completed.iter().collect();
+        ids.sort();
+        let text = serde_json::to_string(&ids).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })?;
+        self.db
+            .call(move |conn| write_meta(conn, META_PACKS_COMPLETED, &text))
+            .await
     }
 
     /// Downloads one pack and seeds every fresh, verifiable snapshot in it.
