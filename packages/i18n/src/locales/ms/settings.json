@@ -1321,6 +1321,7 @@
       "namingError": "Gagal mengemas kini penamaan memo suara",
       "language": "Bahasa pertuturan",
       "languageDescription": "Bahasa yang anda tuturkan dalam memo suara",
+      "languageDefault": "Lalai",
       "languageError": "Gagal mengemas kini bahasa transkripsi",
       "localModel": "Model setempat",
       "localModelDescription": "Whisper Small dimuat turun apabila diperlukan dan kekal dicache secara setempat",

@@ -1321,6 +1321,7 @@
       "namingError": "อัปเดตการตั้งชื่อบันทึกเสียงไม่สำเร็จ",
       "language": "ภาษาที่พูด",
       "languageDescription": "ภาษาที่คุณพูดในบันทึกเสียง",
+      "languageDefault": "ค่าเริ่มต้น",
       "languageError": "อัปเดตภาษาการถอดเสียงไม่สำเร็จ",
       "localModel": "โมเดลในเครื่อง",
       "localModelDescription": "Whisper Small ดาวน์โหลดตามต้องการและเก็บไว้ในเครื่อง",

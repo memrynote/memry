@@ -701,7 +701,7 @@ export function AISettings({
                   }
                 >
                   <SelectTrigger className={COMPACT_SELECT} aria-label={t('ai.voice.language')}>
-                    <SelectValue />
+                    <SelectValue placeholder={t('ai.voice.languageDefault')} />
                   </SelectTrigger>
                   <SelectContent>
                     {languageOptions.map(({ code, label }) => (

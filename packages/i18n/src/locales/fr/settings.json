@@ -1321,6 +1321,7 @@
       "namingError": "Impossible de modifier le nommage des mémos vocaux",
       "language": "Langue parlée",
       "languageDescription": "Langue que vous parlez dans les mémos vocaux",
+      "languageDefault": "Par défaut",
       "languageError": "Impossible de mettre à jour la langue de transcription",
       "localModel": "Modèle local",
       "localModelDescription": "Whisper Small est téléchargé à la demande et reste en cache localement",

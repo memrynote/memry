@@ -1321,6 +1321,7 @@
       "namingError": "Nu s-a putut actualiza denumirea memourilor vocale",
       "language": "Limba vorbită",
       "languageDescription": "Limba în care vorbești în notele vocale",
+      "languageDefault": "Implicit",
       "languageError": "Nu s-a putut actualiza limba transcrierii",
       "localModel": "Model local",
       "localModelDescription": "Whisper Small se descarcă la cerere și rămâne în cache local",

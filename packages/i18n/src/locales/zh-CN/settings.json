@@ -1321,6 +1321,7 @@
       "namingError": "无法更新语音备忘录命名",
       "language": "口述语言",
       "languageDescription": "你在语音备忘录中使用的语言",
+      "languageDefault": "默认",
       "languageError": "无法更新转写语言",
       "localModel": "本地模型",
       "localModelDescription": "Whisper Small 会按需下载，并缓存在本地",

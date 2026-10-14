@@ -718,8 +718,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
 
   assert.deepEqual(await app.settings.setGroup('voiceTranscription', { provider: 'openai' }), {
     provider: 'openai',
-    memoNameMode: 'transcript',
-    language: 'en'
+    memoNameMode: 'transcript'
   })
   assert.deepEqual(await app.settings.getGroup('graph'), {
     layout: 'forceatlas2',

@@ -231,6 +231,8 @@ describe('inbox transcription', () => {
     expect(result).toEqual({ success: true, transcription: 'Cloud transcript' })
     expect(mockToFile).toHaveBeenCalledOnce()
     expect(mockCreate).toHaveBeenCalledOnce()
+    // No language chosen: OpenAI auto-detects, as before the setting existed.
+    expect(mockCreate.mock.calls[0]?.[0]).not.toHaveProperty('language')
   })
 
   it('renames a default voice memo from the first transcript sentence', async () => {
@@ -251,6 +253,8 @@ describe('inbox transcription', () => {
 
     const updated = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-title')).get()
     expect(updated?.title).toBe('Roadmap launch notes.')
+    // No language chosen: local Whisper keeps the pre-setting English default.
+    expect(mockTranscribeWithLocalModel).toHaveBeenCalledWith(expect.any(Buffer), 'en')
   })
 
   it('renames a default voice memo from the capture timestamp when configured', async () => {

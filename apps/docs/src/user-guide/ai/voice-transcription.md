@@ -40,7 +40,8 @@ Whisper Small handles dozens of languages well. For unusual languages, larger Wh
 ## Spoken Language
 
 Set the language you speak in Settings → AI → Voice memos → **Spoken language**. Both backends
-transcribe in that language. The default is English. The setting applies to new transcriptions
+transcribe in that language. Until you pick one, local Whisper transcribes English and OpenAI
+detects the language itself. The setting applies to new transcriptions
 and retries; existing transcripts are not changed.
 
 ## OpenAI Whisper API

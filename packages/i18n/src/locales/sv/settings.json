@@ -1321,6 +1321,7 @@
       "namingError": "Det gick inte att uppdatera namngivningen av röstmemon",
       "language": "Talat språk",
       "languageDescription": "Språket du talar i röstmemon",
+      "languageDefault": "Standard",
       "languageError": "Det gick inte att uppdatera transkriberingsspråket",
       "localModel": "Lokal modell",
       "localModelDescription": "Whisper Small laddas ner vid behov och lagras i cache lokalt",

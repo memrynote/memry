@@ -412,17 +412,16 @@ export type VoiceTranscriptionLanguage = (typeof VOICE_TRANSCRIPTION_LANGUAGES)[
 export const VoiceTranscriptionSettingsSchema = z.object({
   provider: z.enum(['local', 'openai']),
   memoNameMode: z.enum(['transcript', 'timestamp', 'none']),
-  // Added in #3172. Stored rows from older builds lack it; readers merge over
-  // the defaults, so they keep the previous hardcoded English behavior.
-  language: z.enum(VOICE_TRANSCRIPTION_LANGUAGES)
+  // Added in #3172, optional. Unset keeps pre-#3172 behavior: local Whisper
+  // transcribes English, OpenAI auto-detects (no language sent).
+  language: z.enum(VOICE_TRANSCRIPTION_LANGUAGES).optional()
 })
 
 export type VoiceTranscriptionSettings = z.infer<typeof VoiceTranscriptionSettingsSchema>
 
 export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings = {
   provider: 'local',
-  memoNameMode: 'transcript',
-  language: 'en'
+  memoNameMode: 'transcript'
 }
 
 // ============================================================================

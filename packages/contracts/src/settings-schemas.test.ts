@@ -419,7 +419,7 @@ describe('VoiceTranscriptionSettingsSchema', () => {
     const result = VoiceTranscriptionSettingsSchema.safeParse(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS)
     expect(result.success).toBe(true)
     expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.memoNameMode).toBe('transcript')
-    expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.language).toBe('en')
+    expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.language).toBeUndefined()
   })
 
   it('accepts Whisper language codes and rejects unknown ones', () => {

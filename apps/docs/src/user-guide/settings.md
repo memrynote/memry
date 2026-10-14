@@ -444,7 +444,7 @@ quick-capture voice capture.
 ### Voice Transcription
 
 - **Provider** — local Whisper Small (private) or OpenAI Whisper API
-- **Spoken language** — language your voice memos are transcribed in (default English)
+- **Spoken language** — language your voice memos are transcribed in (unset: English locally, auto-detect on OpenAI)
 - **Local Model** — status, download button
 - **OpenAI API Key** — password field, only shown for the OpenAI provider
 

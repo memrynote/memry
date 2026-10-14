@@ -1321,6 +1321,7 @@
       "namingError": "無法更新語音備忘錄命名方式",
       "language": "口說語言",
       "languageDescription": "你在語音備忘錄中使用的語言",
+      "languageDefault": "預設",
       "languageError": "無法更新轉寫語言",
       "localModel": "本機模型",
       "localModelDescription": "Whisper Small 會在需要時下載，並快取在本機",

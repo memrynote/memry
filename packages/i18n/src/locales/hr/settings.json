@@ -1321,6 +1321,7 @@
       "namingError": "Ažuriranje imenovanja glasovnih zapisa nije uspjelo",
       "language": "Govorni jezik",
       "languageDescription": "Jezik kojim govorite u glasovnim bilješkama",
+      "languageDefault": "Zadano",
       "languageError": "Ažuriranje jezika transkripcije nije uspjelo",
       "localModel": "Lokalni model",
       "localModelDescription": "Whisper Small preuzima se na zahtjev i ostaje u lokalnoj predmemoriji",

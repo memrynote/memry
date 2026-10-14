@@ -243,7 +243,7 @@ describe('AISettings', () => {
     render(<AISettings />)
 
     const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
-    expect(languageSelect).toHaveTextContent('English')
+    expect(languageSelect).toHaveTextContent('Default')
 
     await userEvent.click(languageSelect)
     await userEvent.click(await screen.findByRole('option', { name: 'German' }))
