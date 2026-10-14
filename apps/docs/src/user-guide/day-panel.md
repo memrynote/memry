@@ -50,7 +50,7 @@ If the [Google Calendar integration](/user-guide/settings#google-calendar) is li
 
 ## Hiding the Panel
 
-Toggle the panel from the workspace header or with the panel's collapse button.
+Toggle the panel from the workspace header, with the panel's collapse button, or with <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>B</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on Windows / Linux).
 
 When the panel is open, it starts at the tab bar edge and the tab bar reserves that space. The
 collapse button stays at the far right of the panel, so opening and closing the sidebar uses the

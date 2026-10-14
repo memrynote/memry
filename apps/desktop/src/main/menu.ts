@@ -297,7 +297,11 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },
         cmd('view.toggleSidebar', t('view.toggleSidebar')),
-        cmd('view.toggleDayPanel', t('view.toggleDayPanel')),
+        cmd(
+          'view.toggleDayPanel',
+          t('view.toggleDayPanel'),
+          shortcut('view.toggleDayPanel', 'CmdOrCtrl+Shift+B')
+        ),
         { type: 'separator' },
         {
           label: t('view.theme'),

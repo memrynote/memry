@@ -40,3 +40,32 @@ describe('DayPanelContext task selection', () => {
     expect(result.current.selectedDate).toBe('2026-04-29')
   })
 })
+
+describe('DayPanelContext keyboard shortcut', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  const pressToggle = (): void => {
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'B',
+          metaKey: true,
+          ctrlKey: !navigator.platform.toUpperCase().includes('MAC'),
+          shiftKey: true,
+          bubbles: true
+        })
+      )
+    })
+  }
+
+  it('Mod+Shift+B toggles the right panel', () => {
+    const { result } = renderHook(() => useDayPanel(), { wrapper })
+    expect(result.current.isOpen).toBe(false)
+    pressToggle()
+    expect(result.current.isOpen).toBe(true)
+    pressToggle()
+    expect(result.current.isOpen).toBe(false)
+  })
+})

@@ -79,6 +79,10 @@ const getShortcutGroups = (
           combos: [bound('view.toggleSidebar')],
           description: t('shortcuts.items.general.toggleSidebar')
         },
+        {
+          combos: [bound('view.toggleDayPanel')],
+          description: t('shortcuts.items.general.toggleDayPanel')
+        },
         { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') },
         {
           combos: [bound('view.zoomIn')],

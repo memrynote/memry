@@ -38,6 +38,7 @@ export type ShortcutId =
   | 'editor.strikethrough'
   | 'editor.code'
   | 'view.toggleSidebar'
+  | 'view.toggleDayPanel'
   | 'view.shortcuts'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -294,6 +295,14 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     description: 'Show or hide the sidebar',
     category: 'View',
     defaultBinding: { key: 'b', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.toggleDayPanel',
+    i18nKey: 'view.toggleDayPanel',
+    label: 'Toggle Day Panel',
+    description: 'Show or hide the day panel on the right',
+    category: 'View',
+    defaultBinding: { key: 'b', modifiers: { meta: true, shift: true } }
   },
   {
     id: 'view.shortcuts',
