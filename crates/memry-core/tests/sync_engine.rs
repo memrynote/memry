@@ -330,7 +330,7 @@ async fn the_breaker_refuses_the_run_and_still_advances_the_cursor() {
 }
 
 #[tokio::test]
-async fn a_tombstone_is_applied_without_its_body_ever_being_decoded() {
+async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
     let db = scratch_db("tombstones");
     let transport = FakeTransport::new(vec![
         // §5.12: the client unions `deleted` into the pull for the same page.
@@ -349,10 +349,9 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_decoded() {
     assert_eq!(report.deleted, 2);
     assert_eq!(report.corrupt, 0);
     assert!(!report.refused);
-    assert!(
-        cipher.opened().is_empty(),
-        "tombstone bodies are never decoded"
-    );
+    // §5.8 (#3037): a note tombstone is opened only for `bodyStateVector`,
+    // and one that does not open still applies.
+    assert_eq!(cipher.opened(), vec!["note-1".to_owned()]);
 
     db.call_blocking(|conn| {
         let row = sync_items::load(conn, "note", "note-1")?.expect("the tombstoned row");

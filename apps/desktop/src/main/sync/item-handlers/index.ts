@@ -77,10 +77,20 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
   return {
     type: handler.type,
     schema: handler.schema,
-    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock, deletedAt, vaultKey }) => {
+    applyRemoteMutation: ({
+      db,
+      emit,
+      itemId,
+      operation,
+      data,
+      clock,
+      deletedAt,
+      bodyStateVector,
+      vaultKey
+    }) => {
       const ctx = { db, emit, vaultKey }
       if (operation === 'delete') {
-        return handler.applyDelete(ctx, itemId, clock, deletedAt)
+        return handler.applyDelete(ctx, itemId, clock, deletedAt, bodyStateVector)
       }
       if (data === undefined) return 'parse_error'
       return handler.applyUpsert(ctx, itemId, data, clock ?? {})

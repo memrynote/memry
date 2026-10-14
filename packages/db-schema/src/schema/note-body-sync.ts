@@ -36,6 +36,12 @@ export const noteBodySync = sqliteTable('note_body_sync', {
   /** Epoch milliseconds the server last stored this note's whole doc state. */
   lastSnapshotAt: integer('last_snapshot_at'),
 
+  /**
+   * Base64 Yjs v1 state vector of every body update the server confirmed from
+   * this device, merged (#3037). Null until the first confirmed push records it.
+   */
+  pushedStateVector: text('pushed_state_vector'),
+
   /** Epoch milliseconds of the latest write to this row. */
   updatedAt: integer('updated_at').notNull()
 })

@@ -336,7 +336,13 @@ pub(crate) fn tombstone_local(
         // project. The row is still flagged, so the delete pushes.
         return Ok(());
     }
-    let changes = stamp(tx, item_type, item_id, device_id, now_ms)?;
+    let mut changes = stamp(tx, item_type, item_id, device_id, now_ms)?;
+    // §5.8, #3037: what of the body this delete covers, so a peer keeps text
+    // it adds outside it.
+    changes.push((
+        "bodyStateVector",
+        Change::set(crate::sync::delete_keep::body_state_vector(tx, item_id)?),
+    ));
     let merged = sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
     // #2409: the clock a later re-create of this id must happen after.
     let parsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;

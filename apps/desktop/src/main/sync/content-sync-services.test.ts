@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as Y from 'yjs'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import {
   FolderConfigSyncService,
@@ -265,6 +266,32 @@ beforeEach(() => {
 })
 
 describe('content sync services', () => {
+  // #3037: the tombstone carries the open doc's Yjs state vector, so a peer can
+  // keep body text this delete never saw. No text travels with it.
+  it('puts the open doc state vector on a note delete, and nothing for an empty doc', () => {
+    const doc = new Y.Doc()
+    doc.getText('t').insert(0, 'seen by the deleter')
+    const vectors: Record<string, Uint8Array> = {
+      'note-1': Y.encodeStateVector(doc),
+      'note-2': Y.encodeStateVector(new Y.Doc())
+    }
+    const queue = makeQueue()
+    const service = new NoteSyncService({
+      queue: queue as never,
+      getDeviceId: () => 'dev-a',
+      getStateVector: (id) => vectors[id] ?? null
+    })
+
+    mocks.local = makeNote({ id: 'note-1' })
+    service.enqueueDelete('note-1')
+    mocks.local = makeNote({ id: 'note-2' })
+    service.enqueueDelete('note-2')
+
+    const [withDoc, emptyDoc] = queue.items.map((item) => JSON.parse(item.payload))
+    expect(withDoc.bodyStateVector).toBe(Buffer.from(vectors['note-1']).toString('base64'))
+    expect(emptyDoc).not.toHaveProperty('bodyStateVector')
+  })
+
   it('queues markdown note snapshots, binary metadata, deletes, and remove-by-id', () => {
     const queue = makeQueue()
     const service = new NoteSyncService({

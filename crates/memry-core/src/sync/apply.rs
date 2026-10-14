@@ -64,6 +64,8 @@ pub(crate) enum Pending {
         server_cursor: Option<i64>,
         /// The delete's clock; `None` for a legacy tombstone stored without one.
         clock: Option<VectorClock>,
+        /// The deleter's `bodyStateVector` (§5.8, #3037); `None` when absent.
+        body_state_vector: Option<String>,
     },
 }
 
@@ -149,6 +151,7 @@ pub(crate) fn apply_page(
                 deleted_at,
                 server_cursor,
                 clock,
+                body_state_vector,
             } => {
                 apply_tombstone(
                     conn,
@@ -157,6 +160,7 @@ pub(crate) fn apply_page(
                     deleted_at,
                     server_cursor,
                     clock.as_ref(),
+                    body_state_vector.as_deref(),
                     now_ms,
                     clock_device,
                     &mut totals,
@@ -173,6 +177,7 @@ pub(crate) fn apply_page(
                         &record.item_id,
                         now_ms,
                         record.server_cursor,
+                        None,
                         None,
                         now_ms,
                         clock_device,
@@ -239,6 +244,7 @@ fn apply_tombstone(
     deleted_at: i64,
     server_cursor: Option<i64>,
     clock: Option<&VectorClock>,
+    body_state_vector: Option<&str>,
     now_ms: i64,
     clock_device: Option<&str>,
     totals: &mut ApplyTotals,
@@ -258,6 +264,7 @@ fn apply_tombstone(
         item_id,
         deleted_at,
         clock,
+        body_state_vector,
         clock_device,
         now_ms,
     )?;

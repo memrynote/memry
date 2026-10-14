@@ -1292,6 +1292,28 @@ export class CrdtProvider {
     return Y.encodeStateVector(entry.doc)
   }
 
+  /**
+   * Runs `enqueue` with `noteId`'s doc loaded, unseeded, so the delete it
+   * raises can read the doc's state vector into its tombstone (chapter 05
+   * §5.8, #3037). A doc that cannot load leaves the tombstone without one.
+   */
+  async withDocLoaded(noteId: string, enqueue: () => void): Promise<void> {
+    const release = this.holdDoc(noteId)
+    try {
+      await this.open(noteId, undefined, { skipSeed: true })
+    } catch (error) {
+      log.warn('Could not load a doc before its delete; the tombstone carries no body vector', {
+        noteId,
+        error
+      })
+    }
+    try {
+      enqueue()
+    } finally {
+      await release()
+    }
+  }
+
   getDiff(noteId: string, remoteStateVector: Uint8Array): Uint8Array | null {
     const entry = this.docs.get(noteId)
     if (!entry) return null

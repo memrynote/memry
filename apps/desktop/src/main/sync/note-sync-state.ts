@@ -191,6 +191,8 @@ export interface LocalBodyFacts {
   waiting: boolean
   /** When the server last stored a body push from this device (local ms). */
   confirmedAt: number | null
+  /** Base64 state vector of every body update the server confirmed from this device (#3037). */
+  pushedStateVector: string | null
 }
 
 /** One note's waiting changes and last confirmed body push, for a pulled delete (#3029). */
@@ -202,7 +204,8 @@ export function readLocalBodyFacts(db: DataDb, noteId: string): LocalBodyFacts {
     waiting:
       oldest(changes.body, changes.record, changes.fileNotTaken) !== null ||
       (rejected !== null && rejected > (pushes?.lastSnapshotAt ?? -1)),
-    confirmedAt: pushes?.lastConfirmedAt ?? null
+    confirmedAt: pushes?.lastConfirmedAt ?? null,
+    pushedStateVector: pushes?.pushedStateVector ?? null
   }
 }
 

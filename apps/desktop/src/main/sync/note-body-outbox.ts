@@ -62,7 +62,9 @@ export type NoteBodyFullStateReader = (noteId: string) => Promise<Uint8Array | n
  */
 export type NoteBodyPushRecorder = (
   noteId: string,
-  event: 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected'
+  event: 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected',
+  /** The updates the server confirmed, on `confirmed` and `snapshot` (#3037). */
+  pushed?: readonly Uint8Array[]
 ) => void
 
 export interface NoteBodyOutboxDeps {
@@ -228,7 +230,7 @@ export class NoteBodyOutbox {
       .then((pushed) => {
         this.deps.queue.removeNoteBodyRows(flush.rowIds)
         this.deferredFlushes.delete(noteId)
-        if (pushed) this.deps.recordPush?.(noteId, fullState ? 'snapshot' : 'confirmed')
+        if (pushed) this.deps.recordPush?.(noteId, fullState ? 'snapshot' : 'confirmed', pushed)
       })
       .catch((err) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
@@ -268,18 +270,19 @@ export class NoteBodyOutbox {
   }
 
   /** True when the server stored a push; false when the rows were dropped unsent. */
-  private async sendFlush(noteId: string, flush: NoteBodyFlush): Promise<boolean> {
+  /** The updates the server stored, or null when there was nothing to push. */
+  private async sendFlush(noteId: string, flush: NoteBodyFlush): Promise<Uint8Array[] | null> {
     if (flush.updates) {
       this.deps.recordPush?.(noteId, 'sent')
       await this.deps.push(noteId, flush.updates)
-      return true
+      return flush.updates
     }
     const state = await this.readFullState!(noteId)
-    if (!state) return false
+    if (!state) return null
     if (!this.running) throw new Error('NoteBodyOutbox stopped before the full state was pushed')
     this.deps.recordPush?.(noteId, 'sent')
     await this.deps.push(noteId, [state])
-    return true
+    return [state]
   }
 
   private onFlushFailed(noteId: string, rowIds: string[], err: unknown): void {

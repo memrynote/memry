@@ -37,6 +37,8 @@ fn delete_keep_cases_match_the_committed_vectors() {
             tombstone_clock: clock(&f["tombstoneClock"]),
             deleted_at: f["deletedAt"].as_i64(),
             last_local_body_at: f["lastLocalBodyAt"].as_i64(),
+            deleter_body_state_vector: f["deleterBodyStateVector"].as_str().map(str::to_owned),
+            local_body_state_vector: f["localBodyStateVector"].as_str().map(str::to_owned),
         };
         assert_eq!(
             Some(keeps_unseen_text(&facts)),

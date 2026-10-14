@@ -171,7 +171,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     ctx: ApplyContext,
     itemId: string,
     clock?: VectorClock,
-    deletedAt?: number
+    deletedAt?: number,
+    bodyStateVector?: string
   ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     markOwedJournalDayMergeDeleted(ctx.db, itemId)
@@ -207,6 +208,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         localClock: existing.clock ?? null,
         tombstoneClock: clock,
         deletedAt,
+        bodyStateVector,
         readBody: () => readDayBody(date)
       })
     }

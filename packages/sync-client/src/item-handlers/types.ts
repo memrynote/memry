@@ -22,7 +22,9 @@ export interface SyncItemHandler<T = unknown> {
     ctx: ApplyContext,
     itemId: string,
     clock?: VectorClock,
-    deletedAt?: number
+    deletedAt?: number,
+    /** A note or journal tombstone's `bodyStateVector` (chapter 05 §5.8, #3037). */
+    bodyStateVector?: string
   ): 'applied' | 'skipped'
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number

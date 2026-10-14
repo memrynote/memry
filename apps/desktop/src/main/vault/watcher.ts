@@ -1230,9 +1230,9 @@ export class VaultWatcher {
           }
           // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
           if (isJournal && journalDate) {
-            enqueueJournalDelete(cached.id, journalDate)
+            await enqueueJournalDelete(cached.id, journalDate)
           } else {
-            syncNoteDelete(cached.id)
+            await syncNoteDelete(cached.id)
           }
 
           deleteNoteFromCache(db, cached.id)

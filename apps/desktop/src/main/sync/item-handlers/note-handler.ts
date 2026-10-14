@@ -720,7 +720,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     ctx: ApplyContext,
     itemId: string,
     clock?: VectorClock,
-    deletedAt?: number
+    deletedAt?: number,
+    bodyStateVector?: string
   ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
@@ -743,6 +744,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       localClock: existing.clock ?? null,
       tombstoneClock: clock,
       deletedAt,
+      bodyStateVector,
       readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
     })
 

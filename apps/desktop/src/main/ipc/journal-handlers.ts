@@ -264,7 +264,7 @@ export function registerJournalHandlers(): void {
 
       // Delete from unified cache
       if (noteId) {
-        enqueueJournalDelete(noteId, input.date)
+        await enqueueJournalDelete(noteId, input.date)
         deleteJournalCache(db, noteId)
         await unlinkTasksFromDeletedNote(noteId)
       }

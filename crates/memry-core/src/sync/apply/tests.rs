@@ -38,6 +38,7 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         deleted_at: 5,
         server_cursor: None,
         clock,
+        body_state_vector: None,
     };
     let live = |conn: &Connection| -> bool {
         sync_items::load(conn, "journal", "j2026-04-16")

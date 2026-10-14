@@ -14,6 +14,7 @@ import {
   keepsUnseenText,
   type UnseenTextFacts
 } from '../../../sync-client/src/delete-keep.ts'
+import * as Y from 'yjs'
 import { meta } from './shared'
 
 const A = 'device-a'
@@ -21,6 +22,15 @@ const B = 'device-b'
 // 2026-10-09T12:00:00Z
 const DELETED_MS = 1_791_547_200_000
 const DELETED_S = DELETED_MS / 1000
+// Yjs client ids: the deleter's own edits and this device's pushed text.
+const DELETER = 7
+const HERE = 9
+
+/** A base64 Yjs v1 state vector, as a tombstone's `bodyStateVector` carries it. */
+function sv(clocks: Record<number, number>): string {
+  const map = new Map(Object.entries(clocks).map(([client, clock]) => [Number(client), clock]))
+  return Buffer.from(Y.encodeStateVector(map)).toString('base64')
+}
 
 interface DeleteKeepSpec {
   name: string
@@ -34,7 +44,9 @@ const base: UnseenTextFacts = {
   localClock: { [A]: 4 },
   tombstoneClock: { [A]: 5 },
   deletedAt: DELETED_MS,
-  lastLocalBodyAt: DELETED_MS - 3_600_000
+  lastLocalBodyAt: DELETED_MS - 3_600_000,
+  deleterBodyStateVector: null,
+  localBodyStateVector: null
 }
 
 const SPECS: DeleteKeepSpec[] = [
@@ -112,6 +124,57 @@ const SPECS: DeleteKeepSpec[] = [
     name: 'clockless-tombstone-uses-other-rules',
     pins: 'a legacy tombstone with no clock: an old synced body is not kept',
     facts: { ...base, tombstoneClock: null }
+  },
+  {
+    name: 'offline-deleter-missed-pushed-text-is-kept',
+    pins: '#3037: text pushed long before the delete push, but outside the deleter body state vector',
+    facts: {
+      ...base,
+      deleterBodyStateVector: sv({ [DELETER]: 12 }),
+      localBodyStateVector: sv({ [DELETER]: 12, [HERE]: 30 })
+    }
+  },
+  {
+    name: 'deleter-saw-pushed-text-is-not-kept',
+    pins: 'the deleter body state vector covers every local item',
+    facts: {
+      ...base,
+      deleterBodyStateVector: sv({ [DELETER]: 12, [HERE]: 30 }),
+      localBodyStateVector: sv({ [DELETER]: 12, [HERE]: 30 })
+    }
+  },
+  {
+    name: 'deleter-saw-more-is-not-kept',
+    pins: 'a deleter ahead on every client, and a client this device lacks, covers it',
+    facts: {
+      ...base,
+      deleterBodyStateVector: sv({ [DELETER]: 14, [HERE]: 31 }),
+      localBodyStateVector: sv({ [HERE]: 30 })
+    }
+  },
+  {
+    name: 'covering-vector-still-keeps-inside-skew',
+    pins: 'rule 4 only adds keeps: a body push after the delete still keeps under rule 3',
+    facts: {
+      ...base,
+      lastLocalBodyAt: DELETED_MS + 5_000,
+      deleterBodyStateVector: sv({ [HERE]: 30 }),
+      localBodyStateVector: sv({ [HERE]: 30 })
+    }
+  },
+  {
+    name: 'undecodable-vector-is-kept',
+    pins: 'a bodyStateVector that is not a Yjs v1 state vector counts as not covering',
+    facts: {
+      ...base,
+      deleterBodyStateVector: '/w==',
+      localBodyStateVector: sv({ [HERE]: 30 })
+    }
+  },
+  {
+    name: 'no-local-body-state-uses-other-rules',
+    pins: 'no local body state recorded: rule 4 is silent, an old push stays seen',
+    facts: { ...base, deleterBodyStateVector: sv({ [DELETER]: 12 }) }
   }
 ]
 
