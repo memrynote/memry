@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   createNote: vi.fn(),
   updateNote: vi.fn(),
   renameNote: vi.fn(),
+  resolveByTitle: vi.fn(async (): Promise<unknown> => null),
   deleteNote: vi.fn(),
   moveNote: vi.fn(),
   openTab: vi.fn(),
@@ -118,7 +119,8 @@ vi.mock('react-i18next', () => ({
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
+    info: vi.fn()
   }
 }))
 
@@ -237,7 +239,8 @@ vi.mock('@/services/notes-service', () => ({
     revealInFinder: mocks.revealInFinder,
     openExternal: mocks.openExternal,
     // #800 getFile probe (note.tsx): null → treated as a real markdown note.
-    getFile: vi.fn(async () => null)
+    getFile: vi.fn(async () => null),
+    resolveByTitle: mocks.resolveByTitle
   },
   onNoteDeleted: (handler: (event: { id: string }) => void) => {
     mocks.deletedHandler = handler
@@ -1036,6 +1039,25 @@ describe('NotePage', () => {
 
     expect(mocks.renameNote).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('page.toast.titleRequired')
+  })
+
+  it('tells the user when the new title is shared by a note in another folder', async () => {
+    mocks.resolveByTitle.mockResolvedValueOnce({
+      id: 'note-2',
+      path: 'notes/Work/Renamed Note.md',
+      title: 'Renamed Note',
+      fileType: 'markdown'
+    })
+    mocks.renameNote.mockResolvedValueOnce({ success: true, note: { title: 'Renamed Note' } })
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
+
+    await waitFor(() =>
+      expect(toast.info).toHaveBeenCalledWith(
+        'page.toast.duplicateTitle:{"title":"Renamed Note","folder":"notes/Work"}'
+      )
+    )
   })
 
   it('saves title, tags, properties, backlinks, and linked task navigation', async () => {

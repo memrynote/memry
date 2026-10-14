@@ -25,6 +25,7 @@
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",
       "titleRequired": "A note needs a title",
+      "duplicateTitle": "Another note in {folder} is also named \u201c{title}\u201d. Links to these notes will include their folder.",
       "toggleLocalOnlyFailed": "Failed to toggle local only",
       "toggleFullWidthFailed": "Failed to toggle full width",
       "pathCopied": "Path copied",
