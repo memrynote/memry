@@ -113,6 +113,11 @@ protocol VaultFilling: Sendable {
     /// the attachment before releasing anything.
     func detachAttachment(noteId: String, attachmentId: String) async throws
 
+    /// Retries every referenced attachment whose bytes are missing (#1829),
+    /// each through ``fetchAttachment(attachmentId:reachable:)``, so FR-045's
+    /// metered policy applies unchanged. Called on reconnect and after a pass.
+    func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary
+
     /// One pull-then-push pass (spec 004 TP028a): records, the bodies they
     /// touched, then the outbox. The only way a phone write reaches another
     /// device. Awaited directly, never queued, like ``firstSync``.
@@ -199,6 +204,10 @@ struct CoreVaultFiller: VaultFilling {
 
     func detachAttachment(noteId: String, attachmentId: String) async throws {
         try await sync.detachAttachment(noteId: noteId, attachmentId: attachmentId)
+    }
+
+    func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
+        try await sync.redriveAttachments(reachable: reachable)
     }
 }
 
