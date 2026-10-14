@@ -11,6 +11,7 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { IndexDb } from '../database/client'
 import { getNoteSyncState, listUnsentNotes, type NoteSyncStateDbs } from './note-sync-state'
+import * as Y from 'yjs'
 import { recordNoteBodyPush } from './note-body-push-record'
 
 vi.mock('../lib/logger', () => ({
@@ -251,5 +252,21 @@ describe('note sync state (#2647)', () => {
         updatedAt: T0 + 1
       }
     ])
+  })
+
+  // #3037: every confirmed push widens the recorded vector; nothing narrows it.
+  it('merges the state vector of each confirmed push into the row', () => {
+    const update = (client: number, text: string): Uint8Array => {
+      const doc = new Y.Doc()
+      doc.clientID = client
+      doc.getText('t').insert(0, text)
+      return Y.encodeStateAsUpdate(doc)
+    }
+    recordNoteBodyPush('n1', 'confirmed', T0, dbs.data, [update(1, 'abc')])
+    recordNoteBodyPush('n1', 'confirmed', T0 + 1, dbs.data, [update(2, 'de'), update(1, 'a')])
+
+    const [row] = data.db.select().from(noteBodySync).all()
+    const vector = Y.decodeStateVector(Buffer.from(row.pushedStateVector!, 'base64'))
+    expect(Object.fromEntries(vector)).toEqual({ 1: 3, 2: 2 })
   })
 })

@@ -1164,6 +1164,27 @@ describe('CrdtProvider', () => {
     expect(pushSnapshot).toHaveBeenCalledTimes(1)
   })
 
+  // #3037: a delete's tombstone reads the doc's state vector while it is raised.
+  it('loads a closed doc for a delete to read, then closes it again', async () => {
+    let seen: Uint8Array | null = null
+    await provider.withDocLoaded('note-1', () => {
+      seen = provider.getStateVector('note-1')
+    })
+
+    expect(seen).toBeInstanceOf(Uint8Array)
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  it('still raises the delete when the doc cannot load', async () => {
+    const open = vi.spyOn(provider, 'open').mockRejectedValueOnce(new Error('store gone'))
+    const enqueue = vi.fn()
+
+    await provider.withDocLoaded('note-1', enqueue)
+
+    expect(enqueue).toHaveBeenCalledTimes(1)
+    open.mockRestore()
+  })
+
   describe('purging the doc of a note the user deleted', () => {
     beforeEach(async () => {
       await provider.open('note-1', undefined, { skipSeed: true })
