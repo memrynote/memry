@@ -820,7 +820,9 @@ export const useDragHandlers = ({
     (event: DragEndEvent, dragState: DragState) => {
       const { over } = event
 
-      if (!over) return
+      // Non-task drags (an event chip, a canvas entity) share the DndContext;
+      // their drops belong to their own monitors, not to "0 tasks moved".
+      if (!over || dragState.activeIds.length === 0) return
 
       const eventOverData = over.data.current
       const shouldPreferRowHoverTarget =

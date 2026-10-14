@@ -17,6 +17,7 @@ import {
   type TimelineSettings,
   type TimelineZoom
 } from '@/components/calendar/timeline-model'
+import { useEventDateDrop } from '@/components/calendar/use-event-date-drop'
 import { AgentAccessConsentDialog } from '@/components/calendar/agent-access-consent-dialog'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
@@ -950,13 +951,18 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
-  const commitEventTimes = async (id: string, startAt: string, endAt: string | null) => {
+  const commitEventTimes = async (
+    id: string,
+    startAt: string,
+    endAt: string | null,
+    isAllDay: boolean
+  ) => {
     const result = await calendarService.updateEvent({
       id,
       startAt,
       endAt,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      isAllDay: false
+      isAllDay
     })
     if (!result.success) {
       throw new Error(result.error ?? 'Could not update event.')
@@ -972,7 +978,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
-  const handleMoveEvent = async (item: CalendarProjectionItem, startAt: string, endAt: string) => {
+  const handleMoveEvent = async (
+    item: CalendarProjectionItem,
+    startAt: string,
+    endAt: string | null
+  ) => {
     if (item.sourceType === 'task') {
       const previousStartAt = item.startAt
       const { dueDate, dueTime } = dueDateTimeFromDate(new Date(startAt))
@@ -1001,15 +1011,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     const previousStartAt = item.startAt
     const previousEndAt = item.endAt
     try {
-      await commitEventTimes(item.sourceId, startAt, endAt)
+      await commitEventTimes(item.sourceId, startAt, endAt, item.isAllDay)
       // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
       registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
-        void commitEventTimes(item.sourceId, previousStartAt, previousEndAt).catch((err) => {
-          log.error('Failed to undo calendar event move', {
-            eventId: item.sourceId,
-            error: extractErrorMessage(err)
-          })
-        })
+        void commitEventTimes(item.sourceId, previousStartAt, previousEndAt, item.isAllDay).catch(
+          (err) => {
+            log.error('Failed to undo calendar event move', {
+              eventId: item.sourceId,
+              error: extractErrorMessage(err)
+            })
+          }
+        )
       })
     } catch (err) {
       log.error('Failed to move calendar event', {
@@ -1018,6 +1030,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       })
     }
   }
+
+  useEventDateDrop((item, startAt, endAt) => void handleMoveEvent(item, startAt, endAt))
 
   const selectedItemId =
     popoverState?.eventId ??

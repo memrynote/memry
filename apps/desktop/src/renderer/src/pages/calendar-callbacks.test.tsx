@@ -1,9 +1,17 @@
+import { DndContext } from '@dnd-kit/core'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CalendarPage } from './calendar'
 import type { CalendarProjectionItem, CalendarSourceRecord } from '@/services/calendar-service'
+
+// The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
+const CalendarPageInDndContext = () => (
+  <DndContext sensors={[]}>
+    <CalendarPage />
+  </DndContext>
+)
 
 const rect = { top: 10, left: 20, width: 120, height: 40 }
 
@@ -419,7 +427,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 function renderPage(): ReturnType<typeof render> {
-  return render(<CalendarPage />)
+  return render(<CalendarPageInDndContext />)
 }
 
 beforeEach(() => {
@@ -526,7 +534,7 @@ describe('CalendarPage callback coverage', () => {
     expect(mocks.closeForDayView).toHaveBeenCalled()
 
     mocks.calendarSources = [source('google-work', 'Work')]
-    rerender(<CalendarPage />)
+    rerender(<CalendarPageInDndContext />)
     await waitFor(() =>
       expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual(['google-work'])
     )

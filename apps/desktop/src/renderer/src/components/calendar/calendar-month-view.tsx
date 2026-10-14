@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { CalendarMonthDayCell } from './calendar-month-day-cell'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
-import { CalendarItemChip } from './calendar-item-chip'
+import { DraggableTaskChip } from './draggable-task-chip'
 import {
   getMonthGridDays,
   getWeekdayLabels,
@@ -191,7 +191,7 @@ export function CalendarMonthView({
                   paddingInlineEnd: bar.continuesAfter ? 0 : undefined
                 }}
               >
-                <CalendarItemChip
+                <DraggableTaskChip
                   item={bar.item}
                   isSelected={bar.item.sourceId === selectedItemId}
                   onClick={onSelectItem}
