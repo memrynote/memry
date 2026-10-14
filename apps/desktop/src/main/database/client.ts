@@ -8,6 +8,7 @@ import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
 import { createLogger } from '../lib/logger'
 import { registerSqliteFunctions } from './sqlite-functions'
 import { isSqliteCorruptError } from './sqlite-errors'
+import { instrumentDataDbConnection } from './data-db-corruption-signal'
 import type { DataDb, IndexDb, RawIndexDb } from './types'
 
 export type { DataDb, IndexDb, RawIndexDb } from './types'
@@ -54,6 +55,7 @@ export function initDatabase(dbPath: string): DataDb {
   closeStaleHandle('data', closeDatabase)
 
   sqliteDataDb = new Database(dbPath)
+  instrumentDataDbConnection(sqliteDataDb)
 
   // WAL mode for better concurrency and crash recovery
   sqliteDataDb.pragma('journal_mode = WAL')
