@@ -887,6 +887,28 @@ describe('ContentArea', () => {
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
+  // An empty journal day mounts with no note id; the first save creates the
+  // entry and hands the id in mid-typing. Swapping in a Y.Doc-bound editor then
+  // unmounted the one being typed in, dropping keystrokes and focus.
+  it('keeps the editor it mounted without a note id when the id arrives', () => {
+    contentAreaMocks.yjsState = {
+      fragment: undefined,
+      doc: null,
+      provider: null,
+      isReady: false,
+      isRemoteUpdateRef: { current: false }
+    }
+    const { rerender } = render(<ContentArea />)
+    const view = screen.getByTestId('blocknote-view')
+
+    rerender(<ContentArea noteId="j2026-10-15" />)
+
+    expect(screen.getByTestId('blocknote-view')).toBe(view)
+    expect(vi.mocked(useYjsCollaboration)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ noteId: 'j2026-10-15', enabled: false })
+    )
+  })
+
   it('renders editor chrome, retry UI, suggestions, wiki preview, and context-menu conversion', async () => {
     contentAreaMocks.aiContext = { port: 4315, error: 'AI offline', retry: null }
     contentAreaMocks.wikiHover = {
