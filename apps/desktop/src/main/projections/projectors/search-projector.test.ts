@@ -41,6 +41,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createSearchProjector } from './search-projector'
+import { createNoteDerivedStateProjector } from './note-derived-state-projector'
 import { searchAll } from '../../database/queries/search'
 
 describe('search projector', () => {
@@ -550,6 +551,63 @@ describe('search projector', () => {
         sql`SELECT COUNT(*) as count FROM fts_notes WHERE fts_notes MATCH ${'Memry'}`
       )?.count
     ).toBe(1)
+  })
+
+  it('reconcile refreshes a note listed from stat whose body was never read again (#3162)', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Old content', [])
+    indexDb.db.run(sql`
+      INSERT INTO fts_notes (id, title, content, tags)
+      VALUES (${'note-1'}, ${'Searchable Note'}, ${'Old content'}, ${''})
+    `)
+    indexDb.db.run(
+      sql`UPDATE note_cache SET indexed_at = ${'2026-01-01T00:00:00.000Z'} WHERE id = ${'note-1'}`
+    )
+
+    // Replaced outside Memry, then renamed: the watcher lists it from stat
+    // (tier 0) and the app quits before the idle backfill reads the body.
+    fs.writeFileSync(path.join(vaultDir, 'notes/searchable.md'), 'XOR with different bits\n')
+    fs.renameSync(path.join(vaultDir, 'notes/searchable.md'), path.join(vaultDir, 'notes/Aula.md'))
+    await createNoteDerivedStateProjector(() => vaultDir).project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        path: 'notes/Aula.md',
+        title: 'Aula',
+        fileType: 'markdown',
+        localOnly: false,
+        contentHash: null,
+        wordCount: null,
+        characterCount: null,
+        snippet: null,
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: new Date().toISOString(),
+        parsedContent: null,
+        fileSize: 24,
+        tags: [],
+        headerTags: [],
+        properties: null,
+        wikiLinks: []
+      }
+    })
+
+    await createSearchProjector(() => vaultDir).reconcile()
+
+    for (const text of ['XOR', 'Aula']) {
+      const ids = searchAll(indexDb.db as never, dataDb.db as never, {
+        text,
+        types: ['note'],
+        tags: [],
+        dateRange: null,
+        projectId: null,
+        folderPath: null,
+        limit: 10,
+        offset: 0
+      }).groups.flatMap((group) => group.results.map((result) => result.id))
+      expect(ids).toEqual(['note-1'])
+    }
   })
 
   it('reconcile stops statting the vault once its abort signal fires', async () => {
