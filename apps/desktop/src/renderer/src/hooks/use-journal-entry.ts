@@ -22,6 +22,7 @@ import {
 import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
 import { resolveJournalTemplateId } from '@/lib/journal-template-resolution'
+import { resolveRandomLines } from '@/lib/journal-random-line'
 import {
   applyJournalTemplate as applyTemplateTokens,
   type AppliedJournalTemplate
@@ -246,7 +247,14 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         if (!template) return
         if (cancelled || currentDateRef.current !== date) return
 
-        const applied = applyJournalTemplate(template, date)
+        const content = await resolveRandomLines(template.content, async (title) => {
+          const target = await window.api.notes.resolveByTitle(title)
+          if (!target) return null
+          return (await window.api.notes.get(target.id))?.content ?? null
+        })
+        if (cancelled || currentDateRef.current !== date) return
+
+        const applied = applyJournalTemplate({ ...template, content }, date)
         const createdEntry = await journalService.createEntry({
           date,
           content: applied.content,

@@ -82,6 +82,7 @@ Templates can include placeholders that resolve when applied:
 - `{{time}}` — time
 - `{{title}}` — title of the new note
 - `{{day-of-week}}` — long form (e.g. "Monday")
+- `{{random-line:Note title}}` — one random line from the named note, for example `{{random-line:Affirmations}}`. Blank lines and headings are skipped, and list bullets and checkboxes are dropped from the picked line. If no note has that title, or it has no lines, the variable stays as written. Desktop journal entries only for now.
 
 </div>
 
