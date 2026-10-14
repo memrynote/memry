@@ -167,9 +167,14 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
     // A nested block takes the same per-type dispatch as a top-level one.
     // BlockNote's own exporter would render custom blocks through their React
     // `toExternalHTML`, which drops a task, a callout's marker or a bookmark's
-    // target (#2365).
+    // target (#2365). A toggle is the exception: nested, it flattens to a
+    // bullet exactly as main writes it.
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await serializeBlocksPreservingBlanks(editor, [shallowBlock])).trim()
+    const markdown = (
+      (block.type as string) === 'toggleListItem'
+        ? await serializeBlocks(editor, [shallowBlock])
+        : await serializeBlocksPreservingBlanks(editor, [shallowBlock])
+    ).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
