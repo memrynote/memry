@@ -163,10 +163,13 @@ describe('export-utils', () => {
       modified: new Date(2026, 0, 3)
     }
 
-    it.each(['icon:StarIcon', 'custom:gone'])(
+    it.each(['icon:NoSuchIcon', 'custom:gone'])(
       'leaves a %s icon out of the header instead of printing its reference',
       (emoji) => {
-        const html = renderNoteAsHtml({ ...note, emoji }, { findCustomIcon: () => undefined })
+        const html = renderNoteAsHtml(
+          { ...note, emoji },
+          { findCustomIcon: () => undefined, findLibraryIcon: () => undefined }
+        )
 
         expect(html).not.toContain(emoji)
         expect(html).not.toContain('class="note-emoji"')

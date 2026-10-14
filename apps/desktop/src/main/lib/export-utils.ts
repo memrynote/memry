@@ -39,12 +39,22 @@ export interface RenderOptions {
    * Without it, or when the icon is gone, the header shows no icon.
    */
   findCustomIcon?: (id: string) => ExportCustomIcon | undefined
+  /**
+   * Looks up a HugeIcons glyph by export name, for a note whose icon is
+   * `icon:<Name>`. Without it, or for an unknown name, the header shows no icon.
+   */
+  findLibraryIcon?: (name: string) => ExportLibraryIcon | undefined
   /** Keep each task's `{task:<id>}` suffix. Off by default: a reader has no use for it. */
   includeTaskMarkers?: boolean
 }
 
 /** The parts of a stored custom icon an export needs. */
 export type ExportCustomIcon = Pick<CustomIconRow, 'ext' | 'data'>
+
+/** A HugeIcons glyph: SVG child elements as `[tag, attributes]` pairs. */
+export type ExportLibraryIcon = ReadonlyArray<
+  readonly [string, Readonly<Record<string, string | number>>]
+>
 
 // ============================================================================
 // Markdown to HTML Conversion
@@ -176,18 +186,43 @@ function customIconDataUri({ ext, data }: ExportCustomIcon): string | null {
 }
 
 /**
+ * A HugeIcons glyph as inline SVG, drawn the way the renderer's `HugeiconsIcon`
+ * draws it: a 24px viewBox stroked in `currentColor`. React-style attribute
+ * names (`strokeWidth`) become SVG ones (`stroke-width`).
+ */
+function libraryIconSvg(icon: ExportLibraryIcon): string {
+  const children = icon
+    .map(([tag, attrs]) => {
+      const attributes = Object.entries(attrs)
+        .filter(([name]) => name !== 'key')
+        .map(([name, value]) => {
+          const svgName = name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`)
+          return ` ${escapeHtml(svgName)}="${escapeHtml(String(value))}"`
+        })
+        .join('')
+      return `<${escapeHtml(tag)}${attributes}/>`
+    })
+    .join('')
+  return `<svg class="note-emoji" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" color="currentColor" aria-hidden="true">${children}</svg>`
+}
+
+/**
  * The header markup for a note's stored icon.
  *
  * An uploaded image travels inside the document as a `data:` URI, the way
- * `inlineExportImages` carries the body's images. A library icon is left out:
- * its glyphs ship in the renderer bundle, not here, and its reference is not
- * text to print. So is a custom icon whose row is gone.
+ * `inlineExportImages` carries the body's images. A library icon is drawn as
+ * inline SVG. An icon that cannot be resolved is left out: its reference is
+ * not text to print.
  */
 function renderNoteIcon(
   value: string | null | undefined,
-  findCustomIcon: RenderOptions['findCustomIcon']
+  { findCustomIcon, findLibraryIcon }: RenderOptions
 ): string {
-  if (!value || value.startsWith(LIBRARY_ICON_PREFIX)) return ''
+  if (!value) return ''
+  if (value.startsWith(LIBRARY_ICON_PREFIX)) {
+    const icon = findLibraryIcon?.(value.slice(LIBRARY_ICON_PREFIX.length))
+    return icon ? libraryIconSvg(icon) : ''
+  }
   if (value.startsWith(CUSTOM_ICON_PREFIX)) {
     const icon = findCustomIcon?.(value.slice(CUSTOM_ICON_PREFIX.length))
     const src = icon ? customIconDataUri(icon) : null
@@ -248,7 +283,8 @@ export function getEmbeddedStyles(): string {
       display: block;
     }
 
-    img.note-emoji {
+    img.note-emoji,
+    svg.note-emoji {
       width: 48px;
       height: 48px;
       object-fit: contain;
@@ -547,7 +583,7 @@ export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = 
 <body>
   <article>
     <header class="note-header">
-      ${renderNoteIcon(note.emoji, options.findCustomIcon)}
+      ${renderNoteIcon(note.emoji, options)}
       <h1 class="note-title">${escapeHtml(note.title)}</h1>
       ${metadataSection}
     </header>

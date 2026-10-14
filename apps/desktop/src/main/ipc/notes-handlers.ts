@@ -115,7 +115,7 @@ import { getStatus as getVaultStatus } from '../vault/index'
 import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import { syncFolderConfigCreate, syncFolderConfigSet } from '../notes/folder-config-effects'
-import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
+import { renderNoteAsHtml, sanitizeFilename, type ExportLibraryIcon } from '../lib/export-utils'
 import { getCustomIcon } from '../icons/store'
 import { getMainI18n } from '../lib/main-i18n'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
@@ -164,6 +164,10 @@ async function renderNoteForExport(
   note: Note,
   { includeMetadata, includeTaskMarkers }: { includeMetadata: boolean; includeTaskMarkers: boolean }
 ): Promise<string> {
+  // Loaded on demand: the full HugeIcons set is several MB, and only an
+  // export of a note with a library icon (`icon:<Name>`) needs it.
+  const libraryIcons: Record<string, ExportLibraryIcon | undefined> | undefined =
+    note.emoji?.startsWith('icon:') ? await import('@hugeicons/core-free-icons') : undefined
   const html = renderNoteAsHtml(
     {
       id: note.id,
@@ -177,7 +181,8 @@ async function renderNoteForExport(
     {
       includeMetadata,
       includeTaskMarkers,
-      findCustomIcon: (id) => getCustomIcon(getDatabase(), id)
+      findCustomIcon: (id) => getCustomIcon(getDatabase(), id),
+      findLibraryIcon: (name) => libraryIcons?.[name]
     }
   )
   return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
