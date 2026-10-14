@@ -9,8 +9,12 @@ import {
 import { runMigrations } from '../database/migrate'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
+import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('DataDbRecovery')
+
+/** The user is asked at most once per app session, whether at open or mid-session (#3247). */
+let offeredThisSession = false
 
 /** Ask before touching the file. Recovery is never silent (#2595). */
 async function confirmRecovery(dbPath: string): Promise<boolean> {
@@ -34,6 +38,7 @@ async function confirmRecovery(dbPath: string): Promise<boolean> {
  * sync pull. Returns true when the database was replaced.
  */
 export async function offerDataDbRecovery(dbPath: string): Promise<boolean> {
+  offeredThisSession = true
   if (!(await confirmRecovery(dbPath))) {
     logger.warn('User postponed data.db recovery; the corrupt file stays in use')
     return false
@@ -49,4 +54,22 @@ export async function offerDataDbRecovery(dbPath: string): Promise<boolean> {
     `data.db recovered; backup at ${backupPath}, replayed ${replayed}/${salvaged.length} pending sync rows`
   )
   return true
+}
+
+/**
+ * SQLITE_CORRUPT from a query mid-session is the same signal as a failed
+ * open-time quick_check (#2595): offer the same confirmed recovery, once.
+ * Called synchronously from the failing statement, so the dialog is deferred
+ * and the statement finishes throwing before the connection can be replaced.
+ */
+export function offerRuntimeDataDbRecovery(dbPath: string, error: unknown): void {
+  if (offeredThisSession) return
+  offeredThisSession = true
+  logger.error(`SQLITE_CORRUPT from ${dbPath} mid-session — offering recovery`, error)
+  trackMainError('vault', 'data_db_corrupt_runtime', error)
+  setImmediate(() => {
+    offerDataDbRecovery(dbPath).catch((recoveryError: unknown) =>
+      logger.error('Mid-session data.db recovery failed', recoveryError)
+    )
+  })
 }

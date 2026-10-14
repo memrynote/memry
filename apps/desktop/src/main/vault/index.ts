@@ -50,7 +50,8 @@ import { ensureDefaultTaskProject } from '../database/defaults'
 import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
-import { offerDataDbRecovery } from './data-db-recovery-prompt'
+import { offerDataDbRecovery, offerRuntimeDataDbRecovery } from './data-db-recovery-prompt'
+import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
@@ -685,6 +686,8 @@ async function openVault(vaultPath: string): Promise<void> {
     const recovered = await offerDataDbRecovery(dataDbPath)
     if (!recovered && corruptOpenError !== null) throw corruptOpenError
   }
+  // Registered after the open-time verdict so one corruption is never offered twice.
+  onDataDbCorruption(offerRuntimeDataDbRecovery)
   timer.mark('quickCheck')
 
   // The CRDT store is scoped to this vault's uuid, which lives in the data DB
