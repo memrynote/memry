@@ -73,7 +73,8 @@ describe('voice transcription worker', () => {
       data: {
         type: 'transcribe',
         requestId: 'req-1',
-        audioBuffer: new Uint8Array(createMonoPcm16Wav([0, 0.25, -0.25, 0.5], 16_000))
+        audioBuffer: new Uint8Array(createMonoPcm16Wav([0, 0.25, -0.25, 0.5], 16_000)),
+        language: 'de'
       }
     })
 
@@ -104,7 +105,7 @@ describe('voice transcription worker', () => {
     )
     expect(mockTranscriber).toHaveBeenCalledWith(expect.any(Float32Array), {
       sampling_rate: 16_000,
-      language: 'en',
+      language: 'de',
       task: 'transcribe'
     })
   })

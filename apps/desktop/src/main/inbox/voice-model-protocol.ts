@@ -16,6 +16,7 @@ export type VoiceModelMainToWorkerMessage =
       type: 'transcribe'
       requestId: string
       audioBuffer: Uint8Array
+      language: string
     }
   | {
       type: 'shutdown'

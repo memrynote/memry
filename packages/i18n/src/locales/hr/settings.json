@@ -1319,6 +1319,9 @@
         "none": "Ne preimenuj"
       },
       "namingError": "Ažuriranje imenovanja glasovnih zapisa nije uspjelo",
+      "language": "Govorni jezik",
+      "languageDescription": "Jezik kojim govorite u glasovnim bilješkama",
+      "languageError": "Ažuriranje jezika transkripcije nije uspjelo",
       "localModel": "Lokalni model",
       "localModelDescription": "Whisper Small preuzima se na zahtjev i ostaje u lokalnoj predmemoriji",
       "status": {

@@ -1319,6 +1319,9 @@
         "none": "Ikke gi nytt navn"
       },
       "namingError": "Kunne ikke oppdatere navngivningen av talememoer",
+      "language": "Talespråk",
+      "languageDescription": "Språket du snakker i talememoer",
+      "languageError": "Kunne ikke oppdatere transkripsjonsspråk",
       "localModel": "Lokal modell",
       "localModelDescription": "Whisper Small lastes ned ved behov og bufres lokalt",
       "status": {

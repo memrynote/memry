@@ -1319,6 +1319,9 @@
         "none": "Nicht umbenennen"
       },
       "namingError": "Benennung von Sprachnotizen konnte nicht aktualisiert werden",
+      "language": "Gesprochene Sprache",
+      "languageDescription": "Sprache, die du in Sprachmemos sprichst",
+      "languageError": "Transkriptionssprache konnte nicht aktualisiert werden",
       "localModel": "Lokales Modell",
       "localModelDescription": "Whisper Small wird bei Bedarf heruntergeladen und bleibt lokal zwischengespeichert",
       "status": {

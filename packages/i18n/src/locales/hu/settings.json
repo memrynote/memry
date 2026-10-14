@@ -1319,6 +1319,9 @@
         "none": "Nincs átnevezés"
       },
       "namingError": "Nem sikerült frissíteni a hangjegyzetek elnevezési módját",
+      "language": "Beszélt nyelv",
+      "languageDescription": "A hangjegyzetekben beszélt nyelv",
+      "languageError": "Nem sikerült frissíteni az átírás nyelvét",
       "localModel": "Helyi modell",
       "localModelDescription": "A Whisper Small igény szerint töltődik le, és helyben, gyorsítótárban marad",
       "status": {

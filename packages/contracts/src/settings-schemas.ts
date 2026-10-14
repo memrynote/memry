@@ -304,16 +304,125 @@ export const AI_SETTINGS_DEFAULTS: AISettings = {
 // Voice Transcription Settings
 // ============================================================================
 
+// The 99 languages Whisper Small (multilingual) and OpenAI whisper-1 transcribe.
+export const VOICE_TRANSCRIPTION_LANGUAGES = [
+  'en',
+  'zh',
+  'de',
+  'es',
+  'ru',
+  'ko',
+  'fr',
+  'ja',
+  'pt',
+  'tr',
+  'pl',
+  'ca',
+  'nl',
+  'ar',
+  'sv',
+  'it',
+  'id',
+  'hi',
+  'fi',
+  'vi',
+  'he',
+  'uk',
+  'el',
+  'ms',
+  'cs',
+  'ro',
+  'da',
+  'hu',
+  'ta',
+  'no',
+  'th',
+  'ur',
+  'hr',
+  'bg',
+  'lt',
+  'la',
+  'mi',
+  'ml',
+  'cy',
+  'sk',
+  'te',
+  'fa',
+  'lv',
+  'bn',
+  'sr',
+  'az',
+  'sl',
+  'kn',
+  'et',
+  'mk',
+  'br',
+  'eu',
+  'is',
+  'hy',
+  'ne',
+  'mn',
+  'bs',
+  'kk',
+  'sq',
+  'sw',
+  'gl',
+  'mr',
+  'pa',
+  'si',
+  'km',
+  'sn',
+  'yo',
+  'so',
+  'af',
+  'oc',
+  'ka',
+  'be',
+  'tg',
+  'sd',
+  'gu',
+  'am',
+  'yi',
+  'lo',
+  'uz',
+  'fo',
+  'ht',
+  'ps',
+  'tk',
+  'nn',
+  'mt',
+  'sa',
+  'lb',
+  'my',
+  'bo',
+  'tl',
+  'mg',
+  'as',
+  'tt',
+  'haw',
+  'ln',
+  'ha',
+  'ba',
+  'jw',
+  'su'
+] as const
+
+export type VoiceTranscriptionLanguage = (typeof VOICE_TRANSCRIPTION_LANGUAGES)[number]
+
 export const VoiceTranscriptionSettingsSchema = z.object({
   provider: z.enum(['local', 'openai']),
-  memoNameMode: z.enum(['transcript', 'timestamp', 'none'])
+  memoNameMode: z.enum(['transcript', 'timestamp', 'none']),
+  // Added in #3172. Stored rows from older builds lack it; readers merge over
+  // the defaults, so they keep the previous hardcoded English behavior.
+  language: z.enum(VOICE_TRANSCRIPTION_LANGUAGES)
 })
 
 export type VoiceTranscriptionSettings = z.infer<typeof VoiceTranscriptionSettingsSchema>
 
 export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings = {
   provider: 'local',
-  memoNameMode: 'transcript'
+  memoNameMode: 'transcript',
+  language: 'en'
 }
 
 // ============================================================================

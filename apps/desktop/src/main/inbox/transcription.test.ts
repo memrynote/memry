@@ -140,7 +140,7 @@ describe('inbox transcription', () => {
   // T611: transcription pipeline (mocked provider)
   // ==========================================================================
   it('transcribes audio locally and updates item status', async () => {
-    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'local' })
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'local', language: 'de' })
     mockTranscribeWithLocalModel.mockResolvedValue('Hello world')
 
     const relativePath = 'attachments/inbox/item-1/audio.wav'
@@ -160,7 +160,7 @@ describe('inbox transcription', () => {
     expect(updated?.transcriptionStatus).toBe('complete')
     expect(updated?.transcription).toBe('Hello world')
     expect(updated?.processingError).toBeNull()
-    expect(mockTranscribeWithLocalModel).toHaveBeenCalledWith(expect.any(Buffer))
+    expect(mockTranscribeWithLocalModel).toHaveBeenCalledWith(expect.any(Buffer), 'de')
     expect(mockCreate).not.toHaveBeenCalled()
 
     expect(window.webContents.send).toHaveBeenCalledWith(
@@ -343,7 +343,7 @@ describe('inbox transcription', () => {
   })
 
   it('maps provider errors and supports retry', async () => {
-    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai' })
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai', language: 'de' })
     mockGetVoiceTranscriptionOpenAIApiKey.mockResolvedValue('sk-test')
     mockCreate.mockRejectedValue(new Error('rate_limit'))
 
@@ -368,6 +368,7 @@ describe('inbox transcription', () => {
 
     expect(updated?.transcriptionStatus).toBe('complete')
     expect(updated?.transcription).toBe('Recovered')
+    expect(mockCreate).toHaveBeenLastCalledWith(expect.objectContaining({ language: 'de' }))
   })
 
   it('returns errors for invalid retry requests', async () => {

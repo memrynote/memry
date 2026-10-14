@@ -1319,6 +1319,9 @@
         "none": "Non rinominare"
       },
       "namingError": "Impossibile aggiornare la denominazione dei memo vocali",
+      "language": "Lingua parlata",
+      "languageDescription": "Lingua che parli nei memo vocali",
+      "languageError": "Impossibile aggiornare la lingua di trascrizione",
       "localModel": "Modello locale",
       "localModelDescription": "Whisper Small viene scaricato su richiesta e rimane memorizzato nella cache locale",
       "status": {

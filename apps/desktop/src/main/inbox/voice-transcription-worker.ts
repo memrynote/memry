@@ -253,7 +253,7 @@ async function handleTranscription(
     const { samples, sampleRate } = decodePcm16Wav(audioBuffer)
     const result = await pipeline(samples, {
       sampling_rate: sampleRate,
-      language: 'en',
+      language: message.language,
       task: 'transcribe'
     })
     const transcription = normalizeTranscriptionResult(result)

@@ -226,12 +226,30 @@ describe('AISettings', () => {
 
     await waitFor(() => expect(screen.getByText('Timestamp')).toBeInTheDocument())
 
-    await userEvent.click(screen.getByRole('combobox'))
+    await userEvent.click(screen.getAllByRole('combobox')[0])
     await userEvent.click(await screen.findByRole('option', { name: 'Transcript title' }))
 
     expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({
       memoNameMode: 'transcript'
     })
+  })
+
+  it('saves the spoken language for voice transcription', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+
+    render(<AISettings />)
+
+    const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
+    expect(languageSelect).toHaveTextContent('English')
+
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'German' }))
+
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ language: 'de' })
+    await waitFor(() => expect(languageSelect).toHaveTextContent('German'))
   })
 
   it('switches the voice provider with the segmented control', async () => {

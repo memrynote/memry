@@ -1319,6 +1319,9 @@
         "none": "Nepremenovať"
       },
       "namingError": "Nepodarilo sa aktualizovať pomenovanie hlasových poznámok",
+      "language": "Hovorený jazyk",
+      "languageDescription": "Jazyk, ktorým hovoríte v hlasových poznámkach",
+      "languageError": "Jazyk prepisu sa nepodarilo zmeniť",
       "localModel": "Lokálny model",
       "localModelDescription": "Whisper Small sa sťahuje na požiadanie a zostáva lokálne uložený v cache",
       "status": {

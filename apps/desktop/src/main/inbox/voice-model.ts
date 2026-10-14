@@ -94,13 +94,14 @@ class VoiceModelBridge {
     }
   }
 
-  async transcribe(audioBuffer: Buffer): Promise<string> {
+  async transcribe(audioBuffer: Buffer, language: string): Promise<string> {
     await this.start()
     const requestId = this.nextRequestId()
     const response = await this.sendRequest({
       type: 'transcribe',
       requestId,
-      audioBuffer: new Uint8Array(audioBuffer)
+      audioBuffer: new Uint8Array(audioBuffer),
+      language
     })
 
     if (response.type === 'error') {
@@ -433,8 +434,11 @@ export function getVoiceModelStatus(): VoiceModelStatus {
   return bridge.status
 }
 
-export async function transcribeWithLocalModel(audioBuffer: Buffer): Promise<string> {
-  return bridge.transcribe(audioBuffer)
+export async function transcribeWithLocalModel(
+  audioBuffer: Buffer,
+  language: string
+): Promise<string> {
+  return bridge.transcribe(audioBuffer, language)
 }
 
 export function unloadVoiceModel(): void {

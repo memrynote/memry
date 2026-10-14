@@ -173,7 +173,7 @@ describe('voice model', () => {
   })
 
   it('transcribes audio through the utility process', async () => {
-    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'))
+    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'), 'en')
 
     expect(mockFork).toHaveBeenCalledOnce()
     mockUtilityProcessInstance.simulateSpawn()
@@ -202,7 +202,7 @@ describe('voice model', () => {
 
   it('shuts down the utility process after transcription stays idle', async () => {
     vi.useFakeTimers()
-    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'))
+    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'), 'en')
 
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
     await vi.waitFor(() => {
@@ -228,7 +228,7 @@ describe('voice model', () => {
 
   it('keeps the utility process alive when another transcription starts before idle shutdown', async () => {
     vi.useFakeTimers()
-    const firstTranscribe = transcribeWithLocalModel(Buffer.from('first'))
+    const firstTranscribe = transcribeWithLocalModel(Buffer.from('first'), 'en')
 
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
     await vi.waitFor(() => {
@@ -247,7 +247,7 @@ describe('voice model', () => {
     await expect(firstTranscribe).resolves.toBe('first memo')
     await vi.advanceTimersByTimeAsync(20_000)
 
-    const secondTranscribe = transcribeWithLocalModel(Buffer.from('second'))
+    const secondTranscribe = transcribeWithLocalModel(Buffer.from('second'), 'en')
     await vi.waitFor(() => {
       expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(2)
     })
@@ -311,7 +311,7 @@ describe('voice model', () => {
 
   it('rejects start, request, and fatal utility failures', async () => {
     vi.useFakeTimers()
-    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'), 'en')
     const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )
@@ -323,7 +323,7 @@ describe('voice model', () => {
     )
 
     unloadVoiceModel()
-    const fatalBeforeReady = transcribeWithLocalModel(Buffer.from('audio'))
+    const fatalBeforeReady = transcribeWithLocalModel(Buffer.from('audio'), 'en')
     const fatalExpectation = expect(fatalBeforeReady).rejects.toThrow(
       'Voice transcription utility fatal error: SIGSEGV at worker.cc:10'
     )
@@ -332,7 +332,7 @@ describe('voice model', () => {
     await fatalExpectation
 
     unloadVoiceModel()
-    const requestTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    const requestTimeout = transcribeWithLocalModel(Buffer.from('audio'), 'en')
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
     await vi.waitFor(() => {
       expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
@@ -348,7 +348,7 @@ describe('voice model', () => {
 
   it('reaps the utility process and detaches its listeners when the start times out', async () => {
     vi.useFakeTimers()
-    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'), 'en')
     const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )
@@ -377,7 +377,7 @@ describe('voice model', () => {
 
   it('transcribes on the next attempt after a start timeout, ignoring the orphan', async () => {
     vi.useFakeTimers()
-    const timedOut = transcribeWithLocalModel(Buffer.from('first'))
+    const timedOut = transcribeWithLocalModel(Buffer.from('first'), 'en')
     const timedOutExpectation = expect(timedOut).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )
@@ -386,7 +386,7 @@ describe('voice model', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     await timedOutExpectation
 
-    const retry = transcribeWithLocalModel(Buffer.from('second'))
+    const retry = transcribeWithLocalModel(Buffer.from('second'), 'en')
     expect(mockFork).toHaveBeenCalledTimes(2)
     const fresh = mockUtilityProcessInstance
     expect(fresh).not.toBe(orphan)
@@ -455,7 +455,7 @@ describe('voice model', () => {
   })
 
   it('rejects instead of crashing when the utility process exits unexpectedly', async () => {
-    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'))
+    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'), 'en')
 
     expect(mockFork).toHaveBeenCalledOnce()
     mockUtilityProcessInstance.simulateSpawn()

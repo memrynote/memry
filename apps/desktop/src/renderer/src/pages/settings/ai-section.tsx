@@ -14,6 +14,12 @@ import { CommandLineSettings } from './command-line-section'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@memry/i18n/renderer'
 import {
+  VOICE_TRANSCRIPTION_LANGUAGES,
+  VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
+  type VoiceTranscriptionLanguage,
+  type VoiceTranscriptionSettings
+} from '@memry/contracts/settings-schemas'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -38,11 +44,6 @@ interface AIModelStatus {
   loading: boolean
   error: string | null
   embeddingCount?: number
-}
-
-interface VoiceTranscriptionSettings {
-  provider: 'local' | 'openai'
-  memoNameMode: 'transcript' | 'timestamp' | 'none'
 }
 
 interface VoiceModelStatus {
@@ -179,13 +180,12 @@ export function AISettings({
   focusTarget = null,
   focusRequestId = 0
 }: AISettingsProps = {}) {
-  const { t } = useT('settings')
+  const { t, i18n } = useT('settings')
   const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
-  const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>({
-    provider: 'local',
-    memoNameMode: 'transcript'
-  })
+  const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>(
+    VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
+  )
   const [voiceModelStatus, setVoiceModelStatus] = useState<VoiceModelStatus | null>(null)
   const [voiceApiKey, setVoiceApiKey] = useState('')
   const [hasVoiceApiKey, setHasVoiceApiKey] = useState(false)
@@ -220,10 +220,7 @@ export function AISettings({
         if (cancelled) return
         setSettings(aiSettings)
         setModelStatus(status)
-        setVoiceSettings({
-          provider: voiceConfig.provider,
-          memoNameMode: voiceConfig.memoNameMode ?? 'transcript'
-        })
+        setVoiceSettings({ ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS, ...voiceConfig })
         setVoiceModelStatus(voiceStatus)
         setHasVoiceApiKey(voiceKeyStatus.hasApiKey)
       } catch (error) {
@@ -418,6 +415,22 @@ export function AISettings({
     [t]
   )
 
+  const handleVoiceLanguageChange = useCallback(
+    async (language: VoiceTranscriptionLanguage) => {
+      try {
+        const result = await window.api.settings.setVoiceTranscriptionSettings({ language })
+        if (result.success) {
+          setVoiceSettings((prev) => ({ ...prev, language }))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.voice.languageError')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.voice.languageError')))
+      }
+    },
+    [t]
+  )
+
   const handleDownloadVoiceModel = useCallback(async () => {
     setIsDownloadingVoiceModel(true)
     try {
@@ -454,6 +467,12 @@ export function AISettings({
       toast.error(extractErrorMessage(error, t('ai.voice.keySaveError')))
     }
   }, [voiceApiKey, t])
+
+  const languageNames = new Intl.DisplayNames([i18n.language], { type: 'language' })
+  const languageOptions = VOICE_TRANSCRIPTION_LANGUAGES.map((code) => ({
+    code,
+    label: languageNames.of(code) ?? code
+  })).sort((a, b) => a.label.localeCompare(b.label, i18n.language))
 
   if (isLoading) {
     return (
@@ -667,6 +686,29 @@ export function AISettings({
                     <SelectItem value="transcript">{t('ai.voice.naming.transcript')}</SelectItem>
                     <SelectItem value="timestamp">{t('ai.voice.naming.timestamp')}</SelectItem>
                     <SelectItem value="none">{t('ai.voice.naming.none')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <SettingRow
+                label={t('ai.voice.language')}
+                description={t('ai.voice.languageDescription')}
+              >
+                <Select
+                  value={voiceSettings.language}
+                  onValueChange={(value) =>
+                    void handleVoiceLanguageChange(value as VoiceTranscriptionLanguage)
+                  }
+                >
+                  <SelectTrigger className={COMPACT_SELECT} aria-label={t('ai.voice.language')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map(({ code, label }) => (
+                      <SelectItem key={code} value={code}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </SettingRow>

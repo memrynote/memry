@@ -127,7 +127,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   },
   voiceTranscription: {
     provider: 'local',
-    memoNameMode: 'transcript'
+    memoNameMode: 'transcript',
+    language: 'en'
   },
   journal: {
     defaultTemplate: null,
