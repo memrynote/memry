@@ -197,6 +197,9 @@ and a Google Meet link appears as a **Join meeting** button.
 The bar at the bottom shows the keys: press **Enter** in the title, or **⌘ Enter** (Ctrl Enter
 on Windows and Linux) from any field, to save. **Esc** closes the card without saving.
 
+Click a reminder to open what it is for: its note, task, or journal day. If that item no longer
+exists, a message says so.
+
 Calendar popovers open beside the item you clicked and always stay inside the window. Near the
 bottom edge a popover shifts up just enough to fit. In a window shorter than the popover, it pins
 to the top edge and its contents scroll; resize the window and it moves or grows to match.

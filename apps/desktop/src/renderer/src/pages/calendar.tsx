@@ -73,6 +73,8 @@ import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar
 import { GoogleCalendarConnectPrompt } from '@/components/calendar/google-calendar-connect-prompt'
 import { AddEventToProjectDialog } from '@/components/tasks/projects/add-event-to-project-dialog'
 import { inboxService } from '@/services/inbox-service'
+import { reminderService } from '@/services/reminder-service'
+import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('CalendarPage')
@@ -696,6 +698,15 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       return
     }
 
+    if (item.sourceType === 'reminder') {
+      setPopoverState(null)
+      setTaskPopoverState(null)
+      setInboxSnoozePopoverState(null)
+      setNotePopoverState(null)
+      openReminderTarget(item.sourceId)
+      return
+    }
+
     if (item.sourceType !== 'external_event') return
 
     setNotePopoverState(null)
@@ -735,6 +746,46 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       width: 1,
       height: 1
     })
+  }
+
+  // A reminder chip opens what the reminder is for, through the same tab
+  // builder the inbox and the due-reminder toast use (#3197, #3166).
+  const openReminderTarget = (reminderId: string) => {
+    const tInbox = getI18n().getFixedT(null, 'inbox')
+    void reminderService
+      .get(reminderId)
+      .then((reminder) => {
+        const tab = reminder
+          ? buildReminderTargetTab({
+              targetType: reminder.targetType,
+              targetId: reminder.targetId,
+              targetTitle: reminder.targetTitle,
+              projectId: reminder.projectId ?? undefined,
+              anchorId: reminder.anchorId ?? undefined,
+              highlightStart: reminder.highlightStart ?? undefined,
+              highlightEnd: reminder.highlightEnd ?? undefined,
+              highlightText: reminder.highlightText ?? undefined,
+              fallbacks: {
+                note: tInbox('reminder.noteFallback'),
+                journal: tInbox('reminder.journalFallback'),
+                task: tInbox('reminder.taskFallback')
+              }
+            })
+          : null
+        if (!tab) {
+          log.error('Calendar reminder has no openable target', { reminderId })
+          toast.error(tInbox('reminder.dataUnavailable'))
+          return
+        }
+        openTab(tab)
+      })
+      .catch((err: unknown) => {
+        log.error('Failed to open reminder from calendar', {
+          reminderId,
+          error: extractErrorMessage(err, tInbox('reminder.dataUnavailable'))
+        })
+        toast.error(tInbox('reminder.dataUnavailable'))
+      })
   }
 
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
