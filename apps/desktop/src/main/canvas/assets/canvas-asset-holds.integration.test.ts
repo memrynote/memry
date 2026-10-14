@@ -343,6 +343,44 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
     expect(Buffer.compare(await restoredBytes(p, revived), Buffer.from(image))).toBe(0)
   })
 
+  it('drops a re-upload whose hold failed, so retries leave no orphaned chunks (#3036)', async () => {
+    // Q's first hold reports the chunks gone; the re-upload's own hold then fails.
+    let holdCalls = 0
+    const flakyHold = ((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      if (String(input).endsWith('/attachments/holds') && ++holdCalls === 2) {
+        return Promise.resolve(new Response('unavailable', { status: 503 }))
+      }
+      return realFetch(input, init)
+    }) as typeof fetch
+    const p = await device()
+    const q = await device(flakyHold)
+    const image = new Uint8Array(randomBytes(32 * 1024))
+
+    const a = await canvasWithImage(p, image)
+    const pushedA = await push(p, a.id, a.scene)
+    await apply(q, a.id, pushedA)
+    const b = await canvasWithImage(q, image)
+    await deleteAndFree(p, a.id)
+    const d1 = await server.getD1()
+    const stored = async () =>
+      (await d1
+        .prepare('SELECT COUNT(*) AS n FROM blob_chunks WHERE user_id = ?')
+        .bind(userId)
+        .first<number>('n')) ?? 0
+    expect(await stored()).toBe(0)
+
+    // The push waits for a later cycle, and the cron reaps the failed re-upload.
+    expect(await holdCanvasAssetsForPush(q.ctx, b.id, b.scene)).toBe(false)
+    expect(holdCalls).toBe(2)
+    await server.triggerScheduled()
+    expect(await stored()).toBe(0)
+
+    // The next cycle heals the image as usual.
+    const pushedB = await push(q, b.id, b.scene)
+    await apply(p, b.id, pushedB)
+    expect(Buffer.compare(await restoredBytes(p, pushedB), Buffer.from(image))).toBe(0)
+  })
+
   it('frees an image two devices drop at once only after its last hold, and refunds it once', async () => {
     const p = await device()
     const q = await device()

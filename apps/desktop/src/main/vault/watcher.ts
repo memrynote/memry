@@ -47,6 +47,7 @@ import {
   clearAllPendingDeletes,
   hasPendingDeletes,
   settleDeferredDeletes,
+  discardDeferredDeletes,
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
@@ -466,12 +467,26 @@ export class VaultWatcher {
 
     if (!isCurrent()) return
     const deferred = createDeferredDeletes()
-    for (const absolutePath of missing) {
-      this.handleFileDelete(absolutePath, { keepUnpaired, deferred })
-    }
-    for (const absolutePath of added) {
-      if (!isCurrent()) return
-      await this.handleFileAdd(absolutePath)
+    try {
+      for (const absolutePath of missing) {
+        this.handleFileDelete(absolutePath, { keepUnpaired, deferred })
+      }
+      for (const absolutePath of added) {
+        if (!isCurrent()) return
+        await this.handleFileAdd(absolutePath)
+      }
+    } catch (err) {
+      // An add that never ran could be the rename that keeps a missing note's
+      // id, so settling now could sync a wrong delete. Keep every row instead.
+      const dropped = discardDeferredDeletes(deferred)
+      logger.error('Vault rescan failed; syncing none of its deletes until the next rescan', {
+        vaultPath,
+        missing: missing.length,
+        added: added.length,
+        dropped,
+        error: err instanceof Error ? err.message : String(err)
+      })
+      throw err
     }
     // A stop meanwhile cleared the deferred deletes with the rest.
     if (!isCurrent()) return

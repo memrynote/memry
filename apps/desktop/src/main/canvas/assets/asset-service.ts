@@ -507,7 +507,15 @@ async function reuploadMissingAsset(
     const held = await ctx.holdChunks(canvasId, [
       { contentHash: descriptor.contentHash, chunkHashes }
     ])
-    if (held.status !== 'ok' || held.missing.size > 0) return false
+    if (held.status !== 'ok' || held.missing.size > 0) {
+      // The row still names the old chunks, so nothing else will ever drop this
+      // upload, and the retry uploads fresh chunks (random nonces). Drop it now
+      // (#3036). Safe even if the hold landed unseen: the hold keeps the chunks.
+      if (!(await ctx.dereference(chunkHashes)).ok) {
+        log.warn('could not drop a re-upload whose hold failed', { canvasId })
+      }
+      return false
+    }
     // The hold now keeps these chunks. Dropping the upload's own reference
     // leaves the hold as their only owner, so releasing it frees them; a
     // failed drop only leaves the bytes stored.
