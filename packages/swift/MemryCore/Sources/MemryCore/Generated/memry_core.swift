@@ -12829,28 +12829,6 @@ public func FfiConverterTypeVaultRealtime_lower(_ value: VaultRealtime) -> UInt6
 public protocol VaultSyncProtocol: AnyObject, Sendable {
     
     /**
-     * Fetches one attachment's bytes into `images/` (N206's data half).
-     *
-     * **`reachable` is the shell's observation and the policy is the core's.**
-     * Only the shell can see the current path; only one place should decide
-     * what that means, and FR-045's rule — lazy, unmetered by default, with
-     * an explicit per-item override — lives in
-     * [`crate::domain::attachments::may_download`] where a test can reach it
-     * without a network.
-     *
-     * **Deferring is a normal outcome, not an error.** A picture waiting for
-     * wifi is exactly what FR-045 asks for, so it comes back as
-     * `deferred: true` with no bytes written. A shell that met an error there
-     * would show a failure for working behaviour.
-     *
-     * The verification order of §14.4.1 is not this function's to choose: it
-     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
-     * the signature before unwrapping the file key, and an unresolvable
-     * signer is refused there rather than skipped.
-     */
-    func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
-    
-    /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
      * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
@@ -12918,6 +12896,40 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * makes no request.
      */
     func pendingChanges() throws  -> UInt32
+    
+    /**
+     * Fetches one attachment's bytes into `images/` (N206's data half).
+     *
+     * **`reachable` is the shell's observation and the policy is the core's.**
+     * Only the shell can see the current path; only one place should decide
+     * what that means, and FR-045's rule — lazy, unmetered by default, with
+     * an explicit per-item override — lives in
+     * [`crate::domain::attachments::may_download`] where a test can reach it
+     * without a network.
+     *
+     * **Deferring is a normal outcome, not an error.** A picture waiting for
+     * wifi is exactly what FR-045 asks for, so it comes back as
+     * `deferred: true` with no bytes written. A shell that met an error there
+     * would show a failure for working behaviour.
+     *
+     * The verification order of §14.4.1 is not this function's to choose: it
+     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
+     * the signature before unwrapping the file key, and an unresolvable
+     * signer is refused there rather than skipped.
+     */
+    func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
+    
+    /**
+     * Retries every attachment a note references whose bytes are not here
+     * (#1829's re-driver). The shell calls it on reconnect and after a sync
+     * pass; each attachment goes through [`Self::fetch_attachment`], so the
+     * metered policy and the bounded queue apply unchanged and large
+     * prefetch on cellular stays opt-in per item.
+     *
+     * One failure never stops the walk: it is counted and the row stays
+     * missing for the next call.
+     */
+    func redriveAttachments(reachable: Reachable) async throws  -> AttachmentRedriveSummary
     
     /**
      * Detaches an attachment from a note and releases its bytes (N215, N212).
@@ -13033,42 +13045,6 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
 
     
     /**
-     * Fetches one attachment's bytes into `images/` (N206's data half).
-     *
-     * **`reachable` is the shell's observation and the policy is the core's.**
-     * Only the shell can see the current path; only one place should decide
-     * what that means, and FR-045's rule — lazy, unmetered by default, with
-     * an explicit per-item override — lives in
-     * [`crate::domain::attachments::may_download`] where a test can reach it
-     * without a network.
-     *
-     * **Deferring is a normal outcome, not an error.** A picture waiting for
-     * wifi is exactly what FR-045 asks for, so it comes back as
-     * `deferred: true` with no bytes written. A shell that met an error there
-     * would show a failure for working behaviour.
-     *
-     * The verification order of §14.4.1 is not this function's to choose: it
-     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
-     * the signature before unwrapping the file key, and an unresolvable
-     * signer is refused there rather than skipped.
-     */
-open func fetchAttachment(attachmentId: String, reachable: Reachable)async throws  -> AttachmentFetchSummary  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_memry_core_fn_method_vaultsync_fetch_attachment(
-                        self.uniffiCloneHandle(),FfiConverterString.lower(attachmentId),FfiConverterTypeReachable_lower(reachable)
-                )
-            },
-            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
-            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
-            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeAttachmentFetchSummary_lift,
-            errorHandler: FfiConverterTypeSyncError_lift
-        )
-}
-    
-    /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
      * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
@@ -13177,6 +13153,68 @@ open func pendingChanges()throws  -> UInt32  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Fetches one attachment's bytes into `images/` (N206's data half).
+     *
+     * **`reachable` is the shell's observation and the policy is the core's.**
+     * Only the shell can see the current path; only one place should decide
+     * what that means, and FR-045's rule — lazy, unmetered by default, with
+     * an explicit per-item override — lives in
+     * [`crate::domain::attachments::may_download`] where a test can reach it
+     * without a network.
+     *
+     * **Deferring is a normal outcome, not an error.** A picture waiting for
+     * wifi is exactly what FR-045 asks for, so it comes back as
+     * `deferred: true` with no bytes written. A shell that met an error there
+     * would show a failure for working behaviour.
+     *
+     * The verification order of §14.4.1 is not this function's to choose: it
+     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
+     * the signature before unwrapping the file key, and an unresolvable
+     * signer is refused there rather than skipped.
+     */
+open func fetchAttachment(attachmentId: String, reachable: Reachable)async throws  -> AttachmentFetchSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_attachment(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(attachmentId),FfiConverterTypeReachable_lower(reachable)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAttachmentFetchSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Retries every attachment a note references whose bytes are not here
+     * (#1829's re-driver). The shell calls it on reconnect and after a sync
+     * pass; each attachment goes through [`Self::fetch_attachment`], so the
+     * metered policy and the bounded queue apply unchanged and large
+     * prefetch on cellular stays opt-in per item.
+     *
+     * One failure never stops the walk: it is counted and the row stays
+     * missing for the next call.
+     */
+open func redriveAttachments(reachable: Reachable)async throws  -> AttachmentRedriveSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_redrive_attachments(
+                        self.uniffiCloneHandle(),FfiConverterTypeReachable_lower(reachable)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAttachmentRedriveSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
 }
     
     /**
@@ -13835,6 +13873,89 @@ public func FfiConverterTypeAttachmentManifest_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeAttachmentManifest_lower(_ value: AttachmentManifest) -> RustBuffer {
     return FfiConverterTypeAttachmentManifest.lower(value)
+}
+
+
+/**
+ * What one re-drive did.
+ */
+public struct AttachmentRedriveSummary: Equatable, Hashable {
+    public var downloaded: UInt32
+    /**
+     * Held back by the metered policy (FR-045). Not a failure.
+     */
+    public var deferred: UInt32
+    /**
+     * Failed this time; still missing, so the next re-drive asks again.
+     */
+    public var failed: UInt32
+    /**
+     * Missing attachments past this call's batch, left for the next one.
+     */
+    public var remaining: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(downloaded: UInt32, 
+        /**
+         * Held back by the metered policy (FR-045). Not a failure.
+         */deferred: UInt32, 
+        /**
+         * Failed this time; still missing, so the next re-drive asks again.
+         */failed: UInt32, 
+        /**
+         * Missing attachments past this call's batch, left for the next one.
+         */remaining: UInt32) {
+        self.downloaded = downloaded
+        self.deferred = deferred
+        self.failed = failed
+        self.remaining = remaining
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AttachmentRedriveSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentRedriveSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentRedriveSummary {
+        return
+            try AttachmentRedriveSummary(
+                downloaded: FfiConverterUInt32.read(from: &buf), 
+                deferred: FfiConverterUInt32.read(from: &buf), 
+                failed: FfiConverterUInt32.read(from: &buf), 
+                remaining: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AttachmentRedriveSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.downloaded, into: &buf)
+        FfiConverterUInt32.write(value.deferred, into: &buf)
+        FfiConverterUInt32.write(value.failed, into: &buf)
+        FfiConverterUInt32.write(value.remaining, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRedriveSummary_lift(_ buf: RustBuffer) throws -> AttachmentRedriveSummary {
+    return try FfiConverterTypeAttachmentRedriveSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRedriveSummary_lower(_ value: AttachmentRedriveSummary) -> RustBuffer {
+    return FfiConverterTypeAttachmentRedriveSummary.lower(value)
 }
 
 
@@ -33320,9 +33441,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 11177) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -33333,6 +33451,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_pending_changes() != 58986) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 34657) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 2191) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 19928) {

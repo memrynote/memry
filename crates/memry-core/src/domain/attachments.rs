@@ -538,6 +538,23 @@ pub fn cached_bytes(conn: &Connection) -> Result<i64, StorageError> {
     .map_err(failed)
 }
 
+/// Attachments some note references whose bytes are not on disk, smallest
+/// known size first so the cheap pictures land before one large file.
+///
+/// Includes evicted rows: a note still showing them is a note that wants them.
+pub fn missing_downloads(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    conn.prepare(
+        "SELECT attachment_id FROM attachments \
+         WHERE local_path IS NULL AND note_refs IS NOT NULL AND note_refs != '[]' \
+         ORDER BY remote_size IS NULL, remote_size ASC, attachment_id ASC",
+    )
+    .map_err(failed)?
+    .query_map([], |row| row.get::<_, String>(0))
+    .map_err(failed)?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(failed)
+}
+
 /// Every path the cache believes is on disk.
 ///
 /// For the sweep that reclaims bytes orphaned when a shell died between

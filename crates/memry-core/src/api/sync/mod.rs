@@ -78,10 +78,12 @@ use crate::sync::first_sync_store::read_meta;
 use crate::sync::pull::PullLoop;
 use crate::sync::socket_run::TerminalLatch;
 
+mod attachment_fetch;
 mod attachments_io;
 mod pass;
 mod realtime;
 
+pub use attachment_fetch::AttachmentRedriveSummary;
 pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
 
@@ -456,105 +458,5 @@ impl VaultSync {
         .pull_document(&note_id)
         .await?;
         Ok(report.into())
-    }
-
-    /// Fetches one attachment's bytes into `images/` (N206's data half).
-    ///
-    /// **`reachable` is the shell's observation and the policy is the core's.**
-    /// Only the shell can see the current path; only one place should decide
-    /// what that means, and FR-045's rule — lazy, unmetered by default, with
-    /// an explicit per-item override — lives in
-    /// [`crate::domain::attachments::may_download`] where a test can reach it
-    /// without a network.
-    ///
-    /// **Deferring is a normal outcome, not an error.** A picture waiting for
-    /// wifi is exactly what FR-045 asks for, so it comes back as
-    /// `deferred: true` with no bytes written. A shell that met an error there
-    /// would show a failure for working behaviour.
-    ///
-    /// The verification order of §14.4.1 is not this function's to choose: it
-    /// calls [`crate::protocol::attachments::fetch_manifest`], which checks
-    /// the signature before unwrapping the file key, and an unresolvable
-    /// signer is refused there rather than skipped.
-    pub async fn fetch_attachment(
-        &self,
-        attachment_id: String,
-        reachable: Reachable,
-    ) -> Result<AttachmentFetchSummary, SyncError> {
-        // The row carries the user's override, and its absence means the
-        // default: FR-045 starts every attachment unmetered-only.
-        let wanted = attachment_id.clone();
-        let cached = self
-            .db
-            .call(move |conn| Ok(attachments::get(conn, &wanted)))
-            .await??;
-        let unmetered_only = cached.as_ref().is_none_or(|row| row.unmetered_only);
-
-        if !attachments::may_download_with(unmetered_only, reachable) {
-            return Ok(AttachmentFetchSummary {
-                downloaded: false,
-                deferred: true,
-                bytes: 0,
-                local_path: cached.and_then(|row| row.local_path),
-            });
-        }
-
-        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
-        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
-        let directory = account::device_directory(&self.session.http()).await?;
-
-        let (manifest, file_key) = protocol_attachments::fetch_manifest(
-            &self.session.http(),
-            &self.vault_id,
-            &attachment_id,
-            &vault_key,
-            &DirectorySigners(directory),
-        )
-        .await
-        .map_err(attachment_error)?;
-
-        let bytes = self.download_chunks(&manifest, &file_key).await?;
-        let local_path = self.write_bytes(&attachment_id, &bytes)?;
-
-        let manifest_json =
-            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
-                SyncError::AttachmentCorrupt {
-                    what: error.to_string(),
-                }
-            })?;
-        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
-        // Ciphertext, because §14.8 reserves quota against it and the cache
-        // budget is measured in the same figure.
-        let remote_size: i64 = manifest
-            .chunks
-            .iter()
-            .map(|chunk| chunk.size as i64 + 24 + 16)
-            .sum();
-        let id = attachment_id.clone();
-        let filename = manifest.filename.clone();
-        let mime_type = manifest.mime_type.clone();
-        let stored = local_path.clone();
-        let now = now_ms();
-        self.db
-            .call(move |conn| {
-                attachments::put_manifest(
-                    conn,
-                    &id,
-                    &manifest_text,
-                    remote_size,
-                    &filename,
-                    &mime_type,
-                )?;
-                attachments::record_download(conn, &id, &stored, now)?;
-                Ok(())
-            })
-            .await?;
-
-        Ok(AttachmentFetchSummary {
-            downloaded: true,
-            deferred: false,
-            bytes: bytes.len() as u64,
-            local_path: Some(local_path),
-        })
     }
 }
