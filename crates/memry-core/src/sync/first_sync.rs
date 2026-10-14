@@ -56,7 +56,9 @@ use crate::storage::repositories::sync_items;
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
-use super::first_sync_store::{pending_metadata_ids, read_meta, recent_document_ids, write_meta};
+use super::first_sync_store::{
+    owe_out_of_window, pending_metadata_ids, read_meta, recent_document_ids, write_meta,
+};
 use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 
@@ -89,7 +91,7 @@ pub const RECENT_WINDOW_MS: i64 = 30 * 24 * 60 * 60 * 1_000;
 /// week has every document inside thirty days, and pulling ten thousand
 /// bodies is seventeen minutes unelevated (§10.6.1) against SC-007's two.
 /// Everything past this loads on demand, which is exactly what FR-028 asks
-/// for — "older content on demand".
+/// for ("older content on demand"), and owed a pull each pass sweeps (#3253).
 pub const RECENT_BODY_LIMIT: usize = 500;
 
 /// How many ids one metadata call asks for. Chapter 05 §5.10: `POST
@@ -406,6 +408,12 @@ impl FirstSync {
         // §7.15: a tombstoned document is excluded by the query above. The
         // server still answers with the surviving log, and applying it would
         // resurrect a body the record feed says is deleted.
+
+        // Owed before the pull; every later pass's body step sweeps the rest.
+        let pulled = window.clone();
+        (self.db)
+            .call(move |conn| owe_out_of_window(conn, &pulled))
+            .await?;
 
         // Renewed once here rather than per request: the document pulls run
         // concurrently and must not race each other into two renewals. The

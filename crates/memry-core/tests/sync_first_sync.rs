@@ -1079,3 +1079,32 @@ async fn a_rate_limited_document_is_paused_out_and_retried_rather_than_failing_t
         "the refused request was sent again"
     );
 }
+
+/// #3253: a note the window left behind is owed a body pull, so the pass's
+/// body step sweeps it in later, as desktop's paced catch-up does.
+#[tokio::test]
+async fn a_note_outside_the_window_is_owed_a_body_pull() {
+    let db = scratch_db("out-of-window");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        // Nothing for the bodies pass: the note is sixty days old.
+    ]);
+    let sixty_days_ms = 60 * 24 * 60 * 60 * 1_000;
+    let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + sixty_days_ms)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(report.bodies.documents, 0, "outside the window");
+    assert_eq!(transport.call_count(), 2);
+    let owed = db
+        .call_blocking(|conn| memry_core::sync::body_debt::owed(conn))
+        .expect("debts");
+    assert_eq!(owed, vec![NOTE.to_owned()]);
+}
