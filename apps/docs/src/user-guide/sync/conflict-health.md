@@ -194,7 +194,8 @@ edit, with nothing lost — the pause is what protected the content.
 
 Each vault keeps tasks, projects, settings and sync state in `.memry/data.db`. If
 that file is damaged (a disk error or a crash mid-write), memrynote detects it when
-the vault opens and asks before changing anything.
+the vault opens, or the first time a read or write hits the damage, and asks before
+changing anything. It asks once per session.
 
 Choosing **Repair**:
 

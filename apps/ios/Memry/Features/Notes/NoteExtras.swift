@@ -132,7 +132,7 @@ struct TemplatePicker: View {
                             pick(template.id, title)
                         } label: {
                             HStack(spacing: Tokens.Space.small) {
-                                if let icon = template.icon { Text(icon) }
+                                StoredIconView(value: template.icon)
                                 VStack(alignment: .leading, spacing: Tokens.Space.tight) {
                                     Text(template.name)
                                         .foregroundStyle(Tokens.Text.primary.color)

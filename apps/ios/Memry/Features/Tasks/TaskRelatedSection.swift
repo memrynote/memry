@@ -144,12 +144,8 @@ struct TaskRelatedIcon: View {
 
     var body: some View {
         Group {
-            if let emoji, !emoji.isEmpty {
-                Text(emoji)
-            } else {
-                Image(systemName: symbol)
-                    .foregroundStyle(kind == "note" ? Tokens.Task.tokenNote.color : Tokens.Text.tertiary.color)
-            }
+            StoredIconView(value: emoji, fallback: symbol)
+                .foregroundStyle(kind == "note" ? Tokens.Task.tokenNote.color : Tokens.Text.tertiary.color)
         }
         .font(Tokens.Typography.body.font)
         .accessibilityLabel(TasksCopy.Detail.relatedKind(kind))

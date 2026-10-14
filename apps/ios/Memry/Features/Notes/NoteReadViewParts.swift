@@ -26,7 +26,7 @@ struct NoteHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
             if let emoji = summary.emoji, !emoji.isEmpty {
-                Text(emoji)
+                StoredIconView(value: emoji)
                     .font(Tokens.Typography.screenTitle.font)
                     .accessibilityHidden(true)
             }
