@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
-import { Copy, ExternalLink, FolderOpen, MoreHorizontal, Pencil } from '@/lib/icons'
+import { Copy, Crop, ExternalLink, FolderOpen, MoreHorizontal, Pencil } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -49,6 +49,8 @@ interface AttachmentMenuState {
   copyPath: () => void
   /** Absent when the surface cannot write the result back into the block. */
   startRename?: () => void
+  /** Image blocks only: the host opens its crop dialog (#3170). */
+  startCrop?: () => void
   renameOpen: boolean
 }
 
@@ -65,6 +67,8 @@ interface AttachmentMenuState {
 interface RenameWiring {
   onRenamed?: AttachmentRenamedHandler
   onRequestRename?: () => void
+  /** Host-owned crop, for the same reason as `onRequestRename`. */
+  onRequestCrop?: () => void
 }
 
 function useAttachmentMenu(
@@ -72,7 +76,7 @@ function useAttachmentMenu(
   name: string,
   rename: RenameWiring = {}
 ): AttachmentMenuState & { renameDialog: React.ReactNode } {
-  const { onRenamed, onRequestRename } = rename
+  const { onRenamed, onRequestRename, onRequestCrop } = rename
   const noteId = useAttachmentNoteId()
   const { t } = useT('notes')
   const [info, setInfo] = useState<AttachmentResolveResult | null>(null)
@@ -140,6 +144,7 @@ function useAttachmentMenu(
     openExternal,
     copyPath,
     startRename: onRequestRename ?? (onRenamed ? () => setRenameOpen(true) : undefined),
+    startCrop: onRequestCrop,
     renameOpen,
     renameDialog
   }
@@ -171,7 +176,7 @@ function AttachmentMenuBody({
   const { t } = useT('notes')
   const { Item, Label, Separator } = components
   const fileActions = useFileActionLabels()
-  const { info, actionsDisabled, reveal, openExternal, copyPath, startRename } = state
+  const { info, actionsDisabled, reveal, openExternal, copyPath, startRename, startCrop } = state
 
   return (
     <>
@@ -208,6 +213,12 @@ function AttachmentMenuBody({
         <Item disabled={actionsDisabled} onClick={startRename}>
           <Pencil className="h-4 w-4" />
           {t('editor.attachmentRename.menuItem')}
+        </Item>
+      )}
+      {startCrop && (
+        <Item onClick={startCrop}>
+          <Crop className="h-4 w-4" />
+          {t('editor.imageCrop.menuItem')}
         </Item>
       )}
     </>
@@ -269,7 +280,8 @@ export function AttachmentMenuButton({
   className,
   onOpenChange,
   onRenamed,
-  onRequestRename
+  onRequestRename,
+  onRequestCrop
 }: {
   url: string
   name: string
@@ -279,8 +291,9 @@ export function AttachmentMenuButton({
   onRenamed?: AttachmentRenamedHandler
   /** Host-owned rename — see {@link RenameWiring}. */
   onRequestRename?: () => void
+  onRequestCrop?: () => void
 }) {
-  const state = useAttachmentMenu(url, name, { onRenamed, onRequestRename })
+  const state = useAttachmentMenu(url, name, { onRenamed, onRequestRename, onRequestCrop })
   const { t } = useT('notes')
 
   return (
@@ -343,7 +356,8 @@ export interface ImageMenuTarget {
 export function ImageAttachmentMenu({
   target,
   onClose,
-  onRequestRename
+  onRequestRename,
+  onRequestCrop
 }: {
   target: ImageMenuTarget
   onClose: () => void
@@ -352,8 +366,9 @@ export function ImageAttachmentMenu({
    * closes, so it can only ask for the dialog — never render it.
    */
   onRequestRename?: () => void
+  onRequestCrop?: () => void
 }) {
-  const state = useAttachmentMenu(target.url, target.name, { onRequestRename })
+  const state = useAttachmentMenu(target.url, target.name, { onRequestRename, onRequestCrop })
   const { handleOpenChange } = state
 
   // Controlled-open: resolve immediately, since there is no opening gesture
@@ -410,12 +425,14 @@ export interface HoverImageTarget {
 export function ImageHoverMenuButton({
   target,
   onOpenChange,
-  onRequestRename
+  onRequestRename,
+  onRequestCrop
 }: {
   target: HoverImageTarget
   onOpenChange?: (open: boolean) => void
   /** Host-owned rename — this button is unmounted as soon as the menu closes. */
   onRequestRename?: () => void
+  onRequestCrop?: () => void
 }) {
   return (
     <div
@@ -427,6 +444,7 @@ export function ImageHoverMenuButton({
         name={target.name}
         onOpenChange={onOpenChange}
         onRequestRename={onRequestRename}
+        onRequestCrop={onRequestCrop}
         className="h-6 w-6 rounded-md border border-border bg-background/90 shadow-sm"
       />
     </div>

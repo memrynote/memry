@@ -73,6 +73,7 @@ export { default as ComputerTerminal01Icon } from '@hugeicons/core-free-icons/Co
 export { default as CopyIcon } from '@hugeicons/core-free-icons/CopyIcon'
 export { default as CpuIcon } from '@hugeicons/core-free-icons/CpuIcon'
 export { default as CreditCardIcon } from '@hugeicons/core-free-icons/CreditCardIcon'
+export { default as CropIcon } from '@hugeicons/core-free-icons/CropIcon'
 export { default as CubeIcon } from '@hugeicons/core-free-icons/CubeIcon'
 export { default as DashedLineCircleIcon } from '@hugeicons/core-free-icons/DashedLineCircleIcon'
 export { default as DatabaseIcon } from '@hugeicons/core-free-icons/DatabaseIcon'

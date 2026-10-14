@@ -1,4 +1,5 @@
 export * from './configs'
+export * from './image-crop'
 export * from './image-width'
 export * from './plain-checkbox'
 export * from './markdown'

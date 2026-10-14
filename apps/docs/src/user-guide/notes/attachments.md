@@ -195,6 +195,14 @@ are written exactly as before. An older version of Memry shows the picture at it
 keeps the suffix when it saves, so the width is still there when you open the note in a newer
 version.
 
+**Cropping.** Right-click the image, or hover it and open the **⋯** menu, and choose **Crop…**.
+Drag over the picture to pick the part the note shows, drag the rectangle to move it, then click
+**Crop**. **Show whole image** removes the crop. Cropping never changes the attachment: the full
+picture stays on disk, and the note only shows part of it. The crop is saved as a suffix on the
+image's name before the width, `![photo|crop=10,5,80,60|320](...)`, in percent of the picture
+(left, top, width, height). An older version of Memry, or another app, shows the whole picture and
+keeps the suffix when it saves.
+
 ### Zooming and Panning
 
 Opening an image as a file page gives you the full viewer: zoom in and out, reset to fit, and rotate
