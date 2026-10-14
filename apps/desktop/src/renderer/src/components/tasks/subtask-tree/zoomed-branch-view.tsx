@@ -153,7 +153,7 @@ export const ZoomedBranchView = ({
           className="ps-5"
         />
 
-        {tree && tree.draftParentId !== task.id && (
+        {tree && tree.draftParentId !== task.id && tree.canAddUnder(task.id) && (
           <button
             type="button"
             onClick={() => tree.openDraft(task.id)}
