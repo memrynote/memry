@@ -18,7 +18,8 @@ import Foundation
 //     which is what makes "a developer build cannot reach prod" a property of
 //     the resolver rather than a habit.
 //
-// Phase 4 runs against **staging only** and nothing here points at prod.
+// Debug builds name `staging` and Release builds (TestFlight, App Store) name
+// `production`, through the `MEMRY_SYNC_ENVIRONMENT` build setting.
 
 /// One deployment of the sync server.
 enum SyncEnvironment: String, Sendable, CaseIterable {
@@ -96,11 +97,8 @@ enum SyncEnvironmentChoice: Sendable, Equatable {
 /// The rules, as a pure function of its three inputs so that every branch is
 /// reachable from a test without a second build configuration.
 enum SyncEnvironmentResolver {
-    /// Set from a build setting on the release configuration. **Absent today**,
-    /// deliberately: adding it means editing `Memry/Resources/Info.plist` and
-    /// the project's build settings, both shared files, and T147 does not own
-    /// them. Until it is added, a debug build resolves to staging (below) and a
-    /// release build is `notConfigured`, which is the loud half of the rule.
+    /// `Memry/Resources/Info.plist` sets it from the `MEMRY_SYNC_ENVIRONMENT`
+    /// build setting: `staging` on Debug, `production` on Release.
     static let infoDictionaryKey = "MemrySyncEnvironment"
 
     /// `--sync-environment=local`, for pointing a local build at

@@ -52,6 +52,8 @@
 	<true/>
 	<key>MemryGoogleClientID</key>
 	<string>244914619370-slch4ku0ukadc3lljpm8cs53arn9tapi.apps.googleusercontent.com</string>
+	<key>MemrySyncEnvironment</key>
+	<string>$(MEMRY_SYNC_ENVIRONMENT)</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Memry shows the calendars on this iPhone beside your notes and tasks. They stay on this iPhone and are never synced.</string>
 	<key>NSCameraUsageDescription</key>
