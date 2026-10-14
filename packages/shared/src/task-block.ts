@@ -399,7 +399,15 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         return block
       }
 
-      if (block.type !== 'checkListItem') return block
+      if (block.type !== 'checkListItem') {
+        // A task nested under a list item or a paragraph is still a task: its
+        // line is read back under the parent's nesting marker (#2365).
+        if (!block.children?.length) return block
+        const processedChildren = processBlocks(block.children as T[], parentTaskId)
+        return processedChildren === block.children
+          ? block
+          : ({ ...block, children: processedChildren } as T)
+      }
 
       const text = extractInlineText(block.content)
       const parsed = parseTaskBlockSuffix(text)

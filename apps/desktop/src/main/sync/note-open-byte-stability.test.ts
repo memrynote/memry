@@ -235,8 +235,7 @@ const FIXTURES: ReadonlyArray<readonly [string, string]> = [
     'an aliased wiki link in a table cell',
     '| a                     | b |\n| --------------------- | - |\n| [[Roadmap\\|the plan]] | c |'
   ],
-  // The tree does not survive a reparse (#2365), but the file must: #1915
-  // keeps the author's bytes for a note nobody edited.
+  // A block nested under a list item (#2365).
   [
     'a callout nested under a list item',
     '- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> Heads up\n\n<!-- memry:block-nesting-level=0 -->'

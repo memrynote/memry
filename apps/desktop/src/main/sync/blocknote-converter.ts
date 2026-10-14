@@ -78,8 +78,9 @@ import {
 } from './blocknote-parse-breaks'
 import {
   createBlockNestingMarker,
-  restoreBlockNesting,
-  splitMarkdownByBlockNestingMarkers
+  foldBlockNestingMarkers,
+  isBlockNestingMarker,
+  parseMarkdownWithNestingMarkers
 } from '@memry/shared/block-nesting'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
@@ -787,29 +788,6 @@ function hasMarkerSerializedChildren(block: Block): boolean {
   )
 }
 
-async function parseMarkdownChunkPreservingNesting(
-  editor: ServerBlockNoteEditor,
-  markdown: string
-): Promise<Block[]> {
-  const chunks = splitMarkdownByBlockNestingMarkers(markdown)
-  if (chunks.length === 0) return []
-
-  if (chunks.length === 1 && chunks[0].level === 0) {
-    return parseMarkdownToBlocks(editor, chunks[0].text)
-  }
-
-  const blocks: Block[] = []
-  const levels: number[] = []
-
-  for (const chunk of chunks) {
-    const parsed = await parseMarkdownToBlocks(editor, chunk.text)
-    blocks.push(...parsed)
-    levels.push(...parsed.map(() => chunk.level))
-  }
-
-  return restoreBlockNesting(blocks, levels)
-}
-
 async function serializeBlocksWithNestingMarkers(
   editor: ServerBlockNoteEditor,
   blocks: Block[]
@@ -1069,7 +1047,9 @@ async function parseMarkdownWithoutToggles(
     }
   }
 
-  return blocks
+  // A nesting marker can sit between blocks different parsers claim (a list
+  // item and the callout under it), so levels apply to the whole run (#2365).
+  return foldBlockNestingMarkers(blocks)
 }
 
 async function parseContentWithMarkers(
@@ -1092,8 +1072,10 @@ async function parseContentWithMarkers(
 
   const flushBuffer = async (): Promise<void> => {
     if (buffer.length === 0) return
-    const parsed = await parseMarkdownChunkPreservingNesting(editor, buffer.join('\n'))
-    applyPending(parsed[0])
+    const parsed = await parseMarkdownWithNestingMarkers(buffer.join('\n'), (md) =>
+      parseMarkdownToBlocks(editor, md)
+    )
+    applyPending(parsed.find((block) => !isBlockNestingMarker(block)))
     blocks.push(...parsed)
     buffer = []
   }
