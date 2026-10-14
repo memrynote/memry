@@ -250,7 +250,10 @@ function wikiLinkTargets(text: string): string[] {
       open = text.indexOf('[[', open + 1)
       continue
     }
-    targets.push(text.slice(start, stop))
+    // In a GFM table cell the alias pipe is written `\|` so it does not split
+    // the cell; that backslash belongs to the table, not to the target.
+    const escapedPipe = text[stop] === '|' && text[stop - 1] === '\\'
+    targets.push(text.slice(start, escapedPipe ? stop - 1 : stop))
     open = text.indexOf('[[', end)
   }
   return targets
