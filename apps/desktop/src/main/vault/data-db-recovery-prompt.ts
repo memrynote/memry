@@ -3,8 +3,9 @@ import { dialog } from 'electron'
 import { closeDatabase, getRawDataDatabase, initDatabase } from '../database/client'
 import {
   moveAsideCorruptDataDb,
-  replaySyncQueue,
-  salvageSyncQueue
+  replayRows,
+  SALVAGED_TABLES,
+  salvageRows
 } from '../database/data-db-recovery'
 import { runMigrations } from '../database/migrate'
 import { createLogger } from '../lib/logger'
@@ -33,7 +34,8 @@ async function confirmRecovery(dbPath: string): Promise<boolean> {
 
 /**
  * Offer to recover a corrupt data.db: move it aside as a backup, start a fresh
- * one, and replay whatever pending sync queue rows can be salvaged. Vault-derived
+ * one, and replay the vault identity and pending sync queue rows that can be
+ * salvaged (`SALVAGED_TABLES`). Vault-derived
  * tables refill on the normal open path; synced items come back from the next
  * sync pull. Returns true when the database was replaced.
  */
@@ -46,13 +48,14 @@ export async function offerDataDbRecovery(dbPath: string): Promise<boolean> {
 
   closeDatabase()
   const backupPath = moveAsideCorruptDataDb(dbPath)
-  const salvaged = salvageSyncQueue(backupPath)
+  const salvaged = SALVAGED_TABLES.map((table) => [table, salvageRows(backupPath, table)] as const)
   runMigrations(dbPath)
   initDatabase(dbPath)
-  const replayed = replaySyncQueue(getRawDataDatabase(), salvaged)
-  logger.info(
-    `data.db recovered; backup at ${backupPath}, replayed ${replayed}/${salvaged.length} pending sync rows`
+  const raw = getRawDataDatabase()
+  const counts = salvaged.map(
+    ([table, rows]) => `${table} ${replayRows(raw, table, rows)}/${rows.length}`
   )
+  logger.info(`data.db recovered; backup at ${backupPath}, replayed ${counts.join(', ')}`)
   return true
 }
 

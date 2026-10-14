@@ -203,6 +203,7 @@ Choosing **Repair**:
 - Starts a fresh database and rebuilds what comes from your vault files.
 - Restores synced items on the next sync.
 - Copies changes that had not synced yet out of the damaged file where they are still readable, and sends them on the next sync.
+- Keeps the vault's identity, sign-in binding and settings from the damaged file where they are still readable, so sync continues with the same vault instead of asking you to merge it.
 
 Your note and journal files are not touched. **Not now** keeps the damaged database in
 use, and the prompt returns on the next open.
