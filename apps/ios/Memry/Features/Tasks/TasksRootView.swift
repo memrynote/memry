@@ -1,3 +1,4 @@
+import Combine
 import MemryCore
 import Observation
 import SwiftUI
@@ -162,6 +163,10 @@ struct VaultTasksScope<Content: View>: View {
             // scene can already be active before the store exists.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, let store { Task { await store.sync() } }
+            }
+            // Reconnect: retry attachments a dead path left missing (#3261).
+            .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
+                if let attachments = store?.attachments { Task { await attachments.redrive() } }
             }
             .background {
                 if let store {

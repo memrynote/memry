@@ -46,6 +46,11 @@ extension VaultFilling {
     /// dereference against.
     func detachAttachment(noteId: String, attachmentId: String) async throws {}
 
+    /// Nothing missing: a fake has no attachments to retry.
+    func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
+        AttachmentRedriveSummary(downloaded: 0, deferred: 0, failed: 0, remaining: 0)
+    }
+
     /// Nothing to pull and nothing pushed: a fake has no server.
     func syncNow() async throws -> SyncPassSummary {
         SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)

@@ -92,6 +92,8 @@ final class TasksStore {
     let core: any TasksProtocol
     private let executor: CoreExecutor
     private let filler: (any VaultFilling)?
+    /// Retries missing attachment downloads after each pass (#3261).
+    let attachments: AttachmentRedriver?
     private let defaults: UserDefaults
     private let stateKey: String
     /// The shell's clock, injectable for tests.
@@ -109,6 +111,7 @@ final class TasksStore {
         self.core = core
         self.executor = executor
         self.filler = filler
+        attachments = filler.map { AttachmentRedriver(filler: $0) }
         self.defaults = defaults
         self.vaultId = vaultId
         stateKey = "tasks-view-state.\(vaultId)"
@@ -311,6 +314,7 @@ final class TasksStore {
             if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
             if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
             syncFinished?(true)
+            await attachments?.redrive()
         } catch {
             report(error)
             syncFinished?(false)

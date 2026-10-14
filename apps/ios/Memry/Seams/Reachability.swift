@@ -57,9 +57,14 @@ final class PathReachability: Reachability {
     /// in the shell constructs one yet (`ShellState`), and without a real
     /// path every attachment read `unknownPath` — metered — and an
     /// unmetered-only picture never downloaded, on Wi-Fi or anywhere else.
-    /// The emitter drops its hint: a download asks `current()` at the moment
-    /// it starts and has no use for the transition.
-    static let forAttachments = PathReachability(emitter: CoreEventEmitter { _ in })
+    /// A download asks `current()` at the moment it starts; the transition
+    /// posts ``attachmentPathChanged`` so the shell re-drives missing
+    /// attachments on reconnect (#3261).
+    static let forAttachments = PathReachability(emitter: CoreEventEmitter { _ in
+        NotificationCenter.default.post(name: attachmentPathChanged, object: nil)
+    })
+
+    static let attachmentPathChanged = Notification.Name("memry.attachmentPathChanged")
 
     private struct State {
         var reachable: Reachable
