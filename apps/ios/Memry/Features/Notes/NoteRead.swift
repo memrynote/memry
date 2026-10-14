@@ -174,10 +174,16 @@ final class NoteReadViewModel {
     ///
     /// Runs on appear and after every sync pass: a desktop body edit is CRDT
     /// updates with no record, so the pass never pulls it, and applied records
-    /// only show on a re-read. A never-pulled body stays behind the fetch
-    /// button. Offline is not an error: the local copy stays.
+    /// only show on a re-read. A never-pulled body is fetched with its loading
+    /// state, as desktop pulls the note on screen first (#3253); a failed
+    /// fetch is not repeated until the user asks. Offline is not an error for a
+    /// present body: the local copy stays.
     func refreshFromRemote() async {
         guard hasLoaded else { return }
+        if case let .ready(detail) = phase, !detail.body.present {
+            if fetch == .idle { await fetchBody() }
+            return
+        }
         if let filler, fetch != .fetching,
            case let .ready(detail) = phase, detail.body.present {
             do {
