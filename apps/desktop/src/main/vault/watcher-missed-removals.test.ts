@@ -176,7 +176,11 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
       .run()
   }
 
-  /** The open order of `runBackgroundIndexBuild`: canvas reconcile, replay, walk. */
+  /**
+   * The open order of `runBackgroundIndexBuild`: replay, then walk. Vault open
+   * starts canvas reconcile without awaiting it; awaiting it first here keeps
+   * its effect deterministic.
+   */
   async function openVault(): Promise<void> {
     await reconcileCanvasFiles(data.db as never, vault.path, VAULT_ID)
     await watcher.replayMissedRemovals()

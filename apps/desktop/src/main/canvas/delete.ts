@@ -47,8 +47,9 @@ export async function removeCanvas(
 }
 
 /**
- * A canvas document unlinked outside the app becomes a canvas delete once the
- * rename window closes and the document is shown to be gone. The tombstone
+ * A canvas document unlinked outside the app becomes a canvas delete once it is
+ * shown to be gone: a live unlink after the rename window closes, a rescan's
+ * removal (`deferred`) when the rescan settles. The tombstone
  * syncs to every device, so every doubt keeps the canvas. Its assets stay on
  * disk and on the server. `isGone` is the watcher's check that the file is
  * really missing from a reachable vault, shared with a note's removal.
