@@ -68,6 +68,8 @@ The phrase turns into a pill inside the input as soon as it is recognised, so yo
 
 The rest of the phrase appears greyed out ahead of the cursor as you type — `@tomo` shows `@tomorrow`. Press <kbd>Tab</kbd> or <kbd>→</kbd> to take it, or keep typing to ignore it. The same completion works for `!high`, `+project`, `#tag` and the repeat phrases below.
 
+A marker is one word, so a project whose name has spaces completes with hyphens: `+memr` finishes as `+memrynote-Launch` for a project named _memrynote Launch_.
+
 <kbd>Enter</kbd> never takes the suggestion — it captures exactly what is on screen.
 
 ## Repeats

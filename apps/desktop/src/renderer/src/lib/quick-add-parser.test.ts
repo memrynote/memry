@@ -641,6 +641,26 @@ describe('getProjectOptions', () => {
     expect(result[0].value).toBe('+Work')
     expect(result[1].value).toBe('+Personal')
   })
+
+  // The `+` marker is one word, so a name with spaces completes to its
+  // kebab-case form, which the parser maps back to the project.
+  it('writes a multi-word name in a form the parser reads whole', () => {
+    const launch = createMockProject({ id: 'launch', name: 'memrynote Launch' })
+    const all = [...projects, launch]
+
+    const [option] = getProjectOptions('memr', all)
+    expect(option).toMatchObject({ value: '+memrynote-Launch', label: 'memrynote Launch' })
+    expect(getProjectOptions('memrynote-l', all).map((o) => o.label)).toEqual(['memrynote Launch'])
+
+    const parsed = parseQuickAdd(`Draft launch tweet ${option.value} #launch`, all)
+    expect(parsed.title).toBe('Draft launch tweet')
+    expect(parsed.projectId).toBe('launch')
+  })
+
+  it('offers no completion the parser would read as another project', () => {
+    const dup = createMockProject({ id: 'dup', name: 'Work' })
+    expect(getProjectOptions('work', [...projects, dup]).map((o) => o.label)).toEqual(['Work'])
+  })
 })
 
 describe('getTagOptions', () => {
@@ -655,6 +675,12 @@ describe('getTagOptions', () => {
     expect(getTagOptions('mit', tags).map((o) => o.value)).toEqual(['#MIT'])
     expect(getTagOptions('client', tags).map((o) => o.value)).toEqual(['#work/client'])
     expect(getTagOptions('zzz', tags)).toHaveLength(0)
+  })
+
+  // A tag can be saved with a space (the drawer's picker, frontmatter), but
+  // `#my tag` would tag `my` and leave `tag` in the title.
+  it('offers only tags the `#` grammar reads whole', () => {
+    expect(getTagOptions('', ['my tag', 'launch', 'C#']).map((o) => o.value)).toEqual(['#launch'])
   })
 })
 
