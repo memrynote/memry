@@ -11,16 +11,20 @@ import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
 
 const ctx = vi.hoisted(() => ({
   db: null as unknown,
-  dereference: vi.fn(async () => ({ ok: true }))
+  dereference: vi.fn(async () => ({ ok: true })),
+  setupError: null as Error | null
 }))
 
 vi.mock('../canvas/assets/asset-service-context', () => ({
-  buildAssetServiceContext: () => ({
-    db: ctx.db,
-    vaultPath: '/vault',
-    dereference: ctx.dereference,
-    markWritebackIgnored: () => {}
-  })
+  buildAssetServiceContext: () => {
+    if (ctx.setupError) throw ctx.setupError
+    return {
+      db: ctx.db,
+      vaultPath: '/vault',
+      dereference: ctx.dereference,
+      markWritebackIgnored: () => {}
+    }
+  }
 }))
 vi.mock('../vault/init', () => ({ isVaultReachable: () => true }))
 vi.mock('../ipc/sync-attachment-handlers', () => ({
@@ -67,6 +71,45 @@ describe('deleted-asset release runner', () => {
     expect(ctx.dereference).not.toHaveBeenCalled()
 
     engine.resume()
+    deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
+    await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
+    await engine.stop({ skipFinalPush: true })
+  })
+
+  it('contains a setup failure, logs it, and runs the next pass (#3052)', async () => {
+    const http = await import('./http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 0
+    })
+    const testDb = getDb()
+    ctx.db = testDb.db
+    ctx.dereference.mockClear()
+    testDb.db
+      .insert(deletedAssetReleases)
+      .values({ itemType: 'note', itemId: 'gone', deletedAt: 0, attachmentIds: ['a-1'] })
+      .run()
+    const engine = new SyncEngine(createMockDeps(testDb, { network: createMockNetwork(true) }))
+    await engine.start()
+    await engine.fullSync()
+
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    ctx.setupError = new Error('database is closed')
+    try {
+      deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
+      await new Promise((r) => setTimeout(r, 20))
+      expect(unhandled).not.toHaveBeenCalled()
+      expect(ctx.dereference).not.toHaveBeenCalled()
+      expect(testDb.db.select().from(deletedAssetReleases).all()).toHaveLength(1)
+    } finally {
+      process.off('unhandledRejection', unhandled)
+      ctx.setupError = null
+    }
+
+    // running settled back to false: the next pass releases.
     deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
     await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
     await engine.stop({ skipFinalPush: true })
