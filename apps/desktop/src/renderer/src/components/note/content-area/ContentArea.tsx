@@ -3592,7 +3592,13 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // back over the file. The canvas note-card lock reads the fragment this hook
   // produces (pages/canvas/canvas-note-lock.ts), not the session — see
   // sync/collaboration-status.ts for why nothing may re-derive this from it.
-  const localDocLive = isLocalCrdtDocLive(props.noteId)
+  // An editor mounted with no note (an empty journal day) stays unbound for its
+  // lifetime. Its first save creates the note and hands in the id mid-typing;
+  // binding then would unmount the editor being typed in and drop keystrokes.
+  // Its markdown saves still reach the doc (main's feedJournalBodyToCrdt), and
+  // the next mount binds.
+  const [mountedWithoutNote] = useState(!props.noteId)
+  const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
   const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: localDocLive
