@@ -29,6 +29,13 @@
       "buttonRestartNow": "Restart now",
       "releaseNotesLabel": "Release notes:"
     },
+    "dataDbRecovery": {
+      "title": "Repair vault database",
+      "message": "Memry's database for this vault is damaged.",
+      "detail": "Your notes and journal files are not affected. Repair keeps the damaged database as a backup at {path}, starts a fresh one, rebuilds what it can from your vault files, and restores synced items on the next sync. Changes that had not synced yet are recovered where possible.",
+      "buttonRecover": "Repair",
+      "buttonLater": "Not now"
+    },
     "pair": {
       "title": "Pair browser extension",
       "message": "Allow the Memry browser extension to send captures to this app?",

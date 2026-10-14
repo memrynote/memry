@@ -725,6 +725,34 @@ describe('notes-handlers extra coverage', () => {
     )
   })
 
+  it("draws the note's library icon into the export", async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: 'icon:CircleIcon',
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+
+    await invoke(NotesChannels.invoke.EXPORT_HTML, {
+      noteId: 'note-a',
+      outputPath: '/tmp/Daily_note.html'
+    })
+
+    const html = mocks.fsWriteFile.mock.calls.at(-1)?.[1]
+    expect(html).toContain(
+      '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+    )
+    expect(html).not.toContain('icon:CircleIcon')
+  })
+
   it('leaves an image it cannot read as written', async () => {
     mocks.getNoteById.mockResolvedValue({
       id: 'note-a',

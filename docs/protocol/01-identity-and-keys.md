@@ -428,7 +428,7 @@ pass settles them. The decision is a pure function of five facts
 6. If `F`'s doc holds no Yjs state, build it from text first (below). Apply
    `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
    stored, written back and pushed as a CRDT update for `j<D>`. `j<D>` is
-   opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:1599`; core:
+   opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:1654`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:262`).
 7. Only here, after the merge, and when `F` is live and its clock is
    non-empty, queue its tombstone with clock
@@ -457,7 +457,7 @@ parsed into a fresh doc under a client id fixed per foreign id and device
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:319`), so a rebuild after
 a crash on the same device mints the same Yjs items and folds nothing twice.
 Desktop stores the built doc before folding it
-(`apps/desktop/src/main/sync/crdt-provider.ts:1591`), so a retry reuses those
+(`apps/desktop/src/main/sync/crdt-provider.ts:1666`), so a retry reuses those
 items even if the text changed in between; the core builds and folds in one
 transaction.
 
