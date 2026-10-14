@@ -157,7 +157,7 @@ scrolling with the grid. Overlapping spans stack in lanes, and the all-day row g
 An all-day event that ends at midnight ends on the **previous** day — a 10-12 May event covers
 three days, not four. The day summary, day dots, and mini-calendar counts follow the same rule.
 
-Spans open their detail popover on click. Drag-to-move and resize remain on single-day chips.
+Spans open their detail popover on click. In month view you can drag a span to another day; it keeps its length. Resize stays on single-day chips.
 
 ## Search
 
@@ -265,6 +265,15 @@ The common actions take one click:
 
 The **⋯** menu holds the rest: open the note the task came from, pick an exact date and time, or
 remove the due date.
+
+## Moving Events to Another Day
+
+Drag an event chip onto another day to move it there. This works in month view (on day cells
+and on multi-day bars) and in the week / day all-day row. The event keeps its time, its
+length, and whether it is all-day. **Cmd/Ctrl+Z** puts it back. To change the time of a timed
+event, drag it on the week / day grid instead.
+
+Events from subscribed or other read-only calendars can't be moved.
 
 ## Scheduling Tasks by Drag
 
