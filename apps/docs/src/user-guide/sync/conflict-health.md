@@ -190,6 +190,22 @@ disk stops changing.
 What to do: update memrynote on that device. The note writes its file again on the next
 edit, with nothing lost — the pause is what protected the content.
 
+## Repairing a Damaged Vault Database
+
+Each vault keeps tasks, projects, settings and sync state in `.memry/data.db`. If
+that file is damaged (a disk error or a crash mid-write), memrynote detects it when
+the vault opens and asks before changing anything.
+
+Choosing **Repair**:
+
+- Moves the damaged file aside as `.memry/data.db.corrupt-<timestamp>`. It is never deleted.
+- Starts a fresh database and rebuilds what comes from your vault files.
+- Restores synced items on the next sync.
+- Copies changes that had not synced yet out of the damaged file where they are still readable, and sends them on the next sync.
+
+Your note and journal files are not touched. **Not now** keeps the damaged database in
+use, and the prompt returns on the next open.
+
 ## What memrynote Won't Do
 
 memrynote doesn't auto-merge **across record types** — e.g. it won't combine two competing project structures. The vector clock comparison stays within a single record.

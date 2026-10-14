@@ -50,6 +50,7 @@ import { ensureDefaultTaskProject } from '../database/defaults'
 import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
+import { offerDataDbRecovery } from './data-db-recovery-prompt'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
@@ -660,20 +661,29 @@ async function openVault(vaultPath: string): Promise<void> {
   const dataDbPath = getDataDbPath(vaultPath)
   const indexDbPath = getIndexDbPath(vaultPath)
 
-  // Run data.db migrations (always needed)
-  runMigrations(dataDbPath)
-  timer.mark('dataMigrations')
-
-  // Initialize data database
-  initDatabase(dataDbPath)
-  timer.mark('dataDbInit')
-
   // Take the verdict on data.db here, once, while it is still attributable.
   // Left unchecked, a malformed data.db is reported a dozen times over by
   // whichever handlers happen to read it first, and never names the file.
-  if (isDataDatabaseCorrupt()) {
+  // SQLITE_CORRUPT from migrations or init is the same signal as quick_check.
+  let corruptOpenError: Error | null = null
+  try {
+    runMigrations(dataDbPath)
+    timer.mark('dataMigrations')
+    initDatabase(dataDbPath)
+    timer.mark('dataDbInit')
+  } catch (error) {
+    if (!isSqliteCorruptError(error) || !(error instanceof Error)) throw error
+    corruptOpenError = error
+  }
+  if (corruptOpenError !== null || isDataDatabaseCorrupt()) {
     logger.error('data.db failed its integrity check — reads against it will fail')
-    trackMainError('vault', 'data_db_corrupt', new Error('data.db failed PRAGMA quick_check'))
+    trackMainError(
+      'vault',
+      'data_db_corrupt',
+      corruptOpenError ?? new Error('data.db failed PRAGMA quick_check')
+    )
+    const recovered = await offerDataDbRecovery(dataDbPath)
+    if (!recovered && corruptOpenError !== null) throw corruptOpenError
   }
   timer.mark('quickCheck')
 
