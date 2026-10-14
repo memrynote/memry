@@ -79,7 +79,7 @@ import { withCanvasMeta } from '../canvas/scene-file'
 import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { indexVault } from './indexer'
-import { clearAllPendingDeletes } from './rename-tracker'
+import { clearAllPendingDeletes, getPendingDeleteCount } from './rename-tracker'
 import { VaultWatcher } from './watcher'
 
 const VAULT_ID = 'vault-1'
@@ -422,6 +422,33 @@ describe('vault open replays removals made while the app was closed (#3013)', ()
     // The next open finds nothing missing, so no old id is left to delete.
     await openVaultWithSlowAdds(25)
     expect(syncNoteDelete).not.toHaveBeenCalled()
+  })
+
+  it('syncs no delete and leaves nothing pending when an add throws mid-replay (#3055)', async () => {
+    await seedHashedNote('note-moved', 'notes/old.md')
+    seedNote('note-gone', 'notes/gone.md')
+    fs.renameSync(abs('notes/old.md'), abs('notes/new.md'))
+    fs.rmSync(abs('notes/gone.md'))
+    const internals = watcher as unknown as { handleFileAdd(p: string): Promise<void> }
+    const handleFileAdd = internals.handleFileAdd.bind(watcher)
+    internals.handleFileAdd = async () => {
+      throw new Error('add failed')
+    }
+    try {
+      await expect(watcher.replayMissedRemovals()).rejects.toThrow('add failed')
+    } finally {
+      internals.handleFileAdd = handleFileAdd
+    }
+
+    expect(getPendingDeleteCount()).toBe(0)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(noteRow('note-moved')?.path).toBe('notes/old.md')
+
+    // The next open replays both: the move keeps its id, the removal syncs.
+    await openVault()
+    expect(idAt('notes/new.md')).toBe('note-moved')
+    expect(vi.mocked(syncNoteDelete).mock.calls).toEqual([['note-gone']])
   })
 
   it('syncs no deletes when too many files are missing at once, and checks again next open', async () => {
