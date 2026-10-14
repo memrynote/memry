@@ -29,6 +29,7 @@ import { toMemryFileUrl } from '../lib/paths'
 // as `![alt](url)`, where a raw space or paren truncates the link.
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
 import { createLogger } from '../lib/logger'
+import { ATTACHMENTS_DIR } from './attachments'
 import { getStatus, getConfig } from './index'
 
 const logger = createLogger('ResolveEmbed')
@@ -41,11 +42,23 @@ function isInsideVault(vaultPath: string, absPath: string): boolean {
 
 /**
  * Absolute paths an embed target could name, most specific first: as written
- * from the vault root, then from the notes folder (where Obsidian vaults
- * imported into Memry keep their notes).
+ * from the vault root, from the note's own folder (Obsidian's "relative path"
+ * link format), from the notes folder (where Obsidian vaults imported into
+ * Memry keep their notes), then from the root attachments folder. That folder
+ * is also Obsidian's usual attachment folder, and the indexer skips it, so the
+ * index lookup below never finds a file there (#3163).
  */
-function candidatePaths(vaultPath: string, notesFolder: string, ref: string): string[] {
-  return [path.resolve(vaultPath, ref), path.resolve(vaultPath, notesFolder, ref)]
+function candidatePaths(
+  vaultPath: string,
+  notesFolder: string,
+  ref: string,
+  notePath?: string
+): string[] {
+  const candidates = [path.resolve(vaultPath, ref)]
+  if (notePath) candidates.push(path.resolve(vaultPath, path.dirname(notePath), ref))
+  candidates.push(path.resolve(vaultPath, notesFolder, ref))
+  candidates.push(path.resolve(vaultPath, ATTACHMENTS_DIR, ref))
+  return candidates
 }
 
 /**
@@ -112,8 +125,13 @@ function embedTarget(vaultPath: string, absPath: string, notePath?: string): str
 }
 
 /** The file on disk an embed target names, or null when nothing is there. */
-function findOnDisk(vaultPath: string, notesFolder: string, ref: string): string | null {
-  for (const candidate of candidatePaths(vaultPath, notesFolder, ref)) {
+function findOnDisk(
+  vaultPath: string,
+  notesFolder: string,
+  ref: string,
+  notePath?: string
+): string | null {
+  for (const candidate of candidatePaths(vaultPath, notesFolder, ref, notePath)) {
     if (!isInsideVault(vaultPath, candidate)) continue
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate
   }
@@ -138,7 +156,7 @@ function resolveAgainstVault(
     // A URL or an absolute path is not ours to resolve.
     if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(ref) || path.isAbsolute(ref)) continue
 
-    const onDisk = findOnDisk(vaultPath, notesFolder, ref)
+    const onDisk = findOnDisk(vaultPath, notesFolder, ref, notePath)
     if (onDisk) resolved[ref] = embedTarget(vaultPath, onDisk, notePath)
     else pending.set(ref, path.basename(ref).toLowerCase())
   }

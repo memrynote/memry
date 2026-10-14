@@ -221,8 +221,8 @@ A wiki link written with a leading `!` and pointing at an image embeds the pictu
 of linking to it. This is the syntax Obsidian vaults use, so notes written elsewhere render
 their images without any conversion step:
 
-- `![[photo.png]]` — looked up anywhere in the vault by filename
-- `![[Images/photo.png]]` — a path relative to the vault root, or to your notes folder
+- `![[photo.png]]` — looked up anywhere in the vault by filename, including a root `attachments/` folder
+- `![[Images/photo.png]]` — a path relative to the vault root, to the note's own folder, or to your notes folder
 - `![[photo.png|300x200]]` — the size hint is ignored; resize the image in the editor
 
 Only real image files embed this way. `![[Some Note]]` and `![[report.pdf]]` stay as they

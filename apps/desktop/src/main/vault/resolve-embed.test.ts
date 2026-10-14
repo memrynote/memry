@@ -139,6 +139,26 @@ describe('resolveVaultEmbed', () => {
     expect(resolver.resolveVaultEmbed('https://example.com/photo.png')).toBeNull()
   })
 
+  // Obsidian's common "attachments folder" setting puts images in <vault>/attachments,
+  // which the indexer skips as the app's own folder, so the index cannot find them (#3163).
+  it('resolves a bare filename stored in the root attachments folder', () => {
+    writeVaultFile('attachments/Pasted image 1.png')
+    expect(resolver.resolveVaultEmbed('Pasted image 1.png', 'Daily/2024-01-01.md')).toBe(
+      '../attachments/Pasted%20image%201.png'
+    )
+  })
+
+  // Obsidian's "relative path to file" link format writes targets relative to the note (#3163).
+  it('resolves a target written relative to the note', () => {
+    writeVaultFile('Projects/assets/diagram.png')
+    expect(resolver.resolveVaultEmbed('assets/diagram.png', 'Projects/Plan.md')).toBe(
+      'assets/diagram.png'
+    )
+    expect(resolver.resolveVaultEmbed('../Projects/assets/diagram.png', 'Projects/Plan.md')).toBe(
+      'assets/diagram.png'
+    )
+  })
+
   it('finds a bare filename through the index when it is not at a guessable path', () => {
     writeVaultFile('deep/nested/folder/found.png')
     indexDb.sqlite

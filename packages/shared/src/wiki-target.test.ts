@@ -213,6 +213,15 @@ describe('extractWikiLinks', () => {
     expect(links).toEqual(['First Link', 'Second'])
   })
 
+  it('reads links in a GFM table cell, where the alias pipe is escaped', () => {
+    const table = [
+      '| Who | Note |',
+      '| --- | --- |',
+      '| [[Plain]] | [[Credits#Art\\|art]] [[Roadmap\\|the plan]] |'
+    ].join('\n')
+    expect(extractWikiLinks(table)).toEqual(['Plain', 'Credits', 'Roadmap'])
+  })
+
   it('extractWikiLinks deduplicates repeated links', () => {
     const links = extractWikiLinks('[[Same Note]] and [[Other]] then [[Same Note]] again')
     expect(links).toEqual(['Same Note', 'Other'])
