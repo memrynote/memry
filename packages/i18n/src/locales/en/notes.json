@@ -242,6 +242,15 @@
       "renamed": "Renamed to {name}",
       "failed": "Failed to rename attachment"
     },
+    "imageCrop": {
+      "menuItem": "Crop…",
+      "title": "Crop image",
+      "description": "Drag over the picture to choose what the note shows. The original file is kept as it is.",
+      "reset": "Show whole image",
+      "cancel": "Cancel",
+      "apply": "Crop",
+      "unavailable": "The image has not loaded yet, so it cannot be cropped"
+    },
     "attachmentsDialog": {
       "title": "Attachments",
       "description": "Files stored with this note",

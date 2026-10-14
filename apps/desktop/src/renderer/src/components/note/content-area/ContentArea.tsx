@@ -25,6 +25,8 @@ import {
   type ImageMenuTarget
 } from './attachment-block-menu'
 import { AttachmentRenameFlow } from './attachment-rename-dialog'
+import { ImageCropDialog } from './image-crop-dialog'
+import { parseImageCrop, withImageCrop, type ImageCrop } from '@memry/editor-schema/blocks'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
@@ -2114,7 +2116,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const { url, name } = block.props as { url?: string; name?: string }
       if (!url) return null
 
-      return { url, name: name || url.split('/').pop() || url, blockId }
+      // The crop suffix (#3170) is storage; the menus show the real name.
+      const shown = parseImageCrop(name ?? '').name
+      return { url, name: shown || url.split('/').pop() || url, blockId }
     },
     [editor]
   )
@@ -2137,11 +2141,54 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (!blockId) return
       const block = editor.getBlock(blockId)
       if (block && block.type === 'image') {
-        editor.updateBlock(block, { props: { url: next.url, name: next.name } })
+        // A rename keeps the image's crop (#3170), which rides in its name.
+        const { crop } = parseImageCrop((block.props as { name?: string }).name ?? '')
+        editor.updateBlock(block, {
+          props: { url: next.url, name: withImageCrop(next.name, crop) }
+        })
       }
       setImageRenameTarget(null)
     },
     [editor, imageRenameTarget]
+  )
+
+  // Owned here for the same reason as the rename dialog: the image menus
+  // unmount the moment they close. `src` is the picture the block already
+  // shows, so the dialog needs no second URL resolution.
+  const [imageCropTarget, setImageCropTarget] = useState<{
+    blockId: string
+    src: string
+    name: string
+    crop: ImageCrop | null
+  } | null>(null)
+
+  const requestImageCrop = useCallback(
+    (blockId: string): void => {
+      const block = editor.getBlock(blockId)
+      const image = containerRef.current?.querySelector<HTMLImageElement>(
+        `[data-id="${CSS.escape(blockId)}"] img.bn-visual-media`
+      )
+      if (!block || block.type !== 'image' || !image?.src) {
+        toast.error(t('editor.imageCrop.unavailable'))
+        return
+      }
+      const { name, crop } = parseImageCrop((block.props as { name?: string }).name ?? '')
+      setImageCropTarget({ blockId, src: image.src, name, crop })
+    },
+    [editor, t]
+  )
+
+  const applyImageCrop = useCallback(
+    (crop: ImageCrop | null): void => {
+      const blockId = imageCropTarget?.blockId
+      setImageCropTarget(null)
+      if (!blockId) return
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'image') return
+      const name = (block.props as { name?: string }).name ?? ''
+      editor.updateBlock(block, { props: { name: withImageCrop(name, crop) } })
+    },
+    [editor, imageCropTarget]
   )
 
   const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
@@ -2848,6 +2895,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 setImageRenameTarget(imageMenuTarget)
                 setImageMenuTarget(null)
               }}
+              onRequestCrop={
+                editable
+                  ? () => {
+                      requestImageCrop(imageMenuTarget.blockId)
+                      setImageMenuTarget(null)
+                    }
+                  : undefined
+              }
             />
           )}
           {templateAnchor && (
@@ -2897,11 +2952,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onRenamed={applyImageRename}
             />
           )}
+          {imageCropTarget && (
+            <ImageCropDialog
+              src={imageCropTarget.src}
+              name={imageCropTarget.name}
+              crop={imageCropTarget.crop}
+              onOpenChange={(open) => !open && setImageCropTarget(null)}
+              onApply={applyImageCrop}
+            />
+          )}
           {imageHoverTarget && !imageMenuTarget && (
             <ImageHoverMenuButton
               target={imageHoverTarget}
               onOpenChange={handleImageHoverMenuOpenChange}
               onRequestRename={() => setImageRenameTarget(imageHoverTarget)}
+              onRequestCrop={
+                editable ? () => requestImageCrop(imageHoverTarget.blockId) : undefined
+              }
             />
           )}
           <BlockNoteView

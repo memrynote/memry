@@ -112,6 +112,7 @@ import {
   PauseIcon,
   PenTool01Icon,
   Edit03Icon,
+  CropIcon,
   UndoIcon,
   PlayIcon,
   QrCodeIcon,
@@ -398,6 +399,7 @@ export const StickyNote = createIcon(StickyNote01Icon)
 
 // ── Actions & Tools ─────────────────────────────────
 export const Pencil = createIcon(Edit03Icon)
+export const Crop = createIcon(CropIcon)
 export const PenLine = createIcon(PencilEdit01Icon)
 export const PenTool = createIcon(PenTool01Icon)
 export const Eraser = createIcon(EraserIcon)
