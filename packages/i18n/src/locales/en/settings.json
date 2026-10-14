@@ -2072,6 +2072,10 @@
           "label": "Toggle Sidebar",
           "description": "Show or hide the sidebar"
         },
+        "toggleDayPanel": {
+          "label": "Toggle Day Panel",
+          "description": "Show or hide the day panel on the right"
+        },
         "shortcuts": {
           "label": "Keyboard Shortcuts Help",
           "description": "Show keyboard shortcuts reference"

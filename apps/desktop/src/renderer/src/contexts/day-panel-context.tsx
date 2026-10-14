@@ -9,6 +9,12 @@ import {
   type ReactNode
 } from 'react'
 import { getTodayString } from '@/lib/journal-utils'
+import {
+  chordAllowedInInput,
+  useKeyboardShortcuts,
+  type KeyboardShortcut
+} from '@/hooks/use-keyboard-shortcuts-base'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 
 const DAY_PANEL_OPEN_KEY = 'day-panel-open'
 const DAY_PANEL_WIDTH_KEY = 'day-panel-width'
@@ -98,6 +104,21 @@ export const DayPanelProvider = ({
     autoModeRef.current = false
     setIsOpen((prev) => !prev)
   }, [])
+
+  const toggleBinding = useShortcutBinding('view.toggleDayPanel')
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => {
+    return [
+      {
+        key: toggleBinding.key,
+        modifiers: toggleBinding.modifiers,
+        action: toggle,
+        description: 'Toggle day panel',
+        // No editor owns ⌘⇧B, so it also works while typing in a note or field.
+        allowInInput: chordAllowedInInput(toggleBinding)
+      }
+    ]
+  }, [toggleBinding, toggle])
+  useKeyboardShortcuts(shortcuts)
 
   const open = useCallback(() => {
     autoModeRef.current = false
