@@ -25,7 +25,11 @@ import { getStatus as getVaultStatus } from '../../vault/index'
 import { getCanvasFilePath, readCanvasScene } from '../store'
 
 import { dereferenceChunks, type DereferenceDeps } from './attachment-dereference'
-import { holdCanvasAssetsForPush, type AssetServiceContext } from './asset-service'
+import {
+  holdCanvasAssetsForPush,
+  releaseHoldsNotInScene,
+  type AssetServiceContext
+} from './asset-service'
 import { holdCanvasAssetChunks, releaseCanvasAssetHolds, type ChunkHoldDeps } from './chunk-holds'
 
 const log = createLogger('CanvasAssetContext')
@@ -103,6 +107,29 @@ export async function canUploadCanvasAssets(): Promise<boolean> {
     return (await getValidAccessToken()) !== null
   } catch {
     return false
+  }
+}
+
+/**
+ * After a synced scene is applied, release the holds of images the canvas no
+ * longer shows (#3035). Reads the scene off disk at call time, so a later
+ * version applied in the same pull wins. A deleted canvas keeps its holds
+ * (#3002). Never throws: a failed release is retried by the next apply or save.
+ */
+export async function releaseUnshownCanvasHolds(canvasId: string): Promise<void> {
+  const ctx = buildAssetServiceContext()
+  if (!ctx) return
+  try {
+    const filePath = getCanvasFilePath(ctx.db, canvasId)
+    const scene = filePath ? readCanvasScene(ctx.vaultPath, filePath) : null
+    if (scene === null) return
+    if (!(await releaseHoldsNotInScene(ctx, canvasId, scene)).ok) {
+      log.warn('releasing unshown canvas asset holds failed; next apply or save retries', {
+        canvasId
+      })
+    }
+  } catch (err) {
+    log.warn('releasing unshown canvas asset holds threw', { canvasId, err })
   }
 }
 

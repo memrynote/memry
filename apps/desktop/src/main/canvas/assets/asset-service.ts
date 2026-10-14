@@ -347,6 +347,32 @@ export async function reconcileCanvasAssets(
 }
 
 /**
+ * Release this canvas's holds on images its scene no longer shows (#3035).
+ *
+ * A hold is released by the save that removes its image, but only on a device
+ * whose `canvas_assets` rows name that image. When the removing edit came from
+ * a device that never had the row, no save ever releases it. A synced scene
+ * applied here is that missing save: this device has the row, and the scene
+ * says the canvas dropped the image.
+ *
+ * Holds only. The rows stay for the next local save's GC, which owns the
+ * upload-ref dereference: that decrement is not idempotent across devices, a
+ * release is. A peer that shows the image again holds it before it pushes.
+ */
+export async function releaseHoldsNotInScene(
+  ctx: AssetServiceContext,
+  canvasId: string,
+  sceneJson: string
+): Promise<{ ok: boolean }> {
+  const current = sceneContentHashes(sceneJson)
+  const unshown = listAssetsByCanvas(ctx.db, canvasId)
+    .map((row) => row.contentHash)
+    .filter((hash) => !current.has(hash))
+  if (unshown.length === 0) return { ok: true }
+  return ctx.releaseHolds(canvasId, unshown)
+}
+
+/**
  * Resolve the `memry-file://` ref for one scene file id on a canvas, or null
  * when there is no recorded asset for it (pre-M5 / inline scenes).
  */

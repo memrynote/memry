@@ -23,12 +23,16 @@ vi.mock('../../lib/logger', () => ({
 // ipc / sync runtime), and the unit tests must never touch real network/disk.
 // `recordAsset` (asset-store) and `readMemryAssets` (memry-assets) are left REAL
 // — they are electron-free plain DB writes / JSON parsing under test.
-const { mockBuildAssetServiceContext, mockEnsureAssetsPresent } = vi.hoisted(() => ({
-  mockBuildAssetServiceContext: vi.fn(),
-  mockEnsureAssetsPresent: vi.fn()
-}))
+const { mockBuildAssetServiceContext, mockEnsureAssetsPresent, mockReleaseUnshown } = vi.hoisted(
+  () => ({
+    mockBuildAssetServiceContext: vi.fn(),
+    mockEnsureAssetsPresent: vi.fn(),
+    mockReleaseUnshown: vi.fn()
+  })
+)
 vi.mock('../../canvas/assets/asset-service-context', () => ({
-  buildAssetServiceContext: mockBuildAssetServiceContext
+  buildAssetServiceContext: mockBuildAssetServiceContext,
+  releaseUnshownCanvasHolds: mockReleaseUnshown
 }))
 vi.mock('../../canvas/assets/asset-service', () => ({
   ensureAssetsPresent: mockEnsureAssetsPresent
@@ -289,6 +293,30 @@ describe('canvasHandler', () => {
         .where(eq(canvasEntityRefs.canvasId, 'c1'))
         .all()
       expect(refs.map((r) => r.entityId)).toEqual(['note-new'])
+    })
+
+    // #3035: the applied scene is the only signal this device gets that the
+    // canvas dropped an image whose hold it may own.
+    it('#given a remote update is applied #then releases unshown holds once the pull settles', () => {
+      vi.useFakeTimers()
+      try {
+        mockReleaseUnshown.mockReset().mockResolvedValue(undefined)
+        seedCanvas(db, 'c1', sceneWith('note-old'), { A: 1 })
+        const data = { id: 'c1', vaultId: VAULT_ID, scene: sceneWith('note-new') }
+        canvasHandler.applyUpsert(ctx, 'c1', data, { A: 1, B: 2 })
+        canvasHandler.applyUpsert(ctx, 'c1', data, { A: 1, B: 3 })
+        expect(mockReleaseUnshown).not.toHaveBeenCalled()
+
+        vi.runAllTimers()
+        expect(mockReleaseUnshown).toHaveBeenCalledExactlyOnceWith('c1')
+
+        // A skipped (older) version applied nothing, so it releases nothing.
+        canvasHandler.applyUpsert(ctx, 'c1', data, { A: 1, B: 1 })
+        vi.runAllTimers()
+        expect(mockReleaseUnshown).toHaveBeenCalledOnce()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('#given existing row #when local clock is newer #then skips', () => {

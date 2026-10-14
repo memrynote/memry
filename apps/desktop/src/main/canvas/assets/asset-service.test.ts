@@ -12,6 +12,7 @@ import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
 import {
   ensureAssetsPresent,
   reconcileCanvasAssets,
+  releaseHoldsNotInScene,
   uploadCanvasAsset,
   canvasAssetDiskPath,
   getCanvasAssetRef,
@@ -408,6 +409,46 @@ describe('canvas asset service', () => {
       expect(dereference).not.toHaveBeenCalled()
       expect(listAssetsByCanvas(db, 'canvas-a')).toHaveLength(0)
       expect(listAssetsByCanvas(db, 'canvas-b').map((r) => r.contentHash)).toEqual(['hashS'])
+    })
+  })
+
+  describe('releaseHoldsNotInScene', () => {
+    // #3035: a peer that never had this image's row removed it from the canvas,
+    // so this device, which has the row, is the only one that can release it.
+    it('releases the holds of rows the applied scene no longer shows, and keeps every row', async () => {
+      for (const hash of ['hashA', 'hashB']) {
+        recordAsset(db, {
+          vaultId: 'vault-1',
+          canvasId: 'canvas-a',
+          contentHash: hash,
+          attachmentId: `att-${hash}`,
+          fileId: `fid-${hash}`,
+          filename: `${hash}.png`,
+          mimeType: 'image/png',
+          sizeBytes: 10,
+          chunkHashes: [`chunk-${hash}`],
+          createdAt: 1700000000000
+        })
+      }
+
+      expect(await releaseHoldsNotInScene(ctx, 'canvas-a', sceneWithHashes(['hashA']))).toEqual({
+        ok: true
+      })
+
+      expect(ctx.releaseHolds).toHaveBeenCalledExactlyOnceWith('canvas-a', ['hashB'])
+      expect(dereference).not.toHaveBeenCalled()
+      expect(
+        listAssetsByCanvas(db, 'canvas-a')
+          .map((r) => r.contentHash)
+          .sort()
+      ).toEqual(['hashA', 'hashB'])
+    })
+
+    it('releases nothing when the scene shows every recorded image', async () => {
+      expect(await releaseHoldsNotInScene(ctx, 'canvas-a', sceneWithHashes(['hashA']))).toEqual({
+        ok: true
+      })
+      expect(ctx.releaseHolds).not.toHaveBeenCalled()
     })
   })
 

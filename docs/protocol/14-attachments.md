@@ -315,7 +315,13 @@ refuses with a 4xx other than 404, 408 or 429 pushes the canvas at once
 (`apps/desktop/src/main/canvas/assets/asset-service.ts:424-441`,
 `apps/desktop/src/main/sync/engine/push-coordinator.ts:46`). Removing an image
 from a canvas releases that pair first
-(`apps/desktop/src/main/canvas/assets/asset-service.ts:293`), and the 30-day
+(`apps/desktop/src/main/canvas/assets/asset-service.ts:293`). A device that
+applies a synced scene releases the canvas's holds on images its rows name but
+the scene no longer shows, after a 10-second debounce that lets the rest of a
+pull land, and keeps the rows for its next save's dereference (#3035,
+`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`,
+`releaseHoldsNotInScene` in `apps/desktop/src/main/canvas/assets/asset-service.ts`).
+A peer that shows the image again holds it before its push. The 30-day
 release of a deleted canvas releases all of its pairs
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:203`). Note attachments and
 the iOS core hold nothing past the probe of §14.8.2.
