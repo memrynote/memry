@@ -48,8 +48,8 @@ export function updateNoteCache(
   return db
     .update(noteCache)
     .set({
-      ...updates,
-      indexedAt: new Date().toISOString()
+      indexedAt: new Date().toISOString(),
+      ...updates
     })
     .where(eq(noteCache.id, id))
     .returning()
