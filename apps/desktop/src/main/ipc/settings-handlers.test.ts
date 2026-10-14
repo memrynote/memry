@@ -560,7 +560,12 @@ describe('settings-handlers', () => {
     const voiceSettings = await invokeHandler(
       SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS
     )
-    expect(voiceSettings).toEqual({ provider: 'openai', memoNameMode: 'transcript' })
+    // A row written before #3172 has no language and reads as the English default.
+    expect(voiceSettings).toEqual({
+      provider: 'openai',
+      memoNameMode: 'transcript',
+      language: 'en'
+    })
 
     const setVoiceSettings = await invokeHandler(
       SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS,
@@ -570,7 +575,7 @@ describe('settings-handlers', () => {
     expect(settingsQueries.setSetting).toHaveBeenCalledWith(
       {},
       'voiceTranscription',
-      JSON.stringify({ provider: 'openai', memoNameMode: 'timestamp' })
+      JSON.stringify({ provider: 'openai', memoNameMode: 'timestamp', language: 'en' })
     )
     expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
       key: 'voiceTranscription',
