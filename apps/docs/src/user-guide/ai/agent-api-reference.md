@@ -1195,6 +1195,82 @@ Reply:
 }
 ```
 
+#### memry_help_search
+
+Search Memry's user guide for how to use a feature. Use it when the user asks how to do something in Memry or whether Memry supports something. The guide is in English, so search with English feature words ("note calendar date", "pdf annotation"). Returns the best matching sections with a snippet; read one with memry_help_read.
+
+Read tool.
+
+| Argument | Type     | Required | Allowed values                   |
+| -------- | -------- | -------- | -------------------------------- |
+| `query`  | `string` | yes      | min length `1`; max length `200` |
+
+Example call:
+
+```json
+{
+  "query": "note date property calendar"
+}
+```
+
+Reply:
+
+```json
+{
+  "results": [
+    {
+      "page": "user-guide/calendar",
+      "page_title": "Calendar",
+      "section": "Notes with Dates",
+      "snippet": "A note that has a `date`-typed [property](/user-guide/notes/properties-tags) can appear on the calendar. Turn on **Show on calendar** from that property's row in the note, and the note shows up as an all-day chip on the property's date. Cli"
+    },
+    {
+      "page": "user-guide/notes/properties-tags",
+      "page_title": "Properties & Tags",
+      "section": "Showing Dates on the Calendar",
+      "snippet": "A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. "
+    },
+    {
+      "page": "user-guide/faq",
+      "page_title": "Frequently Asked Questions",
+      "section": "How do I show a note on the calendar?",
+      "snippet": "There are three ways: - **A date property.** Add a `Date` [property](/user-guide/notes/properties-tags#showing-dates-on-the-calendar) to the note, then click the calendar icon on that property's row. The note shows up as an all-day chip on "
+    }
+  ]
+}
+```
+
+#### memry_help_read
+
+Read a page of the Memry user guide, or one section of it with its subsections, by the page and section a memry_help_search result returned.
+
+Read tool.
+
+| Argument  | Type     | Required | Allowed values |
+| --------- | -------- | -------- | -------------- |
+| `page`    | `string` | yes      | min length `1` |
+| `section` | `string` | no       | min length `1` |
+
+Example call:
+
+```json
+{
+  "page": "user-guide/notes/properties-tags",
+  "section": "Showing Dates on the Calendar"
+}
+```
+
+Reply:
+
+```json
+{
+  "page": "user-guide/notes/properties-tags",
+  "page_title": "Properties & Tags",
+  "section": "Showing Dates on the Calendar",
+  "text": "### Showing Dates on the Calendar\n\nA `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. The note then appears as "
+}
+```
+
 ### Write tools
 
 #### vault_create_note

@@ -257,6 +257,40 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         )
         return describeDesktopOperation(a.operation)
       }
+    },
+    // help-docs bundles the user guide's markdown; loaded on first use to keep it
+    // out of main's startup path.
+    memry_help_search: {
+      name: 'memry_help_search',
+      description: TOOL_SCHEMAS.memry_help_search.description,
+      inputSchema: TOOL_SCHEMAS.memry_help_search.input,
+      handler: async (input) => {
+        const a = parse<{ query: string }>(TOOL_SCHEMAS.memry_help_search.input, input)
+        const { searchHelp } = await import('./help-docs')
+        return { results: searchHelp(a.query) }
+      }
+    },
+    memry_help_read: {
+      name: 'memry_help_read',
+      description: TOOL_SCHEMAS.memry_help_read.description,
+      inputSchema: TOOL_SCHEMAS.memry_help_read.input,
+      handler: async (input) => {
+        const a = parse<{ page: string; section?: string }>(
+          TOOL_SCHEMAS.memry_help_read.input,
+          input
+        )
+        const { readHelp } = await import('./help-docs')
+        const found = readHelp(a.page, a.section)
+        if (!found) {
+          throw new AgentToolError(
+            'NOT_FOUND',
+            `No guide ${a.section ? `section "${a.section}" on page` : 'page'} "${a.page}". ` +
+              'Use a page and section from a memry_help_search result.',
+            { page: a.page, section: a.section ?? null }
+          )
+        }
+        return found
+      }
     }
   }
 

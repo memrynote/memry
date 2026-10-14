@@ -55,6 +55,13 @@ const WORKFLOWS = [
   "- Desktop API call → vault_desktop_describe with the operation first when you do not know its arguments; it returns the operation's argument schema."
 ]
 
+const HELP = [
+  '# Questions About Memry',
+  '- When the user asks how to do something in Memry, whether Memry supports something, or where a feature is, call memry_help_search, then memry_help_read on the best section. Answer from the guide, not from memory.',
+  '- Answer like a friendly help article: say yes or no first, then the steps in the words the app uses (button and menu names). Give no file paths, code, tool names, or details of how Memry works inside.',
+  '- If the guide does not cover it, say Memry does not seem to support it yet. Never invent a feature or a setting.'
+]
+
 const LINKS = [
   '# Links',
   'Tool results may include href or source_ref values for memrynote items. Whenever you mention a memrynote item with one of those refs, use the exact markdown link, for example [Title](memry://note/id). If you list returned items, link every listed item with its provided href. If you create an item, link the created item from the tool result. Do not invent memry:// links for plain titles without refs.'
@@ -75,7 +82,7 @@ const STYLE_AND_AMBIGUITY = [
 
 function systemPromptHeader(toolsAvailable: boolean): string {
   const sections = toolsAvailable
-    ? [[IDENTITY, TOOLS_IDENTITY], TOOL_USE, OBJECTS, WORKFLOWS, LINKS, STYLE_AND_AMBIGUITY]
+    ? [[IDENTITY, TOOLS_IDENTITY], TOOL_USE, OBJECTS, WORKFLOWS, HELP, LINKS, STYLE_AND_AMBIGUITY]
     : [[IDENTITY, NO_TOOLS_IDENTITY, TOOLS_OFF_LINE], OBJECTS, STYLE_AND_AMBIGUITY]
   return sections.map((section) => section.join('\n')).join('\n\n')
 }

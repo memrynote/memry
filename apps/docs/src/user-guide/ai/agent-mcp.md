@@ -462,6 +462,16 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_read_canvas_elements`
 - `vault_desktop_read`
 - `vault_desktop_describe`
+- `memry_help_search`
+- `memry_help_read`
+
+### Memry help
+
+`memry_help_search` and `memry_help_read` answer questions about using Memry itself, such as
+"how do I show a note on the calendar?". They search the user guide that ships inside the app,
+so they work offline and never touch the vault. The guide is in English, so the search works best
+with English feature words. The CLI and agent reference pages are left out, because Agent Chat
+answers these questions in plain steps, not in code.
 
 ### Notes and filed files
 
