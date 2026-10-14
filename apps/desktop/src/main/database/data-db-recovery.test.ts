@@ -1,7 +1,7 @@
 /**
  * data.db recovery (#2595): the corrupt file is moved aside, never deleted,
- * and pending sync queue rows are salvaged from it and replayed into the
- * fresh database so unsynced changes still reach the server.
+ * and the rows no vault file or sync pull can rebuild (`SALVAGED_TABLES`) are
+ * salvaged from it and replayed into the fresh database.
  */
 
 import fs from 'fs'
@@ -10,7 +10,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 
-import { moveAsideCorruptDataDb, replaySyncQueue, salvageSyncQueue } from './data-db-recovery'
+import { moveAsideCorruptDataDb, replayRows, salvageRows } from './data-db-recovery'
 
 const QUEUE_DDL = `CREATE TABLE sync_queue (
   id TEXT PRIMARY KEY, type TEXT NOT NULL, item_id TEXT NOT NULL, operation TEXT NOT NULL,
@@ -56,17 +56,26 @@ describe('data.db recovery', () => {
     expect(fs.existsSync(dbPath)).toBe(false)
     expect(fs.existsSync(backup)).toBe(true)
 
-    const salvaged = salvageSyncQueue(backup)
+    const salvaged = salvageRows(backup, 'sync_queue')
     expect(salvaged.map((r) => r.id)).toEqual(['q0', 'q1', 'q2'])
 
     open = new Database(dbPath)
     open.exec(QUEUE_DDL)
-    expect(replaySyncQueue(open, salvaged)).toBe(3)
+    expect(replayRows(open, 'sync_queue', salvaged)).toBe(3)
     expect(open.prepare('SELECT item_id, payload FROM sync_queue ORDER BY id').all()).toEqual([
       { item_id: 'item0', payload: '{"n":0}' },
       { item_id: 'item1', payload: '{"n":1}' },
       { item_id: 'item2', payload: '{"n":2}' }
     ])
+  })
+
+  it('replaces a default the fresh migrations seeded with the salvaged value', () => {
+    open = new Database(dbPath)
+    open.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    open.prepare("INSERT INTO settings VALUES ('theme', 'light')").run()
+
+    expect(replayRows(open, 'settings', [{ key: 'theme', value: 'dark' }])).toBe(1)
+    expect(open.prepare('SELECT value FROM settings').all()).toEqual([{ value: 'dark' }])
   })
 
   it('never overwrites an earlier backup taken in the same millisecond', () => {
@@ -84,6 +93,6 @@ describe('data.db recovery', () => {
     fs.writeFileSync(dbPath, Buffer.alloc(8192, 0x7f))
     const backup = moveAsideCorruptDataDb(dbPath)
 
-    expect(salvageSyncQueue(backup)).toEqual([])
+    expect(salvageRows(backup, 'sync_queue')).toEqual([])
   })
 })
