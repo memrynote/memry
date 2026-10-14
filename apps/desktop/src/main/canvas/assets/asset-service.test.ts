@@ -11,6 +11,7 @@ import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
 
 import {
   ensureAssetsPresent,
+  holdCanvasAssetsForPush,
   reconcileCanvasAssets,
   releaseHoldsNotInScene,
   uploadCanvasAsset,
@@ -449,6 +450,25 @@ describe('canvas asset service', () => {
         ok: true
       })
       expect(ctx.releaseHolds).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('holdCanvasAssetsForPush', () => {
+    // #3036: a re-upload nothing points at must not outlive its failed hold.
+    it('drops the re-upload and keeps the row on the old chunks when its hold fails', async () => {
+      const bytes = Buffer.from('reupload-bytes')
+      await uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
+      const [row] = listAssetsByCanvas(db, 'canvas-a')
+      const scene = injectSceneAssetSidecar(ctx, 'canvas-a', sceneWithHashes([row!.contentHash]))
+      ctx.holdChunks = vi
+        .fn()
+        .mockResolvedValueOnce({ status: 'ok', missing: new Set([row!.contentHash]) })
+        .mockResolvedValueOnce({ status: 'failed', retryable: true })
+
+      expect(await holdCanvasAssetsForPush(ctx, 'canvas-a', scene)).toBe(false)
+
+      expect(dereference).toHaveBeenCalledExactlyOnceWith(['enc-2-0', 'enc-2-1'])
+      expect(listAssetsByCanvas(db, 'canvas-a')[0]!.chunkHashes).toEqual(row!.chunkHashes)
     })
   })
 
