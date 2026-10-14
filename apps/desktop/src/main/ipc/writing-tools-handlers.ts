@@ -1,5 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 
+import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { WritingToolsChannels } from '@memry/contracts/ipc-channels'
 import {
   AddWordToDictionaryInputSchema,
@@ -13,6 +14,13 @@ import { getMainI18n } from '../lib/main-i18n'
 import { readAIInlineSettings } from './ai-inline-handlers'
 
 const logger = createLogger('IPC:WritingTools')
+
+const PROVIDER_NAMES: Record<AIInlineSettings['provider'], string> = {
+  ollama: 'Ollama',
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  google: 'Google'
+}
 
 let registered = false
 let writingAssistLoad: Promise<typeof WritingAssist> | null = null
@@ -47,14 +55,35 @@ export function registerWritingToolsHandlers(): void {
       }
       const settings = readAIInlineSettings()
       if (!settings.enabled) return { success: false, error: i18n.t('errors:ai.inlineDisabled') }
+      const provider = PROVIDER_NAMES[settings.provider]
+      if (settings.provider !== 'ollama' && !settings.apiKey) {
+        return { success: false, error: i18n.t('errors:ai.apiKeyMissing', { provider }) }
+      }
+      let writingAssist: typeof WritingAssist | null = null
       try {
-        const { runWritingAssist } = await loadWritingAssist()
-        return { success: true, result: await runWritingAssist(settings, parsed.data) }
+        writingAssist = await loadWritingAssist()
+        return {
+          success: true,
+          result: await writingAssist.runWritingAssist(settings, parsed.data)
+        }
       } catch (error) {
         logger.warn('Writing assist request failed', { kind: parsed.data.kind, error })
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : i18n.t('errors:generic.unknown')
+        switch (writingAssist?.classifyWritingAssistFailure(error) ?? 'other') {
+          case 'unreachable':
+            return {
+              success: false,
+              error:
+                settings.provider === 'ollama'
+                  ? i18n.t('errors:ai.ollamaUnreachable')
+                  : i18n.t('errors:ai.providerUnreachable', { provider })
+            }
+          case 'unauthorized':
+            return { success: false, error: i18n.t('errors:ai.apiKeyInvalid', { provider }) }
+          case 'other':
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : i18n.t('errors:generic.unknown')
+            }
         }
       }
     }

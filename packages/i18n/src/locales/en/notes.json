@@ -7,6 +7,16 @@
   "wikiLinkPreview": {
     "notFound": "Not found — click to create \"{title}\""
   },
+  "wikiLinkMenu": {
+    "aria": "Link actions",
+    "open": "Open",
+    "openInNewTab": "Open in New Tab",
+    "openToTheSide": "Open to the Side",
+    "edit": "Edit Link",
+    "copy": "Copy Link",
+    "unlink": "Remove Link",
+    "copyFailed": "Could not copy the link"
+  },
   "page": {
     "empty": {
       "title": "No note selected",
@@ -1590,6 +1600,7 @@
       "overflow": "Overflow",
       "lab": "Lab",
       "menu": "Writing tools",
+      "close": "Close writing tools",
       "showWordCount": "Show word count",
       "words": "{count, plural, one {# word} other {# words}}"
     },

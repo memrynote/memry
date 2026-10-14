@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai'
+import { APICallError, generateText, Output, RetryError } from 'ai'
 import { z } from 'zod'
 
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
@@ -101,6 +101,21 @@ export async function runWritingAssist(
       }
     }
   }
+}
+
+export type WritingAssistFailure = 'unreachable' | 'unauthorized' | 'other'
+
+/**
+ * Classifies a provider failure so the user sees what to fix. The SDK wraps
+ * retried calls in a RetryError; a fetch that never got a response is an
+ * APICallError with no status code ("Cannot connect to API").
+ */
+export function classifyWritingAssistFailure(error: unknown): WritingAssistFailure {
+  const cause = RetryError.isInstance(error) ? error.lastError : error
+  if (!APICallError.isInstance(cause)) return 'other'
+  if (cause.statusCode === undefined) return 'unreachable'
+  if (cause.statusCode === 401 || cause.statusCode === 403) return 'unauthorized'
+  return 'other'
 }
 
 export function cleanAlternatives(candidates: string[], original: string): string[] {

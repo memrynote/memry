@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { tagsService } from '@/services/tags-service'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { isFilledValue } from '../build-field-groups'
 import { FillDisclosure } from './FillDisclosure'
 import { FillValue } from './FillGhostRow'
@@ -150,12 +151,25 @@ export function BulkFieldFill({ tag, notes }: { tag: ResolvedTag; notes: BulkFil
 
   return (
     <Popover open={open} onOpenChange={(next) => (next ? start() : close())}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5" data-testid="bulk-field-fill">
-          <Sparkles className="size-3.5" />
-          {t('tagFields.fill.bulkAction')}
-        </Button>
-      </PopoverTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t('tagFields.fill.bulkAction')}
+                data-testid="bulk-field-fill"
+              >
+                <Sparkles className="size-3.5" aria-hidden />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {t('tagFields.fill.bulkAction')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <PopoverContent align="end" className="w-[400px] overflow-hidden p-0">
         <div className="flex items-start gap-3 px-3.5 pb-2.5 pt-3">
           <div className="flex min-w-0 flex-1 flex-col">

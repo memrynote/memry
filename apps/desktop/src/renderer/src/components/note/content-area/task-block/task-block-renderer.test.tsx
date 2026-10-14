@@ -239,6 +239,19 @@ describe('TaskBlockRenderer', () => {
     expect(editor.removeBlocks).toHaveBeenCalledWith([block])
   })
 
+  it('does not grab focus when a saved task block remounts before its task loads', () => {
+    mocks.taskState.task = null
+    const editor = makeEditor()
+    const block = makeBlock()
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    mocks.taskState.task = task
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(document.body)
+  })
+
   it('forwards row actions to services and falls back to the Tasks tab outside a host', async () => {
     const editor = makeEditor()
     const block = makeBlock()
@@ -443,7 +456,11 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} />)
+    // Mounted as a draft; the task id lands while the title is still open.
+    const { rerender } = render(
+      <TaskBlockRenderer block={makeBlock({ taskId: '', title: '' })} editor={editor} />
+    )
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
 
     const input = screen.getByDisplayValue('')
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -461,7 +478,11 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} />)
+    // Mounted as a draft; the task id lands while the title is still open.
+    const { rerender } = render(
+      <TaskBlockRenderer block={makeBlock({ taskId: '', title: '' })} editor={editor} />
+    )
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.keyDown(screen.getByDisplayValue(''), { key: 'Backspace' })
 

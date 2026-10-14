@@ -58,6 +58,8 @@ import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-lo
 import { journalPathForDate } from '@/lib/journal-path'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
+import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import {
   BacklinksSection,
   OutgoingLinksSection,
@@ -170,6 +172,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { t: notesT } = useT('notes')
   const activeTab = useActiveTab()
   const { openTab, state: tabState } = useTabs()
+  const { openInNewTab, openToTheSide } = useOpenTarget()
   const openTaskDetail = useOpenTaskDetail()
   const identity = useTabIdentity()
   const today = useToday()
@@ -811,7 +814,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const handleInternalLinkClick = useCallback(
-    async (linkedNoteIdOrTitle: string) => {
+    async (linkedNoteIdOrTitle: string, open?: WikiLinkOpenTarget) => {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
 
@@ -823,11 +826,18 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         return
       }
 
+      // An explicit gesture (middle-click, the link menu) picks where it opens.
+      const openLinked = (tab: Parameters<typeof openTab>[0]): void => {
+        if (open === 'side') openToTheSide(tab)
+        else if (open) openInNewTab(tab, { background: open === 'backgroundTab' })
+        else openTab(tab)
+      }
+
       try {
         const resolution = await resolveWikiLink(target)
         switch (resolution.type) {
           case 'file':
-            openTab({
+            openLinked({
               type: 'file',
               title: resolution.title,
               icon: resolution.icon,
@@ -841,7 +851,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             break
           case 'note':
             // The heading rides along; the note page does the positioning.
-            openTab({
+            openLinked({
               type: 'note',
               title: resolution.title,
               icon: 'file-text',
@@ -856,7 +866,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             break
           case 'canvas':
             // No editor to land inside, so no heading to carry (#1983).
-            openTab({
+            openLinked({
               type: 'canvas',
               title: resolution.title,
               icon: 'pen-tool',
@@ -882,7 +892,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         toast.error(t('toast.openLinkedItemFailed'))
       }
     },
-    [openTab, t, scrollToHeadingText, prefersReducedMotion]
+    [openTab, openInNewTab, openToTheSide, t, scrollToHeadingText, prefersReducedMotion]
   )
 
   // The confirmed half of the wiki-link create dialog: create in the default

@@ -11,12 +11,12 @@
 	<!-- IB22: the Share extension's queue and the inbox's link digests. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.memry.app</string>
+		<string>group.com.memrynote.app</string>
 	</array>
 
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.memry.app</string>
+		<string>$(AppIdentifierPrefix)com.memrynote.app</string>
 	</array>
 </dict>
 </plist>

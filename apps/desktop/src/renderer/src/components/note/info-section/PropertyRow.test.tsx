@@ -196,13 +196,16 @@ vi.mock('./editors', async (importOriginal) => {
       </div>
     ),
     MultiselectEditor: ({
+      value,
       onChange,
       onAddOption
     }: {
+      value: string[]
       onChange: (value: string[]) => void
       onAddOption: (option: { value: string; label: string }) => void
     }) => (
       <div>
+        <span data-testid="multiselect-value">{JSON.stringify(value)}</span>
         <button type="button" onClick={() => onChange(['high'])}>
           multiselect-editor
         </button>
@@ -398,6 +401,17 @@ describe('PropertyRow', () => {
       })
       expect(mocks.refresh).toHaveBeenCalled()
     })
+  })
+
+  it('shows a single name written while the property was a select as one multiselect value', () => {
+    render(
+      <PropertyRow
+        property={property({ name: 'People', type: 'multiselect', value: 'Alice' })}
+        onValueChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('multiselect-value')).toHaveTextContent('["Alice"]')
   })
 
   it('shows calendar toggle trigger only for date properties', () => {

@@ -336,6 +336,22 @@ describe('property definitions reach .memry/properties.md', () => {
     expect(Object.keys(fileProperties() as object)).toEqual(['Stage', 'Rating'])
   })
 
+  it('adopts the type a re-added property names, keeping its options', async () => {
+    const options = [{ value: 'Alice', color: 'rose' }]
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
+      name: 'People',
+      type: 'select',
+      options
+    })
+
+    await invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, {
+      name: 'People',
+      type: 'multiselect'
+    })
+
+    expect(fileProperties()).toEqual({ People: { type: 'multiselect', options } })
+  })
+
   it('re-types indexed rows when a definition changes type, keeping unquoted YAML dates', async () => {
     await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, { name: 'label', type: 'date' })
     const index = state.indexDb!.db

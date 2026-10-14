@@ -689,12 +689,24 @@ export function registerNotesHandlers(): void {
       const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
         await import('../vault/property-definitions')
       const service = PropertyDefinitionsService.get()
-      if (service.get(input.name)) return { success: true }
+      // Adding a property names its type, so an existing name takes that type;
+      // the service re-types every indexed row that uses it.
+      const existing = service.find(input.name)
+      if (existing?.type === input.type) return { success: true }
 
       if (input.type === 'status') {
-        await service.upsert({ ...DEFAULT_STATUS_DEFINITION, name: input.name })
+        await service.upsert({
+          ...DEFAULT_STATUS_DEFINITION,
+          name: input.name,
+          color: existing?.color
+        })
       } else {
-        await service.upsert({ name: input.name, type: input.type, options: [] })
+        await service.upsert({
+          name: input.name,
+          type: input.type,
+          options: existing?.options ?? [],
+          color: existing?.color
+        })
       }
       return { success: true }
     })

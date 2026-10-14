@@ -5,6 +5,7 @@ import type { FieldFillProposal } from '@memry/contracts/tag-fill-api'
 import { Loader2, Sparkles } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { tagsService } from '@/services/tags-service'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { FieldGroup, FieldSlot } from '../build-field-groups'
 import { isFilledValue } from '../build-field-groups'
 import { FillDisclosure } from './FillDisclosure'
@@ -179,16 +180,26 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
     }
     if (phase.kind !== 'idle' && !(phase.kind === 'disclosure' && phase.group === key)) return null
     if (!group.slots.some((slot) => !isFilledValue(slot.value))) return null
+    const label = t('tagFields.fill.action')
     return (
-      <button
-        type="button"
-        onClick={() => start(group)}
-        className="flex h-6 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-[12px] text-foreground hover:bg-muted"
-        data-testid="field-fill-action"
-      >
-        <Sparkles className="size-3.5" aria-hidden />
-        {t('tagFields.fill.action')}
-      </button>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              onClick={() => start(group)}
+              className="inline-flex size-6 items-center justify-center rounded-md text-text-secondary hover:bg-muted hover:text-foreground"
+              data-testid="field-fill-action"
+            >
+              <Sparkles className="size-3.5" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
 

@@ -446,7 +446,7 @@ describe('notes-handlers extra coverage', () => {
       })
     )
 
-    mocks.service.get.mockReturnValueOnce(null)
+    mocks.service.find.mockReturnValueOnce(undefined)
     await invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, {
       name: 'Mood',
       type: PropertyTypes.SELECT
