@@ -536,6 +536,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     })
     if (result.cancelled || isStale()) return
 
+    // The open-time lock check resolves notes through the index, so on an
+    // empty or reset index it skipped every locked note. Re-run it now that
+    // the walk has indexed them (#2978).
+    if (result.indexed > 0) {
+      await checkLockedFilesAtOpen().catch((err) =>
+        logger.warn('Re-checking locked files after the index walk failed', err)
+      )
+      if (isStale()) return
+    }
+
     if (forcePaths.length > 0 && result.errors === 0) {
       setSetting(dataDb, ROOT_PROPERTIES_MIGRATION_KEY, ROOT_PROPERTIES_MIGRATION_DONE)
     }
