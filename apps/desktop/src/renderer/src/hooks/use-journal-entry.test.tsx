@@ -101,6 +101,36 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
   })
 
+  it('seeds {{random-line:Title}} with a line from the named note', async () => {
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+    ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+      defaultTemplate: 'daily'
+    })
+    ;(window.api.templates.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'daily',
+      name: 'Daily',
+      isBuiltIn: false,
+      tags: [],
+      properties: [],
+      content: '> {{random-line:Affirmations}}',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      modifiedAt: '2026-05-01T00:00:00.000Z'
+    })
+    window.api.notes.resolveByTitle = vi.fn().mockResolvedValue({ id: 'n1' })
+    window.api.notes.get = vi.fn().mockResolvedValue({ content: '- I am calm' })
+    ;(window.api.journal.createEntry as ReturnType<typeof vi.fn>).mockResolvedValue(
+      createMockJournalEntry({ date: '2026-05-10', content: 'created' })
+    )
+
+    renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+
+    await waitFor(() => expect(window.api.journal.createEntry).toHaveBeenCalled())
+    expect(window.api.notes.resolveByTitle).toHaveBeenCalledWith('Affirmations')
+    expect(window.api.journal.createEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ content: '> I am calm' })
+    )
+  })
+
   it('flushes pending changes across date changes, retry, reload, delete failure, and unmount', async () => {
     const { result, rerender, unmount } = renderHook(({ date }) => useJournalEntry(date), {
       wrapper,
