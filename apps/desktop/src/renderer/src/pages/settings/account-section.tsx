@@ -462,7 +462,9 @@ export function AccountSettings() {
     setIsPortalOpening(true)
     try {
       const result = await window.api.account.openBillingPortal()
-      if (!result.success) {
+      if (result.reason === 'no-billing-customer') {
+        toast.error(t('account.billing.toasts.portalNoCustomer'))
+      } else if (!result.success) {
         toast.error(result.error ?? t('account.billing.toasts.portalFailed'))
       }
     } catch (error: unknown) {
