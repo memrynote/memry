@@ -25,6 +25,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_read_canvas_elements',
       'vault_desktop_read',
       'vault_desktop_describe',
+      'memry_help_search',
+      'memry_help_read',
       'vault_create_note',
       'vault_rename_note',
       'vault_delete_note',

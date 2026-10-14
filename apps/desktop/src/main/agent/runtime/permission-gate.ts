@@ -6,7 +6,8 @@ import {
   type ChangePreviewKind
 } from '@memry/contracts/ipc-agent'
 
-import { READ_TOOL_NAMES, previewKindForTool, type ToolName } from '../mcp/tools/schemas'
+import { previewKindForTool } from '../mcp/tools/preview-kinds'
+import { READ_TOOL_NAMES, type ToolName } from '../mcp/tools/schemas'
 
 const READ_TOOLS: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
 

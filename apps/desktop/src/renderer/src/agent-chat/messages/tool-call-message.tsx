@@ -70,6 +70,8 @@ const toolLabels: Record<string, string> = {
   vault_get_tags: 'Reading tags',
   vault_desktop_read: 'Reading app data',
   vault_desktop_describe: 'Looking up app operation',
+  memry_help_search: 'Searching Memry help',
+  memry_help_read: 'Reading Memry help',
   vault_create_note: 'Creating note',
   vault_rename_note: 'Renaming note',
   vault_delete_note: 'Deleting note',
