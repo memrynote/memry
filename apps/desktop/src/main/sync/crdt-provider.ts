@@ -251,6 +251,8 @@ export class CrdtProvider {
   /** Answers whether the owe is durable (#2421). */
   private oweRemoteMerge:
     ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null = null
+  /** See `setRemoteMerge`. */
+  private mergeRemote: ((noteId: string) => Promise<boolean>) | null = null
   /**
    * The data DB handle and vault the open store belongs to, bound at init
    * (#2421): a detached compaction owes its debt there, and never to a vault
@@ -374,6 +376,16 @@ export class CrdtProvider {
   ): void {
     this.oweRemoteMerge = owe
     if (owe) void this.oweStoredCompactions(owe)
+  }
+
+  /**
+   * Wired by the sync runtime: merge the server's whole body for a note into
+   * its live doc. With no store, a seeded push (a create, the oversized-update
+   * fallback) of a closed note merges first and seeds only a doc the server
+   * left empty (#2594). See `openSeededForPush`.
+   */
+  setRemoteMerge(merge: ((noteId: string) => Promise<boolean>) | null): void {
+    this.mergeRemote = merge
   }
 
   /**
@@ -803,6 +815,40 @@ export class CrdtProvider {
       await this.seedFromMarkdown(noteId, doc)
     }
     return doc
+  }
+
+  /**
+   * The doc a seeded push encodes (#2594). With no store, a closed note opens
+   * empty, and a seed from the vault file shares no Yjs items with the server's
+   * body: pushed, it hides the server's history, peer edits included, on every
+   * device. So the server body is merged first, and only a doc it leaves empty
+   * (a note the server has never seen) seeds from the file. When the file
+   * differs from the merged body, the write-back that the merge schedules keeps
+   * the file as a version before it replaces it, so neither side is lost.
+   *
+   * A merge that fails or throws falls back to the seed. The failed pull leaves
+   * the note flagged unmerged, so the push takes the non-pruning update route.
+   *
+   * The caller holds the doc (`holdDoc`) from before this open to after its
+   * encode: with no store, a doc closed in between drops the merged body.
+   */
+  private async openSeededForPush(noteId: string): Promise<Y.Doc> {
+    const merge = this.mergeRemote
+    if (this.persistence || !merge) return this.open(noteId)
+
+    const doc = await this.open(noteId, undefined, { skipSeed: true })
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
+    let merged = false
+    try {
+      merged = await merge(noteId)
+    } catch (err) {
+      log.warn('Server CRDT merge failed before a seeded push; seeding from vault file', {
+        noteId,
+        error: err
+      })
+    }
+    if (merged && (await this.takeFileAfterMerge(noteId, doc))) return doc
+    return this.open(noteId)
   }
 
   /**
@@ -1385,6 +1431,7 @@ export class CrdtProvider {
     this.snapshotCoverage = NO_COVERAGE
     this.deferSnapshot = null
     this.oweRemoteMerge = null
+    this.mergeRemote = null
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
 
@@ -1495,8 +1542,11 @@ export class CrdtProvider {
     const wasOpen = this.docs.has(noteId)
     let clearedAccumulated = 0
     let clearedPending = 0
+    const release = skipSeed || this.persistence || !this.mergeRemote ? null : this.holdDoc(noteId)
     try {
-      const doc = await this.open(noteId, undefined, { skipSeed })
+      const doc = skipSeed
+        ? await this.open(noteId, undefined, { skipSeed: true })
+        : await this.openSeededForPush(noteId)
       const entry = this.docs.get(noteId)
       const base = await this.readPushBase(noteId)
       const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
@@ -1543,6 +1593,8 @@ export class CrdtProvider {
       }
       if (!wasOpen) await this.closeIfInactive(noteId)
       return null
+    } finally {
+      await release?.()
     }
   }
 
