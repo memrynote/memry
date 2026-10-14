@@ -185,6 +185,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotCoverage: vi.fn(),
       setSnapshotDeferral: vi.fn(),
       setOweRemoteMerge: vi.fn(),
+      setRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       // `open` is what the issue is about, so it is a plain spy on a fake doc
       // rather than real Y.Doc machinery: the question is WHICH notes it is

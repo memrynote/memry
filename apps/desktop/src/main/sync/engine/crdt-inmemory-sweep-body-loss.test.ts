@@ -514,6 +514,7 @@ describe('CrdtProvider with no store (#2536)', () => {
       server.updates = server.updates.filter((u) => u.sequenceNum > watermark)
     }
     await provider.init(outbox, pushSnapshot)
+    provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
     expect(provider.storeId).toBeNull()
     return { provider, coordinator, pushUpdate, flushFullStates }
   }
@@ -643,6 +644,37 @@ describe('CrdtProvider with no store (#2536)', () => {
     await provider.pushSnapshotsForNotes([NOTE], { concurrency: 1 })
 
     expect(await bodyAfterPull()).toBe(ORIGINAL)
+  })
+
+  it('a create push of a vault-copied note the server already has keeps its history (#2594)', async () => {
+    const peer = await serveNoteWithPeerEdit()
+    const copiedFile = h.files.get(FILE)
+    const { provider } = await startRuntime()
+
+    await provider.pushSnapshotsForNotes([NOTE], { concurrency: 1 })
+    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+
+    expect({
+      server: await bodyAfterPull(),
+      peer: await bodyAfterPull(peer),
+      versions: h.versions
+    }).toEqual({
+      server: EXPECTED_BODY,
+      peer: EXPECTED_BODY,
+      versions: [copiedFile]
+    })
+  })
+
+  it('the oversized-update fallback of a closed note keeps the server history (#2594)', async () => {
+    const peer = await serveNoteWithPeerEdit()
+    const { provider } = await startRuntime()
+
+    await provider.pushSnapshotForNote(NOTE)
+
+    expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([
+      EXPECTED_BODY,
+      EXPECTED_BODY
+    ])
   })
 
   describe('a main-process edit to a note no editor holds (#2646)', () => {
