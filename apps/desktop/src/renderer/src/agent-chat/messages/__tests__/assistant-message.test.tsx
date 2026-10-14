@@ -143,6 +143,29 @@ describe('AssistantMessage', () => {
     expect(within(list as HTMLElement).getAllByText('note')).toHaveLength(2)
   })
 
+  it('draws a legacy project icon name as its glyph, never as text', async () => {
+    const project: AgentSourceRef = {
+      kind: 'project',
+      id: 'p1',
+      title: 'Launch',
+      href: 'memry://project/p1',
+      icon: 'Folder'
+    }
+    render(
+      <AssistantMessage message={withSources('See [Launch](memry://project/p1)', [project])} />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /1 source/ }))
+
+    const icons = document.querySelectorAll('[data-agent-link-icon]')
+    expect(icons.length).toBeGreaterThanOrEqual(3)
+    for (const icon of icons) {
+      expect(icon).toHaveAttribute('data-agent-link-icon', 'project-custom')
+      expect(icon.textContent).toBe('')
+      expect(icon.querySelector('svg')).not.toBeNull()
+    }
+  })
+
   it('stacks at most three source icons however many were cited', async () => {
     render(
       <AssistantMessage
