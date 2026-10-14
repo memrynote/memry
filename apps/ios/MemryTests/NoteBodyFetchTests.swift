@@ -120,6 +120,23 @@ struct NoteBodyFetchTests {
         #expect(model.fetch == .idle)
     }
 
+    /// #3253: opening the note fetches the body itself, as desktop does for
+    /// the note on screen. The open path is `loadIfNeeded` then
+    /// `refreshFromRemote`, the page's `.task(id: vaultSyncPasses)`.
+    @Test("opening a windowed-out note fetches its body without a tap")
+    func openingFetchesTheBody() async throws {
+        let store = NoteStore()
+        let filler = NoteFiller(store: store)
+        let model = NoteReadViewModel(
+            route: Self.route, reader: ScriptedNote(store: store), filler: filler
+        )
+        await model.loadIfNeeded()
+        await model.refreshFromRemote()
+        #expect(filler.fetches == 1)
+        #expect(model.preview == .text("the body arrived"))
+        #expect(model.fetch == .idle)
+    }
+
     /// No filler, no button. An affordance that leads nowhere is worse than
     /// its absence, and before T237 that is all this screen could have had.
     @Test("a screen with no filler offers no download")
