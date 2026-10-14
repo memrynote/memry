@@ -305,8 +305,12 @@ pushing one adds a second copy of the body, and whichever copy Yjs orders first
 hides the other on every device. So the launch seed pass (`seedExistingDocs`)
 skips every note, the snapshot scheduler reopens a closed note without a seed,
 and the full-state outbox flush reads its state without one. A create push and
-the oversized-update fallback still seed, because for a note the server has
-never seen, the vault file is the only copy of the body. An editor open still
+the oversized-update fallback of a closed note merge the server's body first and
+seed from the vault file only when the server has none, because for a note the
+server has never seen, the vault file is the only copy of the body (#2594). A
+vault file that differs from the merged body is kept as a version by the
+write-back that replaces it. A merge that fails falls back to the seed, and the
+note's unmerged flag routes that push to the non-pruning update endpoint. An editor open still
 seeds too, which is the open fork in #2544.
 
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
