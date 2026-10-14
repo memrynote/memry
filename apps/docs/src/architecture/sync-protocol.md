@@ -1106,7 +1106,11 @@ are gone, desktop uploads its local copy again, holds the new chunks, and the
 push carries the new attachment. A canvas whose holds keep failing waits at
 most five push cycles, or none when the server rejects the request outright,
 then pushes without them as before. Removing an image from a canvas, and the
-30-day release of a deleted canvas, release that canvas's holds. A dereference
+30-day release of a deleted canvas, release that canvas's holds. A device that
+applies a synced scene also releases that canvas's holds on images its rows name
+but the scene no longer shows, about ten seconds later so a pull's newer
+versions land first (#3035). Without this, an image removed on a device that
+never had its row stayed charged forever. A dereference
 that takes a held chunk to zero refunds nothing; the release of its last hold
 does.
 
