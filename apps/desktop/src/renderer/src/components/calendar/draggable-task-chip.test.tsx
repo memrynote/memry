@@ -91,14 +91,29 @@ describe('DraggableTaskChip', () => {
   })
 
   it('registers an event chip as a canvas-entity drag drag-context will ignore', () => {
-    renderChip(makeItem({ sourceType: 'event', sourceId: 'event-1', visualType: 'event' }))
+    const item = makeItem({ sourceType: 'event', sourceId: 'event-1', visualType: 'event' })
+    renderChip(item)
 
     const config = lastDraggableConfig()
     expect(config.data).toEqual({
       type: 'canvas-entity',
       entityType: 'calendar_event',
-      entityId: 'event-1'
+      entityId: 'event-1',
+      calendarItem: item
     })
+  })
+
+  it('omits the reschedule payload from an event the user cannot move', () => {
+    renderChip(
+      makeItem({
+        sourceType: 'event',
+        sourceId: 'event-1',
+        visualType: 'event',
+        editability: { canMove: false, canResize: false, canEditText: false, canDelete: false }
+      })
+    )
+
+    expect(lastDraggableConfig().data).not.toHaveProperty('calendarItem')
   })
 
   it('namespaces the event draggable id so it cannot collide with a task id', () => {

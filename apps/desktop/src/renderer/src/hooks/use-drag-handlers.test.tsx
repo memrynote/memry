@@ -91,6 +91,9 @@ const createDragState = (overrides: Partial<DragState> = {}): DragState => ({
   ...overrides
 })
 
+const mockToast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
+vi.mock('sonner', () => ({ toast: mockToast }))
+
 describe('useDragHandlers', () => {
   it('ignores missing drop targets and exposes no-op drag lifecycle handlers', () => {
     const onUpdateTask = vi.fn()
@@ -1797,6 +1800,34 @@ describe('useDragHandlers', () => {
   })
 
   describe('handleDateDrop time handling', () => {
+    it('ignores a date drop from a non-task drag', () => {
+      const onUpdateTask = vi.fn()
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks: [createTask({ id: 'task-1' })],
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'calendar-date:2026-07-15:preserve',
+              data: { current: { type: 'date', date: new Date('2026-07-15T00:00:00') } }
+            }
+          }),
+          createDragState({ activeIds: [], overType: 'date' })
+        )
+      })
+
+      expect(onUpdateTask).not.toHaveBeenCalled()
+      expect(mockToast.success).not.toHaveBeenCalled()
+    })
+
     it('leaves dueTime untouched when no time option is given', () => {
       const tasks = [
         createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '09:00' })
