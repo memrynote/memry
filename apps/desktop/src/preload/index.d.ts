@@ -1703,7 +1703,9 @@ interface AccountClientAPI {
   refreshBillingStatus: (input?: {
     transactionId?: string
   }) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-  openBillingPortal: () => Promise<BillingActionResult & { portalUrl?: string }>
+  openBillingPortal: () => Promise<
+    BillingActionResult & { portalUrl?: string; reason?: 'no-billing-customer' }
+  >
   previewPlanChange: (
     input: PlanChangeTarget
   ) => Promise<PlanChangePreview | (BillingActionResult & { plan?: never })>
