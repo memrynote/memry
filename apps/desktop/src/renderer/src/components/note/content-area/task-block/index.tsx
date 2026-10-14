@@ -1,5 +1,5 @@
 import { createReactBlockSpec } from '@blocknote/react'
-import { taskBlockConfig } from '@memry/editor-schema/blocks'
+import { blockExternalHTML, taskBlockConfig } from '@memry/editor-schema/blocks'
 import {
   TaskBlockRenderer,
   type TaskBlock,
@@ -21,8 +21,28 @@ const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, h
 // the main process's headless twin cannot disagree; only the React
 // presentation is declared here.
 export const createTaskBlock = createReactBlockSpec(taskBlockConfig, {
-  render: (props) => <TaskBlockRenderer block={props.block as TaskBlock} editor={props.editor} />
+  render: (props) => <TaskBlockRenderer block={props.block as TaskBlock} editor={props.editor} />,
+  toExternalHTML: (props) => <TaskExternalHTML block={props.block as TaskBlock} />
 })
+
+/**
+ * Without this BlockNote exports the rendered row, so ⌘C put its `<style>`
+ * rules and project chip on the clipboard's text/plain (#2659). The shared
+ * package's checkbox line is what main writes to the vault, `{task:<id>}`
+ * included: a task nested under another block serializes through this export,
+ * and dropping the id there would unlink the task on save. The package's nodes
+ * are moved into the `<ul>` this renders, as in `WhiteboardExternalHTML`; the
+ * list stays the outer element so the markdown export keeps the `- [ ]` marker.
+ */
+function TaskExternalHTML({ block }: { block: TaskBlock }): React.JSX.Element {
+  return (
+    <ul
+      ref={(element) => {
+        element?.replaceChildren(...blockExternalHTML.taskBlock(block).dom.childNodes)
+      }}
+    />
+  )
+}
 
 export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
   return {
