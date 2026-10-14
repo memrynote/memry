@@ -11,7 +11,9 @@ import {
   findDatePhrase as findDatePhraseAt,
   findQuickAddSpans as findQuickAddSpansAt,
   hasSpecialSyntax as hasSpecialSyntaxAt,
-  parseQuickAdd as parseQuickAddAt
+  parseQuickAdd as parseQuickAddAt,
+  projectMarker,
+  tagMarker
 } from '@memry/domain-tasks/parsing'
 import type { DatePhraseMatch, ParsedQuickAdd, QuickAddSpan } from '@memry/domain-tasks/parsing'
 
@@ -127,27 +129,21 @@ export const getPriorityOptions = (query: string): AutocompleteOption[] => {
 }
 
 /**
- * Get project options for autocomplete, filtered by query
+ * Get project options for autocomplete, filtered by query. The value is the
+ * marker the parser reads back as that project; a project no marker can name
+ * is not offered.
  */
 export const getProjectOptions = (query: string, projects: Project[]): AutocompleteOption[] => {
-  const activeProjects = projects.filter((p) => !p.isArchived)
-
-  if (!query) {
-    return activeProjects.map((p) => ({
-      value: `+${p.name}`,
-      label: p.name
-    }))
-  }
-
   const lowerQuery = query.toLowerCase()
-  return activeProjects
-    .filter(
-      (p) => p.name.toLowerCase().includes(lowerQuery) || p.id.toLowerCase().includes(lowerQuery)
+  return projects.flatMap((p) => {
+    if (p.isArchived) return []
+    const value = projectMarker(p, projects)
+    if (!value) return []
+    const matches = [p.name, p.id, value.slice(1)].some((text) =>
+      text.toLowerCase().includes(lowerQuery)
     )
-    .map((p) => ({
-      value: `+${p.name}`,
-      label: p.name
-    }))
+    return matches ? [{ value, label: p.name }] : []
+  })
 }
 
 /**
@@ -155,7 +151,10 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
  * existing tags (notes and tasks share it), in the order the caller supplies.
  */
 export const getTagOptions = (query: string, tags: string[]): AutocompleteOption[] => {
-  const options: AutocompleteOption[] = tags.map((tag) => ({ value: `#${tag}`, label: tag }))
+  const options: AutocompleteOption[] = tags.flatMap((tag) => {
+    const value = tagMarker(tag)
+    return value ? [{ value, label: tag }] : []
+  })
 
   if (!query) return options
 
