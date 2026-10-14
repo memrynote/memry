@@ -121,6 +121,17 @@ describe('plain checkboxes, main pipeline', () => {
   })
 })
 
+describe('task ids with emphasis delimiters, main pipeline (#2447)', () => {
+  // Nanoid ids carry `_`; a `_x_` pair inside one parses as emphasis.
+  it.each([
+    '- [ ] Unchecked item {task:pcd1WSKWB_-_0nmlPOLxF}',
+    '- [x] Edge {task:_abc_}',
+    'Intro\n\n- [ ] One {task:x_-_y}\n\n- [ ] Two {task:q_-_r}'
+  ])('keeps the id byte for byte: %s', async (markdown) => {
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+})
+
 describe('golden vault round-trip fixtures, main pipeline', () => {
   // The frontmatter-level byte-preservation of these files is asserted in
   // src/main/vault/byte-preservation.golden.test.ts over the same directory;

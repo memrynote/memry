@@ -371,6 +371,23 @@ function takeSourceTitle(queue: string[] | undefined, plainTitle: string): strin
 }
 
 /**
+ * The id a task line holds in the source, given the id read back from parsed
+ * inline text. Ids are nanoids, whose alphabet has `_`, so the markdown parser
+ * can take a `_` pair inside `{task:pcd_-_0nm}` as emphasis and the plain text
+ * drops it (#2447). Writing that back points the line at a task that does not
+ * exist. The parser only ever removes delimiter characters, so the source id
+ * with the same characters left once those are ignored is the line's real id.
+ */
+function sourceTaskId(sourceIds: Iterable<string>, parsedId: string): string | null {
+  const bare = (id: string): string => id.replace(/[_*]/g, '')
+  const wanted = bare(parsedId)
+  for (const id of sourceIds) {
+    if (bare(id) === wanted) return id
+  }
+  return null
+}
+
+/**
  * `source` is the markdown `blocks` were parsed from, or null for blocks that
  * did not come from markdown. Without it a title keeps only its plain text.
  */
@@ -414,10 +431,14 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       if (!parsed) return block
 
       didChange = true
-      const title = takeSourceTitle(sourceTitles?.get(parsed.taskId), parsed.title) ?? parsed.title
+      const taskId =
+        sourceTitles && !sourceTitles.has(parsed.taskId)
+          ? (sourceTaskId(sourceTitles.keys(), parsed.taskId) ?? parsed.taskId)
+          : parsed.taskId
+      const title = takeSourceTitle(sourceTitles?.get(taskId), parsed.title) ?? parsed.title
 
       const processedChildren = block.children?.length
-        ? processBlocks(block.children as T[], parsed.taskId)
+        ? processBlocks(block.children as T[], taskId)
         : []
 
       // BlockNote's checkListItem exposes its state as `checked`; older callers
@@ -427,7 +448,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       const taskBlock = {
         type: 'taskBlock',
         props: {
-          taskId: parsed.taskId,
+          taskId,
           title,
           checked,
           parentTaskId
