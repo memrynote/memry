@@ -1130,6 +1130,7 @@
         "keyboardShortcuts": "Open keyboard shortcuts",
         "undoTaskAction": "Undo last task action",
         "toggleSidebar": "Toggle the sidebar",
+        "toggleDayPanel": "Toggle the day panel",
         "sidebarSection": "Go to sidebar section"
       },
       "tabs": {

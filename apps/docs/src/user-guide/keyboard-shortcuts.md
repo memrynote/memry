@@ -94,6 +94,7 @@ cell on <kbd>Esc</kbd>. See
 | Action                         | Shortcut                                               |
 | ------------------------------ | ------------------------------------------------------ |
 | Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                              |
+| Toggle day panel               | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>B</kbd>                 |
 | Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd>              |
 | Zoom in                        | <kbd>⌘</kbd>+<kbd>=</kbd> or <kbd>⌘</kbd>+<kbd>+</kbd> |
 | Zoom out                       | <kbd>⌘</kbd>+<kbd>-</kbd>                              |
