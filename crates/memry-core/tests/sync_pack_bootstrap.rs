@@ -293,6 +293,45 @@ async fn a_resumed_run_skips_packs_at_or_below_the_watermark() {
     assert_eq!(report.applied_through_cursor, None);
 }
 
+/// iOS suspends a first sync mid-run. Packs go newest first, so the
+/// contiguity watermark cannot cover a newer pack until the oldest finishes;
+/// a pack that did finish must not be downloaded again on resume.
+#[tokio::test]
+async fn a_resumed_run_does_not_redownload_a_pack_finished_before_suspension() {
+    let db = scratch_db("suspend");
+    let two_packs = json!({
+        "packs": [
+            {"id": "new", "itemKind": "crdt_snapshot", "maxCursor": 80,
+             "url": "https://r2.example/packs/new", "expiresAt": 4_000_000_000i64},
+            {"id": "old", "itemKind": "crdt_snapshot", "maxCursor": 40,
+             "url": "https://r2.example/packs/old", "expiresAt": 4_000_000_000i64}
+        ]
+    })
+    .to_string();
+    let empty = || mpak(&[(NOTE, None, vec![1])]);
+
+    // First run: the newest pack lands, then the run is cut off before the
+    // oldest one (here: its download is refused).
+    let transport = FakeTransport::new(vec![
+        response(200, &two_packs),
+        bytes_response(empty()),
+        response(403, r#"{"error":"denied"}"#),
+    ]);
+    let report = bootstrap(&db, transport).run(1_000).await.expect("run");
+    assert_eq!(report.packs_applied, 1);
+    assert_eq!(report.applied_through_cursor, None);
+
+    // Resume: only the oldest pack is scripted; re-fetching `new` panics.
+    let transport = FakeTransport::new(vec![response(200, &two_packs), bytes_response(empty())]);
+    let report = bootstrap(&db, transport.clone())
+        .run(1_000)
+        .await
+        .expect("run");
+    assert!(transport.calls_to("/packs/new").is_empty());
+    assert_eq!(report.packs_applied, 1);
+    assert_eq!(report.applied_through_cursor, Some(80));
+}
+
 #[tokio::test]
 async fn an_old_server_or_a_corrupt_pack_falls_back_without_a_watermark() {
     let db = scratch_db("fallback");
