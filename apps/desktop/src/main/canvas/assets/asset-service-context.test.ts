@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+import type * as AssetService from './asset-service'
+
 // vi.mock factories are hoisted above the file body, so the mock fns they reference
 // must come from vi.hoisted() (which runs first) — a plain top-level `const` would not
 // be initialized yet when the factory executes.
@@ -14,7 +16,10 @@ const {
   resolveSyncServerUrl,
   markWritebackIgnored,
   trackMainEvent,
-  dereferenceChunks
+  dereferenceChunks,
+  getCanvasFilePath,
+  readCanvasScene,
+  releaseHoldsNotInScene
 } = vi.hoisted(() => ({
   isDatabaseInitialized: vi.fn(),
   getDatabase: vi.fn(),
@@ -26,7 +31,10 @@ const {
   resolveSyncServerUrl: vi.fn(),
   markWritebackIgnored: vi.fn(),
   trackMainEvent: vi.fn(),
-  dereferenceChunks: vi.fn()
+  dereferenceChunks: vi.fn(),
+  getCanvasFilePath: vi.fn(),
+  readCanvasScene: vi.fn(),
+  releaseHoldsNotInScene: vi.fn()
 }))
 
 vi.mock('../../database/client', () => ({ isDatabaseInitialized, getDatabase }))
@@ -39,8 +47,17 @@ vi.mock('@memry/sync-client/sync-server-url', () => ({ resolveSyncServerUrl }))
 vi.mock('../../sync/crdt-writeback', () => ({ markWritebackIgnored }))
 vi.mock('../../telemetry/track', () => ({ trackMainEvent }))
 vi.mock('./attachment-dereference', () => ({ dereferenceChunks }))
+vi.mock('../store', () => ({ getCanvasFilePath, readCanvasScene }))
+vi.mock('./asset-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof AssetService>()),
+  releaseHoldsNotInScene
+}))
 
-import { buildAssetServiceContext, canUploadCanvasAssets } from './asset-service-context'
+import {
+  buildAssetServiceContext,
+  canUploadCanvasAssets,
+  releaseUnshownCanvasHolds
+} from './asset-service-context'
 
 describe('buildAssetServiceContext', () => {
   const fakeDb = { marker: 'db' }
@@ -192,5 +209,44 @@ describe('canUploadCanvasAssets', () => {
     getValidAccessToken.mockResolvedValue('token-abc')
 
     await expect(canUploadCanvasAssets()).resolves.toBe(true)
+  })
+})
+
+// #3035: the post-apply release reads the canvas's current scene off disk.
+describe('releaseUnshownCanvasHolds', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    isDatabaseInitialized.mockReturnValue(true)
+    getVaultStatus.mockReturnValue({ path: '/vault/path' })
+    getDatabase.mockReturnValue({ marker: 'db' })
+    getOrCreateVaultUuid.mockReturnValue('vault-uuid-1')
+    releaseHoldsNotInScene.mockResolvedValue({ ok: true })
+  })
+
+  it('releases against the scene currently on disk', async () => {
+    getCanvasFilePath.mockReturnValue('canvases/c1.excalidraw')
+    readCanvasScene.mockReturnValue('{"scene":1}')
+
+    await releaseUnshownCanvasHolds('c1')
+
+    expect(readCanvasScene).toHaveBeenCalledWith('/vault/path', 'canvases/c1.excalidraw')
+    expect(releaseHoldsNotInScene).toHaveBeenCalledWith(expect.anything(), 'c1', '{"scene":1}')
+  })
+
+  it('keeps the holds of a deleted canvas', async () => {
+    getCanvasFilePath.mockReturnValue(null)
+
+    await releaseUnshownCanvasHolds('c1')
+
+    expect(releaseHoldsNotInScene).not.toHaveBeenCalled()
+  })
+
+  it('never throws when the release fails', async () => {
+    getCanvasFilePath.mockReturnValue('canvases/c1.excalidraw')
+    readCanvasScene.mockReturnValue('{}')
+    releaseHoldsNotInScene.mockResolvedValueOnce({ ok: false })
+    await expect(releaseUnshownCanvasHolds('c1')).resolves.toBeUndefined()
+    releaseHoldsNotInScene.mockRejectedValueOnce(new Error('boom'))
+    await expect(releaseUnshownCanvasHolds('c1')).resolves.toBeUndefined()
   })
 })
