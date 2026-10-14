@@ -106,9 +106,9 @@ the synced copy.
 
 ## In Exports
 
-A note exported to PDF or HTML carries its custom icon inside the file, above the title, so the
-export still shows it once it leaves your vault. Icons from the **Icons** tab are left out of
-exports for now; emoji export as before.
+A note exported to PDF or HTML carries its icon inside the file, above the title, so the export
+still shows it once it leaves your vault. This covers custom icons, icons from the **Icons** tab,
+and emoji.
 
 ## Deleting an Icon
 
