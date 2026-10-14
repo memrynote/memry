@@ -31,6 +31,7 @@
 //! contains and [`super::update_log::load_plan`] would never read again.
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -192,6 +193,10 @@ pub enum SnapshotError {
         #[from]
         source: CrdtError,
     },
+    /// The batch route answered `accepted: false` for this document with a
+    /// reason other than `CRDT_SNAPSHOT_NOT_COVERED`. Nothing was stored.
+    #[error("the server rejected the snapshot: {reason}")]
+    Rejected { reason: String },
     #[error("could not seal the snapshot: {source}")]
     Seal {
         #[from]
@@ -199,9 +204,20 @@ pub enum SnapshotError {
     },
 }
 
+/// A document that passed every check, encoded and sealed, with its request
+/// entry built.
+pub(super) struct Prepared {
+    pub(super) doc_id: String,
+    state: Vec<u8>,
+    pub(super) payload: Json,
+}
+
 /// The snapshot writer. One per vault.
 pub struct SnapshotPusher {
-    http: Arc<HttpClient>,
+    /// Latched on the first 404 from `POST /sync/crdt/snapshot/batch`: a
+    /// server older than #1857 has only the single-note route.
+    pub(super) batch_unsupported: AtomicBool,
+    pub(super) http: Arc<HttpClient>,
     db: Db,
     sealer: Arc<dyn SnapshotSealer>,
     declaration: Declaration,
@@ -216,6 +232,7 @@ impl SnapshotPusher {
         declaration: Declaration,
     ) -> Self {
         Self {
+            batch_unsupported: AtomicBool::new(false),
             http,
             db,
             sealer,
@@ -241,6 +258,49 @@ impl SnapshotPusher {
         gate: SnapshotGate,
         now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
+        let prepared = match self.prepare(document, gate).await? {
+            Ok(prepared) => prepared,
+            Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
+        };
+        self.push_prepared(prepared, now_ms).await
+    }
+
+    /// The single-note request for a document [`Self::prepare`] passed.
+    pub(super) async fn push_prepared(
+        &self,
+        prepared: Prepared,
+        now_ms: i64,
+    ) -> Result<SnapshotOutcome, SnapshotError> {
+        let request = self
+            .request("POST", "/sync/crdt/snapshot")
+            // §7.10: every CRDT request is `maxRetries: 3`, `baseDelayMs:
+            // 2000`, `retryOn429: false`.
+            .retry(RetryPolicy::polled())
+            .json(&prepared.payload);
+        let body: Json = match self.http.send_json(request).await {
+            Ok(body) => body,
+            // The stored snapshot holds state this push does not cover. Owing
+            // the document a pull refuses every push until a pull (which takes
+            // that snapshot, its revision being unknown here) settles it.
+            Err(ApiError::Status {
+                status: 409,
+                code: Some(code),
+                ..
+            }) if code == CRDT_SNAPSHOT_NOT_COVERED => {
+                return self.not_covered(prepared.doc_id).await;
+            }
+            Err(error) => return Err(error.into()),
+        };
+        self.settle(prepared, &body, now_ms).await
+    }
+
+    /// Every check of §7.13.2, then the encode and the seal. `Err(refusal)`
+    /// means no endpoint may be called for this document.
+    pub(super) async fn prepare(
+        &self,
+        document: &Document,
+        gate: SnapshotGate,
+    ) -> Result<Result<Prepared, Refusal>, SnapshotError> {
         // §7.13.2 condition 1, from the durable side: a document owed a
         // whole-body pull has not merged the updates this snapshot would
         // prune, whatever the caller's gate says.
@@ -261,7 +321,7 @@ impl SnapshotPusher {
             })
             .await?;
         if owed {
-            return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
+            return Ok(Err(Refusal::UnmergedRemoteState));
         }
         // The other half: a settled debt means the rows are in the log, not
         // that this resident document has loaded them. A feed page can land
@@ -276,18 +336,18 @@ impl SnapshotPusher {
             })
             .await?;
         if !holds_every_logged_update(document, &plan)? {
-            return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
+            return Ok(Err(Refusal::UnmergedRemoteState));
         }
         let state = match gate.check(document)? {
             Ok(state) => state,
-            Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
+            Err(refusal) => return Ok(Err(refusal)),
         };
         let doc_id = document.id().to_owned();
         let packed = self.sealer.seal_snapshot(&doc_id, &state)?;
 
-        // §7.3's field name, §7.4's request shape for the sibling route: one
-        // document per call, the payload base64 of the same packed envelope an
-        // update travels in (§7.11).
+        // §7.3's field name, §7.4's request shape: the payload base64 of the
+        // same packed envelope an update travels in (§7.11). The batch route
+        // takes this exact object as one entry of `snapshots`.
         let mut payload = json!({ "noteId": doc_id, "snapshot": BASE64.encode(&packed) });
         if let Some(covers_through) = covers_through {
             payload["coversThrough"] = json!(covers_through);
@@ -295,29 +355,31 @@ impl SnapshotPusher {
                 payload["baseRevision"] = json!(base);
             }
         }
-        let request = self
-            .request("POST", "/sync/crdt/snapshot")
-            // §7.10: every CRDT request is `maxRetries: 3`, `baseDelayMs:
-            // 2000`, `retryOn429: false`.
-            .retry(RetryPolicy::polled())
-            .json(&payload);
-        let body: Json = match self.http.send_json(request).await {
-            Ok(body) => body,
-            // The stored snapshot holds state this push does not cover. Owing
-            // the document a pull refuses every push until a pull (which takes
-            // that snapshot, its revision being unknown here) settles it.
-            Err(ApiError::Status {
-                status: 409,
-                code: Some(code),
-                ..
-            }) if code == CRDT_SNAPSHOT_NOT_COVERED => {
-                let id = doc_id.clone();
-                self.db.call(move |conn| body_debt::owe(conn, &id)).await?;
-                return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
-            }
-            Err(error) => return Err(error.into()),
-        };
+        Ok(Ok(Prepared {
+            doc_id,
+            state,
+            payload,
+        }))
+    }
 
+    /// A `CRDT_SNAPSHOT_NOT_COVERED` refusal: the document is owed a pull.
+    pub(super) async fn not_covered(
+        &self,
+        doc_id: String,
+    ) -> Result<SnapshotOutcome, SnapshotError> {
+        self.db
+            .call(move |conn| body_debt::owe(conn, &doc_id))
+            .await?;
+        Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState))
+    }
+
+    /// Stores what an accepting response answered, then prunes.
+    pub(super) async fn settle(
+        &self,
+        prepared: Prepared,
+        body: &Json,
+        now_ms: i64,
+    ) -> Result<SnapshotOutcome, SnapshotError> {
         // §7.4: the server assigns the sequence number and a client never
         // proposes one. §7.6: on a document that already had a snapshot this
         // is the *original* watermark coming back, not a new one.
@@ -327,8 +389,8 @@ impl SnapshotPusher {
             .and_then(Json::as_str)
             .map(str::to_owned);
 
-        let stored_doc_id = doc_id.clone();
-        let pruned = self
+        let Prepared { doc_id, state, .. } = prepared;
+        let (sequence_num, pruned) = self
             .db
             .call(move |conn| {
                 let pushed = PushedSnapshot {
@@ -336,17 +398,17 @@ impl SnapshotPusher {
                     answered,
                     revision: revision.as_deref(),
                 };
-                store_pushed_snapshot(conn, &stored_doc_id, pushed, now_ms)
+                store_pushed_snapshot(conn, &doc_id, pushed, now_ms)
             })
             .await?;
 
         Ok(SnapshotOutcome::Pushed {
-            sequence_num: pruned.0,
-            pruned: pruned.1,
+            sequence_num,
+            pruned,
         })
     }
 
-    fn request(&self, method: &str, path: &str) -> ApiRequest {
+    pub(super) fn request(&self, method: &str, path: &str) -> ApiRequest {
         let mut request = ApiRequest::new(method, path)
             .auth(Auth::Session)
             // §7.2: the CRDT routes sit behind the same sync-types middleware
