@@ -198,6 +198,13 @@ dir, `NODE_ENV=test`, and an `e2e-agent-<uuid>` device, so real profiles, vaults
 accounts are never opened. `stop` removes the temp dirs and the run's keychain items. It refuses
 to start when native modules are built for Node instead of Electron.
 
+Two optional variables change what `start` opens:
+
+- `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of that vault instead of the E2E test vault.
+  The copy keeps the folder's name, which the sidebar shows. The template itself is never opened.
+- `MEMRY_AGENT_SCALE=2` renders at a forced 2x device scale, so screenshots and screencasts stay
+  sharp on a 1x display. Tutorial recordings under `marketing/tutorials/` use both.
+
 The renderer is driven by the official Playwright MCP (`playwright-memry` in `.pi/mcp.json`,
 connected with `--cdp-endpoint`). The main process is read with `eval`, which runs an expression
 over the Node inspector. Under `NODE_ENV=test`, `globalThis.__memryDebug` exposes read-only SQL on
