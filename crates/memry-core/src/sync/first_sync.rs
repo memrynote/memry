@@ -58,6 +58,7 @@ use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::first_sync_store::{pending_metadata_ids, read_meta, recent_document_ids, write_meta};
 use super::note_body_feed;
+use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 
 mod body_pass;
 
@@ -143,6 +144,7 @@ pub struct FirstSyncReport {
     pub tombstones: usize,
     pub metadata_applied: usize,
     pub metadata_corrupt: usize,
+    pub packs: PackBootstrapReport,
     pub bodies: BodyPullReport,
     /// The window boundary this run used, epoch milliseconds.
     pub window_start: i64,
@@ -183,6 +185,7 @@ pub struct FirstSync {
     bodies: Arc<BodyPull>,
     db: Db,
     bootstrap: Option<Arc<BootstrapClient>>,
+    packs: Option<Arc<PackBootstrap>>,
     progress: Arc<dyn ProgressSink>,
 }
 
@@ -193,6 +196,7 @@ impl FirstSync {
             bodies,
             db,
             bootstrap: None,
+            packs: None,
             progress: Arc::new(SilentProgress),
         }
     }
@@ -200,6 +204,13 @@ impl FirstSync {
     /// §10.6: a client SHOULD open a session, and every failure is silent.
     pub fn with_bootstrap(mut self, bootstrap: Arc<BootstrapClient>) -> Self {
         self.bootstrap = Some(bootstrap);
+        self
+    }
+
+    /// Seeds body baselines from `crdt_snapshot` packs before the bodies
+    /// pass, so it skips their snapshot GETs. Every pack failure falls back.
+    pub fn with_packs(mut self, packs: Arc<PackBootstrap>) -> Self {
+        self.packs = Some(packs);
         self
     }
 
@@ -239,6 +250,10 @@ impl FirstSync {
 
         self.refs_pass(tail_cursor, &mut report).await?;
         self.metadata_pass(&mut report).await?;
+        // After refs, so a tombstoned document is known and never seeded.
+        if let Some(packs) = &self.packs {
+            report.packs = packs.run(now_ms / 1_000).await?;
+        }
         self.bodies_pass(report.window_start, &mut report).await?;
 
         self.db

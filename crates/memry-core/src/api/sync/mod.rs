@@ -75,6 +75,7 @@ use crate::sync::first_sync::{
     META_FIRST_SYNC_COMPLETED, ProgressSink,
 };
 use crate::sync::first_sync_store::read_meta;
+use crate::sync::pack_bootstrap::PackBootstrap;
 use crate::sync::pull::PullLoop;
 use crate::sync::socket_run::TerminalLatch;
 
@@ -412,7 +413,13 @@ impl VaultSync {
             .with_bootstrap(Arc::clone(&bootstrap)),
         );
 
-        let mut run = FirstSync::new(pull, bodies, self.db.clone()).with_bootstrap(bootstrap);
+        let packs = Arc::new(
+            PackBootstrap::new(Arc::clone(&http), self.db.clone(), Arc::clone(&bodies))
+                .with_vault(&self.vault_id),
+        );
+        let mut run = FirstSync::new(pull, bodies, self.db.clone())
+            .with_bootstrap(bootstrap)
+            .with_packs(packs);
         if let Some(listener) = progress {
             run = run.with_progress(Arc::new(ForeignProgress(listener)));
         }

@@ -88,6 +88,10 @@ impl DeviceDirectory {
         self.keys.get(device_id).map(Vec::as_slice)
     }
 
+    pub fn device_ids(&self) -> Vec<String> {
+        self.keys.keys().cloned().collect()
+    }
+
     pub fn len(&self) -> usize {
         self.keys.len()
     }
@@ -315,6 +319,10 @@ impl crate::sync::body_pull::CrdtCipher for AccountCipher {
             &self.vault_key,
             signer,
         )
+    }
+
+    fn signer_candidates(&self) -> Vec<String> {
+        self.directory.device_ids()
     }
 }
 

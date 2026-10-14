@@ -68,7 +68,10 @@ use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use super::store;
 
+mod pack_seed;
 mod probe;
+
+pub use pack_seed::PackSeed;
 
 /// §7.3: the client's own page size for a sweep, matching the reference's
 /// `CRDT_UPDATES_PAGE_LIMIT`.
@@ -108,6 +111,16 @@ pub struct PackedUpdate<'a> {
 /// directory is not this task's.
 pub trait CrdtCipher: Send + Sync {
     fn open(&self, update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError>;
+
+    /// Every device id whose key [`Self::open`] can resolve.
+    ///
+    /// A pack's index carries no signer (chapter 08 §8.3), so a packed
+    /// snapshot is opened against each of these in turn, as desktop's
+    /// `crdt-snapshot-applier` does. Empty means packed snapshots cannot be
+    /// verified here and every note keeps its item-granular baseline GET.
+    fn signer_candidates(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
