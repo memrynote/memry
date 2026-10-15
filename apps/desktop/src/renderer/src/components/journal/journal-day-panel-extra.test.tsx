@@ -192,7 +192,7 @@ describe('JournalDayPanel extra coverage', () => {
     expect(screen.getByText('Planning')).toBeInTheDocument()
     expect(screen.getByText('Partner call')).toBeInTheDocument()
     expect(screen.getByText('Take medicine')).toBeInTheDocument()
-    expect(screen.getByText('-1h30m')).toBeInTheDocument()
+    expect(screen.queryByText('Done task')).not.toBeInTheDocument()
     expect(screen.getByText('Ship tests')).toBeInTheDocument()
     expect(screen.getByText('subtasks:1/3')).toBeInTheDocument()
 
@@ -201,9 +201,6 @@ describe('JournalDayPanel extra coverage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'toggle status' })[0])
     expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-1' })
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'toggle status' })[1])
-    expect(mocks.uncomplete).toHaveBeenCalledWith('task-2')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'set done' })[0])
     expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', statusId: 'done' })
@@ -223,11 +220,11 @@ describe('JournalDayPanel extra coverage', () => {
     expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'tasks' }))
   })
 
-  it('returns null without content and collapses populated content from the header', () => {
+  it('keeps an empty day on screen as a drop target and collapses from the header', () => {
     mocks.scheduleItems = []
     mocks.tasks = []
-    const { container, rerender } = render(<JournalDayPanel date="2026-05-11" />)
-    expect(container).toBeEmptyDOMElement()
+    const { rerender } = render(<JournalDayPanel date="2026-05-11" />)
+    expect(screen.getByTestId('day-timeline')).toBeInTheDocument()
 
     mocks.scheduleItems = [
       {

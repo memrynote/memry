@@ -2,10 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
-import type {
-  CalendarProjectionItem,
-  CalendarProjectionVisualType
-} from '@/services/calendar-service'
 import {
   tasksService,
   onTaskCreated,
@@ -16,32 +12,18 @@ import {
 } from '@/services/tasks-service'
 import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
-import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
-import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
-import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import type { Priority } from '@/data/task-model'
-import type { Status, Project } from '@/data/tasks-data'
+import type { Project } from '@/data/tasks-data'
 import { ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
-import { getEventBaseColor } from '@/lib/event-type-colors'
 import { localDayRange } from '@/lib/local-day-range'
-import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
-import { externalEventSourceLabel } from '@/lib/calendar-external-items'
+import { DayTimeline } from '@/components/day-panel/day-timeline/day-timeline'
+import { DayTaskList } from '@/components/day-panel/day-timeline/unscheduled-task-list'
 
 const log = createLogger('JournalDayPanel')
-
-const PRIORITY_NUM_TO_KEY: Record<number, Priority> = {
-  0: 'none',
-  1: 'low',
-  2: 'medium',
-  3: 'high',
-  4: 'urgent'
-}
-
-const COMPLETED_COLOR = '#7B9E87'
 
 const PRIORITY_REVERSE_MAP: Record<Priority, number> = {
   none: 0,
@@ -49,182 +31,6 @@ const PRIORITY_REVERSE_MAP: Record<Priority, number> = {
   medium: 2,
   high: 3,
   urgent: 4
-}
-
-type ScheduleRowKind = Exclude<CalendarProjectionVisualType, 'task'>
-
-interface ScheduleEvent {
-  id: string
-  startAt: string
-  timeLabel: string | null
-  title: string
-  kind: ScheduleRowKind
-  label: string | null
-}
-
-function formatScheduleTimeLabel(
-  startAt: string,
-  endAt: string | null,
-  isAllDay: boolean,
-  clockFormat: ClockFormat
-): string | null {
-  if (isAllDay) return null
-  const start = new Date(startAt)
-  const startLabel = formatTimeOfDay(start, clockFormat)
-  if (!endAt) return startLabel
-  const end = new Date(endAt)
-  if (end.getTime() <= start.getTime()) return startLabel
-  const endLabel = formatTimeOfDay(end, clockFormat)
-  const sameLocalDay =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate()
-  return sameLocalDay ? `${startLabel} - ${endLabel}` : `${startLabel} - ${endLabel} (+1)`
-}
-
-function formatSnoozeOffset(minutes: number): string {
-  const sign = minutes >= 0 ? '+' : '-'
-  const abs = Math.abs(minutes)
-  if (abs < 60) return `${sign}${abs}m`
-
-  const hours = Math.floor(abs / 60)
-  const rem = abs % 60
-  if (rem === 0) return `${sign}${hours}h`
-  return `${sign}${hours}h${rem}m`
-}
-
-function getScheduleLabel(item: CalendarProjectionItem): string | null {
-  switch (item.visualType) {
-    case 'event':
-      return null
-    case 'external_event':
-      return externalEventSourceLabel(item.source)
-    case 'reminder':
-      return item.snoozeOffsetMinutes !== null ? formatSnoozeOffset(item.snoozeOffsetMinutes) : null
-    case 'snooze':
-      return 'inbox'
-    default:
-      return null
-  }
-}
-
-function toScheduleEvent(
-  item: CalendarProjectionItem,
-  clockFormat: ClockFormat
-): ScheduleEvent | null {
-  if (item.visualType === 'task') return null
-
-  return {
-    id: item.projectionId,
-    startAt: item.startAt,
-    timeLabel: formatScheduleTimeLabel(item.startAt, item.endAt, item.isAllDay, clockFormat),
-    title: item.title,
-    kind: item.visualType,
-    label: getScheduleLabel(item)
-  }
-}
-
-interface TaskRowProps {
-  task: TaskListItem
-  statuses: Status[]
-  onToggleComplete: (id: string, isCompleted: boolean) => void
-  onStatusChange: (id: string, statusId: string) => void
-  onPriorityChange: (id: string, priority: Priority) => void
-  onNavigate: (taskId: string, projectId: string) => void
-}
-
-function TaskRow({
-  task,
-  statuses,
-  onToggleComplete,
-  onStatusChange,
-  onPriorityChange,
-  onNavigate
-}: TaskRowProps) {
-  const isCompleted = !!task.completedAt
-  const priority = PRIORITY_NUM_TO_KEY[task.priority] ?? 'none'
-  const statusColor = isCompleted
-    ? COMPLETED_COLOR
-    : (statuses.find((s) => s.id === task.statusId)?.color ?? '#A0A0A8')
-
-  return (
-    <div
-      className="flex flex-col gap-0.5 py-[5px] -mx-1.5 px-1.5 rounded-md transition-colors hover:bg-accent/60 cursor-pointer"
-      onClick={() => onNavigate(task.id, task.projectId)}
-    >
-      <div className="flex items-center gap-2 w-full">
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlineStatusPopover
-            statusId={task.statusId ?? ''}
-            statuses={statuses}
-            isCompleted={isCompleted}
-            onStatusChange={(sid) => onStatusChange(task.id, sid)}
-            onToggleComplete={() => onToggleComplete(task.id, isCompleted)}
-          />
-        </div>
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlinePriorityPopover
-            priority={priority}
-            onPriorityChange={(p) => onPriorityChange(task.id, p)}
-          />
-        </div>
-        <span
-          className={cn(
-            'text-[13px] font-medium truncate min-w-0 text-start',
-            isCompleted
-              ? 'text-muted-foreground/60 line-through [text-underline-position:from-font]'
-              : 'text-foreground/90'
-          )}
-        >
-          {task.title}
-        </span>
-      </div>
-
-      {(task.subtaskCount ?? 0) > 0 && (
-        <div className="ps-[52px]">
-          <SubtaskProgressIndicator
-            completed={task.completedSubtaskCount ?? 0}
-            total={task.subtaskCount ?? 0}
-            accentColor={statusColor}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface ScheduleRowProps {
-  event: ScheduleEvent
-  onHoverColor?: (color: string | null) => void
-}
-
-function ScheduleRow({ event, onHoverColor }: ScheduleRowProps) {
-  const borderColor = getEventBaseColor(event.kind)
-
-  return (
-    <div
-      className="flex flex-col gap-0.5 rounded-e border-s-2 py-1 ps-2.5 transition-colors hover:bg-accent/40"
-      style={{ borderColor }}
-      onMouseEnter={() => onHoverColor?.(borderColor)}
-      onMouseLeave={() => onHoverColor?.(null)}
-    >
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-          {event.title}
-        </span>
-        {event.label && (
-          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {event.label}
-          </span>
-        )}
-      </div>
-      {event.timeLabel && (
-        <span className="font-mono text-[11px] tabular-nums text-muted-foreground/60">
-          {event.timeLabel}
-        </span>
-      )}
-    </div>
-  )
 }
 
 interface JournalDayPanelProps {
@@ -237,7 +43,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
   const { t, i18n } = useT('journal')
   const { isEnabled } = useFeatureFlags()
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const { projects } = useTasksContext()
+  const { projects, tasks: workspaceTasks } = useTasksContext()
   const { openTab } = useTabActions()
   const queryClient = useQueryClient()
   const { settings } = useGeneralSettings()
@@ -258,18 +64,9 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
 
   const isToday = date === today
 
-  const schedule = useMemo(
-    () =>
-      scheduleQuery.items
-        .map((item) => toScheduleEvent(item, clockFormat))
-        .filter((event): event is ScheduleEvent => event !== null)
-        .sort((a, b) => a.startAt.localeCompare(b.startAt)),
-    [scheduleQuery.items, clockFormat]
-  )
-
   useEffect(() => {
     onHoverColor?.(null)
-  }, [schedule, onHoverColor])
+  }, [scheduleQuery.items, onHoverColor])
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['journal-day-panel', 'tasks', date],
@@ -385,9 +182,38 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     [openTab, t]
   )
 
-  const hasContent =
-    (isEnabled('calendar') && schedule.length > 0) || (isEnabled('tasks') && tasks.length > 0)
-  if (!hasContent) return null
+  const handleOpenTimelineTask = useCallback(
+    (taskId: string) => {
+      const projectId = workspaceTasks.find((task) => task.id === taskId)?.projectId ?? ''
+      handleNavigateToTask(taskId, projectId)
+    },
+    [workspaceTasks, handleNavigateToTask]
+  )
+
+  const handleCompleteTimelineTask = useCallback(
+    (taskId: string) => void handleToggleComplete(taskId, false),
+    [handleToggleComplete]
+  )
+
+  const handleResizeTask = useCallback(async (id: string, durationMinutes: number) => {
+    try {
+      await tasksService.update({ id, durationMinutes })
+    } catch (err) {
+      log.error('Failed to resize task', err)
+    }
+  }, [])
+
+  const showTimeline = isEnabled('calendar')
+  const showTasks = isEnabled('tasks')
+  const listedTasks = showTimeline
+    ? tasks.filter((task) => !task.dueTime && !task.completedAt)
+    : tasks
+  const statusesFor = useCallback(
+    (projectId: string) => projectMap.get(projectId)?.statuses ?? [],
+    [projectMap]
+  )
+
+  if (!showTimeline && !(showTasks && tasks.length > 0)) return null
 
   return (
     <div className={cn('[font-synthesis:none] flex flex-col gap-2.5 antialiased', className)}>
@@ -401,7 +227,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         </span>
         <ChevronDown
           className={cn(
-            'size-4 text-foreground/70 shrink-0 transition-transform duration-200',
+            'size-4 text-foreground/70 shrink-0 transition-transform duration-200 motion-reduce:transition-none',
             !isCollapsed && 'rotate-180'
           )}
         />
@@ -409,21 +235,29 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
 
       {!isCollapsed && (
         <>
-          {isEnabled('calendar') && schedule.length > 0 && (
-            <div className="flex flex-col gap-1">
-              {schedule.map((event) => (
-                <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
-              ))}
-            </div>
+          {showTimeline && (
+            <DayTimeline
+              date={date}
+              items={scheduleQuery.items}
+              includeTasks={showTasks}
+              clockFormat={clockFormat}
+              onCompleteTask={handleCompleteTimelineTask}
+              onOpenTask={handleOpenTimelineTask}
+              onResizeTask={(...args) => void handleResizeTask(...args)}
+              onHoverColor={onHoverColor}
+            />
           )}
 
-          {isEnabled('tasks') && tasks.length > 0 && (
-            <div className="flex flex-col pt-1 gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">
-                  {t('section.tasks')}
-                </span>
-                {overdueCount > 0 && isToday && (
+          {showTasks && (
+            <DayTaskList
+              date={date}
+              title={showTimeline ? t('dayTimeline.unscheduled') : t('section.tasks')}
+              tasks={listedTasks}
+              statusesFor={statusesFor}
+              schedulable={showTimeline}
+              headerAccessory={
+                overdueCount > 0 &&
+                isToday && (
                   <button
                     type="button"
                     onClick={handleNavigateToOverdue}
@@ -434,24 +268,15 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
                       {t('count.overdue', { count: overdueCount })}
                     </span>
                   </button>
-                )}
-              </div>
-              {tasks.map((task) => {
-                const proj = projectMap.get(task.projectId)
-                const statuses = proj?.statuses ?? []
-                return (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    statuses={statuses}
-                    onToggleComplete={(...args) => void handleToggleComplete(...args)}
-                    onStatusChange={(...args) => void handleStatusChange(...args)}
-                    onPriorityChange={(...args) => void handlePriorityChange(...args)}
-                    onNavigate={handleNavigateToTask}
-                  />
                 )
-              })}
-            </div>
+              }
+              handlers={{
+                onToggleComplete: (...args) => void handleToggleComplete(...args),
+                onStatusChange: (...args) => void handleStatusChange(...args),
+                onPriorityChange: (...args) => void handlePriorityChange(...args),
+                onNavigate: handleNavigateToTask
+              }}
+            />
           )}
         </>
       )}

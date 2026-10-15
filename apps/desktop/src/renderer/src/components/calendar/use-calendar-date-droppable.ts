@@ -10,6 +10,8 @@ export interface CalendarDateDroppableArgs {
    * 'slot'     — timed column: the time is resolved from the pointer at drop time.
    */
   timeBehavior: 'preserve' | 'clear' | 'slot'
+  /** Keeps the id unique when another surface registers a cell for the same date. */
+  scope?: string
 }
 
 export interface CalendarDateDroppableResult {
@@ -26,10 +28,11 @@ export interface CalendarDateDroppableResult {
  */
 export function useCalendarDateDroppable({
   date,
-  timeBehavior
+  timeBehavior,
+  scope = 'calendar-date'
 }: CalendarDateDroppableArgs): CalendarDateDroppableResult {
   const { setNodeRef, isOver } = useDroppable({
-    id: `calendar-date:${date}:${timeBehavior}`,
+    id: `${scope}:${date}:${timeBehavior}`,
     data: {
       type: 'date',
       date: parseDateKey(date),

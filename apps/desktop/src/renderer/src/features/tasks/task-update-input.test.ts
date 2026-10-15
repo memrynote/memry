@@ -20,6 +20,18 @@ describe('toTaskUpdateInput', () => {
     })
   })
 
+  it('sends a duration edit and leaves an untouched duration out', () => {
+    expect(toTaskUpdateInput('task-1', { dueTime: '09:00', durationMinutes: 30 })).toEqual({
+      id: 'task-1',
+      dueTime: '09:00',
+      durationMinutes: 30
+    })
+    expect(toTaskUpdateInput('task-1', { dueTime: '09:00' })).toEqual({
+      id: 'task-1',
+      dueTime: '09:00'
+    })
+  })
+
   // A dropped null left "make top level" and "move out" as silent no-ops.
   it('sends a cleared parent as null so the task becomes top level', () => {
     expect(toTaskUpdateInput('task-1', { parentId: null })).toEqual({

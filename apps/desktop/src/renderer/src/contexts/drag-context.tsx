@@ -404,8 +404,10 @@ export const DragProvider = ({
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const { active } = event
-      const draggedId = active.id as string
       const activeData = active.data.current
+      // A surface that shows a task twice (the day panel beside a calendar)
+      // namespaces its draggable id and names the task in `taskId`.
+      const draggedId = (activeData?.taskId as string | undefined) ?? (active.id as string)
       const overlayWidth = active.rect.current.initial?.width
         ? Math.round(active.rect.current.initial.width)
         : null

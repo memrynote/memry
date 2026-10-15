@@ -59,6 +59,7 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
     dueDate: 'dueDate' in updates ? toDateKey(updates.dueDate) : undefined,
     startDate: 'startDate' in updates ? toDateKey(updates.startDate) : undefined,
     dueTime: 'dueTime' in updates ? updates.dueTime : undefined,
+    durationMinutes: 'durationMinutes' in updates ? updates.durationMinutes : undefined,
     isRepeating: updates.isRepeating,
     repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
     repeatFrom: updates.repeatFrom,

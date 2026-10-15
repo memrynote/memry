@@ -304,6 +304,7 @@ describe('useTaskWorkspaceMutations', () => {
       priority: 'urgent' as const,
       dueDate: new Date('2026-05-10T00:00:00.000Z'),
       dueTime: '10:00',
+      durationMinutes: 90,
       isRepeating: true,
       repeatConfig: {
         frequency: 'daily' as const,
@@ -334,6 +335,8 @@ describe('useTaskWorkspaceMutations', () => {
         description: null,
         priority: 4,
         dueDate: '2026-05-10',
+        dueTime: '10:00',
+        durationMinutes: 90,
         linkedNoteIds: ['note-1'],
         fields: { 'Waiting on': ['memry://note/n1'] },
         repeatConfig: expect.objectContaining({

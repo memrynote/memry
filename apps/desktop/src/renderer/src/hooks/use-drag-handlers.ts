@@ -7,7 +7,7 @@ import { useT } from '@memry/i18n/renderer'
 import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
 import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
 import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
-import { timeFromOffset } from '@/components/calendar/drop-time'
+import { resolveDropOptions, type DateDropOptions } from '@/components/calendar/drop-time'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
@@ -38,11 +38,6 @@ interface UndoAction {
   previousTaskState?: Map<string, Partial<Task>>
   sectionId?: string
   deletedTasks?: Task[]
-}
-
-export interface DateDropOptions {
-  /** Omit to keep the task's current time; null clears it; 'HH:MM' sets it. */
-  dueTime?: string | null
 }
 
 interface UseDragHandlersProps {
@@ -146,27 +141,6 @@ const buildCrossSectionOrderUpdates = ({
     [sourceSectionId]: sourceOrder,
     [targetSectionId]: nextTargetOrder
   }
-}
-
-/**
- * Month cells preserve the task's time (no key), all-day cells clear it
- * (dueTime: null), timed columns derive it from where the chip landed.
- */
-function resolveDropOptions(
-  overData: Record<string, unknown> | undefined,
-  event: DragEndEvent
-): DateDropOptions | undefined {
-  if (overData?.timeBehavior === 'slot') {
-    const overTop = event.over?.rect.top
-    const activeTop = event.active.rect.current.translated?.top
-    const hourHeight = overData.hourHeight as number | undefined
-    if (overTop === undefined || activeTop === undefined || !hourHeight) return undefined
-    return { dueTime: timeFromOffset(activeTop - overTop, hourHeight) }
-  }
-  if (overData && 'dueTime' in overData) {
-    return { dueTime: overData.dueTime as string | null }
-  }
-  return undefined
 }
 
 // ============================================================================
@@ -472,6 +446,8 @@ export const useDragHandlers = ({
       taskIds.forEach((id) => {
         const task = tasks.find((t) => t.id === id)
         const nextDueTime = changesTime ? (options.dueTime ?? null) : (task?.dueTime ?? null)
+        const durationMinutes =
+          nextDueTime && !task?.dueTime ? options.durationIfUntimed : undefined
 
         let newDueDate = startOfDay(targetDate)
         if (nextDueTime) {
@@ -480,10 +456,11 @@ export const useDragHandlers = ({
           newDueDate.setHours(hours, minutes)
         }
 
-        onUpdateTask(
-          id,
-          changesTime ? { dueDate: newDueDate, dueTime: nextDueTime } : { dueDate: newDueDate }
-        )
+        onUpdateTask(id, {
+          dueDate: newDueDate,
+          ...(changesTime ? { dueTime: nextDueTime } : {}),
+          ...(durationMinutes ? { durationMinutes } : {})
+        })
       })
 
       // Record for undo
