@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePosition, type Platform } from '@floating-ui/react'
+import { computePosition, platform as domPlatform, type Platform } from '@floating-ui/react'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 
 const VIEWPORT = { x: 0, y: 0, width: 1000, height: 800 }
@@ -9,6 +9,7 @@ async function placeBelowCaretAt(caretY: number): Promise<string> {
   const reference = document.createElement('span')
   const floating = document.createElement('div')
   const platform: Platform = {
+    ...domPlatform,
     getElementRects: () => ({
       reference: { x: 100, y: caretY, width: 1, height: 20 },
       floating: { x: 0, y: 0, width: 300, height: MENU_HEIGHT }
