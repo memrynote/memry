@@ -29,7 +29,7 @@ use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::notes::failed;
-use crate::domain::{body_tags, body_write, journal, notes, tags};
+use crate::domain::{body_tags, body_write, journal, notes, reads, tags};
 
 pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
     let from = tags::tag_key(from);
@@ -130,6 +130,11 @@ fn rewrite_source(
     };
     let tx = conn.unchecked_transaction().map_err(failed)?;
     body_write::append_in(&tx, item_type, id, &update, now_ms)?;
+    // `note_body_tags` caches the body's parse; refresh it with the body so
+    // tag counts follow the rename before the next search reindex.
+    if let Some(blocks) = reads::note_blocks(&tx, id)? {
+        body_tags::write(&tx, id, &body_tags::extract(&blocks))?;
+    }
     tx.commit().map_err(failed)?;
     Ok(())
 }
