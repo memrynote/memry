@@ -22,6 +22,13 @@ vi.mock('./runtime-effects', () => ({
   syncTagDefinitionDelete: (row?: { name: string }) => row && sync.deletes.push(row.name),
   syncTagDefinitionUpdate: (tag: string) => sync.updates.push(tag)
 }))
+// The sync handler enqueues through the tag definition sync service.
+vi.mock('@memry/sync-client/tag-definition-sync', () => ({
+  getTagDefinitionSyncService: () => ({
+    enqueueDelete: (name: string) => sync.deletes.push(name),
+    enqueueUpdate: (name: string) => sync.updates.push(name)
+  })
+}))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
@@ -136,13 +143,12 @@ describe('Unicode tag identity', () => {
       })
       .run()
 
-    // Each device receives the other's definition through the sync handler.
-    tagDefinitionHandler.applyUpsert(ctx(a), 'ünal', payload(b, 'ünal'), { b: 1 })
-    tagDefinitionHandler.applyUpsert(ctx(b), 'Ünal', payload(a, 'Ünal'), { a: 1 })
-    expect(names(a)).toEqual(['Ünal', 'ünal'])
-
-    convergeTagIdentity(a.db, a.index.db)
-    convergeTagIdentity(b.db, b.index.db)
+    // Each device receives the other's definition through the sync handler,
+    // which merges it at once instead of waiting for the next vault open.
+    const fromB = payload(b, 'ünal')
+    const fromA = payload(a, 'Ünal')
+    tagDefinitionHandler.applyUpsert(ctx(a), 'ünal', fromB, { b: 1 })
+    tagDefinitionHandler.applyUpsert(ctx(b), 'Ünal', fromA, { a: 1 })
 
     // Same survivor on both: the higher schema version.
     for (const d of [a, b]) {
@@ -177,6 +183,24 @@ describe('Unicode tag identity', () => {
     expect(convergeTagIdentity(a.db, a.index.db).definitionsMerged).toBe(1)
     expect(names(a)).toEqual(['i\u0307ş'])
     expect(getOrCreateTag(a.db, 'İş').name).toBe('i\u0307ş')
+  })
+
+  it('carries a pin from a dropped duplicate note row onto the kept row', () => {
+    a.index.db
+      .insert(noteCache)
+      .values({ id: 'n1', path: 'n1.md', title: 'N1', ...stamp })
+      .run()
+    // An older build's rows: the second spelling holds the pin.
+    const insert = a.index.sqlite.prepare(
+      'INSERT INTO note_tags (note_id, tag, position, pinned_at) VALUES (?, ?, ?, ?)'
+    )
+    insert.run('n1', 'Ünal', 0, null)
+    insert.run('n1', 'ünal', 1, '2026-02-01T00:00:00.000Z')
+
+    expect(convergeTagIdentity(a.db, a.index.db).usagesDropped).toBe(1)
+    expect(
+      a.index.sqlite.prepare('SELECT tag, pinned_at AS pinnedAt FROM note_tags').all()
+    ).toEqual([{ tag: 'Ünal', pinnedAt: '2026-02-01T00:00:00.000Z' }])
   })
 
   it('drops a second spelling of one tag on one task, keeping the first', () => {

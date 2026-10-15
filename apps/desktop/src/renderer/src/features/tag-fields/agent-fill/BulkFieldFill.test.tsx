@@ -76,6 +76,15 @@ beforeEach(() => {
 })
 
 describe('bulk agent fill', () => {
+  it('waits for every matching row to load so a run never skips unloaded notes', async () => {
+    const { rerender } = renderWithProviders(<BulkFieldFill tag={person} notes={[ada]} partial />)
+    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalled())
+    expect(screen.queryByTestId('bulk-field-fill')).not.toBeInTheDocument()
+
+    rerender(<BulkFieldFill tag={person} notes={[ada, grace]} partial={false} />)
+    expect(await screen.findByTestId('bulk-field-fill')).toBeInTheDocument()
+  })
+
   it('offers the action only when AI is available and some note has an empty fillable field', async () => {
     const { unmount } = renderWithProviders(<BulkFieldFill tag={person} notes={[ada]} />)
     expect(await screen.findByTestId('bulk-field-fill')).toBeInTheDocument()
