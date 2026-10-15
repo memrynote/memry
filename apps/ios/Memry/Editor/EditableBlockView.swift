@@ -208,15 +208,17 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 
     var blockId: String { block.id ?? "" }
 
-    // MARK: Tapping a tag or a date
+    // MARK: Tapping a tag, a date or a wiki link
 
     /// A tap on a `#tag` opens its notes, as a click on desktop's chip does,
-    /// and a tap on a date or reminder opens its editor, as a click on
+    /// a tap on a wiki link (node or `[[...]]` text) opens its note, as a
+    /// click on desktop's link does, and a tap on a date or reminder opens its editor, as a click on
     /// desktop's pill does, instead of putting the caret in it. Begins only
     /// over one of them, so every other tap is the text view's own.
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         let point = gestureRecognizer.location(in: textView)
         if date(at: point) != nil { return true }
+        if session?.openWikiTarget != nil, wikiTarget(at: point) != nil { return true }
         return session?.openTag != nil && tag(at: point) != nil
     }
 
@@ -234,6 +236,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         let point = gesture.location(in: textView)
         if let date = date(at: point) {
             session?.requestDateEdit(date, in: self)
+        } else if let target = wikiTarget(at: point) {
+            session?.openWikiTarget?(target)
         } else if let tag = tag(at: point) {
             session?.openTag?(tag)
         }
@@ -241,6 +245,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 
     private func tag(at point: CGPoint) -> String? {
         attribute(.memryTag, at: point)
+    }
+
+    private func wikiTarget(at point: CGPoint) -> String? {
+        attribute(.memryWikiTarget, at: point)
     }
 
     private func date(at point: CGPoint) -> DateMentionChip? {
@@ -284,7 +292,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             if textView.isFirstResponder { session?.selectionChanged(in: self) }
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
-        if block.kind != "codeBlock" { BlockText.markTags(in: text, colors: style.tagColors) }
+        if block.kind != "codeBlock" {
+            BlockText.markTags(in: text, colors: style.tagColors)
+            BlockText.markWikiLinks(in: text, titleExists: style.titleExists)
+        }
         textView.useSourceInput(block.kind == "codeBlock")
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment

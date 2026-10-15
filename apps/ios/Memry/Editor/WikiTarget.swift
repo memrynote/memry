@@ -11,6 +11,27 @@ import Foundation
 import MemryCore
 
 enum WikiTarget {
+    /// Desktop's `wikiLinkTargets` pattern, `[[target]]` or `[[target|alias]]`.
+    private static let literalPattern = try? NSRegularExpression(pattern: #"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]"#)
+
+    /// Each `[[...]]` typed as text in `text`: the range it covers, brackets
+    /// included, and its target. Synced bodies often hold the characters
+    /// rather than a `wikiLink` node (#3318); the core indexes both, and this
+    /// finds the characters for drawing and tapping. A table cell's escaped
+    /// alias pipe `\|` leaves its backslash out of the target, as the core's
+    /// scan does.
+    static func literals(in text: String) -> [(range: NSRange, target: String)] {
+        guard let literalPattern, text.contains("[[") else { return [] }
+        let string = text as NSString
+        return literalPattern.matches(in: text, range: NSRange(location: 0, length: string.length)).map { match in
+            var target = string.substring(with: match.range(at: 1))
+            if target.hasSuffix("\\"), NSMaxRange(match.range(at: 1)) < NSMaxRange(match.range) - 2 {
+                target.removeLast()
+            }
+            return (match.range, target)
+        }
+    }
+
     /// `Note#Heading` → (`Note`, `Heading`), desktop's `splitWikiTarget`. The
     /// last `#` segment is the heading; `nil` when the target has no `#`.
     static func split(_ target: String) -> (note: String, heading: String?) {

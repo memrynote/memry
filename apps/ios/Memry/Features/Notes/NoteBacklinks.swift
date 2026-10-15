@@ -68,8 +68,23 @@ final class BacklinksViewModel {
         self.search = search
     }
 
+    /// The first read brings the index up to date. Only search and journal
+    /// screens reindexed, so a note opened first on a fresh install read an
+    /// index that had never been built and showed no backlinks. A reindex
+    /// walks only what changed since its watermark, so a built index pays
+    /// little.
     func loadIfNeeded() async {
         guard case .loading = phase else { return }
+        if let search {
+            do {
+                try await search.reindex()
+            } catch {
+                // A stale index still answers; the read below reports its own
+                // failure.
+                let mapped = ErrorMapping.userFacing(error)
+                Log.storage.error("the backlinks index could not be brought up to date", .code(mapped.code))
+            }
+        }
         await load()
     }
 

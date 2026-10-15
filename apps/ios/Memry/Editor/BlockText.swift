@@ -22,6 +22,8 @@ extension NSAttributedString.Key {
     static let memryTag = NSAttributedString.Key("memry.tag")
     /// On a `dateMention` chip: the `DateMentionChip` a tap edits.
     static let memryDate = NSAttributedString.Key("memry.date")
+    /// On a `wikiLink` chip or a `[[...]]` typed as text: the target a tap opens.
+    static let memryWikiTarget = NSAttributedString.Key("memry.wikiTarget")
 }
 
 @MainActor
@@ -157,6 +159,30 @@ enum BlockText {
         }
     }
 
+    /// Draws each `[[...]]` typed as text as a link and marks it for a tap
+    /// (`WikiTarget.literals`), as the core indexes it (#3318). Display only,
+    /// like `markTags`. Not over code; the caller skips a code block.
+    static func markWikiLinks(in text: NSMutableAttributedString, titleExists: ((String) -> Bool)?) {
+        for match in WikiTarget.literals(in: text.string) {
+            var code = false
+            text.enumerateAttribute(.memryMarks, in: match.range) { value, _, stop in
+                if (value as? [String] ?? []).contains("code") {
+                    code = true
+                    stop.pointee = true
+                }
+            }
+            guard !code else { continue }
+            let known = titleExists?(match.target) != false
+            text.addAttributes(
+                [
+                    .foregroundColor: UIColor(known ? Tokens.Text.tint.color : Tokens.Text.secondary.color),
+                    .memryWikiTarget: match.target,
+                ],
+                range: match.range
+            )
+        }
+    }
+
     /// The room on each side of a typed `#tag`'s fill.
     nonisolated static let tagPillPadding: CGFloat = 6
 
@@ -235,6 +261,9 @@ enum BlockText {
             [.font: style.font, .memryNodeBytes: segment.coreBytes, .memryMarks: [String]()],
             range: NSRange(location: 0, length: out.length)
         )
+        if run.marks.contains("wikiLink"), let target = run.markAttrs["wikiLink.target"] ?? run.target {
+            out.addAttribute(.memryWikiTarget, value: target, range: NSRange(location: 0, length: out.length))
+        }
         if run.marks.contains("dateMention"), let date = DateMentionChip.from(run) {
             out.addAttribute(.memryDate, value: date, range: NSRange(location: 0, length: out.length))
         }
