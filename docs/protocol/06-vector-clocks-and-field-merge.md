@@ -51,7 +51,7 @@ asserted by `packages/contracts/src/__tests__/recreate-clock.test.ts` and
 
 **Normative.** `clockTotal(clock)` is the plain sum of **every** tick in the
 clock, `_offline` included; no key is filtered
-(`packages/sync-client/src/field-merge.ts:74-78`).
+(`packages/sync-client/src/field-merge.ts:75-79`).
 
 A second implementation MUST accumulate in a 64-bit signed integer. Key iteration
 order is irrelevant to the sum.
@@ -59,7 +59,7 @@ order is irrelevant to the sum.
 ## 6.3 The complete winner-selection rule
 
 **Normative**, per field `f`, iterating `syncableFields` **in list order**
-(`packages/sync-client/src/field-merge.ts:117`):
+(`packages/sync-client/src/field-merge.ts:118`):
 
 1. `L = localFieldClocks[f] ?? {}`, `R = remoteFieldClocks[f] ?? {}`
    (`:118-119`). **A missing field clock is the empty clock.**
@@ -87,7 +87,7 @@ Three things a second implementation must get exactly right:
 - **The winner is chosen by sum of ticks, never by `compare`.**
 - **The `_offline` tie-break is a key-presence test, not a tick-value test**:
   `OFFLINE_CLOCK_DEVICE_ID in localFC`
-  (`packages/sync-client/src/field-merge.ts:135`), so `{_offline: 0}` counts as
+  (`packages/sync-client/src/field-merge.ts:136`), so `{_offline: 0}` counts as
   present. Note the asymmetry with §6.6: `rebindClockDevice` only acts when the
   tick is `> 0` (`packages/sync-client/src/offline-clock.ts:41`), so a
   zero-valued `_offline` key survives rebinding **and** still wins ties.
@@ -172,8 +172,8 @@ normative rule.** `differ` is computed over a canonical form:
 Consequently `{a:1,b:2}` and `{b:2,a:1}` are **equal**, and `null` and
 `undefined` **differ**.
 
-`valuesEqual` (`packages/sync-client/src/field-merge.ts:57-72`, called at
-`:127`) implements it: a recursive structural comparison, so key order cannot
+`valuesEqual` (`packages/sync-client/src/field-merge.ts:58-73`, called at
+`:128`) implements it: a recursive structural comparison, so key order cannot
 reach the result and no canonical string is built. Arrays stay
 **order-significant**; a key whose value is `undefined` compares as absent.
 Shipped for **#2185**. This chapter states the canonical form, not
@@ -219,7 +219,7 @@ and Y evaluates `W(Cy, Cx)`:
 **The asymmetric `_offline` test is the part that saves 3a and 3b**: from either
 seat, rule 3 means "the side carrying `_offline` wins". The branch that flips
 with the seat is the plain "remote wins" default at
-`packages/sync-client/src/field-merge.ts:138-139`.
+`packages/sync-client/src/field-merge.ts:139-140`.
 
 ### 6.5.2 Why 3c and 3d do not diverge in production
 
@@ -243,7 +243,7 @@ and a client that breaks any of them reintroduces divergence.**
   push dominate the server's row.** The handler itself stores the union clock
   and enqueues nothing
   (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`; union
-  from `packages/sync-client/src/field-merge.ts:154` and
+  from `packages/sync-client/src/field-merge.ts:155` and
   `packages/sync-client/src/item-handlers/types.ts:66`), but a `'conflict'`
   return re-queues the item one level up, in the pull coordinator
   (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
@@ -326,7 +326,7 @@ logging; and MUST treat a missing field clock as `{}`.
 **Normative.** A field is reported as conflicted **iff** the field-clock totals
 are **equal**, `compare(L,R)` is `concurrent`, **and** the serialised values
 differ. The conflict block sits inside the tie branch
-(`packages/sync-client/src/field-merge.ts:133-152`, with the `isConcurrent &&
+(`packages/sync-client/src/field-merge.ts:134-153`, with the `isConcurrent &&
 valsDiffer` test at `:114` nested under the `else` of `:102`/`:104`).
 
 **A concurrent pair with unequal totals is resolved by the larger total and is
@@ -502,17 +502,27 @@ permanent divergence this section once described.
 
 **Normative.**
 
-`TASK_SYNCABLE_FIELDS`, **15** entries in order
-(`packages/sync-client/src/field-merge.ts:11-27`):
+`TASK_SYNCABLE_FIELDS`, **16** entries in order
+(`packages/sync-client/src/field-merge.ts:11-28`):
 
 ```
 title, description, projectId, statusId, parentId, priority, position,
 dueDate, dueTime, startDate, repeatConfig, repeatFrom, sourceNoteId,
-completedAt, archivedAt
+completedAt, archivedAt, durationMinutes
 ```
 
+**`durationMinutes` was appended as the sixteenth entry** (`:27`), so the first
+fifteen keep their positions. A build from before it merges fifteen fields and
+never writes a `durationMinutes` field clock; a missing clock reads as `{}`
+(`:119-120`), total 0, so a side whose `durationMinutes` clock has ticked wins
+against it (§6.3).
+No version byte moves: the list is not negotiated (chapter 00 §0.2 has no
+version that covers it), and the HTTP write floor (chapter 11 §11.11) gates
+clients by build, not by field set. What carries the field across an older
+build is the payload remainder of chapter 13 §13.2.1, covered in §13.7.3.
+
 `PROJECT_SYNCABLE_FIELDS`, **9** entries in order
-(`packages/sync-client/src/field-merge.ts:29-39`):
+(`packages/sync-client/src/field-merge.ts:30-40`):
 
 ```
 name, description, color, icon, position, isInbox, archivedAt, modifiedAt,
@@ -520,10 +530,10 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:117`).
+`merged` (`packages/sync-client/src/field-merge.ts:118`).
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
-the document clock (`packages/sync-client/src/field-merge.ts:41-45`). It is what
+the document clock (`packages/sync-client/src/field-merge.ts:42-46`). It is what
 a client uses when a row has a document clock but no field clocks yet
 (`packages/sync-client/src/offline-clock.ts:76`, `:92`).
 
@@ -542,7 +552,7 @@ a client uses when a row has a document clock but no field clocks yet
 
 The field-level path exists only where a payload carries `fieldClocks`
 (chapter 13 §13.5); the task and project lists live in
-`packages/sync-client/src/field-merge.ts:11-39`, the calendar event list in
+`packages/sync-client/src/field-merge.ts:11-40`, the calendar event list in
 `apps/desktop/src/main/calendar/field-merge-calendar.ts:4`. Every other type carries only
 `clock` and takes the `resolveClockConflict` path
 (`packages/sync-client/src/item-handlers/types.ts:58-68`).
@@ -733,7 +743,7 @@ stores `clock = excluded.clock` verbatim
 
 The growth is bounded by the device cap, not by time: at most 50 active devices
 per account (chapter 02 §2.3.3), so at most 50 keys per document clock and 50 per
-field clock, times 15 fields for a task. **A conforming client MUST accept a
+field clock, times 16 fields for a task. **A conforming client MUST accept a
 clock with a key for a device it has never heard of and MUST NOT drop it**;
 dropping a key lowers `clockTotal` and changes the winner.
 

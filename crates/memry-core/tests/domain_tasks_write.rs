@@ -159,7 +159,7 @@ fn create_resolves_the_default_status_and_the_next_position_per_scope() {
 }
 
 #[test]
-fn create_writes_every_detail_field_and_seeds_all_fifteen_field_clocks() {
+fn create_writes_every_detail_field_and_seeds_all_sixteen_field_clocks() {
     let db = open("tw-create-full");
     db.call_blocking(|conn| {
         seed_project(conn, "pa");
@@ -211,7 +211,7 @@ fn create_writes_every_detail_field_and_seeds_all_fifteen_field_clocks() {
         assert_eq!(t1["position"], json!(7));
         assert_eq!(t1["clock"], json!({"device-a": 1}));
         let clocks = t1["fieldClocks"].as_object().expect("field clocks");
-        assert_eq!(clocks.len(), 15);
+        assert_eq!(clocks.len(), 16);
         assert!(
             clocks
                 .values()

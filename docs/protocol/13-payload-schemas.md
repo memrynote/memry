@@ -282,16 +282,39 @@ only on a delete.
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.
 
-### 13.7.3 `task` — `:39-64`
+### 13.7.3 `task` — `:39-65`
 
-15 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
+16 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
 `linkedCanvasIds`, **`fields`**, `clock`, **`fieldClocks`**, `createdAt`,
 `modifiedAt`.
 
-`repeatConfig` is `z.unknown().nullable().optional()` (`:50`) — **opaque**, and
+`repeatConfig` is `z.unknown().nullable().optional()` (`:51`) — **opaque**, and
 the only object-valued field in any field-merged list (chapter 06 §6.4.1).
 
-**`fields` is not one of the fifteen, and chapter 06 §6.3 never merges it.** It is a
+`durationMinutes` is `z.number().nullable().optional()` (`:49`): the length of
+a timed task in minutes. The write path keeps it a positive integer and only on
+a task with a `dueTime`, and clears it in the same write that clears `dueTime`
+(`packages/domain-tasks/src/commands.ts:612-614`); the wire reader stays loose
+like every other field here. Desktop writes the key on both apply paths
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:299`, `:356`), so an
+absent key applies as `null`, as it does for every scalar task column.
+
+**Older builds.** No version byte moves for this field (chapter 06 §6.7).
+What an older build does with it depends on whether it keeps unknown keys:
+
+- A desktop build with the §13.2.1 remainder strips the key on parse, keeps it
+  in `sync_unknown_fields`, and pushes it back under its own payload, so its
+  edits carry the last `durationMinutes` it received. It does not apply the
+  `dueTime` rule, so clearing the time there leaves a stale duration on the
+  wire; readers ignore a duration on an untimed task, and the next clear on a
+  newer build removes it.
+- The Rust core keeps the verbatim payload (§13.2), so the key survives an edit
+  on any iOS build.
+- A desktop build from before #2265 drops the key, and its push omits it. When
+  that push wins the document gate on a newer device, the absent key applies as
+  `null` and the duration is lost on that task. Nothing else is corrupted.
+
+**`fields` is not one of the sixteen, and chapter 06 §6.3 never merges it.** It is a
 versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
 
 #### 13.7.3.1 `fields`

@@ -437,7 +437,7 @@ beforeEach(() => {
   mocks.calendarSources = [source('google-work', 'Work'), source('google-home', 'Home')]
   mocks.calendarItems = [
     item('event', 'event-1', 'memrynote event'),
-    item('task', 'task-1', 'Task due'),
+    item('task', 'task-1', 'Task due', { endAt: null }),
     item('inbox_snooze', 'snooze-1', 'Inbox snooze'),
     item('reminder', 'reminder-1', 'Call back', { visualType: 'reminder', endAt: null }),
     item('external_event', 'external-1', 'External meeting', {
@@ -669,9 +669,23 @@ describe('CalendarPage callback coverage', () => {
     expect(mocks.taskUpdate).toHaveBeenCalledWith({
       id: 'task-1',
       dueDate: expectedDueDate,
-      dueTime: expectedDueTime
+      dueTime: expectedDueTime,
+      durationMinutes: undefined
     })
     expect(mocks.updateEvent).not.toHaveBeenCalled()
+  })
+
+  it('writes the dragged length as the duration of a task that has one', async () => {
+    mocks.calendarItems = mocks.calendarItems.map((entry) =>
+      entry.sourceType === 'task' ? { ...entry, endAt: '2026-05-10T09:30:00.000Z' } : entry
+    )
+    renderPage()
+
+    fireEvent.click(screen.getByText('move task'))
+    await waitFor(() => expect(mocks.taskUpdate).toHaveBeenCalledTimes(1))
+    expect(mocks.taskUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task-1', durationMinutes: 60 })
+    )
   })
 
   it('still routes a dragged event chip through calendarService.updateEvent', async () => {

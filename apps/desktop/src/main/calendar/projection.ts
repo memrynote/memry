@@ -243,15 +243,17 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
     rows.map((row) => row.id)
   )
 
-  const editability: CalendarProjectionEditability = {
+  const editability = (canResize: boolean): CalendarProjectionEditability => ({
     canMove: true,
-    canResize: false,
+    canResize,
     canEditText: true,
     canDelete: true
-  }
+  })
 
   return rows.map((row) => {
     const isAllDay = !row.dueTime
+    const startAt = toLocalInstant(row.dueDate!, row.dueTime ?? null)
+    const blockMinutes = isAllDay ? null : row.durationMinutes
 
     return {
       projectionId: `task:${row.id}`,
@@ -259,12 +261,16 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       sourceId: row.id,
       title: row.title,
       descriptionPreview: getDescriptionPreview(row.description),
-      startAt: toLocalInstant(row.dueDate!, row.dueTime ?? null),
-      endAt: isAllDay ? toLocalAllDayEnd(row.dueDate!) : null,
+      startAt,
+      endAt: isAllDay
+        ? toLocalAllDayEnd(row.dueDate!)
+        : blockMinutes
+          ? new Date(Date.parse(startAt) + blockMinutes * 60_000).toISOString()
+          : null,
       isAllDay,
       timezone: LOCAL_TIMEZONE,
       visualType: 'task',
-      editability,
+      editability: editability(blockMinutes !== null),
       source: nativeSource('memrynote Tasks'),
       binding: bindings.get(row.id) ?? null,
       snoozeOffsetMinutes: null

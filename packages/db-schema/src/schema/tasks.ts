@@ -22,6 +22,7 @@ export const tasks = sqliteTable(
 
     dueDate: text('due_date'),
     dueTime: text('due_time'),
+    durationMinutes: integer('duration_minutes'),
     startDate: text('start_date'),
 
     repeatConfig: text('repeat_config', { mode: 'json' }),

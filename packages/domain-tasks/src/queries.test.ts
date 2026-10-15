@@ -14,6 +14,7 @@ function createTask(overrides: Partial<Task> = {}): Task {
     position: 0,
     dueDate: null,
     dueTime: null,
+    durationMinutes: null,
     startDate: null,
     repeatConfig: null,
     repeatFrom: null,

@@ -332,6 +332,7 @@ export async function applyProviderWriteback(
       const updates: Partial<typeof tasks.$inferInsert> = {
         dueDate: schedule.dueDate,
         dueTime: schedule.dueTime,
+        ...(schedule.dueTime === null ? { durationMinutes: null } : {}),
         modifiedAt: now
       }
 
@@ -424,7 +425,7 @@ export async function applyProviderDelete(
 
     case 'task': {
       const beforeTask = db.select().from(tasks).where(eq(tasks.id, binding.sourceId)).get()
-      const unschedule = { dueDate: null, dueTime: null, modifiedAt: now }
+      const unschedule = { dueDate: null, dueTime: null, durationMinutes: null, modifiedAt: now }
       db.update(tasks).set(unschedule).where(eq(tasks.id, binding.sourceId)).run()
       // Deleting the remote event unschedules the task; that is a real edit and
       // the log should say the calendar made it.

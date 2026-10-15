@@ -262,7 +262,7 @@ pub(crate) fn wholesale(
 ///
 /// A stored `fieldClocks` that will not parse is a **hard error**: reading it
 /// as an empty map would restart every field's tick and hand the next
-/// concurrent peer all fifteen wins. FR-032 states that rule for a zero-row
+/// concurrent peer all sixteen wins. FR-032 states that rule for a zero-row
 /// first page and it applies to every reader.
 pub(crate) fn next_field_clocks(
     stored: &Object,
@@ -350,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    fn a_row_with_no_field_clocks_seeds_all_fifteen_from_the_document_clock() {
+    fn a_row_with_no_field_clocks_seeds_every_listed_field_from_the_document_clock() {
         let clocks = next_field_clocks(
             &stored(json!({"clock": {"device-a": 3}})),
             &TASK_SYNCABLE_FIELDS,

@@ -13482,6 +13482,18 @@
                 }
               ]
             },
+            "durationMinutes": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "startDate": {
               "anyOf": [
                 {
@@ -13800,6 +13812,18 @@
                 {
                   "type": "string",
                   "pattern": "^\\d{2}:\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "durationMinutes": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
                 },
                 {
                   "type": "null"

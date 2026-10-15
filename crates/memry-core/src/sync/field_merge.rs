@@ -43,11 +43,11 @@ use serde_json::{Map as JsonMap, Value as Json};
 
 use super::clock::{ClockOrder, VectorClock, clock_total, compare, has_offline_key, merge};
 
-/// `TASK_SYNCABLE_FIELDS`, 15 entries **in order** (§6.7).
+/// `TASK_SYNCABLE_FIELDS`, 16 entries **in order** (§6.7).
 ///
 /// The order is part of the contract: `conflictedFields` is consumed in order
 /// by activity logging (§6.5.3).
-pub const TASK_SYNCABLE_FIELDS: [&str; 15] = [
+pub const TASK_SYNCABLE_FIELDS: [&str; 16] = [
     "title",
     "description",
     "projectId",
@@ -63,6 +63,7 @@ pub const TASK_SYNCABLE_FIELDS: [&str; 15] = [
     "sourceNoteId",
     "completedAt",
     "archivedAt",
+    "durationMinutes",
 ];
 
 /// `PROJECT_SYNCABLE_FIELDS`, 9 entries in order (§6.7).
@@ -457,5 +458,41 @@ mod tests {
             VectorClock::new()
         );
         assert!(!result.merged.contains_key("notSyncable"));
+    }
+
+    #[test]
+    fn a_concurrent_duration_edit_merges_by_its_own_clock() {
+        let local = object(json!({"title": "Focus", "durationMinutes": 30}));
+        let remote = object(json!({"title": "Focus block", "durationMinutes": 90}));
+        let local_clocks = field_clocks([
+            ("title", clock_of([("device-a", 1), ("device-b", 1)])),
+            (
+                "durationMinutes",
+                clock_of([("device-a", 1), ("device-b", 2)]),
+            ),
+        ]);
+        let remote_clocks = field_clocks([
+            ("title", clock_of([("device-a", 1), ("device-b", 2)])),
+            (
+                "durationMinutes",
+                clock_of([("device-a", 2), ("device-b", 1)]),
+            ),
+        ]);
+
+        let result = merge_fields(
+            &local,
+            &remote,
+            &local_clocks,
+            &remote_clocks,
+            &TASK_SYNCABLE_FIELDS,
+        );
+
+        assert_eq!(result.merged["title"], json!("Focus block"));
+        assert_eq!(result.merged["durationMinutes"], json!(90));
+        assert_eq!(result.conflicted_fields, vec!["durationMinutes".to_owned()]);
+        assert_eq!(
+            result.merged_field_clocks["durationMinutes"],
+            clock_of([("device-a", 2), ("device-b", 2)])
+        );
     }
 }
