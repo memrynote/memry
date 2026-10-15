@@ -72,6 +72,7 @@ export {
 export {
   reindexNoteNames,
   deleteNoteNames,
+  getAliasesForNotes,
   pathLinkKeys,
   reresolveLinks,
   listNotesWithoutNames,

@@ -100,6 +100,8 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
+  /** Other names (frontmatter `aliases`); omitted by `fields: 'tree'` lists. */
+  aliases?: string[]
   /** Null until the file's body has been read. */
   wordCount: number | null
   snippet?: string | null // First 200 chars of content — omitted when fields: 'tree'

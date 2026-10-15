@@ -14,7 +14,12 @@ import { createNoteContentStore } from '@memry/storage-vault'
 import { splitFrontmatterBlock } from '@memry/app-core/markdown'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './index'
-import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './frontmatter'
+import {
+  extractAliases,
+  normalizePropertiesToRoot,
+  parseNote,
+  writePropertiesToRoot
+} from './frontmatter'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
@@ -282,6 +287,7 @@ function toJournalEntry(parsed: ParsedJournalEntry): JournalEntry {
     wordCount: countWords(parsed.content),
     characterCount: parsed.content.length,
     tags: parsed.frontmatter.tags ?? [],
+    aliases: extractAliases(parsed.frontmatter, parsed.date),
     createdAt: parsed.created,
     modifiedAt: parsed.modified,
     properties: extractJournalProperties(parsed.frontmatter)

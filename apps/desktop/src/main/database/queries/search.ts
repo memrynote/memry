@@ -32,6 +32,7 @@ import {
   truncateQuery
 } from '../../lib/search-utils'
 import { fuzzySearchTitles } from '../../lib/fuzzysort-search'
+import { mergeNameHits, searchNoteNames } from './search-note-names'
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('Search')
@@ -595,6 +596,34 @@ export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery):
       groups.push({ type, results: normalized, totalInGroup: normalized.length })
       totalCount += normalized.length
     }
+  }
+
+  for (const type of ['note', 'journal'] as const) {
+    if (!activeTypes.includes(type)) continue
+    let hits: SearchResultItem[] = []
+    try {
+      const filter = noteFileTypeFilter(type === 'note' ? query.noteFileTypes : undefined)
+      hits = searchNoteNames(indexDb, truncated, type, fetchLimit, filter)
+    } catch (error) {
+      logger.warn(`Name search failed for type ${type}:`, error)
+    }
+    if (hasFilters && hits.length > 0) {
+      const taggedIds =
+        query.tags.length > 0 ? getItemTagIds(indexDb, dataDb, type, query.tags) : null
+      hits = applyPostFilters(hits, query, taggedIds)
+    }
+    if (hits.length === 0) continue
+    const index = groups.findIndex((group) => group.type === type)
+    const before = index === -1 ? [] : groups[index].results
+    const results = mergeNameHits(truncated, before, hits).slice(0, query.limit)
+    const group = { type, results, totalInGroup: results.length }
+    if (index !== -1) groups[index] = group
+    else {
+      const rank = (t: ContentType): number => activeTypes.indexOf(t)
+      const at = groups.findIndex((other) => rank(other.type) > rank(type))
+      groups.splice(at === -1 ? groups.length : at, 0, group)
+    }
+    totalCount += results.length - before.length
   }
 
   const queryTimeMs = Math.round(performance.now() - startTime)

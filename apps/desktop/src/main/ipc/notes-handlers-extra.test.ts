@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => {
     fsRm: vi.fn(),
     appGetPath: vi.fn(() => '/tmp'),
     noteNamed: vi.fn(),
+    matchedBy: vi.fn(() => 'title'),
     resolveLinkTargets: vi.fn(),
     getNoteTags: vi.fn(),
     getAllTagDefinitions: vi.fn(),
@@ -145,7 +146,7 @@ vi.mock('../notes/domain', () => ({
 vi.mock('../notes/store', () => ({
   resolveLinkTarget: (db: unknown, name: string) => {
     const note = mocks.noteNamed(db, name)
-    return note ? { note, matchedBy: 'title' } : undefined
+    return note ? { note, matchedBy: mocks.matchedBy() } : undefined
   },
   resolveLinkTargets: mocks.resolveLinkTargets,
   getNoteTags: mocks.getNoteTags,
@@ -334,11 +335,29 @@ describe('notes-handlers extra coverage', () => {
         { name: 'work', color: 'blue' },
         { name: 'plain', color: 'stone' }
       ],
-      createdAt: '2026-05-10T00:00:00.000Z'
+      createdAt: '2026-05-10T00:00:00.000Z',
+      matchedName: null
     })
 
     mocks.noteNamed.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
     await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
+  })
+
+  it('names the other name a preview was reached through', async () => {
+    mocks.matchedBy.mockReturnValueOnce('alias')
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-ai',
+      title: 'Artificial Intelligence',
+      fileType: 'markdown',
+      emoji: null,
+      snippet: null,
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, ' AI ')
+    expect(preview).toMatchObject({ title: 'Artificial Intelligence', matchedName: 'AI' })
   })
 
   // #2554: a snippet cached before span stripping still holds raw tags.

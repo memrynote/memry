@@ -54,6 +54,23 @@ export function deleteNoteNames(db: IndexDb, noteId: string): NameKey[] {
   return keys.map((row) => row.key as NameKey)
 }
 
+export function getAliasesForNotes(db: IndexDb, noteIds: readonly string[]): Map<string, string[]> {
+  const aliases = new Map<string, string[]>()
+  if (noteIds.length === 0) return aliases
+  const rows = db
+    .select({ noteId: noteNames.noteId, display: noteNames.display })
+    .from(noteNames)
+    .where(and(inArray(noteNames.noteId, [...noteIds]), eq(noteNames.kind, 'alias')))
+    .orderBy(sql`rowid`)
+    .all()
+  for (const row of rows) {
+    const list = aliases.get(row.noteId)
+    if (list) list.push(row.display)
+    else aliases.set(row.noteId, [row.display])
+  }
+  return aliases
+}
+
 export function pathLinkKeys(path: string): NameKey[] {
   const forms = [noteLinkStem(path), path].flatMap((form) => [form, `/${form}`])
   return [...new Set(forms.map(nameKey).filter((key) => key !== null))]

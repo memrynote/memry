@@ -78,6 +78,8 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
+  /** Other names (frontmatter `aliases`); omitted by `fields: 'tree'` lists. */
+  aliases?: string[]
   /**
    * Null until the file's body has been read. Vault ingest lists a new file
    * from `stat` alone, so a freshly added row is not measured yet.
@@ -140,6 +142,8 @@ export interface WikiLinkPreview {
   snippet: string | null
   tags: Array<{ name: string; color: string }>
   createdAt: string
+  /** The other name the link was written with, or `null` when it named the title or path. */
+  matchedName: string | null
 }
 
 // Main returns `type: 'relation'` for relation-valued properties, so this union

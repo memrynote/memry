@@ -310,7 +310,8 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.PREVIEW_BY_TITLE,
     createStringHandler((title) => {
       const indexDb = getIndexDatabase()
-      const result = resolveLinkTarget(indexDb, title)?.note
+      const resolved = resolveLinkTarget(indexDb, title)
+      const result = resolved?.note
       if (!result || result.fileType !== 'markdown') return null
 
       const tags = getNoteTags(indexDb, result.id)
@@ -324,7 +325,8 @@ export function registerNotesHandlers(): void {
         emoji: result.emoji ?? null,
         snippet: result.snippet ? cleanCachedSnippet(result.snippet) : null,
         tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
-        createdAt: result.createdAt
+        createdAt: result.createdAt,
+        matchedName: resolved.matchedBy === 'alias' ? title.trim() : null
       }
     })
   )

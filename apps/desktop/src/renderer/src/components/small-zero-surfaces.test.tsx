@@ -201,7 +201,8 @@ describe('small zero-line renderer surfaces', () => {
           snippet: 'Snippet',
           createdAt: '2026-05-10T00:00:00.000Z',
           emoji: null,
-          tags: [{ name: 'work', color: '#22c55e' }]
+          tags: [{ name: 'work', color: '#22c55e' }],
+          matchedName: null
         }}
         position={{ top: 10, left: 20, placement: 'above' }}
         onMouseEnter={onMouseEnter}

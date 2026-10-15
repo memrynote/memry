@@ -418,6 +418,7 @@ export interface JournalEntry {
   wordCount: number
   characterCount: number
   tags: string[]
+  aliases?: string[]
   properties?: Record<string, unknown>
   createdAt: string
   modifiedAt: string
