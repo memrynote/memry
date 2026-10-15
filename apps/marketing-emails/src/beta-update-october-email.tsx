@@ -20,14 +20,13 @@ export const betaUpdateOctoberContent = {
   subject:
     '🗒️ Memrynote October Update: The iPhone beta, tags with fields, and search that reads PDFs',
   preview:
-    'The iPhone beta is open to this list. Plus tags with fields, search that reads PDFs and images, and calendars beyond Google.'
+    'The iPhone beta opens in the next few days. Get your invite, plus tags with fields, search that reads PDFs and images, and calendars beyond Google.'
 } as const
 
 export type BetaUpdateOctoberEmailProps = {
   firstName?: string
   logoUrl?: string
   iconUrl?: string
-  testflightUrl?: string
   iosImageUrl?: string
   tagFieldsImageUrl?: string
   searchImageUrl?: string
@@ -50,7 +49,6 @@ const defaultProps = {
   firstName: '',
   logoUrl: 'https://memrynote.com/memrynote-logo.png',
   iconUrl: 'https://memrynote.com/memrynote-icon.png',
-  testflightUrl: '',
   iosImageUrl: `${assetsUrl}/ios.png`,
   tagFieldsImageUrl: `${assetsUrl}/tags.png`,
   searchImageUrl: `${assetsUrl}/search.gif`,
@@ -77,6 +75,7 @@ const releaseNotesUrl = trackedMemryUrl(
   'release_notes'
 )
 const roadmapUrl = trackedMemryUrl('/roadmap', campaign, 'roadmap')
+const iosBetaUrl = trackedMemryUrl('/ios-beta', campaign, 'ios_beta_cta')
 const footerDownloadUrl = trackedMemryUrl('/download/desktop', campaign, 'footer_download')
 const footerHomeUrl = trackedMemryUrl('/', campaign, 'footer_home')
 const redditUrl = trackedMemryUrl('https://www.reddit.com/r/MemryNote/', campaign, 'reddit')
@@ -137,7 +136,6 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
     firstName,
     logoUrl,
     iconUrl,
-    testflightUrl,
     iosImageUrl,
     tagFieldsImageUrl,
     searchImageUrl,
@@ -175,20 +173,20 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
               Kaan
             </Link>{' '}
             again, with the third monthly update. In September I said the first iPhone beta would go
-            to this list. It is ready, so it goes first.
+            to this list. The build is with Apple for review, so it goes first.
           </Text>
 
           <Spacer />
 
           <Heading as="h2" style={styles.h2}>
-            The iPhone Beta Is Open
+            The iPhone Beta Opens in a Few Days
           </Heading>
 
           <Text style={styles.paragraph}>
-            Memrynote for iPhone is now in public beta on TestFlight. It is a native app, and it
-            opens the same vault as your desktop with the same end-to-end encryption. Your notes,
-            tasks, journal and calendar sync to your phone, and the server still cannot read any of
-            it.
+            Memrynote for iPhone goes into beta on TestFlight in the next few days, as soon as Apple
+            approves the build. It is a native app, and it opens the same vault as your desktop with
+            the same end-to-end encryption. Your notes, tasks, journal and calendar sync to your
+            phone, and the server still cannot read any of it.
           </Text>
 
           <Text style={styles.paragraph}>
@@ -208,13 +206,22 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
             hint="iosImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. One or two device frames on the campaign background. Real vault content, TestFlight build."
           />
 
-          <TestflightCta url={testflightUrl} />
+          <Section style={styles.buttonRow}>
+            <Button href={iosBetaUrl} style={styles.button}>
+              Get your beta invite
+            </Button>
+          </Section>
+
+          <Text style={styles.paragraph}>
+            Leave the email you want the TestFlight invite sent to, or reply to this email with it.
+            The invite reaches you as soon as the beta opens.
+          </Text>
 
           <Text style={styles.paragraph}>
             You need iOS 26 or later, the TestFlight app, and a paid Memrynote plan, because the
-            phone gets your vault through encrypted sync. Sign in with the email you use on the
-            desktop, then scan the code from Settings → Account → Link new device on your computer,
-            or type in your recovery phrase.
+            phone gets your vault through encrypted sync. Once it is installed, sign in with the
+            email you use on the desktop, then scan the code from Settings → Account → Link new
+            device on your computer, or type in your recovery phrase.
           </Text>
 
           <Text style={styles.paragraph}>
@@ -661,26 +668,6 @@ function NewsItem({ children }: { children: ReactNode }): ReactNode {
   )
 }
 
-function TestflightCta({ url }: { url: string }): ReactNode {
-  if (!url) {
-    return (
-      <Text style={styles.missingLink}>
-        <strong>testflightUrl is empty.</strong> Paste the public TestFlight link
-        (https://testflight.apple.com/join/…) into defaultProps before sending. This CTA is the
-        point of the email.
-      </Text>
-    )
-  }
-
-  return (
-    <Section style={styles.buttonRow}>
-      <Button href={trackedMemryUrl(url, campaign, 'testflight_cta')} style={styles.button}>
-        Join the iPhone beta
-      </Button>
-    </Section>
-  )
-}
-
 function Media({
   url,
   alt,
@@ -794,16 +781,6 @@ const styles = {
     lineHeight: '20px',
     textAlign: 'center',
     textDecoration: 'none'
-  },
-  missingLink: {
-    margin: '16px 0',
-    padding: '10px 12px',
-    border: '2px solid #d92d20',
-    borderRadius: '8px',
-    color: '#d92d20',
-    fontSize: '13px',
-    fontWeight: 400,
-    lineHeight: '20px'
   },
   mediaImage: {
     display: 'block',

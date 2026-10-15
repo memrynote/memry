@@ -2,6 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const RESEND_API_BASE_URL = 'https://api.resend.com'
 
+/** The Resend segment behind /ios-beta. Not a secret: it only works with RESEND_API_KEY. */
+const IOS_BETA_SEGMENT_ID = '1aa1ee79-0fa4-4e7e-81e6-810b035815e8'
+
+/** Lists a visitor can join. A request without `list` is the newsletter, as before. */
+const LISTS = ['newsletter', 'ios-beta'] as const
+type List = (typeof LISTS)[number]
+
+function isList(value: unknown): value is List {
+  return LISTS.some((list) => list === value)
+}
+
+function segmentIdFor(list: List): string | undefined {
+  return list === 'ios-beta' ? IOS_BETA_SEGMENT_ID : process.env.RESEND_SEGMENT_ID?.trim()
+}
+
 function hasControlWhitespace(value: string): boolean {
   for (const char of value) {
     if (char <= ' ' || char === '\u007f') {
@@ -73,9 +88,10 @@ function getRequestBody(req: VercelRequest): unknown {
 }
 
 /**
- * Newsletter signup — creates the Resend contact, then files it into the configured
- * segment. Both calls treat "already exists" as success, so re-submitting an address
- * is idempotent rather than an error the visitor has to read.
+ * List signup — creates the Resend contact, then files it into the segment of the list it
+ * asked for (the newsletter, or the iPhone beta invite list). Both calls treat "already
+ * exists" as success, so re-submitting an address is idempotent rather than an error the
+ * visitor has to read.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -83,21 +99,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY
-  const RESEND_SEGMENT_ID = process.env.RESEND_SEGMENT_ID?.trim()
 
   if (!RESEND_API_KEY) {
     console.error('[subscribe] RESEND_API_KEY is not configured')
     return res.status(500).json({ error: 'Server configuration error' })
   }
 
-  if (!RESEND_SEGMENT_ID) {
-    console.error('[subscribe] RESEND_SEGMENT_ID is not configured')
-    return res.status(500).json({ error: 'Server configuration error' })
+  const body = getRequestBody(req)
+  const fields: { email?: unknown; list?: unknown } = body && typeof body === 'object' ? body : {}
+  const { email } = fields
+  const list = fields.list ?? 'newsletter'
+
+  if (!isList(list)) {
+    return res.status(400).json({ error: 'Unknown list' })
   }
 
-  const body = getRequestBody(req)
-  const email =
-    body && typeof body === 'object' && 'email' in body ? (body as { email?: unknown }).email : null
+  const segmentId = segmentIdFor(list)
+  if (!segmentId) {
+    console.error(`[subscribe] no Resend segment configured for the ${list} list`)
+    return res.status(500).json({ error: 'Server configuration error' })
+  }
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' })
@@ -130,7 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const contactId = getResendContactId(contactData)
     const segmentContact = contactId ?? email
 
-    const segmentRes = await fetch(getResendSegmentContactUrl(segmentContact, RESEND_SEGMENT_ID), {
+    const segmentRes = await fetch(getResendSegmentContactUrl(segmentContact, segmentId), {
       method: 'POST',
       headers
     })

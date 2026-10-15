@@ -9,7 +9,7 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="July 23, 2026"
+        lastUpdated="October 15, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
@@ -217,6 +217,10 @@ export function PrivacyPage() {
           <li>
             <strong>Resend or a similar transactional email provider</strong> — delivers sign-up,
             billing, and security emails.
+          </li>
+          <li>
+            <strong>Apple</strong> — if you ask for an iPhone beta invite, receives the email
+            address you give us so TestFlight can send the invite.
           </li>
         </ul>
         <p>
