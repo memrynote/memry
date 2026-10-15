@@ -1,0 +1,64 @@
+diff --git a/dist/y-prosemirror.cjs b/dist/y-prosemirror.cjs
+index de4d1e6609bba2ffbc2a57048023cdf5bad44b18..5018e5ee310a811ac95fd81136cb5dd81e1a31e6 100644
+--- a/dist/y-prosemirror.cjs
++++ b/dist/y-prosemirror.cjs
+@@ -331,7 +331,12 @@ const restoreRelativeSelection = (tr, relSel, binding) => {
+         relSel.anchor,
+         binding.mapping
+       );
+-      tr.setSelection(prosemirrorState.NodeSelection.create(tr.doc, anchor));
++      // memry patch (yjs/y-prosemirror#272): a stale anchor must not abort the rebuild
++      if (anchor !== null && anchor < tr.doc.content.size) {
++        try {
++          tr.setSelection(prosemirrorState.NodeSelection.create(tr.doc, anchor))
++        } catch (_e) {}
++      };
+     } else {
+       const anchor = relativePositionToAbsolutePosition(
+         binding.doc,
+@@ -346,7 +351,12 @@ const restoreRelativeSelection = (tr, relSel, binding) => {
+         binding.mapping
+       );
+       if (anchor !== null && head !== null) {
+-        const sel = prosemirrorState.TextSelection.between(tr.doc.resolve(anchor), tr.doc.resolve(head));
++        // memry patch (yjs/y-prosemirror#272): clamp so a stale anchor cannot abort the rebuild
++        const maxPos = tr.doc.content.size
++        const sel = prosemirrorState.TextSelection.between(
++          tr.doc.resolve(Math.min(anchor, maxPos)),
++          tr.doc.resolve(Math.min(head, maxPos))
++        );
+         tr.setSelection(sel);
+       }
+     }
+diff --git a/src/plugins/sync-plugin.js b/src/plugins/sync-plugin.js
+index dccfb76918c8c70fe5a5b12372cdabcc9d8c58dd..255801fc2915da72d3aefb7417f15a27f3876ef5 100644
+--- a/src/plugins/sync-plugin.js
++++ b/src/plugins/sync-plugin.js
+@@ -257,7 +257,12 @@ const restoreRelativeSelection = (tr, relSel, binding) => {
+         relSel.anchor,
+         binding.mapping
+       )
+-      tr.setSelection(NodeSelection.create(tr.doc, anchor))
++      // memry patch (yjs/y-prosemirror#272): a stale anchor must not abort the rebuild
++      if (anchor !== null && anchor < tr.doc.content.size) {
++        try {
++          tr.setSelection(NodeSelection.create(tr.doc, anchor))
++        } catch (_e) {}
++      }
+     } else {
+       const anchor = relativePositionToAbsolutePosition(
+         binding.doc,
+@@ -272,7 +277,12 @@ const restoreRelativeSelection = (tr, relSel, binding) => {
+         binding.mapping
+       )
+       if (anchor !== null && head !== null) {
+-        const sel = TextSelection.between(tr.doc.resolve(anchor), tr.doc.resolve(head))
++        // memry patch (yjs/y-prosemirror#272): clamp so a stale anchor cannot abort the rebuild
++        const maxPos = tr.doc.content.size
++        const sel = TextSelection.between(
++          tr.doc.resolve(Math.min(anchor, maxPos)),
++          tr.doc.resolve(Math.min(head, maxPos))
++        )
+         tr.setSelection(sel)
+       }
+     }
