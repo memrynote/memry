@@ -354,8 +354,10 @@ optional record that reads a non-object as absent (`:33-37`). **Normative**:
 
 The Rust core projects it as `Field::opt_null("fields", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:83`). It
-carries the bytes on a wholesale apply, keeps its local copy on a concurrent
-merge (chapter 06 §6.9.2), and copies the map to a duplicate and to a next
+joins the map on every apply path and heals by chapter 06 §6.11
+(`crates/memry-core/src/domain/tasks/fields_apply.rs:50`), stamps a local edit
+(`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
+`crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
 `crates/memry-core/src/domain/tasks/lifecycle.rs:35`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.

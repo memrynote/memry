@@ -224,6 +224,7 @@ fn a_dominating_local_clock_skips_the_remote_entirely() {
                 json!({"title": "Stale", "clock": {"device-a": 1}}),
             ),
             NOW + 2_000,
+            None,
         )?;
 
         assert_eq!(outcome, Inbound::Skipped);
@@ -253,7 +254,7 @@ fn a_remote_that_dominates_applies_wholesale_and_verbatim() {
                 "anUnknownKey": 7
             }),
         );
-        let outcome = tasks::apply_remote(conn, &record, NOW + 1_000)?;
+        let outcome = tasks::apply_remote(conn, &record, NOW + 1_000, None)?;
 
         assert_eq!(outcome, Inbound::Applied);
         // §13.2 rule 1: the bytes are the remote's, exactly as received.
@@ -299,6 +300,7 @@ fn a_concurrent_pair_merges_per_field_stores_the_union_clock_and_never_re_pushes
                 }),
             ),
             NOW + 2_000,
+            None,
         )?;
 
         assert_eq!(
@@ -372,6 +374,7 @@ fn a_tied_concurrent_field_is_reported_as_a_conflict_and_the_remote_wins() {
                 }),
             ),
             NOW + 2_000,
+            None,
         )?;
 
         assert_eq!(
@@ -399,7 +402,7 @@ fn a_tombstone_is_applied_rather_than_merged() {
         record.deleted_at = Some(NOW + 1_000);
 
         assert_eq!(
-            tasks::apply_remote(conn, &record, NOW + 1_000)?,
+            tasks::apply_remote(conn, &record, NOW + 1_000, None)?,
             Inbound::Applied
         );
         let deleted: Option<i64> = conn
@@ -424,7 +427,7 @@ fn a_remote_payload_that_will_not_parse_is_recorded_corrupt_and_never_skipped() 
         record.payload_json = "{not json".to_owned();
 
         assert!(matches!(
-            tasks::apply_remote(conn, &record, NOW + 1_000)?,
+            tasks::apply_remote(conn, &record, NOW + 1_000, None)?,
             Inbound::Corrupt { .. }
         ));
         let reason: Option<String> = conn
