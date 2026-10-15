@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createSqliteD1 } from '../__tests__/d1-sqlite'
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import {
+  CRDT_PULL_BYTE_BUDGET,
   getBatchUpdates,
   getSnapshot,
   getUpdates,
@@ -247,6 +248,64 @@ describe('CRDT service sequencing', () => {
       signerDeviceId: 'device-a'
     })
     expect(result.snapshotMeta['note-42']).toBeUndefined()
+  })
+
+  // #3278: the update reads had a row cap and no byte cap, so a batch of notes
+  // with many large updates loaded hundreds of MB into a 128 MB Worker and the
+  // pull came back 5xx on every retry. The pages now stop at a byte budget and
+  // say hasMore, which every client already follows.
+  describe('byte budget (#3278)', () => {
+    const large = (fill: number): ArrayBuffer =>
+      new Uint8Array(CRDT_PULL_BYTE_BUDGET / 2 + 1).fill(fill).buffer
+
+    it('stops a batch page at the byte budget and reports hasMore', async () => {
+      // #given two notes whose updates do not fit two to a page
+      const db = createD1Database()
+      await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-a', [large(1), large(2)])
+      await storeUpdates(db, 'user-1', 'vault-1', 'note-2', 'device-a', [large(3)])
+
+      // #when
+      const result = await getBatchUpdates(
+        db,
+        'user-1',
+        'vault-1',
+        [
+          { noteId: 'note-1', since: 0 },
+          { noteId: 'note-2', since: 0 }
+        ],
+        100
+      )
+
+      // #then the first update always fits, the rest wait for the next page
+      expect(result.notes['note-1'].updates.map((u) => u.sequence_num)).toEqual([1])
+      expect(result.notes['note-1'].hasMore).toBe(true)
+      expect(result.notes['note-2']).toEqual({ updates: [], hasMore: true })
+
+      // #and the next page resumes where the first stopped
+      const next = await getBatchUpdates(
+        db,
+        'user-1',
+        'vault-1',
+        [
+          { noteId: 'note-1', since: 1 },
+          { noteId: 'note-2', since: 0 }
+        ],
+        100
+      )
+      expect(next.notes['note-1'].updates.map((u) => u.sequence_num)).toEqual([2])
+      expect(next.notes['note-1'].hasMore).toBe(false)
+      expect(next.notes['note-2']).toEqual({ updates: [], hasMore: true })
+    })
+
+    it('stops a single-note page at the byte budget and reports hasMore', async () => {
+      const db = createD1Database()
+      await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-a', [large(1), large(2)])
+
+      const page = await getUpdates(db, 'user-1', 'vault-1', 'note-1', 0, 100)
+
+      expect(page.updates.map((u) => u.sequence_num)).toEqual([1])
+      expect(page.hasMore).toBe(true)
+    })
   })
 
   it('returns an empty batch result when no notes are requested', async () => {

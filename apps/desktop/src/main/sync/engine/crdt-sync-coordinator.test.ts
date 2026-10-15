@@ -541,6 +541,45 @@ describe('CrdtSyncCoordinator', () => {
     expect(coordinator.drainPendingPulls()).toEqual(['note-1', 'note-2'])
   })
 
+  // #3278: a batch POST that dead-letters on a server 5xx must leave its notes
+  // owed, so the next sync pulls them again instead of dropping them.
+  it('re-queues every note in a chunk whose batch POST dead-lettered on a 5xx', async () => {
+    // #given the batch POST exhausts its retries on a 503
+    const { ctx } = createBatchContext()
+    const { SyncServerError } = await import('@memry/sync-client/http-errors')
+    const { DeadLetterError } = await import('@memry/sync-client/retry')
+    postToServerMock.mockRejectedValue(
+      new DeadLetterError(new SyncServerError('Server error (503)', 503), 4)
+    )
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then both are owed, and the next pass sends them again
+    const owed = coordinator.drainPendingPulls()
+    expect(owed).toEqual(['note-1', 'note-2'])
+    postToServerMock.mockReset()
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-2': { updates: [], hasMore: false }
+      }
+    })
+    await coordinator.applyCrdtBatch(owed, 'token-1', new Uint8Array([4]))
+    expect(postToServerMock).toHaveBeenCalledWith(
+      '/sync/crdt/updates/batch',
+      expect.objectContaining({
+        notes: [
+          { noteId: 'note-1', since: 0 },
+          { noteId: 'note-2', since: 0 }
+        ]
+      }),
+      'token-1'
+    )
+    expect(coordinator.drainPendingPulls()).toEqual([])
+  })
+
   it('re-queues only the note whose snapshot baseline was rate-limited', async () => {
     // #given note-2's baseline is refused; note-1 and note-3 are fine
     const { ctx } = createBatchContext()

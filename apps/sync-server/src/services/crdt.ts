@@ -233,6 +233,73 @@ export const storeUpdatesWithCursor = async (
   return cursor === undefined ? { sequences } : { sequences, cursor }
 }
 
+/**
+ * Raw update bytes one pull page may carry (#3278). The update reads were capped
+ * by row count alone, so a page of 100 notes x 101 large updates loaded hundreds
+ * of MB into a 128 MB Worker and failed with a 5xx on every retry, stranding
+ * those notes. A page now ends at this budget with `hasMore: true`, which every
+ * client already follows; the first update always fits, so each page progresses.
+ */
+export const CRDT_PULL_BYTE_BUDGET = 8 * 1024 * 1024
+
+interface UpdateRange {
+  noteId: string
+  since: number
+}
+
+const UPDATE_COLUMNS =
+  'id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at'
+
+/**
+ * Phase one of a budgeted read: sizes only, so the budget is applied before any
+ * payload is loaded. Returns, per range, the last sequence that fits (null when
+ * none) and whether the page stops short of everything the server holds.
+ */
+const planUpdatePage = async (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  ranges: UpdateRange[],
+  limit: number
+): Promise<Array<{ upTo: number | null; hasMore: boolean }>> => {
+  const sizes = await db.batch(
+    ranges.map((range) =>
+      db
+        .prepare(
+          'SELECT sequence_num, length(update_data) AS size FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
+        )
+        .bind(userId, vaultId, range.noteId, range.since, limit + 1)
+    )
+  )
+
+  let spent = 0
+  return sizes.map((result) => {
+    const rows = (result as D1Result<{ sequence_num: number; size: number }>).results ?? []
+    let upTo: number | null = null
+    let taken = 0
+    for (const row of rows.slice(0, limit)) {
+      if (spent > 0 && spent + row.size > CRDT_PULL_BYTE_BUDGET) break
+      spent += row.size
+      upTo = row.sequence_num
+      taken++
+    }
+    return { upTo, hasMore: rows.length > taken }
+  })
+}
+
+const readPlannedUpdates = (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  range: UpdateRange,
+  upTo: number
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `SELECT ${UPDATE_COLUMNS} FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? AND sequence_num <= ? ORDER BY sequence_num ASC`
+    )
+    .bind(userId, vaultId, range.noteId, range.since, upTo)
+
 export const getUpdates = async (
   db: D1Database,
   userId: string,
@@ -241,20 +308,12 @@ export const getUpdates = async (
   sinceSequence: number,
   limit = 100
 ): Promise<{ updates: CrdtUpdate[]; hasMore: boolean }> => {
-  const rows = await db
-    .prepare(
-      'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
-    )
-    .bind(userId, vaultId, noteId, sinceSequence, limit + 1)
-    .all<CrdtUpdate>()
+  const range = { noteId, since: sinceSequence }
+  const [plan] = await planUpdatePage(db, userId, vaultId, [range], limit)
+  if (plan.upTo === null) return { updates: [], hasMore: plan.hasMore }
 
-  const results = rows.results ?? []
-  const hasMore = results.length > limit
-
-  return {
-    updates: results.slice(0, limit),
-    hasMore
-  }
+  const rows = await readPlannedUpdates(db, userId, vaultId, range, plan.upTo).all<CrdtUpdate>()
+  return { updates: rows.results ?? [], hasMore: plan.hasMore }
 }
 
 /**
@@ -332,13 +391,14 @@ export const getBatchUpdates = async (
 }> => {
   if (notes.length === 0) return { notes: {}, snapshotMeta: {} }
 
-  const statements = notes.map((n) =>
-    db
-      .prepare(
-        'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
-      )
-      .bind(userId, vaultId, n.noteId, n.since, limitPerNote + 1)
-  )
+  const plans = await planUpdatePage(db, userId, vaultId, notes, limitPerNote)
+  const reads = notes.flatMap((note, i) => {
+    const upTo = plans[i].upTo
+    return upTo === null
+      ? []
+      : [{ noteId: note.noteId, statement: readPlannedUpdates(db, userId, vaultId, note, upTo) }]
+  })
+  const statements = reads.map((read) => read.statement)
   statements.push(
     ...getBatchSnapshotMeta(
       db,
@@ -351,20 +411,19 @@ export const getBatchUpdates = async (
   const batchResults = await db.batch(statements)
 
   const noteResults: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }> = {}
-  for (let i = 0; i < notes.length; i++) {
-    const rows = (batchResults[i] as D1Result<CrdtUpdate>).results ?? []
-    noteResults[notes[i].noteId] = {
-      updates: rows.slice(0, limitPerNote),
-      hasMore: rows.length > limitPerNote
-    }
-  }
+  notes.forEach((note, i) => {
+    noteResults[note.noteId] = { updates: [], hasMore: plans[i].hasMore }
+  })
+  reads.forEach((read, i) => {
+    noteResults[read.noteId].updates = (batchResults[i] as D1Result<CrdtUpdate>).results ?? []
+  })
 
   // A note absent from this map has no server snapshot at all.
   const snapshotMeta: Record<string, CrdtSnapshotMeta> = {}
   // Everything past the per-note statements is metadata, however many statements
   // the bind-parameter split turned it into.
   const metaRows = batchResults
-    .slice(notes.length)
+    .slice(reads.length)
     .flatMap((result) => (result as D1Result<CrdtSnapshot>).results ?? [])
   for (const row of metaRows) {
     snapshotMeta[row.note_id] = {
