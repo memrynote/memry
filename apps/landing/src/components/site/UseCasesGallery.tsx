@@ -61,11 +61,7 @@ const PERSONAS: Persona[] = [
 export function UseCasesGallery() {
   return (
     <HomeSection id="use-cases">
-      <SectionTitle
-        eyebrow="How people use it"
-        title="One app, many kinds of minds"
-        sub="One calm place, set up your way."
-      />
+      <SectionTitle title="One app, many kinds of minds" sub="One calm place, set up your way." />
 
       <ul
         aria-label="How people use MemryNote"

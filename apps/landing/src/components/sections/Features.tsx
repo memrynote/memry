@@ -46,13 +46,13 @@ function useActiveModule() {
       setActiveId(current)
     }
 
+    // The observed band is the viewport's top 34%, so a callback fires exactly when a
+    // panel's top crosses the line, instead of measuring every panel on every scroll frame.
+    const observer = new IntersectionObserver(read, { rootMargin: '0px 0px -66% 0px' })
+    for (const node of panelRefs.current.values()) observer.observe(node)
+
     read()
-    window.addEventListener('scroll', read, { passive: true })
-    window.addEventListener('resize', read)
-    return () => {
-      window.removeEventListener('scroll', read)
-      window.removeEventListener('resize', read)
-    }
+    return () => observer.disconnect()
   }, [])
 
   // One stable callback per module — a fresh closure each render would detach and
@@ -146,10 +146,7 @@ export function Features() {
           transition={{ duration: 0.8, ease: EASE }}
           className="max-w-2xl"
         >
-          <p className="font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
-            Inside MemryNote
-          </p>
-          <h2 className="display-section mt-4 text-ink">
+          <h2 className="display-section text-ink">
             Six modules. <em className="text-terracotta">One window.</em>
           </h2>
           <p className="section-sub mt-4">

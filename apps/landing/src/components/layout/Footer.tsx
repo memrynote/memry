@@ -90,18 +90,11 @@ export function Footer() {
             <div className="mt-7">
               <AskAi />
             </div>
-            <p className="mt-7 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-dark-muted/70">
-              {TRUST_LINE.map((fact, i) => (
-                <span key={fact} className="inline-block">
-                  {fact}
-                  {i < TRUST_LINE.length - 1 && (
-                    <span aria-hidden className="mx-2.5 text-terracotta/60">
-                      ·
-                    </span>
-                  )}
-                </span>
+            <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-dark-muted/80">
+              {TRUST_LINE.map((fact) => (
+                <li key={fact}>{fact}</li>
               ))}
-            </p>
+            </ul>
           </div>
 
           {FOOTER_COLUMNS.map((column) => (

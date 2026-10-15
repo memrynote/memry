@@ -6,7 +6,6 @@ import { UseCasesGallery } from '@/components/site/UseCasesGallery'
 import { Features } from '@/components/sections/Features'
 import { ConnectedShowcase } from '@/components/site/ConnectedShowcase'
 import { PrivacyShowcase } from '@/components/site/PrivacyShowcase'
-import { CommunityLoop } from '@/components/site/CommunityLoop'
 import { FinalCta } from '@/components/site/FinalCta'
 import { NewsletterSignup } from '@/components/site/NewsletterSignup'
 import { FeatureChip, SectionRule } from '@/components/site/primitives'
@@ -37,7 +36,6 @@ export function Home() {
         <SectionRule />
         <Faq
           className="border-t-0"
-          eyebrow="FAQ"
           title={
             <>
               Common <em className="text-terracotta">questions.</em>
@@ -57,8 +55,6 @@ export function Home() {
           items={HOME_FAQ_ITEMS}
         />
         <SectionRule />
-        <CommunityLoop />
-        <SectionRule />
         <FinalCta
           title={
             <>
@@ -68,9 +64,9 @@ export function Home() {
           sub="Free to start. Private by default. Yours forever."
           location="home-final"
           secondary={{ label: 'See pricing', to: '/pricing', event: 'pricing:home-final' }}
-        />
-        <SectionRule />
-        <NewsletterSignup location="home-final" />
+        >
+          <NewsletterSignup location="home-final" />
+        </FinalCta>
       </div>
     </>
   )

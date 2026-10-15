@@ -246,7 +246,6 @@ export function ConnectedShowcase() {
     <HomeSection id="connected">
       <div className="mx-auto w-full max-w-6xl">
         <SectionTitle
-          eyebrow="Connected"
           title={
             <>
               Everything&rsquo;s connected, on <em>your</em> terms

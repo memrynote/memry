@@ -78,6 +78,8 @@
   --color-brand-200: #ffaa80;
   --color-brand-100: #ffccb3;
 
+  /* Landing is light-only by brand decision: there is no prefers-color-scheme variant.
+     Dark appears only as deliberate zones (.zone-dark: the privacy break and the footer). */
   --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
   /* The top step is neutral white — the page ground the dot grid and grain are tuned

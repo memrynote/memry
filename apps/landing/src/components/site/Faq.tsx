@@ -33,7 +33,7 @@ export interface FaqProps {
 }
 
 /**
- * The site's one FAQ: a sticky heading beside a numbered accordion.
+ * The site's one FAQ: a sticky heading beside an accordion.
  *
  * Two layouts were in circulation — Pricing's two-column sticky version and Download's
  * plain centered one. Rather than grow a prop to switch between them (a config that
@@ -65,12 +65,7 @@ export function Faq({ eyebrow, title, sub, items, className }: FaqProps) {
                   className="rounded-none border-b border-border/60 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
                 >
                   <AccordionTrigger className="py-5 text-start font-serif text-lg text-ink hover:text-terracotta hover:no-underline">
-                    <span className="flex items-baseline gap-4">
-                      <span className="font-mono-accent text-[11px] tracking-[0.14em] text-muted/50">
-                        Q.{String(i + 1).padStart(2, '0')}
-                      </span>
-                      {item.question}
-                    </span>
+                    {item.question}
                   </AccordionTrigger>
                   <AccordionContent className="max-w-[90%] pb-5 font-sans text-[17px] leading-relaxed text-muted">
                     {item.answer}
