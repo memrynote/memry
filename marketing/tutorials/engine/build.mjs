@@ -9,9 +9,6 @@
  *   node marketing/tutorials/engine/build.mjs <tutorial> --takes 3       # more takes per line
  *   node marketing/tutorials/engine/build.mjs <tutorial> --app <checkout> # film another checkout's build
  *
- * The filmed build defaults to /tmp/memry-tutorials/app when it exists (a worktree holding
- * unmerged fixes the film needs), else this checkout.
- *
  * <tutorial> is a folder under marketing/tutorials/ holding narration.json and scenes.mjs.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -40,10 +37,7 @@ const flag = (name) => {
 const from = flag('from')
 const only = flag('only')
 const takes = Number(flag('takes') ?? 2)
-const APP = path.resolve(
-  flag('app') ??
-    (fs.existsSync('/tmp/memry-tutorials/app/apps/desktop') ? '/tmp/memry-tutorials/app' : ROOT)
-)
+const APP = path.resolve(flag('app') ?? ROOT)
 useApp(APP)
 const name = args[0]
 if (!name) {
