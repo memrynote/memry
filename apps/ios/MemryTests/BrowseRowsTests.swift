@@ -30,7 +30,7 @@ struct BrowseRowsTests {
             folderPath: folder,
             emoji: nil,
             createdAt: nil,
-            modifiedAt: modified
+            modifiedAt: modified, aliases: []
         )
     }
 

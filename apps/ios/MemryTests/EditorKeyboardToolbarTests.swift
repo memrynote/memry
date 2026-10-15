@@ -759,7 +759,7 @@ struct MoveBlockToNoteTests {
     @Test func thePickerSearchesTitlesAndFolders() {
         func note(_ id: String, _ title: String, folder: String? = nil) -> NoteSummary {
             NoteSummary(
-                id: id, title: title, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil
+                id: id, title: title, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
             )
         }
         let notes = [note("1", "Groceries"), note("2", "Plans", folder: "Work/Q3"), note("3", "Ideas")]

@@ -48,6 +48,11 @@ pub fn normalize_aliases(title: &str, aliases: &[String]) -> Vec<String> {
     out
 }
 
+/// A stored `aliases` column: a JSON string array, NULL for none.
+pub fn parse_stored(raw: Option<String>) -> Result<Vec<String>, serde_json::Error> {
+    raw.map_or(Ok(Vec::new()), |raw| serde_json::from_str(&raw))
+}
+
 /// JavaScript's `String.prototype.trim`, which desktop trims with. It differs
 /// from `str::trim` on two characters: it strips U+FEFF and keeps U+0085.
 pub(crate) fn js_trim(raw: &str) -> &str {

@@ -54,7 +54,7 @@ struct InlineTriggerTests {
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let code = Block(id: "c", kind: "codeBlock", depth: 0, props: [], inline: [])
         let field = BlockField(block: code, session: session, style: style, alignment: .natural)
-        session.linkNotes = [WikiLinkNote(title: "Dune", folderPath: nil)]
+        session.linkNotes = [note("Dune")]
         session.tags = ["work"]
         session.focusChanged(to: field)
         for text in ["[[Du", "@", "/", "#wo"] {
@@ -77,11 +77,11 @@ struct EditorSuggestionTests {
     }
 
     @Test func the_wiki_menu_offers_a_create_row_when_nothing_matches_exactly() {
-        let items = EditorSuggestions.wiki(query: "Du", notes: ["Dune", "Emma", "Dubai"].map { WikiLinkNote(title: $0, folderPath: nil) })
+        let items = EditorSuggestions.wiki(query: "Du", notes: ["Dune", "Emma", "Dubai"].map(note))
         #expect(items.map(\.kind) == [
             .note(title: "Dune", alias: ""), .note(title: "Dubai", alias: ""), .create(title: "Du", alias: ""),
         ])
-        let exact = EditorSuggestions.wiki(query: "dune", notes: [WikiLinkNote(title: "Dune", folderPath: nil)])
+        let exact = EditorSuggestions.wiki(query: "dune", notes: [note("Dune")])
         #expect(!exact.contains { if case .create = $0.kind { true } else { false } })
     }
 
@@ -447,4 +447,8 @@ struct DateMentionEditTests {
         #expect(DateMentionRemind.afterToggle("1d", hasTime: false) == "1d")
         #expect(DateMentionRemind.afterToggle("none", hasTime: true) == "none")
     }
+}
+
+private func note(_ title: String) -> NoteSummary {
+    NoteSummary(id: title, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])
 }

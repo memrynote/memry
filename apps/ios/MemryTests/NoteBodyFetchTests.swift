@@ -38,7 +38,7 @@ struct ScriptedNote: NotesReading {
         NoteDetail(
             summary: NoteSummary(
                 id: id, title: "an older note",
-                folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil
+                folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
             ),
             // `present: false` with empty text is "the body has not been
             // pulled here"; `present: true` with empty text would be "the user

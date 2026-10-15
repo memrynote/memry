@@ -1,21 +1,14 @@
 //
 //  WikiTarget.swift
 //  Reading a wiki-link target's text for presentation: its note and heading
-//  halves, and the path stem a link to a duplicate-titled note writes.
+//  halves, and the path key a path-form link names.
 //
 //  Desktop reference: `packages/shared/src/wiki-target.ts`. Resolution itself
-//  is the core's (`Notes.resolveWikiTarget`); this only draws and suggests.
+//  is the core's (`Notes.resolveWikiTarget`); this only draws.
 //
 
 import Foundation
 import MemryCore
-
-/// A note the `[[` menu can link to.
-struct WikiLinkNote: Equatable, Sendable {
-    let title: String
-    /// The note's folder from the vault root, `nil` at the root.
-    let folderPath: String?
-}
 
 enum WikiTarget {
     /// `Note#Heading` → (`Note`, `Heading`), desktop's `splitWikiTarget`. The
@@ -41,16 +34,9 @@ enum WikiTarget {
     }
 
     /// The case-folded path key of a note, as ``pathKey(_:)`` reads a link to it.
-    static func pathKey(of note: WikiLinkNote) -> String {
+    static func pathKey(of note: NoteSummary) -> String {
         let folder = note.folderPath?.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
         return (folder.isEmpty ? note.title : "\(folder)/\(note.title)").lowercased()
-    }
-
-    /// What a link to `note` writes when another note shares its title: the
-    /// vault-root path stem, `/Title` at the root (desktop's `linkTargetFor`).
-    static func pathStem(of note: WikiLinkNote) -> String {
-        let folder = note.folderPath?.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
-        return folder.isEmpty ? "/\(note.title)" : "\(folder)/\(note.title)"
     }
 
     /// Whether a link's target names one of the vault's notes by title or by

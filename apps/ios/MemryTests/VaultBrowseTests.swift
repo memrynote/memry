@@ -82,7 +82,7 @@ private func note(_ id: String, in folderPath: String? = nil, title: String? = n
         folderPath: folderPath,
         emoji: nil,
         createdAt: nil,
-        modifiedAt: nil
+        modifiedAt: nil, aliases: []
     )
 }
 

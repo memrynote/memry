@@ -30,7 +30,7 @@ final class EditorSession {
     /// Re-reads the page after a write (`didChange`).
     @ObservationIgnored var reload: () async -> Void = {}
     /// Notes for the `[[` and `@` menus, most recently modified first.
-    @ObservationIgnored var linkNotes: [WikiLinkNote] = []
+    @ObservationIgnored var linkNotes: [NoteSummary] = []
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
     @ObservationIgnored var icons: [String: String] = [:]
     @ObservationIgnored var titleExists: ((String) -> Bool)?

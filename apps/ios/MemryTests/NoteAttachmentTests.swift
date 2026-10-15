@@ -43,7 +43,7 @@ private final class ScriptedAttachments: NotesReading, @unchecked Sendable {
         NoteDetail(
             summary: NoteSummary(
                 id: id, title: "a note", folderPath: nil,
-                emoji: nil, createdAt: nil, modifiedAt: nil
+                emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
             ),
             body: NoteBody(text: "body", present: true)
         )

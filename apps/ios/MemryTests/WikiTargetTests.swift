@@ -1,7 +1,5 @@
 //
 //  WikiTargetTests.swift
-//  Path-form wiki links: the `[[` menu's path stems for shared titles, the
-//  broken-link check, and the heading a link scrolls to.
 //
 
 import Foundation
@@ -13,11 +11,12 @@ import Testing
 @Suite("Wiki link targets")
 @MainActor
 struct WikiTargetTests {
-    private let notes = [
-        WikiLinkNote(title: "Plan", folderPath: "Work"),
-        WikiLinkNote(title: "plan", folderPath: nil),
-        WikiLinkNote(title: "Ideas", folderPath: "Work"),
-    ]
+    private static func note(_ title: String, in folder: String? = nil, names: [String] = []) -> NoteSummary {
+        NoteSummary(id: "\(folder ?? "")/\(title)", title: title, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: names)
+    }
+
+    private let notes = [Self.note("Plan", in: "Work"), Self.note("plan"), Self.note("Ideas", in: "Work")]
+    private let named = [Self.note("Artificial Intelligence", names: ["AI", "Yapay Zeka"]), Self.note("Reading list")]
 
     @Test func a_shared_title_links_by_its_path_stem_and_shows_its_folder() {
         let items = EditorSuggestions.wiki(query: "plan", notes: notes)
@@ -34,6 +33,29 @@ struct WikiTargetTests {
     @Test func the_alias_row_for_a_shared_title_carries_the_path_stem() {
         let items = EditorSuggestions.wiki(query: "Plan|p", notes: notes)
         #expect(items.map(\.kind) == [.note(title: "Work/Plan", alias: "p")])
+    }
+
+    @Test func a_name_match_shows_the_name_over_its_note_and_links_with_the_name() {
+        let items = EditorSuggestions.wiki(query: "AI", notes: named)
+        #expect(items.map(\.title) == ["AI", "Reading list"])
+        #expect(items.map(\.subtitle) == ["\u{2192} Artificial Intelligence", nil])
+        #expect(items.map(\.kind) == [
+            .note(title: "Artificial Intelligence", alias: "AI"), .note(title: "Reading list", alias: ""),
+        ])
+    }
+
+    @Test func an_exact_name_hides_the_create_row_and_a_partial_one_does_not() {
+        #expect(!EditorSuggestions.wiki(query: "yapay zeka", notes: named).contains { $0.id.hasPrefix("create:") })
+        #expect(EditorSuggestions.wiki(query: "yapay", notes: named).map(\.id).last == "create:yapay")
+    }
+
+    @Test func a_name_two_notes_share_is_two_rows_with_their_folders() {
+        let shared = [Self.note("Machine Learning", in: "Tech", names: ["ML"]), Self.note("Markup Language", names: ["ML"])]
+        let items = EditorSuggestions.wiki(query: "ml", notes: shared)
+        #expect(items.map(\.subtitle) == ["\u{2192} Machine Learning \u{00B7} Tech", "\u{2192} Markup Language \u{00B7} /"])
+        #expect(items.map(\.kind) == [
+            .note(title: "Machine Learning", alias: "ML"), .note(title: "Markup Language", alias: "ML"),
+        ])
     }
 
     @Test func a_path_link_to_a_real_note_is_not_broken() {

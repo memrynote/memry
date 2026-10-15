@@ -20850,6 +20850,10 @@ public struct NoteSummary: Equatable, Hashable {
      */
     public var createdAt: Int64?
     public var modifiedAt: Int64?
+    /**
+     * The note's other names (frontmatter `aliases`), as stored.
+     */
+    public var aliases: [String]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -20860,13 +20864,17 @@ public struct NoteSummary: Equatable, Hashable {
         /**
          * Epoch milliseconds (data-model §A.6). `None` means the payload carried
          * no such instant, never "zero".
-         */createdAt: Int64?, modifiedAt: Int64?) {
+         */createdAt: Int64?, modifiedAt: Int64?, 
+        /**
+         * The note's other names (frontmatter `aliases`), as stored.
+         */aliases: [String]) {
         self.id = id
         self.title = title
         self.folderPath = folderPath
         self.emoji = emoji
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
+        self.aliases = aliases
     }
 
     
@@ -20890,7 +20898,8 @@ public struct FfiConverterTypeNoteSummary: FfiConverterRustBuffer {
                 folderPath: FfiConverterOptionString.read(from: &buf), 
                 emoji: FfiConverterOptionString.read(from: &buf), 
                 createdAt: FfiConverterOptionInt64.read(from: &buf), 
-                modifiedAt: FfiConverterOptionInt64.read(from: &buf)
+                modifiedAt: FfiConverterOptionInt64.read(from: &buf), 
+                aliases: FfiConverterSequenceString.read(from: &buf)
         )
     }
 
@@ -20901,6 +20910,7 @@ public struct FfiConverterTypeNoteSummary: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.emoji, into: &buf)
         FfiConverterOptionInt64.write(value.createdAt, into: &buf)
         FfiConverterOptionInt64.write(value.modifiedAt, into: &buf)
+        FfiConverterSequenceString.write(value.aliases, into: &buf)
     }
 }
 
@@ -25100,6 +25110,162 @@ public func FfiConverterTypeVaultSummary_lift(_ buf: RustBuffer) throws -> Vault
 #endif
 public func FfiConverterTypeVaultSummary_lower(_ value: VaultSummary) -> RustBuffer {
     return FfiConverterTypeVaultSummary.lower(value)
+}
+
+
+public struct WikiLinkCandidate: Equatable, Hashable {
+    public var noteId: String
+    public var title: String
+    /**
+     * The name the query matched, `None` when it matched the title.
+     */
+    public var matchedName: String?
+    /**
+     * What a link to the note writes: its title, or its vault-root path stem
+     * (`Work/Plan`, `/Plan` at the root) when another note shares the title.
+     */
+    public var linkTarget: String
+    /**
+     * The note's folder (`/` at the root) when another note shares the
+     * matched title or name, so the rows can be told apart.
+     */
+    public var folder: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(noteId: String, title: String, 
+        /**
+         * The name the query matched, `None` when it matched the title.
+         */matchedName: String?, 
+        /**
+         * What a link to the note writes: its title, or its vault-root path stem
+         * (`Work/Plan`, `/Plan` at the root) when another note shares the title.
+         */linkTarget: String, 
+        /**
+         * The note's folder (`/` at the root) when another note shares the
+         * matched title or name, so the rows can be told apart.
+         */folder: String?) {
+        self.noteId = noteId
+        self.title = title
+        self.matchedName = matchedName
+        self.linkTarget = linkTarget
+        self.folder = folder
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension WikiLinkCandidate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeWikiLinkCandidate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WikiLinkCandidate {
+        return
+            try WikiLinkCandidate(
+                noteId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                matchedName: FfiConverterOptionString.read(from: &buf), 
+                linkTarget: FfiConverterString.read(from: &buf), 
+                folder: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: WikiLinkCandidate, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.noteId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.matchedName, into: &buf)
+        FfiConverterString.write(value.linkTarget, into: &buf)
+        FfiConverterOptionString.write(value.folder, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiLinkCandidate_lift(_ buf: RustBuffer) throws -> WikiLinkCandidate {
+    return try FfiConverterTypeWikiLinkCandidate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiLinkCandidate_lower(_ value: WikiLinkCandidate) -> RustBuffer {
+    return FfiConverterTypeWikiLinkCandidate.lower(value)
+}
+
+
+public struct WikiLinkCandidates: Equatable, Hashable {
+    /**
+     * Best first, at most the limit asked for.
+     */
+    public var candidates: [WikiLinkCandidate]
+    /**
+     * A note's title or name equals the query by [`name_key`]. That note is
+     * the first candidate, and the menu offers no "Create note" row.
+     */
+    public var exact: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Best first, at most the limit asked for.
+         */candidates: [WikiLinkCandidate], 
+        /**
+         * A note's title or name equals the query by [`name_key`]. That note is
+         * the first candidate, and the menu offers no "Create note" row.
+         */exact: Bool) {
+        self.candidates = candidates
+        self.exact = exact
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension WikiLinkCandidates: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeWikiLinkCandidates: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WikiLinkCandidates {
+        return
+            try WikiLinkCandidates(
+                candidates: FfiConverterSequenceTypeWikiLinkCandidate.read(from: &buf), 
+                exact: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: WikiLinkCandidates, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeWikiLinkCandidate.write(value.candidates, into: &buf)
+        FfiConverterBool.write(value.exact, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiLinkCandidates_lift(_ buf: RustBuffer) throws -> WikiLinkCandidates {
+    return try FfiConverterTypeWikiLinkCandidates.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiLinkCandidates_lower(_ value: WikiLinkCandidates) -> RustBuffer {
+    return FfiConverterTypeWikiLinkCandidates.lower(value)
 }
 
 
@@ -32575,6 +32741,31 @@ fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeWikiLinkCandidate: FfiConverterRustBuffer {
+    typealias SwiftType = [WikiLinkCandidate]
+
+    public static func write(_ value: [WikiLinkCandidate], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeWikiLinkCandidate.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [WikiLinkCandidate] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [WikiLinkCandidate]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeWikiLinkCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceOptionDouble: FfiConverterRustBuffer {
     typealias SwiftType = [Double?]
 
@@ -33196,6 +33387,20 @@ public func journalConformance(fileJson: String) -> String  {
 })
 }
 /**
+ * The `[[` menu's note rows for `query` over `notes` (from [`Notes::list`]),
+ * at most `limit` (see [`wiki_suggest::rank`]).
+ */
+public func wikiLinkCandidates(query: String, notes: [NoteSummary], limit: UInt32) -> WikiLinkCandidates  {
+    return try!  FfiConverterTypeWikiLinkCandidates_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_wiki_link_candidates(
+        FfiConverterString.lower(query),
+        FfiConverterSequenceTypeNoteSummary.lower(notes),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+/**
  * The `dueWindows` section of `task-parsing.json` evaluated at every `at`
  * entry's `now`, in the file's own shape.
  */
@@ -33403,6 +33608,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_journal_conformance() != 2227) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_wiki_link_candidates() != 17581) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {

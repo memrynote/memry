@@ -93,7 +93,7 @@ struct DateMentionSheet: View {
 /// Linking to another note (N602), from the page menu. The same rows as the
 /// `[[` menu, including desktop's create row for a title nothing carries.
 struct WikiLinkSheet: View {
-    let notes: [WikiLinkNote]
+    let notes: [NoteSummary]
     let insert: (EditorSuggestion.Kind) -> Void
     let cancel: () -> Void
 

@@ -73,11 +73,11 @@ private func folder(_ path: String, parent: String? = nil) -> FolderSummary {
 }
 
 private func note(_ id: String, in folderPath: String?) -> NoteSummary {
-    NoteSummary(id: id, title: id, folderPath: folderPath, emoji: nil, createdAt: nil, modifiedAt: nil)
+    NoteSummary(id: id, title: id, folderPath: folderPath, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])
 }
 
 private func summary(_ id: String, title: String = "A note") -> NoteSummary {
-    NoteSummary(id: id, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil)
+    NoteSummary(id: id, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])
 }
 
 private func detail(

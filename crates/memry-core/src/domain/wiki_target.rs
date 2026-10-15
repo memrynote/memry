@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::names::{js_trim, name_key};
+use crate::domain::notes::names::{js_trim, name_key, parse_stored};
 use crate::domain::tags::fold;
 
 /// A target's note half, and its heading half when it carries a `#`.
@@ -320,10 +320,7 @@ impl WikiNames {
 }
 
 fn parse_aliases(id: &str, raw: Option<String>) -> Result<Vec<String>, StorageError> {
-    let Some(raw) = raw else {
-        return Ok(Vec::new());
-    };
-    serde_json::from_str(&raw).map_err(|error| StorageError::Failed {
+    parse_stored(raw).map_err(|error| StorageError::Failed {
         what: format!("`{id}` has unreadable `aliases`: {error}"),
     })
 }

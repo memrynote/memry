@@ -302,7 +302,7 @@ final class NoteReadViewModel {
     private(set) var vaultNotes: [NoteSummary] = [] {
         didSet {
             vaultTitles = Set(vaultNotes.map { $0.title.lowercased() })
-            vaultPaths = Set(vaultNotes.map { WikiTarget.pathKey(of: WikiLinkNote(title: $0.title, folderPath: $0.folderPath)) })
+            vaultPaths = Set(vaultNotes.map { WikiTarget.pathKey(of: $0) })
         }
     }
     private(set) var vaultTitles: Set<String> = []

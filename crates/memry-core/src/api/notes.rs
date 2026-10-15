@@ -18,6 +18,7 @@ use crate::domain::reads::{
     self, FolderSummary, LinkedTask, NoteDetail, NoteSummary, ReminderSummary, TagSummary,
     TaskCard, TemplateSummary,
 };
+use crate::domain::wiki_suggest::{self, WikiLinkCandidates};
 use crate::storage::Db;
 
 /// The read-only content surface over one opened vault.
@@ -259,4 +260,15 @@ impl Notes {
         self.db
             .call_blocking(move |conn| attachments::resolve_for_block(conn, &id, &url))
     }
+}
+
+/// The `[[` menu's note rows for `query` over `notes` (from [`Notes::list`]),
+/// at most `limit` (see [`wiki_suggest::rank`]).
+#[uniffi::export]
+pub fn wiki_link_candidates(
+    query: String,
+    notes: Vec<NoteSummary>,
+    limit: u32,
+) -> WikiLinkCandidates {
+    wiki_suggest::rank(&query, &notes, limit as usize)
 }

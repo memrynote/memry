@@ -226,28 +226,22 @@ struct EditorSuggestion: Identifiable, Equatable {
 enum EditorSuggestions {
     static let limit = 10
 
-    /// The `[[` menu (`getWikiLinkItems`): matching notes, then a create row
-    /// when nothing matches exactly. A note sharing its title with another
-    /// links by its path stem and shows its folder (`/` at the root), as
-    /// desktop's `linkTargetFor` and `folderOf` do.
-    static func wiki(query: String, notes: [WikiLinkNote]) -> [EditorSuggestion] {
+    static func wiki(query: String, notes: [NoteSummary]) -> [EditorSuggestion] {
         let (search, alias) = WikiLinkText.parseQuery(query)
-        var counts: [String: Int] = [:]
-        for note in notes { counts[note.title.lowercased(), default: 0] += 1 }
-        let shared = { (note: WikiLinkNote) in counts[note.title.lowercased(), default: 0] > 1 }
-        let target = { (note: WikiLinkNote) in shared(note) ? WikiTarget.pathStem(of: note) : note.title }
-        let matched = rank(notes, search, title: \.title)
-        if !alias.isEmpty, let exact = matched.first(where: { $0.title.caseInsensitiveCompare(search) == .orderedSame }) {
-            return [EditorSuggestion(id: "alias:\(target(exact))", title: alias, subtitle: exact.title, symbol: "link", kind: .note(title: target(exact), alias: alias))]
+        let ranked = wikiLinkCandidates(query: search, notes: notes, limit: UInt32(limit))
+        if !alias.isEmpty, ranked.exact, let exact = ranked.candidates.first {
+            return [EditorSuggestion(id: "alias:\(exact.linkTarget)", title: alias, subtitle: exact.title, symbol: "link", kind: .note(title: exact.linkTarget, alias: alias))]
         }
-        var out = matched.prefix(limit).map { note in
-            EditorSuggestion(
-                id: "note:\(target(note))", title: note.title.isEmpty ? "Untitled" : note.title,
-                subtitle: shared(note) ? (note.folderPath ?? "/") : nil,
-                symbol: "doc.text", kind: .note(title: target(note), alias: alias)
+        var out = ranked.candidates.map { row in
+            let title = row.title.isEmpty ? "Untitled" : row.title
+            let detail = [row.matchedName.map { _ in "\u{2192} \(title)" }, row.folder].compactMap(\.self)
+            return EditorSuggestion(
+                id: "note:\(row.noteId)", title: row.matchedName ?? title,
+                subtitle: detail.isEmpty ? nil : detail.joined(separator: " \u{00B7} "),
+                symbol: "doc.text", kind: .note(title: row.linkTarget, alias: alias.isEmpty ? row.matchedName ?? "" : alias)
             )
         }
-        if !search.isEmpty, !notes.contains(where: { $0.title.caseInsensitiveCompare(search) == .orderedSame }) {
+        if !search.isEmpty, !ranked.exact {
             out.append(EditorSuggestion(id: "create:\(search)", title: "Create \u{201c}\(search)\u{201d}", symbol: "plus", kind: .create(title: search, alias: alias)))
         }
         return out
@@ -311,15 +305,10 @@ enum EditorSuggestions {
     /// Titles containing `search`, prefix matches first. Empty search lists
     /// every title in the order given (most recently modified first).
     static func rank(_ titles: [String], _ search: String) -> [String] {
-        rank(titles, search, title: \.self)
-    }
-
-    static func rank<Item>(_ items: [Item], _ search: String, title: KeyPath<Item, String>) -> [Item] {
-        guard !search.isEmpty else { return items }
-        let prefixed = items.filter { $0[keyPath: title].lowercased().hasPrefix(search.lowercased()) }
-        let contained = items.filter {
-            !$0[keyPath: title].lowercased().hasPrefix(search.lowercased())
-                && $0[keyPath: title].localizedCaseInsensitiveContains(search)
+        guard !search.isEmpty else { return titles }
+        let prefixed = titles.filter { $0.lowercased().hasPrefix(search.lowercased()) }
+        let contained = titles.filter {
+            !$0.lowercased().hasPrefix(search.lowercased()) && $0.localizedCaseInsensitiveContains(search)
         }
         return prefixed + contained
     }

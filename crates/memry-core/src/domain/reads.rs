@@ -43,6 +43,7 @@ use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 use crate::domain::body_tags::ALL_NOTE_TAGS;
+use crate::domain::notes::names::parse_stored;
 use crate::domain::{tag_admin, tags, template_admin};
 
 /// The device id the read-only document registry runs under.
@@ -88,6 +89,8 @@ pub struct NoteSummary {
     /// no such instant, never "zero".
     pub created_at: Option<i64>,
     pub modified_at: Option<i64>,
+    /// The note's other names (frontmatter `aliases`), as stored.
+    pub aliases: Vec<String>,
 }
 
 /// A note's body as the core can express it.
@@ -153,7 +156,7 @@ pub fn folders(conn: &Connection) -> Result<Vec<FolderSummary>, StorageError> {
 pub fn notes(conn: &Connection) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT id, title, folder_path, emoji, created_at, modified_at FROM notes \
+            "SELECT id, title, folder_path, emoji, created_at, modified_at, aliases FROM notes \
              WHERE deleted_at IS NULL \
              ORDER BY COALESCE(modified_at, created_at, 0) DESC, id",
         )
@@ -219,7 +222,7 @@ pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
 pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at \
+            "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at, n.aliases \
              FROM notes n WHERE n.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
              {ALL_NOTE_TAGS} t WHERE t.note_id = n.id AND tag_fold(t.tag) = tag_fold(?1)) \
              ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id"
@@ -238,8 +241,9 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
 pub fn journals_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at \
-             FROM journal_entries j WHERE j.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
+            "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at, a.aliases \
+             FROM journal_entries j LEFT JOIN journal_aliases a ON a.journal_id = j.id \
+             WHERE j.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
              {ALL_NOTE_TAGS} t WHERE t.note_id = j.id AND tag_fold(t.tag) = tag_fold(?1)) \
              ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id"
         ))
@@ -449,6 +453,9 @@ fn read_summary(row: &Row<'_>) -> Result<NoteSummary, rusqlite::Error> {
         emoji: row.get(3)?,
         created_at: row.get(4)?,
         modified_at: row.get(5)?,
+        aliases: parse_stored(row.get(6)?).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(6, rusqlite::types::Type::Text, error.into())
+        })?,
     })
 }
 
@@ -492,7 +499,7 @@ pub fn document_exists(conn: &Connection, id: &str) -> bool {
 pub fn note(conn: &Connection, id: &str) -> Result<Option<NoteDetail>, CrdtError> {
     let summary = conn
         .query_row(
-            "SELECT id, title, folder_path, emoji, created_at, modified_at FROM notes \
+            "SELECT id, title, folder_path, emoji, created_at, modified_at, aliases FROM notes \
              WHERE id = ?1 AND deleted_at IS NULL",
             rusqlite::params![id],
             read_summary,

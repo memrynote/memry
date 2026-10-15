@@ -90,7 +90,7 @@ struct VaultWriteTests {
 
         func list() async throws -> [NoteSummary] {
             [("a", "Work"), ("b", "Work/Drafts"), ("c", "Loose"), ("d", nil)].map { id, folder in
-                NoteSummary(id: id, title: id, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil)
+                NoteSummary(id: id, title: id, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])
             }
         }
 
@@ -115,7 +115,7 @@ struct VaultWriteTests {
                     folderPath: nil,
                     emoji: nil,
                     createdAt: nil,
-                    modifiedAt: nil
+                    modifiedAt: nil, aliases: []
                 )
             }
         }
