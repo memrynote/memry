@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Skjul indlejrede elementer",
-      "expand": "Udvid indlejrede elementer"
+      "expand": "Udvid indlejrede elementer",
+      "collapseSection": "Skjul afsnit",
+      "expandSection": "Udvid afsnit"
     },
     "toolbar": {
       "linkToNote": "Link til note",

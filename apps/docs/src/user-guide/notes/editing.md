@@ -541,6 +541,16 @@ disk is unchanged, other devices are unaffected, and reopening the note shows ev
 expanded again. For a collapsible section that _is_ saved with the note — and that
 GitHub and Obsidian also render collapsed — use a toggle list instead.
 
+## Folding a heading
+
+Headings fold the same way. Hover a heading that has content under it and click the
+chevron in the margin to hide its section: every block after it, up to the next heading
+of the same or a higher level. Folding a Heading 1 hides the Heading 2s inside it too;
+folding a Heading 2 stops at the next Heading 2 or Heading 1.
+
+Like bullet folding, this is a view only. The note is unchanged and reopens fully
+expanded. Toggle headings keep their own saved toggle and get no extra chevron.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.

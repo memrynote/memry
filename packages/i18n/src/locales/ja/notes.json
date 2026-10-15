@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "ネストした項目を折りたたむ",
-      "expand": "ネストした項目を展開"
+      "expand": "ネストした項目を展開",
+      "collapseSection": "セクションを折りたたむ",
+      "expandSection": "セクションを展開"
     },
     "toolbar": {
       "linkToNote": "ノートにリンク",

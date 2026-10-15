@@ -1157,7 +1157,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor, openWikiLinkSuggestions])
 
-  // A chevron beside every bullet that has nested blocks, folding them away.
+  // A chevron beside every bullet that has nested blocks and every heading
+  // that has a section, folding them away.
   // Appended, not prepended: it handles mousedown on its own button only, so
   // no other plugin's key or pointer handling is in its way.
   useEffect(() => {
@@ -1165,7 +1166,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       editor,
       createBulletCollapsePlugin({
         expand: t('editor.bulletFold.expand'),
-        collapse: t('editor.bulletFold.collapse')
+        collapse: t('editor.bulletFold.collapse'),
+        expandSection: t('editor.bulletFold.expandSection'),
+        collapseSection: t('editor.bulletFold.collapseSection')
       })
     )
   }, [editor, t])

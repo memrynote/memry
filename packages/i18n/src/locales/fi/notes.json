@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Kutista sisäkkäiset kohteet",
-      "expand": "Laajenna sisäkkäiset kohteet"
+      "expand": "Laajenna sisäkkäiset kohteet",
+      "collapseSection": "Kutista osio",
+      "expandSection": "Laajenna osio"
     },
     "toolbar": {
       "linkToNote": "Linkitä muistiinpanoon",

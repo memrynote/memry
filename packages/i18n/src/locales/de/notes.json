@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Verschachtelte Elemente zuklappen",
-      "expand": "Verschachtelte Elemente aufklappen"
+      "expand": "Verschachtelte Elemente aufklappen",
+      "collapseSection": "Abschnitt einklappen",
+      "expandSection": "Abschnitt ausklappen"
     },
     "toolbar": {
       "linkToNote": "Mit Notiz verlinken",

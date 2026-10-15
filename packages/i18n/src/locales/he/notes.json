@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "כיווץ פריטים מקוננים",
-      "expand": "הרחבת פריטים מקוננים"
+      "expand": "הרחבת פריטים מקוננים",
+      "collapseSection": "כיווץ מקטע",
+      "expandSection": "הרחבת מקטע"
     },
     "toolbar": {
       "linkToNote": "קישור לפתק",

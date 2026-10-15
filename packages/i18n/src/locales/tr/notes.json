@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "İç içe öğeleri daralt",
-      "expand": "İç içe öğeleri genişlet"
+      "expand": "İç içe öğeleri genişlet",
+      "collapseSection": "Bölümü daralt",
+      "expandSection": "Bölümü genişlet"
     },
     "toolbar": {
       "linkToNote": "Nota bağla",

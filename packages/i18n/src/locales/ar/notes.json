@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "طي العناصر المتداخلة",
-      "expand": "توسيع العناصر المتداخلة"
+      "expand": "توسيع العناصر المتداخلة",
+      "collapseSection": "طي القسم",
+      "expandSection": "توسيع القسم"
     },
     "toolbar": {
       "linkToNote": "ربط بملاحظة",

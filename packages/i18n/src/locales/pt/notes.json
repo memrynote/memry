@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Recolher itens aninhados",
-      "expand": "Expandir itens aninhados"
+      "expand": "Expandir itens aninhados",
+      "collapseSection": "Recolher secção",
+      "expandSection": "Expandir secção"
     },
     "toolbar": {
       "linkToNote": "Link para nota",

@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Runtuhkan item bersarang",
-      "expand": "Kembangkan item bersarang"
+      "expand": "Kembangkan item bersarang",
+      "collapseSection": "Runtuhkan bahagian",
+      "expandSection": "Kembangkan bahagian"
     },
     "toolbar": {
       "linkToNote": "Pautkan ke nota",

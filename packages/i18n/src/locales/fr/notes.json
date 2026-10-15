@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Réduire les éléments imbriqués",
-      "expand": "Développer les éléments imbriqués"
+      "expand": "Développer les éléments imbriqués",
+      "collapseSection": "Réduire la section",
+      "expandSection": "Développer la section"
     },
     "toolbar": {
       "linkToNote": "Lier à une note",

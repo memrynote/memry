@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Sažmi ugniježđene stavke",
-      "expand": "Proširi ugniježđene stavke"
+      "expand": "Proširi ugniježđene stavke",
+      "collapseSection": "Sažmi odjeljak",
+      "expandSection": "Proširi odjeljak"
     },
     "toolbar": {
       "linkToNote": "Poveži s bilješkom",

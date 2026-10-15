@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Alelemek összecsukása",
-      "expand": "Alelemek kibontása"
+      "expand": "Alelemek kibontása",
+      "collapseSection": "Szakasz összecsukása",
+      "expandSection": "Szakasz kibontása"
     },
     "toolbar": {
       "linkToNote": "Hivatkozás jegyzetre",

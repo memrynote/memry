@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "ยุบรายการย่อย",
-      "expand": "ขยายรายการย่อย"
+      "expand": "ขยายรายการย่อย",
+      "collapseSection": "ยุบส่วน",
+      "expandSection": "ขยายส่วน"
     },
     "toolbar": {
       "linkToNote": "ลิงก์ไปยังโน้ต",
