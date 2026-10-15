@@ -5,6 +5,7 @@ import { selectedFragmentToHTML } from '@blocknote/core'
 import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { createLogger } from '@/lib/logger'
+import { claimKeysForBlockSelection } from '@/hooks/use-keyboard-shortcuts'
 import { hasSelectableTextAt, shouldStartMarquee } from '../marquee-hit-test'
 import {
   classifyBlocks,
@@ -652,6 +653,28 @@ export function useBlockMarqueeSelection({
     recomputeHighlightRects()
   }, [editor, recomputeHighlightRects])
 
+  // Typing over a block selection replaces it, like typing over selected text.
+  const replaceSelectedBlocksWithText = useCallback(
+    (text: string): void => {
+      const ids = getTopLevelSelectedIds()
+      clearSelection()
+      if (ids.length === 0) return
+      try {
+        const { insertedBlocks } = editor.replaceBlocks(ids, [{ type: 'paragraph', content: text }])
+        editor.setTextCursorPosition(insertedBlocks[0].id, 'end')
+        editor.focus()
+      } catch (err) {
+        log.warn('Failed to replace marquee-selected blocks with typed text', err)
+      }
+    },
+    [clearSelection, editor, getTopLevelSelectedIds]
+  )
+
+  useEffect(() => {
+    if (selectedBlockIds.size === 0) return
+    return claimKeysForBlockSelection(selectedRef)
+  }, [selectedBlockIds])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (enabled && isSelectAllShortcut(event)) {
@@ -698,6 +721,16 @@ export function useBlockMarqueeSelection({
         event.preventDefault()
         event.stopPropagation()
         removeSelectedBlocks()
+        return
+      }
+
+      const isPrintable =
+        event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey
+      if (isPrintable && !event.isComposing && !isTextEntryTarget(event.target)) {
+        if (selectedRef.current.size === 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        replaceSelectedBlocksWithText(event.key)
       }
     }
     document.addEventListener('keydown', onKeyDown, true)
@@ -709,6 +742,7 @@ export function useBlockMarqueeSelection({
     indentSelectedBlocks,
     outdentSelectedBlocks,
     removeSelectedBlocks,
+    replaceSelectedBlocksWithText,
     selectAllBlocks
   ])
 
