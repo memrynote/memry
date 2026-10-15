@@ -9,9 +9,10 @@ import { MEMRY_TASK_DRAG_MIME } from '@/lib/drag-mime'
  */
 export function draggedTaskId(html: string): string | null {
   if (!html) return null
-  const container = document.createElement('div')
-  container.innerHTML = html
-  const blocks = container.querySelectorAll('[data-content-type]')
+  // DOMParser builds an inert document: no scripts or event handlers run.
+  const blocks = new DOMParser()
+    .parseFromString(html, 'text/html')
+    .querySelectorAll('[data-content-type]')
   if (blocks.length !== 1 || blocks[0].getAttribute('data-content-type') !== 'taskBlock')
     return null
   return blocks[0].getAttribute('data-task-id') || null
