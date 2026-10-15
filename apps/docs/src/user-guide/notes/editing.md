@@ -8,17 +8,17 @@ memrynote's editor is built on **BlockNote** — a block-based rich text editor 
 
 | How                                      | What you get                          |
 | ---------------------------------------- | ------------------------------------- |
-| <kbd>⌘</kbd>+<kbd>N</kbd>                | Untitled note in the current folder   |
+| <kbd>⌘</kbd>+<kbd>N</kbd>                | `New note` in the current folder      |
 | Sidebar **+** affordance                 | Same, scoped to the section you click |
 | From a [Template](/user-guide/templates) | New note seeded with template content |
 | **New note from this note**              | Same folder, icon, tags, properties   |
 | `[[New title]]` in another note          | Linked note created on first save     |
 
-The new note opens in a tab, and its row in the sidebar opens a name field with `Untitled`
-already selected: type the name, press <kbd>Enter</kbd>, and it is named. Press <kbd>Esc</kbd> —
-or click away without typing — and it stays `Untitled`. It is the same field as **Rename** on the
-row's right-click menu, so naming a new note is no longer a second step you have to remember.
-New folders and subfolders open that field the same way.
+The new note opens in a tab with the cursor in its empty title, which shows `New note` as a
+placeholder: type the name and press <kbd>Enter</kbd> (or move on to the body), and it is named.
+Press <kbd>Esc</kbd>, or click away without typing, and the note keeps the name `New note`, numbered
+(`New note 1`, `New note 2`) when that name is already taken in the folder. New folders and
+subfolders still open a name field on their sidebar row.
 
 The sidebar follows along: the folder the note landed in is opened — nested folders included — and
 the note is scrolled into view and briefly highlighted, so you can see where it went without going
