@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import matter from 'gray-matter'
@@ -181,7 +182,22 @@ async function persistPortableDefinitions(
   }
 
   await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
-  await fs.writeFile(filePath, matter.stringify('', { properties }))
+  // Temp file + fsync + rename, like desktop's atomicWrite: a crash mid-write
+  // must not truncate the vault's definitions.
+  const tempPath = path.join(path.dirname(filePath), `.${randomBytes(6).toString('hex')}.tmp`)
+  try {
+    await fs.writeFile(tempPath, matter.stringify('', { properties }), { flag: 'wx' })
+    const handle = await fs.open(tempPath, 'r+')
+    try {
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    await fs.rename(tempPath, filePath)
+  } catch (error) {
+    await fs.rm(tempPath, { force: true })
+    throw error
+  }
 }
 
 export function createPropertiesService({

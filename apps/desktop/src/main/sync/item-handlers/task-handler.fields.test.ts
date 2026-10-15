@@ -101,6 +101,19 @@ describe('task.fields on pull', () => {
     expect(pushed().fields).toEqual({ 'Waiting on': WAITING_ON })
   })
 
+  it('heals by bumping only the fields clock', () => {
+    seed({ 'Waiting on': WAITING_ON }, { 'device-a': 1 })
+
+    apply({}, { 'device-a': 1, 'device-b': 1 })
+
+    const { fieldClocks } = testDb.db
+      .select({ fieldClocks: tasks.fieldClocks })
+      .from(tasks)
+      .where(eq(tasks.id, 'task-1'))
+      .get()!
+    expect(fieldClocks).toMatchObject({ fields: { 'device-a': 1 }, title: { 'device-a': 1 } })
+  })
+
   it('rejects stale entries echoed under a newer clock (#2265 capture), keeps newer ones, and heals', () => {
     seed(
       { 'Waiting on': { v: ['memry://note/n2'], t: 4 }, 'Follow up': FOLLOW_UP },

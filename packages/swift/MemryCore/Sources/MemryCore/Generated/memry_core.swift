@@ -20270,6 +20270,11 @@ public struct NoteMetadata: Equatable, Hashable {
      * `None` when neither key holds a readable cover.
      */
     public var coverJson: String?
+    /**
+     * The fields the note's tags list, grouped per tag (§13.7.7.1). Their
+     * values are also in `properties`; a shell shows each once.
+     */
+    public var tagFields: [TagFieldGroup]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -20309,12 +20314,17 @@ public struct NoteMetadata: Equatable, Hashable {
          * `coverImage: null`.
          *
          * `None` when neither key holds a readable cover.
-         */coverJson: String?) {
+         */coverJson: String?, 
+        /**
+         * The fields the note's tags list, grouped per tag (§13.7.7.1). Their
+         * values are also in `properties`; a shell shows each once.
+         */tagFields: [TagFieldGroup]) {
         self.tags = tags
         self.properties = properties
         self.aliases = aliases
         self.icon = icon
         self.coverJson = coverJson
+        self.tagFields = tagFields
     }
 
     
@@ -20337,7 +20347,8 @@ public struct FfiConverterTypeNoteMetadata: FfiConverterRustBuffer {
                 properties: FfiConverterSequenceTypeNoteProperty.read(from: &buf), 
                 aliases: FfiConverterSequenceString.read(from: &buf), 
                 icon: FfiConverterOptionString.read(from: &buf), 
-                coverJson: FfiConverterOptionString.read(from: &buf)
+                coverJson: FfiConverterOptionString.read(from: &buf), 
+                tagFields: FfiConverterSequenceTypeTagFieldGroup.read(from: &buf)
         )
     }
 
@@ -20347,6 +20358,7 @@ public struct FfiConverterTypeNoteMetadata: FfiConverterRustBuffer {
         FfiConverterSequenceString.write(value.aliases, into: &buf)
         FfiConverterOptionString.write(value.icon, into: &buf)
         FfiConverterOptionString.write(value.coverJson, into: &buf)
+        FfiConverterSequenceTypeTagFieldGroup.write(value.tagFields, into: &buf)
     }
 }
 
@@ -23026,6 +23038,160 @@ public func FfiConverterTypeTableRow_lift(_ buf: RustBuffer) throws -> TableRow 
 #endif
 public func FfiConverterTypeTableRow_lower(_ value: TableRow) -> RustBuffer {
     return FfiConverterTypeTableRow.lower(value)
+}
+
+
+/**
+ * One field on a note: the property it names, typed by the vault's
+ * definition, holding the note's value (`null` when the note has none yet).
+ */
+public struct TagField: Equatable, Hashable {
+    public var property: NoteProperty
+    /**
+     * False when the note's payload has no key for this field yet.
+     */
+    public var hasValue: Bool
+    /**
+     * A relation's target tag (lowercase); `None` = any note.
+     */
+    public var relationTarget: String?
+    public var relationMany: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(property: NoteProperty, 
+        /**
+         * False when the note's payload has no key for this field yet.
+         */hasValue: Bool, 
+        /**
+         * A relation's target tag (lowercase); `None` = any note.
+         */relationTarget: String?, relationMany: Bool) {
+        self.property = property
+        self.hasValue = hasValue
+        self.relationTarget = relationTarget
+        self.relationMany = relationMany
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TagField: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTagField: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TagField {
+        return
+            try TagField(
+                property: FfiConverterTypeNoteProperty.read(from: &buf), 
+                hasValue: FfiConverterBool.read(from: &buf), 
+                relationTarget: FfiConverterOptionString.read(from: &buf), 
+                relationMany: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TagField, into buf: inout [UInt8]) {
+        FfiConverterTypeNoteProperty.write(value.property, into: &buf)
+        FfiConverterBool.write(value.hasValue, into: &buf)
+        FfiConverterOptionString.write(value.relationTarget, into: &buf)
+        FfiConverterBool.write(value.relationMany, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagField_lift(_ buf: RustBuffer) throws -> TagField {
+    return try FfiConverterTypeTagField.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagField_lower(_ value: TagField) -> RustBuffer {
+    return FfiConverterTypeTagField.lower(value)
+}
+
+
+/**
+ * One tag's fields on a note. A group a tag inherits names its parent in
+ * `tag` and the note's tag in `via`, as desktop's "via #child" header does.
+ */
+public struct TagFieldGroup: Equatable, Hashable {
+    /**
+     * The definition's stored casing.
+     */
+    public var tag: String
+    public var color: String
+    public var icon: String?
+    public var via: String?
+    public var fields: [TagField]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The definition's stored casing.
+         */tag: String, color: String, icon: String?, via: String?, fields: [TagField]) {
+        self.tag = tag
+        self.color = color
+        self.icon = icon
+        self.via = via
+        self.fields = fields
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TagFieldGroup: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTagFieldGroup: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TagFieldGroup {
+        return
+            try TagFieldGroup(
+                tag: FfiConverterString.read(from: &buf), 
+                color: FfiConverterString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                via: FfiConverterOptionString.read(from: &buf), 
+                fields: FfiConverterSequenceTypeTagField.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TagFieldGroup, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.tag, into: &buf)
+        FfiConverterString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterOptionString.write(value.via, into: &buf)
+        FfiConverterSequenceTypeTagField.write(value.fields, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagFieldGroup_lift(_ buf: RustBuffer) throws -> TagFieldGroup {
+    return try FfiConverterTypeTagFieldGroup.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagFieldGroup_lower(_ value: TagFieldGroup) -> RustBuffer {
+    return FfiConverterTypeTagFieldGroup.lower(value)
 }
 
 
@@ -31712,6 +31878,56 @@ fileprivate struct FfiConverterSequenceTypeTableRow: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTableRow.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTagField: FfiConverterRustBuffer {
+    typealias SwiftType = [TagField]
+
+    public static func write(_ value: [TagField], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTagField.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TagField] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TagField]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTagField.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTagFieldGroup: FfiConverterRustBuffer {
+    typealias SwiftType = [TagFieldGroup]
+
+    public static func write(_ value: [TagFieldGroup], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTagFieldGroup.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TagFieldGroup] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TagFieldGroup]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTagFieldGroup.read(from: &buf))
         }
         return seq
     }

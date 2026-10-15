@@ -825,6 +825,15 @@ struct NoteMetadataEditors: View {
 
     private var names: [String] { metadata.properties.map(\.name) }
 
+    /// The properties no tag field shows, as desktop's `buildFieldGroups`
+    /// `rest`: each value is drawn once.
+    private var restProperties: [NoteProperty] {
+        let fields = Set(metadata.tagFields.flatMap { $0.fields.map(\.property.name) })
+        return metadata.properties.filter { !fields.contains($0.name) }
+    }
+
+    private var restNames: [String] { restProperties.map(\.name) }
+
     private var failure: UserFacingError? {
         if case let .failed(error) = model.status { return error }
         return nil
@@ -847,7 +856,18 @@ struct NoteMetadataEditors: View {
                 tagEditor
             }
 
-            if metadata.properties.isEmpty {
+            if !metadata.tagFields.isEmpty {
+                NoteTagFieldsSection(
+                    groups: metadata.tagFields,
+                    model: model,
+                    reload: reload,
+                    noteTitle: noteTitle,
+                    noteIcon: noteIcon,
+                    relationCandidates: relationCandidates
+                )
+            }
+
+            if restProperties.isEmpty {
                 if !metadata.tags.isEmpty || editingTags { addPropertyButton }
             } else {
                 Button {
@@ -857,7 +877,7 @@ struct NoteMetadataEditors: View {
                         Image(systemName: "chevron.right")
                             .rotationEffect(.degrees(showsProperties ? 90 : 0))
                             .foregroundStyle(Tokens.Tint.base.color)
-                        Text("Properties · \(metadata.properties.count)")
+                        Text("Properties · \(restProperties.count)")
                             .foregroundStyle(Tokens.Text.secondary.color)
                         Spacer()
                     }
@@ -865,7 +885,7 @@ struct NoteMetadataEditors: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Properties, \(metadata.properties.count)")
+                .accessibilityLabel("Properties, \(restProperties.count)")
                 .accessibilityValue(showsProperties ? "Expanded" : "Collapsed")
 
                 if showsProperties {
@@ -875,7 +895,7 @@ struct NoteMetadataEditors: View {
                             propertyRow(property)
                                 .onDrag {
                                     draggedName = property.name
-                                    dragOrder = names
+                                    dragOrder = restNames
                                     return NSItemProvider(object: property.name as NSString)
                                 }
                                 .onDrop(
@@ -979,11 +999,11 @@ struct NoteMetadataEditors: View {
     /// The note's properties in the payload's order, or in the order a drag
     /// in progress is showing.
     private var orderedProperties: [NoteProperty] {
-        guard let dragOrder else { return metadata.properties }
-        let byName = Dictionary(metadata.properties.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+        guard let dragOrder else { return restProperties }
+        let byName = Dictionary(restProperties.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
         let shown = dragOrder.compactMap { byName[$0] }
         // A property that arrived mid-drag keeps its place at the end.
-        return shown + metadata.properties.filter { !dragOrder.contains($0.name) }
+        return shown + restProperties.filter { !dragOrder.contains($0.name) }
     }
 
     private func commitDragOrder() {
@@ -993,7 +1013,7 @@ struct NoteMetadataEditors: View {
     }
 
     private func reorder(to order: [String]) {
-        let current = names
+        let current = restNames
         Task {
             await model.reorderProperties(order, current: current)
             await reload()
@@ -1004,17 +1024,17 @@ struct NoteMetadataEditors: View {
     /// VoiceOver's way to reorder, since a drag is not reachable there.
     @ViewBuilder
     private func moveActions(_ name: String) -> some View {
-        if let index = names.firstIndex(of: name) {
+        if let index = restNames.firstIndex(of: name) {
             if index > 0 {
                 Button("Move \(name) up") {
-                    var next = names
+                    var next = restNames
                     next.swapAt(index, index - 1)
                     reorder(to: next)
                 }
             }
-            if index < names.count - 1 {
+            if index < restNames.count - 1 {
                 Button("Move \(name) down") {
-                    var next = names
+                    var next = restNames
                     next.swapAt(index, index + 1)
                     reorder(to: next)
                 }

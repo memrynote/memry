@@ -51,6 +51,7 @@ import { isNoteLocked } from '../vault-locks/registry'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
 import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
+import { externalJournalEntry } from '../journal/external-entry'
 
 const log = createLogger('RenameLinkRewrite')
 
@@ -192,18 +193,16 @@ async function rewriteSource(
     const journalDate = extractDateFromPath(sourcePath) ?? ''
     emitNoteEvent(JournalChannels.events.ENTRY_UPDATED, {
       date: journalDate,
-      entry: {
+      entry: externalJournalEntry({
         // Same reason as the watcher's external-edit payload: the renderer keys
         // task links off this id, so it may not go missing (#2271).
         id: sourceId,
         date: journalDate,
         content: parsed.content,
-        tags: syncResult.headerTags,
-        wordCount: syncResult.wordCount,
-        characterCount: syncResult.characterCount,
+        metadata: syncResult,
         modified: new Date(now),
         created: new Date(toIso(cached.createdAt))
-      },
+      }),
       source: 'external'
     })
   }

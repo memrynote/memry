@@ -81,14 +81,17 @@ function PropertyValueDisplay({ property }: { property: Property }) {
   switch (property.type) {
     case 'url':
       return (
-        <span className="text-[13px] text-tint font-sans leading-4 truncate max-w-[200px] hover:underline">
+        <span
+          title={stringifyUnknown(value)}
+          className="block truncate text-[13px] text-tint font-sans leading-4 hover:underline"
+        >
           {stringifyUnknown(value)}
         </span>
       )
 
     default:
       return (
-        <span className="text-[13px] text-foreground font-sans leading-4">
+        <span className="text-[13px] text-foreground font-sans leading-4 wrap-anywhere">
           {stringifyUnknown(value)}
         </span>
       )

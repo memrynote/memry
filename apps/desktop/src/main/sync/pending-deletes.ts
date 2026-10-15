@@ -92,7 +92,8 @@ export function recordPendingDelete(
     })
     .run()
 
-  log.debug('Recorded a delete raised while the sync runtime was down', { type, itemId })
+  // Every local delete records one, online or not (see RETENTION above).
+  log.debug('Recorded a local delete tombstone', { type, itemId })
 }
 
 export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {

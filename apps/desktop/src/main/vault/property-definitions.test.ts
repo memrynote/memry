@@ -670,6 +670,26 @@ describe('PropertyDefinitionsService', () => {
     expect(service.get('Stage')?.options).toEqual([{ value: 'Idea', color: 'sky' }])
   })
 
+  it('refuses local definition edits while properties.md is unreadable', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Stage', type: 'select', options: [] })
+    enqueueUpsertMock.mockClear()
+
+    safeReadMock.mockResolvedValueOnce('---\nproperties: nope\n---\n')
+    await service.reload()
+
+    const refused = 'errors:property.definitionsFileUnreadable'
+    await expect(
+      service.upsert({ name: 'Stage', type: 'multiselect', options: [] })
+    ).rejects.toThrow(refused)
+    await expect(service.remove('Stage')).rejects.toThrow(refused)
+    await expect(service.setShowOnCalendar('Due', true)).rejects.toThrow(refused)
+
+    expect(service.getAll()).toEqual([{ name: 'Stage', type: 'select', options: [] }])
+    expect(enqueueUpsertMock).not.toHaveBeenCalled()
+    expect(enqueueDeleteMock).not.toHaveBeenCalled()
+  })
+
   it('clears memory and DB caches when properties.md is missing', async () => {
     const service = PropertyDefinitionsService.init('/vault')
     await service.upsert({

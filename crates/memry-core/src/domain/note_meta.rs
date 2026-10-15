@@ -25,6 +25,7 @@ use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::domain::tag_fields::{self, TagFieldGroup};
 use crate::domain::{notes, properties, tags, wiki_target};
 
 /// One property on a note: its name, its value, and the type the vault
@@ -83,6 +84,9 @@ pub struct NoteMetadata {
     ///
     /// `None` when neither key holds a readable cover.
     pub cover_json: Option<String>,
+    /// The fields the note's tags list, grouped per tag (§13.7.7.1). Their
+    /// values are also in `properties`; a shell shows each once.
+    pub tag_fields: Vec<TagFieldGroup>,
 }
 
 /// Reads one note's metadata.
@@ -97,6 +101,7 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
     let values = properties::values(conn, notes::ITEM_TYPE, id)?;
     let definitions = properties::definitions(conn)?;
 
+    let tag_fields = tag_fields::groups(conn, &tags, &values, &definitions)?;
     let properties: Vec<NoteProperty> = values
         .into_iter()
         .map(|(name, value)| {
@@ -127,6 +132,7 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
             .as_ref()
             .and_then(cover_of)
             .map(|cover| Value::Object(cover).to_string()),
+        tag_fields,
     }))
 }
 

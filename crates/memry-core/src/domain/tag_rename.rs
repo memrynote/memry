@@ -257,6 +257,35 @@ mod tests {
     }
 
     #[test]
+    fn rename_refreshes_cached_body_tags_without_reindex() {
+        let (db, _d) = vault("tags-rename-body-cache");
+        db.call_blocking(|c| {
+            let to_storage = |e: crate::crdt::errors::CrdtError| StorageError::Failed {
+                what: e.to_string(),
+            };
+            assert!(
+                crate::domain::body_write::append_markdown(c, "n2", "Met #job.", "desk", NOW)
+                    .map_err(to_storage)?
+            );
+            let blocks = crate::domain::reads::note_blocks(c, "n2")
+                .map_err(to_storage)?
+                .expect("body");
+            body_tags::write(c, "n2", &body_tags::extract(&blocks))?;
+            rename(c, "job", "career", "phone", NOW + 1)?;
+            let cached: Vec<String> = c
+                .prepare("SELECT tag FROM note_body_tags WHERE note_id = 'n2'")
+                .map_err(failed)?
+                .query_map([], |row| row.get(0))
+                .map_err(failed)?
+                .collect::<Result<_, _>>()
+                .map_err(failed)?;
+            assert_eq!(cached, vec!["career"]);
+            Ok(())
+        })
+        .expect("cache");
+    }
+
+    #[test]
     fn rename_to_a_name_not_writable_inline_keeps_body_tags() {
         let (db, _d) = vault("tags-rename-body-skip");
         db.call_blocking(|c| {

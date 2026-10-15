@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import type { LinkedHereGroup, LinkedNoteItem } from '@memry/contracts/tag-objects-api'
+import {
+  LINKED_HERE_MAX_PER_GROUP,
+  type LinkedHereGroup,
+  type LinkedNoteItem
+} from '@memry/contracts/tag-objects-api'
 import { CheckSquare, FileText } from '@/lib/icons'
 import { getActiveLocale } from '@/lib/active-locale'
 import { useTabActions } from '@/contexts/tabs'
@@ -12,7 +16,6 @@ import { objectIdentityOf, useTagSchemas } from './use-tag-schemas'
 import { openTagTable } from './open-tag-table'
 
 const NEWEST = 2
-const EXPANDED = 500
 
 function shortDate(iso: string | null): string {
   if (!iso) return ''
@@ -45,7 +48,7 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
   const { t } = useT('notes')
   const [mentionsExpanded, setMentionsExpanded] = useState(false)
   const { groups, isLoading } = useLinkedHere(noteId, NEWEST)
-  const expanded = useLinkedHere(noteId, mentionsExpanded ? EXPANDED : NEWEST)
+  const expanded = useLinkedHere(noteId, mentionsExpanded ? LINKED_HERE_MAX_PER_GROUP : NEWEST)
   const lookOf = useTagLookLookup()
   const { openTab } = useTabActions()
   const openTaskDetail = useOpenTaskDetail()
