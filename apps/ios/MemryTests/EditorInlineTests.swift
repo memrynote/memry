@@ -348,6 +348,30 @@ struct EditorCommitBaseTests {
         #expect(editor.all.last == .replaceText(blockId: "a", text: "a \u{FFFC} b", base: "a \u{FFFC}"))
     }
 
+    @Test func choosing_a_wiki_row_links_the_row_not_the_typed_query() async {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        session.linkNotes = [note("Dune")]
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.text = "a [[Du]]"
+        field.dirty = true
+        field.textView.selectedRange = NSRange(location: 6, length: 0)
+        session.selectionChanged(in: field)
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            session.choose(session.suggestions[0])
+        }
+
+        let links = editor.all.filter { if case .insertInline = $0 { true } else { false } }
+        #expect(links == [.insertInline(blockId: "a", start: 2, end: 2, kind: "wikiLink", text: "", attrs: ["target": "Dune", "alias": ""])])
+    }
+
     @Test func a_code_block_keeps_a_typed_link_literal() async {
         let editor = RecordingEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
