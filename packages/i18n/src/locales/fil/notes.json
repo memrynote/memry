@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "I-collapse ang mga nakapaloob na item",
-      "expand": "I-expand ang mga nakapaloob na item"
+      "expand": "I-expand ang mga nakapaloob na item",
+      "collapseSection": "I-collapse ang seksyon",
+      "expandSection": "I-expand ang seksyon"
     },
     "toolbar": {
       "linkToNote": "I-link sa tala",

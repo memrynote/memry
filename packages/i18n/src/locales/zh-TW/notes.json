@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "收合巢狀項目",
-      "expand": "展開巢狀項目"
+      "expand": "展開巢狀項目",
+      "collapseSection": "摺疊章節",
+      "expandSection": "展開章節"
     },
     "toolbar": {
       "linkToNote": "連結至筆記",

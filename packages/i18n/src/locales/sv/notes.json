@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Fäll ihop underordnade punkter",
-      "expand": "Expandera underordnade punkter"
+      "expand": "Expandera underordnade punkter",
+      "collapseSection": "Fäll ihop avsnitt",
+      "expandSection": "Fäll ut avsnitt"
     },
     "toolbar": {
       "linkToNote": "Länka till anteckning",

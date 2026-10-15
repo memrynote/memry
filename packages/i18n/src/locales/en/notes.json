@@ -205,7 +205,9 @@
     },
     "bulletFold": {
       "collapse": "Collapse nested items",
-      "expand": "Expand nested items"
+      "expand": "Expand nested items",
+      "collapseSection": "Collapse section",
+      "expandSection": "Expand section"
     },
     "toolbar": {
       "linkToNote": "Link to note",

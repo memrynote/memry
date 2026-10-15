@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Restrânge elementele imbricate",
-      "expand": "Extinde elementele imbricate"
+      "expand": "Extinde elementele imbricate",
+      "collapseSection": "Restrânge secțiunea",
+      "expandSection": "Extinde secțiunea"
     },
     "toolbar": {
       "linkToNote": "Adaugă un link către o notiță",

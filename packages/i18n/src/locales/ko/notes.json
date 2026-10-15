@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "하위 항목 접기",
-      "expand": "하위 항목 펼치기"
+      "expand": "하위 항목 펼치기",
+      "collapseSection": "섹션 접기",
+      "expandSection": "섹션 펼치기"
     },
     "toolbar": {
       "linkToNote": "노트에 링크",

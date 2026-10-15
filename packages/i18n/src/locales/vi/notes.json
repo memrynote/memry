@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Thu gọn mục lồng nhau",
-      "expand": "Mở rộng mục lồng nhau"
+      "expand": "Mở rộng mục lồng nhau",
+      "collapseSection": "Thu gọn mục",
+      "expandSection": "Mở rộng mục"
     },
     "toolbar": {
       "linkToNote": "Liên kết đến ghi chú",
