@@ -243,7 +243,8 @@
     "renameFailed": "Failed to rename property",
     "createDefinitionFailed": "Failed to create property definition",
     "updateDefinitionFailed": "Failed to update property definition",
-    "setCalendarVisibilityFailed": "Failed to set calendar property visibility"
+    "setCalendarVisibilityFailed": "Failed to set calendar property visibility",
+    "definitionsFileUnreadable": "Can't save property changes because .memry/properties.md can't be read. Fix or remove that file, then try again."
   },
   "reminder": {
     "notFound": "Reminder not found",
