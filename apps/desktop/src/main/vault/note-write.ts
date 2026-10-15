@@ -17,7 +17,7 @@ export type HeaderTagChange = { added: string[]; removed: string[] } | null
 
 const noteWrites = new Map<string, Promise<unknown>>()
 
-export function queueNoteWrite<T>(noteId: string, write: () => Promise<T>): Promise<T> {
+export function writeNoteInOrder<T>(noteId: string, write: () => Promise<T>): Promise<T> {
   const run = (noteWrites.get(noteId) ?? Promise.resolve()).then(write)
   const settled = run.catch(() => {})
   noteWrites.set(noteId, settled)

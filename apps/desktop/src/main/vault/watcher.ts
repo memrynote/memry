@@ -73,6 +73,7 @@ import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
+import { externalJournalEntry } from '../journal/external-entry'
 import {
   syncNoteCreate,
   syncNoteDelete,
@@ -1105,7 +1106,7 @@ export class VaultWatcher {
       const journalDate = extractJournalDate(relativePath)
       emitEvent(JournalChannels.events.ENTRY_UPDATED, {
         date: journalDate,
-        entry: {
+        entry: externalJournalEntry({
           // The renderer caches this payload as the open entry, and the journal
           // editor passes its id to every task it creates. Omitting the id left
           // that entry id undefined after any on-disk edit, so a task created
@@ -1113,12 +1114,10 @@ export class VaultWatcher {
           id: cached.id,
           date: journalDate,
           content: parsed.content,
-          tags: syncResult.headerTags,
-          wordCount: syncResult.wordCount,
-          characterCount: syncResult.characterCount,
+          metadata: syncResult,
           modified: new Date(parsed.modified),
           created: new Date(cached.createdAt)
-        },
+        }),
         source: 'external'
       })
     }

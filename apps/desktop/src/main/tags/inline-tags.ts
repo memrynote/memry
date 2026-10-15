@@ -5,9 +5,9 @@ import { foldTag, tagKey } from '@memry/shared/tag-fold'
 import { applyHeaderTagEdit } from '../vault/frontmatter'
 import { tagsWithFields } from './schema/read'
 
-export function inlineTagEditBetween(before: string, after: string): HeaderTagEdit | null {
-  const beforeTags = extractInlineTagsFromMarkdown(before)
-  const afterTags = extractInlineTagsFromMarkdown(after)
+export function inlineTagEditBetween(previousBody: string, nextBody: string): HeaderTagEdit | null {
+  const beforeTags = extractInlineTagsFromMarkdown(previousBody)
+  const afterTags = extractInlineTagsFromMarkdown(nextBody)
   const beforeKeys = new Set(beforeTags.map(foldTag))
   const afterKeys = new Set(afterTags.map(foldTag))
   const add = afterTags.filter((tag) => !beforeKeys.has(foldTag(tag)))
