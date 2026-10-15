@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "agents": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "agents/SKILL.md",
+      "computedHash": "1beebb18d44ee097911ef979517ec151cd427d0f40276ff5e330089d86b7de2b"
+    },
     "animation-vocabulary": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
@@ -79,6 +85,12 @@
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "computedHash": "b35c6a6e37c61ca3169532fbab2300dea26f2ad190e1d2dac065800b8b2bb0aa"
     },
+    "dubbing": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "dubbing/SKILL.md",
+      "computedHash": "a1e90267056a299fe57d624657bde6ae34d98f0faa80fc2b4ded08ea12a9f483"
+    },
     "emil-design-eng": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
@@ -140,6 +152,12 @@
       "sourceType": "github",
       "computedHash": "54b6e221bbe4e2d1a8461c3f9ecabe69daf891f964e9ee5e699c323daa018f2e"
     },
+    "music": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "music/SKILL.md",
+      "computedHash": "7ceca67d5dcc5b777b876f1fe44a4a02134f9f78b71f7356a8b7791ba251b8e1"
+    },
     "pr": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -158,10 +176,40 @@
       "skillPath": "skills/review-animations/SKILL.md",
       "computedHash": "c92905bff59c3007d07c2638a2a83d5d71c901feef108cce1da0bf3c7cafd579"
     },
+    "setup-api-key": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "setup-api-key/SKILL.md",
+      "computedHash": "f8daa32a413354452b90480ffe5acd056dc04608108463bd5d014a8af56dd077"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
       "computedHash": "873c67922d80775a9fdf596db7964b579f0408c30ec6e3d11989f6055bbec89f"
+    },
+    "sound-effects": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "sound-effects/SKILL.md",
+      "computedHash": "4de004ec3405d836c33207320a477951ce3de2f3dcb68f5365734302b91ad72c"
+    },
+    "speech-engine": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "speech-engine/SKILL.md",
+      "computedHash": "409fb9839da70eb3341330cd5486a837979eec28be3dbe83290ddff44de910b0"
+    },
+    "speech-to-text": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "speech-to-text/SKILL.md",
+      "computedHash": "06f18ad079255645ff81e3f2926a8e7dde145a6e6d6b0df06348cb2ba22d409d"
+    },
+    "text-to-speech": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "text-to-speech/SKILL.md",
+      "computedHash": "bb182b4e3a864bdc7f04c0401dfd45b2b5c6f144281d5e6ddb7da0c00b7de3ad"
     },
     "to-spec": {
       "source": "mattpocock/skills",
@@ -186,6 +234,24 @@
       "sourceType": "github",
       "skillPath": "pstack/skills/unslop/SKILL.md",
       "computedHash": "3dfc2afeda677e12c6065497a40df7d895859de1c7d1cffb899b1559d129fe4f"
+    },
+    "update-skills-from-changelog": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/update-skills-from-changelog/SKILL.md",
+      "computedHash": "d08cc5333ba774b2a07333fa8913db6d99f652a691f052783511f13fd12503c5"
+    },
+    "voice-changer": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "voice-changer/SKILL.md",
+      "computedHash": "6e1542754e66fe21c8bffe419c0424c80d0c770217d5466e22813f9f302b75c9"
+    },
+    "voice-isolator": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "voice-isolator/SKILL.md",
+      "computedHash": "d4f7873a0b68ec3deb33d2073bf966551135c83964a37c9cf062a4fb7bc648ea"
     },
     "website-to-hyperframes": {
       "source": "heygen-com/hyperframes",
