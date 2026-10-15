@@ -911,6 +911,7 @@
             "position": 1024,
             "dueDate": "2026-04-20",
             "dueTime": "09:00",
+            "durationMinutes": 45,
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
@@ -969,6 +970,7 @@
             "position": 1024,
             "dueDate": "2026-04-20",
             "dueTime": "09:00",
+            "durationMinutes": 45,
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
@@ -1053,6 +1055,7 @@
             "position": 1024,
             "dueDate": "2026-04-20",
             "dueTime": "09:00",
+            "durationMinutes": 45,
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
@@ -1112,6 +1115,7 @@
             "position": 1024,
             "dueDate": "2026-04-20",
             "dueTime": "09:00",
+            "durationMinutes": 45,
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
@@ -1167,8 +1171,8 @@
         },
         {
           "name": "task: verbatim round trip of the unknown-field instance",
-          "storedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
-          "expectedPushedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
+          "storedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"durationMinutes\":45,\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
+          "expectedPushedPayloadJson": "{\"title\":\"Ship the spec\",\"description\":\"All fifteen chapters.\",\"projectId\":\"proj-1\",\"statusId\":\"status-1\",\"parentId\":null,\"priority\":2,\"position\":1024,\"dueDate\":\"2026-04-20\",\"dueTime\":\"09:00\",\"durationMinutes\":45,\"startDate\":\"2026-04-16\",\"repeatConfig\":{\"every\":\"week\",\"on\":[\"mon\"]},\"repeatFrom\":\"dueDate\",\"sourceNoteId\":\"abc123def456\",\"completedAt\":null,\"archivedAt\":null,\"tags\":[\"protocol\"],\"linkedNoteIds\":[\"abc123def456\"],\"linkedCanvasIds\":[],\"fields\":{\"Waiting on\":{\"v\":[\"memry://note/abc123def456\"],\"t\":2},\"Follow up\":{\"v\":\"2026-05-14\",\"t\":1,\"addedByNewerBuild\":{\"source\":\"agent\"}},\"Thread\":{\"v\":null,\"t\":3}},\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"estimateMinutes\":45}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

@@ -210,6 +210,7 @@ const SPECS: TypeSpec[] = [
       position: 1024,
       dueDate: '2026-04-20',
       dueTime: '09:00',
+      durationMinutes: 45,
       startDate: '2026-04-16',
       repeatConfig: { every: 'week', on: ['mon'] },
       repeatFrom: 'dueDate',

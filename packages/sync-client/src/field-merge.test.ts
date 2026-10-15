@@ -269,8 +269,25 @@ describe('field-merge', () => {
   })
 
   describe('mergeTaskFields', () => {
-    it('uses all 15 task syncable fields', () => {
-      expect(TASK_SYNCABLE_FIELDS).toHaveLength(15)
+    it('uses all 16 task syncable fields', () => {
+      expect(TASK_SYNCABLE_FIELDS).toHaveLength(16)
+    })
+
+    it('merges a concurrent duration edit by its own clock', () => {
+      const local = { title: 'Focus', dueTime: '09:00', durationMinutes: 30 }
+      const remote = { title: 'Focus block', dueTime: '09:00', durationMinutes: 90 }
+      const base = initAllFieldClocks({ a: 1, b: 1 }, TASK_SYNCABLE_FIELDS)
+      const localFC = { ...base, durationMinutes: { a: 1, b: 2 } }
+      const remoteFC = { ...base, title: { a: 1, b: 2 }, durationMinutes: { a: 2, b: 1 } }
+
+      const result = mergeTaskFields(local, remote, localFC, remoteFC)
+
+      expect(result.merged).toMatchObject({ title: 'Focus block', durationMinutes: 90 })
+      expect(result.conflictedFields).toEqual(['durationMinutes'])
+      expect(result.mergedFieldClocks.durationMinutes).toEqual({ a: 2, b: 2 })
+
+      const localAhead = { ...localFC, durationMinutes: { a: 2, b: 2 } }
+      expect(mergeTaskFields(local, remote, localAhead, remoteFC).merged.durationMinutes).toBe(30)
     })
 
     it('merges task with DeviceA offline status + DeviceB online dueDate', () => {
