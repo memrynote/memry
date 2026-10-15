@@ -95,16 +95,18 @@ export function TagFieldsCount({ tag }: { tag: ResolvedTag | null }): React.JSX.
 export function TagFieldsToolbar({
   tag,
   notes,
+  partial,
   onEdit
 }: {
   tag: ResolvedTag | null
   notes: BulkFillNote[]
+  partial: boolean
   onEdit: () => void
 }): React.JSX.Element {
   const { t } = useT('notes')
   return (
     <>
-      {tag && <BulkFieldFill tag={tag} notes={notes} />}
+      {tag && <BulkFieldFill tag={tag} notes={notes} partial={partial} />}
       <Button variant="outline" size="sm" className="gap-1.5" onClick={onEdit}>
         <Pencil className="size-3.5" />
         {t('tagFields.settings.editTag')}
