@@ -14,6 +14,7 @@ import {
   insertNoteCache,
   pathLinkKeys,
   reindexNoteNames,
+  type IndexedAliases,
   reresolveLinks,
   resolveHeaderTagFlags,
   setMarkdownNoteLinks,
@@ -106,8 +107,7 @@ export function reresolveAndAnnounce(db: IndexDb, keys: readonly string[]): void
 export interface NoteNamesChange {
   noteId: string
   title: string
-  /** Null when the frontmatter was not read: the indexed aliases stay. */
-  aliases: string[] | null
+  aliases: IndexedAliases
   path: string
   previousPath: string | null | undefined
 }
@@ -182,7 +182,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
   projectNoteNames(db, {
     noteId: note.noteId,
     title: note.title,
-    aliases: note.aliases,
+    aliases: note.aliases === null ? { kind: 'unread' } : { kind: 'read', aliases: note.aliases },
     path: note.path,
     previousPath: existing ? existing.path : null
   })
@@ -236,7 +236,7 @@ function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>):
   projectNoteNames(db, {
     noteId: note.noteId,
     title: note.title,
-    aliases: [],
+    aliases: { kind: 'read', aliases: [] },
     path: note.path,
     previousPath: existing ? existing.path : null
   })

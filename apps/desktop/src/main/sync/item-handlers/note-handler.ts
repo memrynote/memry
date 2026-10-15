@@ -64,6 +64,7 @@ import {
   setNoteTags,
   updateNoteCache,
   setNoteProperties,
+  type IndexedAliases,
   type NoteTagSet
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
@@ -367,7 +368,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
       const rewritesFrontmatter =
         tagsChanged || propertiesPresent || coverPresent || frontmatterPatch.aliases !== undefined
-      let writtenAliases: string[] | null = null
+      let writtenAliases: IndexedAliases = { kind: 'unread' }
 
       log.debug('applyUpsert properties', {
         itemId,
@@ -428,7 +429,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             // The watcher ignores this write, so the index hash moves here or the
             // next write-back reads the app's own bytes as an outside edit (#3282).
             updateFields.contentHash = generateContentHash(updatedContent)
-            writtenAliases = extractAliases(parsed.frontmatter, newTitle)
+            writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
             // Pure rename/move — file bytes untouched
@@ -480,7 +481,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
             updateFields.contentHash = generateContentHash(updatedContent)
           }
-          writtenAliases = extractAliases(parsed.frontmatter, newTitle)
+          writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })

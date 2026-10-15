@@ -155,7 +155,11 @@ describe('note derived state projector', () => {
     seedCachedNote('source-note', 'notes/source.md')
     seedCachedNote('harbor-note', 'notes/harbor.md')
     indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
-    reindexNoteNames(indexDb.db, { noteId: 'harbor-note', title: 'Harbor Log', aliases: [] })
+    reindexNoteNames(indexDb.db, {
+      noteId: 'harbor-note',
+      title: 'Harbor Log',
+      aliases: { kind: 'read', aliases: [] }
+    })
     seedExtractedText('source-note', 'chart.html', 'html', 'See [[Harbor Log]] and [[Plan]]')
     seedExtractedText('source-note', 'shot.png', 'ocr', 'A screenshot of [[Not A Link]]')
 
@@ -196,7 +200,11 @@ describe('note derived state projector', () => {
     seedCachedNote('source-note', relativePath)
     seedCachedNote('harbor-note', 'notes/harbor.md')
     indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
-    reindexNoteNames(indexDb.db, { noteId: 'harbor-note', title: 'Harbor Log', aliases: [] })
+    reindexNoteNames(indexDb.db, {
+      noteId: 'harbor-note',
+      title: 'Harbor Log',
+      aliases: { kind: 'read', aliases: [] }
+    })
     const projector = createNoteDerivedStateProjector(() => vaultDir)
     await projector.project(upsertMarkdown('source-note', relativePath, ['Plan']))
     broadcastToAllWindows.mockClear()

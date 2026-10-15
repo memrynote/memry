@@ -481,7 +481,13 @@ describe('useWikiLinkSuggestions', () => {
     await act(async () => {
       items = await result.current.getWikiLinkItems('')
     })
-    expect(items.map(({ id, target, folder }) => ({ id, target, folder }))).toEqual([
+    expect(
+      items.map((item) => ({
+        id: item.id,
+        target: item.target,
+        folder: 'folder' in item ? item.folder : undefined
+      }))
+    ).toEqual([
       { id: 'plan-work', target: 'Work/Plan', folder: 'Work' },
       { id: 'plan-root', target: '/plan', folder: '/' },
       { id: 'roadmap', target: 'Roadmap', folder: undefined }
@@ -559,13 +565,13 @@ describe('useWikiLinkSuggestions', () => {
       })
 
       expect(
-        items.map(({ id, type, title, target, alias, noteTitle }) => ({
-          id,
-          type,
-          title,
-          target,
-          alias,
-          noteTitle
+        items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          target: item.target,
+          alias: item.alias,
+          noteTitle: 'noteTitle' in item ? item.noteTitle : undefined
         }))
       ).toEqual([
         {
@@ -603,7 +609,13 @@ describe('useWikiLinkSuggestions', () => {
         items = await result.current.getWikiLinkItems('ML')
       })
 
-      expect(items.map(({ id, type, folder }) => ({ id, type, folder }))).toEqual([
+      expect(
+        items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          folder: 'folder' in item ? item.folder : undefined
+        }))
+      ).toEqual([
         { id: 'note-ml-a', type: 'noteName', folder: 'A' },
         { id: 'note-ml-b', type: 'noteName', folder: 'B' }
       ])

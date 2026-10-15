@@ -9,8 +9,10 @@ const DEBOUNCE_MS = 150
 export interface NameConflict {
   name: string
   title: string
-  isTitle: boolean
-  keeps: boolean
+  /** The draft is the other note's title, not one of its other names. */
+  isOtherTitle: boolean
+  /** The other note keeps the name and the draft does not resolve here. */
+  otherKeepsName: boolean
 }
 
 export function useNameConflict(noteId: string | null, draft: string): NameConflict | null {
@@ -29,8 +31,13 @@ export function useNameConflict(noteId: string | null, draft: string): NameConfl
             setConflict(null)
             return
           }
-          const isTitle = nameKey(note.title) === nameKey(name)
-          setConflict({ name, title: note.title, isTitle, keeps: isTitle || note.id < noteId })
+          const isOtherTitle = nameKey(note.title) === nameKey(name)
+          setConflict({
+            name,
+            title: note.title,
+            isOtherTitle,
+            otherKeepsName: isOtherTitle || note.id < noteId
+          })
         })
         .catch((error: unknown) => {
           log.warn('Could not check a draft name against other notes', error)

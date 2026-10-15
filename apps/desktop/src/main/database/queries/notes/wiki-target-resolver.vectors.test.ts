@@ -40,7 +40,11 @@ describe('wiki-target-resolution vectors against the index', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         modifiedAt: '2026-01-01T00:00:00.000Z'
       })
-      reindexNoteNames(index.db, { noteId: note.noteId, title: note.title, aliases: note.aliases })
+      reindexNoteNames(index.db, {
+        noteId: note.noteId,
+        title: note.title,
+        aliases: { kind: 'read', aliases: note.aliases }
+      })
     }
   })
 
