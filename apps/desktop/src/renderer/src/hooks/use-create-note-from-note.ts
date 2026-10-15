@@ -4,6 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 import { notesService } from '@/services/notes-service'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { extractFolderFromPath, getDisplayName } from '@/components/notes-tree-utils'
@@ -28,7 +29,7 @@ export function useCreateNoteFromNote(): (sourceId: string) => Promise<void> {
 
         const folder = extractFolderFromPath(source.path)
         const response = await notesService.create({
-          title: 'Untitled',
+          title: NEW_NOTE_TITLE,
           content: '',
           folder: folder || undefined,
           tags: source.headerTags,
@@ -37,6 +38,7 @@ export function useCreateNoteFromNote(): (sourceId: string) => Promise<void> {
         })
         const newNote = unwrapIpcResult(response, failed).note
         if (!newNote) throw new Error(failed)
+        markNewNoteTitlePending(newNote.id)
 
         openPage({
           type: 'note',
@@ -50,7 +52,7 @@ export function useCreateNoteFromNote(): (sourceId: string) => Promise<void> {
           isPreview: false,
           isDeleted: false
         })
-        revealNoteInSidebar(newNote.id, { rename: true })
+        revealNoteInSidebar(newNote.id)
         toast.success(
           t('newNoteFromNote.created', {
             tagCount: source.headerTags.length,

@@ -113,6 +113,7 @@ import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/task
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getTaskWorkspaceCounts } from '@/lib/task-utils'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
@@ -310,14 +311,15 @@ const AppContent = (): React.JSX.Element => {
     if (isVaultSwitchPending()) return
     try {
       const result = await notesService.create({
-        title: 'Untitled',
+        title: NEW_NOTE_TITLE,
         content: ''
       })
 
       if (result.success && result.note) {
+        markNewNoteTitlePending(result.note.id)
         openTab({
           type: 'note',
-          title: result.note.title || 'Untitled',
+          title: result.note.title,
           icon: 'file-text',
           path: `/note/${result.note.id}`,
           entityId: result.note.id,
@@ -328,9 +330,7 @@ const AppContent = (): React.JSX.Element => {
         })
         // Where the note landed is only knowable from the created note, so the
         // sidebar is told to reveal it rather than guessing at the folder.
-        // `rename` opens the row's name input there, so the ⌘N note does not
-        // have to be renamed off `Untitled` as a separate step (#2272).
-        revealNoteInSidebar(result.note.id, { rename: true })
+        revealNoteInSidebar(result.note.id)
       }
     } catch (error) {
       log.error('Failed to create new note:', error)

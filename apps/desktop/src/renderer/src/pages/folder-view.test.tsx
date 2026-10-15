@@ -650,7 +650,7 @@ describe('FolderViewPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create table note' }))
     await waitFor(() =>
-      expect(mocks.createNote).toHaveBeenCalledWith({ title: 'Untitled', folder: 'Work/Plans' })
+      expect(mocks.createNote).toHaveBeenCalledWith({ title: 'New note', folder: 'Work/Plans' })
     )
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(

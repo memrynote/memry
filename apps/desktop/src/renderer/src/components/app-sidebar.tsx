@@ -70,6 +70,7 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { useT } from '@memry/i18n/renderer'
 import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
@@ -206,15 +207,16 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
     try {
       const result = await notesService.create({
-        title: 'Untitled Note',
+        title: NEW_NOTE_TITLE,
         content: '',
         folder: folder || undefined
       })
 
       if (result.success && result.note) {
+        markNewNoteTitlePending(result.note.id)
         openPage({
           type: 'note',
-          title: result.note.title || 'Untitled Note',
+          title: result.note.title,
           icon: 'file-text',
           path: `/note/${result.note.id}`,
           entityId: result.note.id,
@@ -224,10 +226,8 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           isDeleted: false
         })
         // The folder may have come from `defaultNoteFolder` rather than the
-        // selection, so the created note is what says where to look. `rename`
-        // opens the row's name input once it gets there, so naming the note is
-        // not a separate second step (#2272).
-        revealNoteInSidebar(result.note.id, { rename: true })
+        // selection, so the created note is what says where to look.
+        revealNoteInSidebar(result.note.id)
       }
     } catch (error) {
       log.error('Failed to create new note', error)
