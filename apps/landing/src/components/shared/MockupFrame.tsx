@@ -125,7 +125,7 @@ export function MockupFrame({
             <motion.div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" />
 
             <motion.button
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="absolute top-4 end-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
               onClick={closeLightbox}
               aria-label="Close lightbox"
               initial={{ opacity: 0, scale: 0.8 }}

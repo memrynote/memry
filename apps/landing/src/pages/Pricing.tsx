@@ -97,10 +97,9 @@ export function PricingPage() {
         <BelieverNarrative />
         <LifecycleTimeline />
         <Faq
-          eyebrow="§ 05 — Appendix"
           title={
             <>
-              The honest <span className="italic text-terracotta">billing answers.</span>
+              Billing <span className="italic text-terracotta">questions.</span>
             </>
           }
           sub="Everything you need to know before checkout opens."
@@ -113,19 +112,14 @@ export function PricingPage() {
               <span className="italic text-terracotta">Sync when you need it.</span>
             </>
           }
-          sub="Start in the free local app. Upgrade the day you want your notes on a second device — not a moment sooner."
+          sub="Start in the free local app. Upgrade the day you want your notes on a second device, not a moment sooner."
           location="pricing-final"
           secondary={{
             label: 'Read the security architecture',
             to: '/security',
             event: 'security:pricing-final'
           }}
-          footnote={
-            <>
-              All prices USD · Paddle is the merchant of record ·{' '}
-              <span className="italic normal-case">fin.</span>
-            </>
-          }
+          footnote="All prices in USD. Paddle is the merchant of record."
         />
       </main>
     </>
@@ -213,7 +207,7 @@ function Hero() {
           Sync that respects your <span className="italic text-terracotta">wallet.</span>
         </>
       }
-      sub="The app is free on your device. Paid sync keeps your vault everywhere — end-to-end encrypted before a single byte leaves."
+      sub="The app is free on your device. Paid sync keeps your vault everywhere, end-to-end encrypted before a single byte leaves."
     />
   )
 }
@@ -282,14 +276,9 @@ function TierGrid({
           transition={{ duration: 0.7, delay: 0.15, ease: TIER_EASE }}
           className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5"
         >
-          <div>
-            <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-              § 01 — The tariff
-            </p>
-            <h2 className="mt-3 font-serif text-3xl text-ink md:text-4xl">
-              Choose your <span className="italic text-terracotta">edition.</span>
-            </h2>
-          </div>
+          <h2 className="font-serif text-3xl text-ink md:text-4xl">
+            Choose your <span className="italic text-terracotta">plan.</span>
+          </h2>
           <CadenceToggle cadence={cadence} setCadence={setCadence} />
         </motion.div>
 
@@ -316,7 +305,6 @@ function TierGrid({
             >
               <TierCard
                 tier={tier}
-                index={i}
                 cadence={cadence}
                 reduceMotion={reduceMotion ?? false}
                 onCheckout={() => onCheckout(tier)}
@@ -341,88 +329,30 @@ function TierGrid({
           </p>
         )}
 
-        <p className="mt-8 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          {ASSURANCES.map((item, i) => (
-            <span key={item} className="inline-block">
-              {item}
-              {i < ASSURANCES.length - 1 && (
-                <span aria-hidden className="mx-3 text-terracotta">
-                  ✳
-                </span>
-              )}
-            </span>
+        <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-1 text-[13px] text-muted">
+          {ASSURANCES.map((item) => (
+            <li key={item}>{item}</li>
           ))}
-        </p>
+        </ul>
       </Container>
     </section>
   )
 }
 
-/* ponytail: gauge widths are sqrt-ish visual scale, not linear GB — linear would make 1 GB invisible */
-const STORAGE_GAUGE: Record<SyncPlanId, { fill: number; label: string }> = {
-  free: { fill: 0, label: 'No cloud — 100% local' },
-  plus: { fill: 0.37, label: '1 GB encrypted cloud' },
-  pro: { fill: 0.74, label: '10 GB encrypted cloud' },
-  believer: { fill: 1, label: '50 GB encrypted cloud' }
-}
-
-function StorageGauge({
-  tier,
-  index,
-  isFounding,
-  reduceMotion
-}: {
-  tier: SyncPlanTier
-  index: number
-  isFounding: boolean
-  reduceMotion: boolean
-}) {
-  const gauge = STORAGE_GAUGE[tier.id]
-
-  return (
-    <div className="mt-5">
-      <div
-        className={cn(
-          'h-1 overflow-hidden rounded-full',
-          gauge.fill === 0
-            ? 'border border-dashed border-ink/20 bg-transparent'
-            : isFounding
-              ? 'bg-ink-inverted/15'
-              : 'bg-ink/10'
-        )}
-        aria-hidden
-      >
-        {gauge.fill > 0 && (
-          <motion.div
-            className="h-full origin-left rounded-full bg-terracotta"
-            style={{ width: `${gauge.fill * 100}%` }}
-            initial={reduceMotion ? false : { scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.7, delay: 0.9 + index * 0.06, ease: TIER_EASE }}
-          />
-        )}
-      </div>
-      <p
-        className={cn(
-          'mt-2 font-mono-accent text-[10px] uppercase tracking-[0.14em]',
-          isFounding ? 'text-dark-muted' : 'text-muted'
-        )}
-      >
-        {gauge.label}
-      </p>
-    </div>
-  )
+const STORAGE_LABEL: Record<SyncPlanId, string> = {
+  free: 'Local only, no cloud',
+  plus: '1 GB encrypted cloud',
+  pro: '10 GB encrypted cloud',
+  believer: '50 GB encrypted cloud'
 }
 
 function TierCard({
   tier,
-  index,
   cadence,
   reduceMotion,
   onCheckout
 }: {
   tier: SyncPlanTier
-  index: number
   cadence: Cadence
   reduceMotion: boolean
   onCheckout: () => void
@@ -500,7 +430,9 @@ function TierCard({
         />
       </div>
 
-      <StorageGauge tier={tier} index={index} isFounding={isFounding} reduceMotion={reduceMotion} />
+      <p className={cn('mt-5 text-[13px]', isFounding ? 'text-dark-muted' : 'text-muted')}>
+        {STORAGE_LABEL[tier.id]}
+      </p>
 
       <div className="mt-6">
         {isCheckoutUnavailable ? (
@@ -550,7 +482,7 @@ function TierCard({
               isFounding ? 'text-dark-muted' : 'text-muted'
             )}
           >
-            {baseline}, plus —
+            {baseline}, plus:
           </li>
         )}
         {features.map((feature) => (
@@ -661,16 +593,21 @@ function PriceBlock({
 function BelieverNarrative() {
   return (
     // Dark on purpose, matching the homepage PrivacyShowcase: the site's warm pages take
-    // one quiet break for gravitas. The bespoke from-paper-to-dark ramp is gone — nothing
-    // else on the site fades into a zone, they cut.
+    // one quiet break for gravitas. Like that section, paper fades into the dark at both
+    // edges so the break reads as one page dimming, not a cut into another site.
     <section className="relative">
-      <div className="zone-dark py-24 md:py-28">
-        <Container size="md">
+      <div className="zone-dark relative py-24 md:py-28">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-paper to-transparent md:h-20"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-paper to-transparent md:h-20"
+        />
+        <Container size="md" className="relative">
           <div className="grid gap-12 md:grid-cols-[1fr_1.4fr] md:items-center">
             <motion.div {...fadeUp} className="space-y-6">
-              <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-                § 03 — The patron
-              </p>
               <h2 className="display-section text-ink-inverted!">
                 Pay <span className="italic text-terracotta">$500 once.</span>
                 <br />
@@ -704,9 +641,8 @@ function BelieverNarrative() {
               />
               <blockquote className="font-serif text-xl leading-relaxed text-ink-inverted/90 md:text-2xl">
                 <span className="font-serif text-4xl text-terracotta leading-none">“</span>
-                Indie software lives or dies on the people who back it early. Believers aren&apos;t
-                just buying storage — they&apos;re helping keep memrynote independent while we build
-                the next ten years.
+                Indie software lives or dies on the people who back it early. Believers keep
+                memrynote independent.
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 text-sm font-mono-accent uppercase tracking-[0.18em] text-dark-muted">
                 <span className="h-px w-8 bg-terracotta/60" aria-hidden />
@@ -741,14 +677,11 @@ function LifecycleTimeline() {
     <section className="border-t border-border/40 bg-paper-deep/40 py-24 md:py-28">
       <Container size="md">
         <motion.div {...fadeUp} className="max-w-2xl">
-          <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-            § 04 — The lapse
-          </p>
-          <h2 className="display-section mt-4 text-ink">
+          <h2 className="display-section text-ink">
             What happens if you <span className="italic text-terracotta">stop paying?</span>
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-muted">
-            Sync gets paused, never punished. You get a long, predictable runway to recover — up to
+            Sync gets paused, never punished. You get a long, predictable runway to recover: up to
             90 days before encrypted blobs are physically deleted.
           </p>
         </motion.div>
@@ -832,10 +765,7 @@ function LimitMatrix({
     <section className="py-24 md:py-28">
       <Container size="md">
         <motion.div {...fadeUp} className="max-w-2xl">
-          <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-            § 02 — The full ledger
-          </p>
-          <h2 className="display-section mt-4 text-ink">
+          <h2 className="display-section text-ink">
             Every limit, <span className="italic text-terracotta">printed plainly.</span>
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-muted">
@@ -849,12 +779,12 @@ function LimitMatrix({
           transition={{ ...fadeUp.transition, delay: 0.1 }}
           className="mt-12 overflow-x-auto"
         >
-          <div className="min-w-[940px]">
+          <div className="min-w-[900px]">
             <div className="rule-double text-ink/30" aria-hidden />
             <table className="w-full">
               <thead>
                 <tr className="border-b border-ink/15">
-                  <th className="min-w-[240px] px-6 py-5 text-start font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted">
+                  <th className="sticky start-0 z-10 min-w-[200px] bg-paper px-6 py-5 text-start font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted md:static md:min-w-[240px] md:bg-transparent">
                     Feature
                   </th>
                   {plans.map(({ tier }) => {
@@ -936,7 +866,9 @@ function LimitMatrix({
                         key={row.feature}
                         className="border-b border-ink/10 transition-colors hover:bg-paper-alt/60"
                       >
-                        <td className="px-6 py-4 font-serif text-base text-ink">{row.feature}</td>
+                        <td className="sticky start-0 z-10 bg-paper px-6 py-4 font-serif text-base text-ink md:static md:bg-transparent">
+                          {row.feature}
+                        </td>
                         {plans.map(({ planId, tier }) => (
                           <td
                             key={tier.id}
@@ -969,7 +901,12 @@ function ComparisonValue({ value }: { value: PlanComparisonValue }) {
   }
 
   if (value === false) {
-    return <span className="text-muted/45">—</span>
+    return (
+      <span className="text-muted/45">
+        <span aria-hidden>-</span>
+        <span className="sr-only">Not included</span>
+      </span>
+    )
   }
 
   return <span>{value}</span>

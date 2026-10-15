@@ -81,7 +81,7 @@ function TeaserCard({
           trackLandingEvent('landing_pricing_cta_click', `pricing:${tier.id}:home-teaser`)
         }
         className={cn(
-          'group relative flex h-full flex-col rounded-3xl border p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-card md:p-8',
+          'group relative flex h-full flex-col rounded-3xl border p-7 transition duration-300 hover:-translate-y-1 hover:shadow-card md:p-8',
           featured
             ? 'border-terracotta/50 bg-terracotta/[0.05]'
             : 'border-border bg-card hover:border-ink/15'

@@ -92,7 +92,7 @@ function UseCaseSection({
             ))}
           </h2>
 
-          <p className="font-serif italic text-lg md:text-xl text-muted border-l-2 border-terracotta/30 pl-5 max-w-sm leading-relaxed mb-8">
+          <p className="font-serif italic text-lg md:text-xl text-muted border-s-2 border-terracotta/30 ps-5 max-w-sm leading-relaxed mb-8">
             &ldquo;{useCase.painQuote}&rdquo;
           </p>
 

@@ -74,9 +74,7 @@ const ASK_TARGETS: { name: string; href: string; icon: ReactNode; target: string
 export function AskAi() {
   return (
     <div>
-      <p className="font-mono-accent text-[10px] uppercase tracking-[0.18em] text-dark-muted/70">
-        Ask an AI about us
-      </p>
+      <p className="text-[13px] text-dark-muted/80">Ask an AI about us</p>
       <ul className="mt-3 flex flex-wrap gap-2.5">
         {ASK_TARGETS.map((item) => (
           <li key={item.name}>

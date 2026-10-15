@@ -19,8 +19,16 @@ import { PageGlow } from '@/components/shared/PageGlow'
 export function SiteShell({ standalone, children }: { standalone: boolean; children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
+      {!standalone && (
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-paper focus:outline-none focus:ring-2 focus:ring-terracotta"
+        >
+          Skip to content
+        </a>
+      )}
       {!standalone && <Header />}
-      <main className="relative isolate flex-1">
+      <main id="main" tabIndex={-1} className="relative isolate flex-1 focus:outline-none">
         {!standalone && <PageGlow />}
         {/* Pages below the entry chunk load on demand (see routes.tsx). Declared on
             both sides so the boundary markers React's SSR writes into the HTML line

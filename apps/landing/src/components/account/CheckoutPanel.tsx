@@ -200,7 +200,7 @@ export function CheckoutPanel({
                     aria-checked={active}
                     onClick={() => setCadence(option)}
                     className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition duration-200',
                       active ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'
                     )}
                   >

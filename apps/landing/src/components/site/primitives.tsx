@@ -124,7 +124,7 @@ export function FeatureChip({ icon, label, href, trailingIcon, className }: Feat
   const chipClass = cn(
     'group inline-flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card',
     'px-4 py-3 text-sm font-medium text-ink shadow-sm',
-    'transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card',
+    'transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card',
     className
   )
 
