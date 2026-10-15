@@ -341,6 +341,8 @@ export const JournalSyncPayloadSchema = z.object({
   content: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
+  // As on notes: absent or `null` keeps the receiver's list, `[]` clears it.
+  aliases: z.array(z.string()).nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional(),

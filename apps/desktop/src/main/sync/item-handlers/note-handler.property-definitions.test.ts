@@ -24,6 +24,9 @@ vi.mock('../../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
+  reindexNoteNames: vi.fn(() => []),
+  reresolveLinks: vi.fn(() => ({ sourceIds: [], targetIds: [] })),
+  pathLinkKeys: vi.fn(() => []),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),

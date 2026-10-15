@@ -41,6 +41,9 @@ vi.mock('../../database/client', () => ({
 vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
+  reindexNoteNames: vi.fn(() => []),
+  reresolveLinks: vi.fn(() => ({ sourceIds: [], targetIds: [] })),
+  pathLinkKeys: vi.fn(() => []),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheByPath: vi.fn(() => undefined),
   updateNoteCache: vi.fn(),

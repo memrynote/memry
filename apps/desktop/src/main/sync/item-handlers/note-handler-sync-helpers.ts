@@ -8,6 +8,7 @@ import { isBinaryFileType } from '@memry/shared/file-types'
 import { getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
 import { parseNote } from '../../vault/frontmatter'
+import { readNoteFileFields } from '../note-file-fields'
 import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
 import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-helpers'
@@ -51,21 +52,12 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     })
   }
 
-  let content: string | null = null
-  let tags: string[] = []
+  const { content, tags, aliases, frontmatter } = readNoteFileFields(cached, operation)
   // `undefined` omits the key, which tells peers nothing: the file could not be
   // read, or this note has had no cover here. `null` is a local removal only.
-  let cover: NoteCoverSync | null | undefined
-  try {
-    const raw = readVaultFileSync(getVaultRoot(), cached.path)
-    if (raw === null) throw new Error(`Note file is missing: ${cached.path}`)
-    const parsed = parseNote(raw)
-    content = operation === 'create' ? parsed.content : null
-    tags = parsed.frontmatter.tags ?? []
-    cover = noteCoverForPush(dataDb, itemId, parsed.frontmatter)
-  } catch {
-    log.warn('Could not read note file for push payload', { noteId: cached.id })
-  }
+  const cover: NoteCoverSync | null | undefined = frontmatter
+    ? noteCoverForPush(dataDb, itemId, frontmatter)
+    : undefined
 
   const folderPath = extractFolderFromPath(cached.path)
   const properties = propsToRecord(getNoteProperties(indexDb, itemId))
@@ -75,6 +67,7 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     title: cached.title,
     content,
     tags,
+    ...(aliases !== undefined ? { aliases } : {}),
     properties,
     pinnedTags,
     emoji: cached.emoji,

@@ -339,7 +339,8 @@ export function buildJournalEntryWrite(
   date: string,
   content: string | null | undefined,
   tags?: string[],
-  properties?: Record<string, unknown>
+  properties?: Record<string, unknown>,
+  aliases?: string[]
 ): JournalWriteResult & { absolutePath: string } {
   const absolutePath = getJournalPath(date)
   let previousFile: string | null = null
@@ -353,7 +354,7 @@ export function buildJournalEntryWrite(
   const body = content ? content : (existing?.content ?? '')
   return {
     absolutePath,
-    ...composeJournalEntry(date, body, tags, existing, properties, previousFile)
+    ...composeJournalEntry(date, body, tags, existing, properties, previousFile, aliases)
   }
 }
 
@@ -363,7 +364,8 @@ function composeJournalEntry(
   tags: string[] | undefined,
   existing: JournalEntry | null,
   properties: Record<string, unknown> | undefined,
-  previousFile: string | null
+  previousFile: string | null,
+  aliases?: string[]
 ): JournalWriteResult {
   let frontmatter: JournalFrontmatter
 
@@ -382,6 +384,10 @@ function composeJournalEntry(
     if (mergedTags.length > 0) {
       frontmatter.tags = mergedTags
     }
+    const keptAliases = aliases ?? previousFrontmatter.aliases
+    if (keptAliases !== undefined && (!Array.isArray(keptAliases) || keptAliases.length > 0)) {
+      frontmatter.aliases = keptAliases
+    }
 
     // Add properties if provided, or preserve existing properties
     if (properties !== undefined) {
@@ -397,6 +403,7 @@ function composeJournalEntry(
   } else {
     // Create new entry
     frontmatter = createJournalFrontmatter(date, tags)
+    if (aliases && aliases.length > 0) frontmatter.aliases = aliases
 
     // Add properties for new entry if provided
     if (properties && Object.keys(properties).length > 0) {

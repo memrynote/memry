@@ -163,7 +163,8 @@ describe('journalHandler', () => {
       '2026-05-10',
       'remote content',
       ['remote'],
-      { Mood: 'focused' }
+      { Mood: 'focused' },
+      undefined
     )
     expect(mockWriteSyncedNoteFile).toHaveBeenCalledWith(
       '/vault/journals/2026-05-10.md',
@@ -230,7 +231,13 @@ describe('journalHandler', () => {
       { 'device-a': 1, phone: 1 }
     )
 
-    expect(mockBuildJournalEntryWrite).toHaveBeenCalledWith('2099-06-01', null, ['g0'], undefined)
+    expect(mockBuildJournalEntryWrite).toHaveBeenCalledWith(
+      '2099-06-01',
+      null,
+      ['g0'],
+      undefined,
+      undefined
+    )
   })
 
   it('skips an entry whose file links outside the vault and writes nothing', () => {
