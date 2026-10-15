@@ -52,7 +52,7 @@ fn scan(line: &str, found: &mut Vec<String>) {
     }
 }
 
-pub(crate) fn tag_spans(line: &str, before: Option<char>) -> Vec<(usize, usize)> {
+pub(crate) fn tag_spans(line: &str, char_before_line: Option<char>) -> Vec<(usize, usize)> {
     let chars: Vec<(usize, char)> = line.char_indices().collect();
     let byte = |at: usize| chars.get(at).map_or(line.len(), |(offset, _)| *offset);
     let char_at = |at: usize| chars.get(at).map(|(_, c)| *c);
@@ -60,7 +60,11 @@ pub(crate) fn tag_spans(line: &str, before: Option<char>) -> Vec<(usize, usize)>
     let mut spans = Vec::new();
     let mut at = 0;
     while at < chars.len() {
-        let preceding = if at == 0 { before } else { char_at(at - 1) };
+        let preceding = if at == 0 {
+            char_before_line
+        } else {
+            char_at(at - 1)
+        };
         let starts = char_at(at) == Some('#')
             && preceding.is_none_or(char::is_whitespace)
             && char_at(at + 1).is_some_and(|c| c.is_ascii_alphabetic());

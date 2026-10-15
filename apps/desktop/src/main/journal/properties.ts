@@ -13,14 +13,14 @@ import {
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { getJournalEntryByDate } from '../notes/store'
 import { syncJournalCache } from '../vault/journal-cache-sync'
-import { queueNoteWrite } from '../vault/note-write'
+import { writeNoteInOrder } from '../vault/note-write'
 
 /**
  * Property writes of one journal entry run one at a time, so a patch reads
  * the file after every earlier write instead of overwriting it.
  */
 const queueJournalWrite = <T>(date: string, write: () => Promise<T>): Promise<T> =>
-  queueNoteWrite(`journal:${date}`, write)
+  writeNoteInOrder(`journal:${date}`, write)
 
 /** Replaces a journal entry's properties with `properties`. */
 export function updateJournalProperties(
