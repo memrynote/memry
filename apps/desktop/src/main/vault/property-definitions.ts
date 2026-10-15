@@ -251,6 +251,7 @@ export class PropertyDefinitionsService {
   async upsert(definition: PropertyDefinition): Promise<void> {
     const normalized = normalizeDefinition(definition)
     await this.enqueueWrite(async () => {
+      this.assertFileWritable()
       this.cache.set(normalized.name, normalized)
       await this.persistToFile()
       await this.rebuildDbCache()
@@ -261,6 +262,7 @@ export class PropertyDefinitionsService {
   async remove(name: string): Promise<void> {
     const snapshot = readPropertyDefinitionRow(name)
     await this.enqueueWrite(async () => {
+      this.assertFileWritable()
       this.cache.delete(name)
       await this.persistToFile()
       await this.rebuildDbCache()
@@ -273,6 +275,7 @@ export class PropertyDefinitionsService {
 
   async setShowOnCalendar(name: string, show: boolean): Promise<void> {
     await this.enqueueWrite(async () => {
+      this.assertFileWritable()
       const existing = this.cache.get(name)
       if (show) {
         const kept = existing?.type === 'date' ? existing : { name, type: 'date' as const }
@@ -401,6 +404,15 @@ export class PropertyDefinitionsService {
       throw new Error(`No property definition named "${propertyName}"`)
     }
     return def
+  }
+
+  /**
+   * A local edit made while properties.md cannot be parsed would land in the
+   * cache and DB only, and the next good reload lets the file win, dropping
+   * it (#3048). Refuse it so the user repairs the file first.
+   */
+  private assertFileWritable(): void {
+    if (this.fileUnreadable) throw new Error('errors:property.definitionsFileUnreadable')
   }
 
   private applyParsedData(data: PropertyDefinitionsFileData): void {
