@@ -59,6 +59,8 @@ import { useAIInlineContext } from '@/contexts/ai-inline-context'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { ContentAreaProps } from './types'
 import { WikiLinkMenu } from './wiki-link-menu'
+import { AddNameDialog } from '../names/add-name-dialog'
+import { useAddNameFlow } from '../names/use-add-name-flow'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
@@ -804,7 +806,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [editor, isReviewEnabled])
 
   // Hook #3: Wiki link suggestions
-  const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(editor)
+  const addNameFlow = useAddNameFlow(editor)
+  const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(
+    editor,
+    editable ? addNameFlow.requestAddName : undefined
+  )
 
   // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
   // live by note created/renamed/deleted events (#1716).
@@ -3463,6 +3469,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               suggestionMenuComponent={WikiLinkMenu}
               onItemClick={(item) => void handleWikiLinkSelect(item)}
             />
+            <AddNameDialog {...addNameFlow.dialogProps} />
             <SuggestionMenuController
               triggerCharacter="@"
               getItems={getMentionItems}

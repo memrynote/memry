@@ -1453,5 +1453,25 @@
     "cancel": "Zrušit",
     "save": "Uložit",
     "addToFilterHint": "Kliknutím se stisknutou klávesou Ctrl/Cmd přidáte štítek do filtru"
+  },
+  "names": {
+    "also": "také",
+    "add": "Přidat další název",
+    "addMenu": "Přidat další název…",
+    "inputLabel": "Další název této poznámky",
+    "inputPlaceholder": "Další název",
+    "editLabel": "Upravit nebo odebrat název {name}",
+    "conflictTitle": "„{name}“ už je poznámka.",
+    "conflictName": "„{name}“ už je názvem poznámky {title}.",
+    "conflictKeeps": "Odkazy na něj budou dál otevírat {title}.",
+    "conflictTakesOver": "Odkazy na něj otevřou tuto poznámku místo {title}.",
+    "saveFailed": "Název se nepodařilo uložit. Poznámka se nezměnila, můžete to zkusit znovu.",
+    "addAsNameOf": "Přidat „{name}“ jako název poznámky…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Přidat „{name}“ jako název poznámky",
+    "pickerPlaceholder": "Hledat poznámky",
+    "pickerEmpty": "Žádné odpovídající poznámky",
+    "previewVia": "{name} → {title}"
   }
 }

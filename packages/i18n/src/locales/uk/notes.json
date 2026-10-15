@@ -1453,5 +1453,25 @@
     "cancel": "Скасувати",
     "save": "Зберегти",
     "addToFilterHint": "Утримуючи Ctrl/Cmd, клацніть тег, щоб додати його до фільтра"
+  },
+  "names": {
+    "also": "також",
+    "add": "Додати іншу назву",
+    "addMenu": "Додати іншу назву…",
+    "inputLabel": "Інша назва цієї нотатки",
+    "inputPlaceholder": "Інша назва",
+    "editLabel": "Змінити або вилучити назву {name}",
+    "conflictTitle": "«{name}» уже є нотаткою.",
+    "conflictName": "«{name}» уже є назвою нотатки {title}.",
+    "conflictKeeps": "Посилання на неї й далі відкриватимуть {title}.",
+    "conflictTakesOver": "Посилання на неї відкриватимуть цю нотатку замість {title}.",
+    "saveFailed": "Не вдалося зберегти назву. Нотатка не змінилася, тож можна спробувати ще раз.",
+    "addAsNameOf": "Додати «{name}» як назву для…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Додати «{name}» як назву для",
+    "pickerPlaceholder": "Шукати нотатки",
+    "pickerEmpty": "Немає відповідних нотаток",
+    "previewVia": "{name} → {title}"
   }
 }

@@ -1453,5 +1453,25 @@
     "cancel": "Avbryt",
     "save": "Spara",
     "addToFilterHint": "Ctrl/Cmd-klicka på en tagg för att lägga till den i filtret"
+  },
+  "names": {
+    "also": "även",
+    "add": "Lägg till ett annat namn",
+    "addMenu": "Lägg till ett annat namn…",
+    "inputLabel": "Ett annat namn för den här anteckningen",
+    "inputPlaceholder": "Annat namn",
+    "editLabel": "Redigera eller ta bort namnet {name}",
+    "conflictTitle": "”{name}” är redan en anteckning.",
+    "conflictName": "”{name}” är redan ett namn på {title}.",
+    "conflictKeeps": "Länkar dit fortsätter att öppna {title}.",
+    "conflictTakesOver": "Länkar dit öppnar den här anteckningen i stället för {title}.",
+    "saveFailed": "Namnet kunde inte sparas. Anteckningen är oförändrad, så du kan försöka igen.",
+    "addAsNameOf": "Lägg till ”{name}” som namn på…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Lägg till ”{name}” som namn på",
+    "pickerPlaceholder": "Sök anteckningar",
+    "pickerEmpty": "Inga anteckningar matchar",
+    "previewVia": "{name} → {title}"
   }
 }

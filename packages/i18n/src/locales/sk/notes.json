@@ -1453,5 +1453,25 @@
     "cancel": "Zrušiť",
     "save": "Uložiť",
     "addToFilterHint": "Kliknutím na značku so stlačeným Ctrl/Cmd ju pridáte do filtra"
+  },
+  "names": {
+    "also": "aj",
+    "add": "Pridať ďalší názov",
+    "addMenu": "Pridať ďalší názov…",
+    "inputLabel": "Ďalší názov tejto poznámky",
+    "inputPlaceholder": "Ďalší názov",
+    "editLabel": "Upraviť alebo odstrániť názov {name}",
+    "conflictTitle": "„{name}“ už je poznámka.",
+    "conflictName": "„{name}“ už je názvom poznámky {title}.",
+    "conflictKeeps": "Odkazy naň budú ďalej otvárať {title}.",
+    "conflictTakesOver": "Odkazy naň otvoria túto poznámku namiesto {title}.",
+    "saveFailed": "Názov sa nepodarilo uložiť. Poznámka sa nezmenila, môžete to skúsiť znova.",
+    "addAsNameOf": "Pridať „{name}“ ako názov poznámky…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Pridať „{name}“ ako názov poznámky",
+    "pickerPlaceholder": "Hľadať poznámky",
+    "pickerEmpty": "Žiadne zodpovedajúce poznámky",
+    "previewVia": "{name} → {title}"
   }
 }

@@ -35,7 +35,7 @@
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",
       "titleRequired": "A note needs a title",
-      "duplicateTitle": "Another note in {folder} is also named \u201c{title}\u201d. Links to these notes will include their folder.",
+      "duplicateTitle": "Another note in {folder} is also named “{title}”. Links to these notes will include their folder.",
       "toggleLocalOnlyFailed": "Failed to toggle local only",
       "toggleFullWidthFailed": "Failed to toggle full width",
       "pathCopied": "Path copied",
@@ -2076,5 +2076,25 @@
       "notANote": "Only notes can be linked here as #{tag}",
       "failed": "Could not link this note"
     }
+  },
+  "names": {
+    "also": "also",
+    "add": "Add another name",
+    "addMenu": "Add another name…",
+    "inputLabel": "Another name for this note",
+    "inputPlaceholder": "Another name",
+    "editLabel": "Edit or remove the name {name}",
+    "conflictTitle": "“{name}” is already a note.",
+    "conflictName": "“{name}” is already a name of {title}.",
+    "conflictKeeps": "Links to it will keep opening {title}.",
+    "conflictTakesOver": "Links to it will open this note instead of {title}.",
+    "saveFailed": "Couldn’t save the name. The note is unchanged, so you can try again.",
+    "addAsNameOf": "Add “{name}” as a name of…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Add “{name}” as a name of",
+    "pickerPlaceholder": "Search notes",
+    "pickerEmpty": "No notes match",
+    "previewVia": "{name} → {title}"
   }
 }

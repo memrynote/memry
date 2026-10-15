@@ -1453,5 +1453,25 @@
     "cancel": "Batal",
     "save": "Simpan",
     "addToFilterHint": "Ctrl/Cmd-klik teg untuk menambahnya pada penapis"
+  },
+  "names": {
+    "also": "juga",
+    "add": "Tambah nama lain",
+    "addMenu": "Tambah nama lain…",
+    "inputLabel": "Nama lain untuk nota ini",
+    "inputPlaceholder": "Nama lain",
+    "editLabel": "Edit atau alih keluar nama {name}",
+    "conflictTitle": "“{name}” sudah menjadi nota.",
+    "conflictName": "“{name}” sudah menjadi nama {title}.",
+    "conflictKeeps": "Pautan kepadanya akan terus membuka {title}.",
+    "conflictTakesOver": "Pautan kepadanya akan membuka nota ini dan bukannya {title}.",
+    "saveFailed": "Nama tidak dapat disimpan. Nota tidak berubah, jadi anda boleh cuba lagi.",
+    "addAsNameOf": "Tambah “{name}” sebagai nama untuk…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Tambah “{name}” sebagai nama untuk",
+    "pickerPlaceholder": "Cari nota",
+    "pickerEmpty": "Tiada nota yang sepadan",
+    "previewVia": "{name} → {title}"
   }
 }

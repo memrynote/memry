@@ -1453,5 +1453,25 @@
     "cancel": "Anuluj",
     "save": "Zapisz",
     "addToFilterHint": "Kliknij tag z wciśniętym Ctrl/Cmd, aby dodać go do filtra"
+  },
+  "names": {
+    "also": "także",
+    "add": "Dodaj inną nazwę",
+    "addMenu": "Dodaj inną nazwę…",
+    "inputLabel": "Inna nazwa tej notatki",
+    "inputPlaceholder": "Inna nazwa",
+    "editLabel": "Edytuj lub usuń nazwę {name}",
+    "conflictTitle": "„{name}” to już notatka.",
+    "conflictName": "„{name}” to już nazwa notatki {title}.",
+    "conflictKeeps": "Linki do niej nadal będą otwierać {title}.",
+    "conflictTakesOver": "Linki do niej otworzą tę notatkę zamiast {title}.",
+    "saveFailed": "Nie udało się zapisać nazwy. Notatka się nie zmieniła, możesz spróbować ponownie.",
+    "addAsNameOf": "Dodaj „{name}” jako nazwę notatki…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Dodaj „{name}” jako nazwę notatki",
+    "pickerPlaceholder": "Szukaj notatek",
+    "pickerEmpty": "Brak pasujących notatek",
+    "previewVia": "{name} → {title}"
   }
 }

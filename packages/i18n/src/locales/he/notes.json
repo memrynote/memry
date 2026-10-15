@@ -1453,5 +1453,25 @@
     "cancel": "ביטול",
     "save": "שמירה",
     "addToFilterHint": "כדי להוסיף תגית למסנן, אפשר ללחוץ עליה עם Ctrl/Cmd"
+  },
+  "names": {
+    "also": "גם",
+    "add": "הוספת שם נוסף",
+    "addMenu": "הוספת שם נוסף…",
+    "inputLabel": "שם נוסף לפתק הזה",
+    "inputPlaceholder": "שם נוסף",
+    "editLabel": "עריכה או הסרה של השם {name}",
+    "conflictTitle": "„{name}” כבר קיים כפתק.",
+    "conflictName": "„{name}” כבר שם של {title}.",
+    "conflictKeeps": "קישורים אליו ימשיכו לפתוח את {title}.",
+    "conflictTakesOver": "קישורים אליו יפתחו את הפתק הזה במקום את {title}.",
+    "saveFailed": "לא ניתן היה לשמור את השם. הפתק לא השתנה, כך שאפשר לנסות שוב.",
+    "addAsNameOf": "הוספת „{name}” כשם של…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "הוספת „{name}” כשם של",
+    "pickerPlaceholder": "חיפוש פתקים",
+    "pickerEmpty": "אין פתקים תואמים",
+    "previewVia": "{name} → {title}"
   }
 }

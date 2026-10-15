@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getFile: vi.fn(),
   getByPath: vi.fn(),
   listCanvases: vi.fn(),
+  linksChanged: [] as Array<() => void>,
   logger: {
     error: vi.fn()
   }
@@ -17,6 +18,10 @@ vi.mock('@/services/notes-service', () => ({
     list: (...args: unknown[]) => mocks.listNotes(...args),
     getFile: (...args: unknown[]) => mocks.getFile(...args),
     getByPath: (...args: unknown[]) => mocks.getByPath(...args)
+  },
+  onNoteLinksChanged: (callback: () => void) => {
+    mocks.linksChanged.push(callback)
+    return () => {}
   }
 }))
 
@@ -33,6 +38,7 @@ import { clearCanvasLookupCache } from '@/lib/canvas-lookup'
 describe('useWikiLinkSuggestions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.linksChanged.length = 0
     clearCanvasLookupCache()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
@@ -518,5 +524,143 @@ describe('useWikiLinkSuggestions', () => {
         type: 'create'
       }
     ])
+  })
+
+  describe('other names (#2580)', () => {
+    beforeEach(() => {
+      mocks.listNotes.mockResolvedValue({
+        notes: [
+          {
+            id: 'note-ai',
+            title: 'Artificial Intelligence',
+            path: 'Artificial Intelligence.md',
+            aliases: ['AI', 'Yapay Zeka']
+          },
+          { id: 'note-ail', title: 'Ailments', path: 'Ailments.md', aliases: [] },
+          {
+            id: 'note-ml-a',
+            title: 'Machine learning',
+            path: 'A/Machine learning.md',
+            aliases: ['ML']
+          },
+          { id: 'note-ml-b', title: 'Metric list', path: 'B/Metric list.md', aliases: ['ML'] }
+        ]
+      })
+    })
+
+    it('lists a name match as one row per note and offers no create row on an exact name', async () => {
+      const { result } = renderHook(() =>
+        useWikiLinkSuggestions({ insertInlineContent: vi.fn() }, vi.fn())
+      )
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('ai')
+      })
+
+      expect(
+        items.map(({ id, type, title, target, alias, noteTitle }) => ({
+          id,
+          type,
+          title,
+          target,
+          alias,
+          noteTitle
+        }))
+      ).toEqual([
+        {
+          id: 'note-ai',
+          type: 'noteName',
+          title: 'AI',
+          target: 'Artificial Intelligence',
+          alias: 'AI',
+          noteTitle: 'Artificial Intelligence'
+        },
+        {
+          id: 'note-ail',
+          type: 'note',
+          title: 'Ailments',
+          target: 'Ailments',
+          alias: '',
+          noteTitle: undefined
+        },
+        {
+          id: 'note-ml-a',
+          type: 'note',
+          title: 'Machine learning',
+          target: 'Machine learning',
+          alias: '',
+          noteTitle: undefined
+        }
+      ])
+    })
+
+    it('shows the folder when two notes share a name', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('ML')
+      })
+
+      expect(items.map(({ id, type, folder }) => ({ id, type, folder }))).toEqual([
+        { id: 'note-ml-a', type: 'noteName', folder: 'A' },
+        { id: 'note-ml-b', type: 'noteName', folder: 'B' }
+      ])
+    })
+
+    it('offers to add an unmatched query as a name, and hands the name over when picked', async () => {
+      const onAddName = vi.fn()
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor, onAddName))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Deep learning')
+      })
+      const addName = items.find((item) => item.type === 'addName')
+
+      expect(items.slice(-2).map(({ type, title }) => ({ type, title }))).toEqual([
+        { type: 'create', title: 'Deep learning' },
+        { type: 'addName', title: 'Deep learning' }
+      ])
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(addName!)
+      })
+      expect(onAddName).toHaveBeenCalledWith('Deep learning')
+      expect(editor.insertInlineContent).not.toHaveBeenCalled()
+    })
+
+    it('writes [[Title|name]] when a name row is picked', async () => {
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Yapay')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [{ type: 'wikiLink', props: { target: 'Artificial Intelligence', alias: 'Yapay Zeka' } }],
+        { updateSelection: true }
+      )
+    })
+
+    it('reloads the note list when links change', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+      await act(async () => {
+        await result.current.getWikiLinkItems('')
+      })
+      mocks.linksChanged.forEach((callback) => callback())
+      await act(async () => {
+        await result.current.getWikiLinkItems('')
+      })
+
+      expect(mocks.listNotes).toHaveBeenCalledTimes(2)
+    })
   })
 })

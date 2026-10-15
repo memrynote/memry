@@ -1453,5 +1453,25 @@
     "cancel": "Annulla",
     "save": "Salva",
     "addToFilterHint": "Fai Ctrl/Cmd-clic su un tag per aggiungerlo al filtro"
+  },
+  "names": {
+    "also": "anche",
+    "add": "Aggiungi un altro nome",
+    "addMenu": "Aggiungi un altro nome…",
+    "inputLabel": "Un altro nome per questa nota",
+    "inputPlaceholder": "Altro nome",
+    "editLabel": "Modifica o rimuovi il nome {name}",
+    "conflictTitle": "«{name}» è già una nota.",
+    "conflictName": "«{name}» è già un nome di {title}.",
+    "conflictKeeps": "I link a questo nome continueranno ad aprire {title}.",
+    "conflictTakesOver": "I link a questo nome apriranno questa nota invece di {title}.",
+    "saveFailed": "Impossibile salvare il nome. La nota non è cambiata, puoi riprovare.",
+    "addAsNameOf": "Aggiungi «{name}» come nome di…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Aggiungi «{name}» come nome di",
+    "pickerPlaceholder": "Cerca note",
+    "pickerEmpty": "Nessuna nota corrisponde",
+    "previewVia": "{name} → {title}"
   }
 }
