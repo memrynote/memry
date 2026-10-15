@@ -196,6 +196,7 @@ const runtimeMocks = vi.hoisted(() => {
       open: vi.fn(async () => ({})),
       closeIfInactive: vi.fn(async () => true),
       applyRemoteUpdate: vi.fn(),
+      hasPersistence: () => false,
       getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
       seedFromMarkdownPublic: vi.fn(async () => undefined),
       recordWholeBodyMerged: vi.fn(),

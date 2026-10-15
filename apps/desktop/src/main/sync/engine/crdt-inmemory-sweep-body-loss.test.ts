@@ -184,7 +184,7 @@ import { feedExternalEditToCrdt } from '../crdt-external-feed'
 import { owesFileBody } from '../crdt-owed-file-body'
 import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
-import { generateContentHash } from '../../vault/frontmatter'
+import { generateContentHash, parseNote } from '../../vault/frontmatter'
 
 const NOTE = 'c8c29h5sqvgt'
 const NOTE_PATH = 'notes/Trip.md'
@@ -455,7 +455,7 @@ describe('CrdtProvider with no store (#2536)', () => {
    * there was no snapshot. A full-state row is pushed when the test flushes
    * it, through the reader the runtime's outbox uses.
    */
-  async function startRuntime(): Promise<{
+  async function startRuntime(options?: { store: boolean }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
     pushUpdate: (state: Uint8Array) => void
@@ -515,7 +515,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     await provider.init(outbox, pushSnapshot)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
-    expect(provider.storeId).toBeNull()
+    if (!options?.store) expect(provider.storeId).toBeNull()
     return { provider, coordinator, pushUpdate, flushFullStates }
   }
 
@@ -1271,5 +1271,61 @@ describe('CrdtProvider with no store (#2536)', () => {
     await provider.close(NOTE, EDITOR_WINDOW)
 
     expect(await bodyAfterPull()).toBe(EXPECTED_BODY)
+  })
+
+  describe('a store that never held a note whose file was edited and not yet synced (#3277)', () => {
+    const NEWER_BODY = `${ORIGINAL}\n\nWritten by hand after the last sync.`
+
+    async function sweepWithEmptyStore(
+      canonical: { modifiedAt: string; syncedAt: string },
+      entry: 'sweep' | 'single' = 'sweep'
+    ) {
+      await serveNoteWithPeerEdit()
+      const serverBody = await bodyAfterPull()
+      putNoteInVault(NEWER_BODY)
+      const fileBefore = h.files.get(FILE)
+      h.canonical = { id: NOTE, ...canonical }
+      h.persistence = fakeStore()
+      const { provider, coordinator, flushFullStates } = await startRuntime({ store: true })
+      if (entry === 'sweep') await coordinator.pullCrdtForNotes([NOTE])
+      else await coordinator.pullCrdtForNote(NOTE)
+      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      await flushFullStates()
+      await provider.close(NOTE)
+      return { serverBody, fileBefore }
+    }
+
+    it.each(['sweep', 'single'] as const)(
+      'a %s pull keeps the newer file text, pushes it, and keeps the server body as a version',
+      async (entry) => {
+        const { serverBody, fileBefore } = await sweepWithEmptyStore(
+          { modifiedAt: '2026-10-14T06:20:00.000Z', syncedAt: '2026-10-09T10:00:00.000Z' },
+          entry
+        )
+
+        expect({
+          file: h.files.get(FILE),
+          server: await bodyAfterPull(),
+          versionBodies: h.versions.map((v) => parseNote(v).content.trim())
+        }).toEqual({
+          file: fileBefore,
+          server: NEWER_BODY,
+          versionBodies: [serverBody!.trim()]
+        })
+      }
+    )
+
+    it('a sweep of a synced note still takes the server body, keeping the file as a version', async () => {
+      const { serverBody, fileBefore } = await sweepWithEmptyStore({
+        modifiedAt: '2026-10-09T10:00:00.000Z',
+        syncedAt: '2026-10-09T10:00:00.000Z'
+      })
+
+      expect({
+        server: await bodyAfterPull(),
+        file: parseNote(h.files.get(FILE)!).content,
+        versions: h.versions
+      }).toEqual({ server: serverBody, file: serverBody, versions: [fileBefore] })
+    })
   })
 })

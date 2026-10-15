@@ -61,6 +61,7 @@ describe('CRDT batch pass: snapshot GET prefetch', () => {
       applyRemoteUpdate: (noteId: string) => {
         baselinesApplied.push(noteId)
       },
+      hasPersistence: () => false,
       getStateVector: () => new Uint8Array([1, 2, 3, 4]),
       seedFromMarkdownPublic: vi.fn(),
       recordWholeBodyMerged: vi.fn()

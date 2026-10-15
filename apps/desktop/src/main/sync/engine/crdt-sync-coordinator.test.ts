@@ -93,6 +93,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic,
           recordWholeBodyMerged: vi.fn()
@@ -141,6 +142,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -229,6 +231,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -283,6 +286,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -359,6 +363,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -429,6 +434,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -714,6 +720,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic,
           recordWholeBodyMerged: vi.fn()
@@ -772,6 +779,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -1117,6 +1125,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn((noteId: string) =>
             noteId === 'note-2' ? null : new Uint8Array([1, 2, 3, 4])
           ),
@@ -1753,6 +1762,7 @@ describe('CrdtSyncCoordinator.clearCaches', () => {
       open: vi.fn().mockResolvedValue({}),
       closeIfInactive: vi.fn().mockResolvedValue(true),
       getDoc: vi.fn().mockReturnValue({}),
+      hasPersistence: () => false,
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
       seedFromMarkdownPublic: vi.fn(),
       recordWholeBodyMerged: vi.fn()

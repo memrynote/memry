@@ -1223,6 +1223,7 @@ describe('FullSyncRunner', () => {
         open: vi.fn(async () => ({})),
         closeIfInactive: vi.fn(async () => true),
         applyRemoteUpdate: vi.fn(() => true),
+        hasPersistence: () => false,
         getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
         seedFromMarkdownPublic: vi.fn(),
         recordWholeBodyMerged: vi.fn(),

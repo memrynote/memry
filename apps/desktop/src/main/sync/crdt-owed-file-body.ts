@@ -19,6 +19,7 @@
  */
 
 import { eq } from 'drizzle-orm'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodies'
 import { getDatabase, type DataDb } from '../database/client'
 import { createLogger } from '../lib/logger'
@@ -60,4 +61,21 @@ export function clearOwedFileBody(noteId: string): void {
   withDatabase(noteId, undefined, (db) => {
     db.delete(crdtOwedFileBodies).where(eq(crdtOwedFileBodies.noteId, noteId)).run()
   })
+}
+
+/**
+ * A pull about to merge the server body into a doc the store never held
+ * (#3277): an emptied or new store, as after a store epoch reset. The vault
+ * file may then hold text that never reached the doc or the server, and the
+ * write-back the merge schedules would replace it with the older server body.
+ * A note edited since its last sync (the rule `dirty-recovery` uses) owes its
+ * file instead, so the merged doc takes the file and keeps the server body as
+ * a version (`takeOwedFile`). A synced note is left to the merge: its file may
+ * be the item record's copy of a body the server has since moved past.
+ */
+export function oweUnsyncedFileBody(noteId: string): void {
+  const meta = withDatabase(noteId, undefined, (db) => getNoteMetadataById(db, noteId))
+  if (!meta) return
+  if (meta.syncedAt !== null && meta.modifiedAt <= meta.syncedAt) return
+  recordOwedFileBody(noteId)
 }
