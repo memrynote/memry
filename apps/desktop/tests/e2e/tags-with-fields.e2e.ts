@@ -30,7 +30,15 @@ async function addPreset(page: Page, name: string): Promise<void> {
 }
 
 async function addHeaderTag(page: Page, tag: string): Promise<void> {
-  await page.getByRole('button', { name: 'Add tag', exact: true }).first().click()
+  // With tags present the tags row owns the add button; otherwise it lives in the details menu.
+  const rowAddTag = page.getByRole('button', { name: 'Add tag', exact: true }).first()
+  if (await rowAddTag.isVisible()) {
+    await rowAddTag.click()
+  } else {
+    await page.locator('.group\\/metadata').first().hover()
+    await page.getByTestId('ghost-add-details').click()
+    await page.getByRole('menuitem', { name: 'Add tag', exact: true }).click()
+  }
   const input = page.getByPlaceholder(/tag/i).last()
   await input.fill(tag)
   await page.keyboard.press('Enter')

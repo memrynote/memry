@@ -43,9 +43,8 @@ function optionsNamed(picker: Locator, value: string): Locator {
 async function addStatusPropertyThroughUi(page: Page): Promise<Locator> {
   await page.locator('.group\\/metadata').first().hover()
 
-  const addPropertyButton = page.getByRole('button', { name: 'Add property' }).first()
-  await expect(addPropertyButton).toBeVisible()
-  await addPropertyButton.click()
+  await page.getByTestId('ghost-add-details').click()
+  await page.getByRole('menuitem', { name: 'Add property' }).click()
 
   await page.getByRole('option', { name: 'Status', exact: true }).first().click()
 

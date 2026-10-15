@@ -1,7 +1,7 @@
 /**
  * GhostAffordanceRow Tests
  *
- * Covers the note/journal "ghost" add-tag/add-property affordance. Focused on
+ * Covers the note/journal "Add details" menu. Focused on
  * the `project` property-type guard: this row renders its own AddPropertyPopup
  * independent of InfoSection's, so the existingNames guard has to be threaded
  * through separately or a note can pick up a second, non-linking `project 2`.
@@ -33,41 +33,57 @@ const defaultProps = {
   onAddProperty: vi.fn()
 }
 
-describe('GhostAffordanceRow - chips', () => {
-  it('orders the chips cover, tag, properties and drops the cover chip without a handler', () => {
-    const { rerender } = renderWithI18n(
-      <GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} />
-    )
+describe('GhostAffordanceRow - details menu', () => {
+  const openMenu = async (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('button', { name: 'Add details' }))
 
-    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'Add cover',
+  it('lists tag, property, name and cover, dropping entries without a handler', async () => {
+    const user = userEvent.setup()
+    const { rerender } = renderWithI18n(
+      <GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} onAddName={vi.fn()} />
+    )
+    await openMenu(user)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Add tag',
-      'Add property'
+      'Add property',
+      'Add another name',
+      'Add cover'
     ])
+    await user.keyboard('{Escape}')
 
     rerender(
       <I18nextProvider i18n={i18nEn}>
-        <GhostAffordanceRow {...defaultProps} />
+        <GhostAffordanceRow {...defaultProps} hideAddTag />
       </I18nextProvider>
     )
-    expect(screen.queryByTestId('ghost-add-cover')).not.toBeInTheDocument()
+    await openMenu(user)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Add property'
+    ])
   })
 
-  it('fires the cover handler and carries no border', async () => {
+  it('anchors the cover picker under the trigger', async () => {
     const user = userEvent.setup()
     const onAddCover = vi.fn()
     renderWithI18n(<GhostAffordanceRow {...defaultProps} onAddCover={onAddCover} />)
 
-    const chip = screen.getByTestId('ghost-add-cover')
-    expect(chip.className).not.toMatch(/\bborder\b|border-dashed/)
-    await user.click(chip)
-    expect(onAddCover).toHaveBeenCalledTimes(1)
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'Add cover' }))
+    expect(onAddCover).toHaveBeenCalledWith({ x: expect.any(Number), y: expect.any(Number) })
   })
 
-  it('keeps every chip disabled when the row is disabled', () => {
-    renderWithI18n(<GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} disabled />)
+  it('opens the tag picker from the menu', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<GhostAffordanceRow {...defaultProps} />)
 
-    for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'Add tag' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('disables the trigger when the row is disabled', () => {
+    renderWithI18n(<GhostAffordanceRow {...defaultProps} disabled />)
+    expect(screen.getByRole('button', { name: 'Add details' })).toBeDisabled()
   })
 })
 
@@ -76,7 +92,8 @@ describe('GhostAffordanceRow - project type guard', () => {
     const user = userEvent.setup()
     renderWithI18n(<GhostAffordanceRow {...defaultProps} existingNames={['project']} />)
 
-    await user.click(screen.getByRole('button', { name: /add property/i }))
+    await user.click(screen.getByRole('button', { name: 'Add details' }))
+    await user.click(screen.getByRole('menuitem', { name: /add property/i }))
 
     expect(screen.getByRole('option', { name: /^project$/i })).toBeDisabled()
   })

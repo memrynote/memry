@@ -1972,7 +1972,6 @@ export function NotePage({ noteId }: NotePageProps) {
               })
             }
             hideWhenEmpty
-            hideAddButton
             disabled={isLocked}
           />
 
@@ -2016,7 +2015,6 @@ export function NotePage({ noteId }: NotePageProps) {
               onDeleteProperty={handleDeleteProperty}
               disabled={isDeleted || isLocked}
               variant="embedded"
-              hideAddButton
             />
           )}
 
@@ -2040,9 +2038,8 @@ export function NotePage({ noteId }: NotePageProps) {
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
             existingNames={properties.map((p) => p.name)}
-            onAddCover={
-              cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
-            }
+            hideAddTag={headerTags.length > 0}
+            onAddCover={cover ? undefined : setCoverPickerAnchor}
             onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
             disabled={isDeleted || isLocked}
           />

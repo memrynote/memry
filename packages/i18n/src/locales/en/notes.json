@@ -2096,5 +2096,8 @@
     "pickerPlaceholder": "Search notes",
     "pickerEmpty": "No notes match",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Add details"
   }
 }

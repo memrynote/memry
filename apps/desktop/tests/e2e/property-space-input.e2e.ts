@@ -25,9 +25,8 @@ async function openSeededNote(page: Page, title: string): Promise<string> {
 
 async function openAddPropertyPopup(page: Page): Promise<void> {
   await page.locator('.group\\/metadata').first().hover()
-  const addPropertyButton = page.getByRole('button', { name: 'Add property' }).first()
-  await expect(addPropertyButton).toBeVisible()
-  await addPropertyButton.click()
+  await page.getByTestId('ghost-add-details').click()
+  await page.getByRole('menuitem', { name: 'Add property' }).click()
 }
 
 async function addProperty(page: Page, type: 'Text' | 'Select'): Promise<void> {

@@ -1347,7 +1347,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onRemoveTag={handleRemoveTag}
                             className="mb-0"
                             hideWhenEmpty
-                            hideAddButton
                             disabled={isLocked}
                           />
                           {properties.length > 0 && (
@@ -1363,7 +1362,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onAddProperty={handleAddPropertyWithExpand}
                               onDeleteProperty={handleDeleteProperty}
                               disabled={isLocked}
-                              hideAddButton
                               renderPropertyAction={renderPropertyHistory}
                             />
                           )}
@@ -1378,6 +1376,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
                             existingNames={properties.map((p) => p.name)}
+                            hideAddTag={journalTags.length > 0}
                             onAddName={
                               entryId && !entry?.aliases?.length
                                 ? () => requestNoteNameInput(entryId)
