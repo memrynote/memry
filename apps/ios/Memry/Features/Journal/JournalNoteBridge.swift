@@ -67,7 +67,8 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
             properties: (day?.properties ?? []).filter { $0.name.lowercased() != "date" },
             aliases: [],
             icon: nil,
-            coverJson: nil
+            coverJson: nil,
+            tagFields: []
         )
     }
 

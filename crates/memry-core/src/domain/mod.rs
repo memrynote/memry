@@ -39,6 +39,7 @@ pub mod search;
 pub mod settings;
 pub mod tag_admin;
 pub mod tag_body_rename;
+pub mod tag_fields;
 pub mod tag_rename;
 pub mod tag_schema_refs;
 pub mod tags;
