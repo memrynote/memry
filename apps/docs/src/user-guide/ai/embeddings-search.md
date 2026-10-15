@@ -34,7 +34,8 @@ first ~4000 characters, title first.
 
 When you update from a version that used the older English-only model, memrynote discards the old
 vectors and re-embeds every note in the background once. Similar notes and suggestions fill back in as
-that pass runs.
+that pass runs. If you quit before it finishes, the next launch continues with the notes it has not
+reached yet instead of starting over.
 
 Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
 and search is keyword-only.
@@ -79,7 +80,8 @@ keep their place in line and are embedded by the next background pass.
 Beyond that, the model is loaded lazily: semantic surfaces such as search, inbox linked-note
 suggestions, related notes, and reindexing start the local model on first use. The model runs in a
 separate utility process and shuts down after an idle period, so regular note reading does not keep the
-embedding runtime resident forever.
+embedding runtime resident forever. That process runs at low OS priority and uses at most half of your
+CPU cores, so a large re-embed leaves the rest of the machine responsive.
 
 ## Similar Notes, Suggested Tags, and Canvas Groups
 
