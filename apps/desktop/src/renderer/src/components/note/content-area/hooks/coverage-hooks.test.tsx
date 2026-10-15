@@ -151,6 +151,8 @@ describe('coverage hooks around note editing', () => {
     const tiptap = {
       registerPlugin: vi.fn(),
       unregisterPlugin: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
       state: {
         tr,
         schema: { nodes: { hashTag: hashTagNodeType } },
