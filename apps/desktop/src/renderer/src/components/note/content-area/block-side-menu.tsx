@@ -56,6 +56,7 @@ import { getEditorSelectionFromState, getProseMirrorState } from './review-forma
 import type { TemplateAnchor } from './insert-template'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 import { getCheckboxTaskActions } from './checkbox-task-actions'
+import { useTaskBlockDragData } from './task-block/task-block-drag'
 import type { ReviewSelection } from './types'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
@@ -445,6 +446,7 @@ export function BlockSideMenuController({
   floatingUIOptions
 }: BlockSideMenuControllerProps) {
   const { t } = useT('notes')
+  useTaskBlockDragData()
 
   const dragHandleMenu = useMemo<FC>(
     () => () => (
