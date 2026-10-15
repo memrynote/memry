@@ -8,6 +8,7 @@ import App from './App'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import { useVaultScope } from '@/contexts/vault-scope'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { isNewNoteTitlePending } from '@/lib/new-note-title'
 
 /** Every QueryClient VaultStack created, in creation order. */
 const { createdQueryClients } = vi.hoisted(() => ({
@@ -654,7 +655,8 @@ describe('App', () => {
 
     newNoteShortcut?.()
 
-    await waitFor(() => expect(createNote).toHaveBeenCalledWith({ title: 'Untitled', content: '' }))
+    await waitFor(() => expect(createNote).toHaveBeenCalledWith({ title: 'New note', content: '' }))
+    expect(isNewNoteTitlePending('note-1')).toBe(true)
     expect(openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'note',
