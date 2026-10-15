@@ -1276,7 +1276,10 @@ describe('CrdtProvider with no store (#2536)', () => {
   describe('a store that never held a note whose file was edited and not yet synced (#3277)', () => {
     const NEWER_BODY = `${ORIGINAL}\n\nWritten by hand after the last sync.`
 
-    async function sweepWithEmptyStore(canonical: { modifiedAt: string; syncedAt: string }) {
+    async function sweepWithEmptyStore(
+      canonical: { modifiedAt: string; syncedAt: string },
+      entry: 'sweep' | 'single' = 'sweep'
+    ) {
       await serveNoteWithPeerEdit()
       const serverBody = await bodyAfterPull()
       putNoteInVault(NEWER_BODY)
@@ -1284,29 +1287,33 @@ describe('CrdtProvider with no store (#2536)', () => {
       h.canonical = { id: NOTE, ...canonical }
       h.persistence = fakeStore()
       const { provider, coordinator, flushFullStates } = await startRuntime({ store: true })
-      await coordinator.pullCrdtForNotes([NOTE])
+      if (entry === 'sweep') await coordinator.pullCrdtForNotes([NOTE])
+      else await coordinator.pullCrdtForNote(NOTE)
       await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
       await flushFullStates()
       await provider.close(NOTE)
       return { serverBody, fileBefore }
     }
 
-    it('a sweep keeps the newer file text, pushes it, and keeps the server body as a version', async () => {
-      const { serverBody, fileBefore } = await sweepWithEmptyStore({
-        modifiedAt: '2026-10-14T06:20:00.000Z',
-        syncedAt: '2026-10-09T10:00:00.000Z'
-      })
+    it.each(['sweep', 'single'] as const)(
+      'a %s pull keeps the newer file text, pushes it, and keeps the server body as a version',
+      async (entry) => {
+        const { serverBody, fileBefore } = await sweepWithEmptyStore(
+          { modifiedAt: '2026-10-14T06:20:00.000Z', syncedAt: '2026-10-09T10:00:00.000Z' },
+          entry
+        )
 
-      expect({
-        file: h.files.get(FILE),
-        server: await bodyAfterPull(),
-        versionBodies: h.versions.map((v) => parseNote(v).content.trim())
-      }).toEqual({
-        file: fileBefore,
-        server: NEWER_BODY,
-        versionBodies: [serverBody!.trim()]
-      })
-    })
+        expect({
+          file: h.files.get(FILE),
+          server: await bodyAfterPull(),
+          versionBodies: h.versions.map((v) => parseNote(v).content.trim())
+        }).toEqual({
+          file: fileBefore,
+          server: NEWER_BODY,
+          versionBodies: [serverBody!.trim()]
+        })
+      }
+    )
 
     it('a sweep of a synced note still takes the server body, keeping the file as a version', async () => {
       const { serverBody, fileBefore } = await sweepWithEmptyStore({

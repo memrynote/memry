@@ -454,6 +454,7 @@ describe('SyncEngine', () => {
       open: vi.fn().mockResolvedValue({}),
       closeIfInactive: vi.fn().mockResolvedValue(true),
       applyRemoteUpdate: vi.fn(),
+      hasPersistence: vi.fn(() => false),
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
       seedFromMarkdownPublic: vi.fn(),
       recordWholeBodyMerged: vi.fn()
@@ -762,6 +763,7 @@ describe('SyncEngine', () => {
         open: vi.fn().mockResolvedValue({}),
         closeIfInactive: vi.fn().mockResolvedValue(true),
         applyRemoteUpdate,
+        hasPersistence: () => false,
         getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
         seedFromMarkdownPublic: vi.fn(),
         recordWholeBodyMerged: vi.fn()

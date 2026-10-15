@@ -113,6 +113,7 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
       },
       // Non-empty for every note, so the markdown seed fallback never fires and
       // cannot mask a missing baseline.
+      hasPersistence: () => false,
       getStateVector: () => new Uint8Array([1, 2, 3, 4]),
       seedFromMarkdownPublic,
       recordWholeBodyMerged: vi.fn()
