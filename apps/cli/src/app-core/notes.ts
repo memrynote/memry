@@ -14,6 +14,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { noteNames } from '@memry/db-schema/schema/notes-cache'
+import { pickWikiTarget } from '@memry/shared/note-names'
 import { saveCanonicalNote, deleteCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import {
@@ -23,7 +25,7 @@ import {
   listNoteMetadata
 } from '@memry/storage-data'
 import { formatJournalFilename } from '@memry/storage-vault'
-import type { DataDb } from './database.ts'
+import type { DataDb, IndexDb } from './database.ts'
 import { createId } from '@memry/app-core/ids'
 import { isDeepStrictEqual } from 'node:util'
 import {
@@ -35,11 +37,7 @@ import {
 } from '@memry/app-core/markdown'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
-import {
-  noteLinkStem,
-  resolveWikiTarget as resolveTargetWith,
-  wikiPathStem
-} from '@memry/shared/wiki-target'
+import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 
 interface NoteMetadataRow {
@@ -235,36 +233,34 @@ async function rewriteInboundLinks(input: {
   }
 }
 
-/**
- * The note a wiki-link target names: by vault-root path when it holds a `/`
- * (`Folder/Note`, case-insensitive), else by title. Mirrors desktop's
- * `resolveNoteByTitle`.
- */
-function metadataByTitle(db: DataDb, title: string): NoteMetadataRow | undefined {
+function metadataByTitle(db: DataDb, indexDb: IndexDb, title: string): NoteMetadataRow | undefined {
   const rows = listNoteMetadata(db, { limit: 10000 })
-  const stem = wikiPathStem(title)?.toLowerCase()
-  const byPath =
-    stem === undefined
-      ? undefined
-      : rows.find((row) => {
-          const rowPath = row.path.toLowerCase()
-          return rowPath === stem || rowPath === `${stem}.md`
-        })
-  return (
-    byPath ??
-    rows.find((row) => row.title === title) ??
-    rows.find((row) => row.title.toLowerCase() === title.toLowerCase())
+  const aliases = new Map<string, string[]>()
+  for (const row of indexDb.select().from(noteNames).where(eq(noteNames.kind, 'alias')).all()) {
+    aliases.set(row.noteId, [...(aliases.get(row.noteId) ?? []), row.display])
+  }
+  const match = pickWikiTarget(
+    title,
+    rows.map((row) => ({
+      noteId: row.id,
+      path: row.path,
+      title: row.title,
+      aliases: aliases.get(row.id) ?? []
+    }))
   )
+  return match ? rows.find((row) => row.id === match.noteId) : undefined
 }
 
 export function createNotesService({
   vaultPath,
   config,
-  dataDb
+  dataDb,
+  indexDb
 }: {
   vaultPath: string
   config: VaultConfig
   dataDb: DataDb
+  indexDb: IndexDb
 }): NotesService {
   return {
     async create(input) {
@@ -488,7 +484,7 @@ export function createNotesService({
     },
 
     async previewByTitle(title) {
-      const resolved = metadataByTitle(dataDb, title)
+      const resolved = metadataByTitle(dataDb, indexDb, title)
       if (!resolved) return null
       const note = await readNote(vaultPath, resolved)
       return {
@@ -502,7 +498,7 @@ export function createNotesService({
     },
 
     async resolveByTitle(title) {
-      const row = metadataByTitle(dataDb, title)
+      const row = metadataByTitle(dataDb, indexDb, title)
       if (!row) return null
       return {
         id: row.id,
