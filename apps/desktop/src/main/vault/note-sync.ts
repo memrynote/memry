@@ -7,6 +7,7 @@
 
 import type { NoteFrontmatter } from './frontmatter'
 import {
+  extractAliases,
   extractTags,
   mergeTagLists,
   extractProperties,
@@ -152,6 +153,7 @@ export interface NoteMetadata {
   headerTags: string[]
   /** Custom properties from frontmatter */
   properties: Record<string, unknown>
+  aliases: string[]
   /** Wiki links found in content */
   wikiLinks: string[]
   /** Word count of markdown body */
@@ -199,6 +201,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const tags = mergeTagLists(headerTags, extractInlineTagsFromMarkdown(parsedContent))
 
   const properties = extractProperties(frontmatter)
+  const aliases = extractAliases(frontmatter, input.title)
   const wikiLinks = extractWikiLinks(parsedContent)
   const wordCount = calculateWordCount(parsedContent)
   const characterCount = parsedContent.length
@@ -212,6 +215,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
     tags,
     headerTags,
     properties,
+    aliases,
     wikiLinks,
     wordCount,
     characterCount,
@@ -240,6 +244,7 @@ export function syncNoteToCache(
     tags,
     headerTags,
     properties,
+    aliases,
     wikiLinks,
     wordCount,
     characterCount,
@@ -283,6 +288,7 @@ export function syncNoteToCache(
     tags,
     headerTags,
     properties,
+    aliases,
     wikiLinks
   }
 
@@ -373,6 +379,7 @@ export function syncNoteStatToCache(
     tags: [],
     headerTags: [],
     properties: null,
+    aliases: null,
     wikiLinks: []
   }
 
@@ -439,6 +446,7 @@ export function syncLargeFileBodyToCache(_db: IndexDb, input: LargeFileBodySyncI
     tags: [],
     headerTags: [],
     properties: null,
+    aliases: null,
     wikiLinks: []
   }
 

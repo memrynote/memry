@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod'
+import { MAX_NOTE_ALIASES, MAX_NOTE_ALIAS_LENGTH } from '@memry/shared/note-names'
 
 // Import and re-export channels from the contract-local surface.
 import { NotesChannels } from './ipc-channels'
@@ -465,6 +466,24 @@ export const UndoTagTemplateSchema = z.object({
   undoToken: z.string()
 })
 
+const AliasNameSchema = z.string().max(MAX_NOTE_ALIAS_LENGTH)
+
+/**
+ * A change to a note's other names, applied to the list in the file: removes
+ * by name key, then adds. A delta, not a list, so two edits that race (the
+ * header and a sync pull) both land.
+ */
+export const NoteAliasEditSchema = z.object({
+  id: z.string(),
+  add: z.array(AliasNameSchema).max(MAX_NOTE_ALIASES),
+  remove: z.array(AliasNameSchema).max(MAX_NOTE_ALIASES)
+})
+export type NoteAliasEdit = z.infer<typeof NoteAliasEditSchema>
+
+export interface NoteAliasEditResponse {
+  aliases: string[]
+}
+
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
@@ -773,6 +792,8 @@ export interface NotesHandlers {
     input: z.infer<typeof UndoTagTemplateSchema>
   ) => Promise<UndoTagTemplateResponse>
 
+  [NotesChannels.invoke.EDIT_ALIASES]: (input: NoteAliasEdit) => Promise<NoteAliasEditResponse>
+
   [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
 
   /** `null` when the session is gone — after a main restart, or an eviction. */
@@ -802,6 +823,11 @@ export type NoteEventSource = 'internal' | 'external' | 'sync'
 export interface NoteCreatedEvent {
   note: NoteListItem
   source: NoteEventSource
+}
+
+export interface NoteLinksChangedEvent {
+  sourceIds: string[]
+  targetIds: string[]
 }
 
 export interface NoteUpdatedEvent {
@@ -889,4 +915,5 @@ export interface NotesClientAPI {
   renameAttachment(noteId: string, url: string, newName: string): Promise<AttachmentRenameResult>
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
   undoTagTemplate(input: z.infer<typeof UndoTagTemplateSchema>): Promise<UndoTagTemplateResponse>
+  editAliases(input: NoteAliasEdit): Promise<NoteAliasEditResponse>
 }

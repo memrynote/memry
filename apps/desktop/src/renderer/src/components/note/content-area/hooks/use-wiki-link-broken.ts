@@ -29,7 +29,13 @@
 import { useEffect, useRef } from 'react'
 import type { EditorView } from '@tiptap/pm/view'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
-import { notesService, onNoteCreated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
+import {
+  notesService,
+  onNoteCreated,
+  onNoteDeleted,
+  onNoteLinksChanged,
+  onNoteRenamed
+} from '@/services/notes-service'
 import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { registerEditorPlugin } from '../register-editor-plugin'
@@ -178,6 +184,7 @@ export function useWikiLinkBroken(
       onNoteCreated(forceRefresh),
       onNoteRenamed(forceRefresh),
       onNoteDeleted(forceRefresh),
+      onNoteLinksChanged(forceRefresh),
       onCanvasCreated(forceRefresh),
       onCanvasUpdated(forceRefresh),
       onCanvasDeleted(forceRefresh)

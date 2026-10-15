@@ -24,7 +24,10 @@ import type {
   NoteClustersResponse,
   HeaderTagEdit,
   NoteTagTemplateOutcome,
-  UndoTagTemplateResponse
+  UndoTagTemplateResponse,
+  NoteAliasEdit,
+  NoteAliasEditResponse,
+  NoteLinksChangedEvent
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
 import {
@@ -577,6 +580,10 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.UNDO_TAG_TEMPLATE,
       params: ['input']
     }),
+    editAliases: defineMethod<(input: NoteAliasEdit) => Promise<NoteAliasEditResponse>>({
+      channel: NotesChannels.invoke.EDIT_ALIASES,
+      params: ['input']
+    }),
     appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({
       channel: NotesChannels.invoke.APPEND_BLOCKS,
       params: ['input']
@@ -892,6 +899,7 @@ export const notesRpc = defineDomain({
       NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS
     ),
     onTagsChanged: defineEvent<void>('notes:tags-changed'),
+    onLinksChanged: defineEvent<NoteLinksChangedEvent>(NotesChannels.events.LINKS_CHANGED),
     onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)
   }
 })

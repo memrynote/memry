@@ -159,6 +159,7 @@ describe('note-project-links projector — note.upserted with unread frontmatter
         tags: [],
         headerTags: [],
         properties: {},
+        aliases: [],
         wikiLinks: []
       }
     })

@@ -234,6 +234,7 @@ export interface MainIpcInvokeHandlers {
   "notes:delete-property-definition": (...args: [{ name: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:download-attachment-from-url": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").DownloadAttachmentFromUrlResult>>
+  "notes:edit-aliases": (...args: [{ id: string; add: string[]; remove: string[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").NoteAliasEditResponse> | { success: false; error: string }>
   "notes:ensure-property-definition": (...args: [{ name: string; type: "select" | "status" | "multiselect"; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:exists": (...args: [string]) => Awaited<Promise<boolean>>
   "notes:export-html": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; includeTaskMarkers?: boolean | undefined; outputPath?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>

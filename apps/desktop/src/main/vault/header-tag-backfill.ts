@@ -11,7 +11,7 @@ import { getNoteTags, listNotesWithUnresolvedHeaderTags } from '@main/database/q
 import { publishProjectionEvent } from '../projections'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
-import { extractTags, parseNote } from './frontmatter'
+import { extractTags, parseNote, type NoteFrontmatter } from './frontmatter'
 import type { IndexDb } from '../database'
 
 const logger = createLogger('HeaderTagBackfill')
@@ -32,11 +32,12 @@ export async function backfillHeaderTagFlags(
     let resolved = 0
     for (const note of listNotesWithUnresolvedHeaderTags(db)) {
       if (input.shouldStop()) return null
-      const headerTags =
+      const frontmatter =
         note.fileType === 'markdown'
-          ? await readHeaderTags(path.join(input.vaultPath, note.path))
-          : getNoteTags(db, note.id)
-      if (headerTags === null) continue
+          ? await readHeadFrontmatter(path.join(input.vaultPath, note.path))
+          : null
+      if (note.fileType === 'markdown' && frontmatter === null) continue
+      const headerTags = frontmatter ? extractTags(frontmatter) : getNoteTags(db, note.id)
       publishProjectionEvent({ type: 'note.header-tags-resolved', noteId: note.id, headerTags })
       resolved++
     }
@@ -50,7 +51,7 @@ export async function backfillHeaderTagFlags(
   }
 }
 
-async function readHeaderTags(absolutePath: string): Promise<string[] | null> {
+export async function readHeadFrontmatter(absolutePath: string): Promise<NoteFrontmatter | null> {
   let head: string
   let readWholeFile: boolean
   let file: FileHandle | null = null
@@ -61,16 +62,16 @@ async function readHeaderTags(absolutePath: string): Promise<string[] | null> {
     head = buffer.toString('utf8', 0, bytesRead)
     readWholeFile = bytesRead < HEAD_BYTES
   } catch (error) {
-    logger.warn('Leaving header flags unresolved: file unreadable', { path: absolutePath, error })
+    logger.warn('Frontmatter left unread: file unreadable', { path: absolutePath, error })
     return null
   } finally {
     await file?.close().catch(() => {})
   }
 
   const parsed = parseNote(head)
-  if (parsed.rawFrontmatterBlock !== null) return extractTags(parsed.frontmatter)
-  if (readWholeFile || !head.replace(/^\uFEFF/, '').startsWith('---')) return []
-  logger.warn('Leaving header flags unresolved: frontmatter does not close near the top', {
+  if (parsed.rawFrontmatterBlock !== null) return parsed.frontmatter
+  if (readWholeFile || !head.replace(/^\uFEFF/, '').startsWith('---')) return {}
+  logger.warn('Frontmatter left unread: it does not close near the top', {
     path: absolutePath
   })
   return null

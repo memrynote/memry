@@ -147,6 +147,7 @@ export const NotesChannels = {
     APPLY_TEMPLATE: 'notes:apply-template',
     /** Put back the empty body a tag template filled, if it is still untouched */
     UNDO_TAG_TEMPLATE: 'notes:undo-tag-template',
+    EDIT_ALIASES: 'notes:edit-aliases',
     /** Append markdown to the end of an existing note's body (block "Move to") */
     APPEND_BLOCKS: 'notes:append-blocks',
     /** Open a large-file-class file for read-only streaming */
@@ -175,6 +176,7 @@ export const NotesChannels = {
     MOVED: 'notes:moved',
     /** External change detected */
     EXTERNAL_CHANGE: 'notes:external-change',
+    LINKS_CHANGED: 'notes:links-changed',
     /** Folder config (icon, etc.) was updated via sync */
     FOLDER_CONFIG_UPDATED: 'notes:folder-config-updated'
   }

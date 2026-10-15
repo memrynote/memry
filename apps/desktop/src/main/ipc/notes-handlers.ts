@@ -22,6 +22,7 @@ import {
   SetLocalOnlySchema,
   ApplyTemplateSchema,
   UndoTagTemplateSchema,
+  NoteAliasEditSchema,
   NoteAppendBlocksSchema,
   NoteCarriedTasksSchema,
   NoteSimilarRequestSchema,
@@ -106,6 +107,7 @@ import {
   setNoteLocalOnlyCommand
 } from '../notes/domain'
 import { applyTemplateToNote } from '../notes/apply-template'
+import { editNoteAliasesCommand } from '../notes/note-aliases'
 import { appendBlocksToNote } from '../vault/append-blocks'
 import { getCarriedTaskIds } from '../tasks/note-carried-tasks'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
@@ -121,8 +123,8 @@ import { getMainI18n } from '../lib/main-i18n'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
 import {
   deleteNoteSnapshot,
-  resolveNoteByTitle,
-  resolveNotesByTitles,
+  resolveLinkTarget,
+  resolveLinkTargets,
   getNoteTags,
   getAllTagDefinitions
 } from '../notes/store'
@@ -249,7 +251,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.RESOLVE_BY_TITLE,
     createStringHandler((title) => {
       const db = getIndexDatabase()
-      const result = resolveNoteByTitle(db, title)
+      const result = resolveLinkTarget(db, title)?.note
       if (!result) {
         return null
       }
@@ -270,8 +272,13 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.RESOLVE_TITLES,
     createValidatedHandler(z.array(z.string()), (titles) => {
       const db = getIndexDatabase()
-      const resolved = resolveNotesByTitles(db, titles)
-      return Object.fromEntries(resolved)
+      const resolved = resolveLinkTargets(db, titles)
+      return Object.fromEntries(
+        [...resolved].map(([title, match]) => [
+          title,
+          match && { id: match.noteId, path: match.path }
+        ])
+      )
     })
   )
 
@@ -283,7 +290,10 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.RESOLVE_WIKI_TARGET,
     createStringHandler(async (target) => {
       const db = getIndexDatabase()
-      const resolved = await resolveWikiTarget(target, (title) => resolveNoteByTitle(db, title))
+      const resolved = await resolveWikiTarget(
+        target,
+        (title) => resolveLinkTarget(db, title)?.note
+      )
       if (!resolved) return null
       return {
         id: resolved.match.id,
@@ -300,7 +310,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.PREVIEW_BY_TITLE,
     createStringHandler((title) => {
       const indexDb = getIndexDatabase()
-      const result = resolveNoteByTitle(indexDb, title)
+      const result = resolveLinkTarget(indexDb, title)?.note
       if (!result || result.fileType !== 'markdown') return null
 
       const tags = getNoteTags(indexDb, result.id)
@@ -342,6 +352,13 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.UNDO_TAG_TEMPLATE,
     UndoTagTemplateSchema,
     (input) => undoTagTemplateCommand(input),
+    'errors:note.updateFailed'
+  )
+
+  registerCommand(
+    NotesChannels.invoke.EDIT_ALIASES,
+    NoteAliasEditSchema,
+    (input) => editNoteAliasesCommand(input),
     'errors:note.updateFailed'
   )
 

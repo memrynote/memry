@@ -71,7 +71,7 @@ export async function listTitledCanvases(): Promise<TitledCanvas[]> {
  * The canvas a wiki-link target names, matched on title.
  *
  * Case-insensitive, exact match, first row wins — the same reading
- * `resolveNoteByTitle` gives a note title, so `[[my canvas]]` and
+ * `resolveLinkTarget` gives a note title, so `[[my canvas]]` and
  * `[[My Canvas]]` reach the same canvas. An untitled canvas has nothing to
  * name it, so it never matches.
  */

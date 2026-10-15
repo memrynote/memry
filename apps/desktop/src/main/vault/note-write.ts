@@ -1,11 +1,13 @@
 import { isDeepStrictEqual } from 'util'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
+import { applyAliasDelta, type AliasDelta } from '@memry/shared/note-names'
 import { foldTag } from '@memry/shared/tag-fold'
 import type { DataDb } from '../database/types'
 import { applyInlineTagEdit, inlineTagEditBetween } from '../tags/inline-tags'
 import {
   applyHeaderTagEdit,
+  extractAliases,
   normalizePropertiesToRoot,
   propertiesToWrite,
   replacePropertiesOnRoot,
@@ -83,11 +85,12 @@ export function compareHeaderTags(
 }
 
 export function nextNoteFrontmatter(
-  existing: { frontmatter: NoteFrontmatter; properties: Record<string, unknown> },
+  existing: { title: string; frontmatter: NoteFrontmatter; properties: Record<string, unknown> },
   input: {
     frontmatter?: Record<string, unknown>
     properties?: Record<string, unknown>
     propertyPatch?: Record<string, unknown>
+    aliases?: AliasDelta
   },
   headerTags: string[],
   headerTagChange: HeaderTagChange
@@ -111,6 +114,15 @@ export function nextNoteFrontmatter(
         : undefined
   if (tagsValue === undefined) delete frontmatter.tags
   else frontmatter.tags = tagsValue
+
+  if (input.aliases) {
+    const before = extractAliases(existing.frontmatter, existing.title)
+    const after = applyAliasDelta(existing.title, before, input.aliases)
+    if (!isDeepStrictEqual(before, after)) {
+      if (after.length > 0) frontmatter.aliases = after
+      else delete frontmatter.aliases
+    }
+  }
 
   // Re-stringify when a caller changed frontmatter or when normalizing a
   // legacy nested property block. Otherwise the raw block stays byte-identical.

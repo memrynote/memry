@@ -29,6 +29,7 @@ const noteEvent: ProjectionEvent = {
     tags: [],
     headerTags: [],
     properties: {},
+    aliases: [],
     wikiLinks: []
   }
 }

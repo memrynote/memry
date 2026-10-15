@@ -30,8 +30,6 @@ import {
   setNoteLinks,
   getOutgoingLinks,
   getIncomingLinks,
-  unresolveLinksToNote,
-  resolveNoteByTitle,
   getInboundLinkSourceIds,
   bulkInsertNotes,
   clearNoteCache,
@@ -379,18 +377,9 @@ describe('notes cache queries', () => {
     expect(getOutgoingLinks(db, 'note-16')).toHaveLength(2)
     expect(getIncomingLinks(db, 'note-17')[0].sourceId).toBe('note-16')
 
-    expect(resolveNoteByTitle(db, 'Target')?.id).toBe('note-17')
-
-    // Resolved rows match by id; unresolved rows match by title, case-insensitively.
     expect(getInboundLinkSourceIds(db, 'note-17', 'anything', 'anything.md')).toEqual(['note-16'])
     expect(getInboundLinkSourceIds(db, 'no-such-note', 'UNRESOLVED', 'x.md')).toEqual(['note-16'])
     expect(getInboundLinkSourceIds(db, 'no-such-note', 'Target', 'x.md')).toEqual([])
-
-    unresolveLinksToNote(db, 'note-17')
-    expect(getIncomingLinks(db, 'note-17')).toHaveLength(0)
-    expect(getOutgoingLinks(db, 'note-16')).toEqual(
-      expect.arrayContaining([{ sourceId: 'note-16', targetId: null, targetTitle: 'Target' }])
-    )
   })
 
   it('bulk inserts notes and clears cache', () => {

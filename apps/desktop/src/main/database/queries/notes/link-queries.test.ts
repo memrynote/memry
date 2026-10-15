@@ -2,14 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestIndexDb } from '@tests/utils/test-db'
 import { insertNoteCache, deleteNoteCache } from './note-crud'
-import {
-  setNoteLinks,
-  getIncomingReferences,
-  getOutgoingLinks,
-  resolveNotesByTitles,
-  resolveNoteByTitle,
-  backfillUnresolvedLinksByTitle
-} from './link-queries'
+import { setNoteLinks, getIncomingReferences } from './link-queries'
+import { resolveLinkTargets } from './wiki-target-resolver'
 import { setPropertyRefs } from './property-ref-queries'
 
 describe('getIncomingReferences', () => {
@@ -71,31 +65,6 @@ describe('getIncomingReferences', () => {
     expect(incoming.filter((r) => r.sourceNoteId === 'nte_john')).toHaveLength(2)
   })
 
-  it('resolves exact, case-insensitive and missing titles in one call', () => {
-    insertNoteCache(db, {
-      id: 'nte_meeting',
-      path: 'notes/Meeting Notes.md',
-      title: 'Meeting Notes',
-      contentHash: 'hash-meeting',
-      wordCount: 0,
-      characterCount: 0,
-      createdAt: '2026-01-10T00:00:00.000Z',
-      modifiedAt: '2026-01-12T00:00:00.000Z'
-    })
-
-    const resolved = resolveNotesByTitles(db, ['Meeting Notes', 'meeting notes', 'No Such Note'])
-
-    expect(resolved.get('Meeting Notes')).toEqual({
-      id: 'nte_meeting',
-      path: 'notes/Meeting Notes.md'
-    })
-    expect(resolved.get('meeting notes')).toEqual({
-      id: 'nte_meeting',
-      path: 'notes/Meeting Notes.md'
-    })
-    expect(resolved.get('No Such Note')).toBeNull()
-  })
-
   it('excludes a property ref whose source note no longer exists in note_cache', () => {
     insertTestNote(db, 'nte_dad')
     insertTestNote(db, 'nte_ghost')
@@ -140,39 +109,14 @@ describe('path-form wiki-link targets (#2562)', () => {
   })
 
   it('resolves a vault-root path case-insensitively, with or without .md or a leading slash', () => {
-    expect(resolveNoteByTitle(db, 'Home/Plan')?.id).toBe('nte_b')
-    expect(resolveNoteByTitle(db, 'home/PLAN')?.id).toBe('nte_b')
-    expect(resolveNoteByTitle(db, '/Work/Plan.md')?.id).toBe('nte_a')
-    expect(resolveNoteByTitle(db, 'Docs/spec.pdf')?.id).toBe('nte_pdf')
-    expect(resolveNoteByTitle(db, 'Nowhere/Plan')).toBeUndefined()
-    expect(resolveNoteByTitle(db, 'Plan')).toBeDefined()
-  })
-
-  it('resolves paths in the batch lookup too', () => {
-    const resolved = resolveNotesByTitles(db, ['Home/Plan', 'work/plan', 'Nowhere/Plan'])
-    expect(resolved.get('Home/Plan')?.id).toBe('nte_b')
-    expect(resolved.get('work/plan')?.id).toBe('nte_a')
-    expect(resolved.get('Nowhere/Plan')).toBeNull()
-  })
-
-  it('backfills unresolved path links when a note appears at that path', () => {
-    insertAt('nte_src', 'Source.md', 'Source')
-    setNoteLinks(db, 'nte_src', [
-      { targetTitle: 'new/idea' },
-      { targetTitle: '/New/Idea.md' },
-      { targetTitle: 'Other/Idea' }
+    const queries = ['Home/Plan', 'home/PLAN', '/Work/Plan.md', 'Docs/spec.pdf', 'Nowhere/Plan']
+    const resolved = resolveLinkTargets(db, queries)
+    expect(queries.map((query) => resolved.get(query)?.noteId ?? null)).toEqual([
+      'nte_b',
+      'nte_b',
+      'nte_a',
+      'nte_pdf',
+      null
     ])
-    insertAt('nte_new', 'New/Idea.md', 'Idea')
-
-    backfillUnresolvedLinksByTitle(db, 'nte_new', 'Idea', 'New/Idea.md')
-
-    const byTarget = Object.fromEntries(
-      getOutgoingLinks(db, 'nte_src').map((link) => [link.targetTitle, link.targetId])
-    )
-    expect(byTarget).toEqual({
-      'new/idea': 'nte_new',
-      '/New/Idea.md': 'nte_new',
-      'Other/Idea': null
-    })
   })
 })
