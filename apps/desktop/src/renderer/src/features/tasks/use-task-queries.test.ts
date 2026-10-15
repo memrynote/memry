@@ -34,6 +34,13 @@ describe('dbTaskToUiTask tags', () => {
   })
 })
 
+describe('dbTaskToUiTask duration', () => {
+  it('keeps the duration of a timed task', () => {
+    const task = dbTaskToUiTask({ ...baseDbTask, dueTime: '09:30', durationMinutes: 90 })
+    expect(task.durationMinutes).toBe(90)
+  })
+})
+
 describe('dbTaskToUiTask start date', () => {
   it('loads a calendar date at local midnight', () => {
     const task = dbTaskToUiTask({ ...baseDbTask, startDate: '2026-09-07' })

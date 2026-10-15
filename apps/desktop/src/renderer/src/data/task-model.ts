@@ -37,6 +37,7 @@ export interface Task {
   // Due date
   dueDate: Date | null
   dueTime: string | null // "14:30" format, optional even if dueDate set
+  durationMinutes?: number | null
 
   // Repeating
   isRepeating: boolean
