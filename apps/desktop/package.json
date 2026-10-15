@@ -153,6 +153,7 @@
     "@fontsource-variable/playfair-display": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/gelasio": "^5.2.8",
+    "@floating-ui/react": "^0.27.20",
     "@headless-tree/core": "^1.6.1",
     "@headless-tree/react": "^1.6.1",
     "@hugeicons/core-free-icons": "^4.0.0",

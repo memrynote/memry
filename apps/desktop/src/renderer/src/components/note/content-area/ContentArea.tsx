@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
 import {
@@ -3466,6 +3467,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               triggerCharacter="@"
               getItems={getMentionItems}
               suggestionMenuComponent={MentionSuggestionMenu}
+              floatingUIOptions={MENTION_MENU_FLOATING_OPTIONS}
               onItemClick={(item) => handleMentionSelect(item)}
               // While the inline date ghost still has text to fill (e.g. a time
               // being typed: `@today 12` → ghost `:00`), keep this menu closed so
