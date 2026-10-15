@@ -16,7 +16,7 @@ The same BlockNote editor is used for journal entries — slash commands, markdo
 
 Journal entries also share note review tools: selection comments and the aligned right review rail. See [Comments](/user-guide/notes/editing#comments).
 
-Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
+Use **Add details** below the date heading to organize a daily entry before writing.
 
 ## Tracking a Property
 
