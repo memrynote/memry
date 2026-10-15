@@ -167,7 +167,8 @@ for the empty fields.
 
 On a tag's page, **Fill empty fields** reads the tag's notes one at a time, with progress and
 **Stop**, and lists what it found. **Accept all** saves everything, and **Review one by one**
-lets you accept or skip each note.
+lets you accept or skip each note. The button appears once every note with the tag has loaded, so
+a run covers them all.
 
 ## Renaming a tag
 
