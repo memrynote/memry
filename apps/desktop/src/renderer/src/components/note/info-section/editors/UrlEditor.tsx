@@ -116,7 +116,7 @@ export function UrlEditor({
         placeholder={placeholder}
         aria-label={t('properties.types.url')}
         className={cn(
-          'flex-1 bg-transparent p-0',
+          'min-w-0 flex-1 bg-transparent p-0',
           'text-[13px] text-foreground leading-tight',
           'placeholder:text-muted-foreground/30',
           'outline-none focus:ring-0 shadow-none',

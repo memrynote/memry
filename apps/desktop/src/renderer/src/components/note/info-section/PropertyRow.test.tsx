@@ -348,6 +348,29 @@ describe('PropertyRow', () => {
     expect(screen.getByText('Title')).not.toHaveAttribute('role')
   })
 
+  it('keeps long unbroken values inside the row (#3044)', () => {
+    const longUrl = 'https://example.com/' + 'a'.repeat(300)
+    const { rerender } = render(
+      <PropertyRow
+        property={property({ name: 'Thread URL', type: 'url', value: longUrl })}
+        onValueChange={vi.fn()}
+      />
+    )
+    // An inline span ignores truncate/max-width; it must be a block that ellipsizes.
+    const url = screen.getByText(longUrl)
+    expect(url).toHaveClass('block', 'truncate')
+    expect(url).not.toHaveClass('max-w-[200px]')
+    expect(url).toHaveAttribute('title', longUrl)
+
+    rerender(
+      <PropertyRow
+        property={property({ name: 'Thread URL', type: 'text', value: longUrl })}
+        onValueChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText(longUrl)).toHaveClass('wrap-anywhere')
+  })
+
   it('renders select, multiselect, and status editors with option mutations', async () => {
     const onValueChange = vi.fn()
     const { rerender } = render(
