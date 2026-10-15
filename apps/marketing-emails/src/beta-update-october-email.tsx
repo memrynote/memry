@@ -49,7 +49,7 @@ const defaultProps = {
   firstName: '',
   logoUrl: 'https://memrynote.com/memrynote-logo.png',
   iconUrl: 'https://memrynote.com/memrynote-icon.png',
-  iosImageUrl: `${assetsUrl}/ios.png`,
+  iosImageUrl: `${assetsUrl}/ios.gif`,
   tagFieldsImageUrl: `${assetsUrl}/tags.png`,
   searchImageUrl: `${assetsUrl}/search.gif`,
   calendarImageUrl: `${assetsUrl}/calendar.png`,
@@ -201,7 +201,7 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={iosImageUrl}
-            alt="Memrynote on iPhone: the inbox, a note, and today's tasks"
+            alt="Memrynote on iPhone: Tasks, a note, the journal, the calendar and the inbox"
             label="iOS: Memrynote on an iPhone"
             hint="iosImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. One or two device frames on the campaign background. Real vault content, TestFlight build."
           />
@@ -218,10 +218,10 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
           </Text>
 
           <Text style={styles.paragraph}>
-            You need iOS 26 or later, the TestFlight app, and a paid Memrynote plan, because the
-            phone gets your vault through encrypted sync. Once it is installed, sign in with the
-            email you use on the desktop, then scan the code from Settings → Account → Link new
-            device on your computer, or type in your recovery phrase.
+            You need iOS 26 or later and the TestFlight app. The app works on its own on your phone,
+            offline and free. If you also want your desktop vault on the phone, a paid plan syncs
+            the two: sign in with the email you use on the desktop, then scan the code from Settings
+            → Account → Link new device on your computer, or type in your recovery phrase.
           </Text>
 
           <Text style={styles.paragraph}>
