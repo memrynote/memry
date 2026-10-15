@@ -106,6 +106,7 @@
     "seed:small": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-small-vault.ts"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.20",
     "@huggingface/transformers": "^4.3.1",
     "@mixmark-io/domino": "^2.2.0",
     "better-sqlite3": "^12.11.1",
