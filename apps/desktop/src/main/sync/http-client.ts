@@ -401,7 +401,14 @@ export async function pushCrdtFullUpdate(
 ): Promise<unknown> {
   const b64 = Buffer.from(encryptedState).toString('base64')
   if (b64.length > MAX_CRDT_UPDATE_PAYLOAD_CHARS) {
-    throw new Error(`CRDT state too large for the non-pruning push path: ${b64.length}`)
+    // A body-limit 413, the same outcome the server would give: permanent for
+    // this payload, so `withRetry` does not burn its budget and dead-letter
+    // it, and the runtime names the note to the user (#3276).
+    throw new SyncServerError(
+      `CRDT state too large for the non-pruning push path: ${b64.length}`,
+      413,
+      'VALIDATION_BODY_TOO_LARGE'
+    )
   }
   return postToServer('/sync/crdt/updates', { noteId, updates: [b64] }, token)
 }
