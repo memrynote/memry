@@ -248,8 +248,13 @@ async function handleShutdown(): Promise<void> {
   if (shuttingDown) return
   shuttingDown = true
 
+  let disposed = false
   const fallback = setTimeout(() => {
-    logger.warn('Embedding worker did not drain after disposal; exiting')
+    // Disposal finished but native runtime threads still hold the loop open:
+    // routine on every idle shutdown (#3280), so info. A disposal that never
+    // settled is a real wedge and stays a warning.
+    if (disposed) logger.info('Embedding worker exiting after disposal')
+    else logger.warn('Embedding worker disposal did not settle; exiting')
     process.exit(0)
   }, SHUTDOWN_TIMEOUT_MS)
   if (typeof fallback.unref === 'function') {
@@ -263,6 +268,7 @@ async function handleShutdown(): Promise<void> {
 
   try {
     await disposable?.dispose()
+    disposed = true
   } catch (error) {
     logger.error('Failed to dispose embedding pipeline', {
       message: error instanceof Error ? error.message : String(error)
