@@ -18,6 +18,9 @@ import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-s
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
+import type { DataDb } from '../../database'
+import { mergeDefinitions } from '../../tags/merge-definitions'
+import { tagKey } from '@memry/shared/tag-fold'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -44,6 +47,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     clock: VectorClock
   ): ApplyResult {
     let heal = false
+    let created = false
     const result = ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
@@ -145,10 +149,20 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         writeTagViews(tx, itemId, data.views)
       }
 
+      created = true
       ctx.emit(TagsChannels.events.NOTES_CHANGED, { tag: itemId })
       ctx.emit('notes:tags-changed', {})
       return 'applied'
     })
+    // A peer's spelling of a tag this device already holds is one tag, not two.
+    const service = getTagDefinitionSyncService()
+    const effects = {
+      deleted: (row: { name: string }) => service?.enqueueDelete(row.name, JSON.stringify(row)),
+      updated: (name: string) => service?.enqueueUpdate(name)
+    }
+    if (created && mergeDefinitions(ctx.db as unknown as DataDb, effects, tagKey(itemId)) > 0) {
+      ctx.emit('notes:tags-changed', {})
+    }
     if (heal) getTagDefinitionSyncService()?.enqueueUpdate(itemId)
     return result
   }
