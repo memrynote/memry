@@ -52,7 +52,7 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
             emoji: nil,
             createdAt: day?.createdAt,
             modifiedAt: day?.modifiedAt,
-            aliases: []
+            aliases: day?.aliases ?? []
         )
         let present: Bool = switch day?.body {
         case .notPulled: false
@@ -66,7 +66,7 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
         NoteMetadata(
             tags: day?.tags ?? [],
             properties: (day?.properties ?? []).filter { $0.name.lowercased() != "date" },
-            aliases: [],
+            aliases: day?.aliases ?? [],
             icon: nil,
             coverJson: nil,
             tagFields: []
@@ -185,16 +185,20 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
     }
 }
 
-/// Tags and properties written by date (JP045), used only while
-/// `JournalWriteGate.metadataWrites` is on. A day has no title, icon, cover
-/// or aliases, so those writes do nothing.
+/// Tags, properties and other names written by date (JP045), used only while
+/// `JournalWriteGate.metadataWrites` is on. A day has no title, icon or
+/// cover, so those writes do nothing.
 struct JournalMetadataWriter: NoteMetadataWriting {
     let bridge: JournalNoteBridge
 
     func rename(id: String, title: String) async throws {}
     func setIcon(id: String, icon: String?) async throws {}
     func setCover(id: String, url: String?, offsetY: Double) async throws {}
-    func setAliases(id: String, aliases: [String]) async throws {}
+
+    func setAliases(id: String, aliases: [String]) async throws {
+        let date = bridge.date
+        try await bridge.write { core in try core.setAliases(date: date, aliases: aliases) }
+    }
 
     func setTags(id: String, tags: [String]) async throws {
         let date = bridge.date

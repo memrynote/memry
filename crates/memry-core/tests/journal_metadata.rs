@@ -13,7 +13,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::journal_ops::metadata;
+use memry_core::domain::journal_ops::{metadata, reads};
 use memry_core::domain::properties::PropertyError;
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
@@ -25,8 +25,9 @@ const DEVICE: &str = "device-a";
 const DAY: &str = "2099-06-15";
 
 /// `JournalSyncPayloadSchema` (`packages/contracts/src/sync-payloads.ts:279`).
-const SCHEMA_KEYS: [&str; 7] = [
+const SCHEMA_KEYS: [&str; 8] = [
     "date",
+    "aliases",
     "content",
     "tags",
     "properties",
@@ -381,4 +382,55 @@ fn a_retype_is_refused_and_a_tombstoned_day_revives_under_its_id() {
         Ok(())
     })
     .expect("retype");
+}
+
+#[test]
+fn names_create_the_day_normalize_and_an_empty_list_clears_with_an_array() {
+    let db = open("aliases");
+    db.call_blocking(|conn| {
+        let empty = metadata::set_aliases(conn, DAY, &[], DEVICE, NOW)?;
+        assert!(empty.is_empty());
+        assert_eq!(
+            journal_rows(conn),
+            0,
+            "no names on an absent day creates nothing"
+        );
+
+        let stored = metadata::set_aliases(
+            conn,
+            DAY,
+            &strings(&[" Launch day ", "launch DAY", DAY, ""]),
+            DEVICE,
+            NOW,
+        )?;
+        assert_eq!(stored, strings(&["Launch day"]));
+        let created = payload_of(conn, "j2099-06-15");
+        assert_eq!(created["aliases"], json!(["Launch day"]));
+        assert_eq!(created["date"], json!(DAY));
+        assert_eq!(queued(conn), 1);
+
+        let day = reads::day(conn, DAY).expect("read").expect("the day");
+        assert_eq!(day.aliases, strings(&["Launch day"]));
+
+        let clock = created["clock"].clone();
+        metadata::set_aliases(conn, DAY, &strings(&["Launch day"]), DEVICE, NOW + 1)?;
+        assert_eq!(
+            payload_of(conn, "j2099-06-15")["clock"],
+            clock,
+            "unchanged writes nothing"
+        );
+
+        metadata::set_aliases(conn, DAY, &[], DEVICE, NOW + 2)?;
+        let cleared = payload_of(conn, "j2099-06-15");
+        assert_eq!(
+            cleared["aliases"],
+            json!([]),
+            "a removal is `[]`, never null"
+        );
+        assert_eq!(cleared["content"], Value::Null);
+        let day = reads::day(conn, DAY).expect("read").expect("the day");
+        assert!(day.aliases.is_empty());
+        Ok(())
+    })
+    .expect("aliases");
 }

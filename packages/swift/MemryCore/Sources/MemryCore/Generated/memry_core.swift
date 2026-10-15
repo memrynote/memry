@@ -4423,6 +4423,12 @@ public protocol JournalProtocol: AnyObject, Sendable {
     func seedFromTemplate(date: String, templateId: String, strings: JournalTemplateStrings) throws  -> SeedOutcome
     
     /**
+     * Replaces the day's other names, creating the day when absent and the
+     * list is not empty. Returns the stored, normalized list.
+     */
+    func setAliases(date: String, aliases: [String]) throws  -> [String]
+    
+    /**
      * Sets or clears (explicit `null`) the default template.
      */
     func setDefaultTemplate(templateId: String?) throws  -> JournalSettingsRecord
@@ -4735,6 +4741,21 @@ open func seedFromTemplate(date: String, templateId: String, strings: JournalTem
         FfiConverterString.lower(date),
         FfiConverterString.lower(templateId),
         FfiConverterTypeJournalTemplateStrings_lower(strings),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces the day's other names, creating the day when absent and the
+     * list is not empty. Returns the stored, normalized list.
+     */
+open func setAliases(date: String, aliases: [String])throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_aliases(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterSequenceString.lower(aliases),uniffiCallStatus
     )
 })
 }
@@ -18813,6 +18834,10 @@ public struct JournalDayRecord: Equatable, Hashable {
     public var id: String
     public var date: String
     public var tags: [String]
+    /**
+     * The day's other names (`aliases`), as stored.
+     */
+    public var aliases: [String]
     public var properties: [NoteProperty]
     public var createdAt: Int64?
     public var modifiedAt: Int64?
@@ -18828,13 +18853,17 @@ public struct JournalDayRecord: Equatable, Hashable {
     public init(
         /**
          * The record id, which is also the body's document id.
-         */id: String, date: String, tags: [String], properties: [NoteProperty], createdAt: Int64?, modifiedAt: Int64?, wordCount: UInt64, 
+         */id: String, date: String, tags: [String], 
+        /**
+         * The day's other names (`aliases`), as stored.
+         */aliases: [String], properties: [NoteProperty], createdAt: Int64?, modifiedAt: Int64?, wordCount: UInt64, 
         /**
          * UTF-16 code units of the extracted body text (D6).
          */characterCount: UInt64, body: JournalBody) {
         self.id = id
         self.date = date
         self.tags = tags
+        self.aliases = aliases
         self.properties = properties
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
@@ -18862,6 +18891,7 @@ public struct FfiConverterTypeJournalDayRecord: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 date: FfiConverterString.read(from: &buf), 
                 tags: FfiConverterSequenceString.read(from: &buf), 
+                aliases: FfiConverterSequenceString.read(from: &buf), 
                 properties: FfiConverterSequenceTypeNoteProperty.read(from: &buf), 
                 createdAt: FfiConverterOptionInt64.read(from: &buf), 
                 modifiedAt: FfiConverterOptionInt64.read(from: &buf), 
@@ -18875,6 +18905,7 @@ public struct FfiConverterTypeJournalDayRecord: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.date, into: &buf)
         FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceString.write(value.aliases, into: &buf)
         FfiConverterSequenceTypeNoteProperty.write(value.properties, into: &buf)
         FfiConverterOptionInt64.write(value.createdAt, into: &buf)
         FfiConverterOptionInt64.write(value.modifiedAt, into: &buf)
@@ -34019,6 +34050,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_journal_seed_from_template() != 21646) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_aliases() != 44624) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_journal_set_default_template() != 44920) {

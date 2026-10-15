@@ -564,4 +564,10 @@ struct NoteTagSuggestionsTests {
         #expect(NoteTagSuggestions.commitTarget("new one", all: all) == "new one")
         #expect(NoteTagSuggestions.commitTarget(" ", all: all) == nil)
     }
+    @Test func the_names_line_adds_renames_in_place_and_removes() {
+        #expect(NoteNames.replacing(nil, with: " AI ", in: ["ML"]) == ["ML", "AI"])
+        #expect(NoteNames.replacing(nil, with: "  ", in: ["ML"]) == ["ML"])
+        #expect(NoteNames.replacing("ML", with: "Learning", in: ["ML", "AI"]) == ["Learning", "AI"])
+        #expect(NoteNames.replacing("ML", with: "", in: ["ML", "AI"]) == ["AI"])
+    }
 }

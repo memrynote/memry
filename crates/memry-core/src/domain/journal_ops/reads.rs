@@ -49,6 +49,7 @@ use crate::domain::journal_rules::{
     heatmap_day, month_activity, month_days, utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
+use crate::domain::notes::names;
 use crate::domain::{properties, tags};
 
 /// The device id bodies are rebuilt under. A read never authors an update.
@@ -77,6 +78,8 @@ pub struct JournalDay {
     /// `YYYY-MM-DD`
     pub date: String,
     pub tags: Vec<String>,
+    /// The day's other names, as stored.
+    pub aliases: Vec<String>,
     /// Sorted by name, the reserved `date` property left out.
     pub properties: Vec<NoteProperty>,
     /// Epoch milliseconds; `None` when the payload carries no instant.
@@ -177,6 +180,7 @@ pub fn day(conn: &Connection, date: &str) -> Result<Option<JournalDay>, CrdtErro
     let body = day_body(conn, &id)?;
     Ok(Some(JournalDay {
         tags: tags::list(conn, ITEM_TYPE, &id)?,
+        aliases: day_aliases(conn, &id)?,
         properties: day_properties(conn, &id)?,
         created_at,
         modified_at,
@@ -310,6 +314,21 @@ fn live_entries(
 
 /// The day's properties, typed as a note's are (`note_meta::metadata`),
 /// without the reserved `date`.
+fn day_aliases(conn: &Connection, id: &str) -> Result<Vec<String>, StorageError> {
+    let raw: Option<String> = conn
+        .query_row(
+            "SELECT aliases FROM journal_aliases WHERE journal_id = ?1",
+            [id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()
+        .map_err(failed)?
+        .flatten();
+    names::parse_stored(raw).map_err(|error| StorageError::Failed {
+        what: format!("journal {id} aliases: {error}"),
+    })
+}
+
 fn day_properties(conn: &Connection, id: &str) -> Result<Vec<NoteProperty>, StorageError> {
     let definitions = properties::definitions(conn)?;
     let mut list: Vec<NoteProperty> = properties::values(conn, ITEM_TYPE, id)?
