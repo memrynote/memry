@@ -805,6 +805,7 @@ describe('google calendar sync service', () => {
         position: 1,
         dueDate: '2026-04-14',
         dueTime: '09:00',
+        durationMinutes: 45,
         clock: { 'device-a': 1 },
         fieldClocks: {},
         createdAt: '2026-04-12T09:00:00.000Z',
@@ -852,7 +853,8 @@ describe('google calendar sync service', () => {
     expect(db.select().from(tasks).where(eq(tasks.id, 'task-delete-1')).get()).toMatchObject({
       title: 'Task survives',
       dueDate: null,
-      dueTime: null
+      dueTime: null,
+      durationMinutes: null
     })
 
     expect(db.select().from(reminders).where(eq(reminders.id, 'rem-1')).get()).toMatchObject({
