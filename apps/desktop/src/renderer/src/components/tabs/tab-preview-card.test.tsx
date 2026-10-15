@@ -13,6 +13,7 @@ const createPreview = (overrides: Partial<WikiLinkPreview> = {}): WikiLinkPrevie
     { name: 'crdt', color: 'green' }
   ],
   createdAt: '2026-03-15T10:00:00Z',
+  matchedName: null,
   ...overrides
 })
 

@@ -38,6 +38,7 @@ use crate::crdt::registry::{DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::body_tags;
+use crate::domain::wiki_target::WikiNames;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
@@ -114,8 +115,14 @@ pub fn reindex(
         ..Reindexed::default()
     };
     let (note_ids, notes_high) = note_candidates(data, notes_from)?;
-    for id in &note_ids {
-        index_note(data, &transaction, id, now_ms, &mut done)?;
+    if !note_ids.is_empty() {
+        let names = WikiNames::load(data)?;
+        for id in &note_ids {
+            index_note(data, &names, &transaction, id, now_ms, &mut done)?;
+        }
+        if !full {
+            super::links::reresolve(&names, &transaction, &note_ids)?;
+        }
     }
     let (task_ids, tasks_high) = task_candidates(data, tasks_from)?;
     for id in &task_ids {
@@ -203,6 +210,7 @@ fn candidates(
 /// a row.
 fn index_note(
     data: &Connection,
+    names: &WikiNames,
     index: &Connection,
     id: &str,
     now_ms: i64,
@@ -276,7 +284,7 @@ fn index_note(
             ],
         )
         .map_err(failed)?;
-    index_links(data, index, id, now_ms)?;
+    index_links(data, names, index, id, now_ms)?;
     done.notes_indexed += 1;
     Ok(())
 }
@@ -293,6 +301,7 @@ fn index_note(
 /// The rows themselves are [`super::links::write`]'s.
 fn index_links(
     data: &Connection,
+    names: &WikiNames,
     index: &Connection,
     id: &str,
     now_ms: i64,
@@ -304,7 +313,7 @@ fn index_links(
     let blocks = extract_blocks(&document).map_err(|error| crdt_failed(id, error))?;
     body_tags::write(data, id, &body_tags::extract(&blocks))?;
 
-    super::links::write(data, index, id, &blocks)
+    super::links::write(names, index, id, &blocks)
 }
 
 /// Re-indexes one task. A task has no body document, so `description` is the

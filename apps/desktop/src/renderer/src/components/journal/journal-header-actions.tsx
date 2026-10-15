@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Paperclip,
   Lock,
-  Trash2
+  Trash2,
+  Type
 } from '@/lib/icons'
 import { PageGraphIcon } from '@/lib/icons/page-icons'
 import { Switch } from '@/components/ui/switch'
@@ -38,6 +39,7 @@ export type JournalMenuAction =
   | 'export'
   | 'insert-template'
   | 'save-as-template'
+  | 'add-name'
   | 'copy-path'
   | 'reveal-in-finder'
   | 'open-external'
@@ -266,6 +268,11 @@ export function JournalHeaderActions({
             {hasEntry && (
               <>
                 <Picker.Separator />
+                <Picker.Item
+                  value="add-name"
+                  label={tNotes('names.addMenu')}
+                  icon={<Type className="size-4" />}
+                />
                 <Picker.Item
                   value="copy-path"
                   label={tNotes('editor.toolbar.copyPath')}

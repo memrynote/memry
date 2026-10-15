@@ -1453,5 +1453,25 @@
     "cancel": "ยกเลิก",
     "save": "บันทึก",
     "addToFilterHint": "กด Ctrl/Cmd ค้างแล้วคลิกแท็กเพื่อเพิ่มลงในตัวกรอง"
+  },
+  "names": {
+    "also": "หรือ",
+    "add": "เพิ่มชื่ออื่น",
+    "addMenu": "เพิ่มชื่ออื่น…",
+    "inputLabel": "ชื่ออื่นของโน้ตนี้",
+    "inputPlaceholder": "ชื่ออื่น",
+    "editLabel": "แก้ไขหรือลบชื่อ {name}",
+    "conflictTitle": "“{name}” เป็นโน้ตอยู่แล้ว",
+    "conflictName": "“{name}” เป็นชื่อของ {title} อยู่แล้ว",
+    "conflictKeeps": "ลิงก์ไปยังชื่อนี้จะยังคงเปิด {title}",
+    "conflictTakesOver": "ลิงก์ไปยังชื่อนี้จะเปิดโน้ตนี้แทน {title}",
+    "saveFailed": "บันทึกชื่อไม่ได้ โน้ตไม่มีการเปลี่ยนแปลง คุณจึงลองอีกครั้งได้",
+    "addAsNameOf": "เพิ่ม “{name}” เป็นชื่อของ…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "เพิ่ม “{name}” เป็นชื่อของ",
+    "pickerPlaceholder": "ค้นหาโน้ต",
+    "pickerEmpty": "ไม่มีโน้ตที่ตรงกัน",
+    "previewVia": "{name} → {title}"
   }
 }

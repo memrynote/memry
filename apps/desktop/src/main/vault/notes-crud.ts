@@ -50,7 +50,7 @@ import {
   getNoteTags,
   ensureTagDefinitions,
   getNotePropertiesAsRecord,
-  resolveNoteByTitle
+  resolveLinkTarget
 } from '@main/database/queries/notes'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -67,6 +67,7 @@ import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
   type HeaderTagEdit,
+  type NoteAliasEdit,
   type NoteSizeClass,
   type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
@@ -205,6 +206,7 @@ export interface NoteUpdateInput {
   propertyPatch?: Record<string, unknown>
   ignoreInlineTags?: boolean
   emoji?: string | null
+  aliases?: Pick<NoteAliasEdit, 'add' | 'remove'>
 }
 
 export interface NoteUpdateOutcome {
@@ -927,14 +929,8 @@ export async function deleteFolder(folderPath: string): Promise<void> {
 
 export function noteExists(titleOrPath: string): boolean {
   const db = getIndexDatabase()
-
-  if (titleOrPath.endsWith('.md')) {
-    const cached = getNoteCacheByPath(db, titleOrPath)
-    return cached !== undefined
-  }
-
-  const resolved = resolveNoteByTitle(db, titleOrPath)
-  return resolved !== undefined
+  if (titleOrPath.endsWith('.md')) return getNoteCacheByPath(db, titleOrPath) !== undefined
+  return resolveLinkTarget(db, titleOrPath) !== undefined
 }
 
 export async function openExternal(id: string): Promise<void> {

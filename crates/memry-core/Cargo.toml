@@ -47,6 +47,7 @@ rusqlite = { workspace = true }
 # `spawn_blocking`: every statement runs on the blocking pool, so the connection
 # mutex is never held across an await (research R4).
 tokio = { workspace = true }
+unicode-normalization = { workspace = true }
 
 [dev-dependencies]
 dryoc = "1.0.0"

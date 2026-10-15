@@ -24,7 +24,10 @@ import type {
   NoteClustersResponse,
   HeaderTagEdit,
   NoteTagTemplateOutcome,
-  UndoTagTemplateResponse
+  UndoTagTemplateResponse,
+  NoteAliasEdit,
+  NoteAliasEditResponse,
+  NoteLinksChangedEvent
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
 import {
@@ -75,6 +78,8 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
+  /** Other names (frontmatter `aliases`); omitted by `fields: 'tree'` lists. */
+  aliases?: string[]
   /**
    * Null until the file's body has been read. Vault ingest lists a new file
    * from `stat` alone, so a freshly added row is not measured yet.
@@ -137,6 +142,8 @@ export interface WikiLinkPreview {
   snippet: string | null
   tags: Array<{ name: string; color: string }>
   createdAt: string
+  /** The other name the link was written with, or `null` when it named the title or path. */
+  matchedName: string | null
 }
 
 // Main returns `type: 'relation'` for relation-valued properties, so this union
@@ -577,6 +584,10 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.UNDO_TAG_TEMPLATE,
       params: ['input']
     }),
+    editAliases: defineMethod<(input: NoteAliasEdit) => Promise<NoteAliasEditResponse>>({
+      channel: NotesChannels.invoke.EDIT_ALIASES,
+      params: ['input']
+    }),
     appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({
       channel: NotesChannels.invoke.APPEND_BLOCKS,
       params: ['input']
@@ -892,6 +903,7 @@ export const notesRpc = defineDomain({
       NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS
     ),
     onTagsChanged: defineEvent<void>('notes:tags-changed'),
+    onLinksChanged: defineEvent<NoteLinksChangedEvent>(NotesChannels.events.LINKS_CHANGED),
     onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)
   }
 })

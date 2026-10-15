@@ -568,6 +568,7 @@ const createMockApi = () => ({
   onNoteUpdated: vi.fn().mockReturnValue(() => {}),
   onNoteDeleted: vi.fn().mockReturnValue(() => {}),
   onNoteRenamed: vi.fn().mockReturnValue(() => {}),
+  onLinksChanged: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),

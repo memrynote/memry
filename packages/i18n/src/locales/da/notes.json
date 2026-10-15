@@ -1453,5 +1453,25 @@
     "cancel": "Annullér",
     "save": "Gem",
     "addToFilterHint": "Ctrl/Cmd-klik på et tag for at føje det til filteret"
+  },
+  "names": {
+    "also": "også",
+    "add": "Tilføj et andet navn",
+    "addMenu": "Tilføj et andet navn…",
+    "inputLabel": "Et andet navn til denne note",
+    "inputPlaceholder": "Andet navn",
+    "editLabel": "Rediger eller fjern navnet {name}",
+    "conflictTitle": "“{name}” er allerede en note.",
+    "conflictName": "“{name}” er allerede et navn for {title}.",
+    "conflictKeeps": "Links til det vil fortsat åbne {title}.",
+    "conflictTakesOver": "Links til det vil åbne denne note i stedet for {title}.",
+    "saveFailed": "Navnet kunne ikke gemmes. Noten er uændret, så du kan prøve igen.",
+    "addAsNameOf": "Tilføj “{name}” som navn for…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Tilføj “{name}” som navn for",
+    "pickerPlaceholder": "Søg i noter",
+    "pickerEmpty": "Ingen noter matcher",
+    "previewVia": "{name} → {title}"
   }
 }

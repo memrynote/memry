@@ -1453,5 +1453,25 @@
     "cancel": "إلغاء",
     "save": "حفظ",
     "addToFilterHint": "انقر على وسم مع الضغط على Ctrl/Cmd لإضافته إلى عامل التصفية"
+  },
+  "names": {
+    "also": "أيضًا",
+    "add": "إضافة اسم آخر",
+    "addMenu": "إضافة اسم آخر…",
+    "inputLabel": "اسم آخر لهذه الملاحظة",
+    "inputPlaceholder": "اسم آخر",
+    "editLabel": "تعديل الاسم {name} أو إزالته",
+    "conflictTitle": "«{name}» ملاحظة موجودة بالفعل.",
+    "conflictName": "«{name}» اسم لملاحظة {title} بالفعل.",
+    "conflictKeeps": "ستظل الروابط إليه تفتح {title}.",
+    "conflictTakesOver": "ستفتح الروابط إليه هذه الملاحظة بدلًا من {title}.",
+    "saveFailed": "تعذّر حفظ الاسم. لم تتغير الملاحظة، لذا يمكنك المحاولة مرة أخرى.",
+    "addAsNameOf": "إضافة «{name}» اسمًا لـ…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "إضافة «{name}» اسمًا لـ",
+    "pickerPlaceholder": "البحث في الملاحظات",
+    "pickerEmpty": "لا توجد ملاحظات مطابقة",
+    "previewVia": "{name} → {title}"
   }
 }

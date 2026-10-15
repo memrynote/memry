@@ -1453,5 +1453,25 @@
     "cancel": "Peruuta",
     "save": "Tallenna",
     "addToFilterHint": "Lisää tunniste suodattimeen Ctrl/Cmd-napsauttamalla sitä"
+  },
+  "names": {
+    "also": "myös",
+    "add": "Lisää toinen nimi",
+    "addMenu": "Lisää toinen nimi…",
+    "inputLabel": "Tämän muistiinpanon toinen nimi",
+    "inputPlaceholder": "Toinen nimi",
+    "editLabel": "Muokkaa tai poista nimi {name}",
+    "conflictTitle": "”{name}” on jo muistiinpano.",
+    "conflictName": "”{name}” on jo muistiinpanon {title} nimi.",
+    "conflictKeeps": "Linkit siihen avaavat edelleen muistiinpanon {title}.",
+    "conflictTakesOver": "Linkit siihen avaavat tämän muistiinpanon muistiinpanon {title} sijaan.",
+    "saveFailed": "Nimeä ei voitu tallentaa. Muistiinpano on ennallaan, joten voit yrittää uudelleen.",
+    "addAsNameOf": "Lisää ”{name}” nimeksi muistiinpanolle…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Lisää ”{name}” nimeksi muistiinpanolle",
+    "pickerPlaceholder": "Hae muistiinpanoja",
+    "pickerEmpty": "Ei vastaavia muistiinpanoja",
+    "previewVia": "{name} → {title}"
   }
 }

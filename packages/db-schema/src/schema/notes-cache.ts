@@ -79,11 +79,32 @@ export const noteLinks = sqliteTable(
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     targetId: text('target_id'),
-    targetTitle: text('target_title').notNull()
+    targetTitle: text('target_title').notNull(),
+    // nameKey(target_title), so a name change re-resolves exactly the rows it
+    // can move. NULL on rows written before index migration 0027 until
+    // vault/note-names-backfill.ts fills it.
+    targetKey: text('target_key')
   },
   (table) => [
     primaryKey({ columns: [table.sourceId, table.targetTitle] }),
-    index('idx_note_links_target').on(table.targetId)
+    index('idx_note_links_target').on(table.targetId),
+    index('idx_note_links_target_key').on(table.targetKey)
+  ]
+)
+
+export const noteNames = sqliteTable(
+  'note_names',
+  {
+    noteId: text('note_id')
+      .notNull()
+      .references(() => noteCache.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    display: text('display').notNull(),
+    kind: text('kind').$type<'title' | 'alias'>().notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.noteId, table.key] }),
+    index('idx_note_names_key').on(table.key)
   ]
 )
 
@@ -165,6 +186,7 @@ export type NoteTag = typeof noteTags.$inferSelect
 export type NewNoteTag = typeof noteTags.$inferInsert
 export type NoteLink = typeof noteLinks.$inferSelect
 export type NewNoteLink = typeof noteLinks.$inferInsert
+export type NoteName = typeof noteNames.$inferSelect
 export type NoteProperty = typeof noteProperties.$inferSelect
 export type NewNoteProperty = typeof noteProperties.$inferInsert
 export type PropertyDefinition = typeof propertyDefinitions.$inferSelect

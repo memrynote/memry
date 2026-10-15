@@ -174,7 +174,12 @@ function priorityLabel(priority: number): 'low' | 'medium' | 'high' | 'urgent' |
 export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promise<MemryApp> {
   const config = await ensureVaultLayout(vaultPath)
   const databases: OpenedDatabases = openDatabases(vaultPath)
-  const notes = createNotesService({ vaultPath, config, dataDb: databases.dataDb })
+  const notes = createNotesService({
+    vaultPath,
+    config,
+    dataDb: databases.dataDb,
+    indexDb: databases.indexDb
+  })
   const folders = createFoldersService({ vaultPath, config })
   const folderView = createFolderViewService({ vaultPath, config, notes })
   const properties = createPropertiesService({ notes, dataDb: databases.dataDb, vaultPath })

@@ -243,7 +243,7 @@ describe('NoteSyncService push', () => {
     expect(payload.content).toBeNull()
     expect(payload.tags).toEqual([])
     expect(h.log.warn).toHaveBeenCalledWith(
-      'Could not read note file for sync snapshot',
+      'Could not read note file for a sync payload',
       expect.objectContaining({ noteId: 'note-1' })
     )
   })

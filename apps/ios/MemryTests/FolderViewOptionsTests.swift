@@ -23,7 +23,7 @@ struct FolderViewOptionsTests {
     }
 
     private static func note(_ id: String, _ title: String, modified: Int64?, created: Int64? = nil) -> NoteSummary {
-        NoteSummary(id: id, title: title, folderPath: "Work", emoji: nil, createdAt: created, modifiedAt: modified)
+        NoteSummary(id: id, title: title, folderPath: "Work", emoji: nil, createdAt: created, modifiedAt: modified, aliases: [])
     }
 
     private static let notes = [

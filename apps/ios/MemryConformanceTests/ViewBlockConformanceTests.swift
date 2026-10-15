@@ -11,7 +11,7 @@ import Testing
 private func note(
     _ id: String, folder: String? = nil, created: Int64? = nil, modified: Int64? = nil
 ) -> NoteSummary {
-    NoteSummary(id: id, title: id, folderPath: folder, emoji: nil, createdAt: created, modifiedAt: modified)
+    NoteSummary(id: id, title: id, folderPath: folder, emoji: nil, createdAt: created, modifiedAt: modified, aliases: [])
 }
 
 private func task(_ id: String, tags: [String], done: Bool = false) -> TaskItem {
@@ -91,9 +91,9 @@ struct ViewBlockConformanceTests {
     func noteRowsOpenById() {
         let query = ViewBlockQuery(source: .tag("work", andTags: []))
         let notes = [
-            NoteSummary(id: "n-1", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
-            NoteSummary(id: "n-2", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
-            NoteSummary(id: "n-3", title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
+            NoteSummary(id: "n-1", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
+            NoteSummary(id: "n-2", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
+            NoteSummary(id: "n-3", title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
         ]
         let noteTags = ["n-1": ["work"], "n-2": ["work"], "n-3": ["work"]]
 
@@ -106,7 +106,7 @@ struct ViewBlockConformanceTests {
     func journalRows() {
         let query = ViewBlockQuery(source: .tag("fitness", andTags: []), order: [.init(key: .modified, descending: true)], limit: 2)
         let notes = [note("deload", modified: 2_000), note("weigh-in", modified: 1_000)]
-        let days = [NoteSummary(id: "legacy-day", title: "2026-10-04", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: 3_000)]
+        let days = [NoteSummary(id: "legacy-day", title: "2026-10-04", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: 3_000, aliases: [])]
         let noteTags = ["deload": ["fitness"], "weigh-in": ["fitness"], "legacy-day": ["daily", "fitness"]]
 
         let rows = query.rows(notes: notes, noteTags: noteTags, journals: days, tasks: [])

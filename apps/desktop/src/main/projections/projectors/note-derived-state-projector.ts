@@ -1,18 +1,20 @@
 import type { FileHandle } from 'fs/promises'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
+import type { NoteLinksChangedEvent, NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../../lib/logger'
 import { openVaultFile } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import {
-  backfillUnresolvedLinksByTitle,
-  unresolveLinksToNote,
   deleteNoteCache,
+  deleteNoteNames,
   extractDateFromPath,
   getNoteCacheById,
   getOutgoingLinks,
   getPropertyType,
   insertNoteCache,
+  pathLinkKeys,
+  reindexNoteNames,
+  reresolveLinks,
   resolveHeaderTagFlags,
   setMarkdownNoteLinks,
   setNoteLinks,
@@ -90,6 +92,35 @@ function announceLinkChanges(
   }
 }
 
+export function reresolveAndAnnounce(db: IndexDb, keys: readonly string[]): void {
+  const { sourceIds, targetIds } = reresolveLinks(db, keys)
+  if (sourceIds.length === 0 && targetIds.length === 0) return
+  for (const id of new Set([...sourceIds, ...targetIds])) {
+    const event: NoteUpdatedEvent = { id, changes: {}, source: 'internal' }
+    broadcastToAllWindows(NotesChannels.events.UPDATED, event)
+  }
+  const changed: NoteLinksChangedEvent = { sourceIds, targetIds }
+  broadcastToAllWindows(NotesChannels.events.LINKS_CHANGED, changed)
+}
+
+export interface NoteNamesChange {
+  noteId: string
+  title: string
+  /** Null when the frontmatter was not read: the indexed aliases stay. */
+  aliases: string[] | null
+  path: string
+  previousPath: string | null | undefined
+}
+
+export function projectNoteNames(db: IndexDb, change: NoteNamesChange): void {
+  const keys: string[] = reindexNoteNames(db, change)
+  if (change.previousPath !== undefined && change.previousPath !== change.path) {
+    keys.push(...pathLinkKeys(change.path))
+    if (change.previousPath !== null) keys.push(...pathLinkKeys(change.previousPath))
+  }
+  reresolveAndAnnounce(db, keys)
+}
+
 /** Older than any file mtime, so every freshness check re-reads the body. */
 const BODY_UNREAD = new Date(0).toISOString()
 
@@ -144,19 +175,17 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       createdAt: note.createdAt,
       modifiedAt: note.modifiedAt
     })
-
-    // This note just appeared. Any note anywhere that links to it by title
-    // was, until now, an unresolved link with no edge in `note_links` — the
-    // gap create-from-link (and every other creation route) hits (#2209).
-    // Resolve those rows retroactively so the new note gets its backlink.
-    backfillUnresolvedLinksByTitle(db, note.noteId, note.title, note.path)
   }
 
-  // A moved note now answers path links to its new location (`[[Folder/Note]]`)
-  // that were written before it got there.
-  if (existing && existing.path !== note.path) {
-    backfillUnresolvedLinksByTitle(db, note.noteId, note.title, note.path)
-  }
+  // A new note takes the links that already name it, so create-from-link
+  // produces its backlink retroactively (#2209).
+  projectNoteNames(db, {
+    noteId: note.noteId,
+    title: note.title,
+    aliases: note.aliases,
+    path: note.path,
+    previousPath: existing ? existing.path : null
+  })
 
   if (bodyUnread) return
 
@@ -186,30 +215,41 @@ function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>):
       fileSize: note.fileSize,
       modifiedAt: note.modifiedAt
     })
-    return
+  } else {
+    insertNoteCache(db, {
+      id: note.noteId,
+      path: note.path,
+      title: note.title,
+      fileType: note.fileType,
+      mimeType: note.mimeType,
+      fileSize: note.fileSize,
+      contentHash: null,
+      wordCount: null,
+      characterCount: null,
+      snippet: null,
+      emoji: null,
+      date: null,
+      createdAt: note.createdAt,
+      modifiedAt: note.modifiedAt
+    })
   }
-
-  insertNoteCache(db, {
-    id: note.noteId,
-    path: note.path,
+  projectNoteNames(db, {
+    noteId: note.noteId,
     title: note.title,
-    fileType: note.fileType,
-    mimeType: note.mimeType,
-    fileSize: note.fileSize,
-    contentHash: null,
-    wordCount: null,
-    characterCount: null,
-    snippet: null,
-    emoji: null,
-    date: null,
-    createdAt: note.createdAt,
-    modifiedAt: note.modifiedAt
+    aliases: [],
+    path: note.path,
+    previousPath: existing ? existing.path : null
   })
 }
 
+// Links to a deleted note stay in their sources' text, so their rows stay too,
+// re-resolved to the next holder of the name or left unresolved.
 function deleteNote(db: IndexDb, noteId: string): void {
-  unresolveLinksToNote(db, noteId)
+  const path = getNoteCacheById(db, noteId)?.path
+  const keys: string[] = deleteNoteNames(db, noteId)
+  if (path !== undefined) keys.push(...pathLinkKeys(path))
   deleteNoteCache(db, noteId)
+  reresolveAndAnnounce(db, keys)
 }
 
 /**

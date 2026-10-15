@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::{AuthError, SecureStoreError, StorageError};
+use memry_core::api::notes::wiki_link_candidates;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -872,6 +873,28 @@ fn a_task_card_reads_its_project_and_state() {
         vault.notes().task("gone".to_string()).expect("the read"),
         None
     );
+}
+
+#[test]
+fn a_written_name_reaches_the_link_menu_through_the_note_list() {
+    let (_dir, vault) = vault("link-menu-names");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let id = writer
+        .create("Artificial Intelligence".to_string(), None)
+        .expect("create");
+    writer
+        .set_aliases(id.clone(), vec!["AI".to_string(), "Yapay Zeka".to_string()])
+        .expect("aliases");
+
+    let notes = vault.notes().list().expect("list");
+    assert_eq!(notes[0].aliases, ["AI", "Yapay Zeka"]);
+    let menu = wiki_link_candidates("ai".to_string(), notes, 10);
+    assert!(menu.exact);
+    assert_eq!(menu.candidates[0].note_id, id);
+    assert_eq!(menu.candidates[0].matched_name.as_deref(), Some("AI"));
+    assert_eq!(menu.candidates[0].link_target, "Artificial Intelligence");
 }
 
 #[test]

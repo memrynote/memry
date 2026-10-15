@@ -1453,5 +1453,25 @@
     "cancel": "Kanselahin",
     "save": "I-save",
     "addToFilterHint": "I-Ctrl/Cmd-click ang isang tag para idagdag ito sa filter"
+  },
+  "names": {
+    "also": "kilala rin bilang",
+    "add": "Magdagdag ng ibang pangalan",
+    "addMenu": "Magdagdag ng ibang pangalan…",
+    "inputLabel": "Ibang pangalan para sa note na ito",
+    "inputPlaceholder": "Ibang pangalan",
+    "editLabel": "I-edit o alisin ang pangalang {name}",
+    "conflictTitle": "Ang “{name}” ay isa nang note.",
+    "conflictName": "Ang “{name}” ay pangalan na ng {title}.",
+    "conflictKeeps": "Ang mga link dito ay patuloy na magbubukas ng {title}.",
+    "conflictTakesOver": "Ang mga link dito ay magbubukas ng note na ito sa halip na {title}.",
+    "saveFailed": "Hindi na-save ang pangalan. Walang nagbago sa note, kaya puwede mong subukan ulit.",
+    "addAsNameOf": "Idagdag ang “{name}” bilang pangalan ng…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Idagdag ang “{name}” bilang pangalan ng",
+    "pickerPlaceholder": "Maghanap ng notes",
+    "pickerEmpty": "Walang tugmang note",
+    "previewVia": "{name} → {title}"
   }
 }

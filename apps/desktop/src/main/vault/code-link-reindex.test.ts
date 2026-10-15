@@ -4,7 +4,12 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult } from '@tests/utils/test-db'
 import { asClientDb, createTestDataDb, createTestIndexDb } from '@tests/utils/test-db'
-import { getOutgoingLinks, insertNoteCache, setNoteLinks } from '@main/database/queries/notes'
+import {
+  getOutgoingLinks,
+  insertNoteCache,
+  reindexNoteNames,
+  setNoteLinks
+} from '@main/database/queries/notes'
 import { saveExtractedPart } from '@main/database/queries/extracted-text'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import { CODE_LINK_REINDEX_KEY, reindexCodeLinks } from './code-link-reindex'
@@ -27,6 +32,7 @@ describe('reindexCodeLinks', () => {
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z'
     })
+    reindexNoteNames(index.db, { noteId: id, title, aliases: [] })
   }
 
   const linksOf = (id: string): Array<[string, string | null]> =>

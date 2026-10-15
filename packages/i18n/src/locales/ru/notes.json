@@ -1453,5 +1453,25 @@
     "cancel": "Отмена",
     "save": "Сохранить",
     "addToFilterHint": "Щёлкните тег, удерживая Ctrl/Cmd, чтобы добавить его в фильтр"
+  },
+  "names": {
+    "also": "также",
+    "add": "Добавить другое название",
+    "addMenu": "Добавить другое название…",
+    "inputLabel": "Другое название этой заметки",
+    "inputPlaceholder": "Другое название",
+    "editLabel": "Изменить или удалить название {name}",
+    "conflictTitle": "«{name}» уже является заметкой.",
+    "conflictName": "«{name}» уже является названием заметки {title}.",
+    "conflictKeeps": "Ссылки на него будут по-прежнему открывать {title}.",
+    "conflictTakesOver": "Ссылки на него будут открывать эту заметку вместо {title}.",
+    "saveFailed": "Не удалось сохранить название. Заметка не изменилась, можно попробовать снова.",
+    "addAsNameOf": "Добавить «{name}» как название для…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Добавить «{name}» как название для",
+    "pickerPlaceholder": "Искать заметки",
+    "pickerEmpty": "Нет подходящих заметок",
+    "previewVia": "{name} → {title}"
   }
 }

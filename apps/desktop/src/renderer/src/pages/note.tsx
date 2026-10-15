@@ -37,6 +37,8 @@ import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { NoteNamesLine } from '@/components/note/names/note-names-line'
+import { requestNoteNameInput } from '@/components/note/names/note-name-input-request'
 import { NoteCover } from '@/components/note/note-cover'
 import {
   CoverPickerDialog,
@@ -107,7 +109,8 @@ import {
   ExternalLink,
   Paperclip,
   Trash2,
-  Lock
+  Lock,
+  Type
 } from '@/lib/icons'
 import { PageGraphIcon } from '@/lib/icons/page-icons'
 import { Button } from '@/components/ui/button'
@@ -1667,6 +1670,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
           if (action === 'new-note-from-note') void createNoteFromNote(note.id)
           if (action === 'rename') handleRename()
+          if (action === 'add-name') requestNoteNameInput(note.id)
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
           if (action === 'copy-path') void handleCopyPath()
           if (action === 'reveal-in-finder') void handleRevealInFinder()
@@ -1763,6 +1767,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="rename"
               label={t('editor.toolbar.rename')}
               icon={<Pencil className="size-4" />}
+            />
+            <Picker.Item
+              value="add-name"
+              label={t('names.addMenu')}
+              icon={<Type className="size-4" />}
             />
             <Picker.Item
               value="move-to-folder"
@@ -1937,6 +1946,12 @@ export function NotePage({ noteId }: NotePageProps) {
             placeholder={t('editor.title.untitled')}
             inputRef={titleInputRef}
           />
+          <NoteNamesLine
+            noteId={note.id}
+            title={note.title}
+            aliases={note.aliases ?? []}
+            disabled={isDeleted || isLocked}
+          />
 
           {/* Tags: visible when tags exist */}
           <TagsRow
@@ -2028,6 +2043,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddCover={
               cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
             }
+            onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
             disabled={isDeleted || isLocked}
           />
         </div>

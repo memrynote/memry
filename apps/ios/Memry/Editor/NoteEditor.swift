@@ -543,7 +543,7 @@ struct NoteEditingBridge {
     @MainActor
     init(
         model: NoteEditorViewModel,
-        linkNotes: [WikiLinkNote] = [],
+        linkNotes: [NoteSummary] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
         didChange: @escaping () async -> Void

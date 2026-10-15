@@ -30,17 +30,6 @@ pub fn set_icon(
     )
 }
 
-/// Replaces a note's `aliases` (N706).
-///
-/// Whole-array rather than add-one, because that is what the field is: §13.7.1
-/// carries `aliases` as an array, and §13.2's field-level merge resolves the
-/// whole value. A caller that wants to add one reads the current list, appends
-/// and writes it back, which is what the shell already does for tags.
-///
-/// **An alias is what lets a wiki link resolve to a note by a name the note
-/// itself declares**, so an empty array is written as an empty array rather
-/// than as `null`: the user removing their last alias is a fact, and `null`
-/// would read as "this sender does not know" (§13.4).
 /// Sets or clears a note's cover (N703), in desktop's `cover` field
 /// (chapter 13 §13.7.1.1).
 ///
@@ -154,6 +143,20 @@ pub fn set_tags(
     )
 }
 
+/// Replaces a note's `aliases` (N706).
+///
+/// Whole-array rather than add-one, because that is what the field is: §13.7.1
+/// carries `aliases` as an array, and §13.2's field-level merge resolves the
+/// whole value. A caller that wants to add one reads the current list, appends
+/// and writes it back, which is what the shell already does for tags.
+///
+/// **An alias is what lets a wiki link resolve to a note by a name the note
+/// itself declares**, so an empty array is written as an empty array rather
+/// than as `null`: the user removing their last alias is a fact, and `null`
+/// would read as "this sender does not know" (§13.4).
+///
+/// The list is stored as desktop stores it, through
+/// [`super::names::normalize_aliases`].
 pub fn set_aliases(
     conn: &Connection,
     note_id: &str,
@@ -161,9 +164,15 @@ pub fn set_aliases(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    let values: Vec<Value> = aliases
-        .iter()
-        .map(|alias| Value::String(alias.clone()))
+    let title: Option<String> = conn
+        .query_row("SELECT title FROM notes WHERE id = ?1", [note_id], |row| {
+            row.get(0)
+        })
+        .optional()
+        .map_err(failed)?;
+    let values: Vec<Value> = super::names::normalize_aliases(&title.unwrap_or_default(), aliases)
+        .into_iter()
+        .map(Value::String)
         .collect();
     edit(
         conn,

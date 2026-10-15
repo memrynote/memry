@@ -48,6 +48,8 @@ export interface NoteResultMetadata {
    * and must be opened via the file viewer, not the markdown editor. See #800.
    */
   fileType?: NoteFileType
+  /** The other name (frontmatter alias) the query matched, when the title did not. */
+  matchedName?: string
 }
 
 export interface JournalResultMetadata {
@@ -56,6 +58,8 @@ export interface JournalResultMetadata {
   path: string
   tags: string[]
   wordCount?: number | null
+  /** The other name (frontmatter alias) the query matched, when the title did not. */
+  matchedName?: string
 }
 
 export interface TaskResultMetadata {

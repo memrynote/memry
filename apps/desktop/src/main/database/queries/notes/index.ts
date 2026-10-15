@@ -55,17 +55,31 @@ export {
 export {
   setNoteLinks,
   setMarkdownNoteLinks,
-  backfillUnresolvedLinksByTitle,
   getOutgoingLinks,
   getIncomingLinks,
   getIncomingReferences,
-  unresolveLinksToNote,
-  resolveNoteByTitle,
-  resolveNotesByTitles,
   getInboundLinkSourceIds,
   listLinkSourceIds,
   type IncomingReference
 } from './link-queries'
+
+export {
+  resolveLinkTarget,
+  resolveLinkTargets,
+  type ResolvedLinkTarget
+} from './wiki-target-resolver'
+
+export {
+  reindexNoteNames,
+  deleteNoteNames,
+  getAliasesForNotes,
+  pathLinkKeys,
+  reresolveLinks,
+  listNotesWithoutNames,
+  fillMissingLinkKeys,
+  type NoteNamesInput,
+  type ReresolvedLinks
+} from './note-names-queries'
 
 export {
   setNoteProperties,

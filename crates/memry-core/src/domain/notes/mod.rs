@@ -52,6 +52,7 @@ mod attachments;
 mod duplicate;
 pub(crate) mod link_rewrite;
 mod metadata;
+pub mod names;
 
 pub use attachments::*;
 pub use duplicate::duplicate;

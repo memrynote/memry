@@ -47,6 +47,9 @@ const mockGetNoteMetadataById = vi.fn(() => undefined)
 const mockUpdateNoteMetadata = vi.fn()
 
 vi.mock('@main/database/queries/notes', () => ({
+  reindexNoteNames: vi.fn(() => []),
+  reresolveLinks: vi.fn(() => ({ sourceIds: [], targetIds: [] })),
+  pathLinkKeys: vi.fn(() => []),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),

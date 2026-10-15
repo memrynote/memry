@@ -36,6 +36,7 @@ export const JournalEntrySchema = z.object({
   wordCount: z.number().int().nonnegative(),
   characterCount: z.number().int().nonnegative(),
   tags: z.array(z.string()),
+  aliases: z.array(z.string()).optional(), // Other names a wiki-link can reach the day by
   properties: z.record(z.string(), z.unknown()).optional(), // Custom properties (mood, energy, etc.)
   createdAt: z.string(), // ISO timestamp
   modifiedAt: z.string() // ISO timestamp

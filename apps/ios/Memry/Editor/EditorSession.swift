@@ -30,7 +30,7 @@ final class EditorSession {
     /// Re-reads the page after a write (`didChange`).
     @ObservationIgnored var reload: () async -> Void = {}
     /// Notes for the `[[` and `@` menus, most recently modified first.
-    @ObservationIgnored var linkNotes: [WikiLinkNote] = []
+    @ObservationIgnored var linkNotes: [NoteSummary] = []
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
     @ObservationIgnored var icons: [String: String] = [:]
     @ObservationIgnored var titleExists: ((String) -> Bool)?
@@ -897,27 +897,25 @@ final class EditorSession {
     func insertInline(_ kind: EditorSuggestion.Kind, replacing range: NSRange) {
         guard let field else { return }
         let textView = field.textView
+        textView.textStorage.deleteCharacters(in: range)
+        field.dirty = true
         // The trailing space goes in as text first, so the node lands before it.
-        let after = NSMaxRange(range)
         let string = textView.text as NSString
-        if after >= string.length || string.character(at: after) != 32 {
+        if range.location >= string.length || string.character(at: range.location) != 32 {
             textView.textStorage.insert(
-                NSAttributedString(string: " ", attributes: BlockText.baseAttributes(field.style)), at: after
+                NSAttributedString(string: " ", attributes: BlockText.baseAttributes(field.style)), at: range.location
             )
-            field.dirty = true
         }
-        let attributed = textView.attributedText ?? NSAttributedString()
-        let start = BlockText.coreOffset(in: attributed, utf16: range.location)
-        let end = BlockText.coreOffset(in: attributed, utf16: after)
+        let start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: range.location)
         field.pendingSelection = NSRange(location: range.location + 2, length: 0)
         self.trigger = nil
         suggestions = []
         withFocused { model, blockId in
             switch kind {
             case let .note(title, alias), let .create(title, alias):
-                await model.insertWikiLink(in: blockId, from: start, to: end, title: title, alias: alias)
+                await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
             case let .date(value):
-                await model.insertDateMention(in: blockId, from: start, to: end, value: value)
+                await model.insertDateMention(in: blockId, from: start, to: start, value: value)
             case .slash:
                 break
             }

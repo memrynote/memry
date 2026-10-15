@@ -36,6 +36,7 @@ import type {
   WikiLinkPreview,
   WikiLinkResolution
 } from '@memry/rpc/notes'
+import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type {
@@ -99,6 +100,10 @@ export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () =
 
 export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {
   return window.api.onNoteRenamed(callback)
+}
+
+export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => void): () => void {
+  return window.api.onLinksChanged(callback)
 }
 
 export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {

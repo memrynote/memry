@@ -4,7 +4,7 @@ import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, values?: { title?: string }) => {
+    t: (key: string, values?: { title?: string; name?: string; folder?: string }) => {
       const messages: Record<string, string> = {
         'menus.wiki.embed': 'Embed',
         'menus.wiki.wikiLink': 'Wiki link',
@@ -13,7 +13,10 @@ vi.mock('@memry/i18n/renderer', () => ({
         'menus.wiki.noHeadings': `${values?.title ?? ''} has no headings`.trim(),
         'menus.wiki.noMatchingHeadings': `No headings in ${values?.title ?? ''} match`.trim(),
         'menus.wiki.displayAs': 'Display as',
-        'menus.wiki.aliasHint': 'Type | to name the link'
+        'menus.wiki.aliasHint': 'Type | to name the link',
+        'names.menuTarget': `→ ${values?.title}`,
+        'names.menuTargetInFolder': `→ ${values?.title} · ${values?.folder}`,
+        'names.addAsNameOf': `Add “${values?.name}” as a name of…`
       }
       return messages[key] ?? key
     }
@@ -135,6 +138,72 @@ describe('WikiLinkMenu', () => {
 
     fireEvent.click(screen.getByRole('option'))
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ alias: 'North of America' }))
+  })
+
+  it('shows a name match as the name over the note it opens, with a folder when shared', () => {
+    const onItemClick = vi.fn()
+    const items: WikiLinkSuggestionItem[] = [
+      {
+        id: 'note-ml-a',
+        title: 'ML',
+        noteTitle: 'Machine learning',
+        target: 'Machine learning',
+        alias: 'ML',
+        exists: true,
+        type: 'noteName',
+        folder: 'A'
+      },
+      {
+        id: 'note-ai',
+        title: 'AI',
+        noteTitle: 'Artificial Intelligence',
+        target: 'Artificial Intelligence',
+        alias: 'AI',
+        exists: true,
+        type: 'noteName'
+      }
+    ]
+
+    render(
+      <WikiLinkMenu
+        items={items}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'ML→ Machine learning · A',
+      'AI→ Artificial Intelligence'
+    ])
+    fireEvent.click(screen.getAllByRole('option')[1])
+    expect(onItemClick).toHaveBeenCalledWith(
+      expect.objectContaining({ target: 'Artificial Intelligence', alias: 'AI' })
+    )
+  })
+
+  it('offers to add the query as a name of another note', () => {
+    const onItemClick = vi.fn()
+    render(
+      <WikiLinkMenu
+        items={[
+          {
+            id: 'add-name:Deep learning',
+            title: 'Deep learning',
+            target: 'Deep learning',
+            exists: false,
+            type: 'addName'
+          }
+        ]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('option', { name: 'Add “Deep learning” as a name of…' }))
+    expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ type: 'addName' }))
   })
 
   // The `|` grammar has always worked; nothing ever said so, which is why every

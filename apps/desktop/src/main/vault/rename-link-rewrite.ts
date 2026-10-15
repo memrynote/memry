@@ -35,7 +35,7 @@ import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import {
   getInboundLinkSourceIds,
   getNoteCacheById,
-  resolveNoteByTitle,
+  resolveLinkTarget,
   isJournalEntry,
   extractDateFromPath
 } from '@main/database/queries/notes'
@@ -109,10 +109,10 @@ async function doRewriteInboundLinks(input: InboundLinkRewriteInput): Promise<vo
   if (sourceIds.length === 0) return
 
   // "Split resolution would have won": a note OTHER than the renamed one
-  // currently claiming this title. See `rewriteWikiLinksToNote`.
+  // currently answering this name, by title or alias. See `rewriteWikiLinksToNote`.
   const otherNoteWithTitleExists = (title: string): boolean => {
-    const match = resolveNoteByTitle(db, title)
-    return match !== undefined && match.id !== noteId
+    const match = resolveLinkTarget(db, title)
+    return match !== undefined && match.note.id !== noteId
   }
 
   for (const sourceId of sourceIds) {

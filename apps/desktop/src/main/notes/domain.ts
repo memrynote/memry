@@ -102,6 +102,7 @@ async function writeNoteCommand(input: NoteUpdateInput): Promise<NoteUpdateOutco
     input.title !== undefined ||
     headerTagChange !== null ||
     input.frontmatter !== undefined ||
+    input.aliases !== undefined ||
     input.emoji !== undefined
 
   if (hasMetadataChanges) {

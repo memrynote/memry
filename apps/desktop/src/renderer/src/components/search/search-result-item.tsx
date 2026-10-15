@@ -82,8 +82,10 @@ export function SearchResultItem({
   onSelect
 }: SearchResultItemProps): React.JSX.Element {
   const { i18n } = useT('common')
+  const { t } = useT('notes')
   const meta = item.metadata
   const isTask = meta.type === 'task'
+  const matchedName = meta.type === 'note' || meta.type === 'journal' ? meta.matchedName : undefined
   return (
     <SearchRow
       value={resultValue(item)}
@@ -100,6 +102,11 @@ export function SearchResultItem({
       muted={isTask && meta.completedAt !== null}
     >
       <HighlightedText text={item.title} query={query} />
+      {matchedName && (
+        <span className="ms-2 font-normal text-text-tertiary">
+          {t('names.also')} <HighlightedText text={matchedName} query={query} />
+        </span>
+      )}
     </SearchRow>
   )
 }

@@ -1453,5 +1453,25 @@
     "cancel": "取消",
     "save": "儲存",
     "addToFilterHint": "按住 Ctrl/Cmd 並按一下標籤，即可將它加入篩選條件"
+  },
+  "names": {
+    "also": "又名",
+    "add": "新增其他名稱",
+    "addMenu": "新增其他名稱…",
+    "inputLabel": "此筆記的其他名稱",
+    "inputPlaceholder": "其他名稱",
+    "editLabel": "編輯或移除名稱 {name}",
+    "conflictTitle": "「{name}」已經是一篇筆記。",
+    "conflictName": "「{name}」已經是 {title} 的名稱。",
+    "conflictKeeps": "指向它的連結仍會開啟 {title}。",
+    "conflictTakesOver": "指向它的連結將開啟此筆記，而不是 {title}。",
+    "saveFailed": "無法儲存名稱。筆記未變更，你可以再試一次。",
+    "addAsNameOf": "將「{name}」新增為以下筆記的名稱…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "將「{name}」新增為以下筆記的名稱",
+    "pickerPlaceholder": "搜尋筆記",
+    "pickerEmpty": "沒有相符的筆記",
+    "previewVia": "{name} → {title}"
   }
 }

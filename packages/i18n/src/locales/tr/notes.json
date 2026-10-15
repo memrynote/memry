@@ -1842,5 +1842,25 @@
       "notANote": "Buraya #{tag} olarak yalnızca notlar bağlanabilir",
       "failed": "Bu not bağlanamadı"
     }
+  },
+  "names": {
+    "also": "ayrıca",
+    "add": "Başka bir ad ekle",
+    "addMenu": "Başka bir ad ekle…",
+    "inputLabel": "Bu not için başka bir ad",
+    "inputPlaceholder": "Başka bir ad",
+    "editLabel": "{name} adını düzenle veya kaldır",
+    "conflictTitle": "“{name}” zaten bir not.",
+    "conflictName": "“{name}” zaten {title} notunun bir adı.",
+    "conflictKeeps": "Ona giden bağlantılar {title} notunu açmaya devam edecek.",
+    "conflictTakesOver": "Ona giden bağlantılar {title} yerine bu notu açacak.",
+    "saveFailed": "Ad kaydedilemedi. Not değişmedi, yeniden deneyebilirsiniz.",
+    "addAsNameOf": "“{name}” adını şu nota ekle…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "“{name}” adını şu nota ekle",
+    "pickerPlaceholder": "Notlarda ara",
+    "pickerEmpty": "Eşleşen not yok",
+    "previewVia": "{name} → {title}"
   }
 }

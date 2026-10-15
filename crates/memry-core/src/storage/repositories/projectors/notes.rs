@@ -104,7 +104,10 @@ pub fn project_note(
              mime_type = excluded.mime_type,
              attachment_id = excluded.attachment_id,
              attachment_references = excluded.attachment_references,
-             aliases = excluded.aliases,
+             -- A payload without `aliases`, or with null, keeps the local list;
+             -- `[]` clears it (§13.7.1). A sender that never wrote the field
+             -- must not wipe the names this device knows.
+             aliases = COALESCE(excluded.aliases, notes.aliases),
              properties = excluded.properties,
              created_at = excluded.created_at,
              modified_at = excluded.modified_at,
@@ -177,6 +180,16 @@ pub fn project_journal(
         ],
     )
     .map_err(failed)?;
+
+    // The same rule as a note's `aliases`: absent or null keeps, `[]` clears.
+    if let Some(aliases) = json(view, "aliases") {
+        conn.execute(
+            "INSERT INTO journal_aliases (journal_id, aliases) VALUES (?1, ?2)
+             ON CONFLICT(journal_id) DO UPDATE SET aliases = excluded.aliases",
+            params![item.item_id, aliases],
+        )
+        .map_err(failed)?;
+    }
 
     project_tags(conn, item, view)
 }

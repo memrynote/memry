@@ -257,9 +257,9 @@ fn collect_links(
     }
 }
 
-/// Whether a live note other than `renamed` holds `title` now.
+/// Whether `title` now names something other than `renamed`.
 fn claimed(conn: &Connection, title: &str, renamed: &str) -> Result<bool, StorageError> {
-    Ok(wiki_target::by_path_or_title(conn, title)?.is_some_and(|id| id != renamed))
+    Ok(wiki_target::resolve(conn, title)?.is_some_and(|found| found.id != renamed))
 }
 
 /// The target `target` becomes under `rule`, or `None` when it does not name

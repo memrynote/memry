@@ -51,7 +51,8 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
             folderPath: nil,
             emoji: nil,
             createdAt: day?.createdAt,
-            modifiedAt: day?.modifiedAt
+            modifiedAt: day?.modifiedAt,
+            aliases: []
         )
         let present: Bool = switch day?.body {
         case .notPulled: false

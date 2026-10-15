@@ -33,7 +33,7 @@ final class VaultStore: Sendable {
         notes.withLock { rows in
             rows = (0..<count).map { NoteSummary(
                 id: "note-\($0)", title: "note \($0)",
-                folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil
+                folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
             ) }
         }
     }

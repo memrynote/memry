@@ -48,6 +48,11 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
+        {preview.matchedName && (
+          <p className="truncate px-3.5 pt-3 text-[11px]/3.5 text-text-tertiary">
+            {t('names.previewVia', { name: preview.matchedName, title: preview.title })}
+          </p>
+        )}
         <ObjectPreviewBody
           noteId={preview.id}
           title={preview.title}
@@ -106,6 +111,11 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
       onMouseLeave={onMouseLeave}
     >
       <div className="flex flex-col gap-1.5 py-3 px-3.5">
+        {preview.matchedName && (
+          <p className="truncate text-[11px]/3.5 text-text-tertiary">
+            {t('names.previewVia', { name: preview.matchedName, title: preview.title })}
+          </p>
+        )}
         {/* Title + Snippet — clickable to open note */}
         <button
           type="button"

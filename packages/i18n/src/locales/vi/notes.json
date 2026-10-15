@@ -1453,5 +1453,25 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "addToFilterHint": "Ctrl/Cmd + bấm vào thẻ để thêm vào bộ lọc"
+  },
+  "names": {
+    "also": "còn gọi là",
+    "add": "Thêm tên khác",
+    "addMenu": "Thêm tên khác…",
+    "inputLabel": "Tên khác cho ghi chú này",
+    "inputPlaceholder": "Tên khác",
+    "editLabel": "Sửa hoặc xóa tên {name}",
+    "conflictTitle": "“{name}” đã là một ghi chú.",
+    "conflictName": "“{name}” đã là tên của {title}.",
+    "conflictKeeps": "Các liên kết đến tên này vẫn sẽ mở {title}.",
+    "conflictTakesOver": "Các liên kết đến tên này sẽ mở ghi chú này thay vì {title}.",
+    "saveFailed": "Không thể lưu tên. Ghi chú không thay đổi, bạn có thể thử lại.",
+    "addAsNameOf": "Thêm “{name}” làm tên của…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Thêm “{name}” làm tên của",
+    "pickerPlaceholder": "Tìm ghi chú",
+    "pickerEmpty": "Không có ghi chú phù hợp",
+    "previewVia": "{name} → {title}"
   }
 }

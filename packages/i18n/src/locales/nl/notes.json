@@ -1453,5 +1453,25 @@
     "cancel": "Annuleren",
     "save": "Opslaan",
     "addToFilterHint": "Ctrl/Cmd-klik op een tag om deze aan het filter toe te voegen"
+  },
+  "names": {
+    "also": "ook",
+    "add": "Andere naam toevoegen",
+    "addMenu": "Andere naam toevoegen…",
+    "inputLabel": "Andere naam voor deze notitie",
+    "inputPlaceholder": "Andere naam",
+    "editLabel": "Naam {name} bewerken of verwijderen",
+    "conflictTitle": "‘{name}’ is al een notitie.",
+    "conflictName": "‘{name}’ is al een naam van {title}.",
+    "conflictKeeps": "Links ernaar blijven {title} openen.",
+    "conflictTakesOver": "Links ernaar openen deze notitie in plaats van {title}.",
+    "saveFailed": "Kan de naam niet opslaan. De notitie is ongewijzigd, je kunt het opnieuw proberen.",
+    "addAsNameOf": "‘{name}’ toevoegen als naam van…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "‘{name}’ toevoegen als naam van",
+    "pickerPlaceholder": "Notities zoeken",
+    "pickerEmpty": "Geen notities gevonden",
+    "previewVia": "{name} → {title}"
   }
 }

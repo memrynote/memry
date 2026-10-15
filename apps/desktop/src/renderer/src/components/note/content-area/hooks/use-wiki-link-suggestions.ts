@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { extractMarkdownHeadings, type MarkdownHeading } from '@memry/shared/markdown-headings'
-import { isBlockReference, noteLinkStem } from '@memry/shared/wiki-target'
+import { isBlockReference } from '@memry/shared/wiki-target'
+import { nameKey } from '@memry/shared/note-names'
 import { fuzzySearch } from '@/lib/fuzzy-search'
+import {
+  folderOf,
+  isExactMatch,
+  linkTargetFor,
+  rankNoteNames,
+  sharedNames,
+  sharedTitles as findSharedTitles
+} from '@/lib/note-name-rank'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
-import { notesService } from '@/services/notes-service'
+import { notesService, onNoteLinksChanged } from '@/services/notes-service'
 import { listTitledCanvases } from '@/lib/canvas-lookup'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
@@ -21,6 +30,7 @@ type NoteSuggestion = {
   id: string
   title: string
   path: string
+  aliases: string[]
   modified?: Date | string
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null
@@ -55,23 +65,6 @@ function aliasRow(target: string, alias: string): WikiLinkSuggestionItem {
   }
 }
 
-/**
- * What a link to `note` writes: its title, or, when another note shares that
- * title, its vault-root path stem (`Work/Plan`, `/Plan` at the root), which
- * the resolver reads as a path (#2562).
- */
-function linkTargetFor(note: NoteSuggestion, sharedTitles: Set<string>): string {
-  if (!sharedTitles.has(note.title.toLowerCase())) return note.title
-  const stem = noteLinkStem(note.path)
-  return stem.includes('/') ? stem : `/${stem}`
-}
-
-/** The folder a duplicate-titled row shows so the two rows can be told apart. */
-function folderOf(path: string): string {
-  const slash = path.lastIndexOf('/')
-  return slash === -1 ? '/' : path.slice(0, slash)
-}
-
 function createAudioFileBlockContent(props: {
   url: string
   name: string
@@ -84,8 +77,16 @@ function createAudioFileBlockContent(props: {
   }
 }
 
-export function useWikiLinkSuggestions(editor: any) {
+export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) => void) {
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
+
+  useEffect(
+    () =>
+      onNoteLinksChanged(() => {
+        notesCacheRef.current = null
+      }),
+    []
+  )
   // Headings have no index in either database, so `#` reads the target note's
   // body on demand. Cached per note, same 5s window as the note list.
   const headingsCacheRef = useRef(
@@ -126,6 +127,7 @@ export function useWikiLinkSuggestions(editor: any) {
               id: note.id,
               title: note.title,
               path: note.path,
+              aliases: note.aliases ?? [],
               modified: note.modified,
               fileType: note.fileType,
               mimeType: note.mimeType,
@@ -140,14 +142,8 @@ export function useWikiLinkSuggestions(editor: any) {
       }
 
       const notes = notesCacheRef.current?.notes ?? []
-      const titleCounts = new Map<string, number>()
-      for (const note of notes) {
-        const key = note.title.toLowerCase()
-        titleCounts.set(key, (titleCounts.get(key) ?? 0) + 1)
-      }
-      const sharedTitles = new Set(
-        [...titleCounts].filter(([, count]) => count > 1).map(([key]) => key)
-      )
+      const sharedTitles = findSharedTitles(notes)
+      const sharedNameKeys = sharedNames(notes)
       const targetOf = (note: NoteSuggestion): string => linkTargetFor(note, sharedTitles)
       const { search, note: notePart, heading, alias } = parseWikiLinkQuery(query)
 
@@ -201,7 +197,7 @@ export function useWikiLinkSuggestions(editor: any) {
         }))
       }
 
-      const filtered = search ? fuzzySearch(notes, search, ['title']) : notes
+      const ranked = rankNoteNames(search, notes)
 
       // Canvases are vault items the same way notes are, and the menu is the
       // only place a writer discovers one while writing (#1983). Untitled ones
@@ -210,7 +206,7 @@ export function useWikiLinkSuggestions(editor: any) {
       const filteredCanvases = search ? fuzzySearch(canvases, search, ['title']) : canvases
 
       const exactNote = search
-        ? filtered.find((note) => note.title.toLowerCase() === search.toLowerCase())
+        ? ranked.find((match) => isExactMatch(search, match))?.note
         : undefined
       const exactCanvas = search
         ? filteredCanvases.find((canvas) => canvas.title.toLowerCase() === search.toLowerCase())
@@ -227,21 +223,28 @@ export function useWikiLinkSuggestions(editor: any) {
       // back for canvases, so a vault whose notes fill the menu on their own
       // does not hide every canvas the query matched.
       const canvasSlots = Math.min(filteredCanvases.length, 3)
-      const sorted = filtered.slice(0, 10 - canvasSlots)
+      const sorted = ranked.slice(0, 10 - canvasSlots)
 
-      const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
-        id: note.id,
-        title: note.title,
-        target: targetOf(note),
-        alias,
-        exists: true,
-        type: 'note',
-        ...(sharedTitles.has(note.title.toLowerCase()) ? { folder: folderOf(note.path) } : {}),
-        lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
-        ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
-        ...(note.mimeType ? { mimeType: note.mimeType } : {}),
-        ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
-      }))
+      const suggestions: WikiLinkSuggestionItem[] = sorted.map(({ note, name }) => {
+        const shared =
+          name === null
+            ? sharedTitles.has(note.title.toLowerCase())
+            : sharedNameKeys.has(nameKey(name) ?? '')
+        return {
+          id: note.id,
+          title: name ?? note.title,
+          target: targetOf(note),
+          alias: alias || (name ?? alias),
+          exists: true,
+          type: name === null ? 'note' : 'noteName',
+          ...(name !== null ? { noteTitle: note.title } : {}),
+          ...(shared ? { folder: folderOf(note.path) } : {}),
+          lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
+          ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
+          ...(note.mimeType ? { mimeType: note.mimeType } : {}),
+          ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
+        }
+      })
 
       for (const canvas of filteredCanvases.slice(0, Math.max(0, 10 - suggestions.length))) {
         suggestions.push({
@@ -274,11 +277,20 @@ export function useWikiLinkSuggestions(editor: any) {
             type: 'create'
           })
         }
+        if (heading === null && !alias && onAddName) {
+          suggestions.push({
+            id: `add-name:${search}`,
+            title: search.trim(),
+            target: search.trim(),
+            exists: false,
+            type: 'addName'
+          })
+        }
       }
 
       return suggestions
     },
-    [loadHeadings]
+    [loadHeadings, onAddName]
   )
 
   const insertWikiLink = useCallback(
@@ -308,6 +320,10 @@ export function useWikiLinkSuggestions(editor: any) {
   const handleWikiLinkSelect = useCallback(
     async (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
+      if (item.type === 'addName') {
+        onAddName?.(item.title)
+        return
+      }
 
       if (item.insertMode === 'embed' && item.fileType === 'audio') {
         const anchorBlock = editor.getTextCursorPosition?.().block
@@ -341,7 +357,7 @@ export function useWikiLinkSuggestions(editor: any) {
 
       insertWikiLink(item)
     },
-    [editor, insertWikiLink]
+    [editor, insertWikiLink, onAddName]
   )
 
   return { getWikiLinkItems, handleWikiLinkSelect }

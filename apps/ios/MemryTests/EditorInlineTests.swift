@@ -54,7 +54,7 @@ struct InlineTriggerTests {
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let code = Block(id: "c", kind: "codeBlock", depth: 0, props: [], inline: [])
         let field = BlockField(block: code, session: session, style: style, alignment: .natural)
-        session.linkNotes = [WikiLinkNote(title: "Dune", folderPath: nil)]
+        session.linkNotes = [note("Dune")]
         session.tags = ["work"]
         session.focusChanged(to: field)
         for text in ["[[Du", "@", "/", "#wo"] {
@@ -77,11 +77,11 @@ struct EditorSuggestionTests {
     }
 
     @Test func the_wiki_menu_offers_a_create_row_when_nothing_matches_exactly() {
-        let items = EditorSuggestions.wiki(query: "Du", notes: ["Dune", "Emma", "Dubai"].map { WikiLinkNote(title: $0, folderPath: nil) })
+        let items = EditorSuggestions.wiki(query: "Du", notes: ["Dune", "Emma", "Dubai"].map(note))
         #expect(items.map(\.kind) == [
             .note(title: "Dune", alias: ""), .note(title: "Dubai", alias: ""), .create(title: "Du", alias: ""),
         ])
-        let exact = EditorSuggestions.wiki(query: "dune", notes: [WikiLinkNote(title: "Dune", folderPath: nil)])
+        let exact = EditorSuggestions.wiki(query: "dune", notes: [note("Dune")])
         #expect(!exact.contains { if case .create = $0.kind { true } else { false } })
     }
 
@@ -348,6 +348,30 @@ struct EditorCommitBaseTests {
         #expect(editor.all.last == .replaceText(blockId: "a", text: "a \u{FFFC} b", base: "a \u{FFFC}"))
     }
 
+    @Test func choosing_a_wiki_row_links_the_row_not_the_typed_query() async {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        session.linkNotes = [note("Dune")]
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.text = "a [[Du]]"
+        field.dirty = true
+        field.textView.selectedRange = NSRange(location: 6, length: 0)
+        session.selectionChanged(in: field)
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            session.choose(session.suggestions[0])
+        }
+
+        let links = editor.all.filter { if case .insertInline = $0 { true } else { false } }
+        #expect(links == [.insertInline(blockId: "a", start: 2, end: 2, kind: "wikiLink", text: "", attrs: ["target": "Dune", "alias": ""])])
+    }
+
     @Test func a_code_block_keeps_a_typed_link_literal() async {
         let editor = RecordingEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
@@ -447,4 +471,8 @@ struct DateMentionEditTests {
         #expect(DateMentionRemind.afterToggle("1d", hasTime: false) == "1d")
         #expect(DateMentionRemind.afterToggle("none", hasTime: true) == "none")
     }
+}
+
+private func note(_ title: String) -> NoteSummary {
+    NoteSummary(id: title, title: title, folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])
 }

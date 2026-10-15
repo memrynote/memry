@@ -1453,5 +1453,25 @@
     "cancel": "Mégse",
     "save": "Mentés",
     "addToFilterHint": "Ctrl/Cmd + kattintással adhat hozzá egy címkét a szűrőhöz"
+  },
+  "names": {
+    "also": "más néven",
+    "add": "Másik név hozzáadása",
+    "addMenu": "Másik név hozzáadása…",
+    "inputLabel": "A jegyzet másik neve",
+    "inputPlaceholder": "Másik név",
+    "editLabel": "A(z) {name} név szerkesztése vagy eltávolítása",
+    "conflictTitle": "„{name}” már egy jegyzet.",
+    "conflictName": "„{name}” már a(z) {title} jegyzet neve.",
+    "conflictKeeps": "A rá mutató hivatkozások továbbra is a(z) {title} jegyzetet nyitják meg.",
+    "conflictTakesOver": "A rá mutató hivatkozások ezt a jegyzetet nyitják meg a(z) {title} helyett.",
+    "saveFailed": "Nem sikerült menteni a nevet. A jegyzet nem változott, így újra megpróbálhatod.",
+    "addAsNameOf": "„{name}” hozzáadása névként ehhez…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "„{name}” hozzáadása névként ehhez",
+    "pickerPlaceholder": "Jegyzetek keresése",
+    "pickerEmpty": "Nincs egyező jegyzet",
+    "previewVia": "{name} → {title}"
   }
 }

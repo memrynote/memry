@@ -26,6 +26,8 @@ import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
+import { remoteAliases } from './note-handler-frontmatter'
+import { extractAliases } from '../../vault/frontmatter'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
@@ -119,7 +121,13 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     // transaction (#2284).
     let write: ReturnType<typeof buildJournalEntryWrite>
     try {
-      write = buildJournalEntryWrite(date, data.content, data.tags, data.properties ?? undefined)
+      write = buildJournalEntryWrite(
+        date,
+        data.content,
+        data.tags,
+        data.properties ?? undefined,
+        remoteAliases(data.aliases, date)
+      )
     } catch (error) {
       if (!(error instanceof OutsideVaultError)) throw error
       log.warn('Skipping remote journal upsert: its file links outside the vault', { itemId })
@@ -256,6 +264,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let content: string | null = null
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
+    let aliases: string[] | undefined
     try {
       const raw = readJournalTextSync(cached.journalDate)
       if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
@@ -263,6 +272,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
       properties = extractJournalProperties(parsed.frontmatter) ?? null
+      aliases = extractAliases(parsed.frontmatter, cached.journalDate)
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,
@@ -275,6 +285,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       content,
       tags,
       properties,
+      ...(aliases !== undefined ? { aliases } : {}),
       clock: cached.clock ?? {},
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt

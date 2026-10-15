@@ -35,6 +35,7 @@ export interface MarkdownNoteProjection {
    * every project; null must never be read that way.
    */
   properties: Record<string, unknown> | null
+  aliases: string[] | null
   wikiLinks: string[]
 }
 

@@ -1453,5 +1453,25 @@
     "cancel": "Avbryt",
     "save": "Lagre",
     "addToFilterHint": "Ctrl/Cmd-klikk på en tagg for å legge den til i filteret"
+  },
+  "names": {
+    "also": "også",
+    "add": "Legg til et annet navn",
+    "addMenu": "Legg til et annet navn…",
+    "inputLabel": "Et annet navn for dette notatet",
+    "inputPlaceholder": "Annet navn",
+    "editLabel": "Rediger eller fjern navnet {name}",
+    "conflictTitle": "«{name}» er allerede et notat.",
+    "conflictName": "«{name}» er allerede et navn på {title}.",
+    "conflictKeeps": "Lenker dit vil fortsatt åpne {title}.",
+    "conflictTakesOver": "Lenker dit vil åpne dette notatet i stedet for {title}.",
+    "saveFailed": "Kunne ikke lagre navnet. Notatet er uendret, så du kan prøve igjen.",
+    "addAsNameOf": "Legg til «{name}» som navn på…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Legg til «{name}» som navn på",
+    "pickerPlaceholder": "Søk i notater",
+    "pickerEmpty": "Ingen notater samsvarer",
+    "previewVia": "{name} → {title}"
   }
 }

@@ -107,6 +107,7 @@ import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
 import { backfillHeaderTagFlags } from './header-tag-backfill'
+import { backfillNoteNames } from './note-names-backfill'
 import { convergeTagIdentity } from '../tags/converge-identity'
 import { resumeFieldRename } from '../tags/schema/field-rename'
 import { resumeTagRename } from '../tags/rename-tag'
@@ -590,6 +591,10 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   if (isStale()) return
 
   await backfillHeaderTagFlags({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  await backfillNoteNames({ getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
 
   if (isStale()) return
 

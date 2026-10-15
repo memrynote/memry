@@ -1453,5 +1453,25 @@
     "cancel": "Batal",
     "save": "Simpan",
     "addToFilterHint": "Ctrl/Cmd-klik tag untuk menambahkannya ke filter"
+  },
+  "names": {
+    "also": "juga",
+    "add": "Tambahkan nama lain",
+    "addMenu": "Tambahkan nama lain…",
+    "inputLabel": "Nama lain untuk catatan ini",
+    "inputPlaceholder": "Nama lain",
+    "editLabel": "Edit atau hapus nama {name}",
+    "conflictTitle": "“{name}” sudah menjadi catatan.",
+    "conflictName": "“{name}” sudah menjadi nama {title}.",
+    "conflictKeeps": "Tautan ke nama ini akan tetap membuka {title}.",
+    "conflictTakesOver": "Tautan ke nama ini akan membuka catatan ini, bukan {title}.",
+    "saveFailed": "Nama tidak dapat disimpan. Catatan tidak berubah, jadi Anda dapat mencoba lagi.",
+    "addAsNameOf": "Tambahkan “{name}” sebagai nama untuk…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Tambahkan “{name}” sebagai nama untuk",
+    "pickerPlaceholder": "Cari catatan",
+    "pickerEmpty": "Tidak ada catatan yang cocok",
+    "previewVia": "{name} → {title}"
   }
 }

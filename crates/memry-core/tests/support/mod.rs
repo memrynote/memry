@@ -96,6 +96,9 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-seed" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-seed.json")
         }
+        "wiki-target-resolution" => {
+            include_str!("../../../../packages/contracts/test-vectors/wiki-target-resolution.json")
+        }
         other => panic!("no committed vector file named {other}"),
     };
     serde_json::from_str(raw)

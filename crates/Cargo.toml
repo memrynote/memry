@@ -40,6 +40,9 @@ hex = "0.4"
 # module's protocol primitives.
 sha2 = "0.11"
 time = "0.3"
+# `name_key` composes to NFC before folding (chapter 12 §12.3), as desktop's
+# `String.prototype.normalize` does.
+unicode-normalization = "0.1.25"
 
 [profile.release]
 lto = true

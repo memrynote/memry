@@ -24,6 +24,7 @@ function markdownEvent(noteId: string, parsedContent: string): ProjectionEvent {
       tags: [],
       headerTags: [],
       properties: {},
+      aliases: [],
       wikiLinks: []
     }
   }

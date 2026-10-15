@@ -1453,5 +1453,25 @@
     "cancel": "Odustani",
     "save": "Spremi",
     "addToFilterHint": "Ctrl/Cmd + klik na oznaku dodaje je u filtar"
+  },
+  "names": {
+    "also": "također",
+    "add": "Dodaj drugi naziv",
+    "addMenu": "Dodaj drugi naziv…",
+    "inputLabel": "Drugi naziv ove bilješke",
+    "inputPlaceholder": "Drugi naziv",
+    "editLabel": "Uredi ili ukloni naziv {name}",
+    "conflictTitle": "„{name}” je već bilješka.",
+    "conflictName": "„{name}” je već naziv bilješke {title}.",
+    "conflictKeeps": "Poveznice na njega i dalje će otvarati {title}.",
+    "conflictTakesOver": "Poveznice na njega otvarat će ovu bilješku umjesto {title}.",
+    "saveFailed": "Naziv nije spremljen. Bilješka je nepromijenjena pa možete pokušati ponovno.",
+    "addAsNameOf": "Dodaj „{name}” kao naziv bilješke…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Dodaj „{name}” kao naziv bilješke",
+    "pickerPlaceholder": "Pretraži bilješke",
+    "pickerEmpty": "Nema odgovarajućih bilješki",
+    "previewVia": "{name} → {title}"
   }
 }

@@ -415,14 +415,16 @@ private struct EditorSuggestionList: View {
                                 }
                             }
                             .frame(width: Tokens.Space.inset)
-                            Text(item.title).lineLimit(1)
-                            Spacer()
-                            if let subtitle = item.subtitle {
-                                Text(subtitle)
-                                    .font(Tokens.Typography.caption.font)
-                                    .foregroundStyle(Tokens.Text.secondary.color)
-                                    .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(item.title).lineLimit(1)
+                                if let subtitle = item.subtitle {
+                                    Text(subtitle)
+                                        .font(Tokens.Typography.caption.font)
+                                        .foregroundStyle(Tokens.Text.secondary.color)
+                                        .lineLimit(1)
+                                }
                             }
+                            Spacer()
                         }
                         .padding(.horizontal, Tokens.Space.medium)
                         .frame(minHeight: Tokens.Size.minimumHitArea)

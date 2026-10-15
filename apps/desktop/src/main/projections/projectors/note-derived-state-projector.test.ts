@@ -4,6 +4,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { noteLinks } from '@memry/db-schema/schema/notes-cache'
+import { reindexNoteNames } from '@main/database/queries/notes'
 import { createTestIndexDb, sql, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const getIndexDatabase = vi.hoisted(() => vi.fn())
@@ -92,6 +93,7 @@ describe('note derived state projector', () => {
         tags: [],
         headerTags: [],
         properties: {},
+        aliases: [],
         wikiLinks: []
       }
     })
@@ -143,6 +145,7 @@ describe('note derived state projector', () => {
         tags: [],
         headerTags: [],
         properties: {},
+        aliases: [],
         wikiLinks
       }
     }
@@ -152,6 +155,7 @@ describe('note derived state projector', () => {
     seedCachedNote('source-note', 'notes/source.md')
     seedCachedNote('harbor-note', 'notes/harbor.md')
     indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
+    reindexNoteNames(indexDb.db, { noteId: 'harbor-note', title: 'Harbor Log', aliases: [] })
     seedExtractedText('source-note', 'chart.html', 'html', 'See [[Harbor Log]] and [[Plan]]')
     seedExtractedText('source-note', 'shot.png', 'ocr', 'A screenshot of [[Not A Link]]')
 
@@ -192,6 +196,7 @@ describe('note derived state projector', () => {
     seedCachedNote('source-note', relativePath)
     seedCachedNote('harbor-note', 'notes/harbor.md')
     indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
+    reindexNoteNames(indexDb.db, { noteId: 'harbor-note', title: 'Harbor Log', aliases: [] })
     const projector = createNoteDerivedStateProjector(() => vaultDir)
     await projector.project(upsertMarkdown('source-note', relativePath, ['Plan']))
     broadcastToAllWindows.mockClear()
@@ -258,8 +263,8 @@ describe('note derived state projector', () => {
     // an unresolved outbound link, target_id null.
     seedCachedNote('master-note', 'notes/master.md')
     indexDb.db.run(sql`
-      INSERT INTO note_links (source_id, target_id, target_title)
-      VALUES (${'master-note'}, NULL, ${'New Note'})
+      INSERT INTO note_links (source_id, target_id, target_title, target_key)
+      VALUES (${'master-note'}, NULL, ${'New Note'}, ${'new note'})
     `)
 
     const projector = createNoteDerivedStateProjector(() => vaultDir)
@@ -286,6 +291,7 @@ describe('note derived state projector', () => {
         tags: [],
         headerTags: [],
         properties: {},
+        aliases: [],
         wikiLinks: []
       }
     })

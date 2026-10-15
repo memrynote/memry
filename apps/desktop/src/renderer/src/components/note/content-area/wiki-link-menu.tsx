@@ -26,7 +26,8 @@ export type WikiLinkSuggestionItem = {
    * `canvas` is a spatial canvas — a vault item with no headings and no
    * embed form, so it is a plain row with the canvas icon (#1983).
    */
-  type: 'note' | 'canvas' | 'create' | 'heading' | 'headingEmpty' | 'alias'
+  type: 'note' | 'canvas' | 'create' | 'heading' | 'headingEmpty' | 'alias' | 'noteName' | 'addName'
+  noteTitle?: string
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
@@ -211,7 +212,9 @@ export function WikiLinkMenu({
             role="option"
             aria-selected={isSelected}
           >
-            {item.type === 'create' ? <Plus className="mt-0.5 h-4 w-4 shrink-0" /> : null}
+            {item.type === 'create' || item.type === 'addName' ? (
+              <Plus className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : null}
             {item.type === 'canvas' ? (
               <PenTool className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
             ) : null}
@@ -220,6 +223,22 @@ export function WikiLinkMenu({
                 <>
                   <div className="font-medium">{t('menus.wiki.create')}</div>
                   <div className="text-xs text-muted-foreground">{item.target}</div>
+                </>
+              ) : item.type === 'addName' ? (
+                <div className="truncate font-medium">
+                  {t('names.addAsNameOf', { name: item.title })}
+                </div>
+              ) : item.type === 'noteName' ? (
+                <>
+                  <div className="truncate font-semibold">{item.title}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {item.folder
+                      ? t('names.menuTargetInFolder', {
+                          title: item.noteTitle,
+                          folder: item.folder
+                        })
+                      : t('names.menuTarget', { title: item.noteTitle })}
+                  </div>
                 </>
               ) : (
                 <>

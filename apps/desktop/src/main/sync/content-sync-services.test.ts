@@ -165,6 +165,7 @@ vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
 
 vi.mock('../vault/frontmatter', () => ({
   parseNote: (...args: unknown[]) => mocks.parseNote(...args),
+  extractAliases: () => [],
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn()
 }))

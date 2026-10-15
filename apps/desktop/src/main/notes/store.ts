@@ -1,7 +1,7 @@
 export {
   deleteNoteSnapshot,
-  resolveNoteByTitle,
-  resolveNotesByTitles,
+  resolveLinkTarget,
+  resolveLinkTargets,
   getNoteTags,
   getAllTagDefinitions,
   getNoteCacheById,

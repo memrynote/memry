@@ -1453,5 +1453,25 @@
     "cancel": "取消",
     "save": "保存",
     "addToFilterHint": "按住 Ctrl/Cmd 点击标签，即可将其加入筛选"
+  },
+  "names": {
+    "also": "又名",
+    "add": "添加其他名称",
+    "addMenu": "添加其他名称…",
+    "inputLabel": "此笔记的其他名称",
+    "inputPlaceholder": "其他名称",
+    "editLabel": "编辑或移除名称 {name}",
+    "conflictTitle": "“{name}”已经是一篇笔记。",
+    "conflictName": "“{name}”已经是 {title} 的名称。",
+    "conflictKeeps": "指向它的链接仍会打开 {title}。",
+    "conflictTakesOver": "指向它的链接将打开此笔记，而不是 {title}。",
+    "saveFailed": "无法保存名称。笔记未更改，你可以重试。",
+    "addAsNameOf": "将“{name}”添加为以下笔记的名称…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "将“{name}”添加为以下笔记的名称",
+    "pickerPlaceholder": "搜索笔记",
+    "pickerEmpty": "没有匹配的笔记",
+    "previewVia": "{name} → {title}"
   }
 }

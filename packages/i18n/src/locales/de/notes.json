@@ -1453,5 +1453,25 @@
     "cancel": "Abbrechen",
     "save": "Speichern",
     "addToFilterHint": "Ctrl/Cmd-Klick auf ein Tag fügt es zum Filter hinzu"
+  },
+  "names": {
+    "also": "auch",
+    "add": "Weiteren Namen hinzufügen",
+    "addMenu": "Weiteren Namen hinzufügen…",
+    "inputLabel": "Weiterer Name für diese Notiz",
+    "inputPlaceholder": "Weiterer Name",
+    "editLabel": "Namen {name} bearbeiten oder entfernen",
+    "conflictTitle": "„{name}“ ist bereits eine Notiz.",
+    "conflictName": "„{name}“ ist bereits ein Name von {title}.",
+    "conflictKeeps": "Links darauf öffnen weiterhin {title}.",
+    "conflictTakesOver": "Links darauf öffnen statt {title} diese Notiz.",
+    "saveFailed": "Der Name konnte nicht gespeichert werden. Die Notiz ist unverändert, du kannst es erneut versuchen.",
+    "addAsNameOf": "„{name}“ als Namen hinzufügen für…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "„{name}“ als Namen hinzufügen für",
+    "pickerPlaceholder": "Notizen durchsuchen",
+    "pickerEmpty": "Keine passenden Notizen",
+    "previewVia": "{name} → {title}"
   }
 }

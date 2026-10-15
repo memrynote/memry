@@ -1,5 +1,5 @@
 import { useState, memo, type MouseEvent as ReactMouseEvent } from 'react'
-import { Image, List, Tag } from '@/lib/icons'
+import { Image, List, Tag, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { TagInputPopup, type TagFieldHints } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
@@ -15,6 +15,7 @@ export interface GhostAffordanceRowProps {
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
   onAddCover?: (event: ReactMouseEvent<HTMLElement>) => void
+  onAddName?: () => void
   /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
   excludeTypes?: PropertyType[]
   /** Property names already on the entity — a second `project` is shown but disabled. */
@@ -45,6 +46,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onCreateTag,
   onAddProperty,
   onAddCover,
+  onAddName,
   excludeTypes,
   existingNames,
   disabled = false,
@@ -82,6 +84,19 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         >
           <Image className={CHIP_ICON_CLASS} strokeWidth={2} />
           {t('cover.add')}
+        </button>
+      )}
+
+      {onAddName && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onAddName}
+          className={CHIP_CLASS}
+          data-testid="ghost-add-name"
+        >
+          <Type className={CHIP_ICON_CLASS} strokeWidth={2} />
+          {t('names.add')}
         </button>
       )}
 

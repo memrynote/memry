@@ -8,9 +8,7 @@ import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
-import { getVaultRoot } from '../vault/notes'
-import { readVaultFileSync } from '../lib/paths'
-import { parseNote } from '../vault/frontmatter'
+import { readNoteFileFields } from './note-file-fields'
 import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
 const log = createLogger('NoteSync')
@@ -86,17 +84,7 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       }
     }
 
-    let content: string | null = null
-    let tags: string[] = []
-    try {
-      const raw = readVaultFileSync(getVaultRoot(), cached.path)
-      if (raw === null) throw new Error(`Note file is missing: ${cached.path}`)
-      const parsed = parseNote(raw)
-      content = operation === 'create' ? parsed.content : null
-      tags = parsed.frontmatter.tags ?? []
-    } catch {
-      log.warn('Could not read note file for sync snapshot', { noteId: cached.id })
-    }
+    const { content, tags, aliases } = readNoteFileFields(cached, operation)
 
     const indexDb = getIndexDatabase()
     const properties = propsToRecord(getNoteProperties(indexDb, cached.id))
@@ -106,6 +94,7 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       title: cached.title,
       content,
       tags,
+      ...(aliases !== undefined ? { aliases } : {}),
       properties,
       pinnedTags,
       emoji: cached.emoji,

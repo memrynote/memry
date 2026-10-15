@@ -1453,5 +1453,25 @@
     "cancel": "キャンセル",
     "save": "保存",
     "addToFilterHint": "Ctrl/Cmd を押しながらタグをクリックするとフィルターに追加されます"
+  },
+  "names": {
+    "also": "別名",
+    "add": "別の名前を追加",
+    "addMenu": "別の名前を追加…",
+    "inputLabel": "このノートの別の名前",
+    "inputPlaceholder": "別の名前",
+    "editLabel": "名前 {name} を編集または削除",
+    "conflictTitle": "「{name}」はすでにノートです。",
+    "conflictName": "「{name}」はすでに {title} の名前です。",
+    "conflictKeeps": "このリンクは引き続き {title} を開きます。",
+    "conflictTakesOver": "このリンクは {title} ではなくこのノートを開くようになります。",
+    "saveFailed": "名前を保存できませんでした。ノートは変更されていないので、もう一度お試しください。",
+    "addAsNameOf": "「{name}」を名前として追加…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "「{name}」を名前として追加するノート",
+    "pickerPlaceholder": "ノートを検索",
+    "pickerEmpty": "一致するノートはありません",
+    "previewVia": "{name} → {title}"
   }
 }

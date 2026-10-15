@@ -40,8 +40,9 @@ const mocks = vi.hoisted(() => {
     fsWriteFile: vi.fn(),
     fsRm: vi.fn(),
     appGetPath: vi.fn(() => '/tmp'),
-    resolveNoteByTitle: vi.fn(),
-    resolveNotesByTitles: vi.fn(),
+    noteNamed: vi.fn(),
+    matchedBy: vi.fn(() => 'title'),
+    resolveLinkTargets: vi.fn(),
     getNoteTags: vi.fn(),
     getAllTagDefinitions: vi.fn(),
     deleteNoteSnapshot: vi.fn(),
@@ -143,8 +144,11 @@ vi.mock('../notes/domain', () => ({
 }))
 
 vi.mock('../notes/store', () => ({
-  resolveNoteByTitle: mocks.resolveNoteByTitle,
-  resolveNotesByTitles: mocks.resolveNotesByTitles,
+  resolveLinkTarget: (db: unknown, name: string) => {
+    const note = mocks.noteNamed(db, name)
+    return note ? { note, matchedBy: mocks.matchedBy() } : undefined
+  },
+  resolveLinkTargets: mocks.resolveLinkTargets,
   getNoteTags: mocks.getNoteTags,
   getAllTagDefinitions: mocks.getAllTagDefinitions,
   deleteNoteSnapshot: mocks.deleteNoteSnapshot,
@@ -273,9 +277,9 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it('resolves a batch of titles into a plain record over one channel', async () => {
-    mocks.resolveNotesByTitles.mockReturnValueOnce(
+    mocks.resolveLinkTargets.mockReturnValueOnce(
       new Map([
-        ['Meeting Notes', { id: 'nte_meeting', path: 'Meeting Notes.md' }],
+        ['Meeting Notes', { noteId: 'nte_meeting', path: 'Meeting Notes.md', matchedBy: 'title' }],
         ['Missing', null]
       ])
     )
@@ -286,18 +290,18 @@ describe('notes-handlers extra coverage', () => {
       'Meeting Notes': { id: 'nte_meeting', path: 'Meeting Notes.md' },
       Missing: null
     })
-    expect(mocks.resolveNotesByTitles).toHaveBeenCalledWith(expect.anything(), [
+    expect(mocks.resolveLinkTargets).toHaveBeenCalledWith(expect.anything(), [
       'Meeting Notes',
       'Missing'
     ])
   })
 
   it('resolves WikiLink targets and preview metadata with tag colors', async () => {
-    mocks.resolveNoteByTitle.mockReturnValueOnce(null)
+    mocks.noteNamed.mockReturnValueOnce(null)
 
     await expect(invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, 'Missing')).resolves.toBeNull()
 
-    mocks.resolveNoteByTitle.mockReturnValueOnce({
+    mocks.noteNamed.mockReturnValueOnce({
       id: 'note-a',
       path: 'Daily.md',
       title: 'Daily',
@@ -311,7 +315,7 @@ describe('notes-handlers extra coverage', () => {
       fileType: 'markdown'
     })
 
-    mocks.resolveNoteByTitle.mockReturnValueOnce({
+    mocks.noteNamed.mockReturnValueOnce({
       id: 'note-a',
       title: 'Daily',
       fileType: 'markdown',
@@ -331,16 +335,34 @@ describe('notes-handlers extra coverage', () => {
         { name: 'work', color: 'blue' },
         { name: 'plain', color: 'stone' }
       ],
-      createdAt: '2026-05-10T00:00:00.000Z'
+      createdAt: '2026-05-10T00:00:00.000Z',
+      matchedName: null
     })
 
-    mocks.resolveNoteByTitle.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
+    mocks.noteNamed.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
     await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
+  })
+
+  it('names the other name a preview was reached through', async () => {
+    mocks.matchedBy.mockReturnValueOnce('alias')
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-ai',
+      title: 'Artificial Intelligence',
+      fileType: 'markdown',
+      emoji: null,
+      snippet: null,
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, ' AI ')
+    expect(preview).toMatchObject({ title: 'Artificial Intelligence', matchedName: 'AI' })
   })
 
   // #2554: a snippet cached before span stripping still holds raw tags.
   it('previews a stale cached snippet as plain text', async () => {
-    mocks.resolveNoteByTitle.mockReturnValueOnce({
+    mocks.noteNamed.mockReturnValueOnce({
       id: 'note-a',
       title: 'Daily',
       fileType: 'markdown',
@@ -359,7 +381,7 @@ describe('notes-handlers extra coverage', () => {
   // `[[Meeting#Decisions]]` used to get `null`.
   it('resolves a heading target to its note half, and a `#` title to itself', async () => {
     const meeting = { id: 'note-m', path: 'Meeting.md', title: 'Meeting', fileType: 'markdown' }
-    mocks.resolveNoteByTitle.mockImplementation((_db: unknown, title: string) =>
+    mocks.noteNamed.mockImplementation((_db: unknown, title: string) =>
       title === 'Meeting' ? meeting : undefined
     )
 
@@ -372,7 +394,7 @@ describe('notes-handlers extra coverage', () => {
     })
 
     const sprint = { id: 'note-s', path: 'Sprint #4.md', title: 'Sprint #4', fileType: null }
-    mocks.resolveNoteByTitle.mockImplementation((_db: unknown, title: string) =>
+    mocks.noteNamed.mockImplementation((_db: unknown, title: string) =>
       title === 'Sprint #4' ? sprint : undefined
     )
 
@@ -384,7 +406,7 @@ describe('notes-handlers extra coverage', () => {
       heading: null
     })
 
-    mocks.resolveNoteByTitle.mockImplementation(() => undefined)
+    mocks.noteNamed.mockImplementation(() => undefined)
     await expect(invoke(NotesChannels.invoke.RESOLVE_WIKI_TARGET, 'Missing#H')).resolves.toBeNull()
   })
 

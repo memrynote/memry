@@ -1453,5 +1453,25 @@
     "cancel": "Anulează",
     "save": "Salvează",
     "addToFilterHint": "Faceți Ctrl/Cmd-clic pe o etichetă pentru a o adăuga la filtru"
+  },
+  "names": {
+    "also": "și",
+    "add": "Adaugă alt nume",
+    "addMenu": "Adaugă alt nume…",
+    "inputLabel": "Alt nume pentru această notă",
+    "inputPlaceholder": "Alt nume",
+    "editLabel": "Editează sau elimină numele {name}",
+    "conflictTitle": "„{name}” este deja o notă.",
+    "conflictName": "„{name}” este deja un nume al notei {title}.",
+    "conflictKeeps": "Linkurile către el vor deschide în continuare {title}.",
+    "conflictTakesOver": "Linkurile către el vor deschide această notă în loc de {title}.",
+    "saveFailed": "Numele nu a putut fi salvat. Nota nu s-a schimbat, așa că poți încerca din nou.",
+    "addAsNameOf": "Adaugă „{name}” ca nume pentru…",
+    "menuTarget": "→ {title}",
+    "menuTargetInFolder": "→ {title} · {folder}",
+    "pickerTitle": "Adaugă „{name}” ca nume pentru",
+    "pickerPlaceholder": "Caută note",
+    "pickerEmpty": "Nicio notă nu se potrivește",
+    "previewVia": "{name} → {title}"
   }
 }

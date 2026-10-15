@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   listCanvases: vi.fn<() => Promise<{ canvases: Array<{ id: string; title: string | null }> }>>(),
   createdCallbacks: [] as Array<() => void>,
   renamedCallbacks: [] as Array<() => void>,
-  deletedCallbacks: [] as Array<() => void>
+  deletedCallbacks: [] as Array<() => void>,
+  linksChangedCallbacks: [] as Array<() => void>
 }))
 
 vi.mock('@/services/notes-service', () => ({
@@ -31,6 +32,10 @@ vi.mock('@/services/notes-service', () => ({
   },
   onNoteDeleted: (callback: () => void) => {
     mocks.deletedCallbacks.push(callback)
+    return () => {}
+  },
+  onNoteLinksChanged: (callback: () => void) => {
+    mocks.linksChangedCallbacks.push(callback)
     return () => {}
   }
 }))
@@ -114,6 +119,7 @@ describe('useWikiLinkBroken', () => {
     mocks.listCanvases.mockResolvedValue({ canvases: [] })
     clearCanvasLookupCache()
     mocks.createdCallbacks.length = 0
+    mocks.linksChangedCallbacks.length = 0
     mocks.renamedCallbacks.length = 0
     mocks.deletedCallbacks.length = 0
   })
@@ -152,7 +158,10 @@ describe('useWikiLinkBroken', () => {
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Gone#Intro'])
   })
 
-  it('re-resolves on notes:created and unmarks the link without a reload', async () => {
+  it.each([
+    ['notes:created', () => mocks.createdCallbacks],
+    ['notes:links-changed (a note gained the name)', () => mocks.linksChangedCallbacks]
+  ])('re-resolves on %s and unmarks the link without a reload', async (_event, callbacks) => {
     mocks.resolveTitles.mockResolvedValue({ Ghost: null })
     const editor = editorWith(['Ghost'])
 
@@ -161,7 +170,7 @@ describe('useWikiLinkBroken', () => {
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
 
     mocks.resolveTitles.mockResolvedValue({ Ghost: { id: 'nte_new', path: 'Ghost.md' } })
-    mocks.createdCallbacks.forEach((callback) => callback())
+    callbacks().forEach((callback) => callback())
     await flushResolve()
 
     expect(mocks.resolveTitles).toHaveBeenCalledTimes(2)

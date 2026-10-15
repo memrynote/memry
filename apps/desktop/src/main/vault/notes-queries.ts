@@ -13,6 +13,7 @@ import {
   listNotesFromCache,
   countNotes,
   getTagsForNotes,
+  getAliasesForNotes,
   getPropertiesForNotes,
   getOutgoingLinks,
   getIncomingReferences,
@@ -75,6 +76,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
 
   const noteIds = notes.map((n) => n.id)
   const tagsMap = getTagsForNotes(db, noteIds)
+  const aliasesMap = treeShape ? null : getAliasesForNotes(db, noteIds)
 
   const propertiesMap = options.includeProperties ? getPropertiesForNotes(db, noteIds) : null
 
@@ -85,6 +87,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     created: new Date(c.createdAt),
     modified: new Date(c.modifiedAt),
     tags: tagsMap.get(c.id) ?? [],
+    ...(aliasesMap && { aliases: aliasesMap.get(c.id) ?? [] }),
     // Null, not zero: a row the ingest backfill has not reached yet has no
     // measurement, and a file with no words is a different thing.
     wordCount: c.wordCount ?? null,

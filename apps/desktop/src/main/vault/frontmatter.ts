@@ -21,6 +21,7 @@ import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { foldTag } from '@memry/shared/tag-fold'
+import { normalizeAliases } from '@memry/shared/note-names'
 import {
   isWritingFrontmatterValue,
   WRITING_FRONTMATTER_KEY
@@ -299,6 +300,14 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()]
+}
+
+export function extractAliases(frontmatter: NoteFrontmatter, title: string): string[] {
+  if (!Array.isArray(frontmatter.aliases)) return []
+  const spellings = frontmatter.aliases.map((raw: unknown) =>
+    typeof raw === 'string' || typeof raw === 'number' ? String(raw) : ''
+  )
+  return normalizeAliases(title, spellings)
 }
 
 export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
