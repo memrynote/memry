@@ -42,6 +42,8 @@ pub struct JournalDayRecord {
     pub id: String,
     pub date: String,
     pub tags: Vec<String>,
+    /// The day's other names (`aliases`), as stored.
+    pub aliases: Vec<String>,
     pub properties: Vec<NoteProperty>,
     pub created_at: Option<i64>,
     pub modified_at: Option<i64>,
@@ -57,6 +59,7 @@ impl From<JournalDay> for JournalDayRecord {
             id: day.id,
             date: day.date,
             tags: day.tags,
+            aliases: day.aliases,
             properties: day.properties,
             created_at: day.created_at,
             modified_at: day.modified_at,
