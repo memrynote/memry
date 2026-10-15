@@ -970,8 +970,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
-  const commitTaskSchedule = async (id: string, dueDate: string, dueTime: string) => {
-    const result = await tasksService.update({ id, dueDate, dueTime })
+  const commitTaskSchedule = async (
+    id: string,
+    dueDate: string,
+    dueTime: string,
+    durationMinutes: number | undefined
+  ) => {
+    const result = await tasksService.update({ id, dueDate, dueTime, durationMinutes })
     if (!result.success) {
       throw new Error(result.error ?? 'Could not update task.')
     }
@@ -986,18 +991,25 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType === 'task') {
       const previousStartAt = item.startAt
       const { dueDate, dueTime } = dueDateTimeFromDate(new Date(startAt))
+      // Main projects endAt for a task only when it has a duration; the drag
+      // fills a default end for the rest, which must not become a duration.
+      const minutesBetween = (from: string, to: string | null) =>
+        item.endAt && to ? Math.round((Date.parse(to) - Date.parse(from)) / 60000) : undefined
       try {
-        await commitTaskSchedule(item.sourceId, dueDate, dueTime)
+        await commitTaskSchedule(item.sourceId, dueDate, dueTime, minutesBetween(startAt, endAt))
         registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveTask'), () => {
           const previous = dueDateTimeFromDate(new Date(previousStartAt))
-          void commitTaskSchedule(item.sourceId, previous.dueDate, previous.dueTime).catch(
-            (err) => {
-              log.error('Failed to undo task reschedule', {
-                taskId: item.sourceId,
-                error: extractErrorMessage(err)
-              })
-            }
-          )
+          void commitTaskSchedule(
+            item.sourceId,
+            previous.dueDate,
+            previous.dueTime,
+            minutesBetween(previousStartAt, item.endAt)
+          ).catch((err) => {
+            log.error('Failed to undo task reschedule', {
+              taskId: item.sourceId,
+              error: extractErrorMessage(err)
+            })
+          })
         })
       } catch (err) {
         log.error('Failed to reschedule task', {
