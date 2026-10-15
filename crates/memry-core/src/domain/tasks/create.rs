@@ -126,7 +126,7 @@ pub fn create_detailed(
 
 /// The fields a duplicate copies (`duplicateTask`); `completedAt`,
 /// `archivedAt` and `sourceNoteId` are deliberately not among them.
-const DUPLICATED_FIELDS: [&str; 14] = [
+const DUPLICATED_FIELDS: [&str; 15] = [
     "projectId",
     "statusId",
     "parentId",
@@ -134,6 +134,7 @@ const DUPLICATED_FIELDS: [&str; 14] = [
     "priority",
     "dueDate",
     "dueTime",
+    "durationMinutes",
     "startDate",
     "repeatConfig",
     "repeatFrom",
@@ -191,7 +192,7 @@ pub(super) fn copied(task: &StoredTask, keys: &[&str]) -> Object {
 }
 
 /// `fields` plus what every created task carries: the first document clock,
-/// all fifteen field clocks seeded from it (§6.7), and the timestamps.
+/// all sixteen field clocks seeded from it (§6.7), and the timestamps.
 pub(super) fn seeded(
     mut fields: Object,
     device_id: &str,

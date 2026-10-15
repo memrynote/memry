@@ -43,7 +43,7 @@ pub const TASK_ACTIVITY_RETENTION_DAYS: i64 = 90;
 
 const MS_PER_DAY: i64 = 86_400_000;
 
-/// The 15 entries of `TASK_SYNCABLE_FIELDS` in order (§6.7), then the fields
+/// The 16 entries of `TASK_SYNCABLE_FIELDS` in order (§6.7), then the fields
 /// outside the merge: `tags`, `linkedNoteIds`, `linkedCanvasIds`, `fields`,
 /// `clock`, `fieldClocks`, `createdAt`, `modifiedAt` (§13.7.3).
 ///
@@ -72,6 +72,7 @@ const TASK_FIELDS: &[Field] = &[
     Field::opt_null("sourceNoteId", Kind::Text),
     Field::opt_null("completedAt", Kind::Text),
     Field::opt_null("archivedAt", Kind::Text),
+    Field::opt_null("durationMinutes", Kind::Number),
     // §13.4: `undefined` keeps the local rows, an explicit `null` — like an
     // explicit `[]` — is a clear, and the column takes it.
     Field::opt_null("tags", Kind::TextArray),

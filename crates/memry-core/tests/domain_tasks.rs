@@ -2,7 +2,7 @@
 //!
 //! | Test                                              | Rule                        |
 //! | ------------------------------------------------- | --------------------------- |
-//! | a create seeds all fifteen field clocks           | chapter 06 §6.7             |
+//! | a create seeds all sixteen field clocks           | chapter 06 §6.7             |
 //! | an edit ticks the document clock and its field    | §6.3 step 2, §6.6           |
 //! | an edit keeps a key this build does not model     | chapter 13 §13.2 rule 3     |
 //! | a cleared due date is an explicit null            | §13.4                       |
@@ -107,7 +107,7 @@ fn a_create_seeds_every_syncable_field_clock_from_the_document_clock() {
         let parsed: Value = serde_json::from_str(&stored).expect("valid JSON");
         assert_eq!(parsed["clock"], json!({"device-a": 1}));
         let clocks = parsed["fieldClocks"].as_object().expect("field clocks");
-        assert_eq!(clocks.len(), 15, "all fifteen (§6.7)");
+        assert_eq!(clocks.len(), 16, "all sixteen (§6.7)");
         assert_eq!(clocks["title"], json!({"device-a": 1}));
         assert_eq!(clocks["archivedAt"], json!({"device-a": 1}));
         // A create knows of no due time to clear, so the key is absent rather
@@ -262,7 +262,7 @@ fn a_remote_that_dominates_applies_wholesale_and_verbatim() {
             Some(record.payload_json.as_str())
         );
         // §6.3.1: on the apply path the remote's field clocks are stored
-        // verbatim, so the fifteen the create seeded are gone.
+        // verbatim, so the sixteen the create seeded are gone.
         let parsed = payload_of(conn, "task", "task1");
         assert_eq!(parsed["fieldClocks"].as_object().expect("clocks").len(), 1);
         Ok(())
