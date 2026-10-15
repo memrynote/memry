@@ -36,9 +36,12 @@ export interface SearchObjectsResponse {
   complete: boolean
 }
 
+/** The most notes a Linked here group returns in one read. */
+export const LINKED_HERE_MAX_PER_GROUP = 500
+
 export const GetLinkedHereSchema = z.object({
   noteId: z.string().min(1),
-  limitPerGroup: z.number().int().min(1).max(500).default(2)
+  limitPerGroup: z.number().int().min(1).max(LINKED_HERE_MAX_PER_GROUP).default(2)
 })
 export type GetLinkedHereInput = z.infer<typeof GetLinkedHereSchema>
 

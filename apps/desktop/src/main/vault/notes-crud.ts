@@ -27,7 +27,7 @@ import {
   compareHeaderTags,
   nextHeaderTags,
   nextNoteFrontmatter,
-  queueNoteWrite,
+  writeNoteInOrder,
   type HeaderTagChange
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
@@ -646,7 +646,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // ============================================================================
 
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  return queueNoteWrite(input.id, () => writeNote(input))
+  return writeNoteInOrder(input.id, () => writeNote(input))
 }
 
 async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {

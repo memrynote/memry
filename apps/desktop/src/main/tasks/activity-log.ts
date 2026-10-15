@@ -181,8 +181,7 @@ function fieldRows(
           taskId,
           action,
           field,
-          next[field as keyof Task],
-          previous?.[field as keyof Task],
+          lengthDelta(next[field as keyof Task], previous?.[field as keyof Task]),
           actor
         )
       )
@@ -220,22 +219,25 @@ function taskFieldRows(
     const field = `${TASK_FIELD_ACTIVITY_PREFIX}${name}`
     rows.push(
       isLongFieldText(before[name]) || isLongFieldText(after[name])
-        ? lengthOnlyRow(taskId, action, field, after[name], before[name], actor)
+        ? lengthOnlyRow(taskId, action, field, lengthDelta(after[name], before[name]), actor)
         : { taskId, action, field, oldValue, newValue, actor }
     )
   }
   return rows
 }
 
+function lengthDelta(next: unknown, previous: unknown): number {
+  return textLength(next) - textLength(previous)
+}
+
+/** Takes only the length change, so no caller can write field text into the log. */
 function lengthOnlyRow(
   taskId: string,
   action: TaskActivityAction,
   field: string,
-  next: unknown,
-  previous: unknown,
+  delta: number,
   actor: TaskActivityActor
 ): ActivityRowInput {
-  const delta = textLength(next) - textLength(previous)
   return { taskId, action, field, oldValue: null, newValue: JSON.stringify({ delta }), actor }
 }
 

@@ -34,6 +34,7 @@ import { createLogger } from '../lib/logger'
 import { flushProjectionEvents } from '../projections'
 import { queueEmbeddedVaultFiles, syncNoteCreate } from '../notes/runtime-effects'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
+import { externalJournalEntry } from '../journal/external-entry'
 import { createSnippet, extractProperties, extractTags, parseNote } from './frontmatter'
 import { openVaultFile } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
@@ -248,15 +249,13 @@ async function backfillNote(
     const journalDate = extractDateFromPath(entry.relativePath) ?? ''
     broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, {
       date: journalDate,
-      entry: {
+      entry: externalJournalEntry({
         date: journalDate,
         content: parsed.content,
-        tags: syncResult.headerTags,
-        wordCount: syncResult.wordCount,
-        characterCount: syncResult.characterCount,
+        metadata: syncResult,
         modified: new Date(parsed.modified),
         created: new Date(cached.createdAt)
-      },
+      }),
       source: 'external'
     })
   }

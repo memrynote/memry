@@ -93,8 +93,6 @@ function queryCanvasIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.canvasId)
 }
 
-const NO_CHANGED_FIELDS: string[] = []
-
 function plainTask(row: typeof tasks.$inferSelect | undefined) {
   return row && { ...row, fields: plainVersionedMap(row.fields) }
 }
@@ -378,7 +376,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
       publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
-    if (heal) getTaskSyncService()?.enqueueUpdate(itemId, NO_CHANGED_FIELDS)
+    if (heal) getTaskSyncService()?.enqueueUpdate(itemId, ['fields'])
     return result
   }
 
