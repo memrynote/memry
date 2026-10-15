@@ -86,7 +86,42 @@ A note can have other names, called aliases. A link to any of them opens the not
 example, a note titled "Artificial Intelligence" with the aliases `AI` and `Yapay Zeka`
 opens from `[[AI]]`, `[[Yapay Zeka]]`, and `[[Artificial Intelligence]]`.
 
-Aliases live in the note's frontmatter, under the same `aliases` key Obsidian uses:
+### Adding and editing names
+
+A note's other names show in a muted line under its title, such as "also AI · Yapay Zeka".
+The line is hidden while the note has none.
+
+- **Add a name.** Hover over the title area and choose **Add another name**, or choose **Add
+  another name…** in the note's ⋯ menu. Type the name and press Enter. Journal days have
+  the same item in their ⋯ menu.
+- **Add more.** Hover over the line and choose the + button at its end.
+- **Change or remove a name.** Click it in the line, edit it, and press Enter. Clear it and
+  press Enter to remove it.
+- In the input, Backspace on an empty field removes the last name, and Escape closes it
+  without saving.
+
+If the name you type already opens another note, a note under the input says so before
+you save. A title always keeps its links, so `[[Machine learning]]` keeps opening the note
+titled "Machine learning" even after you give another note that name. You can still save it.
+
+### Names while you write
+
+The `[[` menu searches titles and names together and shows one row per note. A row found
+through a name shows the name in bold with the note's title under it. Picking it writes a
+link with the name as its label, such as `[[Artificial Intelligence|AI]]`. When two notes
+share a name, both rows show their folder.
+
+When what you typed matches no title or name, the menu also offers **Add "…" as a name
+of…**. Pick a note, and Memry gives it that name and writes the link.
+
+Hovering a link that reached its note through a name shows the name and the title at the
+top of the preview, such as "AI → Artificial Intelligence". Search finds a note by its
+names too, and shows the name that matched beside the title.
+
+### Names in the file
+
+Names live in the note's frontmatter, under the same `aliases` key Obsidian uses. You can
+edit them there too:
 
 ```yaml
 ---
@@ -95,6 +130,8 @@ aliases:
   - Yapay Zeka
 ---
 ```
+
+### How names resolve
 
 - Links through an alias count in the backlinks panel and the graph, like links through the
   title.
