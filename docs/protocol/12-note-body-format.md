@@ -777,6 +777,39 @@ NOT claim an image or checkbox inside a table cell as a block.
 
 **Disposition of Q12.6: answered** (this section).
 
+### 12.7.2 Which note a wiki-link names
+
+A `wikiLink` target's note half (the text before the first `#`) names a note
+by path, by title or by one of the note's aliases, the frontmatter `aliases:`
+list. Both implementations decide it with one rule
+(`packages/shared/src/note-names.ts:100`,
+`crates/memry-core/src/domain/wiki_target.rs:260-278`), pinned by the
+`wiki-target-resolution` vectors. The first tier with a hit wins:
+
+1. a half holding `/` is a vault-root path (one leading `/` dropped) and
+   matches a note's path, with or without `.md`, case folded
+   (`wiki_target.rs:322`);
+2. a title spelled exactly as written;
+3. a title with the same name key;
+4. an alias with the same name key.
+
+A title always beats an alias. Two notes in one tier resolve to the lowest note
+id. The core ranks a note above a journal day before the id
+(`wiki_target.rs:192`); no vector covers that tie yet, and desktop ranks by id
+alone.
+
+The name key (`note-names.ts:23`, `crates/memry-core/src/domain/notes/names.rs:19`)
+is: NFC, every run of Unicode `White_Space` collapsed to one space, the ends
+trimmed, then the tag fold of §13.7.8 (locale-free, `İ` to `i`, final sigma to
+`σ`, `ß` kept). Whitespace only is no name. Before this rule, titles matched
+case-insensitively in ASCII only and same-title ties had no defined winner;
+both changed.
+
+An alias list as stored and synced (`note-names.ts:34`, `names.rs:38`) keeps
+each spelling trimmed, drops empties, entries over 200 UTF-16 units and any
+alias equal to the title by key, dedupes by key with the first spelling kept,
+and holds at most 32.
+
 ## 12.8 The five out-of-band encodings
 
 **Normative.** These live outside plain markdown. Two of them are **in-fragment

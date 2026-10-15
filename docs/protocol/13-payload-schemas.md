@@ -206,7 +206,7 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 | `pinnedTags`                                                     | string[]?                                     |                                                                                                                                        |
 | `emoji`                                                          | string, nullable?                             |                                                                                                                                        |
 | `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                    |
-| `aliases`                                                        | string[], nullable?                           |                                                                                                                                        |
+| `aliases`                                                        | string[], nullable?                           | see §13.7.1.2; **absent or `null` keeps the receiver's list, `[]` clears it**                                                          |
 | `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                     |
 | `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                        |
 | `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                |
@@ -250,6 +250,23 @@ sending `null`. A receiver that cannot read the value treats it as absent
 (`.catch(undefined)`), so an unreadable cover never fails the whole note. The
 earlier iOS-only unknown key `coverImage` (`{url, offsetY}`, offset 0-1) is read
 as a fallback when `cover` is absent and is never written.
+
+#### 13.7.1.2 `aliases`
+
+The note's other names, the frontmatter `aliases:` list, normalized as chapter
+12 §12.7.2 describes. A sender that read the note's file sends the list it
+read, `[]` when the note has none (`apps/desktop/src/main/sync/note-file-fields.ts:34`).
+A sender that could not read the file omits the key. A receiver treats an
+array, `[]` included, as the list to hold, and treats absent or `null` as "the
+sender does not know" and keeps its own
+(`apps/desktop/src/main/sync/item-handlers/note-handler-frontmatter.ts:16`;
+the core's projector `crates/memry-core/src/storage/repositories/projectors/notes.rs:110`,
+journal `:184-191`).
+
+Builds before this rule never sent `aliases` from desktop, so their pushes keep
+every peer's list. They also ignore a pulled list on update, until the user
+upgrades and the next push carries it. A journal day follows the same rule
+(`packages/contracts/src/sync-payloads.ts:344`).
 
 ### 13.7.2 `journal` — `:273-288`
 
