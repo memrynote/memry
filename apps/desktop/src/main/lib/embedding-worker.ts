@@ -1,3 +1,4 @@
+import os from 'os'
 import { createLogger } from './logger'
 import { installWorkerLogForwarding } from './log-forward'
 import {
@@ -21,6 +22,12 @@ const logger = createLogger('Embeddings:Worker')
  * its own terms rather than being force-killed and reported as a teardown death.
  */
 const SHUTDOWN_TIMEOUT_MS = 1_500
+
+/**
+ * onnxruntime takes every core by default, so a vault-wide re-embed pinned the
+ * whole machine. Half the cores leaves the rest for the user.
+ */
+const INFERENCE_THREADS = Math.max(1, Math.floor(os.availableParallelism() / 2))
 
 interface ModelProgress {
   status: string
@@ -122,6 +129,7 @@ async function loadEmbeddingPipeline() {
         config,
         dtype: EMBEDDING_MODEL_DTYPE,
         device: 'cpu',
+        session_options: { intraOpNumThreads: INFERENCE_THREADS, interOpNumThreads: 1 },
         progress_callback
       })
     ])

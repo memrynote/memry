@@ -457,66 +457,56 @@ describe('embedding projector', () => {
     expect(generateEmbedding).not.toHaveBeenCalled()
   })
 
-  it('does not stamp the embedding input version when the migration rebuild aborts', async () => {
-    const run = vi.fn()
-    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
-    getIndexDatabase.mockReturnValue({
-      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' }])
-    })
-    // Stored version is stale → reconcile takes the full-rebuild migration path.
-    getSetting.mockImplementation((_db: unknown, key: string) =>
-      key === 'ai.embeddingInputVersion' ? 'stale' : 'true'
-    )
-
-    const controller = new AbortController()
-    isModelLoaded.mockReturnValue(false)
-    initEmbeddingModel.mockImplementation(async () => {
-      controller.abort()
-      return true
-    })
-
-    const projector = createEmbeddingProjector(() => '/vault')
-
-    await projector.reconcile(controller.signal)
-
-    // Aborting after the (slow) model load must not wipe the vector table it is
-    // no longer going to refill, and must not record the migration as done.
-    expect(prepare).not.toHaveBeenCalledWith('DELETE FROM vec_notes')
-    expect(setSetting).not.toHaveBeenCalled()
-    expect(generateEmbedding).not.toHaveBeenCalled()
-  })
-
-  it('does not stamp the embedding input version when the migration rebuild aborts mid-list', async () => {
-    const run = vi.fn()
-    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+  it('resumes an interrupted input-version re-embed on the next reconcile instead of starting over', async () => {
+    // A small stand-in for vec_notes that answers the statements the projector runs.
+    const vectors = new Set<string>()
+    const prepare = vi.fn((statement: string) => ({
+      run: (noteId?: string) => {
+        if (statement === 'DELETE FROM vec_notes') vectors.clear()
+        else if (statement.startsWith('DELETE FROM vec_notes WHERE note_id'))
+          vectors.delete(noteId!)
+        else if (statement.startsWith('INSERT INTO vec_notes')) vectors.add(noteId!)
+      },
+      all: () => [...vectors].map((note_id) => ({ note_id }))
+    }))
     getRawIndexDatabase.mockReturnValue({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' },
-        { id: 'note-2', path: 'notes/two.md', title: 'Two', fileType: 'markdown' }
+        { id: 'note-2', path: 'notes/two.md', title: 'Two', fileType: 'markdown' },
+        { id: 'note-3', path: 'notes/three.md', title: 'Three', fileType: 'markdown' }
       ])
     })
-    getSetting.mockImplementation((_db: unknown, key: string) =>
-      key === 'ai.embeddingInputVersion' ? 'stale' : 'true'
-    )
+    // Vectors written under the previous input formula.
+    vectors.add('note-1').add('note-2').add('note-3')
+    const settings = new Map([['ai.embeddingInputVersion', 'stale']])
+    getSetting.mockImplementation((_db: unknown, key: string) => settings.get(key) ?? 'true')
+    setSetting.mockImplementation((_db: unknown, key: string, value: string) => {
+      settings.set(key, value)
+    })
     readFile.mockResolvedValue('raw markdown')
     parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
 
+    // The app quits right after the first note of the re-embed.
     const controller = new AbortController()
     generateEmbedding.mockImplementation(async () => {
       controller.abort()
       return new Float32Array([0.1, 0.2])
     })
-
     const projector = createEmbeddingProjector(() => '/vault')
-
     await projector.reconcile(controller.signal)
 
-    // A half-finished rebuild must not record the new input version: doing so
-    // would permanently skip the migration for the notes it never reached.
-    expect(generateEmbedding).toHaveBeenCalledTimes(1)
-    expect(setSetting).not.toHaveBeenCalled()
+    // No old-formula vector survives next to the new one.
+    expect([...vectors]).toEqual(['note-1'])
+
+    // The next launch embeds only the notes the first pass never reached.
+    generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+    await createEmbeddingProjector(() => '/vault').reconcile()
+
+    expect(generateEmbedding).toHaveBeenCalledTimes(3)
+    expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(1)
+    expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
+    expect(settings.get('ai.embeddingInputVersion')).toBe(String(EMBEDDING_INPUT_VERSION))
   })
 
   it('skips the backfill when the signal aborts while the model is loading', async () => {

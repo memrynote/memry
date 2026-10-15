@@ -1,10 +1,10 @@
 import os from 'os'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logger'
 
-const logger = createLogger('FileText')
+const logger = createLogger('LowPriority')
 
 /**
- * Text extraction is background work: its processes yield the CPU to
+ * Background work (text extraction, local embeddings) yields the CPU to
  * everything else on the machine. Best effort, the work still runs without it.
  */
 export function lowerProcessPriority(pid: number | undefined): void {

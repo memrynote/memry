@@ -27,6 +27,7 @@ import {
 } from './embeddings-constants'
 import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import { createLogger } from './logger'
+import { lowerProcessPriority } from './low-priority'
 import { broadcastToAllWindows } from './window-broadcast'
 import { isChildProcessFault, trackMainLog } from '../telemetry/diagnostics'
 import { getLogShip } from '../telemetry/log-ship'
@@ -557,6 +558,9 @@ class EmbeddingModelBridge {
       allowLoadingUnsignedLibraries: process.platform === 'darwin'
     })
 
+    // Inference is background work: a vault-wide re-embed must not take the
+    // machine's CPU away from the user. The pid exists once the process spawns.
+    child.once('spawn', () => lowerProcessPriority(child.pid))
     this.process = child
     // A fresh worker must never inherit a force-kill phase latched for a prior one.
     this.pendingExitPhase = null
