@@ -21,6 +21,7 @@ export interface TaskRecord {
   position: number
   dueDate: string | null
   dueTime: string | null
+  durationMinutes: number | null
   startDate: string | null
   repeatConfig: unknown | null
   repeatFrom: string | null
@@ -261,6 +262,7 @@ function toTask(db: DataDb, row: typeof tasks.$inferSelect): TaskRecord {
     position: row.position,
     dueDate: row.dueDate,
     dueTime: row.dueTime,
+    durationMinutes: row.durationMinutes,
     startDate: row.startDate,
     repeatConfig: row.repeatConfig ?? null,
     repeatFrom: row.repeatFrom,
@@ -433,6 +435,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
           ...(updates.parentId !== undefined ? { parentId: updates.parentId } : {}),
           ...(updates.dueDate !== undefined ? { dueDate: updates.dueDate } : {}),
           ...(updates.dueTime !== undefined ? { dueTime: updates.dueTime } : {}),
+          ...(updates.dueTime === null ? { durationMinutes: null } : {}),
           ...(updates.startDate !== undefined ? { startDate: updates.startDate } : {}),
           ...(updates.repeatConfig !== undefined ? { repeatConfig: updates.repeatConfig } : {}),
           ...(updates.repeatFrom !== undefined ? { repeatFrom: updates.repeatFrom } : {}),
@@ -619,6 +622,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
           position: nextTaskPosition(dataDb, original.projectId),
           dueDate: original.dueDate,
           dueTime: original.dueTime,
+          durationMinutes: original.durationMinutes,
           startDate: original.startDate,
           repeatConfig: original.repeatConfig,
           repeatFrom: original.repeatFrom,

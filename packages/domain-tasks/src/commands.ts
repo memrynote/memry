@@ -30,6 +30,7 @@ export interface TaskCreateInput {
   parentId?: string | null
   dueDate?: string | null
   dueTime?: string | null
+  durationMinutes?: number | null
   startDate?: string | null
   repeatConfig?: Task['repeatConfig']
   repeatFrom?: Task['repeatFrom']
@@ -51,6 +52,7 @@ export interface TaskUpdateInput {
   parentId?: string | null
   dueDate?: string | null
   dueTime?: string | null
+  durationMinutes?: number | null
   startDate?: string | null
   repeatConfig?: Task['repeatConfig']
   repeatFrom?: Task['repeatFrom']
@@ -562,6 +564,7 @@ export function createTasksCommands({
           position,
           dueDate: input.dueDate ?? null,
           dueTime: input.dueTime ?? null,
+          durationMinutes: input.dueTime ? (input.durationMinutes ?? null) : null,
           startDate: input.startDate ?? null,
           repeatConfig: input.repeatConfig ?? null,
           repeatFrom: input.repeatFrom ?? null,
@@ -604,6 +607,11 @@ export function createTasksCommands({
           ...rawUpdates,
           ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
         })
+
+        // A duration only means something on a timed task.
+        if (updates.dueTime === null) {
+          updates.durationMinutes = null
+        }
 
         if (projectIsMissing(repository, updates.projectId)) {
           return {

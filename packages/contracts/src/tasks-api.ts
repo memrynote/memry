@@ -97,6 +97,7 @@ export const TaskCreateSchema = z.object({
     .string()
     .regex(/^\d{2}:\d{2}$/)
     .nullish(),
+  durationMinutes: z.number().int().positive().nullable().optional(),
   startDate: CalendarDateSchema.nullish(),
   isRepeating: z.boolean().default(false),
   repeatConfig: RepeatConfigSchema.nullish(),
@@ -122,6 +123,7 @@ export const TaskUpdateSchema = z.object({
     .string()
     .regex(/^\d{2}:\d{2}$/)
     .nullish(),
+  durationMinutes: z.number().int().positive().nullable().optional(),
   startDate: CalendarDateSchema.nullish(),
   isRepeating: z.boolean().optional(),
   repeatConfig: RepeatConfigSchema.nullish(),

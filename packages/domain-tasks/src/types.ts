@@ -33,6 +33,7 @@ export interface Task {
   position: number
   dueDate: string | null
   dueTime: string | null
+  durationMinutes: number | null
   startDate: string | null
   isRepeating?: boolean
   repeatConfig: RepeatConfig | null
