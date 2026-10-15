@@ -4,7 +4,7 @@ Add structured metadata to notes with custom **properties** and free-form **tags
 
 <!-- screenshot: properties panel and tags row at the top of a note -->
 
-Use **Add property** or **Add tag** above the note title to attach metadata before you start writing.
+Hover below the note title and choose **Add details** to add a tag, a property, another name, or a cover. Once a note has tags, add more with the + button at the end of the tags row. Once it has properties, add more with **Add property** under the list.
 
 ## Tags Row
 

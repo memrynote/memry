@@ -414,9 +414,8 @@ test.describe('Notes Management', () => {
       const metadataGroup = page.locator('.group\\/metadata').first()
       await metadataGroup.hover()
 
-      const addPropertyButton = page.getByRole('button', { name: 'Add property' }).first()
-      await expect(addPropertyButton).toBeVisible()
-      await addPropertyButton.click()
+      await page.getByTestId('ghost-add-details').click()
+      await page.getByRole('menuitem', { name: 'Add property' }).click()
 
       const textOption = page.getByRole('option', { name: 'Text' }).first()
       await expect(textOption).toBeVisible()

@@ -34,6 +34,11 @@ import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/comp
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
+import {
+  NEW_NOTE_TITLE,
+  clearNewNoteTitlePending,
+  isNewNoteTitlePending
+} from '@/lib/new-note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
@@ -302,6 +307,21 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
+  // A just-created note opens with an empty, focused title (see new-note-title).
+  // Adjusted during render because this page is reused across preview tabs.
+  const [freshTitleNoteId, setFreshTitleNoteId] = useState<string | null>(null)
+  if (noteId && freshTitleNoteId !== noteId && isNewNoteTitlePending(noteId)) {
+    setFreshTitleNoteId(noteId)
+  }
+  const isFreshTitle = !!noteId && freshTitleNoteId === noteId
+  const hasNote = !!note
+  useEffect(() => {
+    if (!isFreshTitle || !hasNote || !noteId) return
+    clearNewNoteTitlePending(noteId)
+    // Deferred past the tab switch and the editor mount, which focus on their own.
+    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [isFreshTitle, hasNote, noteId])
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
   const [eventContentOverride, setEventContentOverride] = useState<{
     noteId: string
@@ -1943,8 +1963,10 @@ export function NotePage({ noteId }: NotePageProps) {
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
             onIconChange={(icon) => void handleIconChange(icon)}
-            placeholder={t('editor.title.untitled')}
+            placeholder={isFreshTitle ? NEW_NOTE_TITLE : t('editor.title.untitled')}
             inputRef={titleInputRef}
+            fresh={isFreshTitle}
+            onFreshEnd={() => setFreshTitleNoteId(null)}
           />
           <NoteNamesLine
             noteId={note.id}
@@ -1972,7 +1994,6 @@ export function NotePage({ noteId }: NotePageProps) {
               })
             }
             hideWhenEmpty
-            hideAddButton
             disabled={isLocked}
           />
 
@@ -2016,7 +2037,6 @@ export function NotePage({ noteId }: NotePageProps) {
               onDeleteProperty={handleDeleteProperty}
               disabled={isDeleted || isLocked}
               variant="embedded"
-              hideAddButton
             />
           )}
 
@@ -2040,9 +2060,8 @@ export function NotePage({ noteId }: NotePageProps) {
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
             existingNames={properties.map((p) => p.name)}
-            onAddCover={
-              cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
-            }
+            hideAddTag={headerTags.length > 0}
+            onAddCover={cover ? undefined : setCoverPickerAnchor}
             onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
             disabled={isDeleted || isLocked}
           />

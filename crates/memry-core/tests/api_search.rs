@@ -21,7 +21,10 @@ use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::tag_admin;
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
-use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+use yrs::types::Attrs;
+use yrs::{
+    Any, ReadTxn as _, Text as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim,
+};
 
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
@@ -354,6 +357,68 @@ fn a_link_written_before_its_target_existed_still_counts() {
         1,
         "the forward reference must resolve: {found:?}"
     );
+}
+
+/// A synced body that holds `[[Target]]` as typed characters rather than a
+/// `wikiLink` node is still a backlink, as desktop indexes it from markdown
+/// (#3318). Link syntax inside inline code is not.
+#[test]
+fn a_literal_wiki_link_in_a_synced_body_is_a_backlink() {
+    let (db, vault) = vault("backlinks-literal");
+    write_note(&db, "target", "Target", "");
+    write_note(&db, "other", "Other", "");
+    write_note(
+        &db,
+        "source",
+        "Source",
+        "see [[target#Plan|the plan]] and [[Missing]]",
+    );
+    write_note(&db, "code", "Code", "");
+    db.call_blocking(|conn: &mut Connection| {
+        update_log::append_server_update(conn, "code", 1, &code_update("code", "[[Other]]"), NOW)
+            .expect("the body update");
+        Ok(())
+    })
+    .expect("the write");
+    vault
+        .search()
+        .expect("the index")
+        .reindex()
+        .expect("the reindex");
+
+    assert_eq!(backlink_sources(&vault, "target"), vec!["source"]);
+    assert!(backlink_sources(&vault, "other").is_empty());
+}
+
+/// A body whose one paragraph is `text` under the `code` mark.
+fn code_update(doc_id: &str, text: &str) -> Vec<u8> {
+    let captured: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let captured = Arc::clone(&captured);
+        Arc::new(move |_, bytes: &[u8]| captured.lock().expect("lock").push(bytes.to_vec()))
+    };
+    let document = DocumentRegistry::new("device-peer", sink)
+        .get_or_open(doc_id)
+        .expect("open");
+    document
+        .write(|txn| {
+            let fragment = txn
+                .get_xml_fragment("prosemirror")
+                .expect("the root is typed at open");
+            let group = fragment.push_back(txn, XmlElementPrelim::empty("blockGroup"));
+            let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+            let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+            let run = paragraph.push_back(txn, XmlTextPrelim::new(""));
+            let code = Attrs::from([("code".into(), Any::Map(Default::default()))]);
+            run.insert_with_attributes(txn, 0, text, code);
+        })
+        .expect("a write transaction");
+    captured
+        .lock()
+        .expect("lock")
+        .first()
+        .cloned()
+        .expect("one update")
 }
 
 fn write_folder_note(db: &Db, id: &str, title: &str, folder: &str) {

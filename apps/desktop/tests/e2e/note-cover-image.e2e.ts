@@ -90,9 +90,10 @@ test.describe('Note cover image', () => {
     }, noteId)
     const noteFile = path.join(testVaultPath, notePath)
 
-    // The chips only take pointer events while the metadata block is hovered,
+    // The details menu only takes pointer events while the metadata block is hovered,
     // so the hover has to land inside that block rather than on the body.
     await page.getByTestId('note-metadata').hover()
+    await page.getByTestId('ghost-add-details').click()
     await page.getByTestId('ghost-add-cover').click()
 
     const picker = page.getByTestId('cover-picker-dialog')

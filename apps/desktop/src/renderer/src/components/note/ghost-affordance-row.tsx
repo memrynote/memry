@@ -1,10 +1,17 @@
-import { useState, memo, type MouseEvent as ReactMouseEvent } from 'react'
-import { Image, List, Tag, Type } from '@/lib/icons'
+import { useRef, useState, memo } from 'react'
+import { Image, List, Plus, Tag, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { TagInputPopup, type TagFieldHints } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
 import type { Tag as TagEntity } from './tags-row/TagChip'
 import type { NewProperty, PropertyType } from './info-section/types'
+import type { CoverPickerAnchor } from './cover-picker-dialog'
 import { useT } from '@memry/i18n/renderer'
 
 export interface GhostAffordanceRowProps {
@@ -14,8 +21,10 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
-  onAddCover?: (event: ReactMouseEvent<HTMLElement>) => void
+  onAddCover?: (anchor: CoverPickerAnchor) => void
   onAddName?: () => void
+  /** Hide the tag entry, for surfaces whose tags row already carries its own add button. */
+  hideAddTag?: boolean
   /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
   excludeTypes?: PropertyType[]
   /** Property names already on the entity — a second `project` is shown but disabled. */
@@ -25,18 +34,10 @@ export interface GhostAffordanceRowProps {
   tagFieldHints?: TagFieldHints
 }
 
-const CHIP_CLASS = cn(
-  'flex h-[26px] items-center gap-1.5',
-  'rounded-md px-2',
-  'bg-muted/60 text-muted-foreground',
-  'text-[12.5px] font-medium',
-  'transition-colors duration-150 motion-reduce:transition-none',
-  'hover:bg-muted hover:text-foreground',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-  'disabled:pointer-events-none disabled:opacity-50'
-)
+const ICON_CLASS = 'h-3.5 w-3.5 shrink-0'
 
-const CHIP_ICON_CLASS = 'h-3.5 w-3.5 shrink-0'
+/** The popups open from the menu, so they anchor to an invisible point under the trigger. */
+const POPUP_ANCHOR = <span aria-hidden className="pointer-events-none absolute bottom-0 start-0" />
 
 export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   availableTags,
@@ -47,6 +48,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onAddProperty,
   onAddCover,
   onAddName,
+  hideAddTag = false,
   excludeTypes,
   existingNames,
   disabled = false,
@@ -54,17 +56,26 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   tagFieldHints
 }: GhostAffordanceRowProps) {
   const { t } = useT('notes')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false)
   const [isPropertyPopupOpen, setIsPropertyPopupOpen] = useState(false)
+  // A popup opened from the menu keeps focus; the menu must not pull it back on close.
+  const popupPendingRef = useRef(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  const isAnyPopupOpen = isTagPopupOpen || isPropertyPopupOpen
+  const isAnyOpen = isMenuOpen || isTagPopupOpen || isPropertyPopupOpen
+
+  const openPopup = (open: (value: boolean) => void) => () => {
+    popupPendingRef.current = true
+    open(true)
+  }
 
   return (
     <div
       className={cn(
-        'flex items-center gap-2',
+        'relative flex items-center',
         'transition-opacity duration-200',
-        isAnyPopupOpen
+        isAnyOpen
           ? 'opacity-100 pointer-events-auto'
           : [
               'opacity-0 pointer-events-none',
@@ -74,31 +85,65 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         className
       )}
     >
-      {onAddCover && (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onAddCover}
-          className={CHIP_CLASS}
-          data-testid="ghost-add-cover"
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+        <DropdownMenuTrigger asChild disabled={disabled}>
+          <button
+            ref={triggerRef}
+            type="button"
+            disabled={disabled}
+            className={cn(
+              'flex h-[26px] items-center gap-1.5',
+              'text-[12.5px] font-medium text-[#A29F9A]',
+              'transition-colors duration-150 motion-reduce:transition-none',
+              'hover:text-foreground',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md',
+              'disabled:pointer-events-none disabled:opacity-50'
+            )}
+            data-testid="ghost-add-details"
+          >
+            <Plus className={ICON_CLASS} strokeWidth={2} />
+            {t('details.add')}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          sideOffset={6}
+          onCloseAutoFocus={(event) => {
+            if (!popupPendingRef.current) return
+            popupPendingRef.current = false
+            event.preventDefault()
+          }}
         >
-          <Image className={CHIP_ICON_CLASS} strokeWidth={2} />
-          {t('cover.add')}
-        </button>
-      )}
-
-      {onAddName && (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onAddName}
-          className={CHIP_CLASS}
-          data-testid="ghost-add-name"
-        >
-          <Type className={CHIP_ICON_CLASS} strokeWidth={2} />
-          {t('names.add')}
-        </button>
-      )}
+          {!hideAddTag && (
+            <DropdownMenuItem onSelect={openPopup(setIsTagPopupOpen)}>
+              <Tag className={ICON_CLASS} strokeWidth={2} />
+              {t('tagsRow.add')}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onSelect={openPopup(setIsPropertyPopupOpen)}>
+            <List className={ICON_CLASS} strokeWidth={2} />
+            {t('properties.add')}
+          </DropdownMenuItem>
+          {onAddName && (
+            <DropdownMenuItem onSelect={onAddName} data-testid="ghost-add-name">
+              <Type className={ICON_CLASS} strokeWidth={2} />
+              {t('names.add')}
+            </DropdownMenuItem>
+          )}
+          {onAddCover && (
+            <DropdownMenuItem
+              onSelect={() => {
+                const rect = triggerRef.current?.getBoundingClientRect()
+                if (rect) onAddCover({ x: rect.left + rect.width / 2, y: rect.bottom })
+              }}
+              data-testid="ghost-add-cover"
+            >
+              <Image className={ICON_CLASS} strokeWidth={2} />
+              {t('cover.add')}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <TagInputPopup
         availableTags={availableTags}
@@ -111,10 +156,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         disabled={disabled}
         fieldHints={tagFieldHints}
       >
-        <button type="button" disabled={disabled} className={CHIP_CLASS}>
-          <Tag className={CHIP_ICON_CLASS} strokeWidth={2} />
-          {t('tagsRow.add')}
-        </button>
+        {POPUP_ANCHOR}
       </TagInputPopup>
 
       <AddPropertyPopup
@@ -125,10 +167,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         disabled={disabled}
         existingNames={existingNames}
       >
-        <button type="button" disabled={disabled} className={CHIP_CLASS}>
-          <List className={CHIP_ICON_CLASS} strokeWidth={2} />
-          {t('properties.add')}
-        </button>
+        {POPUP_ANCHOR}
       </AddPropertyPopup>
     </div>
   )

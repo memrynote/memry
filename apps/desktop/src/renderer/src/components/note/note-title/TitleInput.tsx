@@ -10,6 +10,12 @@ interface TitleInputProps {
   disabled?: boolean
   /** Optional external ref to the underlying textarea (e.g. to focus from a menu) */
   inputRef?: RefObject<HTMLTextAreaElement | null>
+  /**
+   * A just-created note: show the field empty (the placeholder names it) until
+   * the first blur, then `onFreshEnd`. Blurring with nothing typed keeps `value`.
+   */
+  fresh?: boolean
+  onFreshEnd?: () => void
 }
 
 export function TitleInput({
@@ -18,12 +24,14 @@ export function TitleInput({
   onChange,
   autoFocus = false,
   disabled = false,
-  inputRef
+  inputRef,
+  fresh = false,
+  onFreshEnd
 }: TitleInputProps) {
   const { t } = useT('notes')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
-  const displayValue = draftValue ?? value
+  const displayValue = draftValue ?? (fresh ? '' : value)
 
   // Merge the internal auto-resize ref with an optional external ref.
   const setTextareaRef = useCallback(
@@ -65,11 +73,14 @@ export function TitleInput({
 
   const handleBlur = useCallback(() => {
     // Only trigger onChange if value actually changed
-    if (draftValue !== null && draftValue !== value) {
+    if (fresh) {
+      if (draftValue?.trim()) onChange(draftValue)
+      onFreshEnd?.()
+    } else if (draftValue !== null && draftValue !== value) {
       onChange(draftValue)
     }
     setDraftValue(null)
-  }, [draftValue, value, onChange])
+  }, [draftValue, value, onChange, fresh, onFreshEnd])
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter saves and blurs

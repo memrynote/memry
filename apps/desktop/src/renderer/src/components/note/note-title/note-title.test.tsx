@@ -196,3 +196,57 @@ describe('NoteTitle - icon button', () => {
     expect(await screen.findByLabelText('Emoji and icon picker')).toBeInTheDocument()
   })
 })
+
+describe('NoteTitle - fresh note', () => {
+  const freshProps = {
+    emoji: null,
+    title: 'New note 2',
+    placeholder: 'New note',
+    fresh: true
+  }
+
+  it('shows an empty field so typing starts from the first character', () => {
+    renderWithI18n(<NoteTitle {...freshProps} onTitleChange={vi.fn()} />)
+
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    expect(textarea).toHaveValue('')
+    expect(textarea).toHaveAttribute('placeholder', 'New note')
+  })
+
+  it('renames to what was typed on blur', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const onFreshEnd = vi.fn()
+    renderWithI18n(
+      <NoteTitle {...freshProps} onTitleChange={onTitleChange} onFreshEnd={onFreshEnd} />
+    )
+
+    await user.type(screen.getByRole('textbox', { name: /note title/i }), 'Groceries')
+    await user.tab()
+
+    expect(onTitleChange).toHaveBeenCalledWith('Groceries')
+    expect(onFreshEnd).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the created name when blurred with nothing typed', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const onFreshEnd = vi.fn()
+    const { rerender } = renderWithI18n(
+      <NoteTitle {...freshProps} onTitleChange={onTitleChange} onFreshEnd={onFreshEnd} />
+    )
+
+    await user.click(screen.getByRole('textbox', { name: /note title/i }))
+    await user.tab()
+
+    expect(onTitleChange).not.toHaveBeenCalled()
+    expect(onFreshEnd).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <I18nextProvider i18n={i18nEn}>
+        <NoteTitle {...freshProps} fresh={false} onTitleChange={onTitleChange} />
+      </I18nextProvider>
+    )
+    expect(screen.getByRole('textbox', { name: /note title/i })).toHaveValue('New note 2')
+  })
+})

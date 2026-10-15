@@ -91,7 +91,7 @@ opens from `[[AI]]`, `[[Yapay Zeka]]`, and `[[Artificial Intelligence]]`.
 A note's other names show in a muted line under its title, such as "also AI · Yapay Zeka".
 The line is hidden while the note has none.
 
-- **Add a name.** Hover over the title area and choose **Add another name**, or choose **Add
+- **Add a name.** Hover over the title area and choose **Add details → Add another name**, or choose **Add
   another name…** in the note's ⋯ menu. Type the name and press Enter. Journal days have
   the same item in their ⋯ menu.
 - **Add more.** Hover over the line and choose the + button at its end.

@@ -6,8 +6,7 @@ with the app.
 
 ## Adding a Cover
 
-Hover the area above a note's title. Three buttons fade in: **Add cover**, **Add tag** and
-**Add property**.
+Hover the note's title area and choose **Add details → Add cover**.
 
 **Add cover** opens the cover picker. It is a command palette, not a gallery: one search field, a
 row of tabs, and a grid you can walk with the arrow keys. `↵` applies the highlighted cover. `⌘↵`
