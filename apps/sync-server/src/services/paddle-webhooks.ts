@@ -1,9 +1,5 @@
-import {
-  upsertSyncEntitlement,
-  type SyncCadence,
-  type SyncEntitlementStatus,
-  type SyncPlan
-} from './entitlements'
+import { writePaddleGrant } from './billing-grants'
+import { type SyncCadence, type SyncEntitlementStatus, type SyncPlan } from './entitlements'
 
 interface PaddleEvent {
   event_id?: string
@@ -106,12 +102,11 @@ export async function applyPaddleWebhook(
     return { processed: false, userId: null }
   }
 
-  await upsertSyncEntitlement(db, {
+  await writePaddleGrant(db, {
     userId: target.userId,
     plan: target.plan,
     cadence: target.cadence ?? cadenceFromBillingCycle(data),
     status: normalizeStatus(eventType, asString(data.status)),
-    source: 'paddle',
     paddleCustomerId: asString(data.customer_id ?? data.customerId),
     paddleSubscriptionId: asString(data.subscription_id ?? data.subscriptionId ?? data.id),
     paddleTransactionId: eventType.startsWith('transaction.') ? asString(data.id) : null,
@@ -148,7 +143,13 @@ async function resolveEntitlementTarget(
   const subscriptionId = asString(data.subscription_id ?? data.subscriptionId ?? data.id)
   if (subscriptionId) {
     const entitlement = await db
-      .prepare('SELECT user_id, plan FROM sync_entitlements WHERE paddle_subscription_id = ?')
+      // Paddle's own plan, not whichever store's grant sync_entitlements currently mirrors.
+      .prepare(
+        `SELECT e.user_id, COALESCE(g.plan, e.plan) AS plan
+         FROM sync_entitlements e
+         LEFT JOIN paddle_grants g ON g.user_id = e.user_id
+         WHERE e.paddle_subscription_id = ?`
+      )
       .bind(subscriptionId)
       .first<{ user_id: string; plan: SyncPlan }>()
     const plan = normalizePlan(entitlement?.plan)

@@ -155,6 +155,28 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
         try await watching { try await session.deleteVault(vaultId: vaultId) }
     }
 
+    // The free path and billing.
+
+    func registerVault(vaultId: String, name: String) async throws {
+        try await watching { try await session.registerVault(vaultId: vaultId, name: name) }
+    }
+
+    func submitAppStoreTransaction(signedTransactionInfo: String) async throws -> BillingStatus {
+        try await watching { try await session.submitAppStoreTransaction(signedTransactionInfo: signedTransactionInfo) }
+    }
+
+    func checkoutToken() async throws -> CheckoutToken {
+        try await watching { try await session.checkoutToken() }
+    }
+
+    func billingPortalUrl() async throws -> String {
+        try await watching { try await session.billingPortalUrl() }
+    }
+
+    func refreshBilling() async throws -> BillingStatus {
+        try await watching { try await session.refreshBilling() }
+    }
+
     func refresh() async throws -> AuthState {
         try await watching { try await session.refresh() }
     }

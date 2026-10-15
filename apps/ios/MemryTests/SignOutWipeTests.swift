@@ -157,6 +157,24 @@ struct VaultContentRemovalTests {
     /// it is not a failure either: a phone that signed in and never opened a
     /// vault has no vaults directory, and so does a phone whose sign-out has
     /// already completed. Both must be able to run this.
+    /// The free path's vault was never on the server and the master key does
+    /// not open it: a sign-out keeps it, and only it.
+    @Test("a sign-out keeps the unattached local vault and removes the rest")
+    func localVaultSurvives() async throws {
+        var first: Vault? = try await openVault(vaultId)
+        var other: Vault? = try await openVault(second)
+        first = nil
+        other = nil
+        let kept = second
+
+        let removed = try VaultContentRemover(files: files, survivor: { kept }).removeAllVaultContent()
+
+        #expect(removed == 1, "only the account vault")
+        #expect(!exists(directory(vaultId)))
+        #expect(exists(directory(second).appendingPathComponent(VaultFiles.dataDatabaseName)))
+        try? FileManager.default.removeItem(at: root)
+    }
+
     @Test("removing nothing is not a failure and is not a deletion")
     func removingNothingSucceeds() throws {
         let removed = try VaultContentRemover(files: files).removeAllVaultContent()

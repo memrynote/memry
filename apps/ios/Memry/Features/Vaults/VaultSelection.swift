@@ -131,6 +131,11 @@ final class VaultSelectionViewModel {
     /// wipes the phone like any other call.
     let session: (any AuthSessionProtocol)?
 
+    /// Whether a vault may sync. `false` for the local vault while the
+    /// account does not hold it: it opens with no filler, so no pass and no
+    /// socket reach a server that would refuse it.
+    private let syncable: @Sendable (String) -> Bool
+
     /// Where the last open vault is remembered. Injected so a test reads and
     /// writes its own, rather than the process-wide one every other test and
     /// the running app share.
@@ -142,9 +147,11 @@ final class VaultSelectionViewModel {
         mint: (any VaultFillerMinting)? = nil,
         secureStore: (any SecureStore)? = nil,
         session: (any AuthSessionProtocol)? = nil,
-        snapshot: LaunchSnapshot = .shared
+        snapshot: LaunchSnapshot = .shared,
+        syncable: @escaping @Sendable (String) -> Bool = { _ in true }
     ) {
         self.snapshot = snapshot
+        self.syncable = syncable
         self.registry = registry
         self.opener = opener
         self.mint = mint
@@ -216,7 +223,7 @@ final class VaultSelectionViewModel {
             // that a vault which cannot be **filled** is never presented as a
             // vault that can only be read. `sync(session:)` blocks and does no
             // I/O, so this costs one trip through the core queue.
-            filler = try await mint?.filler(for: opened)
+            filler = syncable(summary.id) ? try await mint?.filler(for: opened) : nil
             // Before `vault` is published, so the shell built from it reads
             // this vault's saved tab and stacks.
             snapshot.vaultOpened(summary.id)

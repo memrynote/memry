@@ -823,7 +823,11 @@ auth.post('/checkout-token', authMiddleware, async (c) => {
     exp: expiresAt,
     plan: entitlement?.plan,
     cadence: entitlement?.cadence ?? undefined,
-    hasSubscription: Boolean(entitlement?.paddle_subscription_id && entitlement.status === 'active')
+    // An App Store grant counts too: buying Paddle on top of it would bill the user twice.
+    hasSubscription: Boolean(
+      entitlement?.status === 'active' &&
+      (entitlement.paddle_subscription_id || entitlement.source === 'app_store')
+    )
   })
 
   return c.json({ checkoutToken, expiresAt })

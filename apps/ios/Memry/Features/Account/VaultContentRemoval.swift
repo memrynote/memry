@@ -56,15 +56,25 @@ protocol VaultContentRemoval: Sendable {
 struct VaultContentRemover: VaultContentRemoval {
     private let files: VaultFiles
     private let filesystem: any VaultContentFiles
+    /// The one vault directory a sign-out keeps: the free path's vault while no
+    /// account holds it. It was never on the server and the master key does
+    /// not open it, so removing it would delete notes that exist nowhere else.
+    private let survivor: @Sendable () -> String?
 
     /// - Parameters:
     ///   - files: T144's seam, which owns `Application Support/<bundle>/vault`
     ///     and is the only thing that knows where it is.
     ///   - filesystem: the three calls this makes, injected so a refusal is
     ///     reachable. Production passes the default.
-    init(files: VaultFiles, filesystem: any VaultContentFiles = SystemVaultContentFiles()) {
+    ///   - survivor: the vault id to keep, read at removal time.
+    init(
+        files: VaultFiles,
+        filesystem: any VaultContentFiles = SystemVaultContentFiles(),
+        survivor: @escaping @Sendable () -> String? = { nil }
+    ) {
         self.files = files
         self.filesystem = filesystem
+        self.survivor = survivor
     }
 
     @discardableResult
@@ -97,7 +107,9 @@ struct VaultContentRemover: VaultContentRemoval {
         // succeeds or partly fails with no way to say which vaults went, and
         // the recovery — run it again — needs the ones that did go to stay
         // gone.
+        let kept = survivor()
         for child in children {
+            if child.lastPathComponent == kept { continue }
             do {
                 try remove(child)
                 removed += 1
@@ -105,11 +117,14 @@ struct VaultContentRemover: VaultContentRemoval {
                 failures.append(error)
             }
         }
-        do {
-            try remove(vaults)
-            removed += 1
-        } catch {
-            failures.append(error)
+        // The container stays when it holds the survivor.
+        if kept == nil || !children.contains(where: { $0.lastPathComponent == kept }) {
+            do {
+                try remove(vaults)
+                removed += 1
+            } catch {
+                failures.append(error)
+            }
         }
 
         if let first = failures.first {

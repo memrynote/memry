@@ -180,22 +180,49 @@ final class AuthStartup {
     /// surface sits on the far side of `VaultSync.firstSync`.
     func vaultModel(for state: AuthState) -> VaultSelectionViewModel? {
         guard state == .registered, let session else { return nil }
+        let local = LocalVaultStore()
+        let secureStore = Keychain(emitter: emitter, items: keychainItems)
         return VaultSelectionViewModel(
-            registry: CoreVaultRegistry(session: session) { [emitter, keychainItems] in
-                // A read that throws is a locked phone, and the list then
-                // shows placeholders rather than failing.
-                try? Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey)
-            },
-            opener: CoreVaultOpener(
-                files: VaultFiles(emitter: emitter),
+            // The free path's vault joins the account here, as a vault of its
+            // own, and stays listed and local while the account cannot take it.
+            registry: AttachingVaultRegistry(
+                inner: CoreVaultRegistry(session: session) { [emitter, keychainItems] in
+                    // A read that throws is a locked phone, and the list then
+                    // shows placeholders rather than failing.
+                    try? Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey)
+                },
+                attach: LocalVaultAttach(session: session, store: local)
+            ),
+            opener: IdentityEnsuringOpener(
+                inner: CoreVaultOpener(files: VaultFiles(emitter: emitter), executor: executor),
+                secureStore: secureStore,
                 executor: executor
             ),
-            mint: coreSession.map { CoreVaultFillerMint(session: $0, executor: executor) },
+            mint: coreSession.map {
+                LocalSeedingMint(inner: CoreVaultFillerMint(session: $0, executor: executor), store: local, executor: executor)
+            },
             // Phase 3's writes: the core derives this device's identity from
             // the signing key here, so a browse screen built without it can
             // read the vault but never write to it.
-            secureStore: Keychain(emitter: emitter, items: keychainItems),
-            session: session
+            secureStore: secureStore,
+            session: session,
+            syncable: { !local.isUnattached($0) }
+        )
+    }
+
+    /// The free path: the local vault, with no session, no filler and so no
+    /// sync pass or socket. Writes still need a device identity, which the
+    /// opener mints before the vault opens.
+    func localVaultModel() -> VaultSelectionViewModel {
+        let secureStore = Keychain(emitter: emitter, items: keychainItems)
+        return VaultSelectionViewModel(
+            registry: LocalVaultRegistry(store: LocalVaultStore()),
+            opener: IdentityEnsuringOpener(
+                inner: CoreVaultOpener(files: VaultFiles(emitter: emitter), executor: executor),
+                secureStore: secureStore,
+                executor: executor
+            ),
+            secureStore: secureStore
         )
     }
 
@@ -300,7 +327,14 @@ final class AuthStartup {
             account = AccountViewModel(
                 service: SignOutService(
                     session: session,
-                    content: VaultContentRemover(files: VaultFiles(emitter: emitter)),
+                    content: VaultContentRemover(files: VaultFiles(emitter: emitter)) {
+                        // An unattached local vault survives the sign-out; an
+                        // attached one is an account vault and goes with it.
+                        let local = LocalVaultStore()
+                        if let id = local.id, !local.isAttached { return id }
+                        local.forget()
+                        return nil
+                    },
                     executor: executor
                 ),
                 publish: { [weak self] state in self?.publish(state) }

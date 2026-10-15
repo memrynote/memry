@@ -19,6 +19,8 @@ struct WelcomeView: View {
     /// Called when the user is done here — by finishing or by skipping. The
     /// caller owns the flag; this view never decides that sign-in comes next.
     let onFinish: () -> Void
+    /// "Already have an account?" — straight to sign-in, past the choice.
+    let onSignIn: () -> Void
 
     @State private var page = Page.promise
 
@@ -49,7 +51,7 @@ struct WelcomeView: View {
             Button(page == .promise ? "Get started" : "Continue") { advance() }
                 .memryPrimaryAction()
             if page == .promise {
-                Button("Already have an account? Sign in", action: onFinish)
+                Button("Already have an account? Sign in", action: onSignIn)
                     .font(Tokens.Typography.supporting.font)
                     .tint(Tokens.Text.primary.color)
                     .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
@@ -100,7 +102,7 @@ private struct PromisePage: View {
             Text("Everything you think, in one quiet place.")
                 .font(Tokens.Typography.welcomeHeadline.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("Notes, tasks and journals that stay yours. Encrypted on your device before they ever leave it.")
+            Text("Notes, tasks and journals that stay yours. No account needed — start writing on this iPhone.")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
             Spacer()
@@ -119,7 +121,7 @@ private struct TrustPage: View {
                 Text("How Memry keeps it private")
                     .font(Tokens.Typography.screenTitle.font)
                     .foregroundStyle(Tokens.Text.primary.color)
-                Text("Three things worth knowing before you sign in.")
+                Text("Three things worth knowing before you start.")
                     .font(Tokens.Typography.body.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
@@ -143,8 +145,8 @@ private struct TrustPage: View {
                 Fact(
                     symbol: "laptopcomputer.and.iphone",
                     tinted: false,
-                    title: "One vault, every device",
-                    detail: "Link this phone to your computer once, and both stay in step."
+                    title: "Sync when you want it",
+                    detail: "Add an account any time to keep your Mac and iPhone in step."
                 )
             }
             Spacer()
@@ -203,5 +205,5 @@ private struct PageDots: View {
 }
 
 #Preview {
-    WelcomeView {}
+    WelcomeView(onFinish: {}, onSignIn: {})
 }

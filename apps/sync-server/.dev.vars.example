@@ -13,6 +13,10 @@ WEBHOOK_HMAC_KEY=replace-me
 PADDLE_WEBHOOK_SECRET=replace-me
 PADDLE_CHECKOUT_TOKEN_SECRET=replace-me
 TELEMETRY_HMAC_KEY=replace-me
+# App Store billing. wrangler.toml sets both per env, override here only to test locally.
+# Xcode (StoreKit testing) transactions are always rejected: Apple does not sign them.
+# APPLE_BUNDLE_ID=com.memrynote.app
+# APPLE_APP_STORE_ENVIRONMENTS=Sandbox
 # Optional: presigned R2 transfers (#1836). Set all four to let attachments
 # upload/download direct to R2 with short-TTL signed URLs; leave unset to keep
 # everything on the proxied blob paths (the client falls back automatically).

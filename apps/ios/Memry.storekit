@@ -1,0 +1,124 @@
+{
+  "identifier": "5D3F1E7A",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "589.99",
+      "familyShareable": false,
+      "internalID": "70000010",
+      "localizations": [
+        {
+          "description": "Lifetime sync, founder supporter.",
+          "displayName": "Believer",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.memrynote.app.believer",
+      "referenceName": "Believer",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "6E1A1C2B",
+      "localizations": [],
+      "name": "Memry Sync",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "5.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "70000000",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Encrypted sync across your devices.",
+              "displayName": "Plus Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.memrynote.app.plus.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Plus Monthly",
+          "subscriptionGroupID": "6E1A1C2B",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "56.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "70000001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Encrypted sync across your devices.",
+              "displayName": "Plus Yearly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.memrynote.app.plus.annual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Plus Yearly",
+          "subscriptionGroupID": "6E1A1C2B",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "11.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "70000002",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Encrypted sync across your devices.",
+              "displayName": "Pro Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.memrynote.app.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Pro Monthly",
+          "subscriptionGroupID": "6E1A1C2B",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "112.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "70000003",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Encrypted sync across your devices.",
+              "displayName": "Pro Yearly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.memrynote.app.pro.annual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Pro Yearly",
+          "subscriptionGroupID": "6E1A1C2B",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

@@ -103,6 +103,7 @@ function createPaddleDb() {
           if (sql.includes('FROM sync_entitlements')) return null
           return null
         }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
         run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
       }
       return stmt

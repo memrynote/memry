@@ -714,6 +714,20 @@ fields (chapter 04 §4.16) are null for a vault whose icon was never set, and
 absent from servers that predate vault icons; a reader MUST treat absent as
 null.
 
+**`POST /sync/vaults`** — request `{ vaultUuid, encryptedName, nameNonce }`
+(`vaultUuid` 1–128 characters, the name fields 1–2048 and 1–128), response
+`{ success: true }` (`apps/sync-server/src/routes/sync.ts:98-133`). It registers
+a vault the account does not hold yet or renames one it does, so a repeat is not
+an error. `encryptedName` is the name sealed with XChaCha20-Poly1305 under the
+vault key (chapter 01 §1.6) with `vault-name-v1:<vaultUuid>` as associated data,
+ciphertext and nonce in standard base64
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:46-53`). It answers `402`
+without an active sync entitlement (`:115-117`) and `402 SYNC_VAULT_LIMIT_EXCEEDED`
+when the plan has no free vault slot (`ensureSyncVaultAllowed`,
+`apps/sync-server/src/services/entitlements.ts`). A client keeps `vaultUuid` within
+`[A-Za-z0-9_-]`, because `DELETE /sync/vaults/:vaultId` accepts nothing else
+(`:142`); a lowercase UUID is the usual choice.
+
 **`PUT /sync/vaults/:vaultId/icon`** — request
 `{ encryptedIcon: string | null, iconNonce: string | null, iconUpdatedAt: integer }`,
 response `{ success: true, applied: boolean }`. Both icon fields set is an icon,

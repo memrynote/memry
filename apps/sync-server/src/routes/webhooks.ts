@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 
 import { createLogger } from '../lib/logger'
 import { applyPaddleWebhook, verifyPaddleWebhookSignature } from '../services/paddle-webhooks'
+import { applyAppStoreNotification } from '../services/app-store-billing'
 import { lookupChannel, verifyChannelToken } from '../services/google-webhooks'
 import {
   captureBusinessEvent,
@@ -114,6 +115,23 @@ webhooks.post('/paddle', async (c) => {
     }
   }
 
+  return c.json({ success: true, ...result })
+})
+
+// App Store Server Notifications V2. Trust comes from the signed payload, not the caller: a
+// failed verification throws a 400 and Apple retries; a duplicate notificationUUID is a no-op.
+webhooks.post('/app-store', async (c) => {
+  let signedPayload: unknown
+  try {
+    signedPayload = ((await c.req.json()) as { signedPayload?: unknown }).signedPayload
+  } catch {
+    signedPayload = undefined
+  }
+  if (typeof signedPayload !== 'string' || signedPayload.length === 0) {
+    return c.json({ error: 'Missing signedPayload' }, 400)
+  }
+
+  const result = await applyAppStoreNotification(c.env, signedPayload)
   return c.json({ success: true, ...result })
 })
 

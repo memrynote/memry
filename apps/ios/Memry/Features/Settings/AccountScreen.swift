@@ -43,16 +43,7 @@ struct AccountScreen: View {
             } footer: {
                 SettingsFooter(SettingsCopy.downloadFooter)
             }
-            Section {
-                LabeledContent(SettingsCopy.plan, value: planLine)
-                    .accessibilityIdentifier("settings.account.plan")
-                SettingsLinkRow(title: SettingsCopy.storage, value: storageLine, route: .storage)
-                SettingsLinkRow(title: SettingsCopy.devices, value: devicesLine, route: .devices)
-            } header: {
-                Text(SettingsCopy.planAndDevices)
-            } footer: {
-                SettingsFooter(SettingsCopy.planFooter)
-            }
+            AccountSubscriptionSection(context: context, storageLine: storageLine, devicesLine: devicesLine)
             if let signOut {
                 SignOutSection(model: signOut)
             }
@@ -65,11 +56,6 @@ struct AccountScreen: View {
             await context.account.loadStorage()
             await context.account.loadDevices()
         }
-    }
-
-    private var planLine: String {
-        guard let billing = context.account.billing else { return "—" }
-        return SettingsCopy.planLine(SettingsLabels.plan(billing.plan), SettingsLabels.plan(billing.status))
     }
 
     private var storageLine: String? {

@@ -152,20 +152,46 @@ struct SyncDot: View {
 /// The account card on the Settings root (01) and Account (02).
 struct SettingsAccountCard: View {
     let email: String?
+    /// Shown instead of the email when there is no account (the free vault).
+    let title: String?
     let line: String
-    let dot: SyncDot.State
-    var showsBadge = false
+    /// `nil` when nothing syncs, so no dot claims a state.
+    let dot: SyncDot.State?
+    let showsBadge: Bool
+
+    init(email: String?, line: String, dot: SyncDot.State?, showsBadge: Bool = false) {
+        self.email = email
+        title = nil
+        self.line = line
+        self.dot = dot
+        self.showsBadge = showsBadge
+    }
+
+    init(title: String, line: String, dot: SyncDot.State?) {
+        email = nil
+        self.title = title
+        self.line = line
+        self.dot = dot
+        showsBadge = false
+    }
 
     var body: some View {
         HStack(spacing: Tokens.Space.medium) {
-            Text(initial)
+            // No account means no initial to show; the phone is what holds the vault.
+            Group {
+                if email == nil, title != nil {
+                    Image(systemName: "iphone")
+                } else {
+                    Text(initial)
+                }
+            }
                 .font(Tokens.Typography.heading.font)
                 .foregroundStyle(Tokens.Text.tint.color)
                 .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
                 .background(Tokens.Tint.base.color.opacity(Tokens.Palette.chipFillAlpha * 1.5), in: .circle)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(email ?? SettingsCopy.account)
+                Text(email ?? title ?? SettingsCopy.account)
                     .font(Tokens.Typography.heading.font)
                     .foregroundStyle(Tokens.Text.primary.color)
                     .lineLimit(2)
@@ -175,7 +201,7 @@ struct SettingsAccountCard: View {
                         .foregroundStyle(Tokens.Text.secondary.color)
                 }
                 HStack(spacing: Tokens.Space.small) {
-                    SyncDot(state: dot)
+                    if let dot { SyncDot(state: dot) }
                     Text(line)
                         .font(Tokens.Typography.caption.font)
                         .foregroundStyle(Tokens.Text.secondary.color)

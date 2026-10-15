@@ -110,6 +110,24 @@ impl Vault {
         self.id.clone()
     }
 
+    /// Queues every record this vault has never pushed, before its first sync
+    /// to an account (desktop's `seedUnclocked`,
+    /// `apps/desktop/src/main/sync/initial-seed.ts`). Returns how many it
+    /// queued.
+    ///
+    /// **Always 0 here, by construction.** Desktop needs the seed because its
+    /// items predate sync and carry no clock. Every core write commits its
+    /// outbox row in the same transaction as the row it changes
+    /// (`sync::outbox`, FR-030), whether or not an account exists, and an
+    /// outbox row leaves only when the server acknowledges it or it is retired
+    /// as unsendable. So a local-only vault's outbox already holds every
+    /// unpushed change, and the first sync pass after `register_vault` sends
+    /// it. Kept as the shell's one call so the attach flow does not depend on
+    /// that invariant staying true.
+    pub fn seed_unsynced(&self) -> Result<u64, StorageError> {
+        Ok(0)
+    }
+
     /// The read-only sync that **fills** this vault's database (T236,
     /// spec-defect 136).
     ///

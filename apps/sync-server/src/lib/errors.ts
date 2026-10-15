@@ -46,6 +46,10 @@ export const ErrorCodes = {
   SYNC_DELETE_WINS: 'SYNC_DELETE_WINS',
   SYNC_VERSION_INCOMPATIBLE: 'SYNC_VERSION_INCOMPATIBLE',
   SYNC_PAYMENT_REQUIRED: 'SYNC_PAYMENT_REQUIRED',
+  // A Paddle billing route called while the App Store bills the winning grant.
+  BILLING_MANAGED_BY_APP_STORE: 'BILLING_MANAGED_BY_APP_STORE',
+  // A signed App Store transaction or notification that fails verification or does not belong to the caller.
+  BILLING_APP_STORE_INVALID: 'BILLING_APP_STORE_INVALID',
   SYNC_VAULT_LIMIT_EXCEEDED: 'SYNC_VAULT_LIMIT_EXCEEDED',
   SYNC_VAULT_NOT_FOUND: 'SYNC_VAULT_NOT_FOUND',
   // A coversThrough snapshot push below the cursor of a snapshot another

@@ -6,7 +6,7 @@
 ## 2.1 The route table
 
 **Normative** (`apps/sync-server/src/routes/auth.ts`, mounted at `/auth`,
-`apps/sync-server/src/index.ts:230`):
+`apps/sync-server/src/index.ts:232`):
 
 | Method | Path                             | Auth                              | Request / response schema                                        | Line    |
 | ------ | -------------------------------- | --------------------------------- | ---------------------------------------------------------------- | ------- |
@@ -23,15 +23,25 @@
 | GET    | `/auth/recovery`                 | none, IP rate limited             | `{ kdfSalt, keyVerifier }`, possibly dummy                       | `:736`  |
 | POST   | `/auth/setup`                    | access token                      | `FirstDeviceSetupRequestSchema`                                  | `:761`  |
 | GET    | `/auth/devices`                  | access token                      | device list                                                      | `:797`  |
-| POST   | `/auth/refresh`                  | refresh token in the body         | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema`       | `:903`  |
-| POST   | `/auth/logout`                   | access token                      | —                                                                | `:947`  |
-| POST   | `/auth/email/change`             | access token                      | `EmailChangeRequestSchema`                                       | `:974`  |
-| POST   | `/auth/email/change/verify`      | access token                      | `EmailChangeVerifySchema`                                        | `:1004` |
-| POST   | `/auth/logout-all`               | access token                      | —                                                                | `:1022` |
-| DELETE | `/auth/account`                  | access token                      | `DeleteAccountRequestSchema`                                     | `:1037` |
+| POST   | `/auth/refresh`                  | refresh token in the body         | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema`       | `:907`  |
+| POST   | `/auth/logout`                   | access token                      | —                                                                | `:951`  |
+| POST   | `/auth/email/change`             | access token                      | `EmailChangeRequestSchema`                                       | `:978`  |
+| POST   | `/auth/email/change/verify`      | access token                      | `EmailChangeVerifySchema`                                        | `:1008` |
+| POST   | `/auth/logout-all`               | access token                      | —                                                                | `:1026` |
+| DELETE | `/auth/account`                  | access token                      | `DeleteAccountRequestSchema`                                     | `:1041` |
 
-`/auth/checkout-token` (`:812`) and the `/auth/billing*` family (`:832`, `:843`,
-`:864`, `:869`, `:879`, `:890`, `:896`) exist and are **out of scope** for this feature.
+`/auth/checkout-token` (`:812`) and the `/auth/billing*` family (`:836`, `:847`,
+`:868`, `:873`, `:883`, `:894`, `:900`) exist; §2.1.2 specifies the parts a
+native client uses.
+The Rust core calls four of them for the iOS shell: `POST /auth/checkout-token` → `{ checkoutToken, expiresAt }`
+(`:812`), `POST /auth/billing/reconcile` with `{}` (`:847`),
+`POST /auth/billing/portal-session` → `{ portalUrl }`, `409` when the account has
+no Paddle customer (`:868`, `createPaddlePortalSession` in `apps/sync-server/src/services/paddle-billing.ts`),
+and `POST /auth/billing/app-store/transactions` with
+`{ signedTransactionInfo }` (§2.1.2). The ones that answer with a status answer with the
+`GET /auth/billing` shape (`:836`), whose `store`, `manageUrl`, `willRenew`,
+`appAccountToken` and `canManageBilling` a reader MUST treat as optional
+(`crates/memry-core/src/protocol/billing.rs:1-14`).
 
 ### 2.1.1 The request and response shapes this feature uses
 
@@ -122,6 +132,63 @@ Request: `kdfSalt` (string), `keyVerifier` (string).
 Request: `idToken` (string, up to 4096), `sessionNonce?`, `devicePublicKey?`.
 Response: `success` (bool), `isNewUser?`, `needsSetup?` (bools),
 `setupToken?` (string).
+
+### 2.1.2 Billing status and App Store purchases
+
+**Normative.** `GET /auth/billing` and every billing route that returns a status
+answer `BillingStatusResponse`
+(`apps/sync-server/src/services/paddle-billing.ts:22-48`): `plan`
+(`free | plus | pro | believer`), `cadence` (`monthly | annual | lifetime | null`),
+`status` (`inactive | active | past_due | paused | canceled`), `source`
+(`none | paddle | app_store | admin_override | dev_seed`), `email`, `limits`,
+`usage`, `expiresAt` (epoch seconds or `null`), `canManageBilling`, and the
+fields added for App Store billing: `store` (`paddle | app_store | null`, the
+store billing the winning grant), `manageUrl`
+(`https://apps.apple.com/account/subscriptions` for `app_store`, else `null`),
+`willRenew` (bool or `null` when unknown) and `appAccountToken` (UUID string).
+Servers before App Store billing omit the four new fields. `canManageBilling`
+keeps its meaning, the Paddle portal is available, and is `false` whenever
+`store` is `app_store` (`paddle-billing.ts:95`).
+
+**`appAccountToken`.** A client MUST pass it to StoreKit as the purchase's
+`appAccountToken`. It is the user id when that is a UUID, and otherwise a
+UUIDv5 of the user id under a fixed namespace
+(`apps/sync-server/src/services/app-store-account-token.ts:12-15`).
+
+**`POST /auth/billing/app-store/transactions`** (access token,
+`apps/sync-server/src/routes/app-store-billing.ts:17`, mounted at
+`apps/sync-server/src/index.ts:233`).
+Request: `signedTransactionInfo` (string, StoreKit 2 `jwsRepresentation`).
+Response: `BillingStatusResponse`. The server verifies the JWS chain against
+the pinned Apple Root CA - G3 (`apps/sync-server/src/lib/apple-jws.ts:29-76`),
+then requires `bundleId` = `APPLE_BUNDLE_ID`, an `environment` listed in
+`APPLE_APP_STORE_ENVIRONMENTS`, a known product, and `appAccountToken` equal to
+the caller's (`apps/sync-server/src/services/app-store-billing.ts:191-210`).
+`Xcode` environment transactions are always refused: Apple does not sign them
+(`app-store-billing.ts:19-21`). A failure answers `400`, or `403` for another
+account's purchase, with code `BILLING_APP_STORE_INVALID`. The route is
+idempotent, and a JWS with an older `signedDate` never overwrites a newer one
+(`app-store-billing.ts:156`). Products: `com.memrynote.app.{plus,pro}.{monthly,annual}`
+and the non-consumable `com.memrynote.app.believer` (plan `believer`, cadence
+`lifetime`, no expiry) (`app-store-billing.ts:11-17`).
+
+**`POST /webhooks/app-store`** (`apps/sync-server/src/routes/webhooks.ts:123`,
+mounted at `apps/sync-server/src/index.ts:242`) takes App Store Server
+Notifications V2 `{ signedPayload }`. The outer and nested JWS are verified the
+same way. A repeated `notificationUUID` is a no-op. A notification maps to its
+user by the stored `originalTransactionId`, else by `appAccountToken`
+(`app-store-billing.ts:268-276`). `REFUND`, `REVOKE`, `EXPIRED` and
+`GRACE_PERIOD_EXPIRED` end the grant, and `DID_FAIL_TO_RENEW` makes it
+`past_due` (`app-store-billing.ts:106-126`).
+
+**One entitlement.** The paid-sync gate reads one row per user. Each store
+keeps its own grant, and every billing writer recomputes that row from the best
+active grant: `believer` > `pro` > `plus`, then the later expiry
+(`apps/sync-server/src/services/billing-grants.ts:71-139`). While `store` is
+`app_store`, `POST /auth/billing/change-plan`, its `/preview`, and
+`/auth/billing/portal-session` answer `409` `BILLING_MANAGED_BY_APP_STORE`, and
+the checkout token's `hasSubscription` is `true`
+(`apps/sync-server/src/routes/auth.ts:826-830`).
 
 ## 2.2 Access tokens
 
@@ -260,6 +327,15 @@ non-renewable five-minute token
 A client whose user has to find a 24-word recovery phrase SHOULD commit the key:
 finding the phrase routinely outlasts five minutes
 (`apps/desktop/src/main/ipc/auth-device-handlers.ts:432-435`).
+
+**The device key may predate the account.** A client that lets a vault be used
+before sign-in mints the signing key on the first local write, because every
+field clock names the device by the id derived from it (chapter 01 §1.5). It
+MUST then commit and register that same key rather than mint another at sign-in;
+otherwise everything written offline carries an id no registered device owns.
+The core has one mint-or-reuse rule for both paths
+(`crates/memry-core/src/api/auth/identity.rs:20-27`, exported as
+`ensure_device_identity` at `:37`).
 
 ### 2.5.1 What renewal signs
 

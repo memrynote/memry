@@ -892,6 +892,42 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func restore() throws  -> AuthState
     
     /**
+     * The web billing portal's URL. `ApiError::BillingPortalUnavailable` when
+     * the account has no web billing customer.
+     */
+    func billingPortalUrl() async throws  -> String
+    
+    /**
+     * A short-lived token for the web checkout (`POST /auth/checkout-token`).
+     */
+    func checkoutToken() async throws  -> CheckoutToken
+    
+    /**
+     * Re-reads the entitlement (`POST /auth/billing/reconcile`), for after a
+     * purchase or a return from the web checkout.
+     */
+    func refreshBilling() async throws  -> BillingStatus
+    
+    /**
+     * `POST /sync/vaults`: adds a vault this device created locally to the
+     * account, as a vault of its own, under `name` sealed with the vault key
+     * as desktop seals it. Registering a vault already on the account is a
+     * success.
+     *
+     * `ApiError::PaymentRequired` when the account has no sync plan or no
+     * free vault slot; `ApiError::NoMasterKey` before the recovery phrase has
+     * unlocked this device. `vault_id` is the id the vault was opened under:
+     * 1 to 128 of `[A-Za-z0-9_-]`, a lowercase UUID in practice.
+     */
+    func registerVault(vaultId: String, name: String) async throws 
+    
+    /**
+     * Hands a StoreKit 2 transaction (`jwsRepresentation`) to the server,
+     * which verifies it with Apple, and returns the resulting billing status.
+     */
+    func submitAppStoreTransaction(signedTransactionInfo: String) async throws  -> BillingStatus
+    
+    /**
      * The approver half of linking over this session.
      */
     func deviceApprover()  -> DeviceApprover
@@ -1490,6 +1526,112 @@ open func restore()throws  -> AuthState  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * The web billing portal's URL. `ApiError::BillingPortalUnavailable` when
+     * the account has no web billing customer.
+     */
+open func billingPortalUrl()async throws  -> String  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_billing_portal_url(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * A short-lived token for the web checkout (`POST /auth/checkout-token`).
+     */
+open func checkoutToken()async throws  -> CheckoutToken  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_checkout_token(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeCheckoutToken_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Re-reads the entitlement (`POST /auth/billing/reconcile`), for after a
+     * purchase or a return from the web checkout.
+     */
+open func refreshBilling()async throws  -> BillingStatus  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_refresh_billing(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBillingStatus_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * `POST /sync/vaults`: adds a vault this device created locally to the
+     * account, as a vault of its own, under `name` sealed with the vault key
+     * as desktop seals it. Registering a vault already on the account is a
+     * success.
+     *
+     * `ApiError::PaymentRequired` when the account has no sync plan or no
+     * free vault slot; `ApiError::NoMasterKey` before the recovery phrase has
+     * unlocked this device. `vault_id` is the id the vault was opened under:
+     * 1 to 128 of `[A-Za-z0-9_-]`, a lowercase UUID in practice.
+     */
+open func registerVault(vaultId: String, name: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_register_vault(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(vaultId),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Hands a StoreKit 2 transaction (`jwsRepresentation`) to the server,
+     * which verifies it with Apple, and returns the resulting billing status.
+     */
+open func submitAppStoreTransaction(signedTransactionInfo: String)async throws  -> BillingStatus  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_submit_app_store_transaction(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(signedTransactionInfo)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBillingStatus_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
 }
     
     /**
@@ -11538,6 +11680,24 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func search() throws  -> Search
     
     /**
+     * Queues every record this vault has never pushed, before its first sync
+     * to an account (desktop's `seedUnclocked`,
+     * `apps/desktop/src/main/sync/initial-seed.ts`). Returns how many it
+     * queued.
+     *
+     * **Always 0 here, by construction.** Desktop needs the seed because its
+     * items predate sync and carry no clock. Every core write commits its
+     * outbox row in the same transaction as the row it changes
+     * (`sync::outbox`, FR-030), whether or not an account exists, and an
+     * outbox row leaves only when the server acknowledges it or it is retired
+     * as unsendable. So a local-only vault's outbox already holds every
+     * unpushed change, and the first sync pass after `register_vault` sends
+     * it. Kept as the shell's one call so the attach flow does not depend on
+     * that invariant staying true.
+     */
+    func seedUnsynced() throws  -> UInt64
+    
+    /**
      * The synced settings item over this vault (spec 006 ST10). Needs the
      * keychain for the device identity its writes tick.
      */
@@ -11769,6 +11929,31 @@ open func search()throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Queues every record this vault has never pushed, before its first sync
+     * to an account (desktop's `seedUnclocked`,
+     * `apps/desktop/src/main/sync/initial-seed.ts`). Returns how many it
+     * queued.
+     *
+     * **Always 0 here, by construction.** Desktop needs the seed because its
+     * items predate sync and carry no clock. Every core write commits its
+     * outbox row in the same transaction as the row it changes
+     * (`sync::outbox`, FR-030), whether or not an account exists, and an
+     * outbox row leaves only when the server acknowledges it or it is retired
+     * as unsendable. So a local-only vault's outbox already holds every
+     * unpushed change, and the first sync pass after `register_vault` sends
+     * it. Kept as the shell's one call so the attach flow does not depend on
+     * that invariant staying true.
+     */
+open func seedUnsynced()throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_seed_unsynced(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -14177,13 +14362,50 @@ public struct BillingStatus: Equatable, Hashable {
     public var maxVaults: Int64
     public var versionHistoryDays: Int64
     public var expiresAt: Int64?
+    /**
+     * `app_store` or `paddle`; absent from servers that predate App Store
+     * billing, and for an account that never bought.
+     */
+    public var store: String?
+    /**
+     * Where this purchase is managed: the App Store subscriptions page or
+     * the web portal. Absent from older servers.
+     */
+    public var manageUrl: String?
+    public var willRenew: Bool?
+    /**
+     * The UUID to pass as StoreKit's `appAccountToken`, so a purchase made on
+     * this device is bound to this account server-side.
+     */
+    public var appAccountToken: String?
+    /**
+     * The account has a web billing customer, so `billing_portal_url` can
+     * answer. Optional because older servers omit it.
+     */
+    public var canManageBilling: Bool?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(
         /**
          * The account's email, as `GET /auth/billing` reports it.
-         */email: String?, plan: String, status: String, cadence: String?, storageLimit: Int64, storageUsed: Int64, maxFileSize: Int64, maxVaults: Int64, versionHistoryDays: Int64, expiresAt: Int64?) {
+         */email: String?, plan: String, status: String, cadence: String?, storageLimit: Int64, storageUsed: Int64, maxFileSize: Int64, maxVaults: Int64, versionHistoryDays: Int64, expiresAt: Int64?, 
+        /**
+         * `app_store` or `paddle`; absent from servers that predate App Store
+         * billing, and for an account that never bought.
+         */store: String?, 
+        /**
+         * Where this purchase is managed: the App Store subscriptions page or
+         * the web portal. Absent from older servers.
+         */manageUrl: String?, willRenew: Bool?, 
+        /**
+         * The UUID to pass as StoreKit's `appAccountToken`, so a purchase made on
+         * this device is bound to this account server-side.
+         */appAccountToken: String?, 
+        /**
+         * The account has a web billing customer, so `billing_portal_url` can
+         * answer. Optional because older servers omit it.
+         */canManageBilling: Bool?) {
         self.email = email
         self.plan = plan
         self.status = status
@@ -14194,6 +14416,11 @@ public struct BillingStatus: Equatable, Hashable {
         self.maxVaults = maxVaults
         self.versionHistoryDays = versionHistoryDays
         self.expiresAt = expiresAt
+        self.store = store
+        self.manageUrl = manageUrl
+        self.willRenew = willRenew
+        self.appAccountToken = appAccountToken
+        self.canManageBilling = canManageBilling
     }
 
     
@@ -14221,7 +14448,12 @@ public struct FfiConverterTypeBillingStatus: FfiConverterRustBuffer {
                 maxFileSize: FfiConverterInt64.read(from: &buf), 
                 maxVaults: FfiConverterInt64.read(from: &buf), 
                 versionHistoryDays: FfiConverterInt64.read(from: &buf), 
-                expiresAt: FfiConverterOptionInt64.read(from: &buf)
+                expiresAt: FfiConverterOptionInt64.read(from: &buf), 
+                store: FfiConverterOptionString.read(from: &buf), 
+                manageUrl: FfiConverterOptionString.read(from: &buf), 
+                willRenew: FfiConverterOptionBool.read(from: &buf), 
+                appAccountToken: FfiConverterOptionString.read(from: &buf), 
+                canManageBilling: FfiConverterOptionBool.read(from: &buf)
         )
     }
 
@@ -14236,6 +14468,11 @@ public struct FfiConverterTypeBillingStatus: FfiConverterRustBuffer {
         FfiConverterInt64.write(value.maxVaults, into: &buf)
         FfiConverterInt64.write(value.versionHistoryDays, into: &buf)
         FfiConverterOptionInt64.write(value.expiresAt, into: &buf)
+        FfiConverterOptionString.write(value.store, into: &buf)
+        FfiConverterOptionString.write(value.manageUrl, into: &buf)
+        FfiConverterOptionBool.write(value.willRenew, into: &buf)
+        FfiConverterOptionString.write(value.appAccountToken, into: &buf)
+        FfiConverterOptionBool.write(value.canManageBilling, into: &buf)
     }
 }
 
@@ -16744,6 +16981,69 @@ public func FfiConverterTypeCanvasRecord_lift(_ buf: RustBuffer) throws -> Canva
 #endif
 public func FfiConverterTypeCanvasRecord_lower(_ value: CanvasRecord) -> RustBuffer {
     return FfiConverterTypeCanvasRecord.lower(value)
+}
+
+
+/**
+ * A signed token the web checkout trusts in place of a web session.
+ */
+public struct CheckoutToken: Equatable, Hashable {
+    public var token: String
+    /**
+     * Epoch seconds.
+     */
+    public var expiresAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(token: String, 
+        /**
+         * Epoch seconds.
+         */expiresAt: Int64) {
+        self.token = token
+        self.expiresAt = expiresAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CheckoutToken: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCheckoutToken: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CheckoutToken {
+        return
+            try CheckoutToken(
+                token: FfiConverterString.read(from: &buf), 
+                expiresAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CheckoutToken, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.token, into: &buf)
+        FfiConverterInt64.write(value.expiresAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCheckoutToken_lift(_ buf: RustBuffer) throws -> CheckoutToken {
+    return try FfiConverterTypeCheckoutToken.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCheckoutToken_lower(_ value: CheckoutToken) -> RustBuffer {
+    return FfiConverterTypeCheckoutToken.lower(value)
 }
 
 
@@ -24948,6 +25248,28 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
      */
     case InvalidClientIdentity(what: String
     )
+    /**
+     * A 402 from an account route that needs a plan: `POST /sync/vaults`
+     * answers it with no code when the account has no active sync plan, and
+     * with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full.
+     * The shell offers a plan; retrying changes nothing. Raised only by the
+     * routes that name it, so the sync engine's 402 handling
+     * (`sync::policy`, which reads `Status`) is unchanged.
+     */
+    case PaymentRequired(code: String?, message: String
+    )
+    /**
+     * 409 on `POST /auth/billing/portal-session`: the account has no web
+     * (Paddle) billing customer, so there is no portal to open. An App Store
+     * subscription is managed in iOS Settings instead.
+     */
+    case BillingPortalUnavailable(message: String
+    )
+    /**
+     * The call needs the master key and this device holds none: the user
+     * has not unlocked with the recovery phrase yet. No request was made.
+     */
+    case NoMasterKey
 
     
 
@@ -25017,6 +25339,14 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
         case 12: return .InvalidClientIdentity(
             what: try FfiConverterString.read(from: &buf)
             )
+        case 13: return .PaymentRequired(
+            code: try FfiConverterOptionString.read(from: &buf), 
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 14: return .BillingPortalUnavailable(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 15: return .NoMasterKey
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -25093,6 +25423,21 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(12))
             FfiConverterString.write(what, into: &buf)
             
+        
+        case let .PaymentRequired(code,message):
+            writeInt(&buf, Int32(13))
+            FfiConverterOptionString.write(code, into: &buf)
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .BillingPortalUnavailable(message):
+            writeInt(&buf, Int32(14))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case .NoMasterKey:
+            writeInt(&buf, Int32(15))
+        
         }
     }
 }
@@ -32422,6 +32767,22 @@ public func uniffiForeignFutureHandleCountMemryCore() -> Int {
     UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
 }
 /**
+ * Mints and persists this device's signing key when it has none, and keeps
+ * the one it has otherwise.
+ *
+ * Call before opening a vault's writers on a device that has never signed
+ * in: the writers refuse to write without a device identity. Signing in
+ * later commits this same key as `devicePublicKey`, so nothing written
+ * before the account existed changes owner.
+ */
+public func ensureDeviceIdentity(store: SecureStore)throws   {try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_ensure_device_identity(
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+}
+}
+/**
  * Runs every section of `calendar.json` and answers in its shape.
  */
 public func calendarConformance(vectorJson: String) -> String  {
@@ -32916,6 +33277,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_memry_core_checksum_func_ensure_device_identity() != 49581) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_calendar_conformance() != 35209) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -33024,73 +33388,88 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_repeat_preview() != 44138) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_billing() != 41888) {
+    if (uniffi_memry_core_checksum_method_authsession_billing() != 64440) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_complete_account_setup() != 57429) {
+    if (uniffi_memry_core_checksum_method_authsession_complete_account_setup() != 2347) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_delete_vault() != 65530) {
+    if (uniffi_memry_core_checksum_method_authsession_delete_vault() != 40272) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_devices() != 48708) {
+    if (uniffi_memry_core_checksum_method_authsession_devices() != 58087) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_key_material() != 7564) {
+    if (uniffi_memry_core_checksum_method_authsession_key_material() != 22053) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_key_material_if_configured() != 23501) {
+    if (uniffi_memry_core_checksum_method_authsession_key_material_if_configured() != 45395) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_rename_device() != 42548) {
+    if (uniffi_memry_core_checksum_method_authsession_rename_device() != 2502) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_revoke_device() != 51068) {
+    if (uniffi_memry_core_checksum_method_authsession_revoke_device() != 4719) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_storage() != 9449) {
+    if (uniffi_memry_core_checksum_method_authsession_storage() != 59977) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_vaults() != 41946) {
+    if (uniffi_memry_core_checksum_method_authsession_vaults() != 30010) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_mark_revoked() != 55264) {
+    if (uniffi_memry_core_checksum_method_authsession_mark_revoked() != 32053) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_refresh() != 10671) {
+    if (uniffi_memry_core_checksum_method_authsession_refresh() != 15955) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_register_device() != 21520) {
+    if (uniffi_memry_core_checksum_method_authsession_register_device() != 11111) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_renew_setup_token() != 6124) {
+    if (uniffi_memry_core_checksum_method_authsession_renew_setup_token() != 52922) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 19227) {
+    if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 33217) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 4495) {
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 49631) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_sign_out() != 30253) {
+    if (uniffi_memry_core_checksum_method_authsession_sign_out() != 11383) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_state() != 9316) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 61584) {
+    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 43431) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_abandon_provider_sign_in() != 37794) {
+    if (uniffi_memry_core_checksum_method_authsession_abandon_provider_sign_in() != 26731) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_begin_provider_sign_in() != 64838) {
+    if (uniffi_memry_core_checksum_method_authsession_begin_provider_sign_in() != 25627) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 33561) {
+    if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 35896) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_restore() != 38013) {
+    if (uniffi_memry_core_checksum_method_authsession_restore() != 2414) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_billing_portal_url() != 59389) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_checkout_token() != 23875) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_refresh_billing() != 12761) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_register_vault() != 27838) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_submit_app_store_transaction() != 52828) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
@@ -33975,37 +34354,40 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_tasks_undo() != 32165) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_calendar() != 13188) {
+    if (uniffi_memry_core_checksum_method_vault_calendar() != 45815) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_canvases() != 3488) {
+    if (uniffi_memry_core_checksum_method_vault_canvases() != 64224) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_inbox() != 16342) {
+    if (uniffi_memry_core_checksum_method_vault_inbox() != 47707) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_journal() != 60927) {
+    if (uniffi_memry_core_checksum_method_vault_journal() != 1981) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9240) {
+    if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9506) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_settings() != 58691) {
+    if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 58536) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_settings() != 29573) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_tasks() != 28160) {
+    if (uniffi_memry_core_checksum_method_vault_tasks() != 49091) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {
@@ -34113,10 +34495,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_transport_open_socket() != 58000) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_constructor_authsession_new() != 11309) {
+    if (uniffi_memry_core_checksum_constructor_authsession_new() != 3868) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_constructor_devicelink_new() != 58580) {
+    if (uniffi_memry_core_checksum_constructor_devicelink_new() != 32802) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {

@@ -264,7 +264,7 @@ enum ErrorMapping {
 
     // MARK: - Server and session
 
-    // `ApiError` has twelve variants and this function is twelve `case`s and no
+    // `ApiError` has fifteen variants and this function is fifteen `case`s and no
     // other branch, so its measured complexity is the size of the enum. The two
     // ways to quiet the rule are both worse: a `default:` is what the contract
     // forbids, and splitting the switch in two leaves one arm unreachable in
@@ -331,6 +331,20 @@ enum ErrorMapping {
         case .InvalidClientIdentity:
             copy("api.invalidClientIdentity", "This copy of Memry cannot identify itself to the server.",
                  "Reinstalling Memry from the App Store should fix it.")
+        // A 402 on a route that needs a plan. Retrying changes nothing; a plan
+        // with room does. The vault stays on this phone either way.
+        case let .PaymentRequired(code, _):
+            code == "SYNC_VAULT_LIMIT_EXCEEDED"
+                ? copy("api.vaultLimitReached", "Your plan has no room for another synced vault.",
+                       "This vault stays on this iPhone. Choose a larger plan, or delete a vault you no longer sync.")
+                : copy("api.paymentRequired", "Sync needs a plan.",
+                       "Your notes stay on this iPhone. Choose a plan in Settings to sync them.")
+        case .BillingPortalUnavailable:
+            copy("api.billingPortalUnavailable", "This subscription is not managed on memrynote.com.",
+                 "Manage an App Store subscription in Settings \u{203A} Apple Account \u{203A} Subscriptions on this iPhone.")
+        case .NoMasterKey:
+            copy("api.noMasterKey", "This phone is not unlocked for your account yet.",
+                 "Enter your recovery phrase, or link this phone from your computer, then try again.", .retry)
         }
     }
 

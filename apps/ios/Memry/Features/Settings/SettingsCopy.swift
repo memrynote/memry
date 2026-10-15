@@ -47,12 +47,8 @@ enum SettingsCopy {
     static let downloadWifi = "On Wi-Fi"
     static let downloadNever = "Never"
     static let downloadFooter = "This iPhone. An attachment you open always downloads."
-    static let planAndDevices = "Plan and devices"
-    static let plan = "Plan"
     static let storage = "Storage"
     static let devices = "Devices"
-    static let planFooter = "Plans are managed in memrynote on your computer."
-    static func planLine(_ plan: String, _ status: String) -> String { "\(plan) · \(status)" }
     static func storageLine(_ used: String, _ limit: String) -> String { "\(used) of \(limit)" }
 
     // Storage

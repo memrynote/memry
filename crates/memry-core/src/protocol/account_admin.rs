@@ -7,7 +7,7 @@
 //! | `PATCH /devices/:id`      | `routes/devices.ts:81`          |
 //! | `DELETE /devices/:id`     | `routes/devices.ts:49`          |
 //! | `GET /sync/storage`       | `routes/sync.ts:287`            |
-//! | `GET /auth/billing`       | `routes/auth.ts:857`            |
+//! | `GET /auth/billing`       | `routes/auth.ts:836`            |
 //! | `DELETE /sync/vaults/:id` | `routes/sync.ts:128`            |
 //!
 //! Every reader is strict about the fields a screen needs and lenient about
@@ -58,6 +58,19 @@ pub struct BillingStatus {
     pub max_vaults: i64,
     pub version_history_days: i64,
     pub expires_at: Option<i64>,
+    /// `app_store` or `paddle`; absent from servers that predate App Store
+    /// billing, and for an account that never bought.
+    pub store: Option<String>,
+    /// Where this purchase is managed: the App Store subscriptions page or
+    /// the web portal. Absent from older servers.
+    pub manage_url: Option<String>,
+    pub will_renew: Option<bool>,
+    /// The UUID to pass as StoreKit's `appAccountToken`, so a purchase made on
+    /// this device is bound to this account server-side.
+    pub app_account_token: Option<String>,
+    /// The account has a web billing customer, so `billing_portal_url` can
+    /// answer. Optional because older servers omit it.
+    pub can_manage_billing: Option<bool>,
 }
 
 fn malformed(path: &str, what: &str) -> ApiError {
@@ -78,7 +91,7 @@ fn text(row: &Json, key: &str) -> Option<String> {
 
 /// A path segment is an id the server issued: refuse anything that would
 /// change the route.
-fn segment(id: &str) -> Result<&str, ApiError> {
+pub(crate) fn segment(id: &str) -> Result<&str, ApiError> {
     if !id.is_empty()
         && id
             .bytes()
@@ -124,6 +137,7 @@ pub(crate) fn read_storage(body: &Json) -> Option<StorageUsage> {
 
 pub(crate) fn read_billing(body: &Json) -> Option<BillingStatus> {
     let limits = body.get("limits")?;
+    let apple_account = text(body, "appAccountToken");
     Some(BillingStatus {
         email: text(body, "email"),
         plan: text(body, "plan")?,
@@ -138,6 +152,11 @@ pub(crate) fn read_billing(body: &Json) -> Option<BillingStatus> {
         max_vaults: int(limits, "maxVaults").unwrap_or(0),
         version_history_days: int(limits, "versionHistoryDays").unwrap_or(0),
         expires_at: int(body, "expiresAt"),
+        store: text(body, "store"),
+        manage_url: text(body, "manageUrl"),
+        will_renew: body.get("willRenew").and_then(Json::as_bool),
+        app_account_token: apple_account,
+        can_manage_billing: body.get("canManageBilling").and_then(Json::as_bool),
     })
 }
 
@@ -232,6 +251,24 @@ mod tests {
         assert_eq!(billing.plan, "plus");
         assert_eq!(billing.max_vaults, 3);
         assert_eq!(billing.cadence, None);
+        // An older server: none of the App Store fields, and every one is None.
+        assert_eq!(
+            (billing.store, billing.manage_url, billing.will_renew),
+            (None, None, None)
+        );
+        assert_eq!(
+            (billing.app_account_token, billing.can_manage_billing),
+            (None, None)
+        );
+        let store = read_billing(&json!({"plan":"plus","status":"active","limits":{},
+            "store":"app_store","manageUrl":"https://apps.apple.com/account/subscriptions",
+            "willRenew":false,"appAccountToken":"2f1c0a52-3c0e-4a8e-9a43-6d1f0b7c9e11",
+            "canManageBilling":false,"somethingNew":1}))
+        .expect("billing");
+        assert_eq!(store.store.as_deref(), Some("app_store"));
+        assert_eq!(store.will_renew, Some(false));
+        assert_eq!(store.can_manage_billing, Some(false));
+        assert!(store.app_account_token.is_some() && store.manage_url.is_some());
         assert!(read_billing(&json!({"plan":"plus"})).is_none());
     }
 

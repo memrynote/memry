@@ -14,6 +14,7 @@ struct VaultSettingsScope<Content: View>: View {
     @State private var browse: VaultBrowseViewModel?
     @State private var capture: QuickCapture?
     @Environment(\.inboxStore) private var inboxStore
+    @State private var billingRouter = BillingRouter.shared
 
     var body: some View {
         content(context, browse)
@@ -23,6 +24,11 @@ struct VaultSettingsScope<Content: View>: View {
             .environment(\.quickCapture, capture)
             .memryAppearance()
             .task(id: tasks?.vaultId) { await make() }
+            // Asked for from Settings, or before a sign-in that has now
+            // finished: the sheet shows over whichever vault is open.
+            .sheet(isPresented: $billingRouter.showsPlans) {
+                PlansView(session: model.session)
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active, let context else { return }
                 Task { await context.store.refreshIfChanged() }
@@ -37,6 +43,15 @@ struct VaultSettingsScope<Content: View>: View {
             let store = SettingsStore(core: settings)
             store.requestSync = { tasks.scheduleSync() }
             let account = AccountModel(session: model.session, filler: model.filler)
+            let billing = StoreKitBilling.shared
+            billing.account = model.session.map { SessionBillingAccount(session: $0) }
+            billing.entitlementChanged = { [model] status in
+                account.applied(status)
+                // A vault the account could not take may fit now: reading the
+                // registry again attaches it and reopens it with sync.
+                if LocalVaultStore().isUnattached(vault.id()) { Task { await model.load() } }
+            }
+            billing.start()
             let made = SettingsContext(
                 store: store,
                 tasks: tasks,

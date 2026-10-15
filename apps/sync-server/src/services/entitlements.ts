@@ -5,7 +5,7 @@ const GIB = 1024 * 1024 * 1024
 
 export type SyncPlan = 'free' | 'plus' | 'pro' | 'believer'
 export type SyncEntitlementStatus = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
-export type SyncEntitlementSource = 'none' | 'paddle' | 'admin_override' | 'dev_seed'
+export type SyncEntitlementSource = 'none' | 'paddle' | 'app_store' | 'admin_override' | 'dev_seed'
 /** Billing cadence of the backing Paddle subscription. `null` = unknown (pre-cadence row). */
 export type SyncCadence = 'monthly' | 'annual' | 'lifetime'
 
@@ -31,6 +31,8 @@ export interface SyncEntitlement {
   paddle_subscription_id: string | null
   paddle_transaction_id: string | null
   expires_at: number | null
+  /** Auto-renew state of the winning grant (0/1). `null` = unknown or not applicable. */
+  will_renew?: number | null
 }
 
 export interface UpsertSyncEntitlementParams {
@@ -44,6 +46,7 @@ export interface UpsertSyncEntitlementParams {
   paddleSubscriptionId?: string | null
   paddleTransactionId?: string | null
   expiresAt?: number | null
+  willRenew?: boolean | null
 }
 
 export const SYNC_PLAN_LIMITS: Record<SyncPlan, SyncPlanLimits> = {
@@ -143,7 +146,8 @@ export async function getSyncEntitlement(db: D1Database, userId: string): Promis
          e.paddle_customer_id,
          e.paddle_subscription_id,
          e.paddle_transaction_id,
-         e.expires_at
+         e.expires_at,
+         e.will_renew
        FROM users u
        LEFT JOIN sync_entitlements e ON e.user_id = u.id
        WHERE u.id = ?`
@@ -285,9 +289,10 @@ export async function upsertSyncEntitlement(
          paddle_subscription_id,
          paddle_transaction_id,
          expires_at,
+         will_renew,
          updated_at
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET
          plan = excluded.plan,
          cadence = COALESCE(excluded.cadence, sync_entitlements.cadence),
@@ -301,6 +306,7 @@ export async function upsertSyncEntitlement(
          paddle_subscription_id = COALESCE(excluded.paddle_subscription_id, sync_entitlements.paddle_subscription_id),
          paddle_transaction_id = COALESCE(excluded.paddle_transaction_id, sync_entitlements.paddle_transaction_id),
          expires_at = excluded.expires_at,
+         will_renew = excluded.will_renew,
          updated_at = excluded.updated_at`
     )
     .bind(
@@ -317,6 +323,7 @@ export async function upsertSyncEntitlement(
       params.paddleSubscriptionId ?? null,
       params.paddleTransactionId ?? null,
       params.expiresAt ?? null,
+      params.willRenew === undefined || params.willRenew === null ? null : params.willRenew ? 1 : 0,
       now
     )
     .run()

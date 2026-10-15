@@ -22,7 +22,6 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
-use crate::crypto::sodium;
 use crate::protocol::auth::{
     AuthRoutes, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest, TokenClaims,
     TokenManager, VerifyOtpRequest, random_nonce, sign_device_challenge,
@@ -31,9 +30,11 @@ use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::seams::transport::Transport;
 
+mod identity;
 mod oauth;
 mod restore;
 
+pub use identity::ensure_device_identity;
 pub use oauth::{AuthProvider, ProviderSignInOutcome};
 
 /// Data-model §C.1, one variant per drawn state.
@@ -237,20 +238,10 @@ impl AuthSession {
         }
     }
 
-    /// The device's Ed25519 signing key, created on first use.
-    ///
-    /// Random, never derived (data-model §B), so a device that loses it must
-    /// register anew. A `SecureStoreError::Locked` on the read is **not**
-    /// "absent": returning it unchanged is what stops a locked keychain from
-    /// silently minting a second identity.
+    /// The device's Ed25519 signing key: the one [`ensure_device_identity`]
+    /// minted before sign-in when there is one, created here otherwise.
     pub(crate) fn signing_secret_key(&self) -> Result<Vec<u8>, AuthError> {
-        if let Some(existing) = self.store.get(SecureStoreKey::DeviceSigningKey)? {
-            return Ok(existing);
-        }
-        let (_public, secret) = sodium::sign_keypair()?;
-        self.store
-            .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())?;
-        Ok(secret.to_vec())
+        identity::signing_secret_key_in(self.store.as_ref())
     }
 
     /// The id the server registered this device under: the access token's
