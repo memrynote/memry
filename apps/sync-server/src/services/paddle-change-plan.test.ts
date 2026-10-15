@@ -30,6 +30,7 @@ function createEnv(options: {
         prepare: vi.fn().mockReturnValue({
           bind: vi.fn().mockReturnValue({
             first: vi.fn().mockResolvedValue(options.entitlementRow),
+            all: vi.fn().mockResolvedValue({ results: [] }),
             run
           })
         })

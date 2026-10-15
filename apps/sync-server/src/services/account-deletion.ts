@@ -29,6 +29,8 @@ export async function deleteUserData(
     db.prepare('DELETE FROM linking_sessions WHERE user_id = ?').bind(userId),
     // refresh_tokens references devices
     db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM paddle_grants WHERE user_id = ?').bind(userId),
+    db.prepare('DELETE FROM app_store_grants WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM sync_entitlements WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM sync_vaults WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM consumed_setup_tokens WHERE user_id = ?').bind(userId),

@@ -38,7 +38,8 @@ After signing in you land on the account dashboard, organized into three section
 - **Subscription** — your current plan and status.
 - **Invoices** — your past invoices, each downloadable as a PDF.
 - **Manage payment method** — opens the secure billing portal to update cards, view receipts,
-  or cancel.
+  or cancel. A plan bought through the App Store is managed in Apple's subscription settings
+  instead; see [iPhone: Free Use and Plans](/user-guide/sync/iphone-plans).
 
 ### Sync
 

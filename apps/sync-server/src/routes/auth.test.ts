@@ -166,12 +166,12 @@ const createApp = () => {
   return app
 }
 
-const createD1Statement = () => {
+const createD1Statement = (allResults: unknown[] = [{ id: 'device-uuid-1' }]) => {
   const statement = {
     bind: vi.fn(),
     first: vi.fn().mockResolvedValue(null),
     run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } }),
-    all: vi.fn().mockResolvedValue({ results: [{ id: 'device-uuid-1' }] })
+    all: vi.fn().mockResolvedValue({ results: allResults })
   }
   statement.bind.mockReturnValue(statement)
   return statement
@@ -179,6 +179,7 @@ const createD1Statement = () => {
 
 const createEnv = (options?: {
   firstRows?: unknown[]
+  allResults?: unknown[]
   paddleFetch?: typeof fetch
   paddleApiKey?: string
   environment?: string
@@ -188,7 +189,7 @@ const createEnv = (options?: {
   return {
     DB: {
       prepare: vi.fn().mockImplementation(() => {
-        const statement = createD1Statement()
+        const statement = createD1Statement(options?.allResults)
         statement.first.mockImplementation(() => Promise.resolve(firstRows.shift() ?? null))
         return statement
       }),
@@ -454,7 +455,12 @@ describe('auth routes', () => {
       )
       env = createEnv({
         paddleFetch,
+        // recomputeEntitlement: no App Store grants.
+        allResults: [],
         firstRows: [
+          // recomputeEntitlement: current sync_entitlements row, then paddle_grants row.
+          null,
+          null,
           { email: 'test@example.com' },
           {
             user_id: 'user-1',

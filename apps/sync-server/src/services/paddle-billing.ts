@@ -1,8 +1,9 @@
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { writePaddleGrant } from './billing-grants'
+import { appAccountTokenForUser } from './app-store-account-token'
 import {
   getSyncEntitlement,
-  upsertSyncEntitlement,
   type SyncCadence,
   type SyncEntitlement,
   type SyncPlan
@@ -34,8 +35,19 @@ export interface BillingStatusResponse {
     storageUsed: number
   }
   expiresAt: number | null
+  /** True when the Paddle customer portal is available. Always false for App Store billing. */
   canManageBilling: boolean
+  /** Store billing the winning grant. `null` for free, admin, and dev grants. */
+  store: 'paddle' | 'app_store' | null
+  /** Where the user manages an App Store subscription. Paddle uses the portal-session route. */
+  manageUrl: string | null
+  /** Auto-renew state of the winning grant. `null` when unknown or not applicable. */
+  willRenew: boolean | null
+  /** UUID the iOS app passes to StoreKit as `appAccountToken`. */
+  appAccountToken: string
 }
+
+export const APP_STORE_MANAGE_URL = 'https://apps.apple.com/account/subscriptions'
 
 interface PaddleTransaction {
   id?: string
@@ -56,8 +68,14 @@ interface PaddleResponse<T> {
 
 export function formatBillingStatus(
   entitlement: SyncEntitlement,
+  appAccountToken: string,
   email: string | null = null
 ): BillingStatusResponse {
+  const store =
+    entitlement.source === 'paddle' || entitlement.source === 'app_store'
+      ? entitlement.source
+      : null
+  const willRenew = entitlement.will_renew ?? null
   return {
     plan: entitlement.plan,
     cadence: entitlement.cadence ?? null,
@@ -74,7 +92,11 @@ export function formatBillingStatus(
       storageUsed: entitlement.storage_used
     },
     expiresAt: entitlement.expires_at,
-    canManageBilling: Boolean(entitlement.paddle_customer_id)
+    canManageBilling: store !== 'app_store' && Boolean(entitlement.paddle_customer_id),
+    store,
+    manageUrl: store === 'app_store' ? APP_STORE_MANAGE_URL : null,
+    willRenew: willRenew === null ? null : willRenew === 1,
+    appAccountToken
   }
 }
 
@@ -82,11 +104,12 @@ export async function getBillingStatus(
   db: D1Database,
   userId: string
 ): Promise<BillingStatusResponse> {
-  const [entitlement, user] = await Promise.all([
+  const [entitlement, user, appAccountToken] = await Promise.all([
     getSyncEntitlement(db, userId),
-    getUserById(db, userId)
+    getUserById(db, userId),
+    appAccountTokenForUser(userId)
   ])
-  return formatBillingStatus(entitlement, user?.email ?? null)
+  return formatBillingStatus(entitlement, appAccountToken, user?.email ?? null)
 }
 
 export async function reconcilePaddleTransaction(
@@ -110,12 +133,11 @@ export async function reconcilePaddleTransaction(
     throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, 'Transaction belongs to another user', 403)
   }
 
-  await upsertSyncEntitlement(env.DB, {
+  await writePaddleGrant(env.DB, {
     userId,
     plan,
     cadence: normalizeCadence(customData.cadence),
     status: 'active',
-    source: 'paddle',
     paddleCustomerId: asString(transaction.customer_id ?? transaction.customerId),
     paddleSubscriptionId: asString(transaction.subscription_id ?? transaction.subscriptionId),
     paddleTransactionId: asString(transaction.id) ?? transactionId,
@@ -128,12 +150,17 @@ export async function createPaddlePortalSession(
   userId: string
 ): Promise<{ portalUrl: string }> {
   const entitlement = await env.DB.prepare(
-    `SELECT paddle_customer_id, paddle_subscription_id
+    `SELECT source, paddle_customer_id, paddle_subscription_id
      FROM sync_entitlements
      WHERE user_id = ?`
   )
     .bind(userId)
-    .first<{ paddle_customer_id: string | null; paddle_subscription_id: string | null }>()
+    .first<{
+      source?: SyncEntitlement['source']
+      paddle_customer_id: string | null
+      paddle_subscription_id: string | null
+    }>()
+  assertNotManagedByAppStore(entitlement?.source)
 
   if (!entitlement?.paddle_customer_id) {
     throw new AppError(
@@ -249,11 +276,20 @@ async function buildPlanChange(
   plan: SubscriptionPlan,
   cadence: SubscriptionCadence
 ): Promise<PlanChangeContext> {
+  // Paddle's own plan, not whichever store's grant sync_entitlements currently mirrors.
   const entitlement = await env.DB.prepare(
-    'SELECT plan, paddle_subscription_id FROM sync_entitlements WHERE user_id = ?'
+    `SELECT e.source, COALESCE(g.plan, e.plan) AS plan, e.paddle_subscription_id
+     FROM sync_entitlements e
+     LEFT JOIN paddle_grants g ON g.user_id = e.user_id
+     WHERE e.user_id = ?`
   )
     .bind(userId)
-    .first<{ plan: SyncPlan; paddle_subscription_id: string | null }>()
+    .first<{
+      source?: SyncEntitlement['source']
+      plan: SyncPlan
+      paddle_subscription_id: string | null
+    }>()
+  assertNotManagedByAppStore(entitlement?.source)
 
   if (!entitlement?.paddle_subscription_id) {
     throw new AppError(
@@ -371,15 +407,27 @@ export async function applyPlanChange(
   // subscription actually rolls over and Paddle sends the webhook.
   if (!change.isUpgrade) return
 
-  await upsertSyncEntitlement(env.DB, {
+  await writePaddleGrant(env.DB, {
     userId,
     plan,
     cadence,
     status: 'active',
-    source: 'paddle',
     paddleSubscriptionId: change.subscriptionId,
     expiresAt: parseTimestamp(updated.next_billed_at)
   })
+}
+
+/**
+ * Paddle cannot change or show a subscription Apple bills, so the Paddle management routes refuse
+ * with a code the client can turn into "manage it in the App Store".
+ */
+function assertNotManagedByAppStore(source: SyncEntitlement['source'] | undefined): void {
+  if (source !== 'app_store') return
+  throw new AppError(
+    ErrorCodes.BILLING_MANAGED_BY_APP_STORE,
+    'This subscription is billed by the App Store. Manage it in your Apple account settings.',
+    409
+  )
 }
 
 async function fetchPaddleSubscription(

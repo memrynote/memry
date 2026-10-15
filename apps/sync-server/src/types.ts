@@ -43,6 +43,11 @@ export type Bindings = {
   PADDLE_PRICE_PLUS_ANNUAL?: string
   PADDLE_PRICE_PRO_MONTHLY?: string
   PADDLE_PRICE_PRO_ANNUAL?: string
+  // App Store billing. Bundle id every signed transaction must carry, and the comma list of
+  // accepted App Store environments (Production, Sandbox). Xcode is never accepted: its JWS is
+  // signed by a local certificate. Either unset -> the App Store routes answer 503.
+  APPLE_BUNDLE_ID?: string
+  APPLE_APP_STORE_ENVIRONMENTS?: string
   TELEMETRY_HMAC_KEY: string
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string

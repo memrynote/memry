@@ -10,16 +10,7 @@ struct SettingsRootScreen: View {
 
     var body: some View {
         List {
-            Section {
-                NavigationLink(value: SettingsRoute.account) {
-                    SettingsAccountCard(
-                        email: context.account.email,
-                        line: SyncStatusText.cardLine(context),
-                        dot: SyncStatusText.dot(context)
-                    )
-                }
-                .accessibilityIdentifier("settings.row.account")
-            }
+            SettingsAccountSection(context: context)
             Section {
                 SettingsLinkRow(title: SettingsCopy.general, symbol: "gearshape", route: .general)
                 SettingsLinkRow(

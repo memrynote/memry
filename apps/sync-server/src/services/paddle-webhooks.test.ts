@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+
+import { createSqliteD1 } from '../__tests__/d1-sqlite'
 
 import {
   applyPaddleWebhook,
@@ -6,32 +8,33 @@ import {
   verifyPaddleWebhookSignature
 } from './paddle-webhooks'
 
+// Real SQLite over the real migrations: the webhook writes a Paddle grant and recomputes the
+// entitlement, so the row the paid-sync gate reads is the thing to assert.
 function createDb(options?: {
-  existingEntitlement?: Record<string, unknown> | null
-  user?: Record<string, unknown> | null
+  existingEntitlement?: { user_id: string; plan: string } | null
+  user?: null
 }) {
-  const statements: Array<{ sql: string; bindings: unknown[] }> = []
-  const db = {
-    prepare: vi.fn((sql: string) => {
-      const stmt = {
-        bindings: [] as unknown[],
-        bind: vi.fn((...args: unknown[]) => {
-          stmt.bindings = args
-          statements.push({ sql, bindings: args })
-          return stmt
-        }),
-        first: vi.fn(async () => {
-          if (sql.includes('FROM paddle_webhook_events')) return null
-          if (sql.includes('FROM users')) return options?.user === null ? null : { id: 'user-1' }
-          if (sql.includes('FROM sync_entitlements')) return options?.existingEntitlement ?? null
-          return null
-        }),
-        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
-      }
-      return stmt
-    })
+  const { db, raw } = createSqliteD1()
+  if (options?.user !== null) {
+    raw
+      .prepare(
+        `INSERT INTO users (id, email, email_verified, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'user-1@example.com', 1, 'otp', 0, 0)`
+      )
+      .run()
   }
-  return { db: db as unknown as D1Database, statements }
+  if (options?.existingEntitlement) {
+    raw
+      .prepare(
+        `INSERT INTO sync_entitlements (user_id, plan, status, source, paddle_subscription_id, updated_at)
+         VALUES ('user-1', ?, 'active', 'paddle', 'sub_1', 0)`
+      )
+      .run(options.existingEntitlement.plan)
+  }
+  const entitlement = () =>
+    raw.prepare('SELECT * FROM sync_entitlements WHERE user_id = ?').get('user-1') as
+      Record<string, unknown> | undefined
+  return { db, entitlement }
 }
 
 async function sign(secret: string, timestamp: number, rawBody: string): Promise<string> {
@@ -85,7 +88,7 @@ describe('Paddle webhook support', () => {
   })
 
   it('provisions Plus limits from an authenticated checkout custom data payload', async () => {
-    const { db, statements } = createDb()
+    const { db, entitlement } = createDb()
 
     await applyPaddleWebhook(db, {
       event_id: 'evt_1',
@@ -104,16 +107,16 @@ describe('Paddle webhook support', () => {
       }
     })
 
-    const entitlementWrite = statements.find((entry) =>
-      entry.sql.includes('INSERT INTO sync_entitlements')
-    )
-    expect(entitlementWrite?.bindings).toEqual(
-      expect.arrayContaining(['user-1', 'plus', 'active', 'paddle'])
-    )
+    expect(entitlement()).toMatchObject({
+      user_id: 'user-1',
+      plan: 'plus',
+      status: 'active',
+      source: 'paddle'
+    })
   })
 
   it('pauses sync access when Paddle sends a past_due subscription update', async () => {
-    const { db, statements } = createDb()
+    const { db, entitlement } = createDb()
 
     await applyPaddleWebhook(db, {
       event_id: 'evt_2',
@@ -131,16 +134,16 @@ describe('Paddle webhook support', () => {
       }
     })
 
-    const entitlementWrite = statements.find((entry) =>
-      entry.sql.includes('INSERT INTO sync_entitlements')
-    )
-    expect(entitlementWrite?.bindings).toEqual(
-      expect.arrayContaining(['user-1', 'pro', 'past_due', 'paddle'])
-    )
+    expect(entitlement()).toMatchObject({
+      user_id: 'user-1',
+      plan: 'pro',
+      status: 'past_due',
+      source: 'paddle'
+    })
   })
 
   it('updates an existing subscription even when Paddle omits checkout custom data', async () => {
-    const { db, statements } = createDb({
+    const { db, entitlement } = createDb({
       existingEntitlement: { user_id: 'user-1', plan: 'pro' }
     })
 
@@ -154,16 +157,16 @@ describe('Paddle webhook support', () => {
       }
     })
 
-    const entitlementWrite = statements.find((entry) =>
-      entry.sql.includes('INSERT INTO sync_entitlements')
-    )
-    expect(entitlementWrite?.bindings).toEqual(
-      expect.arrayContaining(['user-1', 'pro', 'canceled', 'paddle'])
-    )
+    expect(entitlement()).toMatchObject({
+      user_id: 'user-1',
+      plan: 'pro',
+      status: 'canceled',
+      source: 'paddle'
+    })
   })
 
   it('falls back to the existing subscription when Paddle omits the custom data plan', async () => {
-    const { db, statements } = createDb({
+    const { db, entitlement } = createDb({
       existingEntitlement: { user_id: 'user-1', plan: 'plus' }
     })
 
@@ -182,16 +185,16 @@ describe('Paddle webhook support', () => {
       }
     })
 
-    const entitlementWrite = statements.find((entry) =>
-      entry.sql.includes('INSERT INTO sync_entitlements')
-    )
-    expect(entitlementWrite?.bindings).toEqual(
-      expect.arrayContaining(['user-1', 'plus', 'paused', 'paddle'])
-    )
+    expect(entitlement()).toMatchObject({
+      user_id: 'user-1',
+      plan: 'plus',
+      status: 'paused',
+      source: 'paddle'
+    })
   })
 
   it('does not provision an entitlement when the checkout user is missing', async () => {
-    const { db, statements } = createDb({ user: null })
+    const { db, entitlement } = createDb({ user: null })
 
     await expect(
       applyPaddleWebhook(db, {
@@ -212,13 +215,11 @@ describe('Paddle webhook support', () => {
       })
     ).resolves.toEqual({ processed: false, userId: null })
 
-    expect(statements.some((entry) => entry.sql.includes('INSERT INTO sync_entitlements'))).toBe(
-      false
-    )
+    expect(entitlement()).toBeUndefined()
   })
 
   it('does not map stale Standard custom data to a paid entitlement', async () => {
-    const { db, statements } = createDb()
+    const { db, entitlement } = createDb()
 
     await expect(
       applyPaddleWebhook(db, {
@@ -239,9 +240,7 @@ describe('Paddle webhook support', () => {
       })
     ).resolves.toEqual({ processed: false, userId: null })
 
-    expect(statements.some((entry) => entry.sql.includes('INSERT INTO sync_entitlements'))).toBe(
-      false
-    )
+    expect(entitlement()).toBeUndefined()
   })
 
   it('returns the resolved userId on successful processing', async () => {

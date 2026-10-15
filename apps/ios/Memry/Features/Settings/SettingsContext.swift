@@ -81,7 +81,8 @@ extension UserFacingError: Error {}
 @MainActor
 @Observable
 final class AccountModel {
-    private let session: (any AuthSessionProtocol)?
+    /// Read by the plans sheet, which buys for this account.
+    let session: (any AuthSessionProtocol)?
     private let filler: (any VaultFilling)?
     private let local: LocalSettings
 
@@ -121,6 +122,29 @@ final class AccountModel {
             isOffline = false
         } catch {
             record(error)
+        }
+    }
+
+    /// Desktop's "Refresh status": re-reads the entitlement from the store.
+    func refreshBilling() async {
+        guard let session else { return }
+        do { billing = try await session.refreshBilling() } catch { record(error) }
+    }
+
+    /// A status the server returned for a purchase made on this phone.
+    func applied(_ status: BillingStatus) {
+        billing = status
+    }
+
+    /// The web billing portal, for a subscription bought on memrynote.com.
+    func billingPortal() async -> Result<URL, UserFacingError> {
+        guard let session else { return .failure(BillingCopy.signInFirst) }
+        do {
+            let link = try await session.billingPortalUrl()
+            guard let url = URL(string: link) else { return .failure(BillingCopy.manageFailed) }
+            return .success(url)
+        } catch {
+            return .failure(mapped(error))
         }
     }
 

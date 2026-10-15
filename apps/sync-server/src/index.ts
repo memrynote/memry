@@ -18,6 +18,7 @@ import { ocr } from './routes/ocr'
 import { sync } from './routes/sync'
 import { telemetry } from './routes/telemetry'
 import { webhooks } from './routes/webhooks'
+import { appStoreBilling } from './routes/app-store-billing'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
@@ -229,6 +230,7 @@ app.onError(errorHandler)
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.route('/auth', auth)
+app.route('/auth/billing/app-store', appStoreBilling)
 app.route('/auth/linking', linking)
 app.route('/devices', devices)
 app.route('/sync', sync)

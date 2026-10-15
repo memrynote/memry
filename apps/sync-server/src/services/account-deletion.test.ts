@@ -117,6 +117,8 @@ describe('deleteUserData', () => {
       'server_cursor_sequence',
       'linking_sessions',
       'refresh_tokens',
+      'paddle_grants',
+      'app_store_grants',
       'sync_entitlements',
       'sync_vaults',
       'consumed_setup_tokens',

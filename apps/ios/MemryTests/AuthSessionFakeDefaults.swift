@@ -14,6 +14,13 @@ extension AuthSessionProtocol {
     func storage() async throws -> StorageUsage { throw UnscriptedSettingsCall() }
     func billing() async throws -> BillingStatus { throw UnscriptedSettingsCall() }
     func deleteVault(vaultId _: String) async throws { throw UnscriptedSettingsCall() }
+    func registerVault(vaultId _: String, name _: String) async throws { throw UnscriptedSettingsCall() }
+    func submitAppStoreTransaction(signedTransactionInfo _: String) async throws -> BillingStatus {
+        throw UnscriptedSettingsCall()
+    }
+    func checkoutToken() async throws -> CheckoutToken { throw UnscriptedSettingsCall() }
+    func billingPortalUrl() async throws -> String { throw UnscriptedSettingsCall() }
+    func refreshBilling() async throws -> BillingStatus { throw UnscriptedSettingsCall() }
     func deviceApprover() -> DeviceApprover {
         fatalError("deviceApprover is not scripted in this fake")
     }

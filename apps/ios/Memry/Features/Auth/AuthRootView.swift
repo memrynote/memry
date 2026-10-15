@@ -28,6 +28,13 @@ struct AuthRootView: View {
     /// carries no key material, and a user who reinstalls for a clean app is
     /// entitled to see the pitch again.
     @AppStorage("onboarding.welcomeSeen") private var welcomeSeen = false
+    /// The free path's vault id, observed so choosing it re-renders. Owned by
+    /// `LocalVaultStore`; the key is the same.
+    @AppStorage("localVault.id") private var localVaultId: String?
+    /// The user asked to sign in from a screen that has something behind it.
+    @State private var wantsSignIn = false
+    /// The local vault's browse model, held so a re-render does not reopen it.
+    @State private var localVaults: VaultSelectionViewModel?
 
     init(emitter: CoreEventEmitter) {
         _startup = State(initialValue: AuthStartup(emitter: emitter))
@@ -72,20 +79,8 @@ struct AuthRootView: View {
                         // the two ways into the same locked vault, offered
                         // together rather than one behind the other.
                         UnlockRouteView(phrase: unlock, link: link)
-                    } else if welcomeSeen || model.state != .signedOut {
-                        // Back only from the first sign-in: it returns to the
-                        // welcome pages, and there is nothing to return to when
-                        // a session expired into this screen.
-                        SignInView(
-                            model: model,
-                            onBack: model.state == .signedOut ? { welcomeSeen = false } : nil
-                        )
                     } else {
-                        // Only ever before the first sign-in. A device that is
-                        // signed out again later has already read this, and a
-                        // session that expired is an interruption, not a
-                        // first run.
-                        WelcomeView { welcomeSeen = true }
+                        entry(model)
                     }
                 }
                 .onChange(of: model.state, initial: true) { _, state in
@@ -109,6 +104,40 @@ struct AuthRootView: View {
             }
         }
         .task { await startup.begin() }
+    }
+
+    /// Everything before a registered session: the welcome pages, the choice
+    /// between this iPhone and sync, the local vault, and sign-in.
+    @ViewBuilder
+    private func entry(_ model: SignInViewModel) -> some View {
+        switch EntryRoute.decide(
+            state: model.state,
+            welcomeSeen: welcomeSeen,
+            wantsSignIn: wantsSignIn,
+            localVaultId: localVaultId
+        ) {
+        case .welcome:
+            WelcomeView(onFinish: { welcomeSeen = true }, onSignIn: {
+                welcomeSeen = true
+                wantsSignIn = true
+            })
+        case .choice:
+            StartChoiceView(
+                onLocal: { localVaultId = LocalVaultStore().create() },
+                onSync: { wantsSignIn = true }
+            )
+        case let .signIn(canGoBack):
+            // Back only while signed out: there is nothing to return to when
+            // a session expired into this screen.
+            SignInView(model: model, onBack: canGoBack ? { wantsSignIn = false } : nil)
+        case .local:
+            if let localVaults {
+                VaultListView(model: localVaults)
+                    .environment(\.startSignIn, { wantsSignIn = true })
+            } else {
+                LaunchView().onAppear { localVaults = startup.localVaultModel() }
+            }
+        }
     }
 
     /// Which of the three screens this state means.
@@ -148,6 +177,9 @@ struct AuthRootView: View {
             unlock = startup.unlockModel(for: state)
             link = startup.linkModel(for: state)
         }
+        // Signed in: the local vault now lives in the account's list.
+        wantsSignIn = false
+        localVaults = nil
         if setup == nil, unlock == nil, vaults == nil {
             vaults = startup.vaultModel(for: state)
         }

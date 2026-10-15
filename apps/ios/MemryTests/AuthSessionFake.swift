@@ -76,6 +76,8 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
         // T165.
         case restore
         case abandonProviderSignIn
+        // The free path's attach.
+        case registerVault(String, String)
     }
 
     private struct Tape {
@@ -165,6 +167,18 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
     }
 
     func vaults() async throws -> [VaultSummary] { try trap(.vaults) }
+
+    /// What `registerVault` throws; `nil` answers success.
+    private let registerVaultError = Mutex<(any Error)?>(nil)
+
+    func failRegisterVault(with error: (any Error)?) {
+        registerVaultError.withLock { $0 = error }
+    }
+
+    func registerVault(vaultId: String, name: String) async throws {
+        tape.withLock { $0.calls.append(.registerVault(vaultId, name)) }
+        if let error = registerVaultError.withLock({ $0 }) { throw error }
+    }
 
     func restore() throws -> AuthState { try trap(.restore) }
 

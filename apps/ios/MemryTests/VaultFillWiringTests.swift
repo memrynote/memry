@@ -196,7 +196,8 @@ final class VaultFillWiringTests {
         // and without it `vaultModel` can mint nothing.
         #expect(startup.coreSession != nil)
         let model = try #require(startup.vaultModel(for: .registered))
-        #expect(model.mint is CoreVaultFillerMint)
+        // Wrapped so the free path's vault is queued once it joins the account.
+        #expect((model.mint as? LocalSeedingMint)?.inner is CoreVaultFillerMint)
         // A launch makes no request of its own (spec-defect 121: `restore()`
         // reads the keychain and nothing else).
         #expect(NoRequestURLProtocol.seen.withLock { $0 }.isEmpty)

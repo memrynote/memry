@@ -2,6 +2,7 @@
 
 pub mod account;
 pub mod auth;
+pub mod billing;
 pub mod calendar;
 pub mod calendar_conformance;
 pub mod calendar_ical_conformance;
