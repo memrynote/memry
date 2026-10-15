@@ -71,6 +71,8 @@ import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty, type Property } from '@/components/note/info-section'
 import { PropertyHistoryButton } from '@/components/property-chart/property-history-popover'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { NoteNamesLine } from '@/components/note/names/note-names-line'
+import { requestNoteNameInput } from '@/components/note/names/note-name-input-request'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
@@ -1018,6 +1020,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         case 'save-as-template':
           setIsSaveAsTemplateOpen(true)
           break
+        case 'add-name':
+          if (entryId) requestNoteNameInput(entryId)
+          break
         case 'copy-path':
           void handleCopyPath()
           break
@@ -1043,7 +1048,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           break
       }
     },
-    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal, handleToggleLock]
+    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal, handleToggleLock, entryId]
   )
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -1327,6 +1332,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         >
                           {isLocked && <LockedNoteNotice />}
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
+                          <NoteNamesLine
+                            noteId={entryId}
+                            title={selectedDate}
+                            aliases={entry?.aliases ?? []}
+                            disabled={isLocked}
+                          />
                           <TagsRow
                             tags={journalTags}
                             availableTags={availableTags}
@@ -1367,6 +1378,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
                             existingNames={properties.map((p) => p.name)}
+                            onAddName={
+                              entryId && !entry?.aliases?.length
+                                ? () => requestNoteNameInput(entryId)
+                                : undefined
+                            }
                             disabled={isLocked}
                           />
                         </div>
