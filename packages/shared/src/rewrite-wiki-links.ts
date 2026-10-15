@@ -26,7 +26,7 @@
  *  - `[[Folder/Old]]` names the note by path, so it changes when the note or a
  *    folder above it moves or the note is renamed: `[[Folder/New#Heading]]`.
  *
- * Titles match case-insensitively, same as `resolveNoteByTitle`. Returns null
+ * Titles match case-insensitively, as `pickWikiTarget` (`note-names.ts`) folds them. Returns null
  * when nothing changed so the caller can skip the write entirely — same
  * contract as `rewriteNoteRefsForMove`.
  */

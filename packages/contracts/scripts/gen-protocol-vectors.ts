@@ -61,6 +61,7 @@ import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
 import { buildVersionedValues } from './vectors/versioned-values'
+import { buildWikiTargetResolution } from './vectors/wiki-target-resolution'
 import { VECTORS_DIR, writeVectorFile } from './vectors/shared'
 
 /** One class: its file, and the builder that produces its contents. */
@@ -90,6 +91,10 @@ const CLASSES: readonly VectorClass[] = [
     files: [{ path: 'versioned-values.json', build: buildVersionedValues }]
   },
   { name: 'tag-fold', files: [{ path: 'tag-fold.json', build: buildTagFold }] },
+  {
+    name: 'wiki-target-resolution',
+    files: [{ path: 'wiki-target-resolution.json', build: buildWikiTargetResolution }]
+  },
   {
     name: 'tag-schema-refs',
     files: [{ path: 'tag-schema-refs.json', build: buildTagSchemaRefs }]
