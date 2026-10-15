@@ -643,7 +643,7 @@ A bookmark card is the one exception: its whole surface is a link, so clicking i
 
 Inside a table, dragging selects **cells**, not blocks — a drag from one cell to another selects the range between them, and <kbd>Backspace</kbd> then clears those cells and leaves the table standing. To select the table itself as a block, begin the drag in the margin beside it, the same as for any other block.
 
-With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
+With blocks selected, typing a character replaces them with a new line that starts with it, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
 
 Text selected across several blocks works the same way: <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent every block the selection touches, and a single undo reverts the whole step. A block that is already as far left as it can go is left where it is; the rest still move.
 

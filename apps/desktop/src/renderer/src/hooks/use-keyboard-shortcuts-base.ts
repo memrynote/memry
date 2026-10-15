@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 
 // =============================================================================
@@ -239,7 +240,10 @@ export const useKeyboardShortcuts = (
 
       // Check if typing in input/textarea
       const isInputField =
-        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        isInputFocused()
 
       for (const shortcut of shortcutsRef.current) {
         const { key, modifiers = {}, action, when, allowInInput } = shortcut

@@ -30,6 +30,7 @@ vi.mock('@tiptap/pm/state', () => ({
   TextSelection: { between: clipboardMocks.between }
 }))
 
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { topLevelSelectedBlockIds, useBlockMarqueeSelection } from './use-block-marquee-selection'
 
 /** Every stubbed `getBoundingClientRect()` bumps this — one measure, one count. */
@@ -260,6 +261,48 @@ describe('useBlockMarqueeSelection', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }))
     })
     expect(editor.removeBlocks).toHaveBeenCalledWith(['a', 'c'])
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('replaces a block selection with the typed character and keeps app shortcuts out (#3271)', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = {
+      prosemirrorView: { dom: { blur: vi.fn() } },
+      document: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+      replaceBlocks: vi.fn(() => ({ insertedBlocks: [{ id: 'new' }], removedBlocks: [] })),
+      setTextCursorPosition: vi.fn(),
+      focus: vi.fn()
+    }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({ editor, blockContainerRef, triggerContainerEl: trigger })
+    )
+
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+    })
+    // Focus sits on body, but the selection owns typed keys: hint mode's `f`
+    // and the other single-key app shortcuts read this gate and stand down.
+    expect(isInputFocused()).toBe(true)
+
+    const typed = new KeyboardEvent('keydown', { key: 'f', bubbles: true, cancelable: true })
+    act(() => {
+      document.body.dispatchEvent(typed)
+    })
+
+    expect(typed.defaultPrevented).toBe(true)
+    expect(editor.replaceBlocks).toHaveBeenCalledWith(
+      ['a', 'b'],
+      [{ type: 'paragraph', content: 'f' }]
+    )
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('new', 'end')
+    expect(editor.focus).toHaveBeenCalled()
+    expect(result.current.selectedBlockIds.size).toBe(0)
+    expect(isInputFocused()).toBe(false)
 
     unmount()
     trigger.remove()
