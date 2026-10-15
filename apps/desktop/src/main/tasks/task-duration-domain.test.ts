@@ -83,4 +83,19 @@ describe('task duration', () => {
 
     expect(stored(id)).toEqual({ dueTime: '09:00', durationMinutes: 30 })
   })
+
+  it('copies the duration onto a duplicate', async () => {
+    const d = setup()
+    const created = await d.createTask({
+      projectId: 'p1',
+      title: 'Block',
+      dueDate: '2026-03-02',
+      dueTime: '09:00',
+      durationMinutes: 30
+    })
+
+    const copy = await d.duplicateTask(created.task!.id)
+
+    expect(stored(copy.task!.id)).toEqual({ dueTime: '09:00', durationMinutes: 30 })
+  })
 })
