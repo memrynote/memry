@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Delete journal entry",
     "description": "Are you sure you want to delete \"{title}\"? This action cannot be undone."
+  },
+  "dayTimeline": {
+    "label": "Day schedule",
+    "allDay": "All-day items",
+    "unscheduled": "Unscheduled",
+    "unscheduledEmpty": "No unscheduled tasks. Drag a block here to clear its time.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Complete {title}"
   }
 }
