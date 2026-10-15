@@ -1,9 +1,3 @@
-//! Conformance for `wiki-target-resolution.json` (chapter 12 §12.3): name
-//! keys, alias normalisation, and which note or journal day a link names.
-//!
-//! The candidates are applied as sync records, so they reach the resolver
-//! through the same projectors a pulled payload does. `n-11` is a journal day:
-//! journal entries are their own table in the core.
 mod support;
 
 use memry_core::domain::notes::names::{name_key, normalize_aliases};
@@ -50,7 +44,7 @@ fn seeded(file: &Value) -> Connection {
         let path = note["path"].as_str().expect("path");
         let title = note["title"].as_str().expect("title");
         let aliases = note["aliases"].clone();
-        if id == "n-11" {
+        if note["journal"].as_bool().expect("journal") {
             apply(
                 &data,
                 "journal",

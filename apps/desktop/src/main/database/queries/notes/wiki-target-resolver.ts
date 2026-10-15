@@ -59,7 +59,12 @@ function candidatesFor(db: IndexDb, queries: readonly string[]): WikiNameCandida
       aliases.set(row.noteId, [...(aliases.get(row.noteId) ?? []), row.display])
     }
     for (const note of db
-      .select({ id: noteCache.id, path: noteCache.path, title: noteCache.title })
+      .select({
+        id: noteCache.id,
+        path: noteCache.path,
+        title: noteCache.title,
+        date: noteCache.date
+      })
       .from(noteCache)
       .where(inArray(noteCache.id, batch))
       .all()) {
@@ -67,7 +72,8 @@ function candidatesFor(db: IndexDb, queries: readonly string[]): WikiNameCandida
         noteId: note.id,
         path: note.path,
         title: note.title,
-        aliases: aliases.get(note.id) ?? []
+        aliases: aliases.get(note.id) ?? [],
+        journal: note.date !== null
       })
     }
   }

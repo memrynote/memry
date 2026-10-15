@@ -62,6 +62,7 @@ export interface WikiNameCandidate {
   readonly path: string
   readonly title: string
   readonly aliases: readonly string[]
+  readonly journal: boolean
 }
 
 export type WikiMatchKind = 'path' | 'title' | 'alias'
@@ -72,10 +73,15 @@ export interface WikiMatch {
   readonly matchedBy: WikiMatchKind
 }
 
-function lowestId<T extends WikiNameCandidate>(notes: readonly T[]): T | undefined {
-  let best: T | undefined
-  for (const note of notes) if (best === undefined || note.noteId < best.noteId) best = note
-  return best
+function ranksBefore(a: WikiNameCandidate, b: WikiNameCandidate): boolean {
+  if (a.journal !== b.journal) return !a.journal
+  return a.noteId < b.noteId
+}
+
+function best<T extends WikiNameCandidate>(notes: readonly T[]): T | undefined {
+  let winner: T | undefined
+  for (const note of notes) if (winner === undefined || ranksBefore(note, winner)) winner = note
+  return winner
 }
 
 /**
@@ -85,8 +91,9 @@ function lowestId<T extends WikiNameCandidate>(notes: readonly T[]): T | undefin
  * 2. a title spelled exactly as written;
  * 3. a title with the same `nameKey`;
  * 4. an alias with the same `nameKey`.
- * A title always beats an alias. Two notes in one tier: the lowest `noteId`
- * (UTF-16 code unit order, which equals byte order for the ASCII ids notes use).
+ * A title always beats an alias. Within one tier a note beats a journal day,
+ * then the lowest `noteId` wins (UTF-16 code unit order, which equals byte
+ * order for the ASCII ids notes use).
  */
 export function pickWikiTarget(
   query: string,
@@ -95,16 +102,16 @@ export function pickWikiTarget(
   const stem = wikiPathStem(query)
   if (stem !== null) {
     const forms = new Set([foldTag(stem), foldTag(`${stem}.md`)])
-    const byPath = lowestId(notes.filter((note) => forms.has(foldTag(note.path))))
+    const byPath = best(notes.filter((note) => forms.has(foldTag(note.path))))
     if (byPath) return { noteId: byPath.noteId, path: byPath.path, matchedBy: 'path' }
   }
   const key = nameKey(query)
   if (key === null) return null
   const written = query.trim()
   const byTitle =
-    lowestId(notes.filter((note) => note.title === written)) ??
-    lowestId(notes.filter((note) => nameKey(note.title) === key))
+    best(notes.filter((note) => note.title === written)) ??
+    best(notes.filter((note) => nameKey(note.title) === key))
   if (byTitle) return { noteId: byTitle.noteId, path: byTitle.path, matchedBy: 'title' }
-  const byAlias = lowestId(notes.filter((note) => note.aliases.some((a) => nameKey(a) === key)))
+  const byAlias = best(notes.filter((note) => note.aliases.some((a) => nameKey(a) === key)))
   return byAlias ? { noteId: byAlias.noteId, path: byAlias.path, matchedBy: 'alias' } : null
 }

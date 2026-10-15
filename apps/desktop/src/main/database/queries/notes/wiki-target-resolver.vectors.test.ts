@@ -36,6 +36,7 @@ describe('wiki-target-resolution vectors against the index', () => {
         id: note.noteId,
         path: note.path,
         title: note.title,
+        date: note.journal ? note.title : null,
         createdAt: '2026-01-01T00:00:00.000Z',
         modifiedAt: '2026-01-01T00:00:00.000Z'
       })

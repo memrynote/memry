@@ -782,7 +782,7 @@ NOT claim an image or checkbox inside a table cell as a block.
 A `wikiLink` target's note half (the text before the first `#`) names a note
 by path, by title or by one of the note's aliases, the frontmatter `aliases:`
 list. Both implementations decide it with one rule
-(`packages/shared/src/note-names.ts:100`,
+(`packages/shared/src/note-names.ts:108`,
 `crates/memry-core/src/domain/wiki_target.rs:260-278`), pinned by the
 `wiki-target-resolution` vectors. The first tier with a hit wins:
 
@@ -793,10 +793,8 @@ list. Both implementations decide it with one rule
 3. a title with the same name key;
 4. an alias with the same name key.
 
-A title always beats an alias. Two notes in one tier resolve to the lowest note
-id. The core ranks a note above a journal day before the id
-(`wiki_target.rs:192`); no vector covers that tie yet, and desktop ranks by id
-alone.
+A title always beats an alias. Within one tier a note beats a journal day
+(`note-names.ts:86`, `wiki_target.rs:192`), then the lowest note id wins.
 
 The name key (`note-names.ts:23`, `crates/memry-core/src/domain/notes/names.rs:19`)
 is: NFC, every run of Unicode `White_Space` collapsed to one space, the ends

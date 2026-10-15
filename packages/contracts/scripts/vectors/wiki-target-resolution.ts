@@ -44,22 +44,38 @@ const ALIAS_LISTS: Array<{ name: string; pins: string; title: string; aliases: s
 ]
 
 const NOTES: WikiNameCandidate[] = [
-  { noteId: 'n-01', path: 'Work/Plan.md', title: 'Plan', aliases: ['Roadmap'] },
-  { noteId: 'n-02', path: 'Home/Plan.md', title: 'Plan', aliases: [] },
-  { noteId: 'n-03', path: 'People/Kaan.md', title: 'Kaan', aliases: ['K.', 'İstanbul Office'] },
-  { noteId: 'n-04', path: 'Roadmap.md', title: 'Roadmap Draft', aliases: ['Plan'] },
-  { noteId: 'n-05', path: 'Shared A.md', title: 'Shared A', aliases: ['Team'] },
-  { noteId: 'n-06', path: 'Shared B.md', title: 'Shared B', aliases: ['team'] },
-  { noteId: 'n-07', path: 'Greek.md', title: 'ΟΔΟΣ', aliases: ['Straße'] },
-  { noteId: 'n-08', path: 'Café.md', title: 'Café', aliases: [] },
-  { noteId: 'n-09', path: 'plan lower.md', title: 'plan', aliases: [] },
-  { noteId: 'n-10', path: 'Roadmap Two.md', title: 'Roadmap', aliases: [] },
+  { noteId: 'n-01', path: 'Work/Plan.md', title: 'Plan', aliases: ['Roadmap'], journal: false },
+  { noteId: 'n-02', path: 'Home/Plan.md', title: 'Plan', aliases: [], journal: false },
+  {
+    noteId: 'n-03',
+    path: 'People/Kaan.md',
+    title: 'Kaan',
+    aliases: ['K.', 'İstanbul Office'],
+    journal: false
+  },
+  { noteId: 'n-04', path: 'Roadmap.md', title: 'Roadmap Draft', aliases: ['Plan'], journal: false },
+  { noteId: 'n-05', path: 'Shared A.md', title: 'Shared A', aliases: ['Team'], journal: false },
+  { noteId: 'n-06', path: 'Shared B.md', title: 'Shared B', aliases: ['team'], journal: false },
+  { noteId: 'n-07', path: 'Greek.md', title: 'ΟΔΟΣ', aliases: ['Straße'], journal: false },
+  { noteId: 'n-08', path: 'Café.md', title: 'Café', aliases: [], journal: false },
+  { noteId: 'n-09', path: 'plan lower.md', title: 'plan', aliases: [], journal: false },
+  { noteId: 'n-10', path: 'Roadmap Two.md', title: 'Roadmap', aliases: [], journal: false },
   {
     noteId: 'n-11',
     path: 'journal/2026-01-05.md',
     title: '2026-01-05',
-    aliases: ['Kickoff Day']
-  }
+    aliases: ['Kickoff Day'],
+    journal: true
+  },
+  {
+    noteId: 'j-01',
+    path: 'journal/2026-03-01.md',
+    title: '2026-03-01',
+    aliases: ['Launch Day'],
+    journal: true
+  },
+  { noteId: 'n-12', path: '2026-03-01.md', title: '2026-03-01', aliases: [], journal: false },
+  { noteId: 'n-13', path: 'Launch.md', title: 'Launch', aliases: ['launch day'], journal: false }
 ]
 
 const QUERIES: Array<{ name: string; pins: string; query: string }> = [
@@ -91,6 +107,16 @@ const QUERIES: Array<{ name: string; pins: string; query: string }> = [
   { name: 'whitespace', pins: 'outer and inner whitespace collapse', query: '  kickoff \t day ' },
   { name: 'journal-alias', pins: 'journal entries resolve by alias too', query: 'Kickoff Day' },
   { name: 'journal-title', pins: 'journal entries resolve by date title', query: '2026-01-05' },
+  {
+    name: 'title-note-beats-journal',
+    pins: 'a note and a journal day share a title: the note, though j-01 < n-12',
+    query: '2026-03-01'
+  },
+  {
+    name: 'alias-note-beats-journal',
+    pins: 'a note and a journal day share an alias: the note, though j-01 < n-13',
+    query: 'Launch Day'
+  },
   { name: 'missing', pins: 'no note names it', query: 'Nothing here' },
   { name: 'empty', pins: 'an empty half names nothing', query: '   ' }
 ]

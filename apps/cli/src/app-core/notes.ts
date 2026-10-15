@@ -245,7 +245,8 @@ function metadataByTitle(db: DataDb, indexDb: IndexDb, title: string): NoteMetad
       noteId: row.id,
       path: row.path,
       title: row.title,
-      aliases: aliases.get(row.id) ?? []
+      aliases: aliases.get(row.id) ?? [],
+      journal: row.journalDate !== null
     }))
   )
   return match ? rows.find((row) => row.id === match.noteId) : undefined
