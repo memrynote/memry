@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import { NotePage } from './note'
+import { isNewNoteTitlePending, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import type React from 'react'
@@ -578,12 +579,30 @@ vi.mock('@/components/note', () => ({
 vi.mock('@/components/note/note-title', () => ({
   NoteTitle: ({
     title,
-    onTitleChange
+    onTitleChange,
+    placeholder,
+    inputRef,
+    fresh,
+    onFreshEnd
   }: {
     title: string
     onTitleChange: (title: string) => void
+    placeholder?: string
+    inputRef?: { current: HTMLTextAreaElement | null }
+    fresh?: boolean
+    onFreshEnd?: () => void
   }) => (
     <>
+      <textarea
+        aria-label="Note title field"
+        ref={(node) => {
+          if (inputRef) inputRef.current = node
+        }}
+        placeholder={placeholder}
+        data-fresh={fresh ? 'true' : 'false'}
+        onBlur={() => onFreshEnd?.()}
+        readOnly
+      />
       <button type="button" onClick={() => onTitleChange('Renamed Note')}>
         {title}
       </button>
@@ -1030,6 +1049,21 @@ describe('NotePage', () => {
     expect(await screen.findByText('load failed')).toBeInTheDocument()
     fireEvent.click(screen.getByText('button.retry'))
     expect(mocks.refetchNote).toHaveBeenCalled()
+  })
+
+  it('focuses an empty title named by its placeholder on a just-created note', async () => {
+    markNewNoteTitlePending('note-1')
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    const field = await screen.findByRole('textbox', { name: 'Note title field' })
+    expect(field).toHaveAttribute('data-fresh', 'true')
+    expect(field).toHaveAttribute('placeholder', 'New note')
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(isNewNoteTitlePending('note-1')).toBe(false)
+
+    act(() => field.blur())
+    expect(field).toHaveAttribute('data-fresh', 'false')
+    expect(field).toHaveAttribute('placeholder', 'editor.title.untitled')
   })
 
   it('refuses a blank title instead of letting the rename contract reject it', async () => {

@@ -85,6 +85,7 @@ import {
 } from './folder-view-state'
 import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import {
   DEFAULT_COLUMNS,
   scopeKey,
@@ -828,14 +829,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     try {
       const result = await createNote.mutateAsync(
         scope.kind === 'folder'
-          ? { title: 'Untitled', folder: scope.path || undefined }
-          : { title: 'Untitled', tags: [scope.tag] }
+          ? { title: NEW_NOTE_TITLE, folder: scope.path || undefined }
+          : { title: NEW_NOTE_TITLE, tags: [scope.tag] }
       )
 
       if (result.success && result.note) {
+        markNewNoteTitlePending(result.note.id)
         openPage({
           type: 'note',
-          title: result.note.title || 'Untitled',
+          title: result.note.title,
           icon: 'file-text',
           emoji: result.note.emoji,
           path: `/notes/${result.note.id}`,

@@ -11,6 +11,7 @@ import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -201,10 +202,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   /**
    * Put a row into inline rename.
    *
-   * The name is read off the note's own path rather than the title it was asked
-   * to be created with: `createNote` de-duplicates on disk, so a second new note
-   * lands as `Untitled 1.md`. Seeding the input with `Untitled` there turns a
-   * blur with nothing typed into a real rename back to a name already taken.
+   * The name is read off the note's own path rather than its title: the two can
+   * differ, and seeding the input with the title would turn a blur with nothing
+   * typed into a real rename.
    */
   const startNoteRename = useCallback((note: { id: string; path: string }) => {
     const displayName = getDisplayName(note.path)
@@ -226,13 +226,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       const templateId = folder ? await notesService.getFolderTemplate(folder) : null
 
       const result = await deps.mutations.createNote.mutateAsync({
-        title: 'Untitled',
+        title: NEW_NOTE_TITLE,
         folder: folder || undefined,
         template: templateId ?? undefined
       })
 
       if (result.success && result.note) {
         const newNote = result.note
+        markNewNoteTitlePending(newNote.id)
         openPage({
           type: 'note',
           title: getDisplayName(newNote.path),
@@ -248,11 +249,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
         // `expandFolderPath` above only knows the selection, which is empty
         // whenever "create in selected folder" is off — the note itself is what
-        // says where it landed. Without this the row, and the rename input on
-        // it, stay shut inside a collapsed folder.
+        // says where it landed. Without this the row
+        // stays shut inside a collapsed folder.
         revealNoteInSidebar(newNote.id)
-
-        startNoteRename(newNote)
       }
     } catch (err) {
       trackRendererError('note_create_failed', err)
@@ -266,7 +265,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage, startNoteRename])
+  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
@@ -277,13 +276,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         const templateId = await notesService.getFolderTemplate(folderPath)
 
         const result = await deps.mutations.createNote.mutateAsync({
-          title: 'Untitled',
+          title: NEW_NOTE_TITLE,
           folder: folderPath || undefined,
           template: templateId ?? undefined
         })
 
         if (result.success && result.note) {
           const newNote = result.note
+          markNewNoteTitlePending(newNote.id)
           openPage({
             type: 'note',
             title: getDisplayName(newNote.path),
@@ -300,8 +300,6 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           // "New note" on a folder's context menu can be used on a folder that
           // is shut; the note then lands somewhere invisible.
           revealNoteInSidebar(newNote.id)
-
-          startNoteRename(newNote)
         }
       } catch (err) {
         trackRendererError('note_create_failed', err)
@@ -316,7 +314,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
-    [isCreating, deps.mutations.createNote, openPage, startNoteRename]
+    [isCreating, deps.mutations.createNote, openPage]
   )
 
   // ---- Create folder ----
@@ -408,19 +406,6 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   // ---- Note rename ----
 
   const handleRenameClick = startNoteRename
-
-  /**
-   * Rename by id, for a caller that only has one: a reveal completing on a note
-   * created somewhere else in the app knows the id, and the tree is the side
-   * that can turn it into a row.
-   */
-  const handleRenameById = useCallback(
-    (noteId: string) => {
-      const note = deps.noteMap.get(noteId)
-      if (note) startNoteRename(note)
-    },
-    [deps.noteMap, startNoteRename]
-  )
 
   const handleRenameInputChange = useCallback(
     (noteId: string, value: string) => {
@@ -1082,7 +1067,6 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     renameValue,
     isRenaming,
     handleRenameClick,
-    handleRenameById,
     handleRenameInputChange,
     handleRenameSubmit,
     handleRenameCancel,
