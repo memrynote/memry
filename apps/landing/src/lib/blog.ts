@@ -375,7 +375,7 @@ Result: Both operations merge deterministically. Zero data lost.`
     pageKey: 'blogTerminalPkm',
     title: 'Running a PKM from the terminal: scriptable notes, tasks, and journal',
     description:
-      'Supercharge your personal knowledge management with a CLI. Query notes, capture tasks from git hooks, append to your daily journal, and automate workflows with Unix pipes.',
+      'Run your personal knowledge base from a CLI: query notes, capture tasks from git hooks, append to your daily journal, and script workflows with Unix pipes.',
     summary:
       'Why terminal-native note-taking is the ultimate developer workflow. How to use headless CLI tooling to query, create, and automate your vault with shell pipelines and AI agents.',
     datePublished: '2026-08-31T08:00:00.000Z',
@@ -426,7 +426,7 @@ memry agenda --today`
       {
         heading: 'Automating developer rituals with Git hooks and shell aliases',
         paragraphs: [
-          'By integrating the CLI into your shell startup configuration (`.zshrc` or `.bashrc`) and git hooks, you can automate repetitive engineering rituals effortlessly.',
+          'By integrating the CLI into your shell startup configuration (`.zshrc` or `.bashrc`) and git hooks, you can automate repetitive engineering rituals.',
           'For example, a `post-commit` hook can automatically append commit summaries to your daily developer log, or a custom shell function `standup` can extract yesterday’s checked-off tasks and today’s calendar events formatted as markdown for your team standup meeting.',
           'Furthermore, modern AI development agents can interface directly with your vault using the Model Context Protocol (MCP), allowing coding assistants to query documentation notes and write task items with explicit user approval.'
         ],
@@ -521,7 +521,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         paragraphs: [
           'Once your notes have been imported into a clean local Markdown folder, perform three quick verification checks to ensure complete data integrity:',
           '1. Full-Text Search Coverage: Search for an obscure phrase from a historical note to confirm that indexing has indexed all imported content.',
-          '2. Backlink Resolution: Click on internal `[[wiki-links]]` to verify that cross-page navigation connects seamlessly without missing target warnings.',
+          '2. Backlink Resolution: Click on internal `[[wiki-links]]` to verify that every link resolves to its target note without missing-target warnings.',
           '3. Raw Text Portability: Open the folder in VS Code, Obsidian, or inspect files with standard terminal tools like `cat` to confirm that every note is standard, readable plain text without proprietary locks.'
         ]
       }

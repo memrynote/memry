@@ -72,7 +72,7 @@ function isExternalHref(href: string) {
 function LoopCardTile({ card, index }: { card: LoopCard; index: number }) {
   const cardClass = [
     'group flex h-full flex-col items-start gap-4 rounded-2xl border border-border/70 bg-card',
-    'p-6 text-start shadow-sm transition-all duration-300 ease-out',
+    'p-6 text-start shadow-sm transition duration-300 ease-out',
     'hover:-translate-y-0.5 hover:shadow-card'
   ].join(' ')
 

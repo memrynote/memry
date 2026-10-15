@@ -83,7 +83,7 @@ export function UseCasesGallery() {
               to="/use-cases"
               className={cn(
                 'flex h-full flex-col gap-3 rounded-2xl border border-ink/5 p-4',
-                'transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-card',
+                'transition duration-300 ease-out hover:-translate-y-1 hover:shadow-card',
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta',
                 TINT_CLASSES[persona.tint]
               )}

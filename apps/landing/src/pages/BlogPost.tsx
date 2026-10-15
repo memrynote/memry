@@ -323,7 +323,7 @@ export function BlogPostView({ post }: { post: BlogPost }) {
                 {relatedPosts.map((related) => (
                   <article
                     key={related.slug}
-                    className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-ink/20 hover:shadow-card"
+                    className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:border-ink/20 hover:shadow-card"
                   >
                     <span className="font-mono-accent text-[11px] uppercase tracking-wider text-muted">
                       {related.category} · {related.readingTime}

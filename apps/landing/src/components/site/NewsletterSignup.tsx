@@ -87,7 +87,7 @@ export function NewsletterSignup({ location }: { location: string }) {
               }}
               className={cn(
                 'h-14 w-full rounded-[18px] border border-ink/[0.13] bg-card ps-5 pe-[62px]',
-                'text-center text-sm text-ink shadow-[0_6px_20px_rgb(43_61_78/0.06)]',
+                'text-start text-sm text-ink shadow-[0_6px_20px_rgb(43_61_78/0.06)]',
                 'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-terracotta/40',
                 status === 'error' && 'border-red-500/70'
               )}

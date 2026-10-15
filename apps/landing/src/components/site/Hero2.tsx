@@ -151,8 +151,9 @@ function BrewInstall() {
         aria-label={`Copy the Homebrew command: ${BREW_COMMAND}`}
         className="inline-flex max-w-full items-center gap-2.5 rounded-xl border border-white/60 bg-white/45 py-2 ps-3.5 pe-2.5 text-start backdrop-blur-sm transition-colors duration-200 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
       >
-        {/* Wraps rather than truncates: a half-shown shell command is unreadable. */}
-        <code className="break-all font-mono text-[12px] leading-4 text-muted">
+        {/* Wraps at spaces rather than truncating: a half-shown shell command is unreadable,
+            and a break inside a word (`memr`/`y`) misreads as two arguments. */}
+        <code className="break-words font-mono text-[12px] leading-4 text-muted">
           <span aria-hidden className="select-none text-muted/60">
             ${' '}
           </span>
