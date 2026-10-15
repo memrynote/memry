@@ -274,7 +274,13 @@ fn field_rows(action: &'static str, changes: &[FieldChange<'_>]) -> Vec<NewActiv
         if IGNORED_FIELDS.contains(&change.field) {
             continue;
         }
-        if change.field == LENGTH_ONLY_FIELD {
+        // A task field value over 500 characters is logged like the
+        // description (§13.7.5, `isLongFieldText`).
+        let long_field_text = change.field.starts_with("fields.")
+            && [change.old, change.new]
+                .iter()
+                .any(|value| text_length(value) > 500);
+        if change.field == LENGTH_ONLY_FIELD || long_field_text {
             let delta = text_length(change.new) - text_length(change.old);
             rows.push(NewActivity {
                 action,

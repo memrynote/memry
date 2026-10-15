@@ -425,7 +425,7 @@ pub fn apply_inbound_on(
         return Ok(outcome);
     }
     let merged = match record.item_type.as_str() {
-        tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
+        tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).

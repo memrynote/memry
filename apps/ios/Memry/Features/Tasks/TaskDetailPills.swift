@@ -79,6 +79,7 @@ struct TaskDetailPills: View {
                     .accessibilityIdentifier("tasks.detail.addTag")
                 }
             }
+            TaskDetailTagFields(task: task, store: store)
             TaskPropertyRow(TasksCopy.detailLinked, symbol: "link") {
                 Button { sheet = .related } label: { TaskPropertyEmpty(text: TasksCopy.detailLinkItem) }
                     .buttonStyle(.plain)

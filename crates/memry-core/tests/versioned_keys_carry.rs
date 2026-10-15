@@ -107,7 +107,7 @@ fn a_wholesale_apply_stores_both_keys_as_sent() {
 }
 
 #[test]
-fn a_concurrent_task_merge_keeps_the_local_fields_and_imports_none() {
+fn a_concurrent_task_merge_joins_the_fields_by_version() {
     let db = open("merge");
     db.call_blocking(|conn| {
         seed_project(conn);
@@ -133,7 +133,11 @@ fn a_concurrent_task_merge_keeps_the_local_fields_and_imports_none() {
 
         let merged = payload_of(conn, "task", "t1");
         assert_eq!(merged["title"], json!("Ask Ahmet"), "the merge ran");
-        assert_eq!(merged["fields"], fields());
+        // Chapter 06 §6.11.2: the merge keeps every local entry and takes the
+        // remote's entry for a name it alone holds.
+        let mut joined = fields();
+        joined["Owner"] = json!({"v": "Deniz", "t": 9});
+        assert_eq!(merged["fields"], joined);
         assert_eq!(merged["clock"], json!({"device-a": 1, "device-b": 1}));
         Ok(())
     })

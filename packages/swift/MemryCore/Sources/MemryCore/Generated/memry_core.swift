@@ -9823,6 +9823,19 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func updateReminder(id: String, remindAt: String?, title: String?) throws 
     
     /**
+     * Sets one field value as JSON text; `None` removes it. An unchanged
+     * value writes nothing. Not undoable: the returned change lists no prior
+     * fields, because restoring a versioned map whole would outrank peers.
+     */
+    func setFieldValue(id: String, name: String, valueJson: String?) throws  -> TaskChange
+    
+    /**
+     * The task's tag field groups, in desktop's drawer order, each field
+     * holding the task's value. Empty for a task this vault does not hold.
+     */
+    func tagFields(id: String) throws  -> [TagFieldGroup]
+    
+    /**
      * The "Move under…" picker for `task_id`: its project's unarchived tasks
      * as the tree, depth first. Empty when the task is gone.
      */
@@ -10644,6 +10657,37 @@ open func updateReminder(id: String, remindAt: String?, title: String?)throws   
         FfiConverterOptionString.lower(title),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Sets one field value as JSON text; `None` removes it. An unchanged
+     * value writes nothing. Not undoable: the returned change lists no prior
+     * fields, because restoring a versioned map whole would outrank peers.
+     */
+open func setFieldValue(id: String, name: String, valueJson: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_field_value(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),
+        FfiConverterOptionString.lower(valueJson),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The task's tag field groups, in desktop's drawer order, each field
+     * holding the task's value. Empty for a task this vault does not hold.
+     */
+open func tagFields(id: String)throws  -> [TagFieldGroup]  {
+    return try  FfiConverterSequenceTypeTagFieldGroup.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_tag_fields(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -33856,6 +33900,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_update_reminder() != 43650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_field_value() != 43068) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_tag_fields() != 60252) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_move_under_places() != 63984) {

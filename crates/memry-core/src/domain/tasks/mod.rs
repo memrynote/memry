@@ -76,6 +76,7 @@ pub mod batch;
 pub mod bulk;
 pub mod create;
 pub mod fields;
+mod fields_apply;
 pub mod lifecycle;
 pub mod model;
 pub mod structure;
@@ -336,13 +337,20 @@ pub fn edit(
     )
 }
 
-/// Applies an inbound `task` record through §6.3.1 and §6.3.
+/// Applies an inbound `task` record through §6.3.1 and §6.3, then joins
+/// `fields` by chapter 06 §6.11. `clock_device` is this device's clock id,
+/// which a heal (§6.11.4) ticks; with none, the join still runs and no heal
+/// is queued.
 pub fn apply_remote(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
+    clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
-    task_merge::apply_remote_merged(conn, record, &TASK_SYNCABLE_FIELDS, now_ms)
+    let local = fields_apply::local_fields(conn, record)?;
+    let inbound = task_merge::apply_remote_merged(conn, record, &TASK_SYNCABLE_FIELDS, now_ms)?;
+    fields_apply::join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
+    Ok(inbound)
 }
 
 /// [`edit`] for either field-merged type (§6.8). `project` reaches it through

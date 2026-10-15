@@ -284,3 +284,58 @@ fn versioned_values_match_the_committed_vectors() {
         }
     }
 }
+
+/// The production map functions (`memry_core::sync::versioned`) against the
+/// same vectors: what the task apply and the field edit run.
+#[test]
+fn the_production_map_functions_match_the_committed_vectors() {
+    use memry_core::sync::versioned;
+
+    let file = vector_file("versioned-values");
+    for case in file["cases"].as_array().expect("cases is an array") {
+        let name = case["name"].as_str().expect("every case is named");
+        let input = &case["input"];
+        let expected = &case["expected"];
+        let field = |key: &str| input.get(key);
+        match case["kind"].as_str().expect("every case has a kind") {
+            "order" => assert_eq!(
+                json!(sign(versioned::compare(&input["a"], &input["b"]))),
+                expected["sign"],
+                "{name}"
+            ),
+            "join-map" => {
+                let joined = versioned::join_map(field("local"), field("remote"));
+                assert_eq!(
+                    joined.value.as_ref(),
+                    expected.get("value"),
+                    "{name}: value"
+                );
+                assert_eq!(
+                    json!(joined.remote_behind),
+                    expected["remoteBehind"],
+                    "{name}"
+                );
+                assert_eq!(
+                    json!(joined.local_changed),
+                    expected["localChanged"],
+                    "{name}"
+                );
+            }
+            "stamp-map" => assert_eq!(
+                versioned::stamp_map(
+                    field("stored"),
+                    object(&input["patch"], name),
+                    input["clockTotal"].as_u64().expect("a clock total")
+                ),
+                expected["value"],
+                "{name}"
+            ),
+            "plain" => assert_eq!(
+                Json::Object(versioned::plain(field("stored"))),
+                expected["plain"],
+                "{name}"
+            ),
+            _ => {}
+        }
+    }
+}
