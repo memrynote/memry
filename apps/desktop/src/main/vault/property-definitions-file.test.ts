@@ -95,8 +95,11 @@ describe('properties.md with one bad entry', () => {
     const service = PropertyDefinitionsService.init(vaultPath)
     expect(await service.reload()).toBe(false)
 
-    await service.upsert({ name: 'Area', type: 'select', options: [] })
+    await expect(service.upsert({ name: 'Area', type: 'select', options: [] })).rejects.toThrow(
+      'errors:property.definitionsFileUnreadable'
+    )
 
+    expect(service.get('Area')).toBeUndefined()
     expect(await fs.readFile(filePath, 'utf-8')).toBe(unreadable)
   })
 })
