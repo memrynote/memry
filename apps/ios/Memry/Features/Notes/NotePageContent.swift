@@ -35,6 +35,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
 
     /// The keyboard toolbar's paperclip source being shown (N214's upload path).
     @State private var attaching: EditorAttachmentSource?
+    /// The quiet row's `+ Name` asked the names line for a field.
+    @State private var addingName = false
     /// The body's tags as last seen. `nil` until the note is first drawn:
     /// opening a note seeds it and writes nothing (desktop's #1454).
     @State private var inlineTags: (noteId: String, tags: [String])?
@@ -82,6 +84,17 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         // what it says. Absent until the read answers, and absent again when
         // there is nothing.
         if let metadata = model.metadata {
+            NoteNamesLine(
+                names: metadata.aliases,
+                write: metadataModel.canEdit
+                    ? { names in
+                        Task {
+                            await metadataModel.setAliases(names)
+                            await model.reload()
+                        }
+                    } : nil,
+                adding: $addingName
+            )
             if metadataModel.canEdit {
                 NoteMetadataEditors(
                     metadata: metadata,
@@ -91,7 +104,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
                     tagColors: model.tagColors,
                     tagSuggestions: model.vaultTagNames,
-                    relationCandidates: model.vaultNotes
+                    relationCandidates: model.vaultNotes,
+                    addName: metadata.aliases.isEmpty ? { addingName = true } : nil
                 )
             } else {
                 NoteMetaView(metadata: metadata)

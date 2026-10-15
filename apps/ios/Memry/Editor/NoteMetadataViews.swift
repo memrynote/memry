@@ -811,6 +811,8 @@ struct NoteMetadataEditors: View {
     var tagSuggestions: [String] = []
     /// The notes a relation may point at.
     var relationCandidates: [NoteSummary] = []
+    /// Opens the names line's field; `nil` when the note already has a name.
+    var addName: (() -> Void)?
 
     @State private var showsProperties = true
     @State private var addingProperty = false
@@ -850,6 +852,9 @@ struct NoteMetadataEditors: View {
                             addingProperty = true
                         }
                     }
+                    if let addName {
+                        compactAddButton("Name", accessibility: "Add another name", action: addName)
+                    }
                     Spacer(minLength: 0)
                 }
             } else {
@@ -868,7 +873,14 @@ struct NoteMetadataEditors: View {
             }
 
             if restProperties.isEmpty {
-                if !metadata.tags.isEmpty || editingTags { addPropertyButton }
+                if !metadata.tags.isEmpty || editingTags {
+                    HStack(spacing: Tokens.Space.medium) {
+                        addPropertyButton
+                        if let addName {
+                            compactAddButton("Name", accessibility: "Add another name", action: addName)
+                        }
+                    }
+                }
             } else {
                 Button {
                     showsProperties.toggle()
@@ -915,7 +927,12 @@ struct NoteMetadataEditors: View {
                         commitDragOrder()
                         return true
                     }
-                    addPropertyButton
+                    HStack(spacing: Tokens.Space.medium) {
+                        addPropertyButton
+                        if let addName {
+                            compactAddButton("Name", accessibility: "Add another name", action: addName)
+                        }
+                    }
                 }
             }
         }

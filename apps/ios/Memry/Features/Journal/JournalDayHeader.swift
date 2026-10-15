@@ -94,10 +94,13 @@ struct JournalDayReadOnlyMetadata: View {
     let metadata: NoteMetadata
     @Binding var explains: Bool
 
-    private var hasMetadata: Bool { !metadata.tags.isEmpty || !metadata.properties.isEmpty }
+    private var hasMetadata: Bool {
+        !metadata.tags.isEmpty || !metadata.properties.isEmpty || !metadata.aliases.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            NoteNamesLine(names: metadata.aliases, write: nil, adding: .constant(false))
             NoteMetaView(metadata: metadata)
             // Side by side, stacked when the two do not fit (AX sizes, JP057)
             // rather than hyphenating a word across lines.

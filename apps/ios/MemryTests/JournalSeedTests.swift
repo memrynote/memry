@@ -55,6 +55,7 @@ final class ScriptedSeedJournal: JournalProtocol, @unchecked Sendable {
         try base.setReminder(date: date, remindAt: remindAt, note: note)
     }
     func setTags(date: String, tags: [String]) throws -> [String] { try base.setTags(date: date, tags: tags) }
+    func setAliases(date: String, aliases: [String]) throws -> [String] { try base.setAliases(date: date, aliases: aliases) }
     func setWeekdayTemplate(weekday: UInt8, templateId: String?) throws -> JournalSettingsRecord {
         try base.setWeekdayTemplate(weekday: weekday, templateId: templateId)
     }
