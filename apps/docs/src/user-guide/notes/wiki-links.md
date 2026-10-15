@@ -80,6 +80,41 @@ An older desktop or iPhone version reads a path link as a title, so it shows it 
 link. The file is not changed.
 :::
 
+## Other Names for a Note
+
+A note can have other names, called aliases. A link to any of them opens the note. For
+example, a note titled "Artificial Intelligence" with the aliases `AI` and `Yapay Zeka`
+opens from `[[AI]]`, `[[Yapay Zeka]]`, and `[[Artificial Intelligence]]`.
+
+Aliases live in the note's frontmatter, under the same `aliases` key Obsidian uses:
+
+```yaml
+---
+aliases:
+  - AI
+  - Yapay Zeka
+---
+```
+
+- Links through an alias count in the backlinks panel and the graph, like links through the
+  title.
+- Case, spacing, and Unicode composition do not matter: `[[ai]]` and `[[AI]]` open the same
+  note.
+- A title always wins over an alias. If one note is titled "AI" and another has the alias
+  `AI`, `[[AI]]` opens the note titled "AI".
+- When two notes share an alias, every device opens the same one of them. A note always wins
+  over a journal day with the same name.
+- Journal days can have aliases too.
+- Aliases sync to your other devices. A device that does not send aliases never clears the
+  ones another device set.
+
+Renaming a note does not change links that use one of its aliases.
+
+::: warning Older versions
+An older desktop version shows an alias link as a broken link and does not apply alias
+changes from your other devices. The file is not changed.
+:::
+
 ## Following a Link
 
 Click any wiki link to open the target in a new tab — or in this tab, if you have turned "clicking a page opens a new tab" off in settings.
