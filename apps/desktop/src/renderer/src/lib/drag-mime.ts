@@ -9,3 +9,11 @@
  *   resolved via `getFile`).
  */
 export const MEMRY_NOTE_DRAG_MIME = 'application/x-memry-note'
+
+/**
+ * Set next to BlockNote's own drag data when a single task block is dragged by
+ * its side-menu handle. The payload is the task id. The day panel timeline and
+ * its Unscheduled list schedule that task on drop and leave the block in the
+ * note.
+ */
+export const MEMRY_TASK_DRAG_MIME = 'application/x-memry-task'

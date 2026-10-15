@@ -29,6 +29,18 @@ export interface DateDropOptions {
 }
 
 /**
+ * Duration to write with a drop: a task that gains a time from it gets
+ * `durationIfUntimed`, and a task that already had a time keeps its own.
+ */
+export function droppedDuration(
+  previousDueTime: string | null | undefined,
+  nextDueTime: string | null,
+  durationIfUntimed: number | undefined
+): number | undefined {
+  return nextDueTime && !previousDueTime ? durationIfUntimed : undefined
+}
+
+/**
  * The droppable data a timed column registers with `timeBehavior: 'slot'`.
  * `getSlotOffsetY` lets a column inside its own scroll container report the
  * pointer offset from live layout, which dnd-kit's cached rects miss while the

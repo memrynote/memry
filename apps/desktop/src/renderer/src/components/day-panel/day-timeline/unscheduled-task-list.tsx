@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useCallback, useRef, type ReactNode } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
@@ -6,6 +6,7 @@ import { useCalendarDateDroppable } from '@/components/calendar/use-calendar-dat
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
+import { useNativeTaskDrop } from './use-native-task-drop'
 import type { TaskListItem } from '@/services/tasks-service'
 import type { Priority } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
@@ -120,7 +121,8 @@ export function DayTaskList({
   statusesFor,
   schedulable,
   headerAccessory,
-  handlers
+  handlers,
+  onUnscheduleTask
 }: {
   date: string
   title: string
@@ -129,6 +131,7 @@ export function DayTaskList({
   schedulable: boolean
   headerAccessory?: ReactNode
   handlers: TaskRowHandlers
+  onUnscheduleTask: (taskId: string) => void
 }): React.JSX.Element | null {
   const { t } = useT('journal')
   const { setNodeRef, isOver } = useCalendarDateDroppable({
@@ -136,15 +139,24 @@ export function DayTaskList({
     timeBehavior: 'clear',
     scope: 'day-panel-unscheduled'
   })
+  const nativeRef = useRef<HTMLDivElement | null>(null)
+  const { isOver: isNativeOver } = useNativeTaskDrop(nativeRef, { onDrop: onUnscheduleTask })
+  const setListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      nativeRef.current = node
+      setNodeRef(node)
+    },
+    [setNodeRef]
+  )
   if (!schedulable && tasks.length === 0) return null
 
   return (
     <div
-      ref={schedulable ? setNodeRef : undefined}
+      ref={schedulable ? setListRef : undefined}
       data-testid="day-panel-task-list"
       className={cn(
         'flex flex-col gap-1.5 rounded-md pt-1 transition-colors',
-        isOver && 'bg-tint/10 outline-1 outline-dashed outline-tint'
+        (isOver || isNativeOver) && 'bg-tint/10 outline-1 outline-dashed outline-tint'
       )}
     >
       <div className="flex items-center justify-between">
