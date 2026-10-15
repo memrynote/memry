@@ -26,6 +26,7 @@ import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
+import { IosBetaPage } from '@/pages/IosBeta'
 import { CheckoutPage } from '@/pages/Checkout'
 import { LoginPage } from '@/pages/Login'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
@@ -118,6 +119,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
   '/refund': () => <RefundPage />,
+  '/ios-beta': () => <IosBetaPage />,
   '/blog': () => <BlogIndexPage />,
   '/blog/how-to-keep-a-plain-text-daily-journal-that-outlives-any-app': () => (
     <JournalLongevityPostPage />

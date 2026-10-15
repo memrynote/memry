@@ -4,16 +4,16 @@ import { trackLandingEvent } from '@/lib/analytics'
 
 /**
  * Hero ask for phone visitors. The desktop installers are useless on a phone, so the
- * hero states the mobile launch, points beta testers at the existing "Stay in the
- * loop" signup further down the page, and keeps a quiet link to the desktop downloads.
+ * hero states the mobile launch, points beta testers at the /ios-beta invite list, and
+ * keeps a quiet link to the desktop downloads.
  */
 export function MobileComingSoon({ location }: { location: string }) {
   return (
     <div className="mx-auto flex w-full max-w-[360px] flex-col items-center gap-4">
       <p className="text-[15px] font-semibold text-ink">Mobile app coming end of November</p>
 
-      <a
-        href="#newsletter"
+      <Link
+        to="/ios-beta"
         onClick={() => trackLandingEvent('landing_nav_click', `mobile-beta:${location}`)}
         className="group/pill inline-flex min-h-[58px] items-center justify-center gap-[22px] rounded-[18px] border-2 border-white/85 bg-terracotta py-[5px] ps-[21px] pe-1.5 shadow-[0_0_0_5px_rgb(255_255_255/0.58)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50"
       >
@@ -23,7 +23,7 @@ export function MobileComingSoon({ location }: { location: string }) {
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-terracotta">
           <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
         </span>
-      </a>
+      </Link>
 
       <Link
         to="/download/desktop"

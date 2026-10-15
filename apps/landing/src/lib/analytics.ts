@@ -38,6 +38,9 @@ export type LandingEventName =
   | 'landing_newsletter_submit'
   | 'landing_newsletter_success'
   | 'landing_newsletter_error'
+  | 'landing_ios_beta_submit'
+  | 'landing_ios_beta_success'
+  | 'landing_ios_beta_error'
 
 export type LandingCampaignKey =
   'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'

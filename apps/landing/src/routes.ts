@@ -136,6 +136,7 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   { path: '/terms', Component: lazyPage(() => import('@/pages/Terms'), 'TermsPage') },
   { path: '/privacy', Component: lazyPage(() => import('@/pages/Privacy'), 'PrivacyPage') },
   { path: '/refund', Component: lazyPage(() => import('@/pages/Refund'), 'RefundPage') },
+  { path: '/ios-beta', Component: lazyPage(() => import('@/pages/IosBeta'), 'IosBetaPage') },
   { path: '/blog', Component: BlogPages.index },
   {
     path: '/blog/how-to-keep-a-plain-text-daily-journal-that-outlives-any-app',

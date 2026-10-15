@@ -643,6 +643,15 @@ describe('FileBlock missing attachment card (#1713)', () => {
     expect(resolveAttachment).toHaveBeenCalled()
     expect(screen.queryByTestId('attachment-missing-card')).not.toBeInTheDocument()
   })
+
+  it('renders normally when the url cannot be resolved', async () => {
+    const resolveAttachment = vi.fn().mockRejectedValue(new Error('invalid attachment path'))
+    renderWithNoteId(resolveAttachment)
+
+    expect(await screen.findByTestId('pdf-document')).toBeInTheDocument()
+    expect(resolveAttachment).toHaveBeenCalled()
+    expect(screen.queryByTestId('attachment-missing-card')).not.toBeInTheDocument()
+  })
 })
 
 describe('FileBlock rename (#1714)', () => {
