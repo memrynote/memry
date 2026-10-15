@@ -218,10 +218,10 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
           </Text>
 
           <Text style={styles.paragraph}>
-            You need iOS 26 or later, the TestFlight app, and a paid Memrynote plan, because the
-            phone gets your vault through encrypted sync. Once it is installed, sign in with the
-            email you use on the desktop, then scan the code from Settings → Account → Link new
-            device on your computer, or type in your recovery phrase.
+            You need iOS 26 or later and the TestFlight app. The app works on its own on your phone,
+            offline and free. If you also want your desktop vault on the phone, a paid plan syncs
+            the two: sign in with the email you use on the desktop, then scan the code from Settings
+            → Account → Link new device on your computer, or type in your recovery phrase.
           </Text>
 
           <Text style={styles.paragraph}>

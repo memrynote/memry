@@ -12,8 +12,7 @@ type Status = 'idle' | 'loading' | 'success' | 'error'
 
 const REQUIREMENTS = [
   'An iPhone on iOS 26 or later.',
-  'The TestFlight app from the App Store.',
-  'A paid memrynote plan. The phone gets your vault through end-to-end encrypted sync.'
+  'The TestFlight app from the App Store.'
 ] as const
 
 /**
@@ -141,6 +140,11 @@ export function IosBetaPage() {
                 <li key={item}>{item}</li>
               ))}
             </ul>
+            <p className="mt-3 text-muted">
+              That is all. The app works on its own on your phone, offline, for free. If you want
+              the vault from your desktop on your phone too, a paid plan syncs the two, end-to-end
+              encrypted.
+            </p>
           </section>
 
           <section>
