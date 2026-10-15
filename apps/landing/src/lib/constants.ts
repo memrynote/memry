@@ -555,7 +555,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
       '10 synced vaults',
       '200 MB per file',
       '365 days of version history',
-      'Priority support — straight from the founder'
+      'Priority support, straight from the founder'
     ],
     cta: 'Get Pro',
     emphasis: 'recommended',
@@ -826,7 +826,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'Is the local app still free?',
     answer:
-      'Yes. Notes, tasks, journal, and inbox stay free, forever, no account required. Sync between devices is the paid layer — and only the paid layer.'
+      'Yes. Notes, tasks, journal, and inbox stay free, forever, no account required. Sync between devices is the paid layer, and only the paid layer.'
   },
   {
     question: 'What happens if my card fails or I cancel?',
@@ -841,7 +841,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'How does the refund policy work?',
     answer:
-      '14-day money-back guarantee on every plan, including Believer. Request it inside the app — Paddle processes the refund back to your original payment method, no questions asked.'
+      '14-day money-back guarantee on every plan, including Believer. Request it inside the app. Paddle processes the refund back to your original payment method, no questions asked.'
   },
   {
     question: 'What is the Believer tier really?',
@@ -856,7 +856,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'Can I upgrade or downgrade later?',
     answer:
-      'Yes. Upgrades pro-rate immediately. Downgrades take effect at the end of your billing period — if you have more vaults than the new tier allows, existing data stays readable while you archive what you no longer need.'
+      'Yes. Upgrades pro-rate immediately. Downgrades take effect at the end of your billing period. If you have more vaults than the new tier allows, existing data stays readable while you archive what you no longer need.'
   },
   {
     question: 'Do you handle VAT and sales tax?',
@@ -866,7 +866,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'Which payment methods are accepted?',
     answer:
-      'Cards, Apple Pay, Google Pay, PayPal, and several regional methods depending on your country — all processed through Paddle.'
+      'Cards, Apple Pay, Google Pay, PayPal, and several regional methods depending on your country, all processed through Paddle.'
   }
 ] as const
 
