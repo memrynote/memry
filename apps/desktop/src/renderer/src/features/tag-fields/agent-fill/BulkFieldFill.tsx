@@ -45,7 +45,16 @@ function initials(title: string): string {
     .join('')
 }
 
-export function BulkFieldFill({ tag, notes }: { tag: ResolvedTag; notes: BulkFillNote[] }) {
+export function BulkFieldFill({
+  tag,
+  notes,
+  partial = false
+}: {
+  tag: ResolvedTag
+  notes: BulkFillNote[]
+  /** More matching rows are still loading; a run now would skip them. */
+  partial?: boolean
+}) {
   const { t } = useT('notes')
   const { status, visible, refresh } = useFillStatus()
   const [open, setOpen] = useState(false)
@@ -68,7 +77,7 @@ export function BulkFieldFill({ tag, notes }: { tag: ResolvedTag; notes: BulkFil
   }, [rows, fields])
   const foundCount = rows.reduce((sum, row) => sum + row.proposals.length, 0)
 
-  if (!visible || fields.length === 0 || candidates.length === 0) return null
+  if (!visible || partial || fields.length === 0 || candidates.length === 0) return null
 
   const run = async (acceptDisclosure: boolean) => {
     stopRef.current = false

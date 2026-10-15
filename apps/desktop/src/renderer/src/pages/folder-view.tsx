@@ -1197,6 +1197,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             <TagFieldsToolbar
               tag={fieldTag}
               notes={notes}
+              partial={hasMore}
               onEdit={() => tagFields.setSettingsOpen(true)}
             />
           )}
