@@ -1,5 +1,6 @@
 export { BacklinksSection } from './BacklinksSection'
 export { OutgoingLinksSection } from './OutgoingLinksSection'
+export { UnlinkedMentionsSection } from './UnlinkedMentionsSection'
 export { BacklinkCard } from './BacklinkCard'
 export { BacklinkSnippet } from './BacklinkSnippet'
 export { BacklinksLoadingState } from './BacklinksLoadingState'

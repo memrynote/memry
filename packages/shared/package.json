@@ -31,6 +31,7 @@
     "./html-comments": "./src/html-comments.ts",
     "./wiki-target": "./src/wiki-target.ts",
     "./rewrite-wiki-links": "./src/rewrite-wiki-links.ts",
+    "./unlinked-mentions": "./src/unlinked-mentions.ts",
     "./markdown-headings": "./src/markdown-headings.ts",
     "./markdown-source": "./src/markdown-source.ts",
     "./frontmatter-split": "./src/frontmatter-split.ts",

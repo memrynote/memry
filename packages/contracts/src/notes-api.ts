@@ -486,6 +486,31 @@ export interface NoteAliasEditResponse {
   aliases: string[]
 }
 
+/**
+ * A note that mentions another note's title or alias as plain text, without
+ * linking to it (#3320). `contexts[i]` is the source's i-th mention, the
+ * ordinal `notes:link-mention` takes.
+ */
+export interface UnlinkedMention {
+  sourceId: string
+  sourcePath: string
+  sourceTitle: string
+  contexts: Array<{ snippet: string; linkStart: number; linkEnd: number }>
+}
+
+/** Turn a source's `ordinal`-th unlinked mention of `targetId` into a wiki link. */
+export const NoteLinkMentionSchema = z.object({
+  sourceId: z.string().min(1),
+  targetId: z.string().min(1),
+  ordinal: z.number().int().min(0)
+})
+export type NoteLinkMention = z.infer<typeof NoteLinkMentionSchema>
+
+export interface NoteLinkMentionResponse {
+  /** `false` when the mention is gone, e.g. the source changed since it was listed. */
+  linked: boolean
+}
+
 export const ApplyTemplateSchema = z.object({
   noteId: z.string(),
   templateId: z.string(),
@@ -795,6 +820,8 @@ export interface NotesHandlers {
   ) => Promise<UndoTagTemplateResponse>
 
   [NotesChannels.invoke.EDIT_ALIASES]: (input: NoteAliasEdit) => Promise<NoteAliasEditResponse>
+  [NotesChannels.invoke.GET_UNLINKED_MENTIONS]: (id: string) => Promise<UnlinkedMention[]>
+  [NotesChannels.invoke.LINK_MENTION]: (input: NoteLinkMention) => Promise<NoteLinkMentionResponse>
 
   [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
 
@@ -918,4 +945,6 @@ export interface NotesClientAPI {
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
   undoTagTemplate(input: z.infer<typeof UndoTagTemplateSchema>): Promise<UndoTagTemplateResponse>
   editAliases(input: NoteAliasEdit): Promise<NoteAliasEditResponse>
+  getUnlinkedMentions(id: string): Promise<UnlinkedMention[]>
+  linkMention(input: NoteLinkMention): Promise<NoteLinkMentionResponse>
 }

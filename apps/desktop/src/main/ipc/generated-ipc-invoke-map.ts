@@ -255,6 +255,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get-similar": (...args: [{ noteId: string; limit?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").SimilarNotesResponse>>
   "notes:get-tag-suggestions": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").NoteTagSuggestionsResponse>>
   "notes:get-tags": (...args: []) => Awaited<Promise<{ tag: string; color: string; count: number; }[]>>
+  "notes:get-unlinked-mentions": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").UnlinkedMention[]>>
   "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotDetail | null>>
   "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotListItem[]>>
   "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; options?: { plainChecklists?: boolean | undefined; } | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").ImportFilesResult> | { success: false; error: string }>
@@ -263,6 +264,7 @@ export interface MainIpcInvokeHandlers {
   "notes:large-file-open": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileOpenResult>>
   "notes:large-file-read-lines": (...args: [{ sessionId: string; startLine: number; count: number; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileLinesResult | null>>
   "notes:large-file-search": (...args: [{ sessionId: string; query: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileSearchResult | null>>
+  "notes:link-mention": (...args: [{ sourceId: string; targetId: string; ordinal: number; }]) => Awaited<Promise<{ linked: boolean; }> | { success: false; error: string }>
   "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "modified" | "created" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; includeJournals?: boolean | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
   "notes:list-vault-attachments": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").VaultAttachmentEntry[]>>

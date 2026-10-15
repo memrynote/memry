@@ -808,6 +808,26 @@ each spelling trimmed, drops empties, entries over 200 UTF-16 units and any
 alias equal to the title by key, dedupes by key with the first spelling kept,
 and holds at most 32.
 
+### 12.7.3 Unlinked mentions
+
+An unlinked mention is body text that spells a note's title or one of its
+aliases without linking to it. Both implementations match with one rule
+(`packages/shared/src/unlinked-mentions.ts:36`,
+`crates/memry-core/src/domain/unlinked_mentions.rs:58`), pinned by the
+`unlinked-mentions` vectors:
+
+1. each name is trimmed, and a name under 3 characters is skipped;
+2. each character folds on its own with the tag fold of §13.7.8, so matching
+   is case-insensitive;
+3. a match is whole-word: the characters on both sides are not letters,
+   digits or `_`;
+4. at one position the longest name wins, and the scan resumes after it.
+
+Desktop scans markdown and first blanks code, comments, wiki links,
+markdown links and URLs; the core scans `extract_text` output. A source that
+already links to the note is a backlink and is not listed. Nothing is stored:
+the list is computed on read from the FTS index and the bodies.
+
 ## 12.8 The five out-of-band encodings
 
 **Normative.** These live outside plain markdown. Two of them are **in-fragment

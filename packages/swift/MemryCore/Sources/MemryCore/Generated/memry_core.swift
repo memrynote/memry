@@ -8164,6 +8164,13 @@ public protocol SearchProtocol: AnyObject, Sendable {
      */
     func tasks(query: String, limit: UInt32) throws  -> [SearchResult]
     
+    /**
+     * Notes and journal days that mention `target_id`'s title or an alias as
+     * plain text without linking to it (#3320), by source title. Read from
+     * the index, so a body edited since the last reindex can lag.
+     */
+    func unlinkedMentions(targetId: String) throws  -> [UnlinkedMention]
+    
 }
 /**
  * The search surface over one opened vault.
@@ -8325,6 +8332,21 @@ open func tasks(query: String, limit: UInt32)throws  -> [SearchResult]  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(query),
         FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Notes and journal days that mention `target_id`'s title or an alias as
+     * plain text without linking to it (#3320), by source title. Read from
+     * the index, so a body edited since the last reindex can lag.
+     */
+open func unlinkedMentions(targetId: String)throws  -> [UnlinkedMention]  {
+    return try  FfiConverterSequenceTypeUnlinkedMention.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_unlinked_mentions(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(targetId),uniffiCallStatus
     )
 })
 }
@@ -25048,6 +25070,99 @@ public func FfiConverterTypeTemplateSummary_lower(_ value: TemplateSummary) -> R
 
 
 /**
+ * One note or journal day that mentions the target without linking to it.
+ */
+public struct UnlinkedMention: Equatable, Hashable {
+    public var sourceId: String
+    /**
+     * The note's title, or the journal's date.
+     */
+    public var sourceTitle: String
+    /**
+     * `note` or `journal`.
+     */
+    public var sourceKind: String
+    /**
+     * The journal's date, `None` for a note source.
+     */
+    public var sourceDate: String?
+    /**
+     * Each mention as written, in body order.
+     */
+    public var mentions: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, 
+        /**
+         * The note's title, or the journal's date.
+         */sourceTitle: String, 
+        /**
+         * `note` or `journal`.
+         */sourceKind: String, 
+        /**
+         * The journal's date, `None` for a note source.
+         */sourceDate: String?, 
+        /**
+         * Each mention as written, in body order.
+         */mentions: [String]) {
+        self.sourceId = sourceId
+        self.sourceTitle = sourceTitle
+        self.sourceKind = sourceKind
+        self.sourceDate = sourceDate
+        self.mentions = mentions
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension UnlinkedMention: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUnlinkedMention: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UnlinkedMention {
+        return
+            try UnlinkedMention(
+                sourceId: FfiConverterString.read(from: &buf), 
+                sourceTitle: FfiConverterString.read(from: &buf), 
+                sourceKind: FfiConverterString.read(from: &buf), 
+                sourceDate: FfiConverterOptionString.read(from: &buf), 
+                mentions: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UnlinkedMention, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.sourceTitle, into: &buf)
+        FfiConverterString.write(value.sourceKind, into: &buf)
+        FfiConverterOptionString.write(value.sourceDate, into: &buf)
+        FfiConverterSequenceString.write(value.mentions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUnlinkedMention_lift(_ buf: RustBuffer) throws -> UnlinkedMention {
+    return try FfiConverterTypeUnlinkedMention.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUnlinkedMention_lower(_ value: UnlinkedMention) -> RustBuffer {
+    return FfiConverterTypeUnlinkedMention.lower(value)
+}
+
+
+/**
  * One row of the vault registry.
  */
 public struct VaultSummary: Equatable, Hashable {
@@ -32747,6 +32862,31 @@ fileprivate struct FfiConverterSequenceTypeTemplateSummary: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeUnlinkedMention: FfiConverterRustBuffer {
+    typealias SwiftType = [UnlinkedMention]
+
+    public static func write(_ value: [UnlinkedMention], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUnlinkedMention.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UnlinkedMention] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UnlinkedMention]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUnlinkedMention.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer {
     typealias SwiftType = [VaultSummary]
 
@@ -34284,6 +34424,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_tasks() != 18334) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {

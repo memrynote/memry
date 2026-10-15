@@ -27,6 +27,9 @@ import type {
   UndoTagTemplateResponse,
   NoteAliasEdit,
   NoteAliasEditResponse,
+  NoteLinkMention,
+  NoteLinkMentionResponse,
+  UnlinkedMention,
   NoteLinksChangedEvent
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
@@ -586,6 +589,14 @@ export const notesRpc = defineDomain({
     }),
     editAliases: defineMethod<(input: NoteAliasEdit) => Promise<NoteAliasEditResponse>>({
       channel: NotesChannels.invoke.EDIT_ALIASES,
+      params: ['input']
+    }),
+    getUnlinkedMentions: defineMethod<(id: string) => Promise<UnlinkedMention[]>>({
+      channel: NotesChannels.invoke.GET_UNLINKED_MENTIONS,
+      params: ['id']
+    }),
+    linkMention: defineMethod<(input: NoteLinkMention) => Promise<NoteLinkMentionResponse>>({
+      channel: NotesChannels.invoke.LINK_MENTION,
       params: ['input']
     }),
     appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({

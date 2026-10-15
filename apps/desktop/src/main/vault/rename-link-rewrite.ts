@@ -39,6 +39,7 @@ import {
   isJournalEntry,
   extractDateFromPath
 } from '@main/database/queries/notes'
+import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
@@ -145,12 +146,32 @@ async function rewriteSource(
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.
   const sourcePath = sourceId === noteId ? input.newPath : cached.path
-  const absolutePath = toAbsolutePath(sourcePath)
   const original = await readVaultFile(getVaultRoot(), sourcePath)
   if (!original) return
 
   const rewritten = rewriteWikiLinksToNote(original, from, to, otherNoteWithTitleExists)
   if (rewritten === null) return
+
+  await landSourceRewrite(db, cached, {
+    path: sourcePath,
+    title: sourceId === noteId ? to.title : cached.title,
+    content: rewritten
+  })
+}
+
+/**
+ * Land a rewritten source file everywhere its body lives: the file, the index,
+ * the renderer and the CRDT body (steps 1-4 above). Also used by the
+ * unlinked-mention "Link" action.
+ */
+export async function landSourceRewrite(
+  db: IndexDb,
+  cached: NoteCache,
+  source: { path: string; title: string; content: string }
+): Promise<void> {
+  const sourceId = cached.id
+  const { path: sourcePath, content: rewritten } = source
+  const absolutePath = toAbsolutePath(sourcePath)
 
   // Same guard the sync note handler and `moveNote` use before touching a file
   // the watcher is also watching: this write is already being reconciled here.
@@ -167,7 +188,7 @@ async function rewriteSource(
       fileContent: rewritten,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
-      title: sourceId === noteId ? to.title : cached.title,
+      title: source.title,
       createdAt: toIso(cached.createdAt),
       modifiedAt: now,
       localOnly: cached.localOnly ?? false,

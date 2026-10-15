@@ -54,6 +54,7 @@ import { useNoteCover } from '@/components/note/use-note-cover'
 import {
   BacklinksSection,
   OutgoingLinksSection,
+  UnlinkedMentionsSection,
   Backlink,
   Mention,
   backlinkId
@@ -1474,6 +1475,23 @@ export function NotePage({ noteId }: NotePageProps) {
     [createNote, openLinked, t]
   )
 
+  const handleOpenMentionSource = useCallback(
+    (sourceId: string, title: string) => {
+      openLinked({
+        type: 'note',
+        title,
+        icon: 'file-text',
+        path: `/notes/${sourceId}`,
+        entityId: sourceId,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openLinked]
+  )
+
   const handleBacklinkClick = useCallback(
     (backlinkNoteId: string, mention?: Mention) => {
       const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
@@ -2215,6 +2233,8 @@ export function NotePage({ noteId }: NotePageProps) {
               />
             }
           />
+
+          <UnlinkedMentionsSection noteId={note.id} onOpen={handleOpenMentionSource} />
 
           <OutgoingLinksSection
             links={outgoingLinks}

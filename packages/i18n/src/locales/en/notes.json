@@ -722,6 +722,16 @@
     "more": "{count} more",
     "viaProperty": "{property} → {title}"
   },
+  "unlinkedMentions": {
+    "title": "Unlinked mentions",
+    "summary": "{count, plural, one {# unlinked mention} other {# unlinked mentions}}",
+    "sectionAria": "Unlinked mentions",
+    "fromAria": "Unlinked mentions in {title}",
+    "link": "Link",
+    "linkAria": "Link {text}",
+    "gone": "That mention changed since the list was read",
+    "linkFailed": "Could not link the mention"
+  },
   "outgoingLinks": {
     "summary": "{count, plural, one {# outgoing link} other {# outgoing links}}",
     "sectionAria": "Outgoing links",

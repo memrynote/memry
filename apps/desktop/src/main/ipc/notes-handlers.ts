@@ -23,6 +23,7 @@ import {
   ApplyTemplateSchema,
   UndoTagTemplateSchema,
   NoteAliasEditSchema,
+  NoteLinkMentionSchema,
   NoteAppendBlocksSchema,
   NoteCarriedTasksSchema,
   NoteSimilarRequestSchema,
@@ -108,6 +109,7 @@ import {
 } from '../notes/domain'
 import { applyTemplateToNote } from '../notes/apply-template'
 import { editNoteAliasesCommand } from '../notes/note-aliases'
+import { getUnlinkedMentions, linkUnlinkedMentionInSource } from '../vault/unlinked-mentions'
 import { appendBlocksToNote } from '../vault/append-blocks'
 import { getCarriedTaskIds } from '../tasks/note-carried-tasks'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
@@ -354,6 +356,18 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.UNDO_TAG_TEMPLATE,
     UndoTagTemplateSchema,
     (input) => undoTagTemplateCommand(input),
+    'errors:note.updateFailed'
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.GET_UNLINKED_MENTIONS,
+    createStringHandler((id) => getUnlinkedMentions(id))
+  )
+
+  registerCommand(
+    NotesChannels.invoke.LINK_MENTION,
+    NoteLinkMentionSchema,
+    async (input) => ({ linked: await linkUnlinkedMentionInSource(input) }),
     'errors:note.updateFailed'
   )
 
