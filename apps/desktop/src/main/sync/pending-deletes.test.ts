@@ -8,6 +8,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
  * `local-mutations` reaches for, which has no test seam of its own.
  */
 let activeDb: unknown = null
+const logDebug = vi.hoisted(() => vi.fn())
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({ debug: logDebug, info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
 
 vi.mock('../database', () => ({
   getDatabase: () => activeDb
@@ -170,6 +175,11 @@ describe('local delete tombstones', () => {
     const pending = db.select().from(syncPendingDeletes).all()
     expect(pending).toHaveLength(1)
     expect(pending[0]?.itemId).toBe('task-live')
+
+    // #then — #3047: the log does not claim the runtime was down
+    const messages = logDebug.mock.calls.map(([message]) => String(message))
+    expect(messages.some((m) => m.includes('local delete tombstone'))).toBe(true)
+    expect(messages.some((m) => m.includes('runtime was down'))).toBe(false)
   })
 
   it('keeps a task delete raised before this device is registered', () => {
