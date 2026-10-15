@@ -8,9 +8,9 @@ A right-side panel with calendar, tasks, and the schedule for a selected date.
 
 Three stacked sections:
 
-1. **Calendar picker** — month grid with heatmap dots indicating activity
-2. **Today's tasks** — tasks due on the focused date
-3. **Schedule** — calendar events and a journal preview for the focused date
+1. **Calendar picker**: month grid with heatmap dots indicating activity
+2. **Timeline**: an hour-by-hour view of the focused date, with events and timed tasks
+3. **Unscheduled**: tasks due on the focused date that have no time yet
 
 ## The Calendar Picker
 
@@ -22,25 +22,32 @@ A compact monthly grid:
 
 Use the prev / next arrows or the month label to jump months.
 
-## Today's Tasks
+## Timeline
 
-Tasks with a due date matching the focused date. Each row shows:
+An hour grid for the focused date. Today opens on the current time; other days open at 08:00. A line marks now, and hours already past are dimmed. All-day items sit in a strip above the grid.
 
-- Title
-- Status chip
-- Priority chip
-- Project (if any)
-- Subtask progress (if any)
+Calendar events and timed tasks appear as blocks. Tasks have a checkbox; tick it to complete the task and the block leaves the timeline. Items that overlap sit side by side.
 
-Click a task to open its detail drawer; right-click for the context menu (status / priority / etc.).
-
-## Schedule
-
-Calendar events for the focused date plus a preview of that day's journal entry (when applicable).
-
-The day runs midnight to midnight on your own clock, the same boundary the [Home board](/user-guide/home-dashboard) uses. A late-evening event and one just after midnight land on the days you would put them on, and the panel and the board never disagree about which day an event belongs to.
+The day runs midnight to midnight on your own clock, the same boundary the [Home board](/user-guide/home-dashboard) uses.
 
 If the [Google Calendar integration](/user-guide/settings#google-calendar) is linked, external events appear here too.
+
+### Time blocking
+
+- **Schedule a task**: drag it from the Unscheduled list onto the timeline. It snaps to the half hour and becomes a 30-minute block.
+- **From a note**: drag a task line from a journal entry or any note by its block handle onto the timeline. The line stays in the note; it is the same task.
+- **Change the length**: drag the bottom edge of a task block. It grows from 30 minutes to 1 hour, then in whole hours.
+- **Move it**: drag the block to another time. It keeps its length.
+- **Reach a later hour**: hold the dragged task near the top or bottom edge of the timeline and it scrolls.
+- **Unschedule**: drag the block back onto the Unscheduled list. The task stays due that day without a time.
+
+Past days accept drops too.
+
+## Unscheduled
+
+Tasks due on the focused date that have no time and are not done. Each row shows its status and priority; click a task to open it.
+
+With the calendar turned off in settings, the panel shows the task list without the timeline.
 
 ## Resizing
 
