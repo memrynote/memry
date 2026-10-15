@@ -36,14 +36,15 @@ pub(super) fn write(
     // link between two notes. The mention count belongs to the reader.
     let mut seen: BTreeSet<String> = BTreeSet::new();
     for block in blocks {
-        for run in &block.inline {
+        let nodes = block.inline.iter().filter_map(|run| {
             let is_link = run
                 .marks
                 .iter()
                 .any(|mark| mark == "wikiLink" || mark == "linkMention");
-            let Some(target) = run.target.as_deref().filter(|_| is_link) else {
-                continue;
-            };
+            run.target.clone().filter(|_| is_link)
+        });
+        for target in nodes.chain(super::literal_links::targets(block)) {
+            let target = target.as_str();
             let (note, heading) = wiki_target::split(target);
             if note.is_empty() {
                 continue;
