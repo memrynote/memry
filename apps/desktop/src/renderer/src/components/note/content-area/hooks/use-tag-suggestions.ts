@@ -54,39 +54,53 @@ export function useTagSuggestions({
     return registerEditorPlugin(editor, plugin)
   }, [editor, getTagColor])
 
-  // Re-color + re-icon existing hashTag nodes when the tag color/icon maps
-  // change. Pure DOM/editor mutation — useLayoutEffect runs after layout but
-  // before paint, which is appropriate here and avoids the
-  // no-pass-data-to-parent false positive.
+  // Re-color + re-icon existing hashTag nodes from the current tag maps. Runs
+  // when the maps change and on every doc change: a tag rename rewrites the
+  // open note's chips after the maps already moved on, so the chip arrives
+  // with the old tag's stored color/icon (#3051).
   useLayoutEffect(() => {
-    if (!tagColorMap || tagColorMap.size === 0) return
-
     const tiptap = editor._tiptapEditor
     if (!tiptap) return
 
-    const { state } = tiptap
-    let tr = state.tr
-    let changed = false
+    const reconcile = (): void => {
+      const colorMap = tagColorMapRef.current
+      if (!colorMap || colorMap.size === 0) return
+      const iconMap = tagIconMapRef.current
 
-    state.doc.descendants((node: any, pos: number) => {
-      if (node.type.name === 'hashTag') {
-        const tagKey = foldTag(node.attrs.tag as string)
-        const correctColor =
-          tagColorMap.get(tagKey) || defaultTagColorName(node.attrs.tag as string)
-        const correctIcon = tagIconMap?.get(tagKey) ?? ''
-        if (node.attrs.color !== correctColor || (node.attrs.icon ?? '') !== correctIcon) {
-          tr = tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            color: correctColor,
-            icon: correctIcon
-          })
-          changed = true
+      const { state } = tiptap
+      let tr = state.tr
+      let changed = false
+
+      state.doc.descendants((node: any, pos: number) => {
+        if (node.type.name === 'hashTag') {
+          const tagKey = foldTag(node.attrs.tag as string)
+          const correctColor = colorMap.get(tagKey) || defaultTagColorName(node.attrs.tag as string)
+          const correctIcon = iconMap?.get(tagKey) ?? ''
+          if (node.attrs.color !== correctColor || (node.attrs.icon ?? '') !== correctIcon) {
+            tr = tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              color: correctColor,
+              icon: correctIcon
+            })
+            changed = true
+          }
         }
-      }
-    })
+      })
 
-    if (changed) {
-      tiptap.view.dispatch(tr)
+      if (changed) {
+        tiptap.view.dispatch(tr)
+      }
+    }
+
+    tagColorMapRef.current = tagColorMap
+    tagIconMapRef.current = tagIconMap
+    reconcile()
+    const onUpdate = ({ transaction }: { transaction: any }): void => {
+      if (transaction.docChanged) reconcile()
+    }
+    tiptap.on('update', onUpdate)
+    return () => {
+      tiptap.off('update', onUpdate)
     }
   }, [editor, tagColorMap, tagIconMap])
 
