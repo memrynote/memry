@@ -128,7 +128,9 @@ function searchNotes(
     WHERE fts_notes MATCH ${ftsQuery}
       AND nc.date IS NULL
       AND ${noteFileTypeFilter(noteFileTypes)}
-    ORDER BY rank
+    -- Markdown notes first: a short OCR-read image out-ranks a long note in
+    -- bm25, and a vault of pasted slides would push the note past the limit.
+    ORDER BY COALESCE(nc.file_type, 'markdown') <> 'markdown', rank
     LIMIT ${limit}
   `)
 
