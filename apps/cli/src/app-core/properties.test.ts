@@ -86,3 +86,30 @@ test('definitions with an unknown type are rejected and never reach properties.m
     app.close()
   }
 })
+
+test('a write that fails partway leaves the old properties.md intact', async (t) => {
+  const vaultPath = await makeVault()
+  const original = matter.stringify('', { properties: { rating: { type: 'number' } } })
+  await fs.writeFile(propertiesFile(vaultPath), original)
+  const app = await createMemryApp({ vaultPath })
+  // Simulate a crash mid-write: half the bytes reach the file, then the write fails.
+  const realWriteFile = fs.writeFile
+  t.mock.method(fs, 'writeFile', async (file: string, data: string) => {
+    await realWriteFile(file, String(data).slice(0, Math.floor(String(data).length / 2)))
+    throw new Error('simulated crash')
+  })
+  try {
+    await assert.rejects(
+      app.properties.createDefinition({ name: 'mood', type: 'text' }),
+      /simulated crash/
+    )
+  } finally {
+    t.mock.restoreAll()
+    app.close()
+  }
+  assert.equal(await fs.readFile(propertiesFile(vaultPath), 'utf8'), original)
+  const leftovers = (await fs.readdir(path.join(vaultPath, '.memry'))).filter((f) =>
+    f.endsWith('.tmp')
+  )
+  assert.deepEqual(leftovers, [])
+})
