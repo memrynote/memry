@@ -8,14 +8,10 @@ import { MEMRY_TASK_DRAG_MIME } from '@/lib/drag-mime'
  * the task id prop as `data-task-id`.
  */
 export function draggedTaskId(html: string): string | null {
-  if (!html) return null
-  // DOMParser builds an inert document: no scripts or event handlers run.
-  const blocks = new DOMParser()
-    .parseFromString(html, 'text/html')
-    .querySelectorAll('[data-content-type]')
-  if (blocks.length !== 1 || blocks[0].getAttribute('data-content-type') !== 'taskBlock')
-    return null
-  return blocks[0].getAttribute('data-task-id') || null
+  // Read the attributes as text: drag data is untrusted, so it is never parsed as HTML.
+  const types = [...html.matchAll(/data-content-type="([^"]*)"/g)]
+  if (types.length !== 1 || types[0][1] !== 'taskBlock') return null
+  return /data-task-id="([^"]+)"/.exec(html)?.[1] ?? null
 }
 
 function addTaskDragData(event: DragEvent): void {
