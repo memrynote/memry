@@ -93,6 +93,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic,
           recordWholeBodyMerged: vi.fn()
@@ -141,6 +142,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -229,6 +231,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive,
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -283,6 +286,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -359,6 +363,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate,
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -429,6 +434,7 @@ describe('CrdtSyncCoordinator', () => {
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -533,6 +539,45 @@ describe('CrdtSyncCoordinator', () => {
     // away — and opening the note did not help, because that reads main's Y.Doc
     // rather than the server.
     expect(coordinator.drainPendingPulls()).toEqual(['note-1', 'note-2'])
+  })
+
+  // #3278: a batch POST that dead-letters on a server 5xx must leave its notes
+  // owed, so the next sync pulls them again instead of dropping them.
+  it('re-queues every note in a chunk whose batch POST dead-lettered on a 5xx', async () => {
+    // #given the batch POST exhausts its retries on a 503
+    const { ctx } = createBatchContext()
+    const { SyncServerError } = await import('@memry/sync-client/http-errors')
+    const { DeadLetterError } = await import('@memry/sync-client/retry')
+    postToServerMock.mockRejectedValue(
+      new DeadLetterError(new SyncServerError('Server error (503)', 503), 4)
+    )
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then both are owed, and the next pass sends them again
+    const owed = coordinator.drainPendingPulls()
+    expect(owed).toEqual(['note-1', 'note-2'])
+    postToServerMock.mockReset()
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-2': { updates: [], hasMore: false }
+      }
+    })
+    await coordinator.applyCrdtBatch(owed, 'token-1', new Uint8Array([4]))
+    expect(postToServerMock).toHaveBeenCalledWith(
+      '/sync/crdt/updates/batch',
+      expect.objectContaining({
+        notes: [
+          { noteId: 'note-1', since: 0 },
+          { noteId: 'note-2', since: 0 }
+        ]
+      }),
+      'token-1'
+    )
+    expect(coordinator.drainPendingPulls()).toEqual([])
   })
 
   it('re-queues only the note whose snapshot baseline was rate-limited', async () => {
@@ -714,6 +759,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector,
           seedFromMarkdownPublic,
           recordWholeBodyMerged: vi.fn()
@@ -772,6 +818,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
           seedFromMarkdownPublic: vi.fn(),
           recordWholeBodyMerged: vi.fn()
@@ -1117,6 +1164,7 @@ describe('CrdtSyncCoordinator', () => {
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
           getStateVector: vi.fn((noteId: string) =>
             noteId === 'note-2' ? null : new Uint8Array([1, 2, 3, 4])
           ),
@@ -1753,6 +1801,7 @@ describe('CrdtSyncCoordinator.clearCaches', () => {
       open: vi.fn().mockResolvedValue({}),
       closeIfInactive: vi.fn().mockResolvedValue(true),
       getDoc: vi.fn().mockReturnValue({}),
+      hasPersistence: () => false,
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
       seedFromMarkdownPublic: vi.fn(),
       recordWholeBodyMerged: vi.fn()

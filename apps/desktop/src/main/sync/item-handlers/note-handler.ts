@@ -41,6 +41,7 @@ import {
   serializeParsedNote,
   mergeTagLists,
   replacePropertiesOnRoot,
+  generateContentHash,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
@@ -427,6 +428,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               return null
             })
             settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
+            // The watcher ignores this write, so the index hash moves here or the
+            // next write-back reads the app's own bytes as an outside edit (#3282).
+            updateFields.contentHash = generateContentHash(updatedContent)
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
             // Pure rename/move — file bytes untouched
@@ -488,6 +492,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               return null
             })
             settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
+            updateFields.contentHash = generateContentHash(updatedContent)
           }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
         } catch {

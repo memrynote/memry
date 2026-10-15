@@ -541,6 +541,16 @@ disk is unchanged, other devices are unaffected, and reopening the note shows ev
 expanded again. For a collapsible section that _is_ saved with the note — and that
 GitHub and Obsidian also render collapsed — use a toggle list instead.
 
+## Folding a heading
+
+Headings fold the same way. Hover a heading that has content under it and click the
+chevron in the margin to hide its section: every block after it, up to the next heading
+of the same or a higher level. Folding a Heading 1 hides the Heading 2s inside it too;
+folding a Heading 2 stops at the next Heading 2 or Heading 1.
+
+Like bullet folding, this is a view only. The note is unchanged and reopens fully
+expanded. Toggle headings keep their own saved toggle and get no extra chevron.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
@@ -643,7 +653,7 @@ A bookmark card is the one exception: its whole surface is a link, so clicking i
 
 Inside a table, dragging selects **cells**, not blocks — a drag from one cell to another selects the range between them, and <kbd>Backspace</kbd> then clears those cells and leaves the table standing. To select the table itself as a block, begin the drag in the margin beside it, the same as for any other block.
 
-With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
+With blocks selected, typing a character replaces them with a new line that starts with it, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
 
 Text selected across several blocks works the same way: <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent every block the selection touches, and a single undo reverts the whole step. A block that is already as far left as it can go is left where it is; the rest still move.
 

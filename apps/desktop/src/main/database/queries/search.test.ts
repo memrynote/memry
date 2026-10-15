@@ -341,7 +341,7 @@ describe('cross-type search queries', () => {
 
     searchAll(indexDb, dataDb, query({ types: ['note'] }))
 
-    expect(sqlParts(indexDb.all.mock.calls[0][0]).text).not.toContain('COALESCE')
+    expect(sqlParts(indexDb.all.mock.calls[0][0]).text).not.toContain("'markdown') IN (")
   })
 
   it('continues after per-type FTS failures and keeps exact results if fuzzy fallback fails', () => {

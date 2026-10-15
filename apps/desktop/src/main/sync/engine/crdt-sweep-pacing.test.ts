@@ -156,6 +156,7 @@ describe('CRDT sweep pacing', () => {
       applyRemoteUpdate: () => {},
       // Non-empty, so the markdown seed fallback never fires and cannot mask a
       // baseline that was never fetched.
+      hasPersistence: () => false,
       getStateVector: () => new Uint8Array([1, 2, 3, 4]),
       seedFromMarkdownPublic: vi.fn(),
       recordWholeBodyMerged: vi.fn(),

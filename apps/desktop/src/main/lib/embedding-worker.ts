@@ -1,3 +1,4 @@
+import os from 'os'
 import { createLogger } from './logger'
 import { installWorkerLogForwarding } from './log-forward'
 import {
@@ -21,6 +22,12 @@ const logger = createLogger('Embeddings:Worker')
  * its own terms rather than being force-killed and reported as a teardown death.
  */
 const SHUTDOWN_TIMEOUT_MS = 1_500
+
+/**
+ * onnxruntime takes every core by default, so a vault-wide re-embed pinned the
+ * whole machine. Half the cores leaves the rest for the user.
+ */
+const INFERENCE_THREADS = Math.max(1, Math.floor(os.availableParallelism() / 2))
 
 interface ModelProgress {
   status: string
@@ -122,6 +129,7 @@ async function loadEmbeddingPipeline() {
         config,
         dtype: EMBEDDING_MODEL_DTYPE,
         device: 'cpu',
+        session_options: { intraOpNumThreads: INFERENCE_THREADS, interOpNumThreads: 1 },
         progress_callback
       })
     ])
@@ -248,8 +256,13 @@ async function handleShutdown(): Promise<void> {
   if (shuttingDown) return
   shuttingDown = true
 
+  let disposed = false
   const fallback = setTimeout(() => {
-    logger.warn('Embedding worker did not drain after disposal; exiting')
+    // Disposal finished but native runtime threads still hold the loop open:
+    // routine on every idle shutdown (#3280), so info. A disposal that never
+    // settled is a real wedge and stays a warning.
+    if (disposed) logger.info('Embedding worker exiting after disposal')
+    else logger.warn('Embedding worker disposal did not settle; exiting')
     process.exit(0)
   }, SHUTDOWN_TIMEOUT_MS)
   if (typeof fallback.unref === 'function') {
@@ -263,6 +276,7 @@ async function handleShutdown(): Promise<void> {
 
   try {
     await disposable?.dispose()
+    disposed = true
   } catch (error) {
     logger.error('Failed to dispose embedding pipeline', {
       message: error instanceof Error ? error.message : String(error)

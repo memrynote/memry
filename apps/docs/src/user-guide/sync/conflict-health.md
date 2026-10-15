@@ -152,6 +152,10 @@ separate from the per-file limit that governs attachments. Past roughly 3.7 MB o
 text, a note's sync payload no longer fits in a single request and that note stops
 syncing. Every other note keeps syncing normally.
 
+A lower ceiling of about 900 KB of encrypted state applies while this device
+still has to merge changes another device made to that note. A large note can
+hit it briefly; it shows the same error and syncs once the merge finishes.
+
 This used to be silent. It is not any more:
 
 - **Before it breaks.** **Settings → Vault → Notes near the sync limit** lists any

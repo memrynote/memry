@@ -96,11 +96,10 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'memrynote for Mobile',
-    description: 'iOS and Android apps',
-    href: '#',
+    description: 'iPhone beta on TestFlight',
+    href: '/ios-beta',
     icon: '/mascots/mobile.webp',
-    iconType: 'image',
-    disabled: true
+    iconType: 'image'
   },
   {
     label: 'memrynote for Desktop',

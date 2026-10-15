@@ -21,13 +21,15 @@ vi.mock('@huggingface/transformers', () => ({
   env: mockEnv
 }))
 
+const mockLogger = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}))
+
 vi.mock('./logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  })
+  createLogger: () => mockLogger
 }))
 
 describe('embedding worker', () => {
@@ -186,6 +188,32 @@ describe('embedding worker', () => {
 
         await vi.advanceTimersByTimeAsync(1)
         expect(exit).toHaveBeenCalledWith(0)
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+          'Embedding worker disposal did not settle; exiting'
+        )
+      } finally {
+        vi.useRealTimers()
+        exit.mockRestore()
+      }
+    })
+
+    // Windows keeps onnxruntime threads alive after a clean dispose, so this
+    // fallback runs on every idle shutdown. At warn it reached the worker's
+    // console, which main relays as error-level stderr (#3280).
+    it('exits quietly when disposal settled but the loop stayed open', async () => {
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never)
+      const port = new MockParentPort()
+      await loadWorker(port, vi.fn().mockResolvedValue(undefined))
+      mockLogger.warn.mockClear()
+
+      vi.useFakeTimers()
+      try {
+        port.emit('message', { data: { type: 'shutdown' } })
+        await vi.advanceTimersByTimeAsync(1_500)
+        expect(exit).toHaveBeenCalledWith(0)
+        expect(mockLogger.warn).not.toHaveBeenCalled()
+        expect(mockLogger.error).not.toHaveBeenCalled()
+        expect(mockLogger.info).toHaveBeenCalledWith('Embedding worker exiting after disposal')
       } finally {
         vi.useRealTimers()
         exit.mockRestore()

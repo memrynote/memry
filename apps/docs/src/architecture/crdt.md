@@ -323,8 +323,19 @@ update, a seed, or the editor open's merge step reaches it. An open document
 that has merged takes the edit live, even when its body is empty. A note whose
 document cannot take the edit is marked in the `crdt_owed_file_bodies` table
 and given a full-state outbox row (#2646). The marker means the vault file is
-ahead of the document. It is never written with a store, and never for a
-large-file-class body.
+ahead of the document. A main-process edit never writes it with a store, and
+never for a large-file-class body.
+
+With a store, a pull writes it for a document the store never held: an emptied
+or new store, as after a store epoch reset (#3277). The pull checks the empty
+document before it merges. When the note was edited since its last sync
+(`modifiedAt` after `syncedAt`, or never synced), the vault file may hold text
+that never reached the document or the server, and the write-back the merge
+schedules would replace it with the older server body. The note owes its file
+instead, and after a complete merge the pull takes it
+(`takeFileAfterMerge`), keeping the server body as a version. A synced note is
+left to the merge, because its file may be the item record's copy of a body the
+server has since moved past.
 
 The file is taken only after a complete server merge into the live document,
 and every other pass leaves the file alone while the marker stands. The

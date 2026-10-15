@@ -17,6 +17,12 @@
  * preference. Nothing here dispatches a document change: the collapsed set
  * lives in plugin state, the transaction that flips it is selection-only, and
  * neither sync nor the vault file ever sees it.
+ *
+ * Headings fold the same way (issue #3198), but what they hide is their
+ * section, not nested children: every following sibling up to the next heading
+ * of the same or a higher level, plus any blocks nested under the heading
+ * itself. Toggleable headings are skipped — BlockNote gives them their own
+ * persisted toggle, and two chevrons on one row would fight.
  */
 
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
@@ -37,7 +43,7 @@ export const BULLET_TOGGLE_CLASS = 'memry-bullet-toggle'
  */
 export const BULLET_FOLD_GUTTER = 20
 
-/** Class that hides a folded bullet's `blockGroup`. */
+/** Class that hides a folded block's nested group or section siblings. */
 export const COLLAPSED_CHILDREN_CLASS = 'memry-collapsed-children'
 
 const TOGGLE_META = 'bulletCollapseToggle'
@@ -48,40 +54,84 @@ export interface BulletCollapseState {
   decorations: DecorationSet
 }
 
-export interface CollapsibleBullet {
+export interface NodeRange {
+  from: number
+  to: number
+}
+
+export interface CollapsibleBlock {
   id: string
-  /** Position of the `blockGroup` holding this bullet's nested blocks. */
-  groupPos: number
-  groupSize: number
+  kind: 'bullet' | 'heading'
+  /**
+   * Where the chevron widget goes: right after the block's content node, which
+   * is the `blockGroup`'s open position when the block has children.
+   */
+  togglePos: number
+  /** Nodes hidden while folded, in document order and contiguous. */
+  hidden: NodeRange[]
 }
 
 export interface BulletCollapseLabels {
   expand: string
   collapse: string
+  expandSection: string
+  collapseSection: string
+}
+
+function headingLevel(container: ProseMirrorNode): number | null {
+  const content = container.firstChild
+  if (!content || content.type.name !== 'heading') return null
+  if (content.attrs.isToggleable === true) return null
+  const level = Number(content.attrs.level)
+  return Number.isFinite(level) ? level : null
 }
 
 /**
- * Every bullet list item in the document that has nested blocks.
+ * Every foldable block: bullet list items with nested blocks, and headings with
+ * a non-empty section.
  *
  * A `blockContainer`'s content is `blockContent blockGroup?`, so "has children"
  * is exactly "its last child is a `blockGroup`" — a container with no nesting
  * has the content node as both first and last child, which the type check
  * below rejects.
  */
-export function findCollapsibleBullets(doc: ProseMirrorNode): CollapsibleBullet[] {
-  const bullets: CollapsibleBullet[] = []
-  doc.descendants((node, pos) => {
+export function findCollapsibleBlocks(doc: ProseMirrorNode): CollapsibleBlock[] {
+  const blocks: CollapsibleBlock[] = []
+  doc.descendants((node, pos, parent, index) => {
     if (node.type.name !== 'blockContainer') return true
     const content = node.firstChild
-    const group = node.lastChild
-    if (!content || !group || group.type.name !== 'blockGroup') return true
-    if (content.type.name !== 'bulletListItem') return true
     const id = typeof node.attrs.id === 'string' ? node.attrs.id : ''
-    if (!id) return true
-    bullets.push({ id, groupPos: pos + 1 + content.nodeSize, groupSize: group.nodeSize })
+    if (!content || !id) return true
+    const togglePos = pos + 1 + content.nodeSize
+    const group = node.lastChild
+    const ownGroup: NodeRange[] =
+      group && group.type.name === 'blockGroup'
+        ? [{ from: togglePos, to: togglePos + group.nodeSize }]
+        : []
+
+    if (content.type.name === 'bulletListItem') {
+      if (ownGroup.length > 0) blocks.push({ id, kind: 'bullet', togglePos, hidden: ownGroup })
+      return true
+    }
+
+    const level = headingLevel(node)
+    if (level === null || !parent) return true
+    const hidden = [...ownGroup]
+    let siblingPos = pos + node.nodeSize
+    for (let i = index + 1; i < parent.childCount; i++) {
+      const sibling = parent.child(i)
+      // Any heading ends the section at its level, toggleable or not.
+      const siblingContent = sibling.firstChild
+      if (siblingContent?.type.name === 'heading' && Number(siblingContent.attrs.level) <= level) {
+        break
+      }
+      hidden.push({ from: siblingPos, to: siblingPos + sibling.nodeSize })
+      siblingPos += sibling.nodeSize
+    }
+    if (hidden.length > 0) blocks.push({ id, kind: 'heading', togglePos, hidden })
     return true
   })
-  return bullets
+  return blocks
 }
 
 const CHEVRON_SVG =
@@ -90,10 +140,11 @@ const CHEVRON_SVG =
   'stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
 
 function renderToggle(
-  blockId: string,
+  block: CollapsibleBlock,
   isCollapsed: boolean,
   labels: BulletCollapseLabels
 ): HTMLElement {
+  const blockId = block.id
   const button = document.createElement('button')
   button.type = 'button'
   button.className = BULLET_TOGGLE_CLASS
@@ -105,7 +156,17 @@ function renderToggle(
   button.setAttribute('data-block-id', blockId)
   button.setAttribute('data-collapsed', String(isCollapsed))
   button.setAttribute('aria-expanded', String(!isCollapsed))
-  button.setAttribute('aria-label', isCollapsed ? labels.expand : labels.collapse)
+  const heading = block.kind === 'heading'
+  button.setAttribute(
+    'aria-label',
+    isCollapsed
+      ? heading
+        ? labels.expandSection
+        : labels.expand
+      : heading
+        ? labels.collapseSection
+        : labels.collapse
+  )
   button.innerHTML = CHEVRON_SVG
   return button
 }
@@ -116,27 +177,25 @@ function buildDecorations(
   labels: BulletCollapseLabels
 ): DecorationSet {
   const decorations: Decoration[] = []
-  for (const bullet of findCollapsibleBullets(doc)) {
-    const isCollapsed = collapsed.has(bullet.id)
+  for (const block of findCollapsibleBlocks(doc)) {
+    const isCollapsed = collapsed.has(block.id)
     decorations.push(
       // Anchored at the `blockGroup`'s open position with `side: -1`, so the
       // button lands between `.bn-block-content` and `.bn-block-group` — the
       // sibling order the `.bn-block-content:hover ~` reveal rule needs. Its
       // own placement is absolute, so DOM order costs no layout.
-      Decoration.widget(bullet.groupPos, () => renderToggle(bullet.id, isCollapsed, labels), {
+      Decoration.widget(block.togglePos, () => renderToggle(block, isCollapsed, labels), {
         // Without a key ProseMirror rebuilds the button on every redraw, which
         // would drop the hover state mid-click.
-        key: `${BULLET_TOGGLE_CLASS}:${bullet.id}:${isCollapsed}`,
+        key: `${BULLET_TOGGLE_CLASS}:${block.id}:${isCollapsed}`,
         side: -1,
         ignoreSelection: true
       })
     )
     if (isCollapsed) {
-      decorations.push(
-        Decoration.node(bullet.groupPos, bullet.groupPos + bullet.groupSize, {
-          class: COLLAPSED_CHILDREN_CLASS
-        })
-      )
+      for (const range of block.hidden) {
+        decorations.push(Decoration.node(range.from, range.to, { class: COLLAPSED_CHILDREN_CLASS }))
+      }
     }
   }
   return decorations.length > 0 ? DecorationSet.create(doc, decorations) : DecorationSet.empty
@@ -151,24 +210,25 @@ function buildDecorations(
 function moveSelectionOutOfSubtree(
   state: EditorState,
   tr: Transaction,
-  bullet: CollapsibleBullet
+  block: CollapsibleBlock
 ): void {
   const { from, to } = state.selection
-  const groupEnd = bullet.groupPos + bullet.groupSize
-  if (to <= bullet.groupPos || from >= groupEnd) return
-  // `groupPos - 1` is inside the bullet's own content node, at its end.
-  tr.setSelection(TextSelection.near(tr.doc.resolve(bullet.groupPos - 1), -1))
+  const hiddenFrom = block.hidden[0].from
+  const hiddenTo = block.hidden[block.hidden.length - 1].to
+  if (to <= hiddenFrom || from >= hiddenTo) return
+  // `togglePos - 1` is inside the block's own content node, at its end.
+  tr.setSelection(TextSelection.near(tr.doc.resolve(block.togglePos - 1), -1))
 }
 
-/** Flips one bullet's fold. Exported for tests and for any future shortcut. */
+/** Flips one block's fold. Exported for tests and for any future shortcut. */
 export function toggleBulletCollapse(view: EditorView, blockId: string): boolean {
   const pluginState = BULLET_COLLAPSE_PLUGIN_KEY.getState(view.state)
   if (!pluginState) return false
 
   const tr = view.state.tr.setMeta(TOGGLE_META, blockId)
   if (!pluginState.collapsed.has(blockId)) {
-    const bullet = findCollapsibleBullets(view.state.doc).find((b) => b.id === blockId)
-    if (bullet) moveSelectionOutOfSubtree(view.state, tr, bullet)
+    const block = findCollapsibleBlocks(view.state.doc).find((b) => b.id === blockId)
+    if (block) moveSelectionOutOfSubtree(view.state, tr, block)
   }
   view.dispatch(tr)
   return true
@@ -194,11 +254,10 @@ export function createBulletCollapsePlugin(labels: BulletCollapseLabels): Plugin
 
         if (!tr.docChanged) return value
 
-        // A bullet that lost its children (or was deleted) has no chevron left
-        // to un-fold it with, so its id must not linger — re-nesting under it
-        // later would otherwise come back mysteriously folded.
-        const bullets = findCollapsibleBullets(newState.doc)
-        const live = new Set(bullets.map((bullet) => bullet.id))
+        // A block that lost its children or section (or was deleted) has no
+        // chevron left to un-fold it with, so its id must not linger — content
+        // added under it later would otherwise come back mysteriously folded.
+        const live = new Set(findCollapsibleBlocks(newState.doc).map((block) => block.id))
         const collapsed = new Set([...value.collapsed].filter((id) => live.has(id)))
         return { collapsed, decorations: buildDecorations(newState.doc, collapsed, labels) }
       }

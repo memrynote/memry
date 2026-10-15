@@ -178,6 +178,14 @@ server that predates it omits the key.
 Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
 is why the single form's flat shape above is worth stating separately.
 
+**Byte budget** (#3278). Both update reads also stop at 8 MiB of raw update
+bytes per response (`CRDT_PULL_BYTE_BUDGET`,
+`apps/sync-server/src/services/crdt.ts`), the first update always included. A
+page cut short reports `hasMore: true`, and a batch note the budget did not
+reach comes back as `{ updates: [], hasMore: true }`. A client follows
+`hasMore` from its own cursor as for any page; `limit` is a ceiling, not a
+promise of that many entries.
+
 **`POST /sync/crdt/snapshot`** — request
 `{ noteId, snapshot, coversThrough?, baseRevision? }`, the snapshot being the
 base64 packed envelope and the other two the optional claim of §7.7.1 (#2299).

@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Zbaliť vnorené položky",
-      "expand": "Rozbaliť vnorené položky"
+      "expand": "Rozbaliť vnorené položky",
+      "collapseSection": "Zbaliť sekciu",
+      "expandSection": "Rozbaliť sekciu"
     },
     "toolbar": {
       "linkToNote": "Odkaz na poznámku",

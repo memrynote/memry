@@ -642,6 +642,27 @@ describe('CaptureBar — quick-add syntax', () => {
     expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
   })
 
+  it('completes a multi-word project to a token that keeps the title clean', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    const launch: Project = { ...mockProjects[0], id: 'project-launch', name: 'memrynote Launch' }
+    renderBar(
+      <CaptureBar
+        {...quickAddProps}
+        quickAdd={{ projects: [...mockProjects, launch] }}
+        onSubmit={onSubmit}
+      />
+    )
+
+    await user.type(field(), 'Draft launch tweet +memr')
+    await user.keyboard('{Tab}')
+    expect(field()).toHaveValue('Draft launch tweet +memrynote-Launch ')
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit.mock.calls[0][0]).toBe('Draft launch tweet')
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ projectId: 'project-launch' })
+  })
+
   it('completes the token on ArrowRight', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)

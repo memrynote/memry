@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "折叠嵌套项",
-      "expand": "展开嵌套项"
+      "expand": "展开嵌套项",
+      "collapseSection": "折叠章节",
+      "expandSection": "展开章节"
     },
     "toolbar": {
       "linkToNote": "链接到笔记",

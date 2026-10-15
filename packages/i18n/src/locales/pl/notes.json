@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Zwiń zagnieżdżone elementy",
-      "expand": "Rozwiń zagnieżdżone elementy"
+      "expand": "Rozwiń zagnieżdżone elementy",
+      "collapseSection": "Zwiń sekcję",
+      "expandSection": "Rozwiń sekcję"
     },
     "toolbar": {
       "linkToNote": "Wstaw link do notatki",

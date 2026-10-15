@@ -26,6 +26,7 @@ import { SESSION_ONLY_CRDT_BODY_DEBTS, type CrdtBodyDebtStore } from './crdt-bod
 import { CrdtPullLedger, isFailedBodyPull, type PassFailures } from './crdt-pull-ledger'
 import { prefetchWindow } from './prefetch-window'
 import { runJournalDayMerges } from '../journal-day-merge'
+import { oweUnsyncedFileBody, owesFileBody } from '../crdt-owed-file-body'
 
 const log = createLogger('CrdtSyncCoordinator')
 
@@ -536,6 +537,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       if (vector && isEmptyStateVector(vector) && this.lastAppliedSequence.has(noteId)) {
         this.forgetWatermark(noteId)
       }
+      if (vector && isEmptyStateVector(vector) && crdtProvider.hasPersistence()) {
+        oweUnsyncedFileBody(noteId)
+      }
 
       // This pass IS the pull the note may already have been owed, so the debt
       // is settled here rather than at the end. That is what lets
@@ -680,6 +684,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
           noteId
         })
+      } else if (!sawUnmerged && crdtProvider.hasPersistence() && owesFileBody(noteId)) {
+        await crdtProvider.takeFileAfterMerge(noteId, doc)
       }
       return true
     } catch (err) {
@@ -1108,9 +1114,10 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         if (!vector) continue
         if (!isEmptyStateVector(vector)) {
           if (since !== undefined) resumeFrom.set(noteId, since)
-        } else if (this.lastAppliedSequence.has(noteId)) {
-          this.forgetWatermark(noteId)
+          continue
         }
+        if (this.lastAppliedSequence.has(noteId)) this.forgetWatermark(noteId)
+        if (crdtProvider.hasPersistence()) oweUnsyncedFileBody(noteId)
       }
 
       // The snapshot GETs run ahead of the apply, which still takes one note
@@ -1325,6 +1332,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
             noteId
           })
+        } else if (
+          !sawUnmerged.has(noteId) &&
+          crdtProvider.hasPersistence() &&
+          owesFileBody(noteId)
+        ) {
+          const doc = crdtProvider.getDoc(noteId)
+          if (doc) await crdtProvider.takeFileAfterMerge(noteId, doc)
         }
       }
     } finally {

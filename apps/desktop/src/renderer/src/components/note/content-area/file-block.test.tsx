@@ -334,6 +334,9 @@ describe('file block helpers', () => {
     expect(updateBlock).toHaveBeenCalledWith(block, {
       props: expect.objectContaining({ width: expect.any(Number) })
     })
+    // The block content is a flex row: without full width the embed measures
+    // its own (shrunk) card as the column and can never grow back.
+    expect(handle.closest('.file-block')).toHaveClass('w-full')
   })
 
   it('scrolls continuously through a multi-page PDF and tracks the page', async () => {

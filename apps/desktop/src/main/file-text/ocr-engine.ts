@@ -9,7 +9,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getLogShip } from '../telemetry/log-ship'
-import { lowerProcessPriority } from './low-priority'
+import { lowerProcessPriority } from '../lib/low-priority'
 import { ocrLanguageSet } from './ocr-languages'
 import type {
   OcrImageSource,

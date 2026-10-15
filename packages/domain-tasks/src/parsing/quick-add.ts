@@ -230,6 +230,33 @@ export const findProjectByName = (
   return null
 }
 
+/** True when `marker` is exactly one run of `pattern`, nothing left over. */
+const isWholeMarker = (marker: string, pattern: RegExp): boolean =>
+  findMarkerRuns(marker, pattern)[0]?.text === marker
+
+/**
+ * The `+` marker that names `project`, for completions to insert. The marker is
+ * one word, so spaces become hyphens ("memrynote Launch" → `+memrynote-Launch`,
+ * read back by the kebab-case match). Null when no marker reads back as this
+ * project — a name with characters the marker cannot hold, or a duplicate.
+ */
+export const projectMarker = (
+  project: QuickAddProject,
+  projects: readonly QuickAddProject[]
+): string | null => {
+  const marker = `+${project.name.trim().replace(/\s+/g, '-')}`
+  return isWholeMarker(marker, PROJECT_PATTERN) &&
+    findProjectByName(marker.slice(1), projects) === project.id
+    ? marker
+    : null
+}
+
+/** The `#` marker for `tag`, or null when the tag grammar cannot read it whole. */
+export const tagMarker = (tag: string): string | null => {
+  const marker = `#${tag}`
+  return isWholeMarker(marker, TAG_PATTERN) ? marker : null
+}
+
 // ============================================================================
 // MAIN PARSER
 // ============================================================================

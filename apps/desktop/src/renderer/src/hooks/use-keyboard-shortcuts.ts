@@ -21,11 +21,24 @@ export const modifierKey = isMac ? '⌘' : 'Ctrl'
  */
 export const altKey = isMac ? '⌥' : 'Alt'
 
+// A note's block selection blurs the editor, yet typed keys belong to it: they
+// replace the selected blocks. Each selecting editor claims the keyboard here so
+// app-wide single-key shortcuts (hint mode on `f`, `?`) stand down meanwhile.
+const blockSelectionOwners = new Set<object>()
+
+export const claimKeysForBlockSelection = (owner: object): (() => void) => {
+  blockSelectionOwners.add(owner)
+  return () => {
+    blockSelectionOwners.delete(owner)
+  }
+}
+
 /**
  * Check if the currently focused element is an input field
  * Used to determine if keyboard shortcuts should be triggered
  */
 export const isInputFocused = (): boolean => {
+  if (blockSelectionOwners.size > 0) return true
   const activeElement = document.activeElement as HTMLElement | null
   const tagName = activeElement?.tagName.toLowerCase()
   const contentEditable = activeElement?.contentEditable

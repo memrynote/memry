@@ -86,7 +86,7 @@ See [Embeddings & Semantic Search](/user-guide/ai/embeddings-search) for setup.
 
 Memry reads the text inside the PDFs and images you file in the vault, and inside the ones you paste or attach into a note, so search finds them by what is written on them. The snippet under the result shows the matching text.
 
-- A filed PDF or image comes up as its own result and opens in the file viewer.
+- A filed PDF or image comes up as its own result and opens in the file viewer. Notes that match come first, and matching files follow them.
 - A screenshot or PDF inside a note brings up that note. Removing it from the note removes its text from search, even though the file stays in the note's attachments folder.
 
 - A PDF page that already carries text (a document saved or exported as PDF) is read from that text.

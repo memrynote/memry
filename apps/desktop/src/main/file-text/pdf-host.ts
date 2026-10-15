@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { toMemryFileUrl } from '../lib/paths'
-import { lowerProcessPriority } from './low-priority'
+import { lowerProcessPriority } from '../lib/low-priority'
 
 const logger = createLogger('PdfHost')
 

@@ -345,8 +345,11 @@ export function createEmbeddingProjector(
         return
       }
 
-      // One-time rebuild when the embedding input formula changed, so stored
-      // vectors don't silently mix old and new shapes (Codex #11).
+      // When the embedding input formula changed, drop every stored vector so
+      // old and new shapes never mix (Codex #11), and record the new version at
+      // once. The backfill below then embeds every note that has no vector, so
+      // a re-embed cut short by quit resumes on the next open instead of
+      // wiping its progress and starting over each launch.
       try {
         const db = getDatabase()
         const stored = getSetting(db, EMBEDDING_VERSION_KEY)
@@ -355,11 +358,8 @@ export function createEmbeddingProjector(
             from: stored,
             to: EMBEDDING_INPUT_VERSION
           })
-          const result = await runRebuild(signal)
-          if (result.success) {
-            setSetting(db, EMBEDDING_VERSION_KEY, String(EMBEDDING_INPUT_VERSION))
-            return
-          }
+          getRawIndexDatabase().prepare('DELETE FROM vec_notes').run()
+          setSetting(db, EMBEDDING_VERSION_KEY, String(EMBEDDING_INPUT_VERSION))
         }
       } catch (error) {
         logger.warn('Embedding version check failed', { error })

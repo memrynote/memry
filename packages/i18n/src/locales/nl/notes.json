@@ -172,7 +172,9 @@
     },
     "bulletFold": {
       "collapse": "Geneste items samenvouwen",
-      "expand": "Geneste items uitvouwen"
+      "expand": "Geneste items uitvouwen",
+      "collapseSection": "Sectie samenvouwen",
+      "expandSection": "Sectie uitvouwen"
     },
     "toolbar": {
       "linkToNote": "Naar notitie linken",
