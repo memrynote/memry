@@ -35,15 +35,17 @@ function DropLayer({
   date,
   scrollRef,
   columnRef,
-  formatTime
+  formatTime,
+  onDropTask
 }: {
   date: string
   scrollRef: RefObject<HTMLDivElement | null>
   columnRef: RefObject<HTMLDivElement | null>
   formatTime: (minutes: number) => string
+  onDropTask: (taskId: string, dueTime: string) => void
 }): React.JSX.Element | null {
   const { t } = useT('journal')
-  const { setDropRef, preview } = useTimelineDrag({ date, scrollRef, columnRef })
+  const { setDropRef, preview } = useTimelineDrag({ date, scrollRef, columnRef, onDropTask })
   return (
     <div
       ref={setDropRef}
@@ -79,6 +81,7 @@ export function DayTimeline({
   onCompleteTask,
   onOpenTask,
   onResizeTask,
+  onScheduleTask,
   onHoverColor
 }: {
   date: string
@@ -88,6 +91,7 @@ export function DayTimeline({
   onCompleteTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
   onResizeTask: (taskId: string, minutes: number) => void
+  onScheduleTask: (taskId: string, dueTime: string) => void
   onHoverColor?: (color: string | null) => void
 }): React.JSX.Element {
   const { t } = useT('journal')
@@ -218,6 +222,7 @@ export function DayTimeline({
             scrollRef={scrollRef}
             columnRef={columnRef}
             formatTime={formatTime}
+            onDropTask={onScheduleTask}
           />
         )}
       </div>

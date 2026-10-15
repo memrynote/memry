@@ -8,12 +8,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createRendererI18n } from '@memry/i18n/renderer'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { TaskListItem } from '@/services/tasks-service'
-import type { DragState } from '@/contexts/drag-context'
+import { DragProvider, type DragState } from '@/contexts/drag-context'
 import type { Task } from '@/data/task-model'
 import { useDragHandlers } from '@/hooks/use-drag-handlers'
 import { JournalDayPanel } from '@/components/journal/journal-day-panel'
 import { timelineDropData } from './use-timeline-drag'
 import { TIMELINE_HOUR_HEIGHT } from './timeline-layout'
+import { MEMRY_TASK_DRAG_MIME } from '@/lib/drag-mime'
 
 const mocks = vi.hoisted(() => ({
   items: [] as CalendarProjectionItem[],
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   flags: new Set(['calendar', 'tasks']),
   complete: vi.fn(),
   update: vi.fn(),
+  get: vi.fn(),
   openTab: vi.fn()
 }))
 
@@ -42,7 +44,8 @@ vi.mock('@/services/tasks-service', () => ({
     getStats: vi.fn(async () => ({ overdue: 0 })),
     complete: mocks.complete,
     uncomplete: vi.fn(),
-    update: mocks.update
+    update: mocks.update,
+    get: mocks.get
   },
   onTaskCreated: () => () => {},
   onTaskUpdated: () => () => {},
@@ -305,5 +308,105 @@ describe('dropping onto the day panel', () => {
       dueDate: new Date(2026, 4, 10),
       dueTime: null
     })
+  })
+})
+
+describe('dropping a task block from a note onto the day panel', () => {
+  function nativeDrag(
+    type: 'dragover' | 'drop',
+    target: Element,
+    clientY: number,
+    taskId?: string
+  ): Event {
+    const data = new Map(taskId ? [[MEMRY_TASK_DRAG_MIME, taskId]] : [])
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientY })
+    Object.defineProperty(event, 'dataTransfer', {
+      value: {
+        types: ['blocknote/html', ...data.keys()],
+        getData: (key: string) => data.get(key) ?? '',
+        dropEffect: 'none'
+      }
+    })
+    act(() => {
+      target.dispatchEvent(event)
+    })
+    return event
+  }
+
+  const at = (hour: number, minute: number): number => (hour + minute / 60) * TIMELINE_HOUR_HEIGHT
+
+  function renderInApp(date: string): void {
+    renderPanel(
+      <DragProvider tasks={[]} selectedIds={new Set()}>
+        <JournalDayPanel date={date} />
+      </DragProvider>
+    )
+    const scroller = screen.getByTestId('day-timeline-scroll')
+    scroller.getBoundingClientRect = () => new DOMRect(0, 0, 300, 24 * TIMELINE_HOUR_HEIGHT)
+  }
+
+  it('schedules an untimed task at the half hour under the pointer for 30 minutes', async () => {
+    mocks.get.mockResolvedValue({ id: 'task-1', dueDate: null, dueTime: null })
+    renderInApp('2026-05-12')
+    const scroller = screen.getByTestId('day-timeline-scroll')
+
+    nativeDrag('dragover', scroller, at(14, 20), 'task-1')
+    expect(await screen.findByTestId('timeline-drop-preview')).toHaveTextContent('14:30 – 15:00')
+    const drop = nativeDrag('drop', scroller, at(14, 20), 'task-1')
+
+    expect(drop.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        id: 'task-1',
+        dueDate: '2026-05-12',
+        dueTime: '14:30',
+        durationMinutes: 30
+      })
+    )
+    expect(screen.queryByTestId('timeline-drop-preview')).not.toBeInTheDocument()
+  })
+
+  it('moves a timed task and keeps its duration', async () => {
+    mocks.get.mockResolvedValue({ id: 'task-1', dueDate: '2026-05-10', dueTime: '09:00' })
+    renderInApp('2026-05-12')
+    nativeDrag('drop', screen.getByTestId('day-timeline-scroll'), at(16, 0), 'task-1')
+
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        id: 'task-1',
+        dueDate: '2026-05-12',
+        dueTime: '16:00'
+      })
+    )
+  })
+
+  it('sets the day and clears the time when dropped on the Unscheduled list', async () => {
+    mocks.get.mockResolvedValue({ id: 'task-1', dueDate: '2026-05-10', dueTime: '09:00' })
+    renderPanel(<JournalDayPanel date="2026-05-12" />)
+    const drop = nativeDrag('drop', await screen.findByTestId('day-panel-task-list'), 0, 'task-1')
+
+    expect(drop.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        id: 'task-1',
+        dueDate: '2026-05-12',
+        dueTime: null
+      })
+    )
+  })
+
+  it('ignores a dragged block that is not a task', async () => {
+    renderInApp('2026-05-12')
+    const scroller = screen.getByTestId('day-timeline-scroll')
+
+    const over = nativeDrag('dragover', scroller, at(10, 0))
+    const drop = nativeDrag('drop', scroller, at(10, 0))
+
+    expect(over.defaultPrevented).toBe(false)
+    expect(drop.defaultPrevented).toBe(false)
+    expect(screen.queryByTestId('timeline-drop-preview')).not.toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mocks.get).not.toHaveBeenCalled()
+    expect(mocks.update).not.toHaveBeenCalled()
   })
 })

@@ -22,6 +22,8 @@ import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
 import { DayTimeline } from '@/components/day-panel/day-timeline/day-timeline'
 import { DayTaskList } from '@/components/day-panel/day-timeline/unscheduled-task-list'
+import { DEFAULT_BLOCK_MINUTES } from '@/components/day-panel/day-timeline/timeline-layout'
+import { droppedDuration } from '@/components/calendar/drop-time'
 
 const log = createLogger('JournalDayPanel')
 
@@ -203,6 +205,28 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     }
   }, [])
 
+  const handleScheduleTask = useCallback(
+    async (id: string, dueTime: string | null) => {
+      try {
+        const task = await tasksService.get(id)
+        if (!task) {
+          log.warn('Dropped task not found', id)
+          return
+        }
+        const durationMinutes = droppedDuration(task.dueTime, dueTime, DEFAULT_BLOCK_MINUTES)
+        await tasksService.update({
+          id,
+          dueDate: date,
+          dueTime,
+          ...(durationMinutes ? { durationMinutes } : {})
+        })
+      } catch (err) {
+        log.error('Failed to schedule dropped task', err)
+      }
+    },
+    [date]
+  )
+
   const showTimeline = isEnabled('calendar')
   const showTasks = isEnabled('tasks')
   const listedTasks = showTimeline
@@ -244,6 +268,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
               onCompleteTask={handleCompleteTimelineTask}
               onOpenTask={handleOpenTimelineTask}
               onResizeTask={(...args) => void handleResizeTask(...args)}
+              onScheduleTask={(...args) => void handleScheduleTask(...args)}
               onHoverColor={onHoverColor}
             />
           )}
@@ -276,6 +301,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
                 onPriorityChange: (...args) => void handlePriorityChange(...args),
                 onNavigate: handleNavigateToTask
               }}
+              onUnscheduleTask={(id) => void handleScheduleTask(id, null)}
             />
           )}
         </>

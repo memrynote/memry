@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useDndMonitor, useDroppable, type DragStartEvent } from '@dnd-kit/core'
 import { useDragContext } from '@/contexts/drag-context'
-import { minutesFromOffset, type SlotDropData } from '@/components/calendar/drop-time'
+import {
+  minutesFromOffset,
+  timeFromOffset,
+  type SlotDropData
+} from '@/components/calendar/drop-time'
 import { parseDateKey } from '@/lib/task-utils'
 import {
   DEFAULT_BLOCK_MINUTES,
   TIMELINE_HOUR_HEIGHT,
   TIMELINE_SNAP_MINUTES
 } from './timeline-layout'
+import { useNativeTaskDrop, type DragPoint } from './use-native-task-drop'
 
 const EDGE_PX = 32
 const MAX_SCROLL_PX_PER_FRAME = 12
@@ -43,28 +48,28 @@ function activatorClientY(event: Event): number | null {
   return null
 }
 
-interface Pointer {
-  x: number
-  y: number
-}
-
 /**
  * Tracks a task drag against the timeline: the real pointer (dnd-kit's cached
  * rects go stale while this container scrolls), the dashed drop preview, and
  * edge auto-scroll. dnd-kit's own auto-scroll never reaches this container,
  * because the dragged node is the global DragOverlay, not a descendant of it.
+ * A task block dragged out of a note is an HTML5 drag, which dnd-kit never
+ * sees. It runs through the same pointer, preview and scroll, and drops
+ * through `onDropTask` at the slot under the pointer.
  */
 export function useTimelineDrag({
   date,
   scrollRef,
-  columnRef
+  columnRef,
+  onDropTask
 }: {
   date: string
   scrollRef: RefObject<HTMLDivElement | null>
   columnRef: RefObject<HTMLDivElement | null>
+  onDropTask: (taskId: string, dueTime: string) => void
 }): { setDropRef: (node: HTMLElement | null) => void; preview: DropPreview | null } {
   const { dragState } = useDragContext()
-  const pointer = useRef<Pointer | null>(null)
+  const pointer = useRef<DragPoint | null>(null)
   const grabOffset = useRef(0)
   const [active, setActive] = useState(false)
   const [preview, setPreview] = useState<DropPreview | null>(null)
@@ -99,6 +104,23 @@ export function useTimelineDrag({
       setActive(false)
     },
     onDragCancel() {
+      setActive(false)
+    }
+  })
+
+  useNativeTaskDrop(scrollRef, {
+    onMove(point) {
+      if (!active) grabOffset.current = 0
+      pointer.current = point
+      setActive(true)
+    },
+    onDrop(taskId, point) {
+      pointer.current = point
+      const offset = getSlotOffsetY()
+      if (offset !== null)
+        onDropTask(taskId, timeFromOffset(offset, TIMELINE_HOUR_HEIGHT, TIMELINE_SNAP_MINUTES))
+    },
+    onEnd() {
       setActive(false)
     }
   })
