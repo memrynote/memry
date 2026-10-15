@@ -7,7 +7,11 @@ import { useT } from '@memry/i18n/renderer'
 import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
 import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
 import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
-import { resolveDropOptions, type DateDropOptions } from '@/components/calendar/drop-time'
+import {
+  droppedDuration,
+  resolveDropOptions,
+  type DateDropOptions
+} from '@/components/calendar/drop-time'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
@@ -446,8 +450,11 @@ export const useDragHandlers = ({
       taskIds.forEach((id) => {
         const task = tasks.find((t) => t.id === id)
         const nextDueTime = changesTime ? (options.dueTime ?? null) : (task?.dueTime ?? null)
-        const durationMinutes =
-          nextDueTime && !task?.dueTime ? options.durationIfUntimed : undefined
+        const durationMinutes = droppedDuration(
+          task?.dueTime,
+          nextDueTime,
+          options.durationIfUntimed
+        )
 
         let newDueDate = startOfDay(targetDate)
         if (nextDueTime) {
