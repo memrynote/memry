@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        background: transparent;
+        overflow: hidden;
+      }
+      #panel {
+        position: absolute;
+        background: #fff;
+        box-shadow: 0 14px 56px rgba(60, 30, 10, 0.32);
+      }
+      #content {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #logo {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+      }
+      #logo svg {
+        overflow: visible;
+        display: block;
+      }
+      #text {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 470px;
+        text-align: center;
+        font-family: 'DM Sans', system-ui;
+      }
+      #label {
+        font:
+          500 22px/1 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #8a8178;
+      }
+      #title {
+        margin-top: 22px;
+        font-size: 84px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        color: #212121;
+      }
+      #topics {
+        margin: 46px auto 0;
+        max-width: 1060px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 14px 16px;
+      }
+      .topic {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 12px 22px;
+        border-radius: 999px;
+        background: #f6f3ef;
+        font-size: 28px;
+        font-weight: 500;
+        color: #2b2b2b;
+      }
+      .topic b {
+        font:
+          600 20px 'JetBrains Mono',
+          monospace;
+        color: #ff671a;
+      }
+      #url {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 610px;
+        text-align: center;
+        font:
+          500 30px 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.04em;
+        color: #5c5650;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="panel"></div>
+    <div id="logo"></div>
+    <div id="text">
+      <div id="label"></div>
+      <div id="title"></div>
+      <div id="topics"></div>
+    </div>
+    <div id="url"></div>
+    <script>
+      // window.P = { kind: 'intro'|'outro', logo: { mark, words: [mem, ry, note], wordColor },
+      //   label, title, topics, url, timing }, set by card.mjs before render(t).
+      const W = { x: 80, y: 45, w: 1760, h: 990, r: 18 } // the app window in the film
+      const C = { x: 350, y: 200, w: 1220, h: 680, r: 28 } // the card panel
+      const clamp = (v) => Math.min(1, Math.max(0, v))
+      const ease = (k) => (
+        (k = clamp(k)),
+        k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
+      )
+      const out = (k) => 1 - Math.pow(1 - clamp(k), 3)
+      const lerp = (a, b, k) => a + (b - a) * k
+      const $ = (id) => document.getElementById(id)
+      let parts
+
+      window.setup = (P) => {
+        window.P = P
+        $('logo').innerHTML =
+          `<svg width="185" height="25.5" viewBox="0 -20.338907 184.839157 25.478909">
+          <g id="mark"><svg x="0" y="-23.15" viewBox="0 0 1280 1032" width="29" height="29"><g fill="#FF671A">${P.logo.mark}</g></svg></g>
+          <g transform="translate(40, 0)">${P.logo.words.map((d, i) => `<path id="w${i}" d="${d}" fill="${P.logo.wordColor}"/>`).join('')}</g>
+        </svg>`
+        $('label').textContent = P.label ?? ''
+        $('title').textContent = P.title ?? ''
+        $('topics').innerHTML = (P.topics ?? [])
+          .map((t, i) => `<div class="topic"><b>${String(i + 1).padStart(2, '0')}</b>${t}</div>`)
+          .join('')
+        $('url').textContent = P.url ?? ''
+        parts = {
+          mark: document.querySelector('#mark'),
+          words: [0, 1, 2].map((i) => $('w' + i)),
+          topics: [...document.querySelectorAll('.topic')]
+        }
+      }
+
+      function panel(k, opacity) {
+        // k = 0: card panel, k = 1: exactly the app window.
+        const p = $('panel').style
+        p.left = lerp(C.x, W.x, k) + 'px'
+        p.top = lerp(C.y, W.y, k) + 'px'
+        p.width = lerp(C.w, W.w, k) + 'px'
+        p.height = lerp(C.h, W.h, k) + 'px'
+        p.borderRadius = lerp(C.r, W.r, k) + 'px'
+        p.opacity = opacity
+      }
+      function logo(scale, cy, markIn, wordIns, opacity = 1) {
+        const l = $('logo').style
+        // While only the mark shows, center the mark; the lockup slides into place as the word lands.
+        const shift = (185 / 2 - 14.5) * scale * (1 - ease(wordIns[2]))
+        l.transform = `translate(-50%, -50%) translate(${shift}px, ${cy - 540}px) scale(${scale})`
+        l.opacity = opacity
+        parts.mark.style.opacity = markIn
+        parts.mark.style.transform = `scale(${lerp(0.7, 1, out(markIn))})`
+        parts.mark.style.transformOrigin = '14px -9px'
+        parts.words.forEach((w, i) => {
+          w.style.opacity = wordIns[i]
+          w.style.transform = `translateY(${lerp(6, 0, out(wordIns[i]))}px)`
+        })
+      }
+
+      window.render = (t) => {
+        const T = P.timing
+        if (P.kind === 'intro') {
+          // morph: content leaves, panel grows into the window, then the panel fades to the app.
+          const leave = ease((t - T.morph) / 0.3)
+          const grow = ease((t - T.morph) / 0.6)
+          const fade = clamp((t - T.reveal) / (T.end - T.reveal))
+          panel(grow, 1 - fade)
+          const lift = ease((t - 1.35) / 0.7)
+          logo(
+            lerp(3.1, 1.75, lift),
+            lerp(540, 330, lift),
+            clamp(t / 0.5),
+            [0.45, 0.65, 0.85].map((s) => clamp((t - s) / 0.35)),
+            1 - leave
+          )
+          const textIn = out((t - 2.0) / 0.5)
+          const tx = $('text').style
+          tx.opacity = textIn * (1 - leave)
+          tx.transform = `translateY(${lerp(18, 0, textIn) - leave * 10}px)`
+          parts.topics.forEach((el, i) => {
+            const k = out((t - T.topics[i]) / 0.4)
+            el.style.opacity = k
+            el.style.transform = `translateY(${lerp(12, 0, k)}px)`
+          })
+          $('url').style.opacity = 0
+        } else {
+          // outro: the window turns into the panel, the lockup and url land, then hold.
+          const appear = clamp((t - T.start) / 0.3)
+          const shrink = ease((t - T.start - 0.25) / 0.6)
+          panel(1 - shrink, appear)
+          const s = T.start + 0.6
+          logo(
+            2.6,
+            470,
+            clamp((t - s) / 0.4),
+            [0.3, 0.5, 0.7].map((d) => clamp((t - s - d) / 0.35))
+          )
+          $('text').style.opacity = 0
+          const u = out((t - s - 0.9) / 0.5)
+          $('url').style.opacity = u
+          $('url').style.transform = `translateY(${lerp(10, 0, u)}px)`
+        }
+      }
+    </script>
+  </body>
+</html>

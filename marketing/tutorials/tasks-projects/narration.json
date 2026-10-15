@@ -1,0 +1,72 @@
+{
+  "voice": "i5OXFdxBvUlXYUxpwQgy",
+  "model": "eleven_v4",
+  "settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.8
+  },
+  "brand": "Memree note",
+  "card": {
+    "label": "Tutorial",
+    "title": "Tasks & Projects",
+    "topics": ["Quick capture", "Views", "Task details", "Project hubs", "Boards", "Tasks in notes"]
+  },
+  "endCard": {
+    "at": "Thanks for watching",
+    "url": "memrynote.com"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "Intro",
+      "text": "Here's how tasks and projects work in {brand}. Let's start with capturing a task.",
+      "lead": 1.6
+    },
+    {
+      "id": "capture",
+      "title": "Quick capture",
+      "text": "Everything starts in the capture bar. Type what you need to do, and add the details as you go. An at sign sets the date, an exclamation mark the priority, a plus picks the project, and a hash adds a tag. Each one turns into a pill, so you can see exactly what you'll get before you press enter."
+    },
+    {
+      "id": "repeat",
+      "title": "Repeating tasks",
+      "text": "Repeating tasks work the same way. Just write the cadence in plain English. Every Monday, every weekday, or every two weeks."
+    },
+    {
+      "id": "views",
+      "title": "Today and views",
+      "text": "Your tasks are grouped by when they're due. Overdue first, then today, tomorrow, and the rest of the week. And the views up here narrow it down to just today, tomorrow, or the next seven days."
+    },
+    {
+      "id": "drawer",
+      "title": "Task details",
+      "text": "Click any task to open its details. Give it a start date as well as a due date, and it shows up in Today every day until it's done. Break bigger work into sub-issues, and keep the notes you need linked right next to it."
+    },
+    {
+      "id": "hub",
+      "title": "Project hub",
+      "text": "Projects are where tasks meet everything else. Open one from the sidebar, and its hub gathers the tasks, notes and files that belong to it, on one page."
+    },
+    {
+      "id": "hubcapture",
+      "title": "Capture in a project",
+      "text": "The capture bar here knows where you are. A task you type lands in this project, and a link you paste becomes a note that's already filed with it."
+    },
+    {
+      "id": "kanban",
+      "title": "Board and statuses",
+      "text": "Every project can have its own workflow. Switch to the board, and drag a card to move it along. The columns are yours to shape, so they match the way you actually work."
+    },
+    {
+      "id": "notes",
+      "title": "Tasks in notes",
+      "text": "And you don't have to leave your notes to plan. Type a checkbox in any note, and it becomes a real task, with its date, project and priority right there on the line."
+    },
+    {
+      "id": "outro",
+      "title": "Outro",
+      "text": "That's tasks and projects in {brand}. Everything lives on your device, encrypted end to end, and syncs when you want it to. Thanks for watching, and I'll see you in the next one.",
+      "tail": 2.6
+    }
+  ]
+}
