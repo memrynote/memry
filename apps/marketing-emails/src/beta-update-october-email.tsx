@@ -42,19 +42,23 @@ export type BetaUpdateOctoberEmailProps = {
 
 const campaign = WAITLIST_CAMPAIGNS.betaUpdateOctober
 
+// Served from apps/landing/public/email/2026-10. They load only after a landing deploy, in the
+// exported HTML and in Resend alike.
+const assetsUrl = 'https://memrynote.com/email/2026-10'
+
 const defaultProps = {
   firstName: '',
   logoUrl: 'https://memrynote.com/memrynote-logo.png',
   iconUrl: 'https://memrynote.com/memrynote-icon.png',
   testflightUrl: '',
-  iosImageUrl: '',
-  tagFieldsImageUrl: '',
-  searchImageUrl: '',
-  calendarImageUrl: '',
-  tasksImageUrl: '',
-  blocksImageUrl: '',
-  agentImageUrl: '',
-  themesImageUrl: '',
+  iosImageUrl: `${assetsUrl}/ios.png`,
+  tagFieldsImageUrl: `${assetsUrl}/tags.png`,
+  searchImageUrl: `${assetsUrl}/search.gif`,
+  calendarImageUrl: `${assetsUrl}/calendar.png`,
+  tasksImageUrl: `${assetsUrl}/tasks.gif`,
+  blocksImageUrl: `${assetsUrl}/blocks.jpg`,
+  agentImageUrl: `${assetsUrl}/agent.png`,
+  themesImageUrl: `${assetsUrl}/themes.png`,
   downloadUrl: trackedMemryUrl('/download/desktop', campaign, 'download_cta'),
   unsubscribeUrl: '{{{RESEND_UNSUBSCRIBE_URL}}}'
 } satisfies Required<BetaUpdateOctoberEmailProps>
@@ -199,7 +203,7 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={iosImageUrl}
-            alt="Memrynote running on an iPhone, showing a note from a real vault"
+            alt="Memrynote on iPhone: the inbox, a note, and today's tasks"
             label="iOS: Memrynote on an iPhone"
             hint="iosImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. One or two device frames on the campaign background. Real vault content, TestFlight build."
           />
@@ -261,10 +265,12 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={tagFieldsImageUrl}
-            alt="A Memrynote note tagged Person, with its Company, Role and Email fields filled in"
+            alt="A person note with Company, Role, Email and Phone fields, and the company's note listing the people linked to it"
             label="Tags with fields: a Person note with its fields, and the Linked here section on the company note"
             hint="tagFieldsImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Use believable names, not lorem. Show at least one relation field."
           />
+
+          <Spacer />
 
           <Heading as="h2" style={styles.h2}>
             Search That Reads Your PDFs
@@ -288,10 +294,12 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={searchImageUrl}
-            alt="Memrynote search with one-line results and a preview pane, finding a word inside a scanned PDF"
+            alt="Searching for Cape Kennedy finds a scanned 1967 memo that mentions it only in the scan"
             label="Search: typing a word that only appears inside a scanned PDF, then the preview beside the results"
             hint="searchImageUrl — animated GIF, 1200×630 at 2x, under 800KB. The first frame must read on its own: Outlook shows only that frame."
           />
+
+          <Spacer />
 
           <Heading as="h2" style={styles.h2}>
             Your Calendars, Not Just Google
@@ -317,10 +325,12 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={calendarImageUrl}
-            alt="The Memrynote calendar in Timeline view, with tasks and multi-day events laid out as a Gantt chart"
+            alt="The Memrynote calendar in Timeline view, with a project's tasks laid out as bars across October"
             label="Calendar: the Timeline view, with tasks and multi-day events as bars"
             hint="calendarImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Use tasks that have both a start and a due date, so the bars have length."
           />
+
+          <Spacer />
 
           <Heading as="h2" style={styles.h2}>
             Tasks Where You Write Them
@@ -352,6 +362,8 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
             hint="tasksImageUrl — animated GIF, 1200×630 at 2x, under 800KB. Keep the cursor visible so the shorthand reads."
           />
 
+          <Spacer />
+
           <Heading as="h2" style={styles.h2}>
             Columns, Callouts, Footnotes, and More
           </Heading>
@@ -379,6 +391,8 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
             label="Blocks: a note with a cover image, two columns, a callout and a math block"
             hint="blocksImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. One note that shows several new blocks at once."
           />
+
+          <Spacer />
 
           <Heading as="h2" style={styles.h2}>
             An Agent That Asks First
@@ -411,6 +425,8 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
             hint="agentImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Show the marked edit and the Reject / Edit / Accept bar in the same frame."
           />
 
+          <Spacer />
+
           <Heading as="h2" style={styles.h2}>
             Make It Yours
           </Heading>
@@ -437,7 +453,7 @@ export const BetaUpdateOctoberEmail: EmailComponent = (props) => {
 
           <Media
             url={themesImageUrl}
-            alt="The same Memrynote note in three colour themes, side by side"
+            alt="One Memrynote note in three colour themes: Catppuccin, Gruvbox and Tokyo Night"
             label="Make it yours: one note in three colour themes"
             hint="themesImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Three crops of the same screen read better than three full windows."
           />
@@ -677,7 +693,9 @@ function Media({
   hint: string
 }): ReactNode {
   if (url) {
-    return <Img src={url} alt={alt} width="100%" style={styles.mediaImage} />
+    // Outlook on Windows ignores CSS widths and would draw these 2x images at full size;
+    // the attribute pins them to the 560 px content column.
+    return <Img src={url} alt={alt} width="560" style={styles.mediaImage} />
   }
 
   return (
