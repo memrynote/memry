@@ -105,7 +105,7 @@ export function TitleInput({
         'disabled:pointer-events-none disabled:opacity-50'
       )}
       style={{
-        fontFamily: 'var(--font-heading)'
+        fontFamily: 'var(--font-sans)'
       }}
     />
   )
