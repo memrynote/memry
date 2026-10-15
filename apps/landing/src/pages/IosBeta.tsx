@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHero } from '@/components/site/PageHero'
+import { IosScreenshotCarousel } from '@/components/site/IosScreenshotCarousel'
 import { trackLandingEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
@@ -128,6 +129,8 @@ export function IosBetaPage() {
           )
         }
       />
+
+      <IosScreenshotCarousel />
 
       <Container size="sm" className="pb-24 pt-4">
         <div className="mx-auto max-w-[520px] space-y-10 text-[15px] leading-relaxed text-ink">
