@@ -26,7 +26,8 @@ use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::domain::tag_fields::{self, TagFieldGroup};
-use crate::domain::{notes, properties, tags, wiki_target};
+use crate::domain::wiki_target::WikiNames;
+use crate::domain::{notes, properties, tags};
 
 /// One property on a note: its name, its value, and the type the vault
 /// declared for it.
@@ -270,15 +271,22 @@ pub struct NoteLinkTarget {
 /// Chapter 12 §12.3: a wiki link carries a **title** or, when it holds a `/`,
 /// a vault path, not an id, so resolving it is a lookup and the answer can be
 /// "nothing" — desktop calls that a broken link and offers to create the note.
-/// See [`wiki_target`] for the path, title, alias and heading rules.
+/// See [`crate::domain::wiki_target`] for the path, title, alias and heading rules.
 ///
 /// Nothing is created, because a reader that wrote would turn scrolling past a
-/// broken link into an edit.
+/// broken link into an edit. A link that names a journal day is `None` here;
+/// [`resolve_wiki_target_kind`] answers it.
 pub fn resolve_wiki_target(
     conn: &Connection,
     target: &str,
 ) -> Result<Option<NoteLinkTarget>, StorageError> {
-    Ok(wiki_target::resolve(conn, target)?.map(|(id, heading)| NoteLinkTarget { id, heading }))
+    Ok(WikiNames::load(conn)?
+        .resolve_target(target)
+        .filter(|(found, _)| found.journal_date.is_none())
+        .map(|(found, heading)| NoteLinkTarget {
+            id: found.id,
+            heading,
+        }))
 }
 
 /// What a `[[wiki link]]` resolved to: a note, or a journal day.
@@ -294,32 +302,44 @@ pub struct WikiTargetMatch {
     pub heading: Option<String>,
 }
 
-/// [`resolve_wiki_target`], then the journal.
+/// What a `[[wiki link]]` names, a note or a journal day (§12.3).
 ///
-/// Desktop titles a journal with its date, so `[[2026-04-16]]` names that day
-/// when no note answers first. The `j<YYYY-MM-DD>` id form names the day too,
-/// and like desktop's `dateFromJournalId` it opens the day even when it has no
-/// entry yet: the id is then the minted `j<date>` and nothing is created (D2).
-/// A bare date with no live entry is `None`, a broken link.
+/// Desktop titles a journal with its date, so `[[2026-04-16]]` names that day.
+/// The `j<YYYY-MM-DD>` id form names the day too, and like desktop's
+/// `dateFromJournalId` it opens the day even when it has no entry yet: the id
+/// is then the minted `j<date>` and nothing is created (D2). A bare date with
+/// no live entry is `None`, a broken link.
 pub fn resolve_wiki_target_kind(
     conn: &Connection,
     target: &str,
 ) -> Result<Option<WikiTargetMatch>, StorageError> {
-    if let Some(found) = resolve_wiki_target(conn, target)? {
+    wiki_target_kind(&WikiNames::load(conn)?, target)
+}
+
+/// [`resolve_wiki_target_kind`] against names already loaded.
+pub fn wiki_target_kind(
+    names: &WikiNames,
+    target: &str,
+) -> Result<Option<WikiTargetMatch>, StorageError> {
+    if let Some((found, heading)) = names.resolve_target(target) {
         return Ok(Some(WikiTargetMatch {
             id: found.id,
-            kind: "note".to_owned(),
-            date: None,
-            heading: found.heading,
+            kind: if found.journal_date.is_some() {
+                "journal"
+            } else {
+                "note"
+            }
+            .to_owned(),
+            date: found.journal_date,
+            heading,
         }));
     }
-    let Some((date, id_form)) = journal_date_of(target) else {
+    let Some((date, true)) = journal_date_of(target) else {
         return Ok(None);
     };
-    let id = match crate::domain::journal::live_entry(conn, &date)? {
-        Some(id) => id,
-        None if id_form => crate::domain::journal::document_id_for(&date)?,
-        None => return Ok(None),
+    let id = match names.journal_on(&date) {
+        Some(id) => id.to_owned(),
+        None => crate::domain::journal::document_id_for(&date)?,
     };
     Ok(Some(WikiTargetMatch {
         id,

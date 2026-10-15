@@ -95,19 +95,31 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "yjs_doc_epochs",
         sql: include_str!("migrations/data/0011_yjs_doc_epochs.sql"),
     },
+    Migration {
+        version: 12,
+        name: "journal_aliases",
+        sql: include_str!("migrations/data/0012_journal_aliases.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
 ///
 /// This list exists to build the file, not to evolve it. An `index.db` at an
 /// unexpected version is deleted and rebuilt rather than migrated (§A.0), so a
-/// second entry here would be a new shape for a fresh file, never a step applied
-/// to a user's existing one.
-pub const INDEX_MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "fts",
-    sql: include_str!("migrations/index/0001_fts.sql"),
-}];
+/// later entry here is a new shape for a fresh file, never a step applied to a
+/// user's existing one.
+pub const INDEX_MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "fts",
+        sql: include_str!("migrations/index/0001_fts.sql"),
+    },
+    Migration {
+        version: 2,
+        name: "link_target_keys",
+        sql: include_str!("migrations/index/0002_link_target_keys.sql"),
+    },
+];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
 pub fn latest_version(migrations: &[Migration]) -> u32 {
@@ -216,7 +228,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 11);
+        assert_eq!(version, 12);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -248,6 +260,7 @@ mod tests {
             "folders",
             "inbox_item_tags",
             "inbox_items",
+            "journal_aliases",
             "journal_entries",
             "note_tags",
             "notes",
@@ -276,7 +289,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 1);
+        assert_eq!(version, 2);
 
         let names = table_names(&db);
         for expected in [
@@ -326,7 +339,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 11);
+        assert_eq!(version, 12);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {

@@ -15,6 +15,7 @@ use crate::api::errors::StorageError;
 use crate::api::search::BacklinkOrder;
 use crate::domain::note_meta;
 use crate::domain::notes::failed;
+use crate::domain::wiki_target::WikiNames;
 
 /// One item linking to a note or a journal day.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -147,9 +148,10 @@ pub fn outgoing_links(
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
 
+    let names = WikiNames::load(data)?;
     let mut out = Vec::with_capacity(titles.len());
     for target_title in titles {
-        let resolved = note_meta::resolve_wiki_target_kind(data, &target_title)?;
+        let resolved = note_meta::wiki_target_kind(&names, &target_title)?;
         out.push(match resolved {
             Some(found) => OutgoingLink {
                 target_title,

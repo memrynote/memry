@@ -1398,6 +1398,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "tokio",
+ "unicode-normalization",
  "uniffi",
  "yrs",
  "zeroize",
