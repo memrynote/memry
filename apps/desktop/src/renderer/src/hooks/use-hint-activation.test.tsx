@@ -203,6 +203,38 @@ describe('HintModeProvider', () => {
     expect(document.activeElement).not.toBe(input)
   })
 
+  it('Escape that closes an open suggestion menu keeps the field focused, so F still types', () => {
+    addButton('Inbox')
+    // An editor or input with its slash / wiki-link / date menu open: the combobox pattern
+    // BlockNote and the capture bar follow, aria-expanded on the focused field.
+    const field = document.createElement('div')
+    field.contentEditable = 'true'
+    field.tabIndex = 0
+    field.setAttribute('aria-expanded', 'true')
+    document.body.appendChild(field)
+
+    const { result } = renderHook(
+      () => {
+        useHintActivation()
+        return useHintModeContext()
+      },
+      { wrapper }
+    )
+
+    field.focus()
+    fireEvent.keyDown(field, { key: 'Escape', code: 'Escape' })
+    expect(document.activeElement).toBe(field)
+
+    // The menu closed; the next F is text, not a jump.
+    field.setAttribute('aria-expanded', 'false')
+    fireEvent.keyDown(field, { key: 'f', code: 'KeyF' })
+    expect(result.current.state.isActive).toBe(false)
+
+    // With no menu open, Escape leaves the field as before.
+    fireEvent.keyDown(field, { key: 'Escape', code: 'Escape' })
+    expect(document.activeElement).not.toBe(field)
+  })
+
   // ---------------------------------------------------------------------------
   // Regression guard for the listener/context stabilisation (issue #1101).
   // `routes` below must stay byte-identical before and after that change: it is

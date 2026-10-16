@@ -56,8 +56,16 @@ export const useHintActivation = (): void => {
         }
       }
 
-      if (e.key === 'Escape' && isInputFocused()) {
-        ;(document.activeElement as HTMLElement)?.blur()
+      // Escape leaves a text field so F can start hint mode. A field holding an open popup
+      // (slash, wiki-link or date menu, capture suggestions) marks it with aria-expanded; that
+      // Escape only closes the popup, or the keys typed next run as app shortcuts.
+      const focused = document.activeElement as HTMLElement | null
+      if (
+        e.key === 'Escape' &&
+        isInputFocused() &&
+        focused?.getAttribute('aria-expanded') !== 'true'
+      ) {
+        focused?.blur()
       }
     }
 
