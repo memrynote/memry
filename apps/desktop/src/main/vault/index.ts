@@ -106,6 +106,7 @@ import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reindexCodeLinks } from './code-link-reindex'
+import { reindexNoteCovers } from './note-cover-reindex'
 import { backfillHeaderTagFlags } from './header-tag-backfill'
 import { backfillNoteNames } from './note-names-backfill'
 import { convergeTagIdentity } from '../tags/converge-identity'
@@ -587,6 +588,10 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   if (isStale()) return
 
   await reindexCodeLinks({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
+
+  if (isStale()) return
+
+  await reindexNoteCovers({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
 
   if (isStale()) return
 

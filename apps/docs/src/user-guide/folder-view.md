@@ -64,6 +64,16 @@ Middle-click a row — in the table, list, or gallery layout — to open it in a
 the same gesture the sidebar rows support. On a tag page this follows the row's kind: a task
 row opens Tasks and an inbox row opens the Inbox, exactly as a normal click would.
 
+## Gallery layout
+
+The gallery shows each note as a card. The band at the top of a card shows the note's
+[cover](/user-guide/notes/cover-image), a picture or a wash, when it has one. Otherwise it shows
+the note's icon on a soft colour. A folder of books or courses with a cover on every note reads
+like a shelf.
+
+The band is short, so a tall picture such as a book jacket shows its middle. If the picture file
+is missing, the card shows a wash instead.
+
 ## Chart layout
 
 The layout toggle's last button turns the page into a chart of one property

@@ -169,6 +169,18 @@ describe('syncNoteToCache', () => {
     )
   })
 
+  it.each([
+    ['attachments/dune.jpg', 'attachments/dune.jpg'],
+    ['wash:sage', 'wash:sage'],
+    ['Hardback', null]
+  ])('publishes cover %s as %s', (raw, expected) => {
+    syncNoteToCache(createMockDb(), buildInput({ frontmatter: { cover: raw } }), { isNew: true })
+
+    expect(publishProjectionEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({ note: expect.objectContaining({ cover: expected }) })
+    )
+  })
+
   it('mirrors canonical note metadata into data.db', () => {
     const db = createMockDb()
 

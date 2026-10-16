@@ -9,7 +9,16 @@
  */
 
 import { foldTag } from '@memry/shared/tag-fold'
-import { useCallback, useMemo, useRef } from 'react'
+import {
+  coverWashForSeed,
+  coverWashGradient,
+  parseCoverValue,
+  type CoverValue
+} from '@memry/shared/cover-image'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
+import { useVault } from '@/hooks/use-vault'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -52,6 +61,45 @@ export interface FolderGalleryViewProps {
   className?: string
 }
 
+interface GalleryCardCoverProps {
+  cover: CoverValue
+  note: NoteWithProperties
+  vaultPath: string | null
+}
+
+/**
+ * The note's own cover in the card band. A photo that fails to load falls back
+ * to the wash keyed off the note id, as the note's cover band does.
+ */
+function GalleryCardCover({ cover, note, vaultPath }: GalleryCardCoverProps): React.JSX.Element {
+  const { t } = useT('notes')
+  const src =
+    cover.kind === 'image' ? resolveNoteRelativeUrl(cover.ref, note.path, vaultPath, note.id) : null
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+
+  if (src === null || failedSrc === src) {
+    const washId = cover.kind === 'wash' ? cover.id : coverWashForSeed(note.id)
+    return (
+      <div
+        data-testid="gallery-card-cover-wash"
+        className="h-[90px]"
+        style={{ backgroundImage: coverWashGradient(washId) }}
+      />
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={t('cover.alt')}
+      draggable={false}
+      loading="lazy"
+      onError={() => setFailedSrc(src)}
+      data-testid="gallery-card-cover-image"
+      className="h-[90px] w-full bg-muted object-cover"
+    />
+  )
+}
+
 export function FolderGalleryView({
   notes,
   searchQuery,
@@ -65,6 +113,8 @@ export function FolderGalleryView({
   scrollKey,
   className
 }: FolderGalleryViewProps): React.JSX.Element {
+  const { status } = useVault()
+  const vaultPath = status?.path ?? null
   const q = searchQuery?.trim().toLowerCase() ?? ''
   const visible = useMemo(() => {
     if (!q) return notes
@@ -101,6 +151,7 @@ export function FolderGalleryView({
       className={cn('flex h-full flex-wrap content-start gap-4 overflow-auto p-[18px]', className)}
     >
       {visible.map((note) => {
+        const cover = parseCoverValue(note.cover)
         const card = (
           <div
             key={note.id}
@@ -122,21 +173,25 @@ export function FolderGalleryView({
             }}
             className="flex w-[272px] cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
           >
-            <div
-              className={cn(
-                'flex h-[90px] items-center justify-center',
-                pastelFor(note.emoji || note.title || note.id)
-              )}
-            >
-              {note.emoji ? (
-                <NoteIconDisplay
-                  value={note.emoji}
-                  className="size-[34px] text-[34px] leading-none"
-                />
-              ) : (
-                <span className="text-[34px] leading-none">📄</span>
-              )}
-            </div>
+            {cover ? (
+              <GalleryCardCover cover={cover} note={note} vaultPath={vaultPath} />
+            ) : (
+              <div
+                className={cn(
+                  'flex h-[90px] items-center justify-center',
+                  pastelFor(note.emoji || note.title || note.id)
+                )}
+              >
+                {note.emoji ? (
+                  <NoteIconDisplay
+                    value={note.emoji}
+                    className="size-[34px] text-[34px] leading-none"
+                  />
+                ) : (
+                  <span className="text-[34px] leading-none">📄</span>
+                )}
+              </div>
+            )}
             <div className="flex flex-col gap-2 p-3">
               {note.kind === 'task' || note.kind === 'inbox' ? (
                 <div className="flex items-center gap-1.5">

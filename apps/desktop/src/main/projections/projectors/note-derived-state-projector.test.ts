@@ -318,4 +318,25 @@ describe('note derived state projector', () => {
       })
     ])
   })
+
+  it('project stores the cover, keeps it when the frontmatter was not read, and clears it', async () => {
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    const coverOf = (): string | null | undefined =>
+      indexDb.db.all<{ cover: string | null }>(
+        sql`SELECT cover FROM note_cache WHERE id = 'book-note'`
+      )[0]?.cover
+    const upsert = (cover: string | null | undefined) => {
+      const event = upsertMarkdown('book-note', 'Books/Dune.md', [])
+      return { ...event, note: { ...event.note, cover } }
+    }
+
+    await projector.project(upsert('attachments/dune.jpg'))
+    expect(coverOf()).toBe('attachments/dune.jpg')
+
+    await projector.project(upsert(undefined))
+    expect(coverOf()).toBe('attachments/dune.jpg')
+
+    await projector.project(upsert(null))
+    expect(coverOf()).toBeNull()
+  })
 })

@@ -13,6 +13,11 @@ export interface MarkdownNoteProjection {
   snippet: string | null
   date: string | null
   emoji: string | null
+  /**
+   * Raw `cover` frontmatter value, null when the note has none. Undefined when
+   * the frontmatter was not read (tier 0, large-file tier): the indexed cover stays.
+   */
+  cover?: string | null
   createdAt: string
   modifiedAt: string
   /**
