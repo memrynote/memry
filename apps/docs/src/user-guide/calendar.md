@@ -204,6 +204,23 @@ Calendar popovers open beside the item you clicked and always stay inside the wi
 bottom edge a popover shifts up just enough to fit. In a window shorter than the popover, it pins
 to the top edge and its contents scroll; resize the window and it moves or grows to match.
 
+### Notes for an Event
+
+The **Notes** section at the bottom of an event card lists every note linked to the event. Click
+a note to open it. It appears on events you created, Google and CalDAV events, subscribed
+calendars, and This Mac calendars.
+
+- **New note** creates a note named after the event, links it, and opens it.
+- **Link note** searches your notes. Pick one to link it to the event.
+
+A link is the note's `Event` [relation property](/user-guide/notes/properties-tags#relation-properties),
+so the note stays a separate note. One note can link to several events, and one event can have
+several notes. To link events from the note side, click **+** on its `Event` property and search
+for them. Clicking an event chip opens that event on the calendar.
+
+Each occurrence of a repeating event is its own link. A link to a This Mac event resolves only on
+the Mac that made it; on other devices its chip shows as deleted, and the link is kept.
+
 ### Assigning a Project
 
 The event form (opened from **+** in the toolbar, or from an existing event) has a **Project**

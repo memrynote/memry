@@ -180,6 +180,8 @@ A `Date` property can surface its value on the [calendar](/user-guide/calendar).
 
 A `Relation` property points to one or more notes, tasks, events, canvases, or journal entries. Each value renders as a chip showing the target's title and an icon for its kind. Clicking a chip opens its target — a journal chip opens the journal on that entry's date, and a canvas chip opens that canvas. Titles are resolved live, so renaming a target updates every chip pointing at it.
 
+Events from every connected and subscribed calendar can be relation targets. An event card lists the notes that link to it; see [Notes for an Event](/user-guide/calendar#notes-for-an-event).
+
 Use the relation picker to search and add targets, and to remove existing ones. A target that's been deleted still shows its chip, dimmed, so the reference isn't silently dropped.
 
 Relation properties also feed the [Backlinks panel and Graph view](/user-guide/notes/wiki-links) on the note(s) they point to, alongside wiki links — so a relation and a `[[wiki link]]` to the same note both show up as connections.
