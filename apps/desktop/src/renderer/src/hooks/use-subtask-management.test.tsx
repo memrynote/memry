@@ -388,6 +388,41 @@ describe('useSubtaskManagement', () => {
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
   })
 
+  // #3372: a parent with `completedAt` but an open status rendered both in the
+  // list and under Done, and the duplicate rows piled up as ghosts.
+  it('moves an auto-completed parent to the Done status and back on undo', () => {
+    const project = {
+      id: 'inbox',
+      statuses: [
+        { id: 'todo', type: 'todo' },
+        { id: 'done-status', type: 'done' }
+      ]
+    } as any
+    const openParent = { ...parent, projectId: 'inbox', statusId: 'todo' }
+    const onUpdateTask = vi.fn()
+    const { result } = renderHook(() =>
+      useSubtaskManagement({
+        tasks: [openParent, { ...child, projectId: 'inbox', statusId: 'todo' }],
+        projects: [project],
+        onTasksChange: vi.fn(),
+        onUpdateTask
+      })
+    )
+
+    act(() => result.current.handleCompleteSubtask('child'))
+    act(() => vi.advanceTimersByTime(200))
+    expect(onUpdateTask).toHaveBeenCalledWith('parent', {
+      completedAt: expect.any(Date),
+      statusId: 'done-status'
+    })
+
+    const undo = vi.mocked(toast.success).mock.calls.find(([, options]) => options)?.[1] as {
+      action: { onClick: () => void }
+    }
+    act(() => undo.action.onClick())
+    expect(onUpdateTask).toHaveBeenLastCalledWith('parent', { completedAt: null, statusId: 'todo' })
+  })
+
   it('handles completion fallbacks, undo action, and bulk failure branches', () => {
     const onTasksChange = vi.fn()
     const { result } = setup({ onTasksChange })

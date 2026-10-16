@@ -26,6 +26,7 @@ import {
   completeParentTask
 } from '@/lib/subtask-bulk-utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { getDefaultDoneStatus } from '@/lib/task-utils'
 import { useTaskSettings } from './use-task-settings'
 import { useTrackedTimeout } from './use-tracked-timeout'
 import type { Task, Priority } from '@/data/task-model'
@@ -121,15 +122,28 @@ interface UseSubtaskManagementReturn {
 
 export const useSubtaskManagement = ({
   tasks,
-  projects: _projects,
+  projects,
   onTasksChange,
   onAddTask,
   onUpdateTask,
   onDeleteTask,
   onReorderTasks
 }: UseSubtaskManagementOptions): UseSubtaskManagementReturn => {
-  // Note: projects is available for future use (e.g., status handling)
-  void _projects
+  // Completing a parent moves it to its project's Done status as well. The list
+  // filter reads the status and the Done section reads `completedAt`, so a
+  // parent with only `completedAt` set rendered in both at once (#3372).
+  const completeParentUpdates = useCallback(
+    (parentId: string): Partial<Task> => {
+      const parent = tasks.find((t) => t.id === parentId)
+      const project = projects.find((p) => p.id === parent?.projectId)
+      const doneStatus = project ? getDefaultDoneStatus(project) : undefined
+      return {
+        completedAt: new Date(),
+        ...(doneStatus ? { statusId: doneStatus.id } : {})
+      }
+    },
+    [tasks, projects]
+  )
   // Get settings
   const { subtaskSettings } = useTaskSettings()
 
@@ -573,7 +587,7 @@ export const useSubtaskManagement = ({
           scheduleTimeout(() => {
             // Use database-aware callback if available
             if (onUpdateTask) {
-              onUpdateTask(parentId, { completedAt: new Date() })
+              onUpdateTask(parentId, completeParentUpdates(parentId))
               toast.success(
                 getI18n().getFixedT(
                   null,
@@ -584,7 +598,7 @@ export const useSubtaskManagement = ({
                   action: {
                     label: getI18n().getFixedT(null, 'common')('action.undo'),
                     onClick: () => {
-                      onUpdateTask(parentId, { completedAt: null })
+                      onUpdateTask(parentId, { completedAt: null, statusId: parent.statusId })
                       toast.success(
                         getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskReopened')
                       )
@@ -614,7 +628,14 @@ export const useSubtaskManagement = ({
         }
       }
     },
-    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent, scheduleTimeout]
+    [
+      tasks,
+      onTasksChange,
+      onUpdateTask,
+      subtaskSettings.autoCompleteParent,
+      scheduleTimeout,
+      completeParentUpdates
+    ]
   )
 
   // ========================================================================
@@ -636,7 +657,10 @@ export const useSubtaskManagement = ({
 
     // Use database-aware callback if available
     if (onUpdateTask) {
-      onUpdateTask(pendingAutoCompleteParent.id, { completedAt: new Date() })
+      onUpdateTask(
+        pendingAutoCompleteParent.id,
+        completeParentUpdates(pendingAutoCompleteParent.id)
+      )
       toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskCompleted'))
     } else {
       const result = completeParentTask(pendingAutoCompleteParent.id, tasks)
@@ -652,7 +676,8 @@ export const useSubtaskManagement = ({
     tasks,
     onTasksChange,
     onUpdateTask,
-    closeAllSubtasksCompleteDialog
+    closeAllSubtasksCompleteDialog,
+    completeParentUpdates
   ])
 
   // ========================================================================
@@ -688,7 +713,7 @@ export const useSubtaskManagement = ({
         if (allComplete && subtaskSettings.autoCompleteParent) {
           scheduleTimeout(() => {
             if (onUpdateTask) {
-              onUpdateTask(parentId, { completedAt: new Date() })
+              onUpdateTask(parentId, completeParentUpdates(parentId))
               toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskMarkedAsDone'))
             } else {
               const completeResult = completeParentTask(parentId, updatedTasks)
@@ -708,7 +733,14 @@ export const useSubtaskManagement = ({
         )
       }
     },
-    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent, scheduleTimeout]
+    [
+      tasks,
+      onTasksChange,
+      onUpdateTask,
+      subtaskSettings.autoCompleteParent,
+      scheduleTimeout,
+      completeParentUpdates
+    ]
   )
 
   // ========================================================================

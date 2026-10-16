@@ -600,8 +600,13 @@ export const TasksPage = ({
         : activeInternalTab === 'today'
           ? getCompletedTodayTasks(tasks)
           : getCompletedTasksInDueWindow(tasks, activeInternalTab)
-    return scopeTasksByProject(completed, selectedProjectId)
-  }, [isArchivedScope, activeInternalTab, tasks, selectedProjectId])
+    // A task the list above already shows stays out of Done: one task rendered
+    // twice shares its row key and leaves ghost rows in the virtual list (#3372).
+    // That happens under a non-active completion filter, and for parents older
+    // builds auto-completed with `completedAt` but left on an open status.
+    const listed = new Set(selectionScopeTasks.map((task) => task.id))
+    return scopeTasksByProject(completed, selectedProjectId).filter((task) => !listed.has(task.id))
+  }, [isArchivedScope, activeInternalTab, tasks, selectedProjectId, selectionScopeTasks])
 
   // Visibility constants
   const showFilterBar = true
