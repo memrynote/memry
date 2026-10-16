@@ -8,127 +8,129 @@
         src: url(fonts/dm-sans-opsz-normal.woff2) format('woff2');
         font-weight: 100 1000;
       }
-      @font-face {
-        font-family: 'JetBrains Mono';
-        src: url(fonts/jetbrains-mono.woff2) format('woff2');
-        font-weight: 100 800;
-      }
+      /* The channel's thumbnail template, "E · Tutorial template" in Paper (file Features, page
+         Thumbnail): the words on the left, one crop of the app on the right, one orange mark.
+         Change it in Paper first, then here. */
       html,
       body {
         margin: 0;
         width: 1280px;
         height: 720px;
         overflow: hidden;
-        /* the film's wallpaper (compose.py), so the thumbnail and the film look like one thing */
-        background: linear-gradient(140deg, rgb(246, 214, 186), rgb(236, 120, 64));
+        background: #f5f5f5;
         font-family: 'DM Sans', system-ui;
-      }
-      /* the app, bleeding off the right edge */
-      #shot {
-        position: absolute;
-        left: 590px;
-        top: 84px;
-        width: 742px;
-        height: 552px;
-        border-radius: 16px 0 0 16px;
-        background-color: #fff;
-        background-repeat: no-repeat;
-        box-shadow: 0 10px 40px rgba(60, 30, 10, 0.3);
-      }
-      /* the mark, the words and the label on a white panel over the app's left edge */
-      #panel {
-        position: absolute;
-        left: 48px;
-        top: 48px;
-        width: 472px;
-        height: 544px;
-        padding: 40px 44px;
-        border-radius: 24px;
-        display: flex;
-        flex-direction: column;
-        background: #fff;
-        box-shadow: 0 10px 40px rgba(60, 30, 10, 0.3);
+        -webkit-font-smoothing: antialiased;
       }
       #logo {
-        display: block;
+        position: absolute;
+        left: 64px;
+        top: 58px;
+        width: 218px;
         height: 30px;
-        align-self: flex-start;
       }
+      /* The words and the card share one center line, 381px down. */
       #headline {
-        flex: 1;
+        position: absolute;
+        left: 64px;
+        top: 381px;
+        transform: translateY(-50%);
+        font-weight: 700;
+        line-height: 0.9067; /* 136px at 150px */
+        letter-spacing: -0.045em;
+        color: #1d1f22;
+        white-space: pre;
+      }
+      #headline > div {
         display: flex;
         align-items: center;
-        font-size: 92px;
-        line-height: 1.06;
-        font-weight: 650;
-        letter-spacing: -0.025em;
-        color: #212121;
+        gap: 0.1333em;
+        width: max-content;
       }
-      #headline > span {
-        display: inline-block;
+      #headline svg {
+        flex-shrink: 0;
+        width: 0.6933em;
+        height: 0.5067em;
       }
-      /* Ink carries the contrast and the orange only fills (DESIGN.md): ink on #ff671a is 5.5:1,
-         white on it 2.9:1. */
-      #headline mark {
-        background: #ff671a;
-        color: inherit;
-        border-radius: 0.14em;
-        padding: 0 0.12em;
-        -webkit-box-decoration-break: clone;
-        box-decoration-break: clone;
+      #headline .mark {
+        color: #ff671a;
       }
-      #label {
-        width: fit-content;
-        padding: 11px 18px;
-        border-radius: 999px;
-        background: #f6f3ef;
-        color: #5f574f;
-        font:
-          500 22px/1 'JetBrains Mono',
-          monospace;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
+      #card {
+        position: absolute;
+        right: 64px;
+        top: 381px;
+        transform: translateY(-50%);
+        box-sizing: border-box;
+        border: 1px solid #ebebec;
+        border-radius: 24px;
+        background-color: #fff;
+        background-origin: border-box;
+        background-repeat: no-repeat;
+        box-shadow:
+          0 24px 64px rgba(29, 31, 34, 0.1),
+          0 2px 6px rgba(29, 31, 34, 0.05);
       }
     </style>
   </head>
   <body>
-    <div id="shot"></div>
-    <div id="panel"></div>
+    <img id="logo" src="../../../assets/brand/memrynote/logo.svg" />
+    <div id="headline"></div>
+    <div id="card"></div>
     <script>
-      // window.draw(P): P = { text, highlight, label, frame, crop: { x, y, w } }. crop is in the
-      // recorder's CSS px (1600x900 at 2x): center x/y and width; the height follows the slot's
-      // aspect ratio. Set by thumb.mjs before each screenshot.
+      // window.draw(P): P = { text, frame, crop: { x, y, w, h } }, set by thumb.mjs before each
+      // screenshot. crop is the shot's center and size in the recorder's CSS px (1600x900 at 2x).
+      // Returns { overflow, cover }: why the words do not fit beside the card (or null), and the
+      // share of the frame the card covers.
+      const SIZE = 150 // px, the template's type size
+      const FLOOR = 96 // px; smaller words stop reading at 168 px wide
+      const GAP = 56 // px between the words and the card
+      const BOX = { w: 500, h: 469 } // the card's largest size
+      const ARROW =
+        '<svg viewBox="0 0 104 76"><path d="M7 38 H88 M60 11 L90 38 L60 65" fill="none" ' +
+        'stroke="#ff671a" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
 
       window.draw = async (P) => {
-        const words = esc(P.text).replace(esc(P.highlight ?? '\u0000'), (m) => `<mark>${m}</mark>`)
-        document.getElementById('panel').innerHTML =
-          `<img id="logo" src="../../../assets/brand/memrynote/logo.svg" />` +
-          `<div id="headline"><span>${words}</span></div>` +
-          `<div id="label">${esc(P.label)}</div>`
+        // One orange mark: the arrow, or without one the last line's final . ? or !
+        const lines = P.text.split('\n')
+        const arrow = P.text.includes('→')
+        const head = document.getElementById('headline')
+        head.innerHTML = lines
+          .map((l, i) => {
+            if (l.includes('→')) {
+              const [a, b] = l.split('→').map((s) => s.trim())
+              return `<div>${a ? `<span>${esc(a)}</span>` : ''}${ARROW}${b ? `<span>${esc(b)}</span>` : ''}</div>`
+            }
+            if (!arrow && i === lines.length - 1)
+              return `<div><span>${esc(l.slice(0, -1))}<span class="mark">${esc(l.slice(-1))}</span></span></div>`
+            return `<div><span>${esc(l)}</span></div>`
+          })
+          .join('')
+        head.style.fontSize = `${SIZE}px`
 
-        const shot = document.getElementById('shot')
-        const sw = shot.offsetWidth
-        const sh = shot.offsetHeight
-        const w = Math.min(1600, P.crop.w)
-        const h = Math.min(900, (w * sh) / sw)
-        const left = Math.min(Math.max(P.crop.x - w / 2, 0), 1600 - w)
-        const top = Math.min(Math.max(P.crop.y - h / 2, 0), 900 - h)
-        const k = sw / w // screen px per recorder CSS px
-        shot.style.backgroundImage = `url("${P.frame}")`
-        shot.style.backgroundSize = `${1600 * k}px ${900 * k}px`
-        shot.style.backgroundPosition = `${-left * k}px ${-top * k}px`
+        const card = document.getElementById('card')
+        const k = Math.min(BOX.w / P.crop.w, BOX.h / P.crop.h) // screen px per recorder CSS px
+        card.style.width = `${P.crop.w * k}px`
+        card.style.height = `${P.crop.h * k}px`
+        card.style.backgroundImage = `url("${P.frame}")`
+        card.style.backgroundSize = `${1600 * k}px ${900 * k}px`
+        card.style.backgroundPosition = `${-(P.crop.x - P.crop.w / 2) * k}px ${-(P.crop.y - P.crop.h / 2) * k}px`
 
         await document.fonts.ready
         const img = new Image()
         img.src = P.frame
         await Promise.all([img, ...document.images].map((i) => i.decode()))
 
-        // Shrink the words until they fit in three lines.
-        const el = document.getElementById('headline')
-        let size = parseFloat(getComputedStyle(el).fontSize)
-        const tooTall = () => el.firstChild.offsetHeight > size * 1.06 * 3 + 2
-        while (tooTall() && size > 40) el.style.fontSize = `${(size -= 2)}px`
+        // Shrink the words until the widest line clears the card.
+        const room = 1280 - 64 - P.crop.w * k - GAP - 64
+        const widest = () =>
+          Math.max(...[...head.children].map((d) => d.getBoundingClientRect().width))
+        let size = SIZE
+        while (widest() > room && size > FLOOR) head.style.fontSize = `${(size -= 2)}px`
+        const overflow =
+          widest() > room
+            ? `needs ${Math.ceil(widest())} px at ${FLOOR} px type, and the space beside the card is ${Math.floor(room)} px`
+            : null
+        return { overflow, cover: (P.crop.w * k * P.crop.h * k) / (1280 * 720) }
       }
     </script>
   </body>
