@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
-import { DemoPlayer } from '@/components/demo/DemoPlayer'
+import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+
+const DEMO_VIDEO = '/demos/memrynote-demo.mp4'
+const DEMO_POSTER = '/demos/memrynote-demo-poster.webp'
+const TARGET = 'demo:film'
+const MILESTONES = [25, 50, 75] as const
 
 interface HeroDemoDialogProps {
   open: boolean
@@ -10,11 +15,12 @@ interface HeroDemoDialogProps {
 }
 
 /**
- * Lightbox that plays the full app demo (4 tabs) over the hero. Hand-rolled
- * portal to match the existing modal convention (VideoScene fullscreen expand,
- * MockupFrame lightbox) rather than pull in a dialog dependency: Escape + backdrop
- * close, body-scroll lock, and focus restore on close. The DemoPlayer only mounts
- * while open, so the ~5–9MB clips load on intent — never on hero paint.
+ * Lightbox that plays the narrated product demo over the hero. Hand-rolled portal
+ * (MockupFrame lightbox convention) rather than a dialog dependency: Escape + backdrop
+ * close, body-scroll lock, and focus restore on close. The video only mounts while
+ * open, so its ~6MB load on intent, never on hero paint. It starts with sound: the
+ * click that opened the dialog is the user gesture browsers require for unmuted
+ * autoplay. If a browser still refuses, it falls back to muted playback.
  */
 export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -71,22 +77,64 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
             <X className="h-5 w-5" strokeWidth={1.8} />
           </button>
 
-          {/* Light paper panel = the exact surface the player expects. The ChapterRail's
-              inactive cards are transparent by design (on the page they reveal the paper body
-              bg); without this panel they'd reveal the dark dim and read as murky glass. */}
           <motion.div
-            className="relative z-10 max-h-[88vh] w-full max-w-7xl overflow-y-auto rounded-2xl bg-paper p-4 shadow-2xl md:p-5"
+            className="relative z-10 w-full max-w-[min(80rem,calc(88vh*16/9))] overflow-hidden rounded-2xl bg-ink shadow-2xl"
             initial={{ opacity: 0, scale: 0.96, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             onClick={(event) => event.stopPropagation()}
           >
-            <DemoPlayer initialEngaged />
+            <DemoVideo />
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
     document.body
+  )
+}
+
+function DemoVideo() {
+  const ref = useRef<HTMLVideoElement>(null)
+  const reached = useRef(new Set<number>())
+
+  useEffect(() => {
+    const video = ref.current
+    if (!video) return
+    video.play().catch(() => {
+      video.muted = true
+      void video.play()
+    })
+  }, [])
+
+  const track = (name: LandingEventName) => trackLandingEvent(name, TARGET)
+
+  return (
+    <video
+      ref={ref}
+      src={DEMO_VIDEO}
+      poster={DEMO_POSTER}
+      controls
+      playsInline
+      preload="auto"
+      aria-label="MemryNote product demo, narrated"
+      className="block aspect-video w-full"
+      onPlay={() => track(reached.current.size ? 'landing_demo_resume' : 'landing_demo_start')}
+      onPause={(e) => {
+        if (!e.currentTarget.ended) track('landing_demo_pause')
+      }}
+      onEnded={() => track('landing_demo_complete')}
+      onVolumeChange={(e) => track(e.currentTarget.muted ? 'landing_demo_mute' : 'landing_demo_unmute')}
+      onTimeUpdate={(e) => {
+        const { currentTime, duration } = e.currentTarget
+        reached.current.add(0)
+        for (const m of MILESTONES) {
+          if (duration && currentTime / duration >= m / 100 && !reached.current.has(m)) {
+            reached.current.add(m)
+            track(`landing_demo_progress_${m}`)
+          }
+        }
+      }}
+    />
   )
 }
