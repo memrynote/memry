@@ -12,14 +12,7 @@
   "card": {
     "label": "Demo",
     "title": "memrynote at a glance",
-    "topics": [
-      "Capture",
-      "Notes",
-      "Tasks & Projects",
-      "Journal",
-      "Canvas & Graph",
-      "AI & Agents"
-    ]
+    "topics": ["Inbox", "Notes", "Tasks", "Journal", "Canvas", "Graph"]
   },
   "endCard": {
     "at": "Thanks for watching",
@@ -29,23 +22,24 @@
     {
       "id": "intro",
       "title": "Intro",
-      "text": "This is {brand}. Notes, tasks, and your whole day, in one private app.",
-      "lead": 1.6
-    },
-    {
-      "id": "capture",
-      "title": "Quick capture",
-      "text": "Type it once. Date, priority, project. Done. Then drag it onto your day."
+      "text": "Meet {brand}. One idea, from inbox to done.",
+      "lead": 1.2,
+      "tail": 0.4
     },
     {
       "id": "inbox",
       "title": "Inbox",
-      "text": "Paste a link, drop a thought. Then triage it: the link becomes a note, the thought a task. Inbox zero."
+      "text": "Paste a link, drop a thought. Everything lands in the inbox first."
     },
     {
-      "id": "notes",
+      "id": "triage",
+      "title": "Triage",
+      "text": "Triage in a click. The link is filed, and the idea becomes a note."
+    },
+    {
+      "id": "note",
       "title": "Notes",
-      "text": "Write fast. Slash for anything, brackets to link your ideas."
+      "text": "Open it, and write freely. Two brackets link it to anything in your vault."
     },
     {
       "id": "tasknote",
@@ -53,39 +47,35 @@
       "text": "And any line becomes a task, right where you wrote it."
     },
     {
-      "id": "today",
-      "title": "Today",
-      "text": "Today shows what matters. Check it off."
+      "id": "manage",
+      "title": "Plan your day",
+      "text": "It shows up in Today with everything else. Drag it onto your calendar."
     },
     {
-      "id": "ai",
-      "title": "AI",
-      "text": "Ask AI about your week. It reads your vault and answers in seconds."
-    },
-    {
-      "id": "cli",
-      "title": "CLI and agents",
-      "text": "Built for agents too. A CLI and MCP tools, writing straight into your vault."
-    },
-    {
-      "id": "projects",
-      "title": "Projects and boards",
-      "text": "Projects pull it all together. Drag a card, move it forward."
+      "id": "newtask",
+      "title": "Quick capture",
+      "text": "Need another one? Type it once. Date, priority, project. Done."
     },
     {
       "id": "journal",
-      "title": "Journal and calendar",
-      "text": "Every day gets a journal page, right next to your calendar."
-    },
-    {
-      "id": "search",
-      "title": "Search and graph",
-      "text": "Find anything in a keystroke. Then see how it all connects."
+      "title": "Journal",
+      "text": "Every day gets a journal page. Link the idea, and there's the task, right on your calendar."
     },
     {
       "id": "canvas",
       "title": "Canvas",
-      "text": "Think visually. Put your real notes and tasks on a canvas, and connect them."
+      "text": "Lay it out on a canvas. Pull in the kickoff notes, the idea, and its task."
+    },
+    {
+      "id": "connect",
+      "title": "Connect",
+      "text": "Then draw arrows to connect the pieces."
+    },
+    {
+      "id": "graph",
+      "title": "Graph",
+      "text": "And the graph shows how it all fits together.",
+      "tail": 1.4
     },
     {
       "id": "sync",
