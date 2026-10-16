@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -188,8 +189,19 @@ describe('findSharedDirs', () => {
     assert.ok(!SHARED_DIRS.includes('.claude'))
   })
 
-  it('carries the agent config directory, so worktree MCP servers resolve', () => {
-    assert.ok(SHARED_DIRS.includes('.pi'))
+  it('shares the Pi skills of a repo that tracks its Pi config, so a worktree session loads them', () => {
+    // The repo's .gitignore since 1f852fd0b: `.pi` holds tracked config, so git does not ignore
+    // `.pi` itself, only what is under it.
+    const root = tmp()
+    execFileSync('git', ['init', '-q', root])
+    writeFileSync(path.join(root, '.gitignore'), '!.pi/\n.pi/*\n!.pi/settings.json\n')
+    mkdirSync(path.join(root, '.pi/skills/tutorial-video'), { recursive: true })
+    mkdirSync(path.join(root, '.pi/prompts'))
+    mkdirSync(path.join(root, '.pi/goals'))
+    writeFileSync(path.join(root, '.pi/settings.json'), '{}')
+    execFileSync('git', ['add', '.gitignore', '.pi/settings.json'], { cwd: root })
+
+    assert.deepEqual(filterIgnored(root, findSharedDirs(root)), ['.pi/skills', '.pi/prompts'])
   })
 })
 

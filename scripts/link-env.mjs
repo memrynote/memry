@@ -99,21 +99,28 @@ export function isEnvFileName(name) {
  * themselves symlinks into `.agents/skills` keep resolving, because the kernel
  * resolves them against the source worktree they physically live in.
  *
- * `.pi` is the project's agent configuration -- `mcp.json` (posthog, vercel,
- * gmail), `multi-pass.json`, project skills. It is gitignored, so a session
- * started inside `.worktrees/<name>` sees only the global MCP set and loses
- * every project server with no error anywhere.
+ * `.pi/skills` and `.pi/prompts` are the project's Pi skills and prompt
+ * templates. Git tracks the stable Pi config (`.pi/mcp.json`,
+ * `multi-pass.json`, `settings.json`) and ignores the rest of `.pi`, so `.pi`
+ * itself is not ignored and cannot be linked whole. Without these two links a
+ * session started in a worktree loads no project skills, with no error
+ * anywhere. The rest of `.pi` is Pi runtime state and stays per worktree.
  */
-export const SHARED_DIRS = ['apps/sync-server/.wrangler/state', '.claude/skills', '.pi']
+export const SHARED_DIRS = [
+  'apps/sync-server/.wrangler/state',
+  '.claude/skills',
+  '.pi/skills',
+  '.pi/prompts'
+]
 
 /**
  * Gitignored *files* of local agent configuration that a worktree needs.
  *
- * `.mcp.json` (and `.pi/mcp.json`, shared as part of the `.pi` link above) declare the
- * project's MCP servers -- posthog, vercel, gmail. Both are gitignored, so an
- * agent session started inside `.worktrees/<name>` resolves only the global
- * server set and silently loses every project server, with no error anywhere.
- * Linking them keeps one source of truth in the main worktree.
+ * `.mcp.json` declares the project's MCP servers -- posthog, vercel, gmail.
+ * When it is gitignored, an agent session started inside `.worktrees/<name>`
+ * resolves only the global server set and silently loses every project
+ * server, with no error anywhere. Linking it keeps one source of truth in the
+ * main worktree. `.pi/mcp.json` is tracked, so every checkout already has it.
  */
 export const SHARED_FILES = ['.mcp.json']
 
