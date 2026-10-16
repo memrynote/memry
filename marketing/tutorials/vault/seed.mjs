@@ -169,6 +169,27 @@ note(
 - LX Factory on Sunday`,
   { project: ['Lisbon Trip'] }
 )
+// The demo film: notes linked to each other, so the graph has a shape, and one to write in.
+note(
+  'Homepage Ideas',
+  `Lead with one calm line, then the work.
+
+Pulled from [[Website Redesign Brief]] and [[Studio North Kickoff]].
+
+Next steps`,
+  { project: ['Website Redesign'] }
+)
+note(
+  'Design Principles',
+  `- Fewer pages, more clarity
+- Mobile first, see [[Homepage Ideas]]
+- Borrow from [[Reading List]]`
+)
+note(
+  'Lisbon Itinerary',
+  `Day 1 in Alfama, day 2 in Sintra. Ideas in [[Lisbon Ideas]], bags per [[Lisbon Packing List]].`,
+  { project: ['Lisbon Trip'] }
+)
 note(
   'Reading List',
   `- Refactoring UI

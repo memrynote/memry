@@ -78,14 +78,14 @@ export async function record(dir) {
     if (mod.after?.[s.id]) await mod.after[s.id](ctx)
   }
   await rec.stop()
-  fs.writeFileSync(
-    path.join(out, 'timeline.json'),
-    JSON.stringify(
-      timeline.map(({ id, t, vo, dur, end }) => ({ id, t, vo, dur, end })),
-      null,
-      1
-    )
-  )
+  const film = timeline.map(({ id, t, vo, dur, end }) => ({
+    id,
+    t: rec.remap(t),
+    vo: rec.remap(vo),
+    dur,
+    end: rec.remap(end)
+  }))
+  fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
   await browser.close()
-  return timeline
+  return film
 }

@@ -1,0 +1,102 @@
+{
+  "voice": "i5OXFdxBvUlXYUxpwQgy",
+  "model": "eleven_v4",
+  "settings": {
+    "stability": 0.35,
+    "similarity_boost": 0.8,
+    "style": 0.3,
+    "speed": 1.08
+  },
+  "brand": "Memree note",
+  "music": "upbeat",
+  "card": {
+    "label": "Demo",
+    "title": "memrynote at a glance",
+    "topics": [
+      "Capture",
+      "Notes",
+      "Tasks & Projects",
+      "Journal",
+      "Canvas & Graph",
+      "AI & Agents"
+    ]
+  },
+  "endCard": {
+    "at": "Thanks for watching",
+    "url": "memrynote.com"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "Intro",
+      "text": "This is {brand}. Notes, tasks, and your whole day, in one private app.",
+      "lead": 1.6
+    },
+    {
+      "id": "capture",
+      "title": "Quick capture",
+      "text": "Type it once. Date, priority, project. Done. Then drag it onto your day."
+    },
+    {
+      "id": "inbox",
+      "title": "Inbox",
+      "text": "Paste a link, drop a thought. Then triage it: the link becomes a note, the thought a task. Inbox zero."
+    },
+    {
+      "id": "notes",
+      "title": "Notes",
+      "text": "Write fast. Slash for anything, brackets to link your ideas."
+    },
+    {
+      "id": "tasknote",
+      "title": "Tasks in notes",
+      "text": "And any line becomes a task, right where you wrote it."
+    },
+    {
+      "id": "today",
+      "title": "Today",
+      "text": "Today shows what matters. Check it off."
+    },
+    {
+      "id": "ai",
+      "title": "AI",
+      "text": "Ask AI about your week. It reads your vault and answers in seconds."
+    },
+    {
+      "id": "cli",
+      "title": "CLI and agents",
+      "text": "Built for agents too. A CLI and MCP tools, writing straight into your vault."
+    },
+    {
+      "id": "projects",
+      "title": "Projects and boards",
+      "text": "Projects pull it all together. Drag a card, move it forward."
+    },
+    {
+      "id": "journal",
+      "title": "Journal and calendar",
+      "text": "Every day gets a journal page, right next to your calendar."
+    },
+    {
+      "id": "search",
+      "title": "Search and graph",
+      "text": "Find anything in a keystroke. Then see how it all connects."
+    },
+    {
+      "id": "canvas",
+      "title": "Canvas",
+      "text": "Think visually. Put your real notes and tasks on a canvas, and connect them."
+    },
+    {
+      "id": "sync",
+      "title": "Sync and privacy",
+      "text": "Synced across your devices, and end to end encrypted. Only you can read it."
+    },
+    {
+      "id": "outro",
+      "title": "Outro",
+      "text": "That's {brand}. Thanks for watching.",
+      "tail": 2.6
+    }
+  ]
+}

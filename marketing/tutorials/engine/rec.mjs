@@ -55,6 +55,21 @@ export class Recorder {
     this.frames = []
     this.events = []
     this.mouse = { x: 700, y: 450 }
+    this.spans = []
+  }
+  /** Plays what is recorded from now until speedEnd() `rate` times faster in the film. */
+  speed(rate) {
+    this.spans.push({ t0: this.now(), t1: Infinity, rate })
+  }
+  speedEnd() {
+    this.spans.at(-1).t1 = this.now()
+  }
+  /** Recording time -> film time, with the fast-forward spans squeezed. */
+  remap(t) {
+    let cut = 0
+    for (const s of this.spans)
+      if (t > s.t0) cut += (Math.min(t, s.t1) - s.t0) * (1 - 1 / s.rate)
+    return t - cut
   }
   async start() {
     fs.rmSync(this.dir, { recursive: true, force: true })
@@ -88,9 +103,16 @@ export class Recorder {
     const t0 = this.t0
     fs.writeFileSync(
       path.join(this.dir, 'frames.json'),
-      JSON.stringify(this.frames.map((x) => ({ ...x, t: x.t - t0 })))
+      JSON.stringify(this.frames.map((x) => ({ ...x, t: this.remap(x.t - t0) })))
     )
-    fs.writeFileSync(path.join(this.dir, 'events.json'), JSON.stringify(this.events, null, 1))
+    fs.writeFileSync(
+      path.join(this.dir, 'events.json'),
+      JSON.stringify(
+        this.events.map((e) => ({ ...e, t: this.remap(e.t) })),
+        null,
+        1
+      )
+    )
   }
   // Eased glide, one real mousemove per ~frame so hover states fire like a human's.
   async glide(x, y, ms) {

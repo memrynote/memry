@@ -129,6 +129,39 @@ from scipy.signal import butter, sosfilt
 pad = sosfilt(butter(2, 1800, 'low', fs=SR, output='sos'), pad).astype(np.float32)
 pad /= np.max(np.abs(pad)) + 1e-9
 
+# narration.json "music": "upbeat" (the demo film): the same progression at 120 BPM with a
+# four-on-the-floor kick, off-beat hats, an eighth-note bass and plucked chords on top of the pad.
+if N.get('music') == 'upbeat':
+    beat = 60 / 120
+    rng = np.random.default_rng(7)
+    drums = np.zeros(L, np.float32)
+    def hit(at, x):
+        i = int(at * SR); j = min(L, i + len(x))
+        if i < L: drums[i:j] += x[: j - i]
+    kt = np.arange(int(0.35 * SR)) / SR
+    kick = np.sin(2 * np.pi * (50 * kt + 60 * (1 - np.exp(-kt * 30)) / 30)) * np.exp(-kt * 9)
+    ht = np.arange(int(0.05 * SR)) / SR
+    hat = sosfilt(butter(2, 7000, 'high', fs=SR, output='sos'), rng.standard_normal(len(ht))) * np.exp(-ht * 70) * 0.25
+    bass = np.zeros(L, np.float32); pluck = np.zeros(L, np.float32)
+    for k in range(int(total / beat) + 2):
+        at = k * beat
+        hit(at, kick * 0.9); hit(at + beat / 2, hat)
+        ch = chords[(k // 8) % 4]
+        for half in (0, 1):
+            a = int((at + half * beat / 2) * SR); b = min(L, a + int(beat / 2 * SR))
+            if a >= L: continue
+            tt = t[a:b] - t[a]; f = 440 * 2 ** ((ch[0] - 12 - 69) / 12)
+            bass[a:b] += np.tanh(2 * np.sin(2 * np.pi * f * tt)) * np.exp(-tt * 5) * 0.5
+        if k % 2 == 1:
+            a = int((at + beat / 2) * SR); b = min(L, a + int(0.4 * SR))
+            if a < L:
+                tt = t[a:b] - t[a]
+                for m in ch[1:]:
+                    f = 440 * 2 ** ((m + 12 - 69) / 12)
+                    pluck[a:b] += np.sin(2 * np.pi * f * tt) * np.exp(-tt * 9) * 0.18
+    beatbed = drums + sosfilt(butter(2, 900, 'low', fs=SR, output='sos'), bass) + pluck + pad * 0.35
+    pad = (beatbed / (np.max(np.abs(beatbed)) + 1e-9)).astype(np.float32)
+
 # duck: 50 ms ahead of the voice, 350 ms release
 look = int(0.05 * SR)
 g2 = np.concatenate([gate[look:], np.zeros(look, np.float32)])
@@ -138,7 +171,8 @@ att, rel = 1 - np.exp(-1 / (0.05 * SR)), 1 - np.exp(-1 / (0.35 * SR))
 for i in range(L):
     v += (g2[i] - v) * (att if g2[i] > v else rel); sm[i] = v
 fade = np.minimum(1, t / 2) * np.minimum(1, np.maximum(0, total - t) / 2.5)
-bed = pad * (0.16 - 0.11 * sm) * fade
+level = (0.30, 0.20) if N.get('music') == 'upbeat' else (0.16, 0.11)
+bed = pad * (level[0] - level[1] * sm) * fade
 mix = voice + bed
 
 wav = base_out + '.mix.wav'
