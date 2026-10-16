@@ -18,6 +18,7 @@ import {
 import { inferPropertyType, resolvePropertyType } from './property-type'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
+import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
@@ -168,6 +169,8 @@ export interface NoteMetadata {
   date: string | null
   /** Emoji icon from frontmatter */
   emoji: string | null
+  /** Raw `cover` frontmatter value when it is a cover, else null */
+  cover: string | null
 }
 
 /**
@@ -209,6 +212,8 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const contentHash = generateContentHash(fileContent)
   const date = extractDateFromPath(path)
   const emoji = input.emoji ?? null
+  const rawCover = frontmatter[COVER_FRONTMATTER_KEY]
+  const cover = isCoverValue(rawCover) ? rawCover : null
 
   return {
     id,
@@ -222,7 +227,8 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
     snippet,
     contentHash,
     date,
-    emoji
+    emoji,
+    cover
   }
 }
 
@@ -251,7 +257,8 @@ export function syncNoteToCache(
     snippet,
     contentHash,
     date,
-    emoji
+    emoji,
+    cover
   } = metadata
 
   syncCanonicalMetadata(
@@ -282,6 +289,7 @@ export function syncNoteToCache(
     snippet,
     date,
     emoji,
+    cover,
     createdAt,
     modifiedAt,
     parsedContent,

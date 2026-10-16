@@ -469,6 +469,12 @@ export interface NoteWithProperties {
   emoji: string | null
 
   /**
+   * Raw `cover` frontmatter value (an image ref or `wash:<id>`), parse with
+   * `parseCoverValue`. Absent on rows that do not carry it, such as tag scope.
+   */
+  cover?: string | null
+
+  /**
    * Relative folder path from the viewed folder.
    * Examples when viewing "projects":
    * - Note at "notes/projects/note.md" → "/"
