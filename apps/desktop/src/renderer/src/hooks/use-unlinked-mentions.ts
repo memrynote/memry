@@ -2,12 +2,12 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UnlinkedMention } from '@memry/contracts/notes-api'
 import { notesService, onNoteCreated, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
-import { notesKeys } from './use-notes-query'
 
 const EMPTY: UnlinkedMention[] = []
 
+// Under the `notes` root so a whole-notes invalidation reaches it too.
 export const unlinkedMentionsKey = (noteId: string) =>
-  [...notesKeys.all, 'unlinked-mentions', noteId] as const
+  ['notes', 'unlinked-mentions', noteId] as const
 
 /** Notes that mention `noteId`'s title or an alias without linking to it (#3320). */
 export function useUnlinkedMentionsQuery(noteId: string | null, enabled: boolean) {

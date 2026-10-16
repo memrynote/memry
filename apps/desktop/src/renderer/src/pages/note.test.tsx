@@ -695,6 +695,8 @@ vi.mock('@/components/note/ghost-affordance-row', () => ({
 
 vi.mock('@/components/note/backlinks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/components/note/backlinks')>()),
+  // Fetches through its own service hook; covered by UnlinkedMentionsSection.test.tsx.
+  UnlinkedMentionsSection: () => null,
   BacklinksSection: ({
     backlinks,
     onBacklinkClick
