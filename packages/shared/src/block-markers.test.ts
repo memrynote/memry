@@ -153,15 +153,16 @@ describe('sidecarMarkerLines', () => {
     expect(sidecarMarkerLines(block({ textAlignment: 'right' }))).toEqual(['<!-- align:right -->'])
   })
 
-  it('writes the four markers in on-disk order', () => {
+  it('writes the five markers in on-disk order', () => {
     const marked = block(
       { textColor: 'red', textAlignment: 'center' },
-      { ...table({ textColor: 'blue' }), columnWidths: [120] }
+      { ...table({ textColor: 'blue', textAlignment: 'right' }), columnWidths: [120] }
     )
 
     expect(sidecarMarkerLines(marked)).toEqual([
       '<!-- colors:{"textColor":"red"} -->',
       '<!-- table-colors:{"0:0":{"textColor":"blue"}} -->',
+      '<!-- table-align:{"0:0":"right"} -->',
       '<!-- align:center -->',
       '<!-- table-layout:{"columnWidths":[120]} -->'
     ])
@@ -190,6 +191,35 @@ describe('parseSidecarMarkerLine', () => {
     parseSidecarMarkerLine('<!-- table-layout:{"columnWidths":[120,null]} -->')!(marked)
 
     expect((marked.content as { columnWidths: unknown[] }).columnWidths).toEqual([120, undefined])
+  })
+
+  it('round-trips cell alignments, skipping left cells and cells the table lost', () => {
+    const content = {
+      type: 'tableContent',
+      rows: [
+        {
+          cells: [
+            { content: [], props: { textAlignment: 'left' } },
+            { content: [], props: { textAlignment: 'center' } }
+          ]
+        }
+      ]
+    }
+    const [line] = sidecarMarkerLines(block({}, content))
+    expect(line).toBe('<!-- table-align:{"0:1":"center"} -->')
+
+    const reparsed = block({}, tableContent([undefined, undefined]))
+    parseSidecarMarkerLine('<!-- table-align:{"0:1":"center","5:0":"right"} -->')!(reparsed)
+
+    const cells = (reparsed.content as { rows: Array<{ cells: Array<{ props: object }> }> }).rows[0]
+      .cells
+    expect(cells.map((cell) => cell.props)).toEqual([{}, { textAlignment: 'center' }])
+  })
+
+  it('claims no table alignment marker holding a value outside the enum', () => {
+    expect(parseSidecarMarkerLine('<!-- table-align:{"0:0":"left"} -->')).toBeNull()
+    expect(parseSidecarMarkerLine('<!-- table-align:{"0:0":"banana"} -->')).toBeNull()
+    expect(parseSidecarMarkerLine('<!-- table-align:["center"] -->')).toBeNull()
   })
 
   it('reads a colours marker back onto the props', () => {

@@ -845,10 +845,10 @@ two categories are different and MUST NOT be conflated.
 **In-fragment encodings**, carried inside `prosemirror`, **with no preservation
 duty beyond the fragment itself**:
 
-| Encoding       | Form                                                                                                | Anchor                                                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| inline colours | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking a `<span style=…>`                                     | `packages/shared/src/inline-colors.ts:72-74`                                                                     |
-| block markers  | `<!-- align:… -->`, `<!-- table-layout:{…} -->`, `<!-- colors:{…} -->`, `<!-- table-colors:{…} -->` | `packages/shared/src/block-markers.ts:28`, `:62`; `packages/shared/src/block-colors.ts:11`, `:44`, `:79`, `:131` |
+| Encoding       | Form                                                                                                                            | Anchor                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| inline colours | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking a `<span style=…>`                                                                 | `packages/shared/src/inline-colors.ts:72-74`                                                                             |
+| block markers  | `<!-- align:… -->`, `<!-- table-align:{…} -->`, `<!-- table-layout:{…} -->`, `<!-- colors:{…} -->`, `<!-- table-colors:{…} -->` | `packages/shared/src/block-markers.ts:28`, `:57`, `:137`; `packages/shared/src/block-colors.ts:11`, `:44`, `:79`, `:131` |
 
 Date mentions (`packages/shared/src/date-mention.ts:32`, `:103`) are likewise
 in-fragment, not a root.

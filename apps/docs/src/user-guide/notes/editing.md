@@ -372,6 +372,11 @@ The key is the cell's position — `row:column`, counting from zero and counting
 the header row. Other markdown editors ignore the comment and show the table
 normally. Text styles need no such line: markdown carries them itself.
 
+To align cells, select them (or the text inside one), open **⋯** in the
+formatting toolbar and choose left, center or right. Cell alignment is saved
+the same way, on a `<!-- table-align:{"1:0":"center"} -->` line above the
+table.
+
 ## Slash Commands
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
