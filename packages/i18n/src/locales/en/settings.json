@@ -1935,6 +1935,22 @@
       "unsupported": "{shortcut} can't be used as a global shortcut. Pick a different combination.",
       "fallbackInUse": "The default shortcut {shortcut} is in use by another app. Set a different combination to use Global Capture."
     },
+    "folderNotes": {
+      "title": "New note in folder",
+      "description": "Create a note straight in a folder you pick",
+      "add": "Add folder",
+      "empty": "No folder shortcuts yet. Add a folder to give it one.",
+      "rowDescription": "Creates a note in this folder",
+      "missing": "This folder no longer exists. Pick another folder or remove the shortcut.",
+      "changeFolder": "Change folder",
+      "searchFolders": "Search folders...",
+      "noFolders": "No folders found",
+      "remove": "Remove shortcut",
+      "conflictLabel": "New note in {folder}",
+      "missingToast": "The folder \"{folder}\" no longer exists",
+      "missingToastAction": "Edit shortcut",
+      "foldersLoadFailed": "Couldn't check the folder for this shortcut"
+    },
     "toasts": {
       "saveGlobalFailed": "Failed to save global capture shortcut",
       "saveFailed": "Failed to save shortcut",

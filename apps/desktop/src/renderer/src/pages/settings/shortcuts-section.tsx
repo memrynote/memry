@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
@@ -7,7 +7,11 @@ import { Search, X, Pencil, Trash2, Undo } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { toast } from 'sonner'
-import type { GlobalCaptureResult, ShortcutBinding } from '@memry/contracts/settings-schemas'
+import type {
+  FolderNoteShortcut,
+  GlobalCaptureResult,
+  ShortcutBinding
+} from '@memry/contracts/settings-schemas'
 import type { ShortcutBindingDTO } from '../../../../preload/index.d'
 import {
   SHORTCUT_REGISTRY,
@@ -25,53 +29,33 @@ import {
   SEGMENTED,
   SEGMENT_ITEM
 } from '@/components/settings/settings-primitives'
-import { bindingFromKeyboardEvent, setShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
+import { bindingFromKeyboardEvent } from '@/hooks/use-keyboard-shortcuts-base'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
-
-type SettingsT = ReturnType<typeof useT>['t']
+import {
+  ICON_BUTTON,
+  KEYCAP,
+  MODIFIER_KEYS,
+  PENCIL,
+  PILL,
+  QUIET_BUTTON,
+  REBIND_BUTTON,
+  RECORDING_ROW,
+  ROW,
+  RecordingBar,
+  conflictMessage,
+  useShortcutCapture,
+  type SettingsT
+} from './shortcut-capture'
+import { FolderNoteShortcutsGroup } from './folder-note-shortcuts-group'
 
 const ALL_CATEGORIES = 'all'
-
-const KEYCAP =
-  'h-auto min-w-0 rounded-none border-0 bg-transparent p-0 font-mono text-xs/4 font-normal text-muted-foreground'
-
-const PILL = 'flex items-center gap-0 rounded-full bg-muted px-2 py-0.5'
-
-const REBIND_BUTTON =
-  'group/rebind flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-
-const PENCIL = 'size-3.5 text-muted-foreground transition-colors group-hover/rebind:text-foreground'
-
-const ICON_BUTTON =
-  'flex size-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-
-const QUIET_BUTTON =
-  'rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-
-const ROW =
-  'relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-center gap-4 min-h-14 py-3 shrink-0 group'
-
-const RECORDING_ROW = '-mx-4 px-4 bg-tint-light'
-
-function RecordingBar(): React.JSX.Element {
-  return <span aria-hidden="true" className="absolute inset-y-0 start-0 w-0.5 bg-tint" />
-}
 
 const CATEGORY_I18N_KEYS: Record<string, string> = {
   Navigation: 'navigation',
   Tabs: 'tabs',
   Editor: 'editor',
   View: 'view'
-}
-
-/** While a row records, the app's own shortcuts stand down (see `setShortcutRecording`). */
-function useShortcutRecordingFlag(isCapturing: boolean): void {
-  useEffect(() => {
-    if (!isCapturing) return
-    setShortcutRecording(true)
-    return () => setShortcutRecording(false)
-  }, [isCapturing])
 }
 
 function shortcutLabel(t: SettingsT, entry: ShortcutEntry): string {
@@ -92,6 +76,7 @@ interface ShortcutRowProps {
   effectiveBinding: ShortcutBinding
   isDefault: boolean
   overrides: Record<string, ShortcutBinding>
+  folderNoteShortcuts: FolderNoteShortcut[]
   onRebind: (id: string, binding: ShortcutBinding) => Promise<void>
   onClearOverride: (id: string) => Promise<void>
 }
@@ -101,60 +86,33 @@ function ShortcutRow({
   effectiveBinding,
   isDefault,
   overrides,
+  folderNoteShortcuts,
   onRebind,
   onClearOverride
 }: ShortcutRowProps) {
   const { t } = useT('settings')
-  const [isCapturing, setIsCapturing] = useState(false)
   const [conflict, setConflict] = useState<string | null>(null)
-  const captureRef = useRef<HTMLDivElement>(null)
-  useShortcutRecordingFlag(isCapturing)
-
-  const startCapture = useCallback(() => {
-    if (entry.rebindable === false) return
-    setIsCapturing(true)
-    setConflict(null)
-  }, [entry.rebindable])
-
-  const stopCapture = useCallback(() => {
-    setIsCapturing(false)
-    setConflict(null)
-  }, [])
-
-  useEffect(() => {
-    if (!isCapturing) return
-
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      if (e.key === 'Escape') {
-        stopCapture()
-        return
-      }
-
-      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
-
+  const capture = useShortcutCapture(
+    (e, stop) => {
+      if (MODIFIER_KEYS.includes(e.key)) return
       const newBinding = bindingFromKeyboardEvent(e)
-
-      const conflicts = findConflicts(entry.id, newBinding, overrides)
+      const conflicts = findConflicts(entry.id, newBinding, overrides, folderNoteShortcuts)
       if (conflicts.length > 0) {
-        const labels = conflicts.map((conflict) => {
-          const conflictingEntry = SHORTCUT_REGISTRY.find((e) => e.id === conflict.conflictingId)
-          return conflictingEntry ? shortcutLabel(t, conflictingEntry) : conflict.conflictingLabel
-        })
-        setConflict(t('shortcuts.conflict', { labels: labels.join(', ') }))
+        setConflict(conflictMessage(t, conflicts))
         return
       }
-
-      setIsCapturing(false)
       setConflict(null)
+      stop()
       void onRebind(entry.id, newBinding)
-    }
+    },
+    { onCancel: () => setConflict(null) }
+  )
+  const { isCapturing, captureRef, cancel: stopCapture } = capture
 
-    window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [isCapturing, entry.id, overrides, onRebind, stopCapture, t])
+  const startCapture = (): void => {
+    if (entry.rebindable === false) return
+    capture.start()
+  }
 
   const label = shortcutLabel(t, entry)
   // Editor formatting keys belong to the note editor; a rebind here would be
@@ -165,17 +123,6 @@ function ShortcutRow({
       {part}
     </Kbd>
   ))
-
-  useEffect(() => {
-    if (!isCapturing) return
-    const handleClick = (e: MouseEvent): void => {
-      if (captureRef.current && !captureRef.current.contains(e.target as Node)) {
-        stopCapture()
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [isCapturing, stopCapture])
 
   return (
     <div className={cn(ROW, isCapturing && RECORDING_ROW)}>
@@ -349,10 +296,7 @@ function globalCaptureProblem(t: SettingsT, status: GlobalCaptureRowStatus): str
 
 function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): React.JSX.Element {
   const { t } = useT('settings')
-  const [isCapturing, setIsCapturing] = useState(false)
   const [status, setStatus] = useState<GlobalCaptureRowStatus>({ kind: 'unknown' })
-  const captureRef = useRef<HTMLDivElement>(null)
-  useShortcutRecordingFlag(isCapturing)
 
   useEffect(() => {
     let cancelled = false
@@ -376,45 +320,20 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
     [t]
   )
 
-  const startCapture = useCallback(() => setIsCapturing(true), [])
-  const stopCapture = useCallback(() => setIsCapturing(false), [])
-
-  useEffect(() => {
-    if (!isCapturing) return
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (e.key === 'Escape') {
-        stopCapture()
-        return
+  const capture = useShortcutCapture((e, stop) => {
+    const key = acceleratorKey(e)
+    if (!key) return
+    stop()
+    void save({
+      key,
+      modifiers: {
+        meta: e.metaKey || e.ctrlKey || undefined,
+        shift: e.shiftKey || undefined,
+        alt: e.altKey || undefined
       }
-      const key = acceleratorKey(e)
-      if (!key) return
-      const newBinding: ShortcutBindingDTO = {
-        key,
-        modifiers: {
-          meta: e.metaKey || e.ctrlKey || undefined,
-          shift: e.shiftKey || undefined,
-          alt: e.altKey || undefined
-        }
-      }
-      setIsCapturing(false)
-      void save(newBinding)
-    }
-    window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [isCapturing, save, stopCapture])
-
-  useEffect(() => {
-    if (!isCapturing) return
-    const handleClick = (e: MouseEvent): void => {
-      if (captureRef.current && !captureRef.current.contains(e.target as Node)) {
-        stopCapture()
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [isCapturing, stopCapture])
+    })
+  })
+  const { isCapturing, captureRef, start: startCapture, cancel: stopCapture } = capture
 
   const problem = globalCaptureProblem(t, status)
 
@@ -504,6 +423,7 @@ export function ShortcutsSettings() {
 
   const overrides = settings.overrides
   const globalCapture = settings.globalCapture ?? null
+  const folderNoteShortcuts = settings.folderNoteShortcuts ?? []
 
   const handleRebind = useCallback(
     async (id: string, binding: ShortcutBinding): Promise<void> => {
@@ -625,6 +545,14 @@ export function ShortcutsSettings() {
         </SettingsGroup>
       )}
 
+      {category === ALL_CATEGORIES && !query && (
+        <FolderNoteShortcutsGroup
+          entries={folderNoteShortcuts}
+          overrides={overrides}
+          onChange={(next) => updateSettings({ folderNoteShortcuts: next })}
+        />
+      )}
+
       {filteredGroups.length === 0 && (
         <p className="text-xs/4 text-muted-foreground text-center py-4">{t('shortcuts.noMatch')}</p>
       )}
@@ -641,6 +569,7 @@ export function ShortcutsSettings() {
                 effectiveBinding={effectiveBinding}
                 isDefault={isDefault}
                 overrides={overrides}
+                folderNoteShortcuts={folderNoteShortcuts}
                 onRebind={handleRebind}
                 onClearOverride={handleClearOverride}
               />

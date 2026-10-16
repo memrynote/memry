@@ -87,7 +87,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   },
   keyboard: {
     overrides: {},
-    globalCapture: null
+    globalCapture: null,
+    folderNoteShortcuts: []
   },
   sync: {
     enabled: true,

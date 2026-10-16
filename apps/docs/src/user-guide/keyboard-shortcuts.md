@@ -227,3 +227,12 @@ The <kbd>⌘</kbd>+<kbd>+</kbd> alias for zoom in only applies while Zoom In kee
 Editor formatting rows (Bold, Italic, Underline, Strikethrough, Inline code) are shown for reference and cannot be reassigned: the note editor owns those keys.
 
 You can also set a **Global Capture** hotkey there to open quick capture from any app. It needs no extra system permission.
+
+### New note in a folder
+
+To create notes straight in a folder you use often, give that folder its own shortcut. In [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), under **New note in folder**, click **Add folder**, pick the folder, and press the chord. Pressing the chord anywhere in the app creates a note in that folder, with the folder's default template, and opens it. The sidebar does not need to be open.
+
+- Each folder takes one chord. Click the folder name to point the shortcut at another folder, click the keys to record a new chord, or remove it with the trash button.
+- A chord that another shortcut already uses, including an editor key such as <kbd>⌘</kbd>+<kbd>B</kbd>, is flagged inline and not saved. Use a chord with <kbd>⌘</kbd> / <kbd>Ctrl</kbd> if you want it to work while you type in a note.
+- Renaming or moving the folder in Memry carries the shortcut along. If the folder is deleted, or renamed outside Memry, the shortcut says the folder no longer exists instead of recreating it, and its row in settings is marked so you can pick another folder.
+- Folder shortcuts are saved per vault on this device and do not sync. **Reset All** leaves them in place.

@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useOpenPage } from '@/hooks/use-open-target'
+import { useCreateNoteInFolder } from '@/hooks/use-create-note-in-folder'
 import { noteTabData } from '@/lib/sidebar-tab-data'
 import {
   getDisplayName,
@@ -267,54 +268,18 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     }
   }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
 
+  const createNoteInFolder = useCreateNoteInFolder(deps.mutations.createNote.mutateAsync)
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
       if (isCreating) return
-
       setIsCreating(true)
       try {
-        const templateId = await notesService.getFolderTemplate(folderPath)
-
-        const result = await deps.mutations.createNote.mutateAsync({
-          title: NEW_NOTE_TITLE,
-          folder: folderPath || undefined,
-          template: templateId ?? undefined
-        })
-
-        if (result.success && result.note) {
-          const newNote = result.note
-          markNewNoteTitlePending(newNote.id)
-          openPage({
-            type: 'note',
-            title: getDisplayName(newNote.path),
-            icon: 'file-text',
-            emoji: newNote.emoji,
-            path: `/notes/${newNote.id}`,
-            entityId: newNote.id,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false
-          })
-
-          // "New note" on a folder's context menu can be used on a folder that
-          // is shut; the note then lands somewhere invisible.
-          revealNoteInSidebar(newNote.id)
-        }
-      } catch (err) {
-        trackRendererError('note_create_failed', err)
-        log.error('Failed to create note', err)
-        toast.error(
-          extractErrorMessage(
-            err,
-            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateNote')
-          )
-        )
+        await createNoteInFolder(folderPath)
       } finally {
         setIsCreating(false)
       }
     },
-    [isCreating, deps.mutations.createNote, openPage]
+    [isCreating, createNoteInFolder]
   )
 
   // ---- Create folder ----

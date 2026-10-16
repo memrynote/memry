@@ -152,6 +152,7 @@ vi.mock('../store', () => ({
 
 import {
   applyGlobalCaptureShortcut,
+  followFolderRenameInShortcuts,
   registerSettingsHandlers,
   setQuickCaptureShortcutHost,
   unregisterSettingsHandlers
@@ -1552,6 +1553,80 @@ describe('settings-handlers', () => {
 
       expect(removeHandlerCalls).toContain(SettingsChannels.invoke.GET_GRAPH_VIEWS)
       expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_GRAPH_VIEWS)
+    })
+  })
+
+  describe('folder new-note shortcuts', () => {
+    const chord = { key: '1', modifiers: { meta: true, alt: true } }
+
+    function storedKeyboard(initial: Record<string, unknown>): () => Record<string, unknown> {
+      let raw = JSON.stringify(initial)
+      ;(settingsQueries.getSetting as Mock).mockImplementation((_db: unknown, key: string) =>
+        key === 'keyboard' ? raw : null
+      )
+      ;(settingsQueries.setSetting as Mock).mockImplementation(
+        (_db: unknown, key: string, value: string) => {
+          if (key === 'keyboard') raw = value
+        }
+      )
+      return () => JSON.parse(raw) as Record<string, unknown>
+    }
+
+    it('#given a blob written before the field existed #when read #then it has no folder shortcuts', async () => {
+      registerSettingsHandlers()
+      storedKeyboard({ overrides: {}, globalCapture: null })
+
+      await expect(invokeHandler(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS)).resolves.toEqual({
+        overrides: {},
+        globalCapture: null,
+        folderNoteShortcuts: []
+      })
+    })
+
+    it('#given a shortcut on a folder #when that folder or a parent is renamed #then the shortcut follows', () => {
+      const saved = storedKeyboard({
+        overrides: {},
+        globalCapture: null,
+        folderNoteShortcuts: [
+          { folder: 'Work', binding: chord },
+          { folder: 'Work/Meetings', binding: chord },
+          { folder: 'Workshop', binding: chord }
+        ]
+      })
+
+      followFolderRenameInShortcuts('Work', 'Archive/Job')
+
+      expect(saved().folderNoteShortcuts).toEqual([
+        { folder: 'Archive/Job', binding: chord },
+        { folder: 'Archive/Job/Meetings', binding: chord },
+        { folder: 'Workshop', binding: chord }
+      ])
+      expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+        key: 'keyboard',
+        value: { folderNoteShortcuts: saved().folderNoteShortcuts }
+      })
+    })
+
+    it('#given folder shortcuts and rebinds #when reset to defaults #then only the folder shortcuts stay', async () => {
+      registerSettingsHandlers()
+      const folderNoteShortcuts = [{ folder: 'Work', binding: chord }]
+      const saved = storedKeyboard({
+        overrides: { 'nav.search': chord },
+        globalCapture: chord,
+        folderNoteShortcuts
+      })
+
+      await invokeHandler(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS)
+
+      expect(saved()).toEqual({ overrides: {}, globalCapture: null, folderNoteShortcuts })
+    })
+
+    it('#given no shortcut under the folder #when renamed #then settings are not rewritten', () => {
+      storedKeyboard({ overrides: {}, globalCapture: null })
+
+      followFolderRenameInShortcuts('Work', 'Job')
+
+      expect(settingsQueries.setSetting).not.toHaveBeenCalled()
     })
   })
 })

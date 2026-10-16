@@ -11,6 +11,11 @@ vi.mock('@/hooks/use-keyboard-settings', () => ({
   useKeyboardSettings: vi.fn()
 }))
 
+const folders = vi.hoisted(() => ({ list: [] as Array<{ path: string }> }))
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteFoldersQuery: () => ({ folders: folders.list })
+}))
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -47,6 +52,7 @@ describe('ShortcutsSettings', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    folders.list = [{ path: 'Work' }, { path: 'Work/Meetings' }]
     updateSettings.mockResolvedValue(true)
     resetToDefaults.mockResolvedValue(true)
 
@@ -304,5 +310,91 @@ describe('ShortcutsSettings', () => {
         'The default shortcut Ctrl+Shift+SPACE is in use by another app. Set a different combination to use Global Capture.'
       )
     ).toHaveAttribute('role', 'alert')
+  })
+
+  describe('new note in folder', () => {
+    const chord = { key: '1', modifiers: { meta: true, alt: true } }
+
+    function withFolderShortcuts(
+      folderNoteShortcuts: Array<{ folder: string; binding: typeof chord }>
+    ) {
+      useKeyboardSettingsMock.mockReturnValue({
+        settings: { overrides: {}, globalCapture: null, folderNoteShortcuts },
+        isLoading: false,
+        error: null,
+        updateSettings,
+        resetToDefaults
+      })
+    }
+
+    it('adds a shortcut by picking a folder and recording a chord', async () => {
+      withFolderShortcuts([])
+      render(<ShortcutsSettings />)
+
+      await userEvent.click(screen.getByRole('combobox', { name: 'Add folder' }))
+      await userEvent.click(await screen.findByRole('option', { name: /Work\/Meetings/ }))
+
+      const row = screen.getByTestId('folder-note-shortcut-row')
+      expect(within(row).getByText('Press shortcut…')).toBeInTheDocument()
+
+      fireEvent.keyDown(window, { key: '1', ctrlKey: true, altKey: true })
+
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({
+          folderNoteShortcuts: [{ folder: 'Work/Meetings', binding: chord }]
+        })
+      )
+    })
+
+    it('refuses a chord another shortcut holds, editor keys included', async () => {
+      withFolderShortcuts([])
+      render(<ShortcutsSettings />)
+
+      await userEvent.click(screen.getByRole('combobox', { name: 'Add folder' }))
+      await userEvent.click(await screen.findByRole('option', { name: /^Work$/ }))
+      const row = screen.getByTestId('folder-note-shortcut-row')
+
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+      expect(within(row).getByText('Conflicts with: Search')).toBeInTheDocument()
+
+      fireEvent.keyDown(window, { key: 'b', ctrlKey: true })
+      expect(within(row).getByText(/Conflicts with: .*Bold/)).toBeInTheDocument()
+      expect(updateSettings).not.toHaveBeenCalled()
+
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByTestId('folder-note-shortcut-row')).not.toBeInTheDocument()
+    })
+
+    it('flags an app shortcut rebind that a folder shortcut already holds', async () => {
+      withFolderShortcuts([{ folder: 'Work', binding: chord }])
+      render(<ShortcutsSettings />)
+
+      const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+      await userEvent.click(within(newNoteRow).getByTitle('Click to rebind'))
+      fireEvent.keyDown(window, { key: '1', ctrlKey: true, altKey: true })
+
+      expect(within(newNoteRow).getByText('Conflicts with: New note in Work')).toBeInTheDocument()
+      expect(updateSettings).not.toHaveBeenCalled()
+    })
+
+    it('marks a shortcut whose folder is gone and removes it on request', async () => {
+      withFolderShortcuts([
+        { folder: 'Work', binding: chord },
+        { folder: 'Old', binding: { key: '2', modifiers: { meta: true, alt: true } } }
+      ])
+      render(<ShortcutsSettings />)
+
+      const rows = screen.getAllByTestId('folder-note-shortcut-row')
+      expect(within(rows[0]).getByText('Creates a note in this folder')).toBeInTheDocument()
+      expect(within(rows[1]).getByRole('alert')).toHaveTextContent(
+        'This folder no longer exists. Pick another folder or remove the shortcut.'
+      )
+
+      await userEvent.click(within(rows[1]).getByRole('button', { name: 'Remove shortcut' }))
+
+      expect(updateSettings).toHaveBeenCalledWith({
+        folderNoteShortcuts: [{ folder: 'Work', binding: chord }]
+      })
+    })
   })
 })

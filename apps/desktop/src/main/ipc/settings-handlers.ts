@@ -1414,12 +1414,16 @@ export function registerSettingsHandlers(): void {
       return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
     }
 
-    deleteSetting(db, 'keyboard')
+    // Folder shortcuts are entries the user added, not departures from a
+    // default, so "reset to defaults" leaves them in place.
+    const { folderNoteShortcuts } = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
+    const reset = { ...KEYBOARD_SHORTCUTS_DEFAULTS, folderNoteShortcuts }
+    setSetting(db, 'keyboard', JSON.stringify(reset))
     keyboardOverridesListener?.()
 
     broadcastToAllWindows(SettingsChannels.events.CHANGED, {
       key: 'keyboard',
-      value: KEYBOARD_SHORTCUTS_DEFAULTS
+      value: reset
     })
 
     return { success: true }
@@ -1487,6 +1491,24 @@ export function setKeyboardOverridesListener(listener: (() => void) | null): voi
 /** Rebinds from Settings → Shortcuts for the open vault; empty with no vault. */
 export function readKeyboardOverrides(): KeyboardShortcuts['overrides'] {
   return readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).overrides
+}
+
+/**
+ * A folder shortcut names its folder by path, so a rename or move of that
+ * folder, or of any folder above it, carries the shortcut along.
+ */
+export function followFolderRenameInShortcuts(oldPath: string, newPath: string): void {
+  if (!getDbOrNull()) return
+  const { folderNoteShortcuts } = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
+  const prefix = `${oldPath}/`
+  let changed = false
+  const next = folderNoteShortcuts.map((entry) => {
+    if (entry.folder !== oldPath && !entry.folder.startsWith(prefix)) return entry
+    changed = true
+    return { ...entry, folder: newPath + entry.folder.slice(oldPath.length) }
+  })
+  if (changed)
+    writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, { folderNoteShortcuts: next })
 }
 
 /**
