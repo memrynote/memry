@@ -1,0 +1,24 @@
+{
+  "docs": "https://docs.memrynote.com/",
+  "download": "https://memrynote.com/download/desktop",
+  "feedback": "Questions or ideas: kaan@memrynote.com or https://www.reddit.com/r/MemryNote/",
+  "footer": "memrynote is a local-first notes app. Your notes, journal and tasks live on your device, and everything that syncs is end-to-end encrypted.",
+  "tags": ["memrynote", "memry note", "memory note"],
+  "playlists": {
+    "start-here": { "title": "Start here", "id": null },
+    "tutorials": { "title": "Tutorials", "id": null },
+    "switch": { "title": "Switch to memrynote", "id": null },
+    "workflows": { "title": "Workflows", "id": null },
+    "whats-new": { "title": "What's new", "id": null }
+  },
+  "snippet": {
+    "categoryId": "28",
+    "defaultLanguage": "en",
+    "defaultAudioLanguage": "en"
+  },
+  "status": {
+    "privacyStatus": "private",
+    "selfDeclaredMadeForKids": false,
+    "containsSyntheticMedia": false
+  }
+}
