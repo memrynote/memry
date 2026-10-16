@@ -86,7 +86,15 @@ export const ListCalendarEventsSchema = z.object({
 /** #869: query-driven event lookup for pickers that must reach every event. */
 export const SearchCalendarEventsSchema = z.object({
   query: z.string().min(1),
-  limit: z.number().int().positive().max(100).default(20)
+  limit: z.number().int().positive().max(100).default(20),
+  /** Also search mirrored provider events that were never promoted. Their items carry `kind: 'external_event'`. */
+  includeExternal: z.boolean().default(false)
+})
+
+/** The notes whose relation properties link to one calendar item. */
+export const ListLinkedNotesSchema = z.object({
+  sourceType: z.enum(['event', 'external_event']),
+  sourceId: z.string().min(1)
 })
 
 export const GetCalendarRangeSchema = z.object({
@@ -383,6 +391,7 @@ export type CreateCalendarEventInput = z.infer<typeof CreateCalendarEventSchema>
 export type UpdateCalendarEventInput = z.infer<typeof UpdateCalendarEventSchema>
 export type ListCalendarEventsInput = z.infer<typeof ListCalendarEventsSchema>
 export type SearchCalendarEventsInput = z.infer<typeof SearchCalendarEventsSchema>
+export type ListLinkedNotesInput = z.infer<typeof ListLinkedNotesSchema>
 export type GetCalendarRangeInput = z.infer<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.infer<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.infer<typeof UpdateCalendarSourceSelectionSchema>
@@ -619,6 +628,18 @@ export interface CalendarEventSearchItem {
   startAt: string
   endAt: string | null
   isAllDay: boolean
+  /** Absent on native events. `external_event` only when the search asked for `includeExternal`. */
+  kind?: 'event' | 'external_event'
+}
+
+export interface CalendarLinkedNote {
+  id: string
+  title: string
+  emoji: string | null
+}
+
+export interface CalendarLinkedNotesResponse {
+  notes: CalendarLinkedNote[]
 }
 
 export interface CalendarEventSearchResponse {

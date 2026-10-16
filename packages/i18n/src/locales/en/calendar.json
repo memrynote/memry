@@ -236,6 +236,18 @@
       "could-not-open-note": "Could not open note"
     }
   },
+  "eventNotes": {
+    "heading": "Notes",
+    "create": "New note",
+    "link": "Link note",
+    "untitled": "Meeting note",
+    "searchPlaceholder": "Search notes",
+    "noResults": "No notes found",
+    "createFailed": "Could not create a note for this event.",
+    "linkFailed": "Could not link the note to this event.",
+    "loadFailed": "Could not load the notes linked to this event.",
+    "propertyTaken": "This note already has an \"{{name}}\" property that is not a link."
+  },
   "notePopover": {
     "kind": "Note",
     "kindDateReminder": "Date reminder",

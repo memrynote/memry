@@ -360,6 +360,7 @@ export function createGeneratedRpcApi({
       "listGoogleCalendars": ((options) => invoke("calendar:list-google-calendars", options ?? {})) as GeneratedRpcApi["calendar"]["listGoogleCalendars"],
       "setDefaultGoogleCalendar": ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
       "getExternalEvent": ((input) => invoke("calendar:get-external-event", input)) as GeneratedRpcApi["calendar"]["getExternalEvent"],
+      "listLinkedNotes": ((input) => invoke("calendar:list-linked-notes", input)) as GeneratedRpcApi["calendar"]["listLinkedNotes"],
       "promoteExternalEvent": ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
       "retryGoogleCalendarSourceSync": ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
       "subscribeIcsCalendar": ((input) => invoke("calendar:subscribe-ics", input)) as GeneratedRpcApi["calendar"]["subscribeIcsCalendar"],

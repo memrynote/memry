@@ -1,4 +1,5 @@
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import {
   calendarExternalEvents,
   type CalendarExternalEvent,
@@ -37,6 +38,34 @@ export function getCalendarExternalEventById(
   id: string
 ): CalendarExternalEvent | undefined {
   return db.select().from(calendarExternalEvents).where(eq(calendarExternalEvents.id, id)).get()
+}
+
+/**
+ * Mirrored events on visible calendars whose title contains `query`, nearest
+ * to `now` first. A promoted mirror is archived, so its native event is the
+ * only hit for it.
+ */
+export function searchCalendarExternalEventsByTitle(
+  db: DataDb,
+  options: { query: string; limit: number; now: string }
+): CalendarExternalEvent[] {
+  const needle = options.query.trim()
+  if (!needle) return []
+  return db
+    .select({ event: calendarExternalEvents })
+    .from(calendarExternalEvents)
+    .innerJoin(calendarSources, eq(calendarSources.id, calendarExternalEvents.sourceId))
+    .where(
+      and(
+        isNull(calendarExternalEvents.archivedAt),
+        eq(calendarSources.isSelected, true),
+        sql`ulower(${calendarExternalEvents.title}) LIKE ulower(${`%${needle}%`})`
+      )
+    )
+    .orderBy(sql`abs(julianday(${calendarExternalEvents.startAt}) - julianday(${options.now}))`)
+    .limit(options.limit)
+    .all()
+    .map((row) => row.event)
 }
 
 export function listCalendarExternalEventsBySource(

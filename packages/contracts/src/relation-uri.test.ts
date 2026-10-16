@@ -3,7 +3,9 @@ import {
   formatRelationUri,
   parseRelationUri,
   isRelationValue,
-  parseRelationValue
+  parseRelationValue,
+  encodeExternalEventRelationId,
+  decodeExternalEventRelationId
 } from './relation-uri'
 
 describe('relation URIs', () => {
@@ -24,6 +26,18 @@ describe('relation URIs', () => {
       kind: 'journal',
       id: '2026-05-10'
     })
+  })
+
+  it('carries an external event row id through base64url', () => {
+    const rowId =
+      'calendar_external_event:ics-calendar:ab12:uid+1@example.com::2026-05-10T09:00:00.000Z'
+    const id = encodeExternalEventRelationId(rowId)
+    const uri = formatRelationUri('external-event', id)
+    expect(uri).toMatch(/^memry:\/\/external-event\/[A-Za-z0-9_-]+$/)
+    const ref = parseRelationUri(uri)
+    expect(ref?.kind).toBe('external-event')
+    expect(decodeExternalEventRelationId(ref!.id)).toBe(rowId)
+    expect(decodeExternalEventRelationId(encodeExternalEventRelationId('çağrı'))).toBe('çağrı')
   })
 
   it('round-trips every kind through format and parse', () => {

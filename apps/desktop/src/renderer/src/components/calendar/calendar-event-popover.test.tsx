@@ -89,6 +89,9 @@ vi.mock('./calendar-picker', () => ({
   )
 }))
 
+// The linked-notes section has its own query client needs and tests.
+vi.mock('./calendar-event-notes', () => ({ CalendarEventNotes: () => null }))
+
 vi.mock('./calendar-event-metadata', () => ({
   CalendarEventMetadata: () => <div>metadata shown</div>
 }))
@@ -129,6 +132,7 @@ describe('CalendarEventPopover', () => {
         mode="edit"
         draft={baseDraft}
         isSaving={false}
+        onOpenNote={vi.fn()}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onDismiss={onDismiss}
@@ -190,6 +194,7 @@ describe('CalendarEventPopover', () => {
         mode="create"
         draft={{ ...baseDraft, title: '   ', targetCalendarId: 'work' }}
         isSaving={false}
+        onOpenNote={vi.fn()}
         onDraftChange={vi.fn()}
         onSave={onSave}
         onDismiss={vi.fn()}
@@ -215,6 +220,7 @@ describe('CalendarEventPopover', () => {
         mode="create"
         draft={{ ...baseDraft, isAllDay: true, startAt: '2026-05-10', endAt: '' }}
         isSaving
+        onOpenNote={vi.fn()}
         onDraftChange={onDraftChange}
         onSave={vi.fn()}
         onDismiss={vi.fn()}
@@ -252,6 +258,7 @@ describe('CalendarEventPopover', () => {
         mode="edit"
         draft={baseDraft}
         isSaving={false}
+        onOpenNote={vi.fn()}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onDismiss={vi.fn()}
@@ -284,6 +291,7 @@ describe('CalendarEventPopover', () => {
         mode="edit"
         draft={{ ...baseDraft, startAt: '', endAt: 'bad-date' }}
         isSaving
+        onOpenNote={vi.fn()}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onDismiss={vi.fn()}

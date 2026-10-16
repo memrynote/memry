@@ -6,6 +6,7 @@ import { X } from '@/lib/icons'
 
 import { useAnchoredPopoverPosition } from './popover-position'
 import { CalendarEventForm } from './calendar-event-form'
+import { CalendarEventNotes } from './calendar-event-notes'
 import { CALENDAR_CARD_CLASS, CARD_ICON_BUTTON_CLASS, CalendarCardHeader } from './calendar-card'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import type {
@@ -34,6 +35,8 @@ interface CalendarEventPopoverProps {
   onDismiss: () => void
   /** M5: read-only rich metadata (attendees/reminders/visibility/Meet link) shown below the form. */
   readOnlyMetadata?: CalendarEventReadOnlyMetadata
+  /** Opens a note linked to the saved event. */
+  onOpenNote: (noteId: string) => void
 }
 
 const EVENT_POPOVER_WIDTH = 320
@@ -47,7 +50,8 @@ export function CalendarEventPopover({
   onDraftChange,
   onSave,
   onDismiss,
-  readOnlyMetadata
+  readOnlyMetadata,
+  onOpenNote
 }: CalendarEventPopoverProps): React.JSX.Element {
   const { t } = useT('calendar')
 
@@ -119,6 +123,13 @@ export function CalendarEventPopover({
             onDismiss={onDismiss}
             readOnlyMetadata={readOnlyMetadata}
           />
+
+          {mode === 'edit' && eventId && (
+            <CalendarEventNotes
+              target={{ sourceType: 'event', sourceId: eventId, title: draft.title }}
+              onOpenNote={onOpenNote}
+            />
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

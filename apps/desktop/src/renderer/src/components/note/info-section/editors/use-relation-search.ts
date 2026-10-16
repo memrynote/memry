@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
+import { encodeExternalEventRelationId, type RelationKind } from '@memry/contracts/relation-uri'
 import { calendarService } from '@/services/calendar-service'
 import { canvasService } from '@/services/canvas-service'
 import { searchService } from '@/services/search-service'
@@ -17,6 +18,10 @@ const SEARCH_DEBOUNCE_MS = 150
 export interface RelationSearchResult {
   id: string
   title: string
+  /** Overrides the group's kind: the events group mixes native and external events. */
+  kind?: RelationKind
+  /** Events only. A recurring event's occurrences share a title, so the picker shows the date. */
+  startAt?: string
 }
 
 export interface RelationSearchState {
@@ -97,17 +102,30 @@ export function useRelationSearch(query: string): RelationSearchState {
           setJournals([])
         }
       )
-      const searchingEvents = calendarService.searchEvents({ query: trimmed }).then(
-        (response: { events: CalendarEventSearchItem[] }) => {
-          if (cancelled) return
-          setEvents(response.events.map((e) => ({ id: e.id, title: e.title })))
-        },
-        (err: unknown) => {
-          if (cancelled) return
-          log.error('Event search failed:', extractErrorMessage(err))
-          setEvents([])
-        }
-      )
+      const searchingEvents = calendarService
+        .searchEvents({ query: trimmed, includeExternal: true })
+        .then(
+          (response: { events: CalendarEventSearchItem[] }) => {
+            if (cancelled) return
+            setEvents(
+              response.events.map((e) =>
+                e.kind === 'external_event'
+                  ? {
+                      id: encodeExternalEventRelationId(e.id),
+                      title: e.title,
+                      kind: 'external-event' as const,
+                      startAt: e.startAt
+                    }
+                  : { id: e.id, title: e.title, startAt: e.startAt }
+              )
+            )
+          },
+          (err: unknown) => {
+            if (cancelled) return
+            log.error('Event search failed:', extractErrorMessage(err))
+            setEvents([])
+          }
+        )
       const lowered = trimmed.toLowerCase()
       // Wrapped rather than called bare: the window-api forwarder throws
       // SYNCHRONOUSLY when the canvas bridge is not on `window.api` yet, and a
