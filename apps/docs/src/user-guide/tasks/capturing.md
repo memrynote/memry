@@ -238,6 +238,8 @@ A task written inside a note — `/task`, a checklist line that converts, or a n
 
 Archived projects are skipped: a note whose only project is archived falls through to your default. If the note names several projects, the first one it was linked to is used — the same one every other single-select surface calls "the" note's project.
 
+Until you pick a status, the task shows the project's first status and sits in that column on the board.
+
 ### Bringing Existing Tasks Across
 
 Giving a note a project only changes where _new_ tasks go. If the note already holds tasks filed somewhere else, memrynote asks once whether to move them:

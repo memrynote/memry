@@ -3,6 +3,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import type { Status } from '@/data/tasks-data'
+import { resolveTaskStatus } from '@/lib/task-utils'
 import { StatusIcon } from './status-icon'
 
 interface InteractiveStatusBadgeProps {
@@ -18,12 +19,12 @@ export const InteractiveStatusBadge = ({
   onStatusChange,
   className
 }: InteractiveStatusBadgeProps): React.JSX.Element => {
-  const currentStatus = statuses.find((s) => s.id === statusId)
+  const currentStatus = resolveTaskStatus(statusId, statuses)
   const statusColor = currentStatus?.color || '#6B7280'
   const statusName = currentStatus?.name || 'Unknown'
 
   return (
-    <Picker value={statusId} onValueChange={onStatusChange}>
+    <Picker value={currentStatus?.id ?? statusId} onValueChange={onStatusChange}>
       <Picker.Trigger asChild>
         <button
           type="button"

@@ -43,6 +43,7 @@ export {
   isTaskCompleted,
   getDefaultTodoStatus,
   getDefaultDoneStatus,
+  resolveTaskStatus,
   sortTasksByPriorityAndDate,
   sortTasksByTimeAndPriority,
   sortOverdueTasks,

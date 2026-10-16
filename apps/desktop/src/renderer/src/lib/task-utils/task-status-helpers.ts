@@ -20,6 +20,14 @@ export const getDefaultDoneStatus = (project: Project): Status | undefined => {
   return project.statuses.find((s) => s.type === 'done')
 }
 
+/**
+ * The status a task reads as. A task holding none of its project's statuses (none
+ * set, a deleted one, or one from another project) reads as the first, the status
+ * groupTasksByStatus files it under.
+ */
+export const resolveTaskStatus = (statusId: string, statuses: Status[]): Status | undefined =>
+  statuses.find((s) => s.id === statusId) ?? [...statuses].sort((a, b) => a.order - b.order)[0]
+
 // ============================================================================
 // TASK SORTING
 // ============================================================================

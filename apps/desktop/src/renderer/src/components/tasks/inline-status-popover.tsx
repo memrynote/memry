@@ -3,6 +3,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import type { Status } from '@/data/tasks-data'
+import { resolveTaskStatus } from '@/lib/task-utils'
 import { StatusIcon } from './status-icon'
 
 const stopTriggerPropagation = (event: React.SyntheticEvent): void => {
@@ -31,7 +32,7 @@ export const InlineStatusPopover = ({
   open,
   onOpenChange
 }: InlineStatusPopoverProps): React.JSX.Element => {
-  const currentStatus = statuses.find((s) => s.id === statusId)
+  const currentStatus = resolveTaskStatus(statusId, statuses)
   const statusColor = currentStatus?.color || '#6B7280'
   const effectiveType = isCompleted ? 'done' : (currentStatus?.type ?? 'todo')
 
@@ -52,7 +53,12 @@ export const InlineStatusPopover = ({
   )
 
   return (
-    <Picker value={statusId} onValueChange={handleSelect} open={open} onOpenChange={onOpenChange}>
+    <Picker
+      value={currentStatus?.id ?? statusId}
+      onValueChange={handleSelect}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <Picker.Trigger asChild disabled={disabled}>
         <button
           type="button"
