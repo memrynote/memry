@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        /* the film's wallpaper (compose.py), so the thumbnail and the film look like one thing */
+        background: linear-gradient(140deg, rgb(246, 214, 186), rgb(236, 120, 64));
+        font-family: 'DM Sans', system-ui;
+      }
+      /* the app, bleeding off the right edge */
+      #shot {
+        position: absolute;
+        left: 590px;
+        top: 84px;
+        width: 742px;
+        height: 552px;
+        border-radius: 16px 0 0 16px;
+        background-color: #fff;
+        background-repeat: no-repeat;
+        box-shadow: 0 10px 40px rgba(60, 30, 10, 0.3);
+      }
+      /* the mark, the words and the label on a white panel over the app's left edge */
+      #panel {
+        position: absolute;
+        left: 48px;
+        top: 48px;
+        width: 472px;
+        height: 544px;
+        padding: 40px 44px;
+        border-radius: 24px;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        box-shadow: 0 10px 40px rgba(60, 30, 10, 0.3);
+      }
+      #logo {
+        display: block;
+        height: 30px;
+        align-self: flex-start;
+      }
+      #headline {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        font-size: 92px;
+        line-height: 1.06;
+        font-weight: 650;
+        letter-spacing: -0.025em;
+        color: #212121;
+      }
+      #headline > span {
+        display: inline-block;
+      }
+      /* Ink carries the contrast and the orange only fills (DESIGN.md): ink on #ff671a is 5.5:1,
+         white on it 2.9:1. */
+      #headline mark {
+        background: #ff671a;
+        color: inherit;
+        border-radius: 0.14em;
+        padding: 0 0.12em;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+      }
+      #label {
+        width: fit-content;
+        padding: 11px 18px;
+        border-radius: 999px;
+        background: #f6f3ef;
+        color: #5f574f;
+        font:
+          500 22px/1 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shot"></div>
+    <div id="panel"></div>
+    <script>
+      // window.draw(P): P = { text, highlight, label, frame, crop: { x, y, w } }. crop is in the
+      // recorder's CSS px (1600x900 at 2x): center x/y and width; the height follows the slot's
+      // aspect ratio. Set by thumb.mjs before each screenshot.
+      const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+
+      window.draw = async (P) => {
+        const words = esc(P.text).replace(esc(P.highlight ?? '\u0000'), (m) => `<mark>${m}</mark>`)
+        document.getElementById('panel').innerHTML =
+          `<img id="logo" src="../../../assets/brand/memrynote/logo.svg" />` +
+          `<div id="headline"><span>${words}</span></div>` +
+          `<div id="label">${esc(P.label)}</div>`
+
+        const shot = document.getElementById('shot')
+        const sw = shot.offsetWidth
+        const sh = shot.offsetHeight
+        const w = Math.min(1600, P.crop.w)
+        const h = Math.min(900, (w * sh) / sw)
+        const left = Math.min(Math.max(P.crop.x - w / 2, 0), 1600 - w)
+        const top = Math.min(Math.max(P.crop.y - h / 2, 0), 900 - h)
+        const k = sw / w // screen px per recorder CSS px
+        shot.style.backgroundImage = `url("${P.frame}")`
+        shot.style.backgroundSize = `${1600 * k}px ${900 * k}px`
+        shot.style.backgroundPosition = `${-left * k}px ${-top * k}px`
+
+        await document.fonts.ready
+        const img = new Image()
+        img.src = P.frame
+        await Promise.all([img, ...document.images].map((i) => i.decode()))
+
+        // Shrink the words until they fit in three lines.
+        const el = document.getElementById('headline')
+        let size = parseFloat(getComputedStyle(el).fontSize)
+        const tooTall = () => el.firstChild.offsetHeight > size * 1.06 * 3 + 2
+        while (tooTall() && size > 40) el.style.fontSize = `${(size -= 2)}px`
+      }
+    </script>
+  </body>
+</html>
