@@ -45,7 +45,7 @@ ${table([
   ['Companies', 'The studio, two clients and a publisher: tagged company or client'],
   ['Research', 'Essay research: concepts, scanned memos, photos, papers, books'],
   ['Kitchen', 'Recipes in a gallery view, a meal plan, a grocery list'],
-  ['Travel', 'A trip three weeks from now, with tasks and calendar days'],
+  ['Travel', 'A trip three weeks from now, plus city guides with photo covers'],
   ['Writing', 'The essay draft with version history, a learning log'],
   ['journal', 'Daily entries for the last two and a half months']
 ])}

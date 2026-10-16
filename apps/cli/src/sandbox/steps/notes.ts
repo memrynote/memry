@@ -2,6 +2,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createId } from '@memry/app-core/ids'
+import {
+  parseMarkdownNote,
+  serializeParsedMarkdownNote,
+  writeMarkdownNote
+} from '@memry/app-core/markdown'
 
 import { createBody, type Attached } from '../body.ts'
 import { importedFiles, noteSpecs } from '../content/index.ts'
@@ -117,7 +122,27 @@ export const writeBodies: SandboxStep = async (ctx) => {
       content: spec.body(b),
       properties: spec.properties?.(b)
     })
+    if (spec.cover) await writeCover(ctx.vaultPath, note, spec.cover(b))
   }
+}
+
+/** Desktop's cover keys are frontmatter, not properties (packages/shared/src/cover-image.ts). */
+async function writeCover(
+  vaultPath: string,
+  note: NoteRef,
+  cover: Record<string, unknown>
+): Promise<void> {
+  const file = path.join(vaultPath, note.path)
+  const parsed = parseMarkdownNote(await fs.readFile(file, 'utf8'))
+  const frontmatter = { ...parsed.frontmatter, ...cover }
+  await fs.writeFile(
+    file,
+    parsed.rawFrontmatterBlock
+      ? serializeParsedMarkdownNote({ ...parsed, frontmatter }, parsed.content, {
+          frontmatterEdited: true
+        })
+      : writeMarkdownNote(frontmatter, parsed.content)
+  )
 }
 
 export const writeJournal: SandboxStep = async (ctx) => {

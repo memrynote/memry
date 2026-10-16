@@ -41,6 +41,7 @@ export const tagCategories: Array<{ id: string; name: string; tags: Record<strin
       baking: 'sand',
       travel: 'emerald',
       hiking: 'mint',
+      city: 'sky',
       cooking: 'lemon'
     }
   }
@@ -111,6 +112,7 @@ export const folderIcons: Record<string, string> = {
   Kitchen: '🍳',
   'Kitchen/Recipes': '🥘',
   Travel: '🧳',
+  'Travel/Cities': '🌆',
   Writing: '✍️'
 }
 

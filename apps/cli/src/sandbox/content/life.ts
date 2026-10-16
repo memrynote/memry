@@ -261,8 +261,8 @@ export const travelNotes: NoteSpec[] = [
     assets: ['photo-grand-teton.jpg'],
     created: 31,
     modified: 1,
-    properties: (b) => ({
-      deadline: b.day(20),
+    properties: (b) => ({ deadline: b.day(20) }),
+    cover: (b) => ({
       cover: b.ref('photo-grand-teton.jpg'),
       coverFocus: 60,
       coverCredit: 'Carol M. Highsmith, Library of Congress'

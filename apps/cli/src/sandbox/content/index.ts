@@ -1,6 +1,7 @@
 import type { Clock } from '../clock.ts'
 import type { AssetName } from '../context.ts'
 import type { NoteSpec } from '../specs.ts'
+import { cityNotes } from './cities.ts'
 import { guideNotes } from './guide.ts'
 import { companyNotes, clientMeetings, peopleNotes } from './people.ts'
 import { notes101 } from './notes101/index.ts'
@@ -20,6 +21,7 @@ export function noteSpecs(clock: Clock): NoteSpec[] {
     ...bookNotes,
     ...kitchenNotes,
     ...travelNotes,
+    ...cityNotes,
     ...writingNotes
   ]
 }

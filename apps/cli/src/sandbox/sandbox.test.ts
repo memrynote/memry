@@ -10,6 +10,7 @@ import matter from 'gray-matter'
 import { PropertyDefinitionsFileSchema } from '@memry/contracts/property-types'
 import { TagSchemaWire, type TagSchemaStored } from '@memry/contracts/tag-schema'
 import { ViewConfigSchema } from '@memry/contracts/folder-view-api'
+import { isCoverValue } from '@memry/shared/cover-image'
 
 import { generateSandbox } from './generate.ts'
 
@@ -104,6 +105,15 @@ test('sandbox generates a linked, populated vault', async () => {
 
         // Properties sit at the frontmatter root, where desktop reads them.
         assert.equal(matter(raw).data.properties, undefined, `${relative}: nested properties`)
+
+        // Travel notes carry a photo cover whose file exists.
+        if (relative.startsWith('Travel/Cities/') || relative.endsWith('Grand Teton trip.md')) {
+          const cover = matter(raw).data.cover
+          assert.ok(isCoverValue(cover), `${relative}: cover`)
+          await fs
+            .access(path.join(vault, path.dirname(relative), cover))
+            .catch(() => assert.fail(`${relative}: missing cover ${cover}`))
+        }
       }
 
       // Done tasks sit in their project's done column.

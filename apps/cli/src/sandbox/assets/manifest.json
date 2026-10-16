@@ -178,5 +178,77 @@
     "sha256": "4c7edf144c975e7766094108d6156dad5a9cd2989b6b673c01d704de9c18518e",
     "bytes": 3126645,
     "notes": "1280x720 WebM. NASA media guidelines: do not imply NASA endorsement; no NASA logos in promo use."
+  },
+  {
+    "file": "photo-istanbul.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/ferry-crossing-bosphorus-in-istanbul-WA1u0scVLZU",
+    "directUrl": "https://images.unsplash.com/photo-1589561454226-796a8aa89b05?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Engin Yapici",
+    "attribution": "Photo by Engin Yapici (https://unsplash.com/@yapici) on Unsplash",
+    "sha256": "f44067001d00647ef310b1285a4e929c8be8bdc466566c6c14b2797cc6014d2c",
+    "bytes": 426608,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
+  },
+  {
+    "file": "photo-tokyo.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/alleyway-with-red-lanterns-in-tokyo-D68ADLeMh5Q",
+    "directUrl": "https://images.unsplash.com/photo-1573455494060-c5595004fb6c?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Denys Nevozhai",
+    "attribution": "Photo by Denys Nevozhai (https://unsplash.com/@dnevozhai) on Unsplash",
+    "sha256": "565b8c69327574b51ade398dc847e05b329f09ddbe0ef246bbb12a241bef6b38",
+    "bytes": 272252,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
+  },
+  {
+    "file": "photo-new-york.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/panoramic-photography-of-brooklyn-bridge-_QdFx92MO2U",
+    "directUrl": "https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Luca Bravo",
+    "attribution": "Photo by Luca Bravo (https://unsplash.com/@lucabravo) on Unsplash",
+    "sha256": "858102b2b2fc3651eb1349644daab0effe573973b99e5e9352db3c3fe2ca94ae",
+    "bytes": 302193,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
+  },
+  {
+    "file": "photo-berlin.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/brandenburg-gate-at-night-in-berlin-uFGi0_YciE0",
+    "directUrl": "https://images.unsplash.com/photo-1587330979470-3595ac045ab0?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Florian Wehde",
+    "attribution": "Photo by Florian Wehde (https://unsplash.com/@florianwehde) on Unsplash",
+    "sha256": "31199a71d226abf378c6c21738d53d24bcaade2c5776ca966b888da98e88bfc6",
+    "bytes": 290570,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
+  },
+  {
+    "file": "photo-lisbon.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/yellow-tram-in-historic-lisbon-street-ljhCEaHYWJ8",
+    "directUrl": "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Aayush Gupta",
+    "attribution": "Photo by Aayush Gupta (https://unsplash.com/@aayush_gupta) on Unsplash",
+    "sha256": "c7b82c9de4a2c40be0968d1f22d63f7793d9373ac0d581997b7657cd4f9b36e5",
+    "bytes": 459400,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
+  },
+  {
+    "file": "photo-kyoto.jpg",
+    "category": "photo",
+    "sourcePageUrl": "https://unsplash.com/photos/people-near-pagoda-under-white-and-blue-sky-gd3ysFyrsTQ",
+    "directUrl": "https://images.unsplash.com/photo-1578469645742-46cae010e5d4?w=1600&q=75&fm=jpg&fit=max",
+    "license": "Unsplash License (https://unsplash.com/license)",
+    "author": "Cosmin Georgian",
+    "attribution": "Photo by Cosmin Georgian (https://unsplash.com/@cosmingeorgian) on Unsplash",
+    "sha256": "b070fdd75f7b49d3d5f6a2d795dc47bd2a3c1aac9297411a1bec8acc8e562995",
+    "bytes": 378005,
+    "notes": "Fetched via the Unsplash API (download tracked); used as a note cover."
   }
 ]

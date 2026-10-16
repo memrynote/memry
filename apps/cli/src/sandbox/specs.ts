@@ -15,6 +15,12 @@ export interface NoteSpec {
   /** Small files written straight into the note's attachment folder. */
   generated?: Array<{ name: string; mimeType: string; content: string }>
   properties?: (b: Body) => Record<string, unknown>
+  /**
+   * Cover frontmatter keys (`cover`, `coverFocus`, `coverCredit`, ...). Kept
+   * apart from `properties` because the CLI's property writer drops reserved
+   * cover keys (app-core/note-properties.ts), so they are written to the file directly.
+   */
+  cover?: (b: Body) => Record<string, unknown>
   body: (b: Body) => string
   /** Days ago the note was created and last edited. */
   created: number
