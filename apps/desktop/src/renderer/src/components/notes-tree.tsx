@@ -67,12 +67,10 @@ import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   Pencil,
   Trash2,
-  ExternalLink,
   FolderOpen,
   FilePlus,
   FolderPlus,
   LayoutTemplate,
-  Save,
   LayoutGrid,
   X,
   Monitor,
@@ -82,6 +80,12 @@ import {
 } from '@/lib/icons'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import { NoteContextMenuItems } from '@/components/notes-tree-note-menu'
+import {
+  TreeSelectionMenuItems,
+  type TreeSelectionActions
+} from '@/components/sidebar/tree-selection-menu-items'
+import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
@@ -416,6 +420,13 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   const useVirtualizedTree = shouldVirtualize(data.tree)
 
+  const selectionActions: TreeSelectionActions = {
+    onCreateFolderWithSelection: () => void actions.handleCreateFolderWithSelection(),
+    onMoveSelection: actions.openSelectionMoveDialog,
+    onBookmarkSelection: () => void actions.handleBookmarkSelection(),
+    onDeleteSelection: actions.handleBulkDelete
+  }
+
   const renderNote = (note: NoteListItem, level: number, isLast: boolean, hideLines = false) => {
     const isBeingRenamed = actions.renamingNoteId === note.id
     const isSelected = selectedIds.includes(note.id)
@@ -440,80 +451,23 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           contextMenuContent={
             <>
               {!isPartOfSelection && (
-                <>
-                  <OpenTargetMenuItems tab={noteTabData(note)} />
-                  {(note.fileType ?? 'markdown') === 'markdown' && (
-                    <ShowTasksMenuItem location={{ noteId: note.id }} />
-                  )}
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => actions.handleRenameClick(note)}>
-                    <Pencil className="me-2 h-4 w-4" />
-                    {t('tree.actions.rename')}
-                  </ContextMenuItem>
-                  {!isJournal && (
-                    <>
-                      <ContextMenuItem onClick={() => setApplyTemplateNote(note)}>
-                        <LayoutTemplate className="me-2 h-4 w-4" />
-                        {t('tree.actions.applyTemplate')}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => setSaveAsTemplateNote(note)}>
-                        <Save className="me-2 h-4 w-4" />
-                        {t('tree.actions.saveAsTemplate')}
-                      </ContextMenuItem>
-                      {(note.fileType ?? 'markdown') === 'markdown' && (
-                        <ContextMenuItem onClick={() => void createNoteFromNote(note.id)}>
-                          <FilePlus className="me-2 h-4 w-4" />
-                          {t('newNoteFromNote.action')}
-                        </ContextMenuItem>
-                      )}
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
-                        <Smile className="me-2 h-4 w-4" />
-                        {t('tree.actions.setIcon')}
-                      </ContextMenuItem>
-                      {note.emoji && (
-                        <ContextMenuItem
-                          onClick={() =>
-                            void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: null })
-                          }
-                        >
-                          <X className="me-2 h-4 w-4" />
-                          {t('tree.actions.removeIcon')}
-                        </ContextMenuItem>
-                      )}
-                    </>
-                  )}
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => void actions.handleOpenExternal(note)}>
-                    <ExternalLink className="me-2 h-4 w-4" />
-                    {t('tree.actions.openExternal')}
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => void actions.handleRevealInFinder(note)}>
-                    <FolderOpen className="me-2 h-4 w-4" />
-                    {fileActions.revealInFolder}
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  {!isJournal && (
-                    <>
-                      <BookmarkMenuItem itemType="note" itemId={note.id} />
-                      <VaultLockMenuItem kind="note" target={note.id} />
-                      <ContextMenuSeparator />
-                    </>
-                  )}
-                  <ContextMenuItem
-                    variant="destructive"
-                    onClick={() => actions.handleDeleteClick(note)}
-                  >
-                    <Trash2 className="me-2 h-4 w-4" />
-                    {tCommon('button.delete')}
-                  </ContextMenuItem>
-                </>
+                <NoteContextMenuItems
+                  note={note}
+                  onRename={actions.handleRenameClick}
+                  onApplyTemplate={setApplyTemplateNote}
+                  onSaveAsTemplate={setSaveAsTemplateNote}
+                  onNewNoteFromNote={(n) => void createNoteFromNote(n.id)}
+                  onSetIcon={(n) => actions.setIconPickerNoteId(n.id)}
+                  onRemoveIcon={(n) =>
+                    void data.mutations.updateNote.mutateAsync({ id: n.id, emoji: null })
+                  }
+                  onOpenExternal={(n) => void actions.handleOpenExternal(n)}
+                  onRevealInFinder={(n) => void actions.handleRevealInFinder(n)}
+                  onDelete={actions.handleDeleteClick}
+                />
               )}
               {isPartOfSelection && (
-                <ContextMenuItem variant="destructive" onClick={actions.handleBulkDelete}>
-                  <Trash2 className="me-2 h-4 w-4" />
-                  {t('tree.actions.deleteSelectedNotes', { count: selectedIds.length })}
-                </ContextMenuItem>
+                <TreeSelectionMenuItems count={selectedIds.length} actions={selectionActions} />
               )}
             </>
           }
@@ -582,6 +536,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const renderFolder = (folder: FolderNode, level: number, isLast: boolean): ReactNode => {
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0
     const isBeingRenamed = actions.renamingFolderPath === folder.path
+    const isPartOfSelection =
+      selectedIds.length > 1 && selectedIds.includes(`folder-${folder.path}`)
 
     return (
       <TreeNode
@@ -601,73 +557,81 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'
           )}
           contextMenuContent={
-            <>
-              <OpenTargetMenuItems tab={folderTabData(folder.path, folder.icon)} />
-              <ShowTasksMenuItem location={{ folderPath: folder.path }} />
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
-                <FilePlus className="me-2 h-4 w-4" />
-                {t('tree.actions.newNote')}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
-                <FolderPlus className="me-2 h-4 w-4" />
-                {t('tree.actions.newFolder')}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, true)}>
-                <ChevronsUp className="me-2 h-4 w-4" />
-                {t('tree.actions.expandSubfolders')}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, false)}>
-                <ChevronsDown className="me-2 h-4 w-4" />
-                {t('tree.actions.collapseSubfolders')}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
-                <LayoutTemplate className="me-2 h-4 w-4" />
-                {t('tree.actions.setDefaultTemplate')}
-                {data.folderTemplateNames.get(folder.path) && (
-                  <span className="ms-1 text-muted-foreground">
-                    ({data.folderTemplateNames.get(folder.path)})
-                  </span>
-                )}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => void actions.handleClearFolderTemplate(folder.path)}>
-                <X className="me-2 h-4 w-4" />
-                {t('tree.actions.clearDefaultTemplate')}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
-                <Smile className="me-2 h-4 w-4" />
-                {t('tree.actions.setIcon')}
-              </ContextMenuItem>
-              {folder.icon && (
-                <ContextMenuItem onClick={() => void data.setFolderIcon(folder.path, null)}>
-                  <X className="me-2 h-4 w-4" />
-                  {t('tree.actions.removeIcon')}
+            isPartOfSelection ? (
+              <TreeSelectionMenuItems count={selectedIds.length} actions={selectionActions} />
+            ) : (
+              <>
+                <OpenTargetMenuItems tab={folderTabData(folder.path, folder.icon)} />
+                <ShowTasksMenuItem location={{ folderPath: folder.path }} />
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
+                  <FilePlus className="me-2 h-4 w-4" />
+                  {t('tree.actions.newNote')}
                 </ContextMenuItem>
-              )}
-              <ContextMenuSeparator />
-              <BookmarkMenuItem itemType="folder" itemId={folder.path} />
-              <VaultLockMenuItem kind="folder" target={folder.path} />
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => void actions.handleRevealFolderInFinder(folder.path)}>
-                <FolderOpen className="me-2 h-4 w-4" />
-                {fileActions.revealInFolder}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
-                <Pencil className="me-2 h-4 w-4" />
-                {t('tree.actions.rename')}
-              </ContextMenuItem>
-              <ContextMenuItem
-                variant="destructive"
-                onClick={() => actions.handleDeleteFolderClick(folder.path)}
-              >
-                <Trash2 className="me-2 h-4 w-4" />
-                {tCommon('button.delete')}
-              </ContextMenuItem>
-            </>
+                <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
+                  <FolderPlus className="me-2 h-4 w-4" />
+                  {t('tree.actions.newFolder')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, true)}>
+                  <ChevronsUp className="me-2 h-4 w-4" />
+                  {t('tree.actions.expandSubfolders')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, false)}>
+                  <ChevronsDown className="me-2 h-4 w-4" />
+                  {t('tree.actions.collapseSubfolders')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
+                  <LayoutTemplate className="me-2 h-4 w-4" />
+                  {t('tree.actions.setDefaultTemplate')}
+                  {data.folderTemplateNames.get(folder.path) && (
+                    <span className="ms-1 text-muted-foreground">
+                      ({data.folderTemplateNames.get(folder.path)})
+                    </span>
+                  )}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => void actions.handleClearFolderTemplate(folder.path)}
+                >
+                  <X className="me-2 h-4 w-4" />
+                  {t('tree.actions.clearDefaultTemplate')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
+                  <Smile className="me-2 h-4 w-4" />
+                  {t('tree.actions.setIcon')}
+                </ContextMenuItem>
+                {folder.icon && (
+                  <ContextMenuItem onClick={() => void data.setFolderIcon(folder.path, null)}>
+                    <X className="me-2 h-4 w-4" />
+                    {t('tree.actions.removeIcon')}
+                  </ContextMenuItem>
+                )}
+                <ContextMenuSeparator />
+                <BookmarkMenuItem itemType="folder" itemId={folder.path} />
+                <VaultLockMenuItem kind="folder" target={folder.path} />
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onClick={() => void actions.handleRevealFolderInFinder(folder.path)}
+                >
+                  <FolderOpen className="me-2 h-4 w-4" />
+                  {fileActions.revealInFolder}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
+                  <Pencil className="me-2 h-4 w-4" />
+                  {t('tree.actions.rename')}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  variant="destructive"
+                  onClick={() => actions.handleDeleteFolderClick(folder.path)}
+                >
+                  <Trash2 className="me-2 h-4 w-4" />
+                  {tCommon('button.delete')}
+                </ContextMenuItem>
+              </>
+            )
           }
         >
           <TreeFolderIcon
@@ -771,6 +735,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onSelectionChange={handleSelectionChange}
           onMove={(...args) => void actions.handleMove(...args)}
           onBulkDelete={actions.handleBulkDelete}
+          selectionActions={selectionActions}
           onRenameNote={actions.handleRenameClick}
           renamingNoteId={actions.renamingNoteId}
           renameValue={actions.renameValue}
@@ -854,6 +819,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         isDeleting={actions.isDeleting}
         onConfirm={(...args) => void actions.handleDeleteConfirm(...args)}
         journalFolder={actions.journalFolder}
+      />
+
+      <MoveToFolderDialog
+        open={actions.selectionMoveRequest !== null}
+        onOpenChange={(open) => !open && actions.closeSelectionMoveDialog()}
+        noteIds={actions.selectionMoveRequest?.noteIds ?? []}
+        folderPaths={actions.selectionMoveRequest?.folderPaths}
+        currentFolder={actions.selectionMoveRequest?.currentFolder}
+        onMove={(folder) => void actions.handleMoveSelectionTo(folder)}
       />
 
       <NoteTreeJournalChangeDialog

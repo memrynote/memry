@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Ukloni zadani predložak",
       "setIcon": "Postavi ikonu",
       "removeIcon": "Ukloni ikonu",
-      "deleteSelectedNotes": "{count, plural, one {Izbriši # bilješku} few {Izbriši # bilješke} other {Izbriši # bilješki}}",
       "deleteSelectedItems": "{count, plural, one {Izbriši # stavku} few {Izbriši # stavke} other {Izbriši # stavki}}",
+      "newFolderWithSelection": "Nova mapa s odabirom ({count} stavki)",
+      "moveSelectedItems": "Premjesti stavke ({count}) u…",
+      "bookmarkSelectedItems": "Dodaj stavke ({count}) u oznake",
       "bookmark": "Dodaj u favorite",
       "removeFromBookmarks": "Ukloni iz favorita",
       "journalSettings": "Postavke dnevnika…"
@@ -137,6 +139,10 @@
       "moreItems": "…i još {count}",
       "deleting": "Brisanje…",
       "deleteCount": "Izbriši {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Stavke dodane u oznake: {count}",
+      "selectionBookmarkFailed": "Odabrane stavke nije moguće dodati u oznake"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Odustani",
       "currentFolderBadge": "(trenutna)",
       "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”",
-      "createFolderNamed": "Stvori „{name}”"
+      "createFolderNamed": "Stvori „{name}”",
+      "moveItems": "Premjesti stavke ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Izbriši ",

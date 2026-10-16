@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Zrušiť predvolenú šablónu",
       "setIcon": "Nastaviť ikonu",
       "removeIcon": "Odstrániť ikonu",
-      "deleteSelectedNotes": "{count, plural, one {Odstrániť # poznámku} few {Odstrániť # poznámky} other {Odstrániť # poznámok}}",
       "deleteSelectedItems": "{count, plural, one {Odstrániť # položku} few {Odstrániť # položky} other {Odstrániť # položiek}}",
+      "newFolderWithSelection": "Nový priečinok z výberu (položky: {count})",
+      "moveSelectedItems": "Presunúť položky ({count}) do…",
+      "bookmarkSelectedItems": "Pridať položky ({count}) do záložiek",
       "bookmark": "Pridať do záložiek",
       "removeFromBookmarks": "Odstrániť zo záložiek",
       "journalSettings": "Nastavenia denníka…"
@@ -137,6 +139,10 @@
       "moreItems": "…a ešte {count}",
       "deleting": "Odstraňuje sa…",
       "deleteCount": "Odstrániť {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Pridané do záložiek: {count}",
+      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Zrušiť",
       "currentFolderBadge": "(aktuálny)",
       "noFoldersMatchQuery": "Výrazu „{query}“ nezodpovedá žiadny priečinok",
-      "createFolderNamed": "Vytvoriť „{name}“"
+      "createFolderNamed": "Vytvoriť „{name}“",
+      "moveItems": "Presunúť položky ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Odstrániť ",

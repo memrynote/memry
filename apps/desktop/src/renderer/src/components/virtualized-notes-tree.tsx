@@ -66,6 +66,10 @@ import {
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import {
+  TreeSelectionMenuItems,
+  type TreeSelectionActions
+} from '@/components/sidebar/tree-selection-menu-items'
 import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
@@ -125,6 +129,8 @@ interface VirtualizedNotesTreeProps {
   onMove?: (operation: MoveOperation) => void
   /** Callback for bulk delete */
   onBulkDelete?: () => void
+  /** Context-menu actions for a row that is part of a multi-selection */
+  selectionActions: TreeSelectionActions
   /** Callback when a note should be renamed */
   onRenameNote?: (note: NoteListItem) => void
   /** Callback when a template should be applied to a note */
@@ -315,7 +321,7 @@ interface FolderRowProps {
   iconPickerFolderPath?: string | null
   onIconPickerOpenChange?: (folderPath: string | null) => void
   onRevealFolderInFinder?: (folderPath: string) => void
-  onBulkDelete?: () => void
+  selectionActions: TreeSelectionActions
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
   onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
@@ -354,7 +360,7 @@ function FolderRow({
   iconPickerFolderPath,
   onIconPickerOpenChange,
   onRevealFolderInFinder,
-  onBulkDelete,
+  selectionActions,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -584,16 +590,7 @@ function FolderRow({
       </ContextMenuTrigger>
       <ContextMenuContent>
         {showBulkActions ? (
-          // Bulk actions when multiple items selected
-          <>
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={onBulkDelete}
-            >
-              <Trash2 className="me-2 h-4 w-4" />
-              {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
-            </ContextMenuItem>
-          </>
+          <TreeSelectionMenuItems count={selectedCount} actions={selectionActions} />
         ) : (
           // Single item actions
           <>
@@ -695,7 +692,7 @@ interface NoteRowProps {
   onSetNoteIcon?: (noteId: string, icon: string | null) => void
   iconPickerNoteId?: string | null
   onIconPickerOpenChange?: (noteId: string | null) => void
-  onBulkDelete?: () => void
+  selectionActions: TreeSelectionActions
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
   onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
@@ -824,7 +821,7 @@ function NoteRow({
   onSetNoteIcon,
   iconPickerNoteId,
   onIconPickerOpenChange,
-  onBulkDelete,
+  selectionActions,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -993,16 +990,7 @@ function NoteRow({
       </ContextMenuTrigger>
       <ContextMenuContent>
         {showBulkActions ? (
-          // Bulk actions when multiple items selected
-          <>
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={onBulkDelete}
-            >
-              <Trash2 className="me-2 h-4 w-4" />
-              {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
-            </ContextMenuItem>
-          </>
+          <TreeSelectionMenuItems count={selectedCount} actions={selectionActions} />
         ) : (
           // Single item actions
           <>
@@ -1065,6 +1053,7 @@ export function VirtualizedNotesTree({
   onSelectionChange,
   onMove,
   onBulkDelete,
+  selectionActions,
   onRenameNote,
   onApplyTemplateToNote,
   onSaveNoteAsTemplate,
@@ -1653,7 +1642,7 @@ export function VirtualizedNotesTree({
                   onSetFolderIcon={(path, icon) => onSetFolderIcon?.(path, icon)}
                   iconPickerFolderPath={iconPickerFolderPath}
                   onIconPickerOpenChange={setIconPickerFolderPath}
-                  onBulkDelete={onBulkDelete}
+                  selectionActions={selectionActions}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onDragOver={handleDragOver}
@@ -1689,7 +1678,7 @@ export function VirtualizedNotesTree({
                   onSetNoteIcon={onSetNoteIcon}
                   iconPickerNoteId={iconPickerNoteId}
                   onIconPickerOpenChange={setIconPickerNoteId}
-                  onBulkDelete={onBulkDelete}
+                  selectionActions={selectionActions}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onDragOver={handleDragOver}

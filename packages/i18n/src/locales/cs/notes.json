@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Zrušit výchozí šablonu",
       "setIcon": "Nastavit ikonu",
       "removeIcon": "Odebrat ikonu",
-      "deleteSelectedNotes": "{count, plural, one {Smazat # poznámku} few {Smazat # poznámky} other {Smazat # poznámek}}",
       "deleteSelectedItems": "{count, plural, one {Smazat # položku} few {Smazat # položky} other {Smazat # položek}}",
+      "newFolderWithSelection": "Nová složka z výběru ({count} položek)",
+      "moveSelectedItems": "Přesunout položky ({count}) do…",
+      "bookmarkSelectedItems": "Přidat položky ({count}) do záložek",
       "bookmark": "Přidat do záložek",
       "removeFromBookmarks": "Odebrat ze záložek",
       "journalSettings": "Nastavení deníku…"
@@ -137,6 +139,10 @@
       "moreItems": "{count, plural, one {…a # další} few {…a # další} other {…a # dalších}}",
       "deleting": "Mazání…",
       "deleteCount": "Smazat {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Položky přidány do záložek: {count}",
+      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Zrušit",
       "currentFolderBadge": "(aktuální)",
       "noFoldersMatchQuery": "Dotazu „{query}“ neodpovídají žádné složky",
-      "createFolderNamed": "Vytvořit „{name}“"
+      "createFolderNamed": "Vytvořit „{name}“",
+      "moveItems": "Přesunout položky ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Smazat ",

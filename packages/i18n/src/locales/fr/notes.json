@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Effacer le modèle par défaut",
       "setIcon": "Définir l'icône",
       "removeIcon": "Retirer l'icône",
-      "deleteSelectedNotes": "Supprimer {count} notes",
       "deleteSelectedItems": "Supprimer {count} éléments",
+      "newFolderWithSelection": "Nouveau dossier avec la sélection ({count} éléments)",
+      "moveSelectedItems": "Déplacer {count} éléments vers…",
+      "bookmarkSelectedItems": "Ajouter {count} éléments aux favoris",
       "bookmark": "Ajouter aux favoris",
       "removeFromBookmarks": "Retirer des favoris",
       "journalSettings": "Paramètres du journal…"
@@ -137,6 +139,10 @@
       "moreItems": "… et {count} de plus",
       "deleting": "Suppression…",
       "deleteCount": "Supprimer {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} éléments ajoutés aux favoris",
+      "selectionBookmarkFailed": "Impossible d'ajouter les éléments sélectionnés aux favoris"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Annuler",
       "currentFolderBadge": "(actuel)",
       "noFoldersMatchQuery": "Aucun dossier ne correspond à « {query} »",
-      "createFolderNamed": "Créer « {name} »"
+      "createFolderNamed": "Créer « {name} »",
+      "moveItems": "Déplacer {count} éléments"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Supprimer ",

@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Κατάργηση προεπιλεγμένου προτύπου",
       "setIcon": "Ορισμός εικονιδίου",
       "removeIcon": "Κατάργηση εικονιδίου",
-      "deleteSelectedNotes": "Διαγραφή {count} σημειώσεων",
       "deleteSelectedItems": "Διαγραφή {count} στοιχείων",
+      "newFolderWithSelection": "Νέος φάκελος με την επιλογή ({count} στοιχεία)",
+      "moveSelectedItems": "Μετακίνηση {count} στοιχείων σε…",
+      "bookmarkSelectedItems": "Σελιδοδείκτης για {count} στοιχεία",
       "bookmark": "Προσθήκη σελιδοδείκτη",
       "removeFromBookmarks": "Αφαίρεση από τους σελιδοδείκτες",
       "journalSettings": "Ρυθμίσεις ημερολογίου γραφής…"
@@ -137,6 +139,10 @@
       "moreItems": "…και {count} ακόμα",
       "deleting": "Διαγραφή…",
       "deleteCount": "Διαγραφή {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Προστέθηκαν {count} στοιχεία στους σελιδοδείκτες",
+      "selectionBookmarkFailed": "Δεν ήταν δυνατή η προσθήκη των επιλεγμένων στοιχείων στους σελιδοδείκτες"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Ακύρωση",
       "currentFolderBadge": "(τρέχων)",
       "noFoldersMatchQuery": "Κανένας φάκελος δεν ταιριάζει με «{query}»",
-      "createFolderNamed": "Δημιουργία «{name}»"
+      "createFolderNamed": "Δημιουργία «{name}»",
+      "moveItems": "Μετακίνηση {count} στοιχείων"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Διαγραφή ",

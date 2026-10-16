@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "ล้างเทมเพลตเริ่มต้น",
       "setIcon": "ตั้งไอคอน",
       "removeIcon": "เอาไอคอนออก",
-      "deleteSelectedNotes": "ลบโน้ต {count} รายการ",
       "deleteSelectedItems": "ลบ {count} รายการ",
+      "newFolderWithSelection": "โฟลเดอร์ใหม่จากรายการที่เลือก ({count} รายการ)",
+      "moveSelectedItems": "ย้าย {count} รายการไปยัง…",
+      "bookmarkSelectedItems": "บุ๊กมาร์ก {count} รายการ",
       "bookmark": "บุ๊กมาร์ก",
       "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก",
       "journalSettings": "การตั้งค่าบันทึกประจำวัน…"
@@ -137,6 +139,10 @@
       "moreItems": "…และอีก {count} รายการ",
       "deleting": "กำลังลบ…",
       "deleteCount": "ลบ {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "บุ๊กมาร์ก {count} รายการแล้ว",
+      "selectionBookmarkFailed": "ไม่สามารถบุ๊กมาร์กรายการที่เลือกได้"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "ยกเลิก",
       "currentFolderBadge": "(ปัจจุบัน)",
       "noFoldersMatchQuery": "ไม่มีโฟลเดอร์ที่ตรงกับ “{query}”",
-      "createFolderNamed": "สร้าง “{name}”"
+      "createFolderNamed": "สร้าง “{name}”",
+      "moveItems": "ย้าย {count} รายการ"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "ลบโน้ต ",

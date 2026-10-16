@@ -120,8 +120,10 @@
       "clearDefaultTemplate": "Clear Default Template",
       "setIcon": "Set Icon",
       "removeIcon": "Remove Icon",
-      "deleteSelectedNotes": "Delete {count} Notes",
       "deleteSelectedItems": "Delete {count} items",
+      "newFolderWithSelection": "New folder with selection ({count} items)",
+      "moveSelectedItems": "Move {count} items to…",
+      "bookmarkSelectedItems": "Bookmark {count} items",
       "bookmark": "Bookmark",
       "removeFromBookmarks": "Remove from Bookmarks",
       "journalSettings": "Journal Settings…"
@@ -157,6 +159,10 @@
       "joinTitle": "Turn notes into journal entries?",
       "joinBody": "Files named by the journal date format inside the journal folder become journal entries. On your other devices those notes are replaced by journal entries.",
       "confirm": "Continue"
+    },
+    "toast": {
+      "selectionBookmarked": "Bookmarked {count} items",
+      "selectionBookmarkFailed": "Couldn't bookmark the selected items"
     }
   },
   "editor": {
@@ -1176,7 +1182,8 @@
       "cancel": "Cancel",
       "currentFolderBadge": "(current)",
       "noFoldersMatchQuery": "No folders match \"{query}\"",
-      "createFolderNamed": "Create \"{name}\""
+      "createFolderNamed": "Create \"{name}\"",
+      "moveItems": "Move {count} items"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Delete ",

@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "I-clear ang default na template",
       "setIcon": "Itakda ang icon",
       "removeIcon": "Alisin ang icon",
-      "deleteSelectedNotes": "Tanggalin ang {count} tala",
       "deleteSelectedItems": "Tanggalin ang {count} item",
+      "newFolderWithSelection": "Bagong folder mula sa pinili ({count} item)",
+      "moveSelectedItems": "Ilipat ang {count} item sa…",
+      "bookmarkSelectedItems": "I-bookmark ang {count} item",
       "bookmark": "I-bookmark",
       "removeFromBookmarks": "Alisin sa mga bookmark",
       "journalSettings": "Mga setting ng talaarawan…"
@@ -137,6 +139,10 @@
       "moreItems": "…at {count} pa",
       "deleting": "Tinatanggal…",
       "deleteCount": "Tanggalin ang {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Na-bookmark ang {count} item",
+      "selectionBookmarkFailed": "Hindi ma-bookmark ang mga napiling item"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Kanselahin",
       "currentFolderBadge": "(kasalukuyan)",
       "noFoldersMatchQuery": "Walang folder na tumutugma sa “{query}”",
-      "createFolderNamed": "Gumawa ng “{name}”"
+      "createFolderNamed": "Gumawa ng “{name}”",
+      "moveItems": "Ilipat ang {count} item"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Tanggalin ang ",

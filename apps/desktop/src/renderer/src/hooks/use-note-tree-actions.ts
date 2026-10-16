@@ -32,6 +32,7 @@ import { getI18n } from 'react-i18next'
 import { journalService } from '@/services/journal-service'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
+import { BookmarkItemTypes } from '@memry/contracts/bookmark-types'
 
 const log = createLogger('Hook:NoteTreeActions')
 
@@ -44,6 +45,66 @@ const log = createLogger('Hook:NoteTreeActions')
 export type JournalChangeKind = 'leave' | 'join'
 
 type NoteMutations = ReturnType<typeof useNoteMutations>
+
+/** The multi-selection the "Move N items to…" dialog was opened for. */
+export interface SelectionMoveRequest {
+  noteIds: string[]
+  folderPaths: string[]
+  /** Set only when every item shares one parent folder. */
+  currentFolder?: string
+}
+
+function partitionSelection(
+  ids: string[],
+  noteMap: Map<string, NoteListItem>
+): { notes: NoteListItem[]; folderPaths: string[] } {
+  const notes: NoteListItem[] = []
+  const folderPaths: string[] = []
+  for (const id of ids) {
+    if (id.startsWith('folder-')) {
+      folderPaths.push(id.slice('folder-'.length))
+    } else {
+      const note = noteMap.get(id)
+      if (note) notes.push(note)
+    }
+  }
+  return { notes, folderPaths }
+}
+
+/**
+ * The selection minus anything inside a selected folder. The folder carries
+ * those items along, and moving them on their own afterwards would pull them
+ * back out of it.
+ */
+function dropItemsInsideSelectedFolders(
+  ids: string[],
+  noteMap: Map<string, NoteListItem>
+): string[] {
+  const folders = ids.filter((id) => id.startsWith('folder-')).map((id) => id.slice(7))
+  if (folders.length === 0) return ids
+  return ids.filter((id) => {
+    const path = id.startsWith('folder-') ? id.slice(7) : noteMap.get(id)?.path
+    return !path || !folders.some((folder) => path.startsWith(`${folder}/`))
+  })
+}
+
+function selectionParents(notes: NoteListItem[], folderPaths: string[]): string[] {
+  return [
+    ...notes.map((note) => extractFolderFromPath(note.path)),
+    ...folderPaths.map(getParentFolder)
+  ]
+}
+
+function commonAncestorFolder(folders: string[]): string {
+  const [first = [], ...rest] = folders.map((folder) => (folder ? folder.split('/') : []))
+  let length = first.length
+  for (const parts of rest) {
+    let i = 0
+    while (i < length && parts[i] === first[i]) i++
+    length = i
+  }
+  return first.slice(0, length).join('/')
+}
 
 export interface NoteTreeActionsDeps {
   noteMap: Map<string, NoteListItem>
@@ -139,6 +200,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
+  const [selectionMoveRequest, setSelectionMoveRequest] = useState<SelectionMoveRequest | null>(
+    null
+  )
 
   // Delete dialog state
   const [notesToDelete, setNotesToDelete] = useState<NoteListItem[]>([])
@@ -360,9 +424,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     }
   }, [isCreatingFolder, generalSettings.createInSelectedFolder, deps])
 
+  /** Resolves to the new folder's path, or null when nothing was created. */
   const handleCreateSubfolder = useCallback(
-    async (parentPath: string) => {
-      if (isCreatingFolder) return
+    async (parentPath: string): Promise<string | null> => {
+      if (isCreatingFolder) return null
 
       // The context menu reaches a folder that is shut, and a collapsed parent
       // would hide the new row along with its rename input.
@@ -382,11 +447,11 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         const fullPath = `${targetPath}${folderName}`
         const success = await deps.createFolderMutation(fullPath)
 
-        if (success) {
-          await deps.refreshFolders()
-          setRenamingFolderPath(fullPath)
-          setFolderRenameValue(folderName)
-        }
+        if (!success) return null
+        await deps.refreshFolders()
+        setRenamingFolderPath(fullPath)
+        setFolderRenameValue(folderName)
+        return fullPath
       } catch (err) {
         trackRendererError('folder_create_failed', err)
         log.error('Failed to create folder', err)
@@ -396,6 +461,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
             getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateFolder')
           )
         )
+        return null
       } finally {
         setIsCreatingFolder(false)
       }
@@ -582,19 +648,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   }, [])
 
   const handleBulkDelete = useCallback(() => {
-    const folderPaths: string[] = []
-    const selectedNotes: NoteListItem[] = []
-
-    for (const id of deps.selectedIds) {
-      if (id.startsWith('folder-')) {
-        folderPaths.push(id.replace('folder-', ''))
-      } else {
-        const note = deps.noteMap.get(id)
-        if (note) {
-          selectedNotes.push(note)
-        }
-      }
-    }
+    const { notes: selectedNotes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)
 
     if (selectedNotes.length > 0 || folderPaths.length > 0) {
       setNotesToDelete(selectedNotes)
@@ -949,7 +1003,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         const isPartOfSelection = deps.selectedIds.includes(draggedId)
         const itemsToMove =
           isPartOfSelection && deps.selectedIds.length > 1
-            ? deps.selectedIds.filter((id) => id !== targetId)
+            ? dropItemsInsideSelectedFolders(
+                deps.selectedIds.filter((id) => id !== targetId),
+                deps.noteMap
+              )
             : [draggedId]
 
         const notesToMove: string[] = []
@@ -1049,7 +1106,81 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     ]
   )
 
+  // ---- Multi-selection actions ----
+  // Each one goes through the drag-and-drop move, so a menu move and a drop
+  // share the journal check and the folder-into-itself guard.
+
+  const moveSelectionInto = useCallback(
+    async (targetFolder: string) => {
+      const [draggedId] = deps.selectedIds
+      if (!draggedId) return
+      await handleMove({
+        draggedId,
+        targetId: targetFolder ? `folder-${targetFolder}` : 'notes-root',
+        position: 'inside'
+      })
+    },
+    [deps.selectedIds, handleMove]
+  )
+
+  const handleCreateFolderWithSelection = useCallback(async () => {
+    const { notes, folderPaths } = partitionSelection(
+      dropItemsInsideSelectedFolders(deps.selectedIds, deps.noteMap),
+      deps.noteMap
+    )
+    if (notes.length === 0 && folderPaths.length === 0) return
+    const folderPath = await handleCreateSubfolder(
+      commonAncestorFolder(selectionParents(notes, folderPaths))
+    )
+    if (!folderPath) return
+    await moveSelectionInto(folderPath)
+    deps.expandFolderPath(folderPath)
+  }, [deps, handleCreateSubfolder, moveSelectionInto])
+
+  const openSelectionMoveDialog = useCallback(() => {
+    const { notes, folderPaths } = partitionSelection(
+      dropItemsInsideSelectedFolders(deps.selectedIds, deps.noteMap),
+      deps.noteMap
+    )
+    const parents = new Set(selectionParents(notes, folderPaths))
+    setSelectionMoveRequest({
+      noteIds: notes.map((note) => note.id),
+      folderPaths,
+      currentFolder: parents.size === 1 ? [...parents][0] : undefined
+    })
+  }, [deps.selectedIds, deps.noteMap])
+
+  const closeSelectionMoveDialog = useCallback(() => setSelectionMoveRequest(null), [])
+
+  const handleBookmarkSelection = useCallback(async () => {
+    const { notes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)
+    // Journal entries are bookmarked from the Journal, as the single-row menu does.
+    const items = [
+      ...notes
+        .filter((note) => !note.journalDate)
+        .map((note) => ({ itemType: BookmarkItemTypes.NOTE, itemId: note.id })),
+      ...folderPaths.map((path) => ({ itemType: BookmarkItemTypes.FOLDER, itemId: path }))
+    ]
+    if (items.length === 0) return
+    const t = getI18n().getFixedT(null, 'notes')
+    try {
+      await window.api.bookmarks.bulkCreate(items)
+      toast.success(t('tree.toast.selectionBookmarked', { count: items.length }))
+    } catch (err) {
+      log.error('Failed to bookmark selection', err)
+      toast.error(extractErrorMessage(err, t('tree.toast.selectionBookmarkFailed')))
+    }
+  }, [deps.selectedIds, deps.noteMap])
+
   return {
+    // Multi-selection
+    handleCreateFolderWithSelection,
+    selectionMoveRequest,
+    openSelectionMoveDialog,
+    closeSelectionMoveDialog,
+    handleMoveSelectionTo: moveSelectionInto,
+    handleBookmarkSelection,
+
     // Create
     isCreating,
     isCreatingFolder,

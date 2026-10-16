@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Standaardsjabloon wissen",
       "setIcon": "Pictogram instellen",
       "removeIcon": "Pictogram verwijderen",
-      "deleteSelectedNotes": "{count} notities verwijderen",
       "deleteSelectedItems": "{count} items verwijderen",
+      "newFolderWithSelection": "Nieuwe map met selectie ({count} items)",
+      "moveSelectedItems": "{count} items verplaatsen naar…",
+      "bookmarkSelectedItems": "{count} items als bladwijzer toevoegen",
       "bookmark": "Bladwijzer toevoegen",
       "removeFromBookmarks": "Uit bladwijzers verwijderen",
       "journalSettings": "Dagboekinstellingen…"
@@ -137,6 +139,10 @@
       "moreItems": "…en nog {count}",
       "deleting": "Verwijderen…",
       "deleteCount": "{count} verwijderen"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} items als bladwijzer toegevoegd",
+      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Annuleren",
       "currentFolderBadge": "(huidige)",
       "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”",
-      "createFolderNamed": "“{name}” aanmaken"
+      "createFolderNamed": "“{name}” aanmaken",
+      "moveItems": "{count} items verplaatsen"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Verwijderen: ",

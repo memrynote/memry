@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Сбросить шаблон по умолчанию",
       "setIcon": "Установить значок",
       "removeIcon": "Убрать значок",
-      "deleteSelectedNotes": "{count, plural, one {Удалить # заметку} few {Удалить # заметки} many {Удалить # заметок} other {Удалить # заметки}}",
       "deleteSelectedItems": "{count, plural, one {Удалить # элемент} few {Удалить # элемента} many {Удалить # элементов} other {Удалить # элемента}}",
+      "newFolderWithSelection": "Новая папка из выделенного (элементов: {count})",
+      "moveSelectedItems": "Переместить элементы ({count}) в…",
+      "bookmarkSelectedItems": "Добавить элементы ({count}) в закладки",
       "bookmark": "Добавить в закладки",
       "removeFromBookmarks": "Убрать из закладок",
       "journalSettings": "Настройки журнала…"
@@ -137,6 +139,10 @@
       "moreItems": "…и ещё {count}",
       "deleting": "Удаление…",
       "deleteCount": "Удалить {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Добавлено в закладки: {count}",
+      "selectionBookmarkFailed": "Не удалось добавить выбранные элементы в закладки"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Отмена",
       "currentFolderBadge": "(текущая)",
       "noFoldersMatchQuery": "Нет папок, соответствующих запросу «{query}»",
-      "createFolderNamed": "Создать «{name}»"
+      "createFolderNamed": "Создать «{name}»",
+      "moveItems": "Переместить элементы ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Удалить заметки: ",

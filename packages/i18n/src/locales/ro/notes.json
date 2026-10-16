@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Elimină șablonul implicit",
       "setIcon": "Setează pictograma",
       "removeIcon": "Elimină pictograma",
-      "deleteSelectedNotes": "{count, plural, one {Șterge # notiță} few {Șterge # notițe} other {Șterge # de notițe}}",
       "deleteSelectedItems": "{count, plural, one {Șterge # element} few {Șterge # elemente} other {Șterge # de elemente}}",
+      "newFolderWithSelection": "Dosar nou cu selecția (elemente: {count})",
+      "moveSelectedItems": "Mută elementele ({count}) în…",
+      "bookmarkSelectedItems": "Adaugă elementele ({count}) la marcaje",
       "bookmark": "Adaugă la marcaje",
       "removeFromBookmarks": "Elimină din marcaje",
       "journalSettings": "Setările jurnalului…"
@@ -137,6 +139,10 @@
       "moreItems": "…și încă {count}",
       "deleting": "Se șterge…",
       "deleteCount": "Șterge {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Elemente adăugate la marcaje: {count}",
+      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Anulează",
       "currentFolderBadge": "(curent)",
       "noFoldersMatchQuery": "Niciun dosar nu se potrivește cu „{query}”",
-      "createFolderNamed": "Creează „{name}”"
+      "createFolderNamed": "Creează „{name}”",
+      "moveItems": "Mută elementele ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Șterge ",

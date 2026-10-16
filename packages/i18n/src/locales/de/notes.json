@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Standardvorlage entfernen",
       "setIcon": "Symbol festlegen",
       "removeIcon": "Symbol entfernen",
-      "deleteSelectedNotes": "{count} Notizen löschen",
       "deleteSelectedItems": "{count} Elemente löschen",
+      "newFolderWithSelection": "Neuer Ordner mit Auswahl ({count} Elemente)",
+      "moveSelectedItems": "{count} Elemente verschieben nach…",
+      "bookmarkSelectedItems": "{count} Elemente als Lesezeichen speichern",
       "bookmark": "Lesezeichen setzen",
       "removeFromBookmarks": "Aus Lesezeichen entfernen",
       "journalSettings": "Journaleinstellungen…"
@@ -137,6 +139,10 @@
       "moreItems": "… und {count} weitere",
       "deleting": "Wird gelöscht…",
       "deleteCount": "{count} löschen"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} Elemente als Lesezeichen gespeichert",
+      "selectionBookmarkFailed": "Die ausgewählten Elemente konnten nicht als Lesezeichen gespeichert werden"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Abbrechen",
       "currentFolderBadge": "(aktuell)",
       "noFoldersMatchQuery": "Keine Ordner passen zu „{query}“",
-      "createFolderNamed": "„{name}“ erstellen"
+      "createFolderNamed": "„{name}“ erstellen",
+      "moveItems": "{count} Elemente verschieben"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Löschen: ",

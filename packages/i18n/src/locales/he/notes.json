@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "ניקוי תבנית ברירת המחדל",
       "setIcon": "הגדרת סמל",
       "removeIcon": "הסרת סמל",
-      "deleteSelectedNotes": "מחיקת {count} פתקים",
       "deleteSelectedItems": "מחיקת {count} פריטים",
+      "newFolderWithSelection": "תיקייה חדשה עם הבחירה ({count} פריטים)",
+      "moveSelectedItems": "העברת {count} פריטים אל…",
+      "bookmarkSelectedItems": "הוספת {count} פריטים לסימניות",
       "bookmark": "הוספה לסימניות",
       "removeFromBookmarks": "הסרה מהסימניות",
       "journalSettings": "הגדרות יומן…"
@@ -137,6 +139,10 @@
       "moreItems": "…ועוד {count}",
       "deleting": "מוחק…",
       "deleteCount": "מחיקת {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} פריטים נוספו לסימניות",
+      "selectionBookmarkFailed": "לא ניתן להוסיף את הפריטים שנבחרו לסימניות"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "ביטול",
       "currentFolderBadge": "(נוכחית)",
       "noFoldersMatchQuery": "אין תיקיות תואמות עבור \"{query}\"",
-      "createFolderNamed": "יצירת \"{name}\""
+      "createFolderNamed": "יצירת \"{name}\"",
+      "moveItems": "העברת {count} פריטים"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "מחיקת ",

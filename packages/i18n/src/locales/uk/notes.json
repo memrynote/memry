@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Очистити шаблон за замовчуванням",
       "setIcon": "Встановити значок",
       "removeIcon": "Прибрати значок",
-      "deleteSelectedNotes": "Видалити нотатки ({count})",
       "deleteSelectedItems": "Видалити елементи ({count})",
+      "newFolderWithSelection": "Нова папка з виділеного (елементів: {count})",
+      "moveSelectedItems": "Перемістити елементи ({count}) до…",
+      "bookmarkSelectedItems": "Додати елементи ({count}) до закладок",
       "bookmark": "Додати в закладки",
       "removeFromBookmarks": "Прибрати із закладок",
       "journalSettings": "Налаштування щоденника…"
@@ -137,6 +139,10 @@
       "moreItems": "…і ще {count}",
       "deleting": "Видалення…",
       "deleteCount": "Видалити {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Додано до закладок: {count}",
+      "selectionBookmarkFailed": "Не вдалося додати вибрані елементи до закладок"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Скасувати",
       "currentFolderBadge": "(поточна)",
       "noFoldersMatchQuery": "Немає папок, що відповідають «{query}»",
-      "createFolderNamed": "Створити «{name}»"
+      "createFolderNamed": "Створити «{name}»",
+      "moveItems": "Перемістити елементи ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Видалити нотатки: ",

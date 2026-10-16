@@ -305,6 +305,7 @@ const createActions = (overrides: Record<string, unknown> = {}) => ({
   handleCreateFolder: vi.fn(),
   handleSelectionChange: vi.fn(),
   handleBulkDelete: vi.fn(),
+  selectionMoveRequest: null,
   handleMove: vi.fn(),
   handleRenameClick: vi.fn(),
   handleOpenExternal: vi.fn(),

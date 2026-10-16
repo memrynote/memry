@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Alapértelmezett sablon eltávolítása",
       "setIcon": "Ikon beállítása",
       "removeIcon": "Ikon eltávolítása",
-      "deleteSelectedNotes": "{count} jegyzet törlése",
       "deleteSelectedItems": "{count} elem törlése",
+      "newFolderWithSelection": "Új mappa a kijelölésből ({count} elem)",
+      "moveSelectedItems": "{count} elem áthelyezése ide…",
+      "bookmarkSelectedItems": "{count} elem könyvjelzőzése",
       "bookmark": "Könyvjelző hozzáadása",
       "removeFromBookmarks": "Eltávolítás a könyvjelzők közül",
       "journalSettings": "Napló beállításai…"
@@ -137,6 +139,10 @@
       "moreItems": "…és még {count}",
       "deleting": "Törlés…",
       "deleteCount": "{count} törlése"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} elem könyvjelzőzve",
+      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Mégse",
       "currentFolderBadge": "(jelenlegi)",
       "noFoldersMatchQuery": "Egyetlen mappa sem egyezik ezzel: „{query}”",
-      "createFolderNamed": "A(z) „{name}” létrehozása"
+      "createFolderNamed": "A(z) „{name}” létrehozása",
+      "moveItems": "{count} elem áthelyezése"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Törlés: ",

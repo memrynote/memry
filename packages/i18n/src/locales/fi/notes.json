@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Poista oletuspohja",
       "setIcon": "Aseta kuvake",
       "removeIcon": "Poista kuvake",
-      "deleteSelectedNotes": "Poista {count} muistiinpanoa",
       "deleteSelectedItems": "Poista {count} kohdetta",
+      "newFolderWithSelection": "Uusi kansio valinnasta ({count} kohdetta)",
+      "moveSelectedItems": "Siirrä {count} kohdetta kohteeseen…",
+      "bookmarkSelectedItems": "Lisää {count} kohdetta kirjanmerkkeihin",
       "bookmark": "Lisää kirjanmerkki",
       "removeFromBookmarks": "Poista kirjanmerkeistä",
       "journalSettings": "Päiväkirjan asetukset…"
@@ -137,6 +139,10 @@
       "moreItems": "{count, plural, one {…ja # muu} other {…ja # muuta}}",
       "deleting": "Poistetaan…",
       "deleteCount": "Poista {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} kohdetta lisätty kirjanmerkkeihin",
+      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Peruuta",
       "currentFolderBadge": "(nykyinen)",
       "noFoldersMatchQuery": "Yksikään kansio ei vastaa hakua ”{query}”",
-      "createFolderNamed": "Luo ”{name}”"
+      "createFolderNamed": "Luo ”{name}”",
+      "moveItems": "Siirrä {count} kohdetta"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Poista ",

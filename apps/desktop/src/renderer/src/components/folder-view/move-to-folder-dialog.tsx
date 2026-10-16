@@ -1,7 +1,7 @@
 /**
  * Move to Folder Dialog
  *
- * Modal dialog for moving notes to a different folder.
+ * Modal dialog for moving notes and folders to a different folder.
  * Features:
  * - AI-powered folder suggestions
  * - Search/filter folders
@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { cn } from '@/lib/utils'
+import { isDescendantOrSelf } from '@/components/notes-tree-utils'
 import { notesService } from '@/services/notes-service'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useT } from '@memry/i18n/renderer'
@@ -50,13 +51,17 @@ interface MoveToFolderDialogProps {
   onOpenChange: (open: boolean) => void
   /** Note ID(s) to move - first one is used for AI suggestions */
   noteIds: string[]
-  /** Current folder of the note(s) - to disable in list */
+  /** Folders being moved. They and their descendants are not offered as targets. */
+  folderPaths?: string[]
+  /** Current folder of the items, disabled in the list. Omit when they have none in common. */
   currentFolder?: string
   /** Callback when move is confirmed */
   onMove: (targetFolder: string) => void
   /** Optional: Note title for display (single note) */
   noteTitle?: string
 }
+
+const NO_FOLDERS: string[] = []
 
 // ============================================================================
 // Helper Functions
@@ -93,11 +98,12 @@ export function MoveToFolderDialog({
   open,
   onOpenChange,
   noteIds,
-  currentFolder = '',
+  folderPaths = NO_FOLDERS,
+  currentFolder,
   onMove,
   noteTitle
 }: MoveToFolderDialogProps): React.JSX.Element {
-  const sessionKey = `${noteIds.join(',')}:${currentFolder}:${noteTitle ?? ''}`
+  const sessionKey = `${noteIds.join(',')}:${folderPaths.join(',')}:${currentFolder}:${noteTitle ?? ''}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,6 +111,7 @@ export function MoveToFolderDialog({
         <MoveToFolderDialogSession
           key={sessionKey}
           noteIds={noteIds}
+          folderPaths={folderPaths}
           currentFolder={currentFolder}
           onMove={onMove}
           onOpenChange={onOpenChange}
@@ -118,7 +125,8 @@ export function MoveToFolderDialog({
 interface MoveToFolderDialogSessionProps {
   onOpenChange: (open: boolean) => void
   noteIds: string[]
-  currentFolder: string
+  folderPaths: string[]
+  currentFolder: string | undefined
   onMove: (targetFolder: string) => void
   noteTitle?: string
 }
@@ -126,6 +134,7 @@ interface MoveToFolderDialogSessionProps {
 function MoveToFolderDialogSession({
   onOpenChange,
   noteIds,
+  folderPaths,
   currentFolder,
   onMove,
   noteTitle
@@ -168,12 +177,15 @@ function MoveToFolderDialogSession({
     const items: FolderItem[] = []
     const query = searchQuery.toLowerCase()
     const iconByPath = new Map(allFolders.map((f) => [f.path, f.icon ?? null]))
+    // A folder cannot move into itself or anything below it.
+    const isMovedFolder = (path: string): boolean =>
+      folderPaths.some((folder) => isDescendantOrSelf(folder, path))
 
     // Add AI suggestions section (if not searching)
     if (!searchQuery && suggestions.length > 0) {
       suggestions.forEach((s) => {
         // Skip if it's the current folder
-        if (s.path === currentFolder) return
+        if (s.path === currentFolder || isMovedFolder(s.path)) return
 
         items.push({
           path: s.path,
@@ -199,7 +211,7 @@ function MoveToFolderDialogSession({
       .map((f) => f.path)
       .filter((path) => {
         if (query && !path.toLowerCase().includes(query)) return false
-        return true
+        return !isMovedFolder(path)
       })
       .sort()
 
@@ -228,7 +240,7 @@ function MoveToFolderDialogSession({
     })
 
     return [...items, ...allFolderItems]
-  }, [allFolders, suggestions, searchQuery, currentFolder])
+  }, [allFolders, suggestions, searchQuery, currentFolder, folderPaths])
 
   // Check if search query could be a new folder
   const canCreateFolder = useMemo(() => {
@@ -343,12 +355,13 @@ function MoveToFolderDialogSession({
   )
 
   // Dialog title
+  const itemCount = noteIds.length + folderPaths.length
   const title =
-    noteIds.length === 1
-      ? noteTitle
+    itemCount > 1
+      ? tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.moveItems', { count: itemCount })
+      : noteTitle
         ? `Move "${noteTitle}"`
         : 'Move to Folder'
-      : `Move ${noteIds.length} Notes`
 
   const isLoading = isLoadingFolders || (aiEnabled && isLoadingSuggestions)
 

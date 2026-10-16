@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "清除默认模板",
       "setIcon": "设置图标",
       "removeIcon": "移除图标",
-      "deleteSelectedNotes": "删除 {count} 篇笔记",
       "deleteSelectedItems": "删除 {count} 项",
+      "newFolderWithSelection": "用所选项新建文件夹（{count} 项）",
+      "moveSelectedItems": "将 {count} 项移动到…",
+      "bookmarkSelectedItems": "收藏 {count} 项",
       "bookmark": "添加书签",
       "removeFromBookmarks": "从书签中移除",
       "journalSettings": "日记设置…"
@@ -137,6 +139,10 @@
       "moreItems": "…以及另外 {count} 项",
       "deleting": "正在删除…",
       "deleteCount": "删除 {count} 项"
+    },
+    "toast": {
+      "selectionBookmarked": "已收藏 {count} 项",
+      "selectionBookmarkFailed": "无法收藏所选项"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "取消",
       "currentFolderBadge": "（当前）",
       "noFoldersMatchQuery": "没有与“{query}”匹配的文件夹",
-      "createFolderNamed": "创建“{name}”"
+      "createFolderNamed": "创建“{name}”",
+      "moveItems": "移动 {count} 项"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "删除 ",

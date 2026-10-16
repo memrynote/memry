@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "清除預設範本",
       "setIcon": "設定圖示",
       "removeIcon": "移除圖示",
-      "deleteSelectedNotes": "刪除 {count} 則筆記",
       "deleteSelectedItems": "刪除 {count} 個項目",
+      "newFolderWithSelection": "以所選項目新增資料夾（{count} 項）",
+      "moveSelectedItems": "將 {count} 項移至…",
+      "bookmarkSelectedItems": "將 {count} 項加入書籤",
       "bookmark": "加入書籤",
       "removeFromBookmarks": "從書籤移除",
       "journalSettings": "日誌設定…"
@@ -137,6 +139,10 @@
       "moreItems": "…以及另外 {count} 個",
       "deleting": "刪除中…",
       "deleteCount": "刪除 {count} 個"
+    },
+    "toast": {
+      "selectionBookmarked": "已將 {count} 項加入書籤",
+      "selectionBookmarkFailed": "無法將所選項目加入書籤"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "取消",
       "currentFolderBadge": "（目前）",
       "noFoldersMatchQuery": "沒有符合「{query}」的資料夾",
-      "createFolderNamed": "建立「{name}」"
+      "createFolderNamed": "建立「{name}」",
+      "moveItems": "移動 {count} 項"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "刪除 ",

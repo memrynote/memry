@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Ryd standardskabelon",
       "setIcon": "Angiv ikon",
       "removeIcon": "Fjern ikon",
-      "deleteSelectedNotes": "Slet {count} noter",
       "deleteSelectedItems": "Slet {count} elementer",
+      "newFolderWithSelection": "Ny mappe med markering ({count} elementer)",
+      "moveSelectedItems": "Flyt {count} elementer til…",
+      "bookmarkSelectedItems": "Bogmærk {count} elementer",
       "bookmark": "Tilføj bogmærke",
       "removeFromBookmarks": "Fjern fra bogmærker",
       "journalSettings": "Indstillinger for dagbog…"
@@ -137,6 +139,10 @@
       "moreItems": "…og {count} til",
       "deleting": "Sletter…",
       "deleteCount": "Slet {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} elementer bogmærket",
+      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Annullér",
       "currentFolderBadge": "(nuværende)",
       "noFoldersMatchQuery": "Ingen mapper matcher »{query}«",
-      "createFolderNamed": "Opret »{name}«"
+      "createFolderNamed": "Opret »{name}«",
+      "moveItems": "Flyt {count} elementer"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slet ",
