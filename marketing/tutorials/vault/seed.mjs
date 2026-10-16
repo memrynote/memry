@@ -174,7 +174,7 @@ note(
   'Homepage Ideas',
   `Lead with one calm line, then the work.
 
-Pulled from [[Website Redesign Brief]] and [[Studio North Kickoff]].
+Pulled from [[Studio North Kickoff]] and [[Design Principles]].
 
 Next steps`,
   { project: ['Website Redesign'] }
