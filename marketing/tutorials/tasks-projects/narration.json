@@ -15,6 +15,16 @@
     "at": "Thanks for watching",
     "url": "memrynote.com"
   },
+  "youtube": {
+    "title": "Capture tasks and plan projects inside your notes",
+    "summary": "Capture a task in one line, see what's due today, and plan a whole project on a board, without leaving your notes.",
+    "notYet": [
+      "On iPhone, notes and files linked to a project don't open from its page yet, and calendar events can't be added to a project there."
+    ],
+    "docs": "user-guide/tasks/capturing",
+    "playlist": "tutorials",
+    "tags": ["task management", "project planning", "kanban board", "to-do list", "note taking app"]
+  },
   "thumbnails": [
     {
       "text": "Type it. It's a task.",
