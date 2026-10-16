@@ -49,7 +49,7 @@ test.describe('Note task block detail drawer', () => {
     await page.locator(EDITOR_SELECTOR).first().waitFor({ state: 'visible', timeout: 8000 })
     await page.evaluate(
       ({ taskId, title }) => {
-        const editor = (window as any).__memryEditor
+        const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'heading',

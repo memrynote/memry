@@ -1046,14 +1046,6 @@
     "or": "或",
     "then": "接著",
     "groups": {
-      "general": {
-        "title": "一般",
-        "description": "全應用程式的導覽與說明。"
-      },
-      "tabs": {
-        "title": "分頁與分割",
-        "description": "在分頁與窗格之間移動。"
-      },
       "inbox": {
         "title": "收件匣",
         "description": "快速處理已擷取的項目。"
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "日誌",
         "description": "瀏覽日誌檢視並聚焦於書寫區域。"
-      },
-      "notes": {
-        "title": "筆記／編輯器",
-        "description": "撰寫、格式化與搜尋筆記。"
       },
       "tasks": {
         "title": "任務",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "開啟快速搜尋",
-        "createNote": "建立筆記",
-        "openSettings": "開啟設定",
-        "switchVault": "切換儲存庫",
-        "adjacentVault": "上一個或下一個儲存庫",
-        "keyboardShortcuts": "開啟鍵盤快速鍵",
         "undoTaskAction": "復原上一個任務操作",
-        "toggleSidebar": "顯示/隱藏側邊欄",
         "sidebarSection": "前往側邊欄區段"
       },
       "tabs": {
-        "newTabMenu": "開啟新分頁選單",
-        "closeTab": "關閉分頁",
-        "closeAllInPane": "關閉窗格中的所有分頁",
-        "reopenClosedTab": "重新開啟已關閉的分頁",
-        "nextTab": "下一個分頁",
-        "previousTab": "上一個分頁",
-        "pinTab": "釘選或取消釘選分頁",
-        "duplicateTab": "製作分頁副本",
-        "splitRight": "向右分割",
-        "splitDown": "向下分割",
-        "closeSplitPane": "關閉分割窗格",
         "focusPane": "聚焦其他窗格",
         "moveTabToPane": "將分頁移至窗格",
         "maximizePane": "最大化目前窗格"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "從月檢視或年檢視返回",
-        "find": "在日誌中尋找",
-        "bold": "將選取文字設為粗體",
-        "italic": "將選取文字設為斜體",
-        "underline": "為選取文字加底線"
+        "find": "在日誌中尋找"
       },
       "notes": {
-        "createNote": "建立筆記",
         "find": "在筆記中尋找",
-        "bold": "粗體",
-        "italic": "斜體",
-        "underline": "底線",
         "commandMenu": "開啟編輯器指令選單",
         "closeOverlays": "關閉編輯器浮層"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "停止重複任務"
       },
       "settings": {
-        "openSettings": "開啟設定",
         "customizeShortcuts": "自訂鍵盤快速鍵",
         "recordShortcut": "錄製新的快速鍵",
         "cancelRecording": "取消快速鍵錄製",

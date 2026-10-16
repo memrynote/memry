@@ -90,8 +90,8 @@ async function createTaskInDb(page: Page, title: string): Promise<string> {
 // programmatic block array. Triggers BlockNote's onChange.
 async function setEditorBlocks(page: Page, blocks: any[]): Promise<void> {
   await page.evaluate((blocks) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, blocks)
   }, blocks)
 }
@@ -117,8 +117,8 @@ async function getTaskParentIdInDb(page: Page, taskId: string): Promise<string |
 // and test assertions compare against the taskId string value directly.
 async function getBlockParentTaskIdProp(page: Page, blockTaskId: string): Promise<string> {
   return page.evaluate((tid) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const walk = (blocks: any[]): string | null => {
       for (const b of blocks) {
         if (b?.type === 'taskBlock' && b?.props?.taskId === tid) {

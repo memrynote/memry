@@ -5,7 +5,7 @@ import { createNote, ensureDayPanelClosed, SELECTORS } from './utils/electron-he
 import { createNoteWithBody } from './utils/note-sync-helpers'
 
 type EditorWindow = Window & {
-  __memryEditor?: { document: Array<{ type: string; content?: Array<{ text?: string }> }> }
+  __memryActiveEditor?: { document: Array<{ type: string; content?: Array<{ text?: string }> }> }
 }
 
 /**
@@ -25,8 +25,8 @@ async function focusEditor(page: Page) {
 
 async function firstBlock(page: Page) {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const block = editor.document[0]
     return { id: block?.id as string | undefined, props: (block?.props ?? {}) as any }
   })
@@ -34,7 +34,7 @@ async function firstBlock(page: Page) {
 
 async function blockTypeOf(page: Page, text: string): Promise<string | undefined> {
   return page.evaluate((wanted) => {
-    const editor = (window as unknown as EditorWindow).__memryEditor
+    const editor = (window as unknown as EditorWindow).__memryActiveEditor
     const textOf = (block: { content?: Array<{ text?: string }> }) =>
       (block.content ?? []).map((node) => node.text ?? '').join('')
     return editor?.document.find((block) => textOf(block) === wanted)?.type
@@ -118,7 +118,7 @@ test.describe('Drag handle menu E2E', () => {
 
     await expect
       .poll(async () =>
-        page.evaluate(() => (window as any).__memryEditor?.document?.[0]?.type as string)
+        page.evaluate(() => (window as any).__memryActiveEditor?.document?.[0]?.type as string)
       )
       .toBe('heading')
   })
@@ -186,7 +186,7 @@ test.describe('Drag handle menu E2E', () => {
     await expect
       .poll(async () =>
         page.evaluate(() => {
-          const editor = (window as any).__memryEditor
+          const editor = (window as any).__memryActiveEditor
           const text = (block: any) =>
             (block?.content ?? []).map((n: any) => n?.text ?? '').join('')
           return editor.document.filter((b: any) => text(b) === 'Copy me').length
@@ -221,7 +221,8 @@ test.describe('Drag handle menu E2E', () => {
     await expect
       .poll(async () =>
         page.evaluate(
-          (blockId) => (window as any).__memryEditor.document.some((b: any) => b.id === blockId),
+          (blockId) =>
+            (window as any).__memryActiveEditor.document.some((b: any) => b.id === blockId),
           movedId
         )
       )
@@ -255,8 +256,8 @@ test.describe('Drag handle menu E2E', () => {
     await expect
       .poll(async () =>
         page.evaluate((blockId) => {
-          const editor = (window as any).__memryEditor
-          if (!editor) throw new Error('window.__memryEditor not exposed')
+          const editor = (window as any).__memryActiveEditor
+          if (!editor) throw new Error('window.__memryActiveEditor not exposed')
           return editor.document.some((block: any) => block.id === blockId)
         }, targetId)
       )

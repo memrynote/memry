@@ -48,7 +48,7 @@ import {
   Type
 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { copyBlocksFromMenu } from './block-clipboard'

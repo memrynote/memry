@@ -12,8 +12,8 @@ async function focusEditor(page: Page): Promise<void> {
 async function seedDocument(page: Page, paragraphs: string[], caretIndex: number): Promise<void> {
   await page.evaluate(
     ({ paragraphs, caretIndex }) => {
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(
         editor.document,
         paragraphs.map((text) => ({
@@ -29,8 +29,8 @@ async function seedDocument(page: Page, paragraphs: string[], caretIndex: number
 
 async function blockTextsWithoutTrailingBlanks(page: Page): Promise<string[]> {
   const texts: string[] = await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     return editor.document.map((block: any) =>
       Array.isArray(block.content) ? block.content.map((part: any) => part.text ?? '').join('') : ''
     )

@@ -28,7 +28,7 @@ async function createNote(page: Page, title: string, content: string): Promise<N
 
 async function readColumnWidths(page: Page): Promise<unknown[] | null> {
   return page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
     if (!editor) return null
     const table = (editor.document as any[]).find((block) => block.type === 'table')
     return table ? ((table.content?.columnWidths ?? null) as unknown[] | null) : null
@@ -37,8 +37,8 @@ async function readColumnWidths(page: Page): Promise<unknown[] | null> {
 
 async function dragFirstColumnTo(page: Page, width: number): Promise<void> {
   await page.evaluate((next) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const table = (editor.document as any[]).find((block) => block.type === 'table')
     if (!table) throw new Error('seed body did not parse into a table')

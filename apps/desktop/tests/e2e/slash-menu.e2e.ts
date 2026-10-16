@@ -29,7 +29,7 @@ async function openFreshNote(page: Page, title: string) {
 
 async function firstBlock(page: Page) {
   return page.evaluate(() => {
-    const block = (window as any).__memryEditor.document[0]
+    const block = (window as any).__memryActiveEditor.document[0]
     return { type: block.type, props: block.props }
   })
 }

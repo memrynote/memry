@@ -14,7 +14,9 @@ const fixtureRoot = path.join(scriptsRoot, 'fixtures/check')
 function runCheck(args) {
   return spawnSync(process.execPath, [checkScript, ...args], {
     cwd: desktopRoot,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    // The JSON report lists every key a locale lacks, and passed the 1 MiB default.
+    maxBuffer: 16 * 1024 * 1024
   })
 }
 

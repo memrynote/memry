@@ -1046,14 +1046,6 @@
     "or": "o",
     "then": "tapos",
     "groups": {
-      "general": {
-        "title": "Pangkalahatan",
-        "description": "Nabigasyon at tulong sa buong app."
-      },
-      "tabs": {
-        "title": "Mga tab at split",
-        "description": "Lumipat sa pagitan ng mga tab at pane."
-      },
       "inbox": {
         "title": "Inbox",
         "description": "Mabilis na iproseso ang mga naitalang item."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Talaarawan",
         "description": "Maglibot sa mga view ng talaarawan at i-focus ang lugar ng pagsulat."
-      },
-      "notes": {
-        "title": "Mga tala / Editor",
-        "description": "Magsulat, mag-format, at maghanap ng mga tala."
       },
       "tasks": {
         "title": "Mga gawain",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Buksan ang mabilisang paghahanap",
-        "createNote": "Gumawa ng tala",
-        "openSettings": "Buksan ang mga setting",
-        "switchVault": "Lumipat ng vault",
-        "adjacentVault": "Nakaraan o susunod na vault",
-        "keyboardShortcuts": "Buksan ang mga keyboard shortcut",
         "undoTaskAction": "I-undo ang huling aksyon sa gawain",
-        "toggleSidebar": "Ipakita o itago ang sidebar",
         "sidebarSection": "Pumunta sa seksyon ng sidebar"
       },
       "tabs": {
-        "newTabMenu": "Buksan ang menu ng bagong tab",
-        "closeTab": "Isara ang tab",
-        "closeAllInPane": "Isara ang lahat ng tab sa pane",
-        "reopenClosedTab": "Buksang muli ang saradong tab",
-        "nextTab": "Susunod na tab",
-        "previousTab": "Nakaraang tab",
-        "pinTab": "I-pin o i-unpin ang tab",
-        "duplicateTab": "I-duplicate ang tab",
-        "splitRight": "Hatiin pakanan",
-        "splitDown": "Hatiin pababa",
-        "closeSplitPane": "Isara ang split pane",
         "focusPane": "I-focus ang ibang pane",
         "moveTabToPane": "Ilipat ang tab sa pane",
         "maximizePane": "I-maximize ang kasalukuyang pane"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Bumalik mula sa view ng buwan o taon",
-        "find": "Hanapin sa talaarawan",
-        "bold": "I-bold ang napiling teksto",
-        "italic": "I-italic ang napiling teksto",
-        "underline": "Salungguhitan ang napiling teksto"
+        "find": "Hanapin sa talaarawan"
       },
       "notes": {
-        "createNote": "Gumawa ng tala",
         "find": "Hanapin sa tala",
-        "bold": "Bold",
-        "italic": "Italic",
-        "underline": "Salungguhit",
         "commandMenu": "Buksan ang command menu ng editor",
         "closeOverlays": "Isara ang mga overlay ng editor"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Ihinto ang pag-ulit ng gawain"
       },
       "settings": {
-        "openSettings": "Buksan ang mga setting",
         "customizeShortcuts": "I-customize ang mga keyboard shortcut",
         "recordShortcut": "Mag-record ng bagong shortcut",
         "cancelRecording": "Kanselahin ang pagre-record ng shortcut",

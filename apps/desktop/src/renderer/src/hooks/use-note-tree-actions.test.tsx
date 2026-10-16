@@ -8,6 +8,7 @@ import { useNoteTreeActions, type NoteTreeActionsDeps } from './use-note-tree-ac
 import type { NoteListItem } from './use-notes-query'
 import { buildTreeFromNotes } from '@/components/notes-tree-utils'
 import { notesService } from '@/services/notes-service'
+import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { clearNewNoteTitlePending, isNewNoteTitlePending } from '@/lib/new-note-title'
 
 const mocks = vi.hoisted(() => ({
@@ -72,6 +73,7 @@ vi.mock('@/contexts/tabs', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
+    create: vi.fn(),
     getFolderTemplate: vi.fn(),
     renameFolder: vi.fn(),
     deleteFolder: vi.fn(),
@@ -159,7 +161,9 @@ const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
   }
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <SelectedFolderProvider>{children}</SelectedFolderProvider>
+    </QueryClientProvider>
   )
 
   return {
@@ -180,6 +184,10 @@ describe('useNoteTreeActions', () => {
       templates: [{ id: 'tpl-1', name: 'Meeting note' }]
     })
     vi.mocked(notesService.getFolderTemplate).mockResolvedValue('tpl-1')
+    vi.mocked(notesService.create).mockResolvedValue({
+      success: true,
+      note: createNote('created', 'Other/New note.md')
+    } as never)
     vi.mocked(notesService.renameFolder).mockResolvedValue(true)
     vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
@@ -455,10 +463,10 @@ describe('useNoteTreeActions', () => {
       }
     )
 
-    mutations.createNote.mutateAsync.mockResolvedValueOnce({
+    vi.mocked(notesService.create).mockResolvedValueOnce({
       success: true,
-      note: { id: 'created', path: 'Work/Created.md', emoji: undefined }
-    })
+      note: { id: 'created', title: 'Created', path: 'Work/Created.md' }
+    } as never)
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Work')
     })
@@ -493,10 +501,10 @@ describe('useNoteTreeActions', () => {
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Other')
     })
-    expect(mutations.createNote.mutateAsync).toHaveBeenLastCalledWith({
+    expect(notesService.create).toHaveBeenLastCalledWith({
       title: 'New note',
-      folder: 'Other',
-      template: 'tpl-1'
+      content: '',
+      folder: 'Other'
     })
 
     await act(async () => {
@@ -580,13 +588,12 @@ describe('useNoteTreeActions', () => {
   })
 
   it('hands a note created from a folder menu to the note title, and renames a new subfolder inline', async () => {
-    const mutations = createMutations()
-    const { result, deps } = renderActions({ mutations })
+    const { result, deps } = renderActions()
 
-    mutations.createNote.mutateAsync.mockResolvedValueOnce({
+    vi.mocked(notesService.create).mockResolvedValueOnce({
       success: true,
       note: createNote('created', 'Work/New note 1.md')
-    })
+    } as never)
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Work')
     })

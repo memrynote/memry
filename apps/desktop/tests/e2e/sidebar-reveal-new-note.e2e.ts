@@ -78,21 +78,31 @@ async function seedNoteInFolder(page: Page, folder: string, title: string): Prom
 
 /** The id of the newest note under `folder` that is not already known. */
 async function waitForNoteIn(page: Page, folder: string, known: string[]): Promise<string> {
-  const handle = await page.waitForFunction(
-    async ({ target, seen }) => {
-      const preload = (window as unknown as { api: Record<string, any> }).api
-      const result = await preload.notes.list({})
-      const match = (result?.notes ?? []).find(
-        (note: { id: string; path: string }) =>
-          note.path.startsWith(`${target}/`) && !seen.includes(note.id)
-      )
-      return match ? match.id : null
-    },
-    { target: folder, seen: known },
-    { timeout: 20_000, polling: 250 }
-  )
+  // Not `page.waitForFunction` with an async predicate: it returns the first
+  // poll's promise, which resolves to null when the note is not listed yet.
+  let createdId: string | null = null
+  await expect
+    .poll(
+      async () => {
+        createdId = await page.evaluate(
+          async ({ target, seen }) => {
+            const preload = (window as unknown as { api: Record<string, any> }).api
+            const result = await preload.notes.list({})
+            const match = (result?.notes ?? []).find(
+              (note: { id: string; path: string }) =>
+                note.path.startsWith(`${target}/`) && !seen.includes(note.id)
+            )
+            return match ? (match.id as string) : null
+          },
+          { target: folder, seen: known }
+        )
+        return createdId
+      },
+      { timeout: 20_000, intervals: [250] }
+    )
+    .not.toBeNull()
 
-  return (await handle.jsonValue()) as string
+  return createdId as unknown as string
 }
 
 const collectionsHeader = (page: Page) => page.getByRole('button', { name: /^Collections section/ })

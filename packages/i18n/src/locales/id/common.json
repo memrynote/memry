@@ -1046,14 +1046,6 @@
     "or": "atau",
     "then": "lalu",
     "groups": {
-      "general": {
-        "title": "Umum",
-        "description": "Navigasi dan bantuan di seluruh aplikasi."
-      },
-      "tabs": {
-        "title": "Tab & tampilan terbagi",
-        "description": "Berpindah antara tab dan panel."
-      },
       "inbox": {
         "title": "Kotak masuk",
         "description": "Proses item masuk dengan cepat."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Jurnal",
         "description": "Jelajahi tampilan jurnal dan fokuskan area menulis."
-      },
-      "notes": {
-        "title": "Catatan / Editor",
-        "description": "Tulis, format, dan cari catatan."
       },
       "tasks": {
         "title": "Tugas",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Buka pencarian cepat",
-        "createNote": "Buat catatan",
-        "openSettings": "Buka pengaturan",
-        "switchVault": "Ganti brankas",
-        "adjacentVault": "Brankas sebelumnya atau berikutnya",
-        "keyboardShortcuts": "Buka pintasan keyboard",
         "undoTaskAction": "Urungkan tindakan tugas terakhir",
-        "toggleSidebar": "Alihkan bilah samping",
         "sidebarSection": "Lompat ke bagian bilah samping"
       },
       "tabs": {
-        "newTabMenu": "Buka menu tab baru",
-        "closeTab": "Tutup tab",
-        "closeAllInPane": "Tutup semua tab di panel",
-        "reopenClosedTab": "Buka kembali tab yang ditutup",
-        "nextTab": "Tab berikutnya",
-        "previousTab": "Tab sebelumnya",
-        "pinTab": "Sematkan atau lepas sematan tab",
-        "duplicateTab": "Duplikat tab",
-        "splitRight": "Bagi ke kanan",
-        "splitDown": "Bagi ke bawah",
-        "closeSplitPane": "Tutup panel terbagi",
         "focusPane": "Fokus ke panel lain",
         "moveTabToPane": "Pindahkan tab ke panel",
         "maximizePane": "Maksimalkan panel saat ini"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Kembali dari tampilan bulan atau tahun",
-        "find": "Cari di jurnal",
-        "bold": "Tebalkan teks terpilih",
-        "italic": "Miringkan teks terpilih",
-        "underline": "Garis bawahi teks terpilih"
+        "find": "Cari di jurnal"
       },
       "notes": {
-        "createNote": "Buat catatan",
         "find": "Cari di catatan",
-        "bold": "Tebal",
-        "italic": "Miring",
-        "underline": "Garis bawah",
         "commandMenu": "Buka menu perintah editor",
         "closeOverlays": "Tutup lapisan editor"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Hentikan pengulangan tugas"
       },
       "settings": {
-        "openSettings": "Buka pengaturan",
         "customizeShortcuts": "Sesuaikan pintasan keyboard",
         "recordShortcut": "Rekam pintasan baru",
         "cancelRecording": "Batalkan perekaman pintasan",

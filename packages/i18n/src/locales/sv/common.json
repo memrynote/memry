@@ -1046,14 +1046,6 @@
     "or": "eller",
     "then": "sedan",
     "groups": {
-      "general": {
-        "title": "Allmänt",
-        "description": "Navigering och hjälp i hela appen."
-      },
-      "tabs": {
-        "title": "Flikar och delade vyer",
-        "description": "Växla mellan flikar och paneler."
-      },
       "inbox": {
         "title": "Inkorg",
         "description": "Gå snabbt igenom fångade objekt."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dagbok",
         "description": "Navigera i dagboksvyer och fokusera skrivytan."
-      },
-      "notes": {
-        "title": "Anteckningar / Redigerare",
-        "description": "Skriv, formatera och sök i anteckningar."
       },
       "tasks": {
         "title": "Uppgifter",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Öppna snabbsökning",
-        "createNote": "Skapa en anteckning",
-        "openSettings": "Öppna inställningar",
-        "switchVault": "Byt valv",
-        "adjacentVault": "Föregående eller nästa valv",
-        "keyboardShortcuts": "Öppna kortkommandon",
         "undoTaskAction": "Ångra senaste uppgiftsåtgärden",
-        "toggleSidebar": "Visa/dölj sidofältet",
         "sidebarSection": "Gå till avsnitt i sidofältet"
       },
       "tabs": {
-        "newTabMenu": "Öppna menyn för ny flik",
-        "closeTab": "Stäng flik",
-        "closeAllInPane": "Stäng alla flikar i panelen",
-        "reopenClosedTab": "Återöppna stängd flik",
-        "nextTab": "Nästa flik",
-        "previousTab": "Föregående flik",
-        "pinTab": "Fäst eller lossa flik",
-        "duplicateTab": "Duplicera flik",
-        "splitRight": "Dela åt höger",
-        "splitDown": "Dela nedåt",
-        "closeSplitPane": "Stäng delad panel",
         "focusPane": "Fokusera en annan panel",
         "moveTabToPane": "Flytta flik till panel",
         "maximizePane": "Maximera aktuell panel"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Återgå från månads- eller årsvy",
-        "find": "Sök i dagboken",
-        "bold": "Fetstila markerad text",
-        "italic": "Kursivera markerad text",
-        "underline": "Understryk markerad text"
+        "find": "Sök i dagboken"
       },
       "notes": {
-        "createNote": "Skapa en anteckning",
         "find": "Sök i anteckningen",
-        "bold": "Fet",
-        "italic": "Kursiv",
-        "underline": "Understruken",
         "commandMenu": "Öppna redigerarens kommandomeny",
         "closeOverlays": "Stäng redigerarens överlägg"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Sluta upprepa uppgiften"
       },
       "settings": {
-        "openSettings": "Öppna inställningar",
         "customizeShortcuts": "Anpassa kortkommandon",
         "recordShortcut": "Spela in ett nytt kortkommando",
         "cancelRecording": "Avbryt inspelning av kortkommando",

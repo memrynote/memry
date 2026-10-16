@@ -29,7 +29,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { DatePickerContent } from '@/components/tasks/date-picker-content'

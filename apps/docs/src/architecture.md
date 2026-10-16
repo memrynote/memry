@@ -43,9 +43,9 @@ The entry itself holds only the boot path: i18n, the startup locale, and a hash 
 imports either `main-window-root` (auth and sync providers plus `App`) or
 `quick-capture-root`. The main window therefore never loads Quick Capture and the Quick
 Capture window never loads `App`. Shell surfaces that are closed on first paint (settings,
-onboarding, the keyboard shortcuts dialog, the command palette) sit behind `lazy()`; the
-command palette is mounted closed on the first idle callback so the first Cmd+K opens an
-already loaded palette. Keep new closed-by-default shell surfaces on the same pattern.
+onboarding, the keyboard shortcuts dialog, the search and commands palettes) sit behind
+`lazy()`; both palettes are mounted closed on the first idle callback so the first Cmd+K or
+Cmd+P opens an already loaded palette. Keep new closed-by-default shell surfaces on the same pattern.
 
 Excalidraw's font-subset worker is built as its own Vite worker entry by
 `apps/desktop/scripts/excalidraw-subset-worker-plugin.ts` (production builds only). As a plain

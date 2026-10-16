@@ -1046,14 +1046,6 @@
     "or": "ou",
     "then": "puis",
     "groups": {
-      "general": {
-        "title": "Général",
-        "description": "Navigation et aide dans toute l'application."
-      },
-      "tabs": {
-        "title": "Onglets et volets",
-        "description": "Se déplacer entre les onglets et les volets."
-      },
       "inbox": {
         "title": "Boîte de réception",
         "description": "Traiter rapidement les éléments capturés."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Journal",
         "description": "Parcourir les vues du journal et placer le curseur dans la zone d'écriture."
-      },
-      "notes": {
-        "title": "Notes / Éditeur",
-        "description": "Écrire, mettre en forme et rechercher des notes."
       },
       "tasks": {
         "title": "Tâches",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Ouvrir la recherche rapide",
-        "createNote": "Créer une note",
-        "openSettings": "Ouvrir les paramètres",
-        "switchVault": "Changer de coffre",
-        "adjacentVault": "Coffre précédent ou suivant",
-        "keyboardShortcuts": "Ouvrir les raccourcis clavier",
         "undoTaskAction": "Annuler la dernière action de tâche",
-        "toggleSidebar": "Afficher/Masquer la barre latérale",
         "sidebarSection": "Aller à une section de la barre latérale"
       },
       "tabs": {
-        "newTabMenu": "Ouvrir le menu Nouvel onglet",
-        "closeTab": "Fermer l'onglet",
-        "closeAllInPane": "Fermer tous les onglets du volet",
-        "reopenClosedTab": "Rouvrir l'onglet fermé",
-        "nextTab": "Onglet suivant",
-        "previousTab": "Onglet précédent",
-        "pinTab": "Épingler ou désépingler l'onglet",
-        "duplicateTab": "Dupliquer l'onglet",
-        "splitRight": "Diviser à droite",
-        "splitDown": "Diviser vers le bas",
-        "closeSplitPane": "Fermer le volet",
         "focusPane": "Activer un autre volet",
         "moveTabToPane": "Déplacer l'onglet vers un volet",
         "maximizePane": "Agrandir le volet actuel"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Revenir de la vue mois ou année",
-        "find": "Rechercher dans le journal",
-        "bold": "Mettre le texte sélectionné en gras",
-        "italic": "Mettre le texte sélectionné en italique",
-        "underline": "Souligner le texte sélectionné"
+        "find": "Rechercher dans le journal"
       },
       "notes": {
-        "createNote": "Créer une note",
         "find": "Rechercher dans la note",
-        "bold": "Gras",
-        "italic": "Italique",
-        "underline": "Souligné",
         "commandMenu": "Ouvrir le menu de commandes de l'éditeur",
         "closeOverlays": "Fermer les panneaux de l'éditeur"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Arrêter la répétition de la tâche"
       },
       "settings": {
-        "openSettings": "Ouvrir les paramètres",
         "customizeShortcuts": "Personnaliser les raccourcis clavier",
         "recordShortcut": "Enregistrer un nouveau raccourci",
         "cancelRecording": "Annuler l'enregistrement du raccourci",

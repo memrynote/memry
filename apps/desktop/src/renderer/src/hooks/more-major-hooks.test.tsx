@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -120,7 +120,6 @@ import { DENSITY_CONFIG, densityClasses, useDisplayDensity } from './use-display
 import { useInboxNotifications } from './use-inbox-notifications'
 import { useMonthEntries } from './use-journal-month'
 import { useYearStats } from './use-journal-stats'
-import { useNewNoteShortcut } from './use-new-note-shortcut'
 import { useProject } from './use-project'
 import {
   findExistingTabForItem,
@@ -184,20 +183,6 @@ describe('more major hooks coverage', () => {
 
     act(() => result.current.setDensity('compact'))
     expect(result.current.isComfortable).toBe(false)
-  })
-
-  it('handles platform new-note shortcuts and cleanup', () => {
-    const onNewNote = vi.fn()
-    const { unmount } = renderHook(() => useNewNoteShortcut(onNewNote))
-    const isMac = navigator.platform.toUpperCase().includes('MAC')
-
-    fireEvent.keyDown(window, { key: 'n', ...(isMac ? { metaKey: true } : { ctrlKey: true }) })
-    fireEvent.keyDown(window, { key: 'n' })
-    expect(onNewNote).toHaveBeenCalledTimes(1)
-
-    unmount()
-    fireEvent.keyDown(window, { key: 'n', ...(isMac ? { metaKey: true } : { ctrlKey: true }) })
-    expect(onNewNote).toHaveBeenCalledTimes(1)
   })
 
   it('opens sidebar items through existing tabs, split panes, pins, and copied links', () => {

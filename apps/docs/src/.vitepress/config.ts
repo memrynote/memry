@@ -156,6 +156,7 @@ function unifiedSidebar() {
               ]
             },
             { text: 'Search', link: '/user-guide/search' },
+            { text: 'Command Palette', link: '/user-guide/command-palette' },
             { text: 'Command Line', link: '/user-guide/cli' },
             { text: 'Templates', link: '/user-guide/templates' },
             { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },

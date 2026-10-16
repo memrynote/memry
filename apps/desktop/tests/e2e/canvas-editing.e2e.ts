@@ -151,7 +151,7 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
   // (tab-pane.tsx mounts only each group's active tab). So this asserts the
   // guard does NOT over-trigger and silently break M6's happy path. The
   // positive split-view case is covered below by a real split, driven by the
-  // renderer-level ⌘\ / Ctrl+\ keyboard shortcut (use-tab-keyboard-shortcuts.ts)
+  // renderer-level ⌘\ / Ctrl+\ keyboard command (`tabs.splitRight`, the commands dispatcher)
   // — tabs.e2e.ts's `createHorizontalSplit` dispatches a `test:split-view`
   // CustomEvent that no renderer code listens for, but that is a gap in that
   // one helper, not a Playwright limitation: the keyboard shortcut is a plain
@@ -184,8 +184,8 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
   // that they can edit.
   //
   // Split with the renderer's own ⌘\ / Ctrl+\ shortcut
-  // (use-tab-keyboard-shortcuts.ts registers a plain `window` keydown handler
-  // for it — nothing native-menu-only about it), open the seeded note in the
+  // (the commands dispatcher's window keydown listener handles it —
+  // nothing native-menu-only about it), open the seeded note in the
   // newly-created pane so it becomes that pane's ACTIVE tab
   // (collectVisibleNoteTabIds only counts active tabs — tab-pane.tsx mounts only
   // each group's active tab), then refocus the canvas pane.
@@ -674,5 +674,35 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     await page.screenshot({ path: 'test-results/live-cards/note-task-marker.png' })
     // …and the raw marker never leaks as plain text — the reported bug.
     await expect(card).not.toContainText('{task:')
+  })
+
+  test('⌘[ and ⌘] belong to Excalidraw layer ordering, not tab history', async ({ page }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const noteId = await seedNote(page, `Layers ${Date.now()}`, 'body')
+    await dropNote(page, noteId)
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+
+    // Home sits behind the canvas tab, so a tab-history ⌘[ would leave the canvas.
+    const editor = page.locator('[data-canvas-editor]')
+    const box = await editor.boundingBox()
+    if (!box) throw new Error('no canvas box')
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // One chord at a time: a ⌘[ that did navigate would be undone by the ⌘].
+    await page.keyboard.press(`${MOD}+[`)
+    await page.waitForTimeout(500)
+    await expect(editor).toBeVisible()
+    await page.keyboard.press(`${MOD}+]`)
+    await page.waitForTimeout(500)
+    await expect(editor).toBeVisible()
+
+    // Control: the same chord with no widget focused does walk tab history, so
+    // the assertion above proves Excalidraw kept the key.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.keyboard.press(`${MOD}+[`)
+    await expect(editor).toBeHidden({ timeout: 10000 })
   })
 })

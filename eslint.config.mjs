@@ -80,6 +80,37 @@ export default defineConfig(
     }
   },
   {
+    // A command's chord is bound once, in `@memry/contracts/commands`, and run by
+    // the dispatcher in `renderer/src/commands/`. Binding a key to behavior here
+    // instead skips Settings → Shortcuts rebinds, the help dialog and the palette.
+    // Page-local keys (a find bar, a list's arrows) listen on `keydown` themselves.
+    files: ['apps/desktop/src/renderer/src/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      'apps/desktop/src/renderer/src/commands/resolve-chord.ts',
+      'apps/desktop/src/renderer/src/hooks/index.ts',
+      // Not commands: ⌘1-9 jumps to the Nth visible sidebar section, and Q focuses the capture bar.
+      'apps/desktop/src/renderer/src/components/app-sidebar.tsx',
+      'apps/desktop/src/renderer/src/components/capture-bar/capture-bar.tsx'
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/use-keyboard-shortcuts-base', '@/hooks'],
+              importNames: ['useKeyboardShortcuts', 'matchesShortcut', 'default'],
+              message:
+                'Do not bind a key to behavior in a component. Add a command to packages/contracts/src/commands and register its behavior with an owner hook, or listen to keydown on the surface that owns the key.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': eslintPluginReactHooks,

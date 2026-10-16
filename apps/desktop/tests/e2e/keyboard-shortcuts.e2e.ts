@@ -13,7 +13,7 @@ import * as path from 'path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { MOD, ready } from './utils/desktop-test-helpers'
-import { waitForVaultReady } from './utils/electron-helpers'
+import { setOpenPagesInNewTab, waitForVaultReady } from './utils/electron-helpers'
 
 const IS_MAC = process.platform === 'darwin'
 // Kept vault workspaces stay mounted but hidden; count only the visible one.
@@ -42,18 +42,20 @@ async function devicePixelRatio(page: Page): Promise<number> {
   return page.evaluate(() => window.devicePixelRatio)
 }
 
-/** The sidebar row ⌘N puts into rename for the note it just created. */
-const renameInput = (page: Page) => page.locator('input[aria-label="Rename"]:focus')
+/** The empty title field ⌘N focuses on the note it just created (#3323). */
+const focusedTitle = (page: Page) => page.locator('textarea[aria-label="Note title"]:focus')
 
-/** A note tab, opened through ⌘N, with the sidebar rename it starts closed. */
+/**
+ * A note tab, opened through ⌘N. ⌘N follows the open-pages-in-new-tab
+ * preference like every other creation surface (#1660), so `beforeEach` turns
+ * it on and this adds a tab. The note starts with its title field focused.
+ */
 async function newNoteTab(page: Page): Promise<void> {
   const before = await tabs(page).count()
   await blur(page)
   await page.keyboard.press(`${MOD}+n`)
   await expect(tabs(page)).toHaveCount(before + 1)
-  await expect(renameInput(page)).toHaveCount(1)
-  await page.keyboard.press('Escape')
-  await expect(renameInput(page)).toHaveCount(0)
+  await expect(focusedTitle(page)).toHaveCount(1)
   await blur(page)
 }
 
@@ -68,14 +70,19 @@ function makeVault(prefix: string): string {
 test.describe('Keyboard shortcuts', () => {
   test.beforeEach(async ({ page }) => {
     await ready(page)
+    await setOpenPagesInNewTab(page, true)
     await blur(page)
   })
 
   test('navigation and view chords open what they name', async ({ page }) => {
-    // Search: ⌘K, and the fixed ⌘P alias.
-    for (const chord of [`${MOD}+k`, `${MOD}+p`]) {
+    // Search: ⌘K. The commands palette: ⌘P.
+    for (const [chord, placeholder] of [
+      [`${MOD}+k`, /search/i],
+      [`${MOD}+p`, /command/i]
+    ] as const) {
       await page.keyboard.press(chord)
       await expect(page.locator('[cmdk-input]')).toBeVisible()
+      await expect(page.locator('[cmdk-input]')).toHaveAttribute('placeholder', placeholder)
       await page.keyboard.press('Escape')
       await expect(page.locator('[cmdk-input]')).toHaveCount(0)
       await blur(page)
@@ -111,16 +118,16 @@ test.describe('Keyboard shortcuts', () => {
     await page.keyboard.press(`${MOD}+b`)
     await expect(sidebar(page)).toHaveAttribute('data-state', 'expanded')
 
-    // New note: ⌘N. It leaves the new row in sidebar rename, and app chords
+    // New note: ⌘N. It focuses the new note's title field, and app chords
     // must still get through that field: ⌘N again, then ⌘W.
     await newNoteTab(page)
     const count = await tabs(page).count()
     await page.keyboard.press(`${MOD}+n`)
     await expect(tabs(page)).toHaveCount(count + 1)
-    await expect(renameInput(page)).toHaveCount(1)
+    await expect(focusedTitle(page)).toHaveCount(1)
     await page.keyboard.press(`${MOD}+n`)
     await expect(tabs(page)).toHaveCount(count + 2)
-    await expect(renameInput(page)).toHaveCount(1)
+    await expect(focusedTitle(page)).toHaveCount(1)
     await page.keyboard.press(`${MOD}+w`)
     await expect(tabs(page)).toHaveCount(count + 1)
     await blur(page)
@@ -136,6 +143,24 @@ test.describe('Keyboard shortcuts', () => {
     await expect.poll(() => devicePixelRatio(page)).toBeCloseTo(zoomed, 5)
     await page.keyboard.press(`${MOD}+Digit0`)
     await expect.poll(() => devicePixelRatio(page)).toBeCloseTo(base, 5)
+  })
+
+  test('⌘N follows the open-pages-in-new-tab preference', async ({ page }) => {
+    await newNoteTab(page)
+    const count = await tabs(page).count()
+
+    // Off: the note takes over the active tab instead of adding one.
+    await setOpenPagesInNewTab(page, false)
+    await page.keyboard.press(`${MOD}+n`)
+    await expect(focusedTitle(page)).toHaveCount(1)
+    await expect(tabs(page)).toHaveCount(count)
+    await blur(page)
+
+    // On: every ⌘N adds a tab.
+    await setOpenPagesInNewTab(page, true)
+    await page.keyboard.press(`${MOD}+n`)
+    await expect(tabs(page)).toHaveCount(count + 1)
+    await expect(focusedTitle(page)).toHaveCount(1)
   })
 
   test('tab and pane chords act on the tab strip', async ({ page }) => {
@@ -276,13 +301,13 @@ test.describe('Keyboard shortcuts', () => {
       await page.keyboard.press(`${MOD}+w`)
       await expect(tabs(page)).toHaveCount(count - 1)
       // The close may land on Home, which has no field; go back to the other note.
-      await tabs(page).filter({ hasText: 'Untitled' }).first().click()
+      await tabs(page).filter({ hasText: 'New note' }).first().click()
       await focusField()
       await page.keyboard.press(`${MOD}+Shift+T`)
       await expect(tabs(page)).toHaveCount(count)
 
       // Nothing leaked into either field as typed text.
-      await expect.poll(titleValue).toMatch(/^Untitled( \d+)?$/)
+      await expect.poll(titleValue).toMatch(/^New note( \d+)?$/)
       await expect(editor(page)).toHaveText('')
 
       // Close all tabs in the pane: ⌘⇧W
@@ -405,7 +430,7 @@ test.describe('Keyboard shortcuts', () => {
     await expect
       .poll(() =>
         electronApp.evaluate(
-          ({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('file.closeTab')?.accelerator
+          ({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('tabs.closeTab')?.accelerator
         )
       )
       .toBe('CmdOrCtrl+Alt+E')

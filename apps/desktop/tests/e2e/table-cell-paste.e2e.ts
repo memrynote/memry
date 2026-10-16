@@ -59,7 +59,7 @@ async function openTableNote(page: Page, title: string): Promise<void> {
 /** The table's cells as plain strings, row by row. */
 async function tableCells(page: Page): Promise<string[][] | null> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
+    const editor = (window as any).__memryActiveEditor
     if (!editor) return null
     const table = editor.document.find((block: any) => block.type === 'table')
     if (!table) return null
@@ -92,7 +92,7 @@ async function placeCursorAtEndOf(page: Page, cellText: string): Promise<void> {
         await cell(page, cellText).click()
         await page.keyboard.press('End')
         return page.evaluate(() => {
-          const view = (window as any).__memryEditor?.prosemirrorView
+          const view = (window as any).__memryActiveEditor?.prosemirrorView
           return view ? (view.state.selection.$from.parent.textContent as string) : ''
         })
       },
@@ -121,7 +121,7 @@ async function selectCellText(page: Page, cellText: string): Promise<void> {
         await page.keyboard.press('Shift+End')
         await page.waitForTimeout(150)
         return page.evaluate(() => {
-          const view = (window as any).__memryEditor?.prosemirrorView
+          const view = (window as any).__memryActiveEditor?.prosemirrorView
           const { from, to } = view?.state.selection ?? {}
           return {
             dom: window.getSelection()?.toString() ?? '',
@@ -136,8 +136,8 @@ async function selectCellText(page: Page, cellText: string): Promise<void> {
 
 async function pastePlainText(page: Page, text: string): Promise<void> {
   await page.evaluate((value) => {
-    const view = (window as any).__memryEditor?.prosemirrorView
-    if (!view) throw new Error('window.__memryEditor not exposed')
+    const view = (window as any).__memryActiveEditor?.prosemirrorView
+    if (!view) throw new Error('window.__memryActiveEditor not exposed')
     const clipboardData = new DataTransfer()
     clipboardData.setData('text/plain', value)
     view.dom.dispatchEvent(
@@ -153,7 +153,7 @@ async function pastePlainText(page: Page, text: string): Promise<void> {
  */
 async function cutSelection(page: Page): Promise<void> {
   const flavours = await page.evaluate(() => {
-    const view = (window as any).__memryEditor?.prosemirrorView
+    const view = (window as any).__memryActiveEditor?.prosemirrorView
     const clipboardData = new DataTransfer()
     ;(window as any).__memryE2EClipboard = clipboardData
     view.dom.dispatchEvent(
@@ -168,7 +168,7 @@ async function cutSelection(page: Page): Promise<void> {
 
 async function pasteCutSelection(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const view = (window as any).__memryEditor?.prosemirrorView
+    const view = (window as any).__memryActiveEditor?.prosemirrorView
     const clipboardData = (window as any).__memryE2EClipboard
     if (!clipboardData) throw new Error('nothing was cut')
     view.dom.dispatchEvent(

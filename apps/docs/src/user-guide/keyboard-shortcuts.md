@@ -8,14 +8,17 @@ Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K
 
 ## Navigation
 
-| Action                | Shortcut                                               |
-| --------------------- | ------------------------------------------------------ |
-| New note              | <kbd>⌘</kbd>+<kbd>N</kbd>                              |
-| Go to sidebar section | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd>  |
-| Open search           | <kbd>⌘</kbd>+<kbd>K</kbd> or <kbd>⌘</kbd>+<kbd>P</kbd> |
-| Open settings         | <kbd>⌘</kbd>+<kbd>,</kbd>                              |
-| Switch vault          | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>                 |
-| Next / previous vault | <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd>  |
+<kbd>⌘</kbd>+<kbd>K</kbd> finds your notes, tasks and inbox items ([Search](/user-guide/search)). <kbd>⌘</kbd>+<kbd>P</kbd> runs commands such as New note, Open Settings or Toggle Sidebar by name ([Command Palette](/user-guide/command-palette)).
+
+| Action                   | Shortcut                                              |
+| ------------------------ | ----------------------------------------------------- |
+| New note                 | <kbd>⌘</kbd>+<kbd>N</kbd>                             |
+| Go to sidebar section    | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd> |
+| Open search              | <kbd>⌘</kbd>+<kbd>K</kbd>                             |
+| Open the command palette | <kbd>⌘</kbd>+<kbd>P</kbd>                             |
+| Open settings            | <kbd>⌘</kbd>+<kbd>,</kbd>                             |
+| Switch vault             | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>                |
+| Next / previous vault    | <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> |
 
 > **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. It works from anywhere, including while you are typing in a field or in the note editor.
 
@@ -108,9 +111,11 @@ Memry remembers whether the sidebar is open. Close it and it stays closed when y
 switch vaults and when you next start the app, until you open it again.
 
 The same shortcut reference opens from **Help → Keyboard Shortcuts** in the menu bar.
-It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
-and Settings sections so you can scan by workflow, and shows your own bindings once
-you have rebound any.
+It lists every command that has a keyboard shortcut under Navigation, Tabs, Editor and
+View, the same groups as Settings → Keyboard Shortcuts, so a new command appears in both
+at once. Fixed shortcuts that belong to one page, such as the Inbox, Journal and Tasks
+keys and the <kbd>⌘</kbd>+<kbd>K</kbd> chords, follow in sections of their own. The
+dialog shows your own bindings once you have rebound any.
 
 ## Help
 
@@ -222,7 +227,7 @@ Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts),
 
 Rebinds are saved per vault: switching vaults switches to that vault's bindings.
 
-The <kbd>⌘</kbd>+<kbd>+</kbd> alias for zoom in only applies while Zoom In keeps its default binding. <kbd>⌘</kbd>+<kbd>P</kbd> always opens search, whatever Search is bound to.
+The <kbd>⌘</kbd>+<kbd>+</kbd> alias for zoom in only applies while Zoom In keeps its default binding. <kbd>⌘</kbd>+<kbd>P</kbd> opens the command palette. It does not open search.
 
 Editor formatting rows (Bold, Italic, Underline, Strikethrough, Inline code) are shown for reference and cannot be reassigned: the note editor owns those keys.
 

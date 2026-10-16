@@ -22,6 +22,23 @@ interface SidebarSectionProps {
   actionsAlwaysVisible?: boolean
 }
 
+const sectionStorageKey = (id: string): string => `sidebar-section-${id}-expanded`
+
+/**
+ * Open a section from outside it. The section reads its state from this key and
+ * follows `storage` events, which the browser fires only in other windows, so
+ * the event is dispatched here for this one (as the notes tree does on reveal).
+ */
+export function expandSidebarSection(id: string): void {
+  const key = sectionStorageKey(id)
+  try {
+    localStorage.setItem(key, 'true')
+  } catch {
+    // Storage is unavailable: the event below still opens it for this session.
+  }
+  window.dispatchEvent(new StorageEvent('storage', { key, newValue: 'true' }))
+}
+
 function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element {
   return (
     <ChevronRight
@@ -52,7 +69,7 @@ export const SidebarSection = ({
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
 
-  const storageKey = `sidebar-section-${id}-expanded`
+  const storageKey = sectionStorageKey(id)
   const [isExpanded, setIsExpanded] = React.useState(() => {
     if (typeof window === 'undefined') return defaultExpanded
     try {

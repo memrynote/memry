@@ -1046,14 +1046,6 @@
     "or": "o",
     "then": "luego",
     "groups": {
-      "general": {
-        "title": "General",
-        "description": "Navegación y ayuda en toda la app."
-      },
-      "tabs": {
-        "title": "Pestañas y divisiones",
-        "description": "Muévete entre pestañas y paneles."
-      },
       "inbox": {
         "title": "Bandeja de entrada",
         "description": "Procesa rápidamente los elementos capturados."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Diario",
         "description": "Navega por las vistas del diario y enfoca el área de escritura."
-      },
-      "notes": {
-        "title": "Notas / Editor",
-        "description": "Escribe, da formato y busca notas."
       },
       "tasks": {
         "title": "Tareas",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Abrir la búsqueda rápida",
-        "createNote": "Crear una nota",
-        "openSettings": "Abrir los ajustes",
-        "switchVault": "Cambiar de bóveda",
-        "adjacentVault": "Bóveda anterior o siguiente",
-        "keyboardShortcuts": "Abrir los atajos de teclado",
         "undoTaskAction": "Deshacer la última acción de tarea",
-        "toggleSidebar": "Mostrar u ocultar la barra lateral",
         "sidebarSection": "Ir a una sección de la barra lateral"
       },
       "tabs": {
-        "newTabMenu": "Abrir el menú de nueva pestaña",
-        "closeTab": "Cerrar la pestaña",
-        "closeAllInPane": "Cerrar todas las pestañas del panel",
-        "reopenClosedTab": "Reabrir la pestaña cerrada",
-        "nextTab": "Pestaña siguiente",
-        "previousTab": "Pestaña anterior",
-        "pinTab": "Fijar o dejar de fijar la pestaña",
-        "duplicateTab": "Duplicar la pestaña",
-        "splitRight": "Dividir a la derecha",
-        "splitDown": "Dividir hacia abajo",
-        "closeSplitPane": "Cerrar el panel dividido",
         "focusPane": "Enfocar otro panel",
         "moveTabToPane": "Mover la pestaña a otro panel",
         "maximizePane": "Maximizar el panel actual"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Volver desde la vista de mes o de año",
-        "find": "Buscar en el diario",
-        "bold": "Poner en negrita el texto seleccionado",
-        "italic": "Poner en cursiva el texto seleccionado",
-        "underline": "Subrayar el texto seleccionado"
+        "find": "Buscar en el diario"
       },
       "notes": {
-        "createNote": "Crear una nota",
         "find": "Buscar en la nota",
-        "bold": "Negrita",
-        "italic": "Cursiva",
-        "underline": "Subrayado",
         "commandMenu": "Abrir el menú de comandos del editor",
         "closeOverlays": "Cerrar las capas del editor"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Dejar de repetir la tarea"
       },
       "settings": {
-        "openSettings": "Abrir los ajustes",
         "customizeShortcuts": "Personalizar los atajos de teclado",
         "recordShortcut": "Grabar un atajo nuevo",
         "cancelRecording": "Cancelar la grabación del atajo",

@@ -12,8 +12,8 @@ interface BlockSummary {
 
 async function blocks(page: Page): Promise<BlockSummary[]> {
   return page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     return (editor.document as any[])
       .map((block) => ({
         type: block.type as string,
@@ -117,7 +117,7 @@ test.describe('Formatting toolbar block type select', () => {
     )
     await expect.poll(() => blocks(page)).toHaveLength(3)
     await page.evaluate(() => {
-      const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
       editor.insertBlocks(
         [{ type: 'table', content: { type: 'tableContent', rows: [{ cells: ['a', 'b'] }] } }],
         editor.document[1].id,
@@ -161,7 +161,7 @@ test.describe('Formatting toolbar block type select', () => {
       await createNoteWithBody(page, uniqueLabel('Marquee toolbar'), 'One\nTwo\nThree\nLast line')
       await expect.poll(() => blocks(page)).toHaveLength(4)
       await page.evaluate(() => {
-        const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+        const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
         for (const block of (editor.document as any[]).slice(0, 3)) {
           editor.updateBlock(block.id, { type: 'bulletListItem' })
         }

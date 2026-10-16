@@ -1046,14 +1046,6 @@
     "or": "tai",
     "then": "sitten",
     "groups": {
-      "general": {
-        "title": "Yleiset",
-        "description": "Koko sovelluksen navigointi ja ohje."
-      },
-      "tabs": {
-        "title": "Välilehdet ja jaot",
-        "description": "Siirry välilehtien ja ruutujen välillä."
-      },
       "inbox": {
         "title": "Saapuneet",
         "description": "Käsittele kirjatut kohteet nopeasti."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Päiväkirja",
         "description": "Liiku päiväkirjanäkymissä ja kohdista kirjoitusalueeseen."
-      },
-      "notes": {
-        "title": "Muistiinpanot / Editori",
-        "description": "Kirjoita, muotoile ja hae muistiinpanoja."
       },
       "tasks": {
         "title": "Tehtävät",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Avaa pikahaku",
-        "createNote": "Luo muistiinpano",
-        "openSettings": "Avaa asetukset",
-        "switchVault": "Vaihda holvia",
-        "adjacentVault": "Edellinen tai seuraava holvi",
-        "keyboardShortcuts": "Avaa pikanäppäimet",
         "undoTaskAction": "Kumoa viimeisin tehtävätoiminto",
-        "toggleSidebar": "Näytä tai piilota sivupalkki",
         "sidebarSection": "Siirry sivupalkin osioon"
       },
       "tabs": {
-        "newTabMenu": "Avaa uuden välilehden valikko",
-        "closeTab": "Sulje välilehti",
-        "closeAllInPane": "Sulje ruudun kaikki välilehdet",
-        "reopenClosedTab": "Avaa suljettu välilehti uudelleen",
-        "nextTab": "Seuraava välilehti",
-        "previousTab": "Edellinen välilehti",
-        "pinTab": "Kiinnitä tai irrota välilehti",
-        "duplicateTab": "Monista välilehti",
-        "splitRight": "Jaa oikealle",
-        "splitDown": "Jaa alas",
-        "closeSplitPane": "Sulje jaettu ruutu",
         "focusPane": "Kohdista toiseen ruutuun",
         "moveTabToPane": "Siirrä välilehti ruutuun",
         "maximizePane": "Suurenna nykyinen ruutu"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Palaa kuukausi- tai vuosinäkymästä",
-        "find": "Etsi päiväkirjasta",
-        "bold": "Lihavoi valittu teksti",
-        "italic": "Kursivoi valittu teksti",
-        "underline": "Alleviivaa valittu teksti"
+        "find": "Etsi päiväkirjasta"
       },
       "notes": {
-        "createNote": "Luo muistiinpano",
         "find": "Etsi muistiinpanosta",
-        "bold": "Lihavointi",
-        "italic": "Kursivointi",
-        "underline": "Alleviivaus",
         "commandMenu": "Avaa editorin komentovalikko",
         "closeOverlays": "Sulje editorin peittonäkymät"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Lopeta tehtävän toistaminen"
       },
       "settings": {
-        "openSettings": "Avaa asetukset",
         "customizeShortcuts": "Mukauta pikanäppäimiä",
         "recordShortcut": "Tallenna uusi pikanäppäin",
         "cancelRecording": "Peruuta pikanäppäimen tallennus",

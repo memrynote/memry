@@ -1046,14 +1046,6 @@
     "or": "oder",
     "then": "dann",
     "groups": {
-      "general": {
-        "title": "Allgemein",
-        "description": "App-weite Navigation und Hilfe."
-      },
-      "tabs": {
-        "title": "Tabs & Bereiche",
-        "description": "Zwischen Tabs und Bereichen wechseln."
-      },
       "inbox": {
         "title": "Eingang",
         "description": "Erfasste Elemente schnell abarbeiten."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Journal",
         "description": "Durch Journalansichten navigieren und den Schreibbereich fokussieren."
-      },
-      "notes": {
-        "title": "Notizen / Editor",
-        "description": "Notizen schreiben, formatieren und durchsuchen."
       },
       "tasks": {
         "title": "Aufgaben",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Schnellsuche öffnen",
-        "createNote": "Eine Notiz erstellen",
-        "openSettings": "Einstellungen öffnen",
-        "switchVault": "Tresor wechseln",
-        "adjacentVault": "Vorheriger oder nächster Tresor",
-        "keyboardShortcuts": "Tastenkürzel öffnen",
         "undoTaskAction": "Letzte Aufgabenaktion rückgängig machen",
-        "toggleSidebar": "Seitenleiste ein-/ausblenden",
         "sidebarSection": "Zu einem Bereich der Seitenleiste wechseln"
       },
       "tabs": {
-        "newTabMenu": "Menü für neue Tabs öffnen",
-        "closeTab": "Tab schließen",
-        "closeAllInPane": "Alle Tabs im Bereich schließen",
-        "reopenClosedTab": "Geschlossenen Tab wieder öffnen",
-        "nextTab": "Nächster Tab",
-        "previousTab": "Vorheriger Tab",
-        "pinTab": "Tab anheften oder lösen",
-        "duplicateTab": "Tab duplizieren",
-        "splitRight": "Nach rechts teilen",
-        "splitDown": "Nach unten teilen",
-        "closeSplitPane": "Geteilten Bereich schließen",
         "focusPane": "Anderen Bereich fokussieren",
         "moveTabToPane": "Tab in Bereich verschieben",
         "maximizePane": "Aktuellen Bereich maximieren"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Aus der Monats- oder Jahresansicht zurückkehren",
-        "find": "Im Journal suchen",
-        "bold": "Markierten Text fett formatieren",
-        "italic": "Markierten Text kursiv formatieren",
-        "underline": "Markierten Text unterstreichen"
+        "find": "Im Journal suchen"
       },
       "notes": {
-        "createNote": "Eine Notiz erstellen",
         "find": "In der Notiz suchen",
-        "bold": "Fett",
-        "italic": "Kursiv",
-        "underline": "Unterstrichen",
         "commandMenu": "Befehlsmenü des Editors öffnen",
         "closeOverlays": "Editor-Overlays schließen"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Wiederholung der Aufgabe beenden"
       },
       "settings": {
-        "openSettings": "Einstellungen öffnen",
         "customizeShortcuts": "Tastenkürzel anpassen",
         "recordShortcut": "Neues Tastenkürzel aufzeichnen",
         "cancelRecording": "Aufzeichnung des Tastenkürzels abbrechen",

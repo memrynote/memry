@@ -97,8 +97,8 @@ async function createNote(page: Page, title: string, content = '') {
 async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 15_000 })
   await page.evaluate((next) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, next)
   }, blocks)
 }
@@ -117,8 +117,8 @@ const lineTo = (edge: number, border: number): number => edge - border / 2
 /** Every cell as `text` / `background`, row by row, from the live document. */
 async function tableShape(page: Page): Promise<{ text: string; background?: string }[][]> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const table = editor.document.find((block: any) => block.type === 'table')
     if (!table) throw new Error('no table in the document')
     return table.content.rows.map((row: any) =>
@@ -805,7 +805,7 @@ test.describe('Table border handles', () => {
     await page.waitForFunction(
       () => {
         const w = window as any
-        const doc = w.__memryEditor?.prosemirrorView?.state.doc
+        const doc = w.__memryActiveEditor?.prosemirrorView?.state.doc
         if (!doc) return false
         const settled = w.__docProbe === doc
         w.__docProbe = doc
@@ -829,7 +829,7 @@ test.describe('Table border handles', () => {
       .poll(
         () =>
           page.evaluate(() => {
-            const state = (window as any).__memryEditor.prosemirrorView?.state
+            const state = (window as any).__memryActiveEditor.prosemirrorView?.state
             if (!state) return null
             const $from = state.selection.$from
             return { text: $from.parent.textContent, offset: $from.parentOffset }

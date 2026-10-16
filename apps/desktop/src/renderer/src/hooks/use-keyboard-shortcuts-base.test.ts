@@ -94,7 +94,7 @@ describe('useKeyboardShortcuts', () => {
       const keydownRemoves = (): unknown[] =>
         removeEventListenerSpy.mock.calls.filter(([type]) => type === 'keydown')
 
-      // Callers such as useTabKeyboardShortcuts rebuild the array whenever tab
+      // Callers that build the array inline rebuild the array whenever tab
       // state changes, so the hook receives a new identity on every render.
       const { rerender, unmount } = renderHook(
         ({ description }: { description: string }) =>

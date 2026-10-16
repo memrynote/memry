@@ -12,8 +12,8 @@ async function focusEditor(page: Page) {
 
 async function resetEditorDocument(page: Page, content = ''): Promise<void> {
   await page.evaluate((initialContent) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, [
       {
         type: 'paragraph',
@@ -27,8 +27,8 @@ async function resetEditorDocument(page: Page, content = ''): Promise<void> {
 
 async function editorBlockTypes(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     return editor.document.map((block: any) => block.type as string)
   })
 }
@@ -49,8 +49,8 @@ async function chooseSlashItem(
 /** Replaces the document with one empty bulleted list item and puts the caret in it. */
 async function resetToEmptyBulletItem(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, [{ type: 'bulletListItem', content: '' }])
     editor.setTextCursorPosition(editor.document[0].id, 'end')
   })
@@ -58,8 +58,8 @@ async function resetToEmptyBulletItem(page: Page): Promise<void> {
 
 async function firstBlockHasBoldText(page: Page): Promise<boolean> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const content = editor.document[0]?.content
     if (!Array.isArray(content)) return false
     return content.some((part: any) => Boolean(part.styles?.bold))
@@ -138,8 +138,8 @@ test.describe('Editor command flows E2E', () => {
       .poll(
         () =>
           page.evaluate(() => {
-            const editor = (window as any).__memryEditor
-            if (!editor) throw new Error('window.__memryEditor not exposed')
+            const editor = (window as any).__memryActiveEditor
+            if (!editor) throw new Error('window.__memryActiveEditor not exposed')
             return {
               blockTypes: editor.document.map((block: any) => block.type as string),
               props: editor.document.map((block: any) => block.props ?? {})
@@ -176,8 +176,8 @@ test.describe('Editor command flows E2E', () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const editor = (window as any).__memryEditor
-          if (!editor) throw new Error('window.__memryEditor not exposed')
+          const editor = (window as any).__memryActiveEditor
+          if (!editor) throw new Error('window.__memryActiveEditor not exposed')
           return editor.document.map((block: any) => ({
             type: block.type,
             props: block.props ?? {}
@@ -219,14 +219,14 @@ test.describe('Editor command flows E2E', () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const editor = (window as any).__memryEditor
+          const editor = (window as any).__memryActiveEditor
           return Boolean(editor?.getExtension?.('ai'))
         })
       )
       .toBe(true)
 
     await page.evaluate(() => {
-      const editor = (window as any).__memryEditor
+      const editor = (window as any).__memryActiveEditor
       const ai = editor?.getExtension?.('ai')
       if (!ai) throw new Error('AI extension not registered')
       ;(window as any).__memryAiInvocations = []
@@ -282,8 +282,8 @@ test.describe('Editor command flows E2E', () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const editor = (window as any).__memryEditor
-          if (!editor) throw new Error('window.__memryEditor not exposed')
+          const editor = (window as any).__memryActiveEditor
+          if (!editor) throw new Error('window.__memryActiveEditor not exposed')
           const block = editor.document[0]
           return {
             type: block?.type,
@@ -306,7 +306,7 @@ test.describe('Editor command flows E2E', () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const editor = (window as any).__memryEditor
+          const editor = (window as any).__memryActiveEditor
           const block = editor.document[0]
           return {
             type: block?.type,

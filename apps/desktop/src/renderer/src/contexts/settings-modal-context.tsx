@@ -1,27 +1,15 @@
 import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react'
+import {
+  SETTINGS_SECTIONS,
+  settingsCommandId,
+  type SettingsCommandId,
+  type SettingsSection
+} from '@memry/contracts/commands'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
+import { useAppCommands } from '@/commands'
 import { trackTelemetry } from '@/lib/telemetry'
 
-export type SettingsSection =
-  | 'general'
-  | 'editor'
-  | 'templates'
-  | 'journal'
-  | 'tasks'
-  | 'inbox'
-  | 'calendar'
-  | 'vault'
-  | 'appearance'
-  | 'ai'
-  | 'agent-providers'
-  | 'agent-mcp'
-  | 'import'
-  | 'tags'
-  | 'properties'
-  | 'shortcuts'
-  | 'command-line'
-  | 'account'
-  | 'features'
+export type { SettingsSection }
 
 export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity'
 
@@ -93,6 +81,12 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
     setIsOpen(false)
     setFocusTarget(null)
   }, [])
+
+  // Owns `nav.settings` (⌘, and File → Preferences), and one command per section.
+  const sectionImpls = Object.fromEntries(
+    SETTINGS_SECTIONS.map((section) => [settingsCommandId(section), { run: () => open(section) }])
+  ) as Record<SettingsCommandId, { run: () => void }>
+  useAppCommands('settings', { 'nav.settings': { run: () => open() }, ...sectionImpls })
 
   const value = useMemo<SettingsModalContextValue>(
     () => ({

@@ -69,7 +69,7 @@ test.describe('Editor undo history', () => {
     await page.keyboard.type(typedLine)
     await expectNoteEditorBody(page, `${body}\n\n${typedLine}`)
 
-    await clickApplicationMenuItem(electronApp, 'edit.undo')
+    await clickApplicationMenuItem(electronApp, 'editor.undo')
     await expectNoteEditorBody(page, body)
   })
 
@@ -158,8 +158,8 @@ async function focusEditorEnd(page: Page): Promise<void> {
   const editorRoot = page.locator(SELECTORS.noteEditor).first()
   await editorRoot.waitFor({ state: 'visible', timeout: 10000 })
   await page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const lastBlock = (editor.document as any[]).at(-1)
     editor.focus()

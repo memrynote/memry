@@ -44,6 +44,50 @@
     "openInDefaultApp": "Open in default app",
     "revealFailed": "Failed to show in folder"
   },
+  "commands": {
+    "runFailed": "That command could not run. Try again."
+  },
+  "commandsPalette": {
+    "title": "Commands",
+    "placeholder": "Type a command…",
+    "groups": {
+      "navigation": "Navigation",
+      "create": "Create",
+      "tabs": "Tabs",
+      "editor": "Editor",
+      "view": "View",
+      "app": "App",
+      "note": "Note",
+      "settings": "Settings",
+      "sync": "Sync",
+      "help": "Help",
+      "project": "Project",
+      "tasks": "Tasks",
+      "canvas": "Canvas",
+      "folder": "Folder",
+      "file": "File"
+    },
+    "contexts": {
+      "note": "This note",
+      "journal": "This journal",
+      "project": "This project",
+      "tasks": "These tasks",
+      "canvas": "This canvas",
+      "folder": "This folder",
+      "tag": "This tag",
+      "file": "This file"
+    },
+    "recent": "Recent",
+    "empty": "No commands match “{query}”",
+    "searchHint": "Search notes: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# command} other {# commands}}"
+    },
+    "actions": {
+      "run": "Run",
+      "searchNotes": "Search notes"
+    }
+  },
   "tabs": {
     "pin": "Pin Tab",
     "unpin": "Unpin Tab",
@@ -1091,14 +1135,6 @@
     "or": "or",
     "then": "then",
     "groups": {
-      "general": {
-        "title": "General",
-        "description": "App-wide navigation and help."
-      },
-      "tabs": {
-        "title": "Tabs & Splits",
-        "description": "Move between tabs and panes."
-      },
       "inbox": {
         "title": "Inbox",
         "description": "Process captured items quickly."
@@ -1106,10 +1142,6 @@
       "journal": {
         "title": "Journal",
         "description": "Navigate journal views and focus the writing area."
-      },
-      "notes": {
-        "title": "Notes / Editor",
-        "description": "Write, format, and search notes."
       },
       "tasks": {
         "title": "Tasks",
@@ -1122,29 +1154,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Open quick search",
-        "createNote": "Create a note",
-        "openSettings": "Open settings",
-        "switchVault": "Switch vault",
-        "adjacentVault": "Previous or next vault",
-        "keyboardShortcuts": "Open keyboard shortcuts",
         "undoTaskAction": "Undo last task action",
-        "toggleSidebar": "Toggle the sidebar",
-        "toggleDayPanel": "Toggle the day panel",
         "sidebarSection": "Go to sidebar section"
       },
       "tabs": {
-        "newTabMenu": "Open the new tab menu",
-        "closeTab": "Close tab",
-        "closeAllInPane": "Close all tabs in pane",
-        "reopenClosedTab": "Reopen closed tab",
-        "nextTab": "Next tab",
-        "previousTab": "Previous tab",
-        "pinTab": "Pin or unpin tab",
-        "duplicateTab": "Duplicate tab",
-        "splitRight": "Split right",
-        "splitDown": "Split down",
-        "closeSplitPane": "Close split pane",
         "focusPane": "Focus another pane",
         "moveTabToPane": "Move tab to pane",
         "maximizePane": "Maximize current pane"
@@ -1167,17 +1180,10 @@
       },
       "journal": {
         "returnFromOverview": "Return from month or year view",
-        "find": "Find in journal",
-        "bold": "Bold selected text",
-        "italic": "Italic selected text",
-        "underline": "Underline selected text"
+        "find": "Find in journal"
       },
       "notes": {
-        "createNote": "Create a note",
         "find": "Find in note",
-        "bold": "Bold",
-        "italic": "Italic",
-        "underline": "Underline",
         "commandMenu": "Open editor command menu",
         "closeOverlays": "Close editor overlays"
       },
@@ -1192,7 +1198,6 @@
         "stopRepeating": "Stop repeating task"
       },
       "settings": {
-        "openSettings": "Open settings",
         "customizeShortcuts": "Customize keyboard shortcuts",
         "recordShortcut": "Record a new shortcut",
         "cancelRecording": "Cancel shortcut recording",

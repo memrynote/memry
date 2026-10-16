@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useOpenPage } from '@/hooks/use-open-target'
-import { useCreateNoteInFolder } from '@/hooks/use-create-note-in-folder'
+import { useCreateNewNote } from '@/hooks/use-create-new-note'
 import { noteTabData } from '@/lib/sidebar-tab-data'
 import {
   getDisplayName,
@@ -332,18 +332,20 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     }
   }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
 
-  const createNoteInFolder = useCreateNoteInFolder(deps.mutations.createNote.mutateAsync)
+  // The folder context menu and its row button name their folder, so they go through
+  // the one new-note owner. `isCreating` keeps a second click from creating a second note.
+  const createNewNote = useCreateNewNote()
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
       if (isCreating) return
       setIsCreating(true)
       try {
-        await createNoteInFolder(folderPath)
+        await createNewNote({ folder: folderPath })
       } finally {
         setIsCreating(false)
       }
     },
-    [isCreating, createNoteInFolder]
+    [isCreating, createNewNote]
   )
 
   // ---- Create folder ----

@@ -1,22 +1,20 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { getI18n } from 'react-i18next'
-import { useKeyboardShortcuts, chordAllowedInInput } from '@/hooks/use-keyboard-shortcuts-base'
-import { useNoteMutations } from '@/hooks/use-notes-query'
-import { useCreateNoteInFolder } from '@/hooks/use-create-note-in-folder'
-import { useFolderNoteShortcuts } from '@/lib/shortcut-bindings'
+import { registerFolderNoteRunner } from '@/commands'
+import { useCreateNewNote } from '@/hooks/use-create-new-note'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
 /**
- * Settings → Shortcuts → "New note in folder". Each chord creates a note in its
- * folder and opens it. Creating a note in a missing folder would quietly make
+ * Settings → Shortcuts → "New note in folder". The command dispatcher matches the
+ * chord (see `resolveFolderChord`) and this is what it runs for the folder: create
+ * a note there and open it. Creating a note in a missing folder would quietly make
  * the folder again, so a shortcut whose folder is gone says so instead.
  */
 export function useFolderNoteShortcutsRuntime(): void {
-  const entries = useFolderNoteShortcuts()
-  const createNoteInFolder = useCreateNoteInFolder(useNoteMutations().createNote.mutateAsync)
+  const createNewNote = useCreateNewNote()
   const { open: openSettings } = useSettingsModal()
 
   const run = useCallback(
@@ -37,22 +35,15 @@ export function useFolderNoteShortcutsRuntime(): void {
         toast.error(extractErrorMessage(err, t('shortcuts.folderNotes.foldersLoadFailed')))
         return
       }
-      await createNoteInFolder(folder)
+      await createNewNote({ folder })
     },
-    [createNoteInFolder, openSettings]
+    [createNewNote, openSettings]
   )
 
-  const shortcuts = useMemo(
-    () =>
-      entries.map(({ folder, binding }) => ({
-        key: binding.key,
-        modifiers: binding.modifiers,
-        allowInInput: chordAllowedInInput(binding),
-        description: folder,
-        action: () => void run(folder)
-      })),
-    [entries, run]
-  )
-
-  useKeyboardShortcuts(shortcuts)
+  // The dispatcher registers once and calls whichever `run` is latest.
+  const runRef = useRef(run)
+  useEffect(() => {
+    runRef.current = run
+  }, [run])
+  useEffect(() => registerFolderNoteRunner((folder) => void runRef.current(folder)), [])
 }

@@ -12,12 +12,12 @@
  * task block, the renderer inserts a fresh `{ taskId: '', title: '' }`
  * draft after it. The draft has no DB row (saveTitleToDb early-returns for
  * empty titles, and tasksService.update is skipped when taskId is empty),
- * so we can seed it directly via __memryEditor.replaceBlocks without
+ * so we can seed it directly via __memryActiveEditor.replaceBlocks without
  * touching the tasks IPC at all (which would reject empty titles via the
  * z.string().min(1) contract anyway).
  *
  * These tests cover the full CRUD loop for a draft taskBlock:
- *   - create  (seeded directly via __memryEditor.replaceBlocks)
+ *   - create  (seeded directly via __memryActiveEditor.replaceBlocks)
  *   - read    (placeholder span is visible with non-zero width after blur)
  *   - update  (click placeholder → input opens → type → Enter saves prop)
  *   - delete  (Backspace in empty input still tears the block down)
@@ -43,8 +43,8 @@ async function focusEditor(page: Page) {
 // task-block-renderer.tsx:345-349 after Enter on a filled task block.
 async function seedDraftTaskBlock(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, [
       {
         type: 'taskBlock',
@@ -61,7 +61,7 @@ async function seedDraftTaskBlock(page: Page): Promise<void> {
 // Read the current title prop on the (only) task block in the editor doc.
 async function readFirstTaskBlockTitle(page: Page): Promise<string | null> {
   return await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
+    const editor = (window as any).__memryActiveEditor
     if (!editor) return null
     const doc = editor.document as any[]
     const block = doc.find((b: any) => b.type === 'taskBlock')
@@ -71,7 +71,7 @@ async function readFirstTaskBlockTitle(page: Page): Promise<string | null> {
 
 async function countTaskBlocksInDoc(page: Page): Promise<number> {
   return (await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
+    const editor = (window as any).__memryActiveEditor
     if (!editor) return 0
     return (editor.document as any[]).filter((b: any) => b.type === 'taskBlock').length
   })) as number

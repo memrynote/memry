@@ -1046,14 +1046,6 @@
     "or": "eller",
     "then": "derefter",
     "groups": {
-      "general": {
-        "title": "Generelt",
-        "description": "Navigation og hjælp i hele appen."
-      },
-      "tabs": {
-        "title": "Faner og opdelinger",
-        "description": "Bevæg dig mellem faner og ruder."
-      },
       "inbox": {
         "title": "Indbakke",
         "description": "Behandl indfangede elementer hurtigt."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dagbog",
         "description": "Navigér i dagbogsvisninger, og fokusér på skrivefeltet."
-      },
-      "notes": {
-        "title": "Noter / Editor",
-        "description": "Skriv, formatér og søg i noter."
       },
       "tasks": {
         "title": "Opgaver",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Åbn hurtig søgning",
-        "createNote": "Opret en note",
-        "openSettings": "Åbn indstillinger",
-        "switchVault": "Skift boks",
-        "adjacentVault": "Forrige eller næste boks",
-        "keyboardShortcuts": "Åbn tastaturgenveje",
         "undoTaskAction": "Fortryd seneste opgavehandling",
-        "toggleSidebar": "Vis eller skjul sidebjælken",
         "sidebarSection": "Gå til sektion i sidebjælken"
       },
       "tabs": {
-        "newTabMenu": "Åbn menuen for ny fane",
-        "closeTab": "Luk fane",
-        "closeAllInPane": "Luk alle faner i ruden",
-        "reopenClosedTab": "Genåbn lukket fane",
-        "nextTab": "Næste fane",
-        "previousTab": "Forrige fane",
-        "pinTab": "Fastgør eller frigør fane",
-        "duplicateTab": "Duplikér fane",
-        "splitRight": "Opdel til højre",
-        "splitDown": "Opdel nedad",
-        "closeSplitPane": "Luk den opdelte rude",
         "focusPane": "Fokusér på en anden rude",
         "moveTabToPane": "Flyt fane til rude",
         "maximizePane": "Maksimér den aktuelle rude"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Vend tilbage fra måneds- eller årsvisning",
-        "find": "Find i dagbogen",
-        "bold": "Gør den markerede tekst fed",
-        "italic": "Gør den markerede tekst kursiv",
-        "underline": "Understreg den markerede tekst"
+        "find": "Find i dagbogen"
       },
       "notes": {
-        "createNote": "Opret en note",
         "find": "Find i noten",
-        "bold": "Fed",
-        "italic": "Kursiv",
-        "underline": "Understreg",
         "commandMenu": "Åbn editorens kommandomenu",
         "closeOverlays": "Luk editorens overlejringer"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Stop med at gentage opgaven"
       },
       "settings": {
-        "openSettings": "Åbn indstillinger",
         "customizeShortcuts": "Tilpas tastaturgenveje",
         "recordShortcut": "Optag en ny genvej",
         "cancelRecording": "Annullér optagelse af genvej",

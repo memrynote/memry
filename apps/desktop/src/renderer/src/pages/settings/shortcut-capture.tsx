@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { setShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
-import {
-  FOLDER_NOTE_SHORTCUT_PREFIX,
-  SHORTCUT_REGISTRY,
-  type ShortcutConflict
-} from '@/lib/shortcut-registry'
+import type { ShortcutConflict } from '@/lib/shortcut-catalog'
 
 export type SettingsT = ReturnType<typeof useT>['t']
 
@@ -100,12 +96,10 @@ export function useShortcutCapture(
 
 /** "Conflicts with: …", naming each shortcut the way its own row does. */
 export function conflictMessage(t: SettingsT, conflicts: ShortcutConflict[]): string {
-  const labels = conflicts.map((conflict) => {
-    if (conflict.conflictingId.startsWith(FOLDER_NOTE_SHORTCUT_PREFIX)) {
-      return t('shortcuts.folderNotes.conflictLabel', { folder: conflict.conflictingLabel })
-    }
-    const entry = SHORTCUT_REGISTRY.find((e) => e.id === conflict.conflictingId)
-    return entry ? t(`shortcuts.entries.${entry.i18nKey}.label`) : conflict.conflictingLabel
-  })
+  const labels = conflicts.map((conflict) =>
+    conflict.kind === 'folder'
+      ? t('shortcuts.folderNotes.conflictLabel', { folder: conflict.folder })
+      : t(`shortcuts.entries.${conflict.conflictingI18nKey}.label`)
+  )
   return t('shortcuts.conflict', { labels: labels.join(', ') })
 }

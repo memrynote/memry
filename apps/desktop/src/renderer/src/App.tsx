@@ -46,6 +46,14 @@ import { useTitleBarSymbolColorSync } from '@/lib/window-controls-overlay'
 
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
+import { TabsCommandBridge } from '@/contexts/tabs/tabs-command-bridge'
+import {
+  AppCommandOwners,
+  WorkspaceCommandOwners,
+  useAppCommands,
+  useCommandDispatcher,
+  type CommandImpl
+} from '@/commands'
 import { useRecordRecentlyOpened } from '@/hooks/use-recently-opened'
 import { useTabSessionPersistence } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
@@ -53,25 +61,18 @@ import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
 import { ChordIndicator } from '@/components/keyboard'
 import {
-  useTabKeyboardShortcuts,
   useChordShortcuts,
   useMouseNavButtons,
   useDragHandlers,
   useTaskOrder,
   useVault,
-  useSettingsShortcut,
-  useSwitchVaultShortcut,
-  useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications,
   useInboxReviewNotifications,
-  useSearchShortcut,
-  useHintActivation,
-  isInputFocused
+  useHintActivation
 } from '@/hooks'
-import { isShortcutRecording, matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
-import { useShortcutBinding } from '@/lib/shortcut-bindings'
-import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
+import { useAppZoom } from '@/hooks/use-app-zoom'
+import { useCreateNewNote } from '@/hooks/use-create-new-note'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
@@ -84,9 +85,7 @@ import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
 import { useVaultLockRestoreNotice } from '@/hooks/use-vault-lock-restore-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
-import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
-import { notesService } from '@/services/notes-service'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { VaultSwitchingScreen } from '@/components/vault-switching-screen'
 import { VaultSwitchContentCover } from '@/components/vault-switch-content-cover'
@@ -113,8 +112,6 @@ import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getTaskWorkspaceCounts } from '@/lib/task-utils'
-import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
-import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
@@ -133,6 +130,10 @@ const loadCommandPalette = () => import('@/components/search/command-palette')
 const LazyCommandPalette = lazy(async () => ({
   default: (await loadCommandPalette()).CommandPalette
 }))
+const loadCommandsPalette = () => import('@/components/commands/commands-palette')
+const LazyCommandsPalette = lazy(async () => ({
+  default: (await loadCommandsPalette()).CommandsPalette
+}))
 const LazyKeyboardShortcutsDialog = lazy(async () => ({
   default: (await import('@/components/keyboard/keyboard-shortcuts-dialog')).KeyboardShortcutsDialog
 }))
@@ -143,8 +144,11 @@ const LazyVaultOnboarding = lazy(async () => ({
   default: (await import('@/components/vault-onboarding')).VaultOnboarding
 }))
 
-/** Upper bound on waiting for an idle slot before the palette mounts anyway. */
+/** Upper bound on waiting for an idle slot before the palettes mount anyway. */
 const COMMAND_PALETTE_IDLE_TIMEOUT_MS = 2000
+
+/** At most one palette is open: ⌘K searches, ⌘P runs commands. */
+type ActivePalette = 'search' | 'commands'
 
 // Base pages (non-task)
 export type BasePage = 'inbox' | 'journal' | 'calendar' | 'graph'
@@ -258,16 +262,26 @@ function isVaultSwitchPending(): boolean {
   return getVaultSwitchState().pending !== null
 }
 
+/**
+ * A key toggles, so the chord that opened a surface closes it. A menu item or
+ * button only opens: it asks to see the surface, and asking twice is harmless.
+ */
+const keyToggles = (toggle: () => void, open: () => void): CommandImpl => ({
+  run: ({ source }) => (source === 'keyboard' ? toggle() : open())
+})
+
 const AppContent = (): React.JSX.Element => {
   const { openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [activePalette, setActivePalette] = useState<ActivePalette | null>(null)
 
-  // The palette mounts closed once the window is idle, so the first ⌘K opens an
-  // already loaded and initialized palette. Opening it earlier mounts it then.
-  // Both stay mounted afterwards, as they did when they were eager.
+  // The palettes mount closed once the window is idle, so the first ⌘K or ⌘P
+  // opens an already loaded and initialized palette. Opening one earlier mounts
+  // it then. They stay mounted afterwards, as they did when they were eager.
   const [commandPaletteMounted, setCommandPaletteMounted] = useState(false)
-  if (searchOpen && !commandPaletteMounted) setCommandPaletteMounted(true)
+  if (activePalette === 'search' && !commandPaletteMounted) setCommandPaletteMounted(true)
+  const [commandsPaletteMounted, setCommandsPaletteMounted] = useState(false)
+  if (activePalette === 'commands' && !commandsPaletteMounted) setCommandsPaletteMounted(true)
   const [shortcutsDialogMounted, setShortcutsDialogMounted] = useState(false)
   if (showShortcutsDialog && !shortcutsDialogMounted) setShortcutsDialogMounted(true)
 
@@ -276,6 +290,10 @@ const AppContent = (): React.JSX.Element => {
       loadCommandPalette().then(
         () => setCommandPaletteMounted(true),
         (error: unknown) => log.warn('Command palette preload failed', error)
+      )
+      loadCommandsPalette().then(
+        () => setCommandsPaletteMounted(true),
+        (error: unknown) => log.warn('Commands palette preload failed', error)
       )
     }
     // jsdom has no requestIdleCallback; Chromium always does.
@@ -307,45 +325,11 @@ const AppContent = (): React.JSX.Element => {
     void trackTelemetry('page_viewed', { surface, action: 'viewed', objectType: activeTab.type })
   }, [activeTab])
 
-  // Handle creating a new note
-  const handleNewNote = useCallback(async () => {
-    if (isVaultSwitchPending()) return
-    try {
-      const result = await notesService.create({
-        title: NEW_NOTE_TITLE,
-        content: ''
-      })
-
-      if (result.success && result.note) {
-        markNewNoteTitlePending(result.note.id)
-        openTab({
-          type: 'note',
-          title: result.note.title,
-          icon: 'file-text',
-          path: `/note/${result.note.id}`,
-          entityId: result.note.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false
-        })
-        // Where the note landed is only knowable from the created note, so the
-        // sidebar is told to reveal it rather than guessing at the folder.
-        revealNoteInSidebar(result.note.id)
-      }
-    } catch (error) {
-      log.error('Failed to create new note:', error)
-    }
-  }, [openTab])
-
   // Keyboard shortcuts
-  useTabKeyboardShortcuts()
   useMouseNavButtons()
   const isChordActive = useChordShortcuts()
   const { open: openSettings, isOpen: isSettingsOpen } = useSettingsModal()
-  useSettingsShortcut(openSettings)
-  useSwitchVaultShortcut(requestVaultSwitcherOpen)
-  useNewNoteShortcut(() => void handleNewNote())
+  useAppZoom()
   useFolderNoteShortcutsRuntime()
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
@@ -356,56 +340,32 @@ const AppContent = (): React.JSX.Element => {
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
   useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
-  const toggleSearch = useCallback(() => {
+  const togglePalette = useCallback((palette: ActivePalette) => {
     if (isVaultSwitchPending()) return
-    setSearchOpen((prev) => !prev)
+    setActivePalette((prev) => (prev === palette ? null : palette))
   }, [])
-  const openSearch = useCallback(() => {
+  const openPalette = useCallback((palette: ActivePalette) => {
     if (isVaultSwitchPending()) return
-    setSearchOpen(true)
+    setActivePalette(palette)
   }, [])
+  const closePalette = useCallback(() => setActivePalette(null), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
   const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
-  const shortcutsHelpBinding = useShortcutBinding('view.shortcuts')
-  useSearchShortcut(toggleSearch)
+  const createNewNote = useCreateNewNote()
   useHintActivation()
-  useMenuCommands({
-    onNewNote: () => void handleNewNote(),
-    onOpenSearch: openSearch
+
+  useAppCommands('shell', {
+    'nav.newNote': { run: () => createNewNote() },
+    'nav.search': keyToggles(
+      () => togglePalette('search'),
+      () => openPalette('search')
+    ),
+    'nav.commands': keyToggles(
+      () => togglePalette('commands'),
+      () => openPalette('commands')
+    ),
+    'view.shortcuts': keyToggles(toggleShortcutsDialog, openShortcutsDialog)
   })
-
-  useEffect(() => {
-    window.addEventListener('memry:open-search', openSearch)
-    return () => window.removeEventListener('memry:open-search', openSearch)
-  }, [openSearch])
-
-  useEffect(() => {
-    window.addEventListener('memry:open-shortcuts', openShortcutsDialog)
-    return () => window.removeEventListener('memry:open-shortcuts', openShortcutsDialog)
-  }, [openShortcutsDialog])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      const isQuestionShortcut =
-        event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey
-      const isBoundShortcut = matchesShortcut(
-        event,
-        shortcutsHelpBinding.key,
-        shortcutsHelpBinding.modifiers
-      )
-
-      if (!isQuestionShortcut && !isBoundShortcut) return
-      if (isShortcutRecording()) return
-      if (isQuestionShortcut && isInputFocused()) return
-
-      event.preventDefault()
-      event.stopPropagation()
-      toggleShortcutsDialog()
-    }
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [shortcutsHelpBinding, toggleShortcutsDialog])
 
   useEffect(() => {
     const openTestNote = (
@@ -482,6 +442,9 @@ const AppContent = (): React.JSX.Element => {
 
   return (
     <TabDragProvider>
+      <TabsCommandBridge />
+      <AppCommandOwners />
+      <WorkspaceCommandOwners />
       <AgentTabTitleSync />
       <CanvasTabTitleSync />
       <HomeTabTitleSync />
@@ -520,7 +483,20 @@ const AppContent = (): React.JSX.Element => {
       {/* Global Search Command Palette */}
       {commandPaletteMounted && (
         <Suspense fallback={null}>
-          <LazyCommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+          <LazyCommandPalette
+            open={activePalette === 'search'}
+            onOpenChange={(open) => (open ? openPalette('search') : closePalette())}
+          />
+        </Suspense>
+      )}
+
+      {/* Commands Palette */}
+      {commandsPaletteMounted && (
+        <Suspense fallback={null}>
+          <LazyCommandsPalette
+            open={activePalette === 'commands'}
+            onOpenChange={(open) => (open ? openPalette('commands') : closePalette())}
+          />
         </Suspense>
       )}
     </TabDragProvider>
@@ -910,6 +886,7 @@ function App(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
   useTitleBarSymbolColorSync()
+  useCommandDispatcher()
 
   // Update state - show a dedicated "Installing update…" screen while quitting to
   // install, so vault teardown never surfaces as a broken picker / frozen window.

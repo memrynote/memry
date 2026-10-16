@@ -5,6 +5,7 @@
 
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs } from '@/contexts/tabs'
+import { duplicateTab, toggleTabPin } from '@/contexts/tabs/tab-ops'
 import { useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
@@ -72,21 +73,10 @@ export const TabContextMenu = ({
           closeAllTabs(groupId)
           break
         case 'pin':
-          dispatch({
-            type: tab.isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
-            payload: { tabId: tab.id, groupId }
-          })
+          toggleTabPin(dispatch, tab, groupId)
           break
         case 'duplicate':
-          dispatch({
-            type: 'OPEN_TAB',
-            payload: {
-              tab: { ...tab, isPinned: false, isPreview: false, isModified: false },
-              groupId,
-              // Without forceNew the entity dedup just re-activates this tab.
-              forceNew: true
-            }
-          })
+          duplicateTab(dispatch, tab, groupId)
           break
         case 'split-right':
           dispatch({

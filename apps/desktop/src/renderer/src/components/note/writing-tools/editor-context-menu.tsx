@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { useT } from '@memry/i18n/renderer'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 
 export type EditorMenuAction =
   | 'cut'

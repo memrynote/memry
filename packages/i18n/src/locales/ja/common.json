@@ -1046,14 +1046,6 @@
     "or": "または",
     "then": "続けて",
     "groups": {
-      "general": {
-        "title": "一般",
-        "description": "アプリ全体のナビゲーションとヘルプ。"
-      },
-      "tabs": {
-        "title": "タブと分割",
-        "description": "タブとペインの間を移動します。"
-      },
       "inbox": {
         "title": "インボックス",
         "description": "キャプチャした項目を素早く処理します。"
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "ジャーナル",
         "description": "ジャーナルの表示を切り替え、書く場所にフォーカスします。"
-      },
-      "notes": {
-        "title": "ノート / エディター",
-        "description": "ノートを書き、書式を整え、検索します。"
       },
       "tasks": {
         "title": "タスク",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "クイック検索を開く",
-        "createNote": "ノートを作成",
-        "openSettings": "設定を開く",
-        "switchVault": "保管庫を切り替え",
-        "adjacentVault": "前または次の保管庫",
-        "keyboardShortcuts": "キーボードショートカットを開く",
         "undoTaskAction": "直前のタスク操作を元に戻す",
-        "toggleSidebar": "サイドバーを切り替え",
         "sidebarSection": "サイドバーのセクションへ移動"
       },
       "tabs": {
-        "newTabMenu": "新規タブメニューを開く",
-        "closeTab": "タブを閉じる",
-        "closeAllInPane": "ペイン内のすべてのタブを閉じる",
-        "reopenClosedTab": "閉じたタブを開き直す",
-        "nextTab": "次のタブ",
-        "previousTab": "前のタブ",
-        "pinTab": "タブをピン留め / 解除",
-        "duplicateTab": "タブを複製",
-        "splitRight": "右に分割",
-        "splitDown": "下に分割",
-        "closeSplitPane": "分割ペインを閉じる",
         "focusPane": "別のペインにフォーカス",
         "moveTabToPane": "タブをペインへ移動",
         "maximizePane": "現在のペインを最大化"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "月表示・年表示から戻る",
-        "find": "ジャーナル内を検索",
-        "bold": "選択したテキストを太字に",
-        "italic": "選択したテキストを斜体に",
-        "underline": "選択したテキストに下線"
+        "find": "ジャーナル内を検索"
       },
       "notes": {
-        "createNote": "ノートを作成",
         "find": "ノート内を検索",
-        "bold": "太字",
-        "italic": "斜体",
-        "underline": "下線",
         "commandMenu": "エディターのコマンドメニューを開く",
         "closeOverlays": "エディターのオーバーレイを閉じる"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "タスクの繰り返しを停止"
       },
       "settings": {
-        "openSettings": "設定を開く",
         "customizeShortcuts": "キーボードショートカットをカスタマイズ",
         "recordShortcut": "新しいショートカットを記録",
         "cancelRecording": "ショートカットの記録をキャンセル",

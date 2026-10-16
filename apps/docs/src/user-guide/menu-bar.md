@@ -2,15 +2,17 @@
 
 memrynote has a native application menu bar — on macOS it sits in the system
 menu bar, and on Windows and Linux it appears at the top of the window. Most
-items mirror actions you can already reach from the sidebar, tabs, command
-palette, or the editor's slash menu.
+items mirror actions you can already reach from the sidebar, tabs, the
+[command palette](/user-guide/command-palette), or the editor's slash menu. A menu
+item runs the same command as its keyboard shortcut and its palette row.
 
 ## Menus
 
 - **App menu** (macOS only, named “memrynote”) — About, Check for Updates,
   Settings, Hide/Show, and Quit.
-- **File** — New Note, Open Quickly (the command palette), Export to PDF, Close
-  Tab, and Close Window. On Windows and Linux this menu also contains Quit.
+- **File** — New Note, Open Quickly (search), Command Palette (<kbd>⌘</kbd>+<kbd>P</kbd>),
+  Export to PDF,
+  Close Tab, and Close Window. On Windows and Linux this menu also contains Quit.
 - **Edit** — Undo / Redo, Cut / Copy / Paste (including Paste and Match Style),
   Delete, Select All, and Find. On macOS the system adds Speech, Start
   Dictation, and Emoji & Symbols.
@@ -46,9 +48,11 @@ result as the editor's slash (`/`) menu and formatting toolbar.
 
 ## Keyboard shortcuts
 
-Menu items intentionally do not display keyboard shortcuts, with one exception:
+Most menu items do not display a keyboard shortcut, because the app handles the
+key itself and it keeps working whether or not you use the menu. These items show
+their current shortcut as a label, and show your own binding once you rebind one:
+Close Tab, Toggle Day Panel, Zoom In, Zoom Out, and Actual Size.
 **Help → Documentation** shows <kbd>F1</kbd>, the fixed shortcut for opening the
-online docs at [docs.memrynote.com](https://docs.memrynote.com). Every other
-shortcut is owned by the app itself (and is remappable), so it keeps working
-whether or not you use the menu. See
-[Keyboard Shortcuts](/user-guide/keyboard-shortcuts) for the full list.
+online docs at [docs.memrynote.com](https://docs.memrynote.com). Toggle Sidebar
+shows none, because <kbd>⌘</kbd>+<kbd>B</kbd> is Bold while the caret is in a
+note. See [Keyboard Shortcuts](/user-guide/keyboard-shortcuts) for the full list.

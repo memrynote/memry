@@ -88,7 +88,7 @@ keys that act on it.
 | Escape           | Clear the selection                   |
 
 While the timeline has focus, Cmd+K opens its action panel instead of search. Cmd+P still
-opens search. In right-to-left languages the arrows follow the timeline's direction.
+opens the [command palette](/user-guide/command-palette). In right-to-left languages the arrows follow the timeline's direction.
 
 ### Display
 

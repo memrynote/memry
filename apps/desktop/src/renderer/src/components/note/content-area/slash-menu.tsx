@@ -53,7 +53,7 @@ import {
   Video,
   type AppIcon
 } from '@/lib/icons'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
 import { recordSlashMenuRecent, type SlashMenuItem } from './slash-menu-model'
 

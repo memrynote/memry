@@ -22,6 +22,7 @@ Object.defineProperty(navigator, 'platform', {
   // use to stub the clipboard.
   enumerable: true
 })
+import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { NotesTree, type NotesTreeActions } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
@@ -54,7 +55,9 @@ const renderWithProviders = (ui: React.ReactElement, i18n = i18nEn) => {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <TestWrapper>{ui}</TestWrapper>
+        <SelectedFolderProvider>
+          <TestWrapper>{ui}</TestWrapper>
+        </SelectedFolderProvider>
       </QueryClientProvider>
     </I18nextProvider>
   )

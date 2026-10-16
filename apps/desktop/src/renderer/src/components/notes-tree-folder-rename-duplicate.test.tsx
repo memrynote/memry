@@ -26,6 +26,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
+import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { NotesTree } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
@@ -302,7 +303,9 @@ const renderTree = () =>
         }
       >
         <TooltipProvider>
-          <NotesTree />
+          <SelectedFolderProvider>
+            <NotesTree />
+          </SelectedFolderProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </I18nextProvider>

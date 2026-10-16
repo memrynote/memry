@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserWindow } from 'electron'
+import {
+  COMMANDS,
+  type CommandId,
+  type CommandMeta,
+  type MenuCommandId
+} from '@memry/contracts/commands'
 import { AppChannels } from '@memry/contracts/ipc-channels'
 import { createMainI18n } from '@memry/i18n/main'
 
@@ -204,22 +210,22 @@ describe('buildAppMenu', () => {
     // role's registered accelerator also swallowed Ctrl+Z before the renderer
     // ever saw it, so undo was dead in the editor entirely.
     expect(undoItem).toMatchObject({
-      id: 'edit.undo',
+      id: 'editor.undo',
       accelerator: 'CmdOrCtrl+Z',
       registerAccelerator: false
     })
     expect(undoItem?.role).toBeUndefined()
     expect(redoItem).toMatchObject({
-      id: 'edit.redo',
+      id: 'editor.redo',
       accelerator: process.platform === 'win32' ? 'Control+Y' : 'CmdOrCtrl+Shift+Z',
       registerAccelerator: false
     })
     expect(redoItem?.role).toBeUndefined()
 
     undoItem?.click?.()
-    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'editor.undo' })
     redoItem?.click?.()
-    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'editor.redo' })
   })
 
   it('gives ⌘W to Close Tab and routes Close Window through the renderer', async () => {
@@ -235,7 +241,7 @@ describe('buildAppMenu', () => {
     const closeWindow = findMenuItem('Close Window')
 
     expect(closeTab).toMatchObject({
-      id: 'file.closeTab',
+      id: 'tabs.closeTab',
       accelerator: 'CmdOrCtrl+W',
       registerAccelerator: false
     })
@@ -247,10 +253,10 @@ describe('buildAppMenu', () => {
     expect(closeWindow?.accelerator).toBeUndefined()
 
     closeTab?.click?.()
-    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'file.closeTab' })
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'tabs.closeTab' })
     closeWindow?.click?.()
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
-      command: 'file.closeWindow'
+      command: 'app.closeWindow'
     })
   })
 
@@ -275,7 +281,7 @@ describe('buildAppMenu', () => {
     expect(findMenuItem('Actual Size')?.role).toBeUndefined()
     expect(findMenuItem('Zoom In')).toMatchObject({
       id: 'view.zoomIn',
-      accelerator: 'CmdOrCtrl+Plus',
+      accelerator: 'CmdOrCtrl+=',
       registerAccelerator: false
     })
     expect(findMenuItem('Zoom Out')).toMatchObject({
@@ -332,7 +338,7 @@ describe('buildAppMenu', () => {
     // Menu items are clickable while no window has focus (macOS app menu,
     // Linux focus-follows-mouse); the command must not be dropped.
     undoItem?.click?.()
-    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'editor.undo' })
   })
 
   it('drops the command when several visible windows could be the target', async () => {
@@ -511,6 +517,76 @@ describe('buildAppMenu', () => {
     const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
     expect(template[0]).toMatchObject({ label: 'Undo', role: 'undo' })
     expect(template.map((item) => item.label)).not.toContain('Add to Dictionary')
+  })
+})
+
+/** Every item of the built template, submenus flattened. */
+function flattenTemplate(items: TemplateItem[]): TemplateItem[] {
+  return items.flatMap((item) => [item, ...flattenTemplate(item.submenu ?? [])])
+}
+
+describe('menu and COMMANDS agree', () => {
+  const menuIds = Object.keys(COMMANDS).filter(
+    (id): id is MenuCommandId => 'menu' in COMMANDS[id as CommandId]
+  )
+
+  async function builtItems(): Promise<TemplateItem[]> {
+    buildFromTemplate.mockClear()
+    buildAppMenu(await createMainI18n({ locale: 'en' }))
+    return flattenTemplate(buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[])
+  }
+
+  it('lists every command flagged for the menu, once, as an item with its id', async () => {
+    const ids = (await builtItems()).flatMap((item) => (item.id ? [item.id] : []))
+
+    for (const id of menuIds)
+      expect(
+        ids.filter((seen) => seen === id),
+        id
+      ).toHaveLength(1)
+  })
+
+  it('names only commands in the menu table', async () => {
+    const ids = (await builtItems()).flatMap((item) => (item.id ? [item.id] : []))
+
+    for (const id of ids) expect(menuIds, id).toContain(id)
+  })
+
+  it('never gives a command the renderer yields to rich text an accelerator', async () => {
+    const items = await builtItems()
+
+    for (const item of items) {
+      const keyboard = item.id
+        ? (COMMANDS[item.id as CommandId] as CommandMeta).keyboard
+        : undefined
+      if (keyboard?.owner === 'app' && keyboard.richText === 'yield') {
+        expect(item.accelerator, item.id).toBeUndefined()
+      }
+    }
+  })
+
+  it('shows an accelerator only for commands flagged menuAccelerator, or native edit keys', async () => {
+    const nativeEditKeys = new Set<string>(['editor.undo', 'editor.redo'])
+
+    for (const item of await builtItems()) {
+      if (!item.id || !item.accelerator) continue
+      const keyboard = (COMMANDS[item.id as CommandId] as CommandMeta).keyboard
+      const flagged = keyboard?.owner === 'app' && keyboard.menuAccelerator === true
+      expect(flagged || nativeEditKeys.has(item.id), item.id).toBe(true)
+    }
+  })
+
+  it('can label every menu command from a namespace the renderer loads too', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    for (const id of menuIds) {
+      const meta: CommandMeta = COMMANDS[id]
+      const key =
+        'keyboard' in meta
+          ? `settings:shortcuts.entries.${meta.i18nKey}.label`
+          : `menu:${meta.i18nKey}`
+      expect(i18n.exists(key), `${id} -> ${key}`).toBe(true)
+    }
   })
 })
 

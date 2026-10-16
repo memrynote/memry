@@ -162,13 +162,14 @@ export const isShortcutRecording = (): boolean => shortcutRecording
 export const matchesShortcut = (
   e: KeyboardEvent,
   key: string,
-  modifiers: ShortcutModifiers = {}
+  modifiers: ShortcutModifiers = {},
+  mac: boolean = isMac
 ): boolean => {
   if (!key || shortcutRecording) return false
   if (!keyMatches(e, key, modifiers)) return false
 
   // Meta modifier (Cmd on Mac, Ctrl on Windows)
-  const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
+  const metaOrCtrl = mac ? e.metaKey : e.ctrlKey
   if (modifiers.meta && !metaOrCtrl) return false
   if (!modifiers.meta && metaOrCtrl && !modifiers.ctrl) return false
 
@@ -176,7 +177,7 @@ export const matchesShortcut = (
   // key, so a held Ctrl the chord does not ask for is a different chord
   // (⌃⌘→ switches vaults; ⌘→ is line end).
   if (modifiers.ctrl && !e.ctrlKey) return false
-  if (isMac && !modifiers.ctrl && e.ctrlKey) return false
+  if (mac && !modifiers.ctrl && e.ctrlKey) return false
 
   // Shift modifier
   if (modifiers.shift !== undefined) {

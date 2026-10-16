@@ -1046,14 +1046,6 @@
     "or": "或",
     "then": "然后",
     "groups": {
-      "general": {
-        "title": "通用",
-        "description": "全局导航与帮助。"
-      },
-      "tabs": {
-        "title": "标签页与分屏",
-        "description": "在标签页和窗格之间移动。"
-      },
       "inbox": {
         "title": "收件箱",
         "description": "快速处理已收集的条目。"
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "日记",
         "description": "在日记视图之间切换，并聚焦书写区域。"
-      },
-      "notes": {
-        "title": "笔记 / 编辑器",
-        "description": "撰写、排版和搜索笔记。"
       },
       "tasks": {
         "title": "任务",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "打开快速搜索",
-        "createNote": "新建笔记",
-        "openSettings": "打开设置",
-        "switchVault": "切换仓库",
-        "adjacentVault": "上一个或下一个仓库",
-        "keyboardShortcuts": "打开键盘快捷键",
         "undoTaskAction": "撤销上一次任务操作",
-        "toggleSidebar": "显示/隐藏侧边栏",
         "sidebarSection": "跳转到侧边栏分区"
       },
       "tabs": {
-        "newTabMenu": "打开新建标签页菜单",
-        "closeTab": "关闭标签页",
-        "closeAllInPane": "关闭窗格中的所有标签页",
-        "reopenClosedTab": "重新打开已关闭的标签页",
-        "nextTab": "下一个标签页",
-        "previousTab": "上一个标签页",
-        "pinTab": "固定或取消固定标签页",
-        "duplicateTab": "复制标签页",
-        "splitRight": "向右分屏",
-        "splitDown": "向下分屏",
-        "closeSplitPane": "关闭分屏窗格",
         "focusPane": "聚焦另一个窗格",
         "moveTabToPane": "将标签页移到窗格",
         "maximizePane": "最大化当前窗格"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "从月视图或年视图返回",
-        "find": "在日记中查找",
-        "bold": "将选中文本加粗",
-        "italic": "将选中文本设为斜体",
-        "underline": "为选中文本加下划线"
+        "find": "在日记中查找"
       },
       "notes": {
-        "createNote": "新建笔记",
         "find": "在笔记中查找",
-        "bold": "粗体",
-        "italic": "斜体",
-        "underline": "下划线",
         "commandMenu": "打开编辑器命令菜单",
         "closeOverlays": "关闭编辑器浮层"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "停止任务重复"
       },
       "settings": {
-        "openSettings": "打开设置",
         "customizeShortcuts": "自定义键盘快捷键",
         "recordShortcut": "录制新的快捷键",
         "cancelRecording": "取消快捷键录制",

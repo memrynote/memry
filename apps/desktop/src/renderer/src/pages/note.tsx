@@ -88,7 +88,6 @@ import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
-import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
@@ -144,7 +143,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
@@ -159,6 +158,8 @@ import {
 } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
+import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
 import {
@@ -171,7 +172,6 @@ import { useWordCountVisible } from '@/hooks/use-word-count-visible'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 import { useT } from '@memry/i18n/renderer'
-import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { getTabIconForFileType } from '@memry/shared/file-types'
 
 const log = createLogger('Page:Note')
@@ -230,14 +230,13 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
-  const fileActions = useFileActionLabels()
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
-  const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
+  const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
     incoming: rawBacklinks,
     outgoing: outgoingLinks,
@@ -249,7 +248,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const openTaskDetail = useOpenTaskDetail()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
-  const createNoteFromNote = useCreateNoteFromNote()
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
 
@@ -293,18 +291,12 @@ export function NotePage({ noteId }: NotePageProps) {
   // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
-  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
-  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const dialog = useDialogState<NoteDialog>()
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
-  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
-  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
   const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -538,19 +530,6 @@ export function NotePage({ noteId }: NotePageProps) {
     if (isLargeFile) openLargeFileFindRef.current?.()
     else findInPage.open()
   }, [isLargeFile, findInPage])
-
-  // Native menu bar: Edit > Find and File > Export to PDF target the active note.
-  useEffect(() => {
-    if (!isActiveNote) return
-    const onFind = (): void => openFind()
-    const onExport = (): void => setIsExportDialogOpen(true)
-    window.addEventListener('memry:menu-find', onFind)
-    window.addEventListener('memry:menu-export', onExport)
-    return () => {
-      window.removeEventListener('memry:menu-find', onFind)
-      window.removeEventListener('memry:menu-export', onExport)
-    }
-  }, [isActiveNote, openFind])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -1156,15 +1135,6 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
-  const handleToggleLock = useCallback(async () => {
-    if (!noteId) return
-    try {
-      await setVaultLock('note', noteId, !hasOwnLock)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, t('vaultLock.toggleFailed')))
-    }
-  }, [noteId, hasOwnLock, t])
-
   const { setCover, setCoverFraming, removeCover } = useNoteCover(
     noteId ?? null,
     note?.frontmatter ?? null,
@@ -1219,79 +1189,7 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, t]
   )
 
-  // ── Note-view menu file actions ───────────────────────────────────────────
-
-  // Rename: focus + select the inline title textarea (no dialog).
-  // Deferred so the menu's focus-restore-on-close does not steal focus back.
-  const handleRename = useCallback(() => {
-    requestAnimationFrame(() => {
-      const el = titleInputRef.current
-      if (!el) return
-      el.focus()
-      el.select()
-    })
-  }, [])
-
-  // Copy the vault-relative path (Obsidian parity; no IPC, OS-agnostic)
-  const handleCopyPath = useCallback(async () => {
-    if (!note) return
-    try {
-      await navigator.clipboard.writeText(note.path)
-      toast.success(t('page.toast.pathCopied'))
-    } catch (err) {
-      toast.error(extractErrorMessage(err, t('page.toast.copyPathFailed')))
-    }
-  }, [note, t])
-
-  // Reveal in the OS file manager (Finder / Explorer / file manager)
-  const handleRevealInFinder = useCallback(async () => {
-    if (!noteId) return
-    try {
-      await notesService.revealInFinder(noteId)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, t('page.toast.revealFailed')))
-    }
-  }, [noteId, t])
-
-  // Reveal in the app sidebar / navigation tree
-  const handleRevealInSidebar = useCallback(() => {
-    if (!noteId) return
-    window.dispatchEvent(
-      new CustomEvent('reveal-in-sidebar', {
-        detail: { path: `/notes/${noteId}`, entityId: noteId }
-      })
-    )
-  }, [noteId])
-
-  // Open in the OS default app for the file type
-  const handleOpenExternal = useCallback(async () => {
-    if (!noteId) return
-    try {
-      await notesService.openExternal(noteId)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, t('page.toast.openExternalFailed')))
-    }
-  }, [noteId, t])
-
-  // Move to another folder (via the shared dialog)
-  const handleMoveToFolder = useCallback(
-    async (targetFolder: string) => {
-      if (!noteId) return
-      try {
-        const result = await moveNote.mutateAsync({ id: noteId, newFolder: targetFolder })
-        if (result.success) {
-          toast.success(t('page.toast.moved'))
-        } else {
-          toast.error(result.error ?? t('page.toast.moveFailed'))
-        }
-      } catch (err) {
-        toast.error(extractErrorMessage(err, t('page.toast.moveFailed')))
-      }
-    },
-    [noteId, moveNote, t]
-  )
-
-  const deleteTasksChoice = useNoteTasksChoice(isDeleteConfirmOpen, noteId ? [noteId] : [])
+  const deleteTasksChoice = useNoteTasksChoice(dialog.is('delete'), noteId ? [noteId] : [])
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
 
   // Delete the current note, then close its tab
@@ -1302,7 +1200,7 @@ export function NotePage({ noteId }: NotePageProps) {
       const result = await deleteNote.mutateAsync(noteId)
       if (result.success) {
         await deleteNoteTasks(carriedTaskIdsToDelete)
-        setIsDeleteConfirmOpen(false)
+        dialog.close()
         closeTab(activeTab?.id ?? `/notes/${noteId}`)
       } else {
         toast.error(result.error ?? t('page.toast.deleteFailed'))
@@ -1312,7 +1210,7 @@ export function NotePage({ noteId }: NotePageProps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [noteId, isDeleting, deleteNote, carriedTaskIdsToDelete, closeTab, activeTab?.id, t])
+  }, [noteId, isDeleting, deleteNote, carriedTaskIdsToDelete, closeTab, activeTab?.id, t, dialog])
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
@@ -1576,6 +1474,29 @@ export function NotePage({ noteId }: NotePageProps) {
     focusBlock: focusMindMapBlock
   })
 
+  const {
+    commands: noteCommands,
+    labels: noteLabels,
+    moveToFolder
+  } = useNoteCommands({
+    note,
+    isDeleted,
+    isLocked,
+    hasOwnLock,
+    isFullWidth,
+    isLocalGraphOpen,
+    setIsLocalGraphOpen,
+    dialog,
+    titleInputRef,
+    openTemplateInsertRef,
+    openFind,
+    isBookmarked,
+    toggleBookmark,
+    mindMap,
+    setLocalOnly: handleToggleLocalOnly,
+    setFullWidth: handleToggleFullWidth
+  })
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -1618,6 +1539,7 @@ export function NotePage({ noteId }: NotePageProps) {
         />
       )}
       <ReminderPicker
+        {...dialog.bind('reminder')}
         onSelect={(date, reminderNote) => void handleSetReminder(date, reminderNote)}
         presetType="standard"
         telemetrySurface="notes"
@@ -1652,9 +1574,9 @@ export function NotePage({ noteId }: NotePageProps) {
         variant="ghost"
         size="icon"
         className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
-        onClick={() => void toggleBookmark()}
+        onClick={() => void noteCommands['note.toggleBookmark'].run({ source: 'ui' })}
         disabled={isDeleted}
-        title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
+        title={noteLabels['note.toggleBookmark']}
       >
         <Bookmark2
           className={cn(
@@ -1693,32 +1615,10 @@ export function NotePage({ noteId }: NotePageProps) {
       <Picker
         value={null}
         closeOnSelect={false}
-        onValueChange={(action) => {
-          if (action === 'full-width') {
-            void handleToggleFullWidth(!isFullWidth)
-            return
-          }
-          setMoreMenuOpen(false)
-          if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
-          if (action === 'find') openFind()
-          if (action === 'version-history') setIsVersionHistoryOpen(true)
-          if (action === 'export') setIsExportDialogOpen(true)
-          if (action === 'apply-template') setIsApplyTemplateOpen(true)
-          if (action === 'insert-template') openTemplateInsertRef.current?.()
-          if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
-          if (action === 'new-note-from-note') void createNoteFromNote(note.id)
-          if (action === 'rename') handleRename()
-          if (action === 'add-name') requestNoteNameInput(note.id)
-          if (action === 'move-to-folder') setIsMoveDialogOpen(true)
-          if (action === 'copy-path') void handleCopyPath()
-          if (action === 'reveal-in-finder') void handleRevealInFinder()
-          if (action === 'reveal-in-sidebar') handleRevealInSidebar()
-          if (action === 'open-external') void handleOpenExternal()
-          if (action === 'attachments') setIsAttachmentsOpen(true)
-          if (action === 'delete') setIsDeleteConfirmOpen(true)
-          if (action === 'local-only')
-            void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
-          if (action === 'lock') void handleToggleLock()
+        onValueChange={(id) => {
+          // Full width flips in place: the switch is the feedback.
+          if (id !== 'note.toggleFullWidth') setMoreMenuOpen(false)
+          void noteCommands[id as NoteCommandId].run({ source: 'ui' })
         }}
         open={moreMenuOpen}
         onOpenChange={setMoreMenuOpen}
@@ -1738,27 +1638,23 @@ export function NotePage({ noteId }: NotePageProps) {
         <Picker.Content align="end">
           <Picker.List>
             <Picker.Item
-              value="local-graph"
-              label={
-                isLocalGraphOpen
-                  ? t('editor.toolbar.hideLocalGraph')
-                  : t('editor.toolbar.showLocalGraph')
-              }
+              value="note.localGraph"
+              label={noteLabels['note.localGraph']}
               icon={<PageGraphIcon className="size-4" />}
             />
             <Picker.Item
-              value="find"
-              label={t('editor.toolbar.find')}
+              value="note.find"
+              label={noteLabels['note.find']}
               icon={<Search className="size-4" />}
             />
             <Picker.Item
-              value="version-history"
-              label={t('editor.toolbar.versionHistory')}
+              value="note.versionHistory"
+              label={noteLabels['note.versionHistory']}
               icon={<FilePaste className="size-4" />}
             />
             <Picker.Item
-              value="export"
-              label={t('editor.toolbar.export')}
+              value="note.exportPdf"
+              label={noteLabels['note.exportPdf']}
               icon={<Download className="size-4" />}
             />
             {/* A large file reads back with an empty body, so apply would
@@ -1767,30 +1663,30 @@ export function NotePage({ noteId }: NotePageProps) {
             {!isLargeFile && (
               <>
                 <Picker.Item
-                  value="apply-template"
-                  label={t('tree.actions.applyTemplate')}
+                  value="note.applyTemplate"
+                  label={noteLabels['note.applyTemplate']}
                   icon={<LayoutTemplate className="size-4" />}
                 />
                 <Picker.Item
-                  value="insert-template"
-                  label={t('editor.slashMenu.insertTemplate.title')}
+                  value="note.insertTemplate"
+                  label={noteLabels['note.insertTemplate']}
                   icon={<PenLine className="size-4" />}
                 />
               </>
             )}
             <Picker.Item
-              value="save-as-template"
-              label={t('editor.toolbar.saveAsTemplate')}
+              value="note.saveAsTemplate"
+              label={noteLabels['note.saveAsTemplate']}
               icon={<Save className="size-4" />}
             />
             <Picker.Item
-              value="new-note-from-note"
-              label={t('newNoteFromNote.action')}
+              value="note.newFromNote"
+              label={noteLabels['note.newFromNote']}
               icon={<FilePlus className="size-4" />}
             />
             <Picker.Item
-              value="full-width"
-              label={t('editor.toolbar.fullWidth')}
+              value="note.toggleFullWidth"
+              label={noteLabels['note.toggleFullWidth']}
               icon={<Maximize className="size-4" />}
               trailing={
                 <Switch
@@ -1802,69 +1698,65 @@ export function NotePage({ noteId }: NotePageProps) {
             />
             <Picker.Separator />
             <Picker.Item
-              value="rename"
-              label={t('editor.toolbar.rename')}
+              value="note.rename"
+              label={noteLabels['note.rename']}
               icon={<Pencil className="size-4" />}
             />
             <Picker.Item
-              value="add-name"
-              label={t('names.addMenu')}
+              value="note.addName"
+              label={noteLabels['note.addName']}
               icon={<Type className="size-4" />}
             />
             <Picker.Item
-              value="move-to-folder"
-              label={t('editor.toolbar.moveToFolder')}
+              value="note.moveToFolder"
+              label={noteLabels['note.moveToFolder']}
               icon={<FolderInput className="size-4" />}
             />
             <Picker.Item
-              value="copy-path"
-              label={t('editor.toolbar.copyPath')}
+              value="note.copyPath"
+              label={noteLabels['note.copyPath']}
               icon={<Copy className="size-4" />}
             />
             <Picker.Separator />
             <Picker.Item
-              value="reveal-in-finder"
-              label={fileActions.revealInFolder}
+              value="note.revealInFinder"
+              label={noteLabels['note.revealInFinder']}
               icon={<FolderOpen className="size-4" />}
             />
             <Picker.Item
-              value="reveal-in-sidebar"
-              label={t('editor.toolbar.revealInSidebar')}
+              value="note.revealInSidebar"
+              label={noteLabels['note.revealInSidebar']}
               icon={<PanelLeft className="size-4" />}
             />
             <Picker.Item
-              value="open-external"
-              label={fileActions.openInDefaultApp}
+              value="note.openExternal"
+              label={noteLabels['note.openExternal']}
               icon={<ExternalLink className="size-4" />}
             />
             <Picker.Item
-              value="attachments"
-              label={t('editor.toolbar.attachments')}
+              value="note.attachments"
+              label={noteLabels['note.attachments']}
               icon={<Paperclip className="size-4" />}
             />
             <Picker.Separator />
             <Picker.Item
-              value="local-only"
-              label={
-                note.frontmatter.localOnly
-                  ? t('editor.toolbar.disableLocalOnly')
-                  : t('editor.toolbar.setLocalOnly')
-              }
+              value="note.toggleLocalOnly"
+              label={noteLabels['note.toggleLocalOnly']}
               icon={<Monitor className="size-4" />}
               disabled={isLocked}
               className="disabled:pointer-events-none disabled:opacity-50"
             />
             {(hasOwnLock || !isLocked) && (
               <Picker.Item
-                value="lock"
-                label={hasOwnLock ? t('vaultLock.unlockNote') : t('vaultLock.lockNote')}
+                value="note.toggleLock"
+                label={noteLabels['note.toggleLock']}
                 icon={<Lock className="size-4" />}
               />
             )}
             <Picker.Separator />
             <Picker.Item
-              value="delete"
-              label={t('editor.toolbar.delete')}
+              value="note.delete"
+              label={noteLabels['note.delete']}
               icon={<Trash2 className="size-4" />}
               destructive
             />
@@ -2259,17 +2151,11 @@ export function NotePage({ noteId }: NotePageProps) {
       </div>
 
       {/* Export Dialog */}
-      <ExportDialog
-        open={isExportDialogOpen}
-        onOpenChange={setIsExportDialogOpen}
-        noteId={noteId}
-        noteTitle={note.title}
-      />
+      <ExportDialog {...dialog.bind('export')} noteId={noteId} noteTitle={note.title} />
 
       {/* Attachments panel (#1713) */}
       <NoteAttachmentsDialog
-        open={isAttachmentsOpen}
-        onOpenChange={setIsAttachmentsOpen}
+        {...dialog.bind('attachments')}
         noteId={noteId}
         getOriginalNames={getAttachmentOriginalNames}
       />
@@ -2288,20 +2174,19 @@ export function NotePage({ noteId }: NotePageProps) {
 
       <ApplyTemplateToNoteDialog
         noteId={noteId}
-        isOpen={isApplyTemplateOpen}
-        onClose={() => setIsApplyTemplateOpen(false)}
+        isOpen={dialog.is('applyTemplate')}
+        onClose={dialog.close}
       />
 
       <SaveNoteAsTemplateDialog
         noteId={noteId}
-        isOpen={isSaveAsTemplateOpen}
-        onClose={() => setIsSaveAsTemplateOpen(false)}
+        isOpen={dialog.is('saveAsTemplate')}
+        onClose={dialog.close}
       />
 
       {/* Version History Panel */}
       <VersionHistory
-        open={isVersionHistoryOpen}
-        onOpenChange={setIsVersionHistoryOpen}
+        {...dialog.bind('versionHistory')}
         noteId={noteId}
         noteTitle={note.title}
         onRestore={() => {
@@ -2315,14 +2200,13 @@ export function NotePage({ noteId }: NotePageProps) {
 
       {/* Move to Folder Dialog */}
       <MoveToFolderDialog
-        open={isMoveDialogOpen}
-        onOpenChange={setIsMoveDialogOpen}
+        {...dialog.bind('move')}
         noteIds={[noteId]}
         currentFolder={
           note.path.includes('/') ? note.path.slice(0, note.path.lastIndexOf('/')) : ''
         }
         noteTitle={note.title}
-        onMove={(targetFolder) => void handleMoveToFolder(targetFolder)}
+        onMove={(targetFolder) => void moveToFolder(targetFolder)}
       />
 
       {/* Bring this note's existing tasks to its new project (#2271) */}
@@ -2343,10 +2227,7 @@ export function NotePage({ noteId }: NotePageProps) {
       />
 
       {/* Delete confirmation */}
-      <AlertDialog
-        open={isDeleteConfirmOpen}
-        onOpenChange={(open) => !open && setIsDeleteConfirmOpen(false)}
-      >
+      <AlertDialog {...dialog.bind('delete')}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('page.deleteConfirm.title')}</AlertDialogTitle>

@@ -22910,6 +22910,50 @@
                   "type": "null"
                 }
               ]
+            },
+            "folderNoteShortcuts": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folder": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "binding": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "modifiers": {
+                        "type": "object",
+                        "properties": {
+                          "meta": {
+                            "type": "boolean"
+                          },
+                          "ctrl": {
+                            "type": "boolean"
+                          },
+                          "shift": {
+                            "type": "boolean"
+                          },
+                          "alt": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": ["key", "modifiers"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["folder", "binding"],
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

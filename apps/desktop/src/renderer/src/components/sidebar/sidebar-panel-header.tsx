@@ -1,4 +1,5 @@
 import { useT } from '@memry/i18n/renderer'
+import { runCommand } from '@/commands'
 import { ChevronDown, PenLine, Search } from '@/lib/icons'
 import { Kbd } from '@/components/ui/kbd'
 import { Picker } from '@/components/ui/picker'
@@ -7,13 +8,12 @@ import {
   SidebarVaultHeader,
   type SidebarVaultPages
 } from '@/components/sidebar/sidebar-vault-paging'
-import { formatBinding } from '@/lib/shortcut-registry'
+import { formatBinding } from '@/lib/shortcut-catalog'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { cn } from '@/lib/utils'
 
 interface SidebarPanelHeaderProps {
   pages: SidebarVaultPages
-  onNewNote: () => void
   newItemActions: NewItemActions
 }
 
@@ -28,15 +28,11 @@ const FOCUS_RING =
  */
 export function SidebarPanelHeader({
   pages,
-  onNewNote,
   newItemActions
 }: SidebarPanelHeaderProps): React.JSX.Element {
   const { t } = useT('common')
   const searchBinding = useShortcutBinding('nav.search')
   const newNoteBinding = useShortcutBinding('nav.newNote')
-  const openSearch = (): void => {
-    window.dispatchEvent(new CustomEvent('memry:open-search'))
-  }
 
   return (
     <div className="flex shrink-0 flex-col gap-2 px-3 pt-1 pb-4 group-data-[collapsible=icon]:hidden">
@@ -45,7 +41,7 @@ export function SidebarPanelHeader({
         <button
           type="button"
           data-testid="sidebar-search"
-          onClick={openSearch}
+          onClick={() => void runCommand('nav.search', 'ui')}
           aria-label={t('sidebar.search')}
           title={`${t('sidebar.search')} (${formatBinding(searchBinding)})`}
           className={cn(
@@ -60,7 +56,7 @@ export function SidebarPanelHeader({
         <button
           type="button"
           data-tour="new-note"
-          onClick={onNewNote}
+          onClick={() => void runCommand('nav.newNote', 'ui')}
           title={t('phaseF.componentsAppSidebar.newNoteN')}
           className={cn(
             'flex h-full min-w-0 flex-1 items-center gap-2 rounded-s-[7px] ps-2.5 pe-1.5 text-start text-[13px] text-sidebar-primary transition-colors hover:bg-sidebar-accent-foreground/5',

@@ -1203,6 +1203,21 @@ describe('TasksPage', () => {
     expect(mocks.deselectAll).toHaveBeenCalled()
   })
 
+  it('keeps the selection when an overlay already took Escape', () => {
+    mocks.selectionState.selectedCount = 1
+    mocks.selectionState.hasSelection = true
+    mocks.selectionState.selectedTaskIds = ['task-1']
+    mocks.selectionState.selectedIds = new Set(['task-1'])
+    renderPage()
+
+    // The commands palette closes on Escape; clearing the selection too would
+    // leave its bulk commands with nothing to act on.
+    const handledByOverlay = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
+    handledByOverlay.preventDefault()
+    window.dispatchEvent(handledByOverlay)
+    expect(mocks.deselectAll).not.toHaveBeenCalled()
+  })
+
   it('covers selected project statuses and project delete reset/error paths', async () => {
     const user = userEvent.setup()
     mocks.selectionState.selectedCount = 1

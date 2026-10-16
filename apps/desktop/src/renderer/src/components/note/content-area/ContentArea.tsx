@@ -109,7 +109,7 @@ import {
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { Plugin } from 'prosemirror-state'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'

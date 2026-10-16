@@ -1046,14 +1046,6 @@
     "or": "atau",
     "then": "kemudian",
     "groups": {
-      "general": {
-        "title": "Umum",
-        "description": "Navigasi dan bantuan seluruh apl."
-      },
-      "tabs": {
-        "title": "Tab & paparan pisah",
-        "description": "Bergerak antara tab dan anak tetingkap."
-      },
       "inbox": {
         "title": "Peti masuk",
         "description": "Uruskan item yang dicatat dengan pantas."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Jurnal",
         "description": "Navigasi paparan jurnal dan fokus pada ruang menulis."
-      },
-      "notes": {
-        "title": "Nota / Editor",
-        "description": "Tulis, formatkan dan cari nota."
       },
       "tasks": {
         "title": "Tugas",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Buka carian pantas",
-        "createNote": "Buat nota",
-        "openSettings": "Buka tetapan",
-        "switchVault": "Tukar bilik kebal",
-        "adjacentVault": "Bilik kebal sebelumnya atau seterusnya",
-        "keyboardShortcuts": "Buka pintasan papan kekunci",
         "undoTaskAction": "Buat asal tindakan tugas terakhir",
-        "toggleSidebar": "Tunjuk/sembunyi bar sisi",
         "sidebarSection": "Pergi ke bahagian bar sisi"
       },
       "tabs": {
-        "newTabMenu": "Buka menu tab baharu",
-        "closeTab": "Tutup tab",
-        "closeAllInPane": "Tutup semua tab dalam anak tetingkap",
-        "reopenClosedTab": "Buka semula tab yang ditutup",
-        "nextTab": "Tab seterusnya",
-        "previousTab": "Tab sebelumnya",
-        "pinTab": "Semat atau nyahsemat tab",
-        "duplicateTab": "Pendua tab",
-        "splitRight": "Pisah ke kanan",
-        "splitDown": "Pisah ke bawah",
-        "closeSplitPane": "Tutup anak tetingkap pisah",
         "focusPane": "Fokus pada anak tetingkap lain",
         "moveTabToPane": "Alihkan tab ke anak tetingkap",
         "maximizePane": "Maksimumkan anak tetingkap semasa"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Kembali daripada paparan bulan atau tahun",
-        "find": "Cari dalam jurnal",
-        "bold": "Tebalkan teks yang dipilih",
-        "italic": "Condongkan teks yang dipilih",
-        "underline": "Garis bawahi teks yang dipilih"
+        "find": "Cari dalam jurnal"
       },
       "notes": {
-        "createNote": "Buat nota",
         "find": "Cari dalam nota",
-        "bold": "Tebal",
-        "italic": "Condong",
-        "underline": "Garis bawah",
         "commandMenu": "Buka menu arahan editor",
         "closeOverlays": "Tutup lapisan tindanan editor"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Hentikan ulangan tugas"
       },
       "settings": {
-        "openSettings": "Buka tetapan",
         "customizeShortcuts": "Sesuaikan pintasan papan kekunci",
         "recordShortcut": "Rakam pintasan baharu",
         "cancelRecording": "Batalkan rakaman pintasan",

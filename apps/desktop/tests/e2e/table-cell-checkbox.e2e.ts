@@ -96,7 +96,7 @@ test.describe('Table cell checkboxes', () => {
 
     // #and no checklist block was added beside the table, which is the old bug
     const blockTypes = await page.evaluate(() =>
-      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+      (window as any).__memryActiveEditor.document.map((block: any) => block.type as string)
     )
     expect(blockTypes).not.toContain('checkListItem')
 
@@ -178,7 +178,7 @@ test.describe('Table cell checkboxes', () => {
 
     // …and no checklist block was added beside the table
     const blockTypes = await page.evaluate(() =>
-      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+      (window as any).__memryActiveEditor.document.map((block: any) => block.type as string)
     )
     expect(blockTypes).not.toContain('checkListItem')
 

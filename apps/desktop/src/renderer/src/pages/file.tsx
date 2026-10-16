@@ -33,6 +33,7 @@ import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
 import { AddFileToProjectDialog } from '@/components/tasks/projects/add-file-to-project-dialog'
+import { useFileCommands, type FileCommandId } from './file/use-file-commands'
 
 // ============================================================================
 // Types
@@ -121,13 +122,7 @@ function FileLoadingState() {
  * across, and its toolbar is already carrying the reading controls — so on that
  * surface the same actions collapse into this.
  */
-function FileActionsMenu({
-  file,
-  onAddToProject
-}: {
-  file: FileMetadata
-  onAddToProject: () => void
-}) {
+function FileActionsMenu({ run }: { run: (id: FileCommandId) => void }) {
   const { t: tPhaseF } = useT('notes')
   const { t: tTasks } = useT('tasks')
   const fileActions = useFileActionLabels()
@@ -144,15 +139,15 @@ function FileActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={onAddToProject}>
+        <DropdownMenuItem onClick={() => run('file.addToProject')}>
           <FolderPlus className="me-2 h-4 w-4" />
           {tTasks('addToProject.menuLabel')}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void window.api.notes.openExternal(file.id)}>
+        <DropdownMenuItem onClick={() => run('file.openExternal')}>
           <ExternalLink className="me-2 h-4 w-4" />
           {fileActions.openInDefaultApp}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void window.api.notes.revealInFinder(file.id)}>
+        <DropdownMenuItem onClick={() => run('file.revealInFinder')}>
           <Download className="me-2 h-4 w-4" />
           {fileActions.revealInFolder}
         </DropdownMenuItem>
@@ -165,7 +160,7 @@ function FileActionsMenu({
 // File Info Bar Component
 // ============================================================================
 
-function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProject: () => void }) {
+function FileInfoBar({ file, run }: { file: FileMetadata; run: (id: FileCommandId) => void }) {
   const { t: tPhaseF } = useT('notes')
   const { t: tTasks } = useT('tasks')
   const fileActions = useFileActionLabels()
@@ -185,7 +180,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
           <Button
             variant="ghost"
             size="sm"
-            onClick={onAddToProject}
+            onClick={() => run('file.addToProject')}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={tTasks('addToProject.menuLabel')}
           >
@@ -195,7 +190,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void window.api.notes.openExternal(file.id)}
+            onClick={() => run('file.openExternal')}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={fileActions.openInDefaultApp}
           >
@@ -205,7 +200,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void window.api.notes.revealInFinder(file.id)}
+            onClick={() => run('file.revealInFinder')}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={fileActions.revealInFolder}
           >
@@ -223,7 +218,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
 // File Viewer Component
 // ============================================================================
 
-function FileViewer({ file, onAddToProject }: { file: FileMetadata; onAddToProject: () => void }) {
+function FileViewer({ file, run }: { file: FileMetadata; run: (id: FileCommandId) => void }) {
   const { t: tPhaseF } = useT('notes')
   // Convert absolute path to memry-file:// protocol URL for secure local file access
   const fileUrl = toMemryFileUrl(file.absolutePath)
@@ -236,7 +231,7 @@ function FileViewer({ file, onAddToProject }: { file: FileMetadata; onAddToProje
           className="flex-1"
           title={file.title}
           chips={<ItemProjectChips itemType="file" itemId={file.id} maxVisible={2} />}
-          actions={<FileActionsMenu file={file} onAddToProject={onAddToProject} />}
+          actions={<FileActionsMenu run={run} />}
         />
       )
 
@@ -290,6 +285,11 @@ export function FilePage({ fileId }: FilePageProps) {
     staleTime: 60_000 // 1 minute
   })
 
+  const { runCommand } = useFileCommands({
+    fileId: file?.id ?? null,
+    openAddToProject: () => setAddToProjectOpen(true)
+  })
+
   // Handle no file ID
   if (!fileId) {
     return <FileEmptyState />
@@ -330,8 +330,8 @@ export function FilePage({ fileId }: FilePageProps) {
 
   return (
     <div className={cn('flex h-full flex-col min-h-0')}>
-      {showInfoBar && <FileInfoBar file={file} onAddToProject={() => setAddToProjectOpen(true)} />}
-      <FileViewer file={file} onAddToProject={() => setAddToProjectOpen(true)} />
+      {showInfoBar && <FileInfoBar file={file} run={runCommand} />}
+      <FileViewer file={file} run={runCommand} />
       <AddFileToProjectDialog
         open={addToProjectOpen}
         onOpenChange={setAddToProjectOpen}

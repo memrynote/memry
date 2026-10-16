@@ -77,8 +77,8 @@ async function applyBlockEditToOpenNote(page: Page, edit: BlockEdit): Promise<vo
   await editorRoot.click()
 
   await page.evaluate(({ blockIndex, cursorPosition }) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const doc = editor.document as any[]
     const target = doc[blockIndex]
@@ -91,8 +91,8 @@ async function applyBlockEditToOpenNote(page: Page, edit: BlockEdit): Promise<vo
   }, edit)
 
   await page.evaluate((text) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     editor.focus()
     editor.insertInlineContent([text], { updateSelection: true })
