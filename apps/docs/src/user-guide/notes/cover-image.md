@@ -159,7 +159,8 @@ text property and shows in the properties list exactly as it did before, untouch
 
 ## Where Covers Appear
 
-Covers are a note-page feature. Journal entries and the template editor do not show one.
+A note's cover heads its page and its card in a folder's [Gallery layout](/user-guide/folder-view#gallery-layout).
+Journal entries and the template editor do not show one.
 
 A `cover` key in a journal file or a template is left alone — it is read and written back as it was
 found, so nothing is lost if the file came from somewhere else or you added the key by hand.
