@@ -32,7 +32,7 @@ describe('reindexCodeLinks', () => {
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z'
     })
-    reindexNoteNames(index.db, { noteId: id, title, aliases: [] })
+    reindexNoteNames(index.db, { noteId: id, title, aliases: { kind: 'read', aliases: [] } })
   }
 
   const linksOf = (id: string): Array<[string, string | null]> =>

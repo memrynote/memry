@@ -172,13 +172,16 @@ impl WikiNames {
                 journal_date: Some(date),
             });
         }
+        Ok(Self::ranked(rows))
+    }
+
+    /// Builds the index with its tie-break: notes before journal days, then
+    /// by id. Every lookup map keeps the first row that claims a key, so this
+    /// order decides which row a shared name resolves to.
+    fn ranked(mut rows: Vec<Row>) -> Self {
         rows.sort_by(|a, b| {
             (a.journal_date.is_some(), &a.id).cmp(&(b.journal_date.is_some(), &b.id))
         });
-        Ok(Self::from_rows(rows))
-    }
-
-    fn from_rows(rows: Vec<Row>) -> Self {
         let mut names = Self {
             entries: Vec::with_capacity(rows.len()),
             by_id: HashMap::new(),

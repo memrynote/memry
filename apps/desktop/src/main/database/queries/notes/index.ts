@@ -77,6 +77,7 @@ export {
   reresolveLinks,
   listNotesWithoutNames,
   fillMissingLinkKeys,
+  type IndexedAliases,
   type NoteNamesInput,
   type ReresolvedLinks
 } from './note-names-queries'

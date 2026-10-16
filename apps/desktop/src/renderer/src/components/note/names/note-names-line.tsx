@@ -149,10 +149,10 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
       </div>
       {draft && conflict && (
         <p role="status" className="text-xs leading-4 text-text-tertiary">
-          {conflict.isTitle
+          {conflict.isOtherTitle
             ? t('names.conflictTitle', { name: conflict.name })
             : t('names.conflictName', { name: conflict.name, title: conflict.title })}{' '}
-          {conflict.keeps
+          {conflict.otherKeepsName
             ? t('names.conflictKeeps', { title: conflict.title })
             : t('names.conflictTakesOver', { title: conflict.title })}
         </p>

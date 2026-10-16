@@ -59,7 +59,7 @@ function seedNote(fileContent: string, aliases: string[]): void {
     createdAt: '2026-01-01T00:00:00.000Z',
     modifiedAt: '2026-01-01T00:00:00.000Z'
   })
-  reindexNoteNames(indexDb.db, { noteId: 'n1', title: 'n1', aliases })
+  reindexNoteNames(indexDb.db, { noteId: 'n1', title: 'n1', aliases: { kind: 'read', aliases } })
   fs.mkdirSync(VAULT_ROOT, { recursive: true })
   fs.writeFileSync(path.join(VAULT_ROOT, NOTE_PATH), fileContent, 'utf-8')
 }
