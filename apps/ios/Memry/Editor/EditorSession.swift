@@ -51,6 +51,9 @@ final class EditorSession {
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
+    /// Opens a wiki link's target, for a tap on a link in a block. `nil`
+    /// leaves the tap to place the caret.
+    @ObservationIgnored var openWikiTarget: ((String) -> Void)?
     /// Schedules a vault sync pass (`requestVaultSync`, debounced), so a
     /// write reaches other devices without waiting for the next foreground
     /// or launch. `didChange` calls it after every committed write.

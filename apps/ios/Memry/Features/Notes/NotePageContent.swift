@@ -43,6 +43,24 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.whiteboards) private var whiteboards
 
+    /// Opens a wiki link's note, for the read view and the editor alike.
+    /// Resolved on the tap, then pushed onto the stack the browse list pushes
+    /// onto. A link naming no note says so rather than doing nothing; desktop
+    /// offers to create it.
+    private var openTarget: ((String) -> Void)? {
+        open.map { open in
+            { title in
+                Task {
+                    if let route = await model.wikiTarget(for: title) {
+                        open(route)
+                    } else {
+                        brokenLink = title
+                    }
+                }
+            }
+        }
+    }
+
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
         guard editorModel.canEdit else { return nil }
@@ -62,6 +80,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.tagColors = model.tagColors
         session.blocks = { model.blocks }
         session.openTag = openTag
+        session.openWikiTarget = openTarget
         session.requestSync = requestVaultSync
         session.whiteboards = whiteboards
         let noteTitle = detail.summary.title
@@ -121,21 +140,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             // drawn and readable; they lead nowhere.
             NoteBlocksView(
                 blocks: model.blocks,
-                openTarget: open.map { open in
-                    { title in
-                        // Resolved on the tap, then pushed onto the stack the
-                        // browse list pushes onto. A link naming no note says
-                        // so rather than doing nothing; desktop offers to
-                        // create it.
-                        Task {
-                            if let route = await model.wikiTarget(for: title) {
-                                open(route)
-                            } else {
-                                brokenLink = title
-                            }
-                        }
-                    }
-                },
+                openTarget: openTarget,
                 openTag: openTag,
                 tableContent: { model.tables[$0] },
                 attachment: { model.attachments[$0] ?? .unknown },
