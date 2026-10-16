@@ -87,6 +87,8 @@ export function createGeneratedRpcApi({
       "applyTemplate": ((input) => invoke("notes:apply-template", input)) as GeneratedRpcApi["notes"]["applyTemplate"],
       "undoTagTemplate": ((input) => invoke("notes:undo-tag-template", input)) as GeneratedRpcApi["notes"]["undoTagTemplate"],
       "editAliases": ((input) => invoke("notes:edit-aliases", input)) as GeneratedRpcApi["notes"]["editAliases"],
+      "getUnlinkedMentions": ((id) => invoke("notes:get-unlinked-mentions", id)) as GeneratedRpcApi["notes"]["getUnlinkedMentions"],
+      "linkMention": ((input) => invoke("notes:link-mention", input)) as GeneratedRpcApi["notes"]["linkMention"],
       "appendBlocks": ((input) => invoke("notes:append-blocks", input)) as GeneratedRpcApi["notes"]["appendBlocks"],
       "list": ((options) => invoke("notes:list", options ?? {})) as GeneratedRpcApi["notes"]["list"],
       "getTags": (() => invoke("notes:get-tags")) as GeneratedRpcApi["notes"]["getTags"],

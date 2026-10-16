@@ -61,6 +61,7 @@ import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
 import { buildVersionedValues } from './vectors/versioned-values'
+import { buildUnlinkedMentions } from './vectors/unlinked-mentions'
 import { buildWikiTargetResolution } from './vectors/wiki-target-resolution'
 import { VECTORS_DIR, writeVectorFile } from './vectors/shared'
 
@@ -94,6 +95,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'wiki-target-resolution',
     files: [{ path: 'wiki-target-resolution.json', build: buildWikiTargetResolution }]
+  },
+  {
+    name: 'unlinked-mentions',
+    files: [{ path: 'unlinked-mentions.json', build: buildUnlinkedMentions }]
   },
   {
     name: 'tag-schema-refs',

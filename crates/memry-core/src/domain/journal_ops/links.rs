@@ -49,7 +49,7 @@ pub struct OutgoingLink {
 }
 
 /// What a target or source id names in `data.db`.
-enum Item {
+pub(crate) enum Item {
     Note { title: String, stamp: i64 },
     Journal { date: String, stamp: i64 },
 }
@@ -171,7 +171,7 @@ pub fn outgoing_links(
 }
 
 /// A live note, else a live journal day, by id.
-fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, StorageError> {
+pub(crate) fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, StorageError> {
     let note = data
         .query_row(
             "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \

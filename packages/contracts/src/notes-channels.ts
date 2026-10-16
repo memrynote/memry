@@ -148,6 +148,10 @@ export const NotesChannels = {
     /** Put back the empty body a tag template filled, if it is still untouched */
     UNDO_TAG_TEMPLATE: 'notes:undo-tag-template',
     EDIT_ALIASES: 'notes:edit-aliases',
+    /** Notes that mention a note's title or alias without linking to it */
+    GET_UNLINKED_MENTIONS: 'notes:get-unlinked-mentions',
+    /** Turn one unlinked mention into a wiki link */
+    LINK_MENTION: 'notes:link-mention',
     /** Append markdown to the end of an existing note's body (block "Move to") */
     APPEND_BLOCKS: 'notes:append-blocks',
     /** Open a large-file-class file for read-only streaming */

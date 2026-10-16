@@ -25,6 +25,7 @@ use rusqlite::OptionalExtension as _;
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::search::{self, HitKind, SearchHit};
+use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
@@ -268,6 +269,21 @@ impl Search {
         let index = self.index.clone();
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| links::outgoing_links(data, index, &source_id))
+        })
+    }
+
+    /// Notes and journal days that mention `target_id`'s title or an alias as
+    /// plain text without linking to it (#3320), by source title. Read from
+    /// the index, so a body edited since the last reindex can lag.
+    pub fn unlinked_mentions(
+        &self,
+        target_id: String,
+    ) -> Result<Vec<UnlinkedMention>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| {
+                unlinked_mentions::unlinked_mentions(data, index, &target_id)
+            })
         })
     }
 

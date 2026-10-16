@@ -152,6 +152,25 @@ An older desktop version shows an alias link as a broken link and does not apply
 changes from your other devices. The file is not changed.
 :::
 
+## Unlinked Mentions
+
+Below the backlinks, **Unlinked mentions** lists notes that write this note's title or one of
+its aliases as plain text, without linking to it. The section starts collapsed. Open it to
+search the vault.
+
+- A mention is a whole word or phrase, in any case: for a note titled "Plan", "the plan"
+  counts and "planning" does not.
+- A title or alias shorter than 3 characters is never matched.
+- Text in code, in comments, inside a link, or in a URL is not a mention.
+- A note that already links to this note shows under backlinks, not here.
+
+Each mention shows the sentence around it and a **Link** button. Link turns that one mention
+into a wiki link and keeps the text you wrote: "the roadmap" becomes
+`the [[Project Plan|roadmap]]`. When the text already spells the title, the link is just
+`[[Project Plan]]`. The note then moves to backlinks. A locked note cannot be changed this way.
+
+Unlinked mentions are on desktop for now.
+
 ## Following a Link
 
 Click any wiki link to open the target in a new tab — or in this tab, if you have turned "clicking a page opens a new tab" off in settings.

@@ -54,5 +54,6 @@ pub mod task_views;
 pub mod tasks;
 pub mod template_admin;
 pub mod templates;
+pub mod unlinked_mentions;
 pub mod wiki_suggest;
 pub mod wiki_target;
