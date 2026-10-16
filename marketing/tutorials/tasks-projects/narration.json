@@ -9,7 +9,7 @@
   "card": {
     "label": "Tutorial",
     "title": "Tasks & Projects",
-    "topics": ["Quick capture", "Views", "Task details", "Project hubs", "Boards", "Tasks in notes"]
+    "topics": ["Quick capture", "Repeats", "Today", "Project hubs", "Boards", "Tasks in notes"]
   },
   "endCard": {
     "at": "Thanks for watching",
@@ -28,69 +28,83 @@
   "thumbnails": [
     {
       "text": "Backlog\n→ Done.",
-      "shot": { "scene": "kanban", "at": 5.205, "x": 464.75, "y": 224, "w": 285.5, "h": 268 }
+      "shot": {
+        "scene": "kanban",
+        "at": 4.893,
+        "x": 464.75,
+        "y": 224,
+        "w": 285.5,
+        "h": 268
+      }
     },
     {
       "text": "Today,\nsorted.",
-      "shot": { "scene": "views", "at": 11.889, "x": 499, "y": 209, "w": 322, "h": 242 }
+      "shot": {
+        "scene": "views",
+        "at": 3.28,
+        "x": 487,
+        "y": 205,
+        "w": 314,
+        "h": 242
+      }
     },
     {
       "text": "No separate\nto-do app.",
-      "shot": { "scene": "notes", "at": 9.092, "x": 801, "y": 245, "w": 378, "h": 306 }
+      "shot": {
+        "scene": "hub",
+        "at": 8.9,
+        "x": 467,
+        "y": 315,
+        "w": 290,
+        "h": 370
+      }
     }
   ],
   "scenes": [
     {
       "id": "intro",
-      "title": "Intro",
-      "text": "Here's how tasks and projects work in {brand}. Let's start with capturing a task.",
-      "lead": 1.6
+      "text": "Your tasks shouldn't live in a different app from your notes. Here's how {brand} keeps them together.",
+      "lead": 0.6
     },
     {
       "id": "capture",
-      "title": "Quick capture",
-      "text": "Everything starts in the capture bar. Type what you need to do, and add the details as you go. An at sign sets the date, an exclamation mark the priority, a plus picks the project, and a hash adds a tag. Each one turns into a pill, so you can see exactly what you'll get before you press enter."
+      "title": "Capture a task with date, priority, project and tag",
+      "text": "Say a client wants the homepage copy by Friday. Click the capture bar and type it the way you'd say it. An at sign sets the date, and Tab accepts what it suggests. An exclamation mark sets the priority, a plus picks the project, and a hash adds a tag. Each one turns into a pill, so you can see exactly what you'll get before you press enter. That's quick capture: the whole task in one line."
     },
     {
       "id": "repeat",
-      "title": "Repeating tasks",
-      "text": "Repeating tasks work the same way. Just write the cadence in plain English. Every Monday, every weekday, or every two weeks."
+      "title": "Write repeating tasks in plain English",
+      "text": "Some tasks come back every week. Just write the cadence in plain English: every Monday, every weekday, or every two weeks. And when you finish one, like this month's rent, the next one is already waiting on its next date. Use a repeat for anything with a rhythm, so you don't have to keep it in your head."
     },
     {
       "id": "views",
-      "title": "Today and views",
-      "text": "Your tasks are grouped by when they're due. Overdue first, then today, tomorrow, and the rest of the week. And the views up here narrow it down to just today, tomorrow, or the next seven days."
+      "title": "See what's due today, tomorrow and this week",
+      "text": "Each morning, the question is what's due. Your list answers it by date: overdue first, then today, tomorrow, and the rest of the week. The views up here narrow it to today, tomorrow, or the next seven days, and Today keeps anything overdue in sight, so nothing slips."
     },
     {
       "id": "drawer",
-      "title": "Task details",
-      "text": "Click any task to open its details. Give it a start date as well as a due date, and it shows up in Today every day until it's done. Break bigger work into sub-issues, and keep the notes you need linked right next to it."
+      "title": "Use a start date to keep a task in Today",
+      "text": "Some work takes more than a day. Click a task to open its details. Give it a start date as well as a due date, and it shows up in Today every day until it's done. Break it into sub-issues, and keep the notes you need linked right next to it. A start date is for work you chip away at. A due date alone is for things you finish in one go."
     },
     {
       "id": "hub",
-      "title": "Project hub",
-      "text": "Projects are where tasks meet everything else. Open one from the sidebar, and its hub gathers the tasks, notes and files that belong to it, on one page."
-    },
-    {
-      "id": "hubcapture",
-      "title": "Capture in a project",
-      "text": "The capture bar here knows where you are. A task you type lands in this project, and a link you paste becomes a note that's already filed with it."
+      "title": "Open a project hub: tasks and notes together",
+      "text": "Maya is also planning a trip to Lisbon. Projects are where tasks meet everything else. Open one from the sidebar, and its hub gathers the tasks and notes that belong to it, on one page. The capture bar here knows where you are. A task you type lands in this project, and a link you paste becomes a note that's already filed with it."
     },
     {
       "id": "kanban",
-      "title": "Board and statuses",
-      "text": "Every project can have its own workflow. Switch to the board, and drag a card to move it along. The columns are yours to shape, so they match the way you actually work."
+      "title": "Move work across a board",
+      "text": "Client work moves through stages. Switch the project to the board, and drag a card to move it along. The columns are the project's statuses, so they're yours to shape. Rename one in the project's settings, and the board follows. Use the board when you care where things stand, and the list when you care what's due."
     },
     {
       "id": "notes",
-      "title": "Tasks in notes",
-      "text": "And you don't have to leave your notes to plan. Type a checkbox in any note, and it becomes a real task, with its date, project and priority right there on the line."
+      "title": "Turn a checkbox in a note into a real task",
+      "text": "And you don't have to leave your notes to plan. In the project brief, start a line with a checkbox and write the task. It becomes a real task, with its date, project and priority right there on the line, and it shows up in Tasks like any other."
     },
     {
       "id": "outro",
-      "title": "Outro",
-      "text": "That's tasks and projects in {brand}. Everything lives on your device, encrypted end to end, and syncs when you want it to. Thanks for watching, and I'll see you in the next one.",
-      "tail": 2.6
+      "title": "Recap",
+      "text": "That's tasks and projects in {brand}: capture in one line, plan your day from Today, and run each project from its hub and board. It all lives on your device, and everything that syncs is encrypted end to end. Tell me in the comments: do your tasks live next to your notes today, or in a separate app? Thanks for watching."
     }
   ]
 }
