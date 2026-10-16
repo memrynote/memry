@@ -12,6 +12,7 @@ import {
   ListProviderCalendarsSchema,
   PromoteExternalEventSchema,
   GetExternalEventSchema,
+  ListLinkedNotesSchema,
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
@@ -41,6 +42,7 @@ import {
   type ListProviderCalendarsResponse,
   type PromoteExternalEventResponse,
   type GetExternalEventResponse,
+  type CalendarLinkedNotesResponse,
   type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse,
   type SetDefaultProviderCalendarResponse
@@ -62,6 +64,8 @@ import {
   listCalendarSources as listCalendarSourceRows
 } from '../calendar/repositories/calendar-sources-repository'
 import { searchCalendarEventsByTitle } from '../calendar/repositories/calendar-events-repository'
+import { searchCalendarExternalEventsByTitle } from '../calendar/repositories/calendar-external-events-repository'
+import { listLinkedNotes } from '../calendar/linked-notes'
 import { resolveDefaultGoogleAccountId } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
 import { getExternalEventDetails } from '../calendar/external-event-details'
@@ -353,12 +357,29 @@ export function registerCalendarHandlers(): void {
   ipcMain.handle(
     CalendarChannels.invoke.SEARCH_EVENTS,
     createValidatedHandler(SearchCalendarEventsSchema, (input): CalendarEventSearchResponse => {
-      const rows = searchCalendarEventsByTitle(requireDatabase(), {
-        query: input.query,
-        limit: input.limit,
-        now: new Date().toISOString()
-      })
-      return { events: rows.map(toEventSearchItem) }
+      const db = requireDatabase()
+      const options = { query: input.query, limit: input.limit, now: new Date().toISOString() }
+      const events = searchCalendarEventsByTitle(db, options).map(toEventSearchItem)
+      if (!input.includeExternal) return { events }
+
+      const external = searchCalendarExternalEventsByTitle(db, options).map(
+        (row): CalendarEventSearchItem => ({
+          id: row.id,
+          title: row.title,
+          startAt: row.startAt,
+          endAt: row.endAt ?? null,
+          isAllDay: row.isAllDay,
+          kind: 'external_event'
+        })
+      )
+      const nowMs = Date.parse(options.now)
+      const distance = (item: CalendarEventSearchItem): number =>
+        Math.abs(Date.parse(item.startAt) - nowMs) || 0
+      return {
+        events: [...events, ...external]
+          .sort((a, b) => distance(a) - distance(b))
+          .slice(0, input.limit)
+      }
     })
   )
 
@@ -647,6 +668,19 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.LIST_LINKED_NOTES,
+    createValidatedHandler(
+      ListLinkedNotesSchema,
+      withDb(
+        (db, input): CalendarLinkedNotesResponse => ({
+          notes: listLinkedNotes(db, getIndexDatabase(), input)
+        }),
+        'errors:calendar.listLinkedNotesFailed'
+      )
+    )
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
     createValidatedHandler(
       PromoteExternalEventSchema,
@@ -699,5 +733,6 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT)
   ipcMain.removeHandler(CalendarChannels.invoke.OPEN_OS_CALENDAR_SETTINGS)
   ipcMain.removeHandler(CalendarChannels.invoke.GET_EXTERNAL_EVENT)
+  ipcMain.removeHandler(CalendarChannels.invoke.LIST_LINKED_NOTES)
   ipcMain.removeHandler(CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS)
 }

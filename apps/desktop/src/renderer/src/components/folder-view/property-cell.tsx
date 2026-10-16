@@ -756,6 +756,7 @@ const RELATION_KIND_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
   event: Calendar,
+  'external-event': Calendar,
   canvas: PenTool,
   journal: BookOpen
 }

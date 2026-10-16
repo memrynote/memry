@@ -424,6 +424,7 @@ export function CalendarShell({
           onSave={onPopoverSave}
           onDismiss={onPopoverDismiss}
           readOnlyMetadata={popoverState.readOnlyMetadata}
+          onOpenNote={onNoteOpen}
         />
       )}
 

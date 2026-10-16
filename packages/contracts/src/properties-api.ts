@@ -117,6 +117,12 @@ export interface ResolvedRelationRef {
   /** Event targets only. The calendar needs the date to move its range before it can focus the event. */
   startAt?: string
   /**
+   * Event targets only: the calendar item to focus. A native event is its own
+   * id; an external event is its mirror row id, or the native event it was
+   * promoted into.
+   */
+  calendarItemId?: string
+  /**
    * Journal targets only: the local ISO date the entry belongs to. It is also
    * the target id — a journal is addressed by its day, not by a row id — and it
    * is what the journal tab's `viewState.date` needs.

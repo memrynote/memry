@@ -39,6 +39,7 @@ import {
   CalendarCardHeader,
   CalendarCardSection
 } from './calendar-card'
+import { CalendarEventNotes } from './calendar-event-notes'
 
 const log = createLogger('CalendarReadOnlyEventCard')
 
@@ -222,8 +223,12 @@ function AttendeeList({ attendees }: { attendees: CalendarEventAttendeeRecord[] 
 function SubscribedEventPopover({
   item,
   anchorRect,
-  onDismiss
-}: SubscribedEventTarget & { onDismiss: () => void }): React.JSX.Element {
+  onDismiss,
+  onOpenNote
+}: SubscribedEventTarget & {
+  onDismiss: () => void
+  onOpenNote: (noteId: string) => void
+}): React.JSX.Element {
   const { t, i18n } = useT('calendar')
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { ref: positionRef, style: positionStyle } = useAnchoredPopoverPosition(anchorRect, {
@@ -405,6 +410,11 @@ function SubscribedEventPopover({
         </Row>
       </CalendarCardSection>
 
+      <CalendarEventNotes
+        target={{ sourceType: 'external_event', sourceId: item.sourceId, title: item.title }}
+        onOpenNote={onOpenNote}
+      />
+
       {description && (
         <CalendarCardSection className="py-1.5">
           <Row icon={<AlignLeft />}>
@@ -427,12 +437,16 @@ function SubscribedEventPopover({
 /** Renders nothing until a read-only event is selected. */
 export function CalendarSubscribedEventPopover({
   target,
-  onDismiss
+  onDismiss,
+  onOpenNote
 }: {
   target: SubscribedEventTarget | null
   onDismiss: () => void
+  onOpenNote: (noteId: string) => void
 }): React.JSX.Element | null {
-  return target ? <SubscribedEventPopover {...target} onDismiss={onDismiss} /> : null
+  return target ? (
+    <SubscribedEventPopover {...target} onDismiss={onDismiss} onOpenNote={onOpenNote} />
+  ) : null
 }
 
 export default CalendarSubscribedEventPopover

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { GOOGLE_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
@@ -789,6 +797,30 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       })
   }
 
+  // A relation chip can focus a mirrored external event. It opens the way a
+  // click opens it: the read-only card, or promotion for a provider that can
+  // write back. Shares the focus token with the native-event effect above.
+  const selectFocusedExternalItem = useEffectEvent(handleSelectItem)
+  // Reacts to the tab's focus request, like the focus effects above.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
+  useEffect(() => {
+    if (!calendarFocusEventId || calendarFocusToken === null) return
+    if (openedCalendarFocusRef.current === calendarFocusToken || rangeQuery.isLoading) return
+    const item = filteredItems.find(
+      (candidate) =>
+        candidate.sourceType === 'external_event' && candidate.sourceId === calendarFocusEventId
+    )
+    if (!item) return
+    openedCalendarFocusRef.current = calendarFocusToken
+    void selectFocusedExternalItem(item, {
+      x: window.innerWidth / 2,
+      y: Math.max(120, window.innerHeight / 3),
+      width: 1,
+      height: 1
+    })
+  }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
+
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')
     setNotePopoverState(null)
@@ -1150,6 +1182,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       <CalendarSubscribedEventPopover
         target={subscribedPopoverState}
         onDismiss={() => setSubscribedPopoverState(null)}
+        onOpenNote={(noteId) => {
+          setSubscribedPopoverState(null)
+          handleNoteOpen(noteId)
+        }}
       />
       {taskPopoverState && (
         <CalendarTaskPopover

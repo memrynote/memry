@@ -7,13 +7,25 @@ import type {
   CalendarExternalEventDetails,
   CalendarProjectionItem
 } from '@memry/contracts/calendar-api'
+import { encodeExternalEventRelationId, formatRelationUri } from '@memry/contracts/relation-uri'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarSubscribedEventPopover } from './calendar-subscribed-event-popover'
 
-const mocks = vi.hoisted(() => ({ getExternalEvent: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  getExternalEvent: vi.fn(),
+  listLinkedNotes: vi.fn(),
+  createNote: vi.fn()
+}))
 
 vi.mock('@/services/calendar-service', () => ({
-  calendarService: { getExternalEvent: mocks.getExternalEvent }
+  calendarService: {
+    getExternalEvent: mocks.getExternalEvent,
+    listLinkedNotes: mocks.listLinkedNotes
+  }
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: { create: mocks.createNote }
 }))
 
 const ITEM: CalendarProjectionItem = {
@@ -88,12 +100,17 @@ const DETAILS: CalendarExternalEventDetails = {
 
 let i18nEn: I18nInstance
 
-function renderCard(item: CalendarProjectionItem = ITEM, onDismiss = vi.fn()): void {
+function renderCard(
+  item: CalendarProjectionItem = ITEM,
+  onDismiss = vi.fn(),
+  onOpenNote = vi.fn()
+): void {
   renderWithProviders(
     <I18nextProvider i18n={i18nEn}>
       <CalendarSubscribedEventPopover
         target={{ item, anchorRect: { x: 10, y: 10, width: 100, height: 20 } }}
         onDismiss={onDismiss}
+        onOpenNote={onOpenNote}
       />
     </I18nextProvider>
   )
@@ -107,6 +124,32 @@ describe('read-only event card (#2374)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getExternalEvent.mockResolvedValue({ event: DETAILS })
+    mocks.listLinkedNotes.mockResolvedValue({ notes: [] })
+  })
+
+  it('starts a note named after the event, linked to it, and opens it', async () => {
+    const onOpenNote = vi.fn()
+    mocks.createNote.mockResolvedValue({ success: true, note: { id: 'nte_new' } })
+    mocks.listLinkedNotes
+      .mockResolvedValueOnce({ notes: [] })
+      .mockResolvedValue({ notes: [{ id: 'nte_new', title: ITEM.title, emoji: null }] })
+    renderCard(ITEM, vi.fn(), onOpenNote)
+
+    const notes = await screen.findByTestId('calendar-event-notes')
+    await userEvent.click(within(notes).getByRole('button', { name: 'New note' }))
+
+    expect(mocks.createNote).toHaveBeenCalledWith({
+      title: 'M[onetization]-Up!',
+      properties: {
+        Event: [formatRelationUri('external-event', encodeExternalEventRelationId('evt-1'))]
+      }
+    })
+    expect(onOpenNote).toHaveBeenCalledWith('nte_new')
+    expect(mocks.listLinkedNotes).toHaveBeenLastCalledWith({
+      sourceType: 'external_event',
+      sourceId: 'evt-1'
+    })
+    expect(await within(notes).findByRole('button', { name: ITEM.title })).toBeInTheDocument()
   })
 
   it('shows what Calendar.app shows: series, alert, join link, attendees, calendar', async () => {

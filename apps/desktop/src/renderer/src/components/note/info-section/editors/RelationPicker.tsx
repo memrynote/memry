@@ -11,6 +11,7 @@ const GROUP_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
   event: Calendar,
+  'external-event': Calendar,
   canvas: PenTool,
   journal: BookOpen
 }
@@ -41,8 +42,13 @@ export function RelationPicker({
 }
 
 function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): React.JSX.Element {
-  const { t } = useT('notes')
+  const { t, i18n } = useT('notes')
   const [query, setQuery] = useState('')
+  const dateFormat = new Intl.DateTimeFormat(i18n.language, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
   const { notes, tasks, events, canvases, journals, loading } = useRelationSearch(query)
 
   const trimmed = query.trim()
@@ -67,11 +73,16 @@ function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): R
             key={item.id}
             type="button"
             role="option"
-            onClick={() => onSelect(formatRelationUri(kind, item.id))}
+            onClick={() => onSelect(formatRelationUri(item.kind ?? kind, item.id))}
             className="flex w-full items-center gap-2 rounded-[5px] px-2 py-1.5 text-start transition-colors hover:bg-accent focus:outline-none focus-visible:bg-accent"
           >
             <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="truncate">{item.title}</span>
+            {item.startAt && (
+              <span className="ms-auto shrink-0 text-xs text-muted-foreground">
+                {dateFormat.format(new Date(item.startAt))}
+              </span>
+            )}
           </button>
         ))}
       </Picker.Section>

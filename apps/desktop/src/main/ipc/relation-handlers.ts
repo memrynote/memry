@@ -6,8 +6,8 @@
  * databases: note targets live in `note_cache` (index DB), task and event
  * targets live in `tasks` / `calendar_events` (data DB). Canvas targets live in
  * `canvases` (data DB) and journal targets are `note_cache` rows with a `date`
- * (index DB). External provider events (`calendar_external_events`) are out of
- * scope and never queried.
+ * (index DB). External provider events live in `calendar_external_events`
+ * (data DB), addressed by their base64url-encoded row id.
  *
  * @module ipc/relation-handlers
  */
@@ -18,12 +18,21 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import {
   PropertiesChannels,
   ResolveRefsSchema,
   type ResolvedRelationRef
 } from '@memry/contracts/properties-api'
-import { parseRelationUri, type RelationKind } from '@memry/contracts/relation-uri'
+import {
+  decodeExternalEventRelationId,
+  parseRelationUri,
+  type RelationKind
+} from '@memry/contracts/relation-uri'
+import {
+  findCalendarBindingByRemoteEvent,
+  getCalendarSourceById
+} from '../calendar/repositories/calendar-sources-repository'
 import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
@@ -50,6 +59,7 @@ export async function resolveRefs(
     note: [],
     task: [],
     event: [],
+    'external-event': [],
     canvas: [],
     journal: []
   }
@@ -87,6 +97,18 @@ export async function resolveRefs(
         .where(inArray(calendarEvents.id, idsByKind.event))
         .all()
     : []
+  // Archived rows included: promotion archives the mirror it copied, and the
+  // link still names that event.
+  const externalRowIds = idsByKind['external-event'].flatMap(
+    (id) => decodeExternalEventRelationId(id) ?? []
+  )
+  const externalRows = externalRowIds.length
+    ? dataDb
+        .select()
+        .from(calendarExternalEvents)
+        .where(inArray(calendarExternalEvents.id, externalRowIds))
+        .all()
+    : []
   // A soft-deleted canvas is a dangling target, not a hit: `deletedAt` is the
   // tombstone sync relies on, so the row is still there and must be filtered.
   const canvasRows = idsByKind.canvas.length
@@ -110,6 +132,7 @@ export async function resolveRefs(
   const taskById = new Map(taskRows.map((row) => [row.id, row]))
   const eventById = new Map(eventRows.map((row) => [row.id, row]))
   const canvasById = new Map(canvasRows.map((row) => [row.id, row]))
+  const externalById = new Map(externalRows.map((row) => [row.id, row]))
   // Two notes can in principle claim the same journal date; first row wins, the
   // same way every other journal-by-date read in the app resolves it.
   const journalByDate = new Map<string, (typeof journalRows)[number]>()
@@ -180,6 +203,23 @@ export async function resolveRefs(
       }
     }
 
+    if (ref.kind === 'external-event') {
+      const rowId = decodeExternalEventRelationId(ref.id)
+      const row = rowId ? externalById.get(rowId) : undefined
+      if (!row) {
+        return { uri, targetType: 'external-event', targetId: ref.id, title: '', exists: false }
+      }
+      return {
+        uri,
+        targetType: 'external-event',
+        targetId: ref.id,
+        title: row.title,
+        exists: true,
+        startAt: row.startAt,
+        calendarItemId: row.archivedAt ? (promotedEventId(dataDb, row) ?? row.id) : row.id
+      }
+    }
+
     const event = eventById.get(ref.id)
     if (!event) return { uri, targetType: 'event', targetId: ref.id, title: '', exists: false }
     return {
@@ -188,9 +228,26 @@ export async function resolveRefs(
       targetId: ref.id,
       title: event.title,
       exists: true,
-      startAt: event.startAt
+      startAt: event.startAt,
+      calendarItemId: ref.id
     }
   })
+}
+
+/** The native event an archived mirror was promoted into, if any. */
+function promotedEventId(
+  dataDb: DataDb,
+  row: typeof calendarExternalEvents.$inferSelect
+): string | null {
+  const source = getCalendarSourceById(dataDb, row.sourceId)
+  if (!source) return null
+  const binding = findCalendarBindingByRemoteEvent(
+    dataDb,
+    source.provider,
+    source.remoteId,
+    row.remoteEventId
+  )
+  return binding?.sourceType === 'event' ? binding.sourceId : null
 }
 
 /**

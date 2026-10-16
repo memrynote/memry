@@ -11,6 +11,7 @@ import {
   ListCalendarSourcesSchema,
   PromoteExternalEventSchema,
   GetExternalEventSchema,
+  ListLinkedNotesSchema,
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
@@ -45,6 +46,7 @@ import {
   type PromoteExternalEventResponse,
   type GetExternalEventResponse,
   type CalendarExternalEventDetails,
+  type CalendarLinkedNotesResponse,
   type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse,
   type SetDefaultProviderCalendarResponse
@@ -68,6 +70,7 @@ export type CalendarProviderRequest = z.input<typeof CalendarProviderRequestSche
 export type ListGoogleCalendarsInput = z.input<typeof ListGoogleCalendarsSchema>
 export type PromoteExternalEventInput = z.input<typeof PromoteExternalEventSchema>
 export type GetExternalEventInput = z.input<typeof GetExternalEventSchema>
+export type ListLinkedNotesInput = z.input<typeof ListLinkedNotesSchema>
 export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalendarSchema>
 export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
 export type SubscribeIcsCalendarInput = z.input<typeof SubscribeIcsCalendarSchema>
@@ -99,6 +102,7 @@ export type {
   PromoteExternalEventResponse,
   GetExternalEventResponse,
   CalendarExternalEventDetails,
+  CalendarLinkedNotesResponse,
   RetryCalendarSourceSyncResponse,
   SetDefaultGoogleCalendarResponse
 }
@@ -233,6 +237,12 @@ export const calendarRpc = defineDomain({
       (input: GetExternalEventInput) => Promise<GetExternalEventResponse>
     >({
       channel: CalendarChannels.invoke.GET_EXTERNAL_EVENT,
+      params: ['input']
+    }),
+    listLinkedNotes: defineMethod<
+      (input: ListLinkedNotesInput) => Promise<CalendarLinkedNotesResponse>
+    >({
+      channel: CalendarChannels.invoke.LIST_LINKED_NOTES,
       params: ['input']
     }),
     promoteExternalEvent: defineMethod<

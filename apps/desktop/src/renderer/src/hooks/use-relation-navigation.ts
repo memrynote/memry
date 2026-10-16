@@ -36,7 +36,7 @@ function toCalendarFocusDate(startAt: string | undefined): string | null {
  * - task      — the tasks tab reads `openTaskId` (detail drawer) and
  *               `selectedProjectId` (scopes the list), the same pair
  *               `journal-day-panel` already sends.
- * - event     — the calendar reads `focusCalendarEventId`, `focusDate` and
+ * - event / external-event — the calendar reads `focusCalendarEventId`, `focusDate` and
  *               `focusedAt`. All three are required: its first effect needs the
  *               date to switch to day view and move the range, because its
  *               second effect can only find the event once the range that
@@ -115,7 +115,7 @@ export function useRelationNavigation(): (ref: ResolvedRelationRef) => void {
         icon: 'calendar',
         path: '/calendar',
         viewState: {
-          focusCalendarEventId: ref.targetId,
+          focusCalendarEventId: ref.calendarItemId ?? ref.targetId,
           ...(focusDate ? { focusDate } : {}),
           focusedAt: Date.now()
         }

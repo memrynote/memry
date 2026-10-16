@@ -814,6 +814,8 @@ export const CalendarChannels = {
     OPEN_OS_CALENDAR_SETTINGS: 'calendar:open-os-calendar-settings',
     /** #2374: one mirrored external event with attendees, reminders and join link */
     GET_EXTERNAL_EVENT: 'calendar:get-external-event',
+    /** Notes whose relation properties link to one event, native or mirrored */
+    LIST_LINKED_NOTES: 'calendar:list-linked-notes',
     // ------------------------------------------------------------------------
     // Compatibility surface: the provider-specific channels below are kept as
     // permanent aliases of the generic ones above (#1392). During a partial
