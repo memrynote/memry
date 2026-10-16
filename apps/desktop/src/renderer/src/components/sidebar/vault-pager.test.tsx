@@ -1,8 +1,9 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react'
 import { Activity } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultInfo } from '../../../../preload/index.d'
+import { runCommand, useCommandDispatcher } from '@/commands'
 import { VaultPager } from './vault-pager'
 import { VAULT_SWIPE } from '@/lib/vault-swipe'
 import {
@@ -101,12 +102,15 @@ describe('VaultPager', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(WIDTH)
+    // The vault chords reach the pager through the app's one command dispatcher.
+    renderHook(() => useCommandDispatcher())
   })
 
   afterEach(() => {
     // Unmount before the stores reset, so the reset does not render a live pager.
     cleanup()
     document.body.innerHTML = ''
+    document.documentElement.removeAttribute('dir')
     vi.useRealTimers()
     vi.restoreAllMocks()
     resetVaultSwitchState()
@@ -190,6 +194,30 @@ describe('VaultPager', () => {
 
     act(() => {
       nextVaultChord(focusedInput())
+    })
+    await settle()
+
+    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next', 'shortcut')
+  })
+
+  it('reads the arrows spatially in RTL, where the next vault sits to the left', async () => {
+    document.documentElement.dir = 'rtl'
+    const { onSwitch } = renderPager()
+
+    act(() => {
+      nextVaultChord(focusedInput())
+    })
+    await settle()
+
+    expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev', 'shortcut')
+  })
+
+  it('keeps list order for a menu invocation in RTL', async () => {
+    document.documentElement.dir = 'rtl'
+    const { onSwitch } = renderPager()
+
+    await act(async () => {
+      await runCommand('nav.nextVault', 'menu')
     })
     await settle()
 

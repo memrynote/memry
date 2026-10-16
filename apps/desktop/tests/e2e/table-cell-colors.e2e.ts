@@ -67,7 +67,7 @@ async function createNote(page: Page, title: string, content = '') {
 /**
  * The editor is on screen AND bound — the second half is what a reload needs.
  *
- * A visible `.bn-editor` is only the paint: `window.__memryEditor` is published
+ * A visible `.bn-editor` is only the paint: `window.__memryActiveEditor` is published
  * from an effect that runs after it, and until it does the node on screen is one
  * the next render replaces. Clicking into that node loses whatever it selected,
  * which reads later as a keyboard shortcut that did nothing.
@@ -76,7 +76,7 @@ async function waitForEditor(page: Page) {
   const editor = page.locator(SELECTORS.noteEditor).first()
   await editor.waitFor({ state: 'visible', timeout: 15_000 })
   await page.waitForFunction(
-    () => Boolean((window as unknown as { __memryEditor?: unknown }).__memryEditor),
+    () => Boolean((window as unknown as { __memryActiveEditor?: unknown }).__memryActiveEditor),
     undefined,
     { timeout: 15_000 }
   )
@@ -100,7 +100,7 @@ async function selectWordInCell(page: Page, cell: Locator, word: string): Promis
     .poll(
       async () => {
         await cell.dblclick({ position: WORD_START })
-        return page.evaluate(() => (window as any).__memryEditor?.getSelectedText() ?? '')
+        return page.evaluate(() => (window as any).__memryActiveEditor?.getSelectedText() ?? '')
       },
       { timeout: 20_000 }
     )
@@ -110,8 +110,8 @@ async function selectWordInCell(page: Page, cell: Locator, word: string): Promis
 async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
   await waitForEditor(page)
   await page.evaluate((next) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, next)
   }, blocks)
 }
@@ -120,8 +120,8 @@ async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
 async function tableShape(page: Page): Promise<unknown[]> {
   await waitForEditor(page)
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const table = editor.document.find((block: any) => block.type === 'table')
     if (!table) throw new Error('no table in the document')
     return table.content.rows.map((row: any) =>

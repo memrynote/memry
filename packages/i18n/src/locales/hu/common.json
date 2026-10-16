@@ -1046,14 +1046,6 @@
     "or": "vagy",
     "then": "majd",
     "groups": {
-      "general": {
-        "title": "Általános",
-        "description": "Alkalmazásszintű navigáció és súgó."
-      },
-      "tabs": {
-        "title": "Lapok és felosztás",
-        "description": "Váltás a lapok és az ablaktáblák között."
-      },
       "inbox": {
         "title": "Beérkezők",
         "description": "A rögzített elemek gyors feldolgozása."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Napló",
         "description": "Navigálás a naplónézetek között és az írófelület fókuszálása."
-      },
-      "notes": {
-        "title": "Jegyzetek / Szerkesztő",
-        "description": "Jegyzetek írása, formázása és keresése."
       },
       "tasks": {
         "title": "Feladatok",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Gyorskeresés megnyitása",
-        "createNote": "Jegyzet létrehozása",
-        "openSettings": "Beállítások megnyitása",
-        "switchVault": "Széfváltás",
-        "adjacentVault": "Előző vagy következő széf",
-        "keyboardShortcuts": "Billentyűparancsok megnyitása",
         "undoTaskAction": "Az utolsó feladatművelet visszavonása",
-        "toggleSidebar": "Oldalsáv megjelenítése/elrejtése",
         "sidebarSection": "Ugrás az oldalsáv egy szakaszára"
       },
       "tabs": {
-        "newTabMenu": "Az „Új lap” menü megnyitása",
-        "closeTab": "Lap bezárása",
-        "closeAllInPane": "Az ablaktábla összes lapjának bezárása",
-        "reopenClosedTab": "Bezárt lap újranyitása",
-        "nextTab": "Következő lap",
-        "previousTab": "Előző lap",
-        "pinTab": "Lap kitűzése vagy kitűzés megszüntetése",
-        "duplicateTab": "Lap megkettőzése",
-        "splitRight": "Felosztás jobbra",
-        "splitDown": "Felosztás lefelé",
-        "closeSplitPane": "Osztott ablaktábla bezárása",
         "focusPane": "Másik ablaktábla fókuszálása",
         "moveTabToPane": "Lap áthelyezése másik ablaktáblába",
         "maximizePane": "Az aktuális ablaktábla teljes méretre nagyítása"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Visszatérés a havi vagy éves nézetből",
-        "find": "Keresés a naplóban",
-        "bold": "A kijelölt szöveg félkövérré tétele",
-        "italic": "A kijelölt szöveg dőltté tétele",
-        "underline": "A kijelölt szöveg aláhúzása"
+        "find": "Keresés a naplóban"
       },
       "notes": {
-        "createNote": "Jegyzet létrehozása",
         "find": "Keresés a jegyzetben",
-        "bold": "Félkövér",
-        "italic": "Dőlt",
-        "underline": "Aláhúzott",
         "commandMenu": "A szerkesztő parancsmenüjének megnyitása",
         "closeOverlays": "A szerkesztő felugró paneljeinek bezárása"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "A feladat ismétlésének leállítása"
       },
       "settings": {
-        "openSettings": "Beállítások megnyitása",
         "customizeShortcuts": "Billentyűparancsok testreszabása",
         "recordShortcut": "Új billentyűparancs felvétele",
         "cancelRecording": "A billentyűparancs felvételének megszakítása",

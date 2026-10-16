@@ -19,8 +19,6 @@ import { useGraphSettings } from './use-graph-settings'
 import { useInboxKeyboard } from './use-inbox-keyboard'
 import { useJournalSettings } from './use-journal-settings'
 import { useKeyboardSettings } from './use-keyboard-settings'
-import { useSearchShortcut } from './use-search-shortcut'
-import { useSettingsShortcut } from './use-settings-shortcut'
 import { useStorageUsage } from './use-storage-usage'
 import { useUndoableAction } from './use-undoable-action'
 import { toast } from 'sonner'
@@ -467,25 +465,9 @@ describe('navigation and keyboard hooks', () => {
     removeSpy.mockRestore()
   })
 
-  it('handles search, settings, countdown, and flush lifecycle hooks', async () => {
+  it('handles countdown and flush lifecycle hooks', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
-    const isMacPlatform = navigator.platform.toUpperCase().includes('MAC')
-    const shortcutModifier = isMacPlatform ? { metaKey: true } : { ctrlKey: true }
-    const onSearch = vi.fn()
-    const onSettings = vi.fn()
-
-    const search = renderHook(() => useSearchShortcut(onSearch))
-    fireEvent.keyDown(window, { key: 'k', ...shortcutModifier })
-    fireEvent.keyDown(window, { key: 'p', ...shortcutModifier })
-    expect(onSearch).toHaveBeenCalledTimes(2)
-    search.unmount()
-
-    const settings = renderHook(() => useSettingsShortcut(onSettings))
-    fireEvent.keyDown(window, { key: ',', ...shortcutModifier })
-    expect(onSettings).toHaveBeenCalled()
-    settings.unmount()
-
     const countdown = renderHook(() =>
       useCountdown(Math.floor(new Date('2026-05-10T12:01:05.000Z').getTime() / 1000))
     )

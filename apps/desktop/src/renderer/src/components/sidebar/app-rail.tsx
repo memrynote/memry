@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { Settings } from '@/lib/icons'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
 import { reorderSidebarSections } from '@/components/sidebar/sidebar-section-order'
 import type { PageIconProps } from '@/lib/icons/page-icons'

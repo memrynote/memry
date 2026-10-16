@@ -97,4 +97,43 @@ describe('TabContextMenu', () => {
       }
     })
   })
+
+  it.each([
+    ['pin', 'pins the right-clicked tab, not the active one', true],
+    ['duplicate', 'duplicates the right-clicked tab with its view state', false]
+  ])('%s: %s', async (choice, _name, isPin) => {
+    const activeTab = makeTab({ title: 'Active' })
+    const clickedTab = makeTab({ title: 'Clicked', viewState: { filter: 'done' } })
+    const group = makeGroup([activeTab, clickedTab])
+    const initialState = makeState([group])
+    let latestState = initialState
+
+    ;(window as unknown as { api: unknown }).api = {
+      showContextMenu: vi.fn().mockResolvedValue(choice),
+      onSettingsChanged: vi.fn(() => vi.fn())
+    }
+
+    render(
+      <TabProvider initialState={initialState}>
+        <Capture onState={(state) => (latestState = state)} />
+        <TabContextMenu tab={clickedTab} groupId={group.id}>
+          <button type="button">Clicked</button>
+        </TabContextMenu>
+      </TabProvider>
+    )
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Clicked' }))
+
+    await waitFor(() => {
+      const tabs = latestState.tabGroups[group.id].tabs
+      if (isPin) {
+        expect(tabs.find((tab) => tab.id === clickedTab.id)?.isPinned).toBe(true)
+        expect(tabs.find((tab) => tab.id === activeTab.id)?.isPinned).toBe(false)
+      } else {
+        expect(tabs).toHaveLength(3)
+        expect(tabs.filter((tab) => tab.entityId === clickedTab.entityId)).toHaveLength(2)
+        expect(tabs.at(-1)?.viewState).toEqual({ filter: 'done' })
+      }
+    })
+  })
 })

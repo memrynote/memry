@@ -22,8 +22,8 @@ async function selectBlocks(page: Page, fromIndex: number, toIndex: number): Pro
   await focusEditor(page)
   await page.evaluate(
     ({ from, to }) => {
-      const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       const doc = editor.document as Array<{ id: string }>
       editor.focus()
       editor.setSelection(doc[from].id, doc[to].id)
@@ -35,8 +35,8 @@ async function selectBlocks(page: Page, fromIndex: number, toIndex: number): Pro
 async function placeCaretAtEnd(page: Page, blockIndex: number): Promise<void> {
   await focusEditor(page)
   await page.evaluate((index) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const doc = editor.document as Array<{ id: string }>
     editor.focus()
     editor.setTextCursorPosition(doc[index].id, 'end')
@@ -45,8 +45,8 @@ async function placeCaretAtEnd(page: Page, blockIndex: number): Promise<void> {
 
 async function documentShape(page: Page): Promise<BlockShape[]> {
   return page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const text = (content: unknown): string =>
       Array.isArray(content)
         ? content

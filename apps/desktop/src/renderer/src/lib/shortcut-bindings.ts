@@ -8,18 +8,18 @@
  *
  * Module-level (not React context) so `components/ui/sidebar.tsx` and the tab
  * hooks can read it wherever they are mounted, and so tests without a settings
- * IPC bridge simply fall back to registry defaults.
+ * IPC bridge simply fall back to catalog defaults.
  */
 
 import { useSyncExternalStore } from 'react'
 import type { FolderNoteShortcut, ShortcutBinding } from '@memry/contracts/settings-schemas'
-import { SHORTCUT_REGISTRY, type ShortcutId } from './shortcut-registry'
+import { SHORTCUT_ENTRIES, type ShortcutId } from './shortcut-catalog'
 
 const DEFAULT_BINDINGS = new Map<string, ShortcutBinding>(
-  SHORTCUT_REGISTRY.map((entry) => [entry.id, entry.defaultBinding])
+  SHORTCUT_ENTRIES.map((entry) => [entry.id, entry.defaultBinding])
 )
 
-/** A chord no keystroke can match — used if an id ever leaves the registry. */
+/** A chord no keystroke can match — used if an id ever leaves the catalog. */
 const NEVER_MATCHES: ShortcutBinding = { key: '', modifiers: {} }
 
 let overrides: Record<string, ShortcutBinding> = {}
@@ -60,7 +60,7 @@ function start(): void {
         setFolderNoteShortcuts(settings.folderNoteShortcuts ?? [])
       })
       .catch(() => {
-        // Settings unavailable — registry defaults stay in effect.
+        // Settings unavailable — catalog defaults stay in effect.
       })
   }
   load()
@@ -102,6 +102,19 @@ export function getShortcutBinding(id: ShortcutId): ShortcutBinding {
   const binding = overrides[id] ?? DEFAULT_BINDINGS.get(id) ?? NEVER_MATCHES
   resolved.set(id, binding)
   return binding
+}
+
+/**
+ * The user's rebinds, keyed by command id. `resolveChord` reads them to let a
+ * rebind win over a default, so it needs to know which ids are overridden at all.
+ * Subscribing (not just reading) is what loads them from settings.
+ */
+export function useShortcutOverrides(): Readonly<Record<string, ShortcutBinding>> {
+  return useSyncExternalStore(
+    subscribe,
+    () => overrides,
+    () => overrides
+  )
 }
 
 /**

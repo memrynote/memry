@@ -1046,14 +1046,6 @@
     "or": "또는",
     "then": "그다음",
     "groups": {
-      "general": {
-        "title": "일반",
-        "description": "앱 전체 탐색과 도움말."
-      },
-      "tabs": {
-        "title": "탭 및 분할",
-        "description": "탭과 분할 창 사이를 이동합니다."
-      },
       "inbox": {
         "title": "수신함",
         "description": "기록한 항목을 빠르게 처리합니다."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "저널",
         "description": "저널 보기 사이를 이동하고 작성 영역에 포커스합니다."
-      },
-      "notes": {
-        "title": "노트 / 편집기",
-        "description": "노트를 작성하고, 서식을 지정하고, 검색합니다."
       },
       "tasks": {
         "title": "작업",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "빠른 검색 열기",
-        "createNote": "노트 만들기",
-        "openSettings": "설정 열기",
-        "switchVault": "볼트 전환",
-        "adjacentVault": "이전 또는 다음 볼트",
-        "keyboardShortcuts": "키보드 단축키 열기",
         "undoTaskAction": "마지막 작업 변경 실행 취소",
-        "toggleSidebar": "사이드바 표시/숨기기",
         "sidebarSection": "사이드바 섹션으로 이동"
       },
       "tabs": {
-        "newTabMenu": "새 탭 메뉴 열기",
-        "closeTab": "탭 닫기",
-        "closeAllInPane": "분할 창의 모든 탭 닫기",
-        "reopenClosedTab": "닫은 탭 다시 열기",
-        "nextTab": "다음 탭",
-        "previousTab": "이전 탭",
-        "pinTab": "탭 고정 또는 고정 해제",
-        "duplicateTab": "탭 복제",
-        "splitRight": "오른쪽으로 분할",
-        "splitDown": "아래로 분할",
-        "closeSplitPane": "분할 창 닫기",
         "focusPane": "다른 분할 창으로 포커스 이동",
         "moveTabToPane": "탭을 분할 창으로 이동",
         "maximizePane": "현재 분할 창 최대화"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "월 또는 연 보기에서 돌아가기",
-        "find": "저널에서 찾기",
-        "bold": "선택한 텍스트 굵게",
-        "italic": "선택한 텍스트 기울임",
-        "underline": "선택한 텍스트 밑줄"
+        "find": "저널에서 찾기"
       },
       "notes": {
-        "createNote": "노트 만들기",
         "find": "노트에서 찾기",
-        "bold": "굵게",
-        "italic": "기울임",
-        "underline": "밑줄",
         "commandMenu": "편집기 명령 메뉴 열기",
         "closeOverlays": "편집기 오버레이 닫기"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "작업 반복 중지"
       },
       "settings": {
-        "openSettings": "설정 열기",
         "customizeShortcuts": "키보드 단축키 사용자 지정",
         "recordShortcut": "새 단축키 입력",
         "cancelRecording": "단축키 입력 취소",

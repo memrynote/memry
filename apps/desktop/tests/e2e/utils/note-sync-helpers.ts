@@ -151,7 +151,7 @@ async function waitForNoteEditor(page: Page) {
   // journal surface makes that gap wide enough to lose. Wait for the global,
   // otherwise every reader below throws instead of retrying.
   await page.waitForFunction(
-    () => Boolean((window as unknown as { __memryEditor?: unknown }).__memryEditor),
+    () => Boolean((window as unknown as { __memryActiveEditor?: unknown }).__memryActiveEditor),
     undefined,
     { timeout: 30000 }
   )
@@ -352,8 +352,8 @@ export async function replaceNoteBody(page: Page, body: string): Promise<void> {
   await waitForNoteEditor(page)
   const nextBlocks = bodyToParagraphBlocks(body)
   await page.evaluate((blocks) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, blocks)
   }, nextBlocks)
 }
@@ -361,8 +361,8 @@ export async function replaceNoteBody(page: Page, body: string): Promise<void> {
 export async function appendToNoteBody(page: Page, text: string): Promise<void> {
   const editorRoot = await waitForNoteEditor(page)
   const hasContent = await page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const doc = editor.document as any[]
     editor.focus()
@@ -382,8 +382,8 @@ export async function appendToNoteBody(page: Page, text: string): Promise<void> 
     await page.keyboard.press('Enter')
   }
   await page.evaluate((value) => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     editor.focus()
     editor.insertInlineContent([value], { updateSelection: true })
@@ -393,8 +393,8 @@ export async function appendToNoteBody(page: Page, text: string): Promise<void> 
 export async function readNoteBodyText(page: Page): Promise<string> {
   await waitForNoteEditor(page)
   const text = await page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const readInlineContent = (content: any[] | undefined): string => {
       if (!Array.isArray(content)) return ''

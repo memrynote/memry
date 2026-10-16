@@ -31,7 +31,9 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
-    getFile: mocks.getFile
+    getFile: mocks.getFile,
+    openExternal: mocks.openExternal,
+    revealInFinder: mocks.revealInFinder
   }
 }))
 

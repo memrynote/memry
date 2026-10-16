@@ -145,8 +145,8 @@ async function setDocumentToParentWithSubtask(
 ): Promise<void> {
   await page.evaluate(
     ({ parent, sub }) => {
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
@@ -182,8 +182,8 @@ async function setDocumentToTabIndentedTasks(
 ): Promise<void> {
   await page.evaluate(
     ({ parent, child }) => {
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
@@ -218,8 +218,8 @@ async function setDocumentToParentSiblingSub(
 ): Promise<void> {
   await page.evaluate(
     ({ parent, sub }) => {
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
@@ -569,8 +569,8 @@ test.describe('Inline Subtasks', () => {
     // set correctly — no demote intent should fire).
     await page.evaluate(
       ({ parent, child }) => {
-        const editor = (window as any).__memryEditor
-        if (!editor) throw new Error('window.__memryEditor not exposed')
+        const editor = (window as any).__memryActiveEditor
+        if (!editor) throw new Error('window.__memryActiveEditor not exposed')
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -630,7 +630,7 @@ test.describe('Inline Subtasks', () => {
     // Render two top-level taskBlocks in the editor.
     await page.evaluate(
       ({ parent, child }) => {
-        const editor = (window as any).__memryEditor
+        const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -732,7 +732,7 @@ test.describe('Inline Subtasks', () => {
     // Seed the editor with just the parent taskBlock.
     await page.evaluate(
       ({ taskId, title }) => {
-        const editor = (window as any).__memryEditor
+        const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -747,7 +747,7 @@ test.describe('Inline Subtasks', () => {
     // #when - a top-level checkListItem lands below the parent.
     await page.evaluate(
       ({ parentTaskId, parentTitle, childTitle }) => {
-        const editor = (window as any).__memryEditor
+        const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -846,8 +846,8 @@ test.describe('Inline Subtasks', () => {
 
     await page.evaluate(
       ({ parent, childTitle }) => {
-        const editor = (window as any).__memryEditor
-        if (!editor) throw new Error('window.__memryEditor not exposed')
+        const editor = (window as any).__memryActiveEditor
+        if (!editor) throw new Error('window.__memryActiveEditor not exposed')
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -921,7 +921,7 @@ test.describe('Inline Subtasks', () => {
     // Seed: parent taskBlock with one subtask child, then a paragraph below.
     await page.evaluate(
       ({ parent, sub }) => {
-        const editor = (window as any).__memryEditor
+        const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
@@ -962,7 +962,7 @@ test.describe('Inline Subtasks', () => {
     // the cursor and then fire a real keyboard event so the capture-phase
     // listener in ContentArea sees it before ProseMirror.
     const result = await page.evaluate(async () => {
-      const editor = (window as any).__memryEditor
+      const editor = (window as any).__memryActiveEditor
       const doc = editor.document as any[]
       const para = doc.find((b: any) => b.type === 'paragraph')
       if (!para) return { reason: 'no paragraph' }
@@ -1017,8 +1017,8 @@ test.describe('Inline Subtasks', () => {
 
     await page.evaluate(
       ({ taskId, title }) => {
-        const editor = (window as any).__memryEditor
-        if (!editor) throw new Error('window.__memryEditor not exposed')
+        const editor = (window as any).__memryActiveEditor
+        if (!editor) throw new Error('window.__memryActiveEditor not exposed')
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',

@@ -1046,14 +1046,6 @@
     "or": "lub",
     "then": "potem",
     "groups": {
-      "general": {
-        "title": "Ogólne",
-        "description": "Nawigacja w całej aplikacji i pomoc."
-      },
-      "tabs": {
-        "title": "Karty i podziały",
-        "description": "Przechodź między kartami i okienkami."
-      },
       "inbox": {
         "title": "Skrzynka odbiorcza",
         "description": "Szybko porządkuj dodane elementy."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dziennik",
         "description": "Poruszaj się po widokach dziennika i przechodź do obszaru pisania."
-      },
-      "notes": {
-        "title": "Notatki / Edytor",
-        "description": "Pisz, formatuj i przeszukuj notatki."
       },
       "tasks": {
         "title": "Zadania",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Otwórz szybkie wyszukiwanie",
-        "createNote": "Utwórz notatkę",
-        "openSettings": "Otwórz ustawienia",
-        "switchVault": "Przełącz sejf",
-        "adjacentVault": "Poprzedni lub następny sejf",
-        "keyboardShortcuts": "Otwórz skróty klawiszowe",
         "undoTaskAction": "Cofnij ostatnią akcję zadania",
-        "toggleSidebar": "Pokaż/ukryj pasek boczny",
         "sidebarSection": "Przejdź do sekcji paska bocznego"
       },
       "tabs": {
-        "newTabMenu": "Otwórz menu nowej karty",
-        "closeTab": "Zamknij kartę",
-        "closeAllInPane": "Zamknij wszystkie karty w okienku",
-        "reopenClosedTab": "Otwórz ponownie zamkniętą kartę",
-        "nextTab": "Następna karta",
-        "previousTab": "Poprzednia karta",
-        "pinTab": "Przypnij lub odepnij kartę",
-        "duplicateTab": "Duplikuj kartę",
-        "splitRight": "Podziel w prawo",
-        "splitDown": "Podziel w dół",
-        "closeSplitPane": "Zamknij podzielone okienko",
         "focusPane": "Przejdź do innego okienka",
         "moveTabToPane": "Przenieś kartę do okienka",
         "maximizePane": "Maksymalizuj bieżące okienko"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Wróć z widoku miesiąca lub roku",
-        "find": "Znajdź w dzienniku",
-        "bold": "Pogrub zaznaczony tekst",
-        "italic": "Zastosuj kursywę do zaznaczonego tekstu",
-        "underline": "Podkreśl zaznaczony tekst"
+        "find": "Znajdź w dzienniku"
       },
       "notes": {
-        "createNote": "Utwórz notatkę",
         "find": "Znajdź w notatce",
-        "bold": "Pogrubienie",
-        "italic": "Kursywa",
-        "underline": "Podkreślenie",
         "commandMenu": "Otwórz menu poleceń edytora",
         "closeOverlays": "Zamknij nakładki edytora"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Zatrzymaj powtarzanie zadania"
       },
       "settings": {
-        "openSettings": "Otwórz ustawienia",
         "customizeShortcuts": "Dostosuj skróty klawiszowe",
         "recordShortcut": "Nagraj nowy skrót",
         "cancelRecording": "Anuluj nagrywanie skrótu",

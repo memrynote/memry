@@ -78,7 +78,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
     ? status.path.split('/').pop() || 'Vault'
     : 'No Vault Selected'
 
-  // ⌘⇧O (see `hooks/use-switch-vault-shortcut.ts`) opens this same picker rather
+  // ⌘⇧O (`nav.switchVault`, see `use-vault-pager-commands.ts`) opens this same picker rather
   // than a second vault list, so switching from the shortcut and from the
   // sidebar go through one code path.
   useVaultSwitcherOpenRequest(

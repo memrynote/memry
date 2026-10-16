@@ -1046,14 +1046,6 @@
     "or": "או",
     "then": "ואז",
     "groups": {
-      "general": {
-        "title": "כללי",
-        "description": "ניווט ועזרה בכל האפליקציה."
-      },
-      "tabs": {
-        "title": "כרטיסיות ופיצולים",
-        "description": "מעבר בין כרטיסיות וחלוניות."
-      },
       "inbox": {
         "title": "תיבת נכנסים",
         "description": "טיפול מהיר בפריטים שנלכדו."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "יומן",
         "description": "ניווט בתצוגות היומן ומיקוד באזור הכתיבה."
-      },
-      "notes": {
-        "title": "פתקים / עורך",
-        "description": "כתיבה, עיצוב וחיפוש בפתקים."
       },
       "tasks": {
         "title": "משימות",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "פתיחת החיפוש המהיר",
-        "createNote": "יצירת פתק",
-        "openSettings": "פתיחת ההגדרות",
-        "switchVault": "החלפת כספת",
-        "adjacentVault": "הכספת הקודמת או הבאה",
-        "keyboardShortcuts": "פתיחת קיצורי המקלדת",
         "undoTaskAction": "ביטול פעולת המשימה האחרונה",
-        "toggleSidebar": "הצגה או הסתרה של סרגל הצד",
         "sidebarSection": "מעבר למקטע בסרגל הצד"
       },
       "tabs": {
-        "newTabMenu": "פתיחת תפריט הכרטיסייה החדשה",
-        "closeTab": "סגירת הכרטיסייה",
-        "closeAllInPane": "סגירת כל הכרטיסיות בחלונית",
-        "reopenClosedTab": "פתיחה מחדש של כרטיסייה שנסגרה",
-        "nextTab": "הכרטיסייה הבאה",
-        "previousTab": "הכרטיסייה הקודמת",
-        "pinTab": "הצמדה או ביטול הצמדה של כרטיסייה",
-        "duplicateTab": "שכפול הכרטיסייה",
-        "splitRight": "פיצול לצד",
-        "splitDown": "פיצול למטה",
-        "closeSplitPane": "סגירת החלונית המפוצלת",
         "focusPane": "מעבר לחלונית אחרת",
         "moveTabToPane": "העברת הכרטיסייה לחלונית",
         "maximizePane": "הגדלת החלונית הנוכחית"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "חזרה מתצוגת חודש או שנה",
-        "find": "חיפוש ביומן",
-        "bold": "הדגשת הטקסט הנבחר",
-        "italic": "הטיית הטקסט הנבחר",
-        "underline": "הוספת קו תחתון לטקסט הנבחר"
+        "find": "חיפוש ביומן"
       },
       "notes": {
-        "createNote": "יצירת פתק",
         "find": "חיפוש בפתק",
-        "bold": "מודגש",
-        "italic": "נטוי",
-        "underline": "קו תחתון",
         "commandMenu": "פתיחת תפריט הפקודות של העורך",
         "closeOverlays": "סגירת השכבות הצפות בעורך"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "הפסקת החזרה של המשימה"
       },
       "settings": {
-        "openSettings": "פתיחת ההגדרות",
         "customizeShortcuts": "התאמה אישית של קיצורי המקלדת",
         "recordShortcut": "הקלטת קיצור חדש",
         "cancelRecording": "ביטול הקלטת הקיצור",

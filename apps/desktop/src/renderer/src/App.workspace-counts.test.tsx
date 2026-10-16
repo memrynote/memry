@@ -165,16 +165,11 @@ vi.mock('@/services/notes-service', () => ({
 }))
 
 vi.mock('@/hooks', () => ({
-  useTabKeyboardShortcuts: vi.fn(),
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,
-  useSettingsShortcut: vi.fn(),
-  useSwitchVaultShortcut: vi.fn(),
-  useNewNoteShortcut: vi.fn(),
   useUndoKeyboardShortcut: vi.fn(),
   useReminderNotifications: vi.fn(),
   useInboxReviewNotifications: vi.fn(),
-  useSearchShortcut: vi.fn(),
   useHintActivation: vi.fn(),
   useFolderViewEvents: vi.fn(),
   useFlushOnQuit: vi.fn(),
@@ -184,8 +179,7 @@ vi.mock('@/hooks', () => ({
     getOrder: vi.fn(),
     getOrderedTasks: vi.fn((input) => input)
   }),
-  useDragHandlers: () => ({ handleDragEnd: vi.fn(), droppedPriorities: new Map() }),
-  isInputFocused: () => false
+  useDragHandlers: () => ({ handleDragEnd: vi.fn(), droppedPriorities: new Map() })
 }))
 
 vi.mock('@/hooks/use-folder-view-events', () => ({ useFolderViewEvents: vi.fn() }))
@@ -212,6 +206,15 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab }),
   useTabActions: () => tabActions,
   useActiveTab: () => ({ type: 'inbox' })
+}))
+
+vi.mock('@/contexts/tabs/tabs-command-bridge', () => ({
+  TabsCommandBridge: () => null
+}))
+
+vi.mock('@/commands/workspace-command-owners', () => ({
+  // Owns the page and sync commands; its own suite drives it through real providers.
+  WorkspaceCommandOwners: () => null
 }))
 
 vi.mock('@/contexts/tabs/persistence', () => ({
@@ -251,7 +254,8 @@ vi.mock('@/contexts/sidebar-drill-down', () => ({
 }))
 
 vi.mock('@/contexts/selected-folder-context', () => ({
-  SelectedFolderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  SelectedFolderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSelectedFolder: () => ({ selectedFolder: '', setSelectedFolder: vi.fn() })
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { writingToolsService } from '@/services/writing-tools-service'
 import { WritingToolsSession, type WritingToolsSnapshot } from './writing-tools-session'
 

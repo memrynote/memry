@@ -1046,14 +1046,6 @@
     "or": "of",
     "then": "dan",
     "groups": {
-      "general": {
-        "title": "Algemeen",
-        "description": "Navigatie en hulp in de hele app."
-      },
-      "tabs": {
-        "title": "Tabbladen en splitsingen",
-        "description": "Wissel tussen tabbladen en deelvensters."
-      },
       "inbox": {
         "title": "Inbox",
         "description": "Verwerk vastgelegde items snel."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dagboek",
         "description": "Navigeer door dagboekweergaven en zet de focus op het schrijfgebied."
-      },
-      "notes": {
-        "title": "Notities / Editor",
-        "description": "Notities schrijven, opmaken en doorzoeken."
       },
       "tasks": {
         "title": "Taken",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Snel zoeken openen",
-        "createNote": "Een notitie maken",
-        "openSettings": "Instellingen openen",
-        "switchVault": "Van kluis wisselen",
-        "adjacentVault": "Vorige of volgende kluis",
-        "keyboardShortcuts": "Sneltoetsen openen",
         "undoTaskAction": "Laatste taakactie ongedaan maken",
-        "toggleSidebar": "Zijbalk tonen/verbergen",
         "sidebarSection": "Naar een sectie in de zijbalk gaan"
       },
       "tabs": {
-        "newTabMenu": "Menu voor nieuw tabblad openen",
-        "closeTab": "Tabblad sluiten",
-        "closeAllInPane": "Alle tabbladen in het deelvenster sluiten",
-        "reopenClosedTab": "Gesloten tabblad opnieuw openen",
-        "nextTab": "Volgend tabblad",
-        "previousTab": "Vorig tabblad",
-        "pinTab": "Tabblad vastzetten of losmaken",
-        "duplicateTab": "Tabblad dupliceren",
-        "splitRight": "Naar rechts splitsen",
-        "splitDown": "Naar beneden splitsen",
-        "closeSplitPane": "Gesplitst deelvenster sluiten",
         "focusPane": "Een ander deelvenster activeren",
         "moveTabToPane": "Tabblad naar deelvenster verplaatsen",
         "maximizePane": "Huidig deelvenster maximaliseren"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Terug uit maand- of jaarweergave",
-        "find": "Zoeken in dagboek",
-        "bold": "Geselecteerde tekst vet maken",
-        "italic": "Geselecteerde tekst cursief maken",
-        "underline": "Geselecteerde tekst onderstrepen"
+        "find": "Zoeken in dagboek"
       },
       "notes": {
-        "createNote": "Een notitie maken",
         "find": "Zoeken in notitie",
-        "bold": "Vet",
-        "italic": "Cursief",
-        "underline": "Onderstrepen",
         "commandMenu": "Opdrachtmenu van de editor openen",
         "closeOverlays": "Overlays van de editor sluiten"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Stoppen met het herhalen van een taak"
       },
       "settings": {
-        "openSettings": "Instellingen openen",
         "customizeShortcuts": "Sneltoetsen aanpassen",
         "recordShortcut": "Een nieuwe sneltoets opnemen",
         "cancelRecording": "Opnemen van sneltoets annuleren",

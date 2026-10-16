@@ -1046,14 +1046,6 @@
     "or": "hoặc",
     "then": "rồi",
     "groups": {
-      "general": {
-        "title": "Chung",
-        "description": "Điều hướng và trợ giúp toàn ứng dụng."
-      },
-      "tabs": {
-        "title": "Tab & chia ngăn",
-        "description": "Di chuyển giữa các tab và ngăn."
-      },
       "inbox": {
         "title": "Hộp thư đến",
         "description": "Xử lý nhanh các mục đã ghi lại."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Nhật ký",
         "description": "Điều hướng các chế độ xem nhật ký và tập trung vào vùng viết."
-      },
-      "notes": {
-        "title": "Ghi chú / Trình soạn thảo",
-        "description": "Viết, định dạng và tìm kiếm ghi chú."
       },
       "tasks": {
         "title": "Công việc",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Mở tìm kiếm nhanh",
-        "createNote": "Tạo một ghi chú",
-        "openSettings": "Mở cài đặt",
-        "switchVault": "Chuyển kho",
-        "adjacentVault": "Kho trước hoặc kho tiếp theo",
-        "keyboardShortcuts": "Mở danh sách phím tắt",
         "undoTaskAction": "Hoàn tác thao tác công việc gần nhất",
-        "toggleSidebar": "Hiện/ẩn thanh bên",
         "sidebarSection": "Đi tới mục trên thanh bên"
       },
       "tabs": {
-        "newTabMenu": "Mở menu tab mới",
-        "closeTab": "Đóng tab",
-        "closeAllInPane": "Đóng tất cả tab trong ngăn",
-        "reopenClosedTab": "Mở lại tab đã đóng",
-        "nextTab": "Tab tiếp theo",
-        "previousTab": "Tab trước",
-        "pinTab": "Ghim hoặc bỏ ghim tab",
-        "duplicateTab": "Nhân bản tab",
-        "splitRight": "Chia sang phải",
-        "splitDown": "Chia xuống dưới",
-        "closeSplitPane": "Đóng ngăn chia",
         "focusPane": "Chuyển sang ngăn khác",
         "moveTabToPane": "Chuyển tab sang ngăn",
         "maximizePane": "Phóng to ngăn hiện tại"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Quay lại từ chế độ xem tháng hoặc năm",
-        "find": "Tìm trong nhật ký",
-        "bold": "In đậm văn bản đã chọn",
-        "italic": "In nghiêng văn bản đã chọn",
-        "underline": "Gạch chân văn bản đã chọn"
+        "find": "Tìm trong nhật ký"
       },
       "notes": {
-        "createNote": "Tạo một ghi chú",
         "find": "Tìm trong ghi chú",
-        "bold": "Đậm",
-        "italic": "Nghiêng",
-        "underline": "Gạch chân",
         "commandMenu": "Mở menu lệnh của trình soạn thảo",
         "closeOverlays": "Đóng các lớp phủ của trình soạn thảo"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Ngừng lặp lại công việc"
       },
       "settings": {
-        "openSettings": "Mở cài đặt",
         "customizeShortcuts": "Tùy chỉnh phím tắt",
         "recordShortcut": "Ghi một phím tắt mới",
         "cancelRecording": "Hủy ghi phím tắt",

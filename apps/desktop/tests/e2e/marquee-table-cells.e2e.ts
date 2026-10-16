@@ -44,7 +44,7 @@ async function seedTableNote(page: Page, title: string): Promise<string> {
 /** The table's cells as plain strings, row by row — `null` when it is gone. */
 async function tableCells(page: Page): Promise<string[][] | null> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
+    const editor = (window as any).__memryActiveEditor
     if (!editor) return null
     const table = editor.document.find((block: any) => block.type === 'table')
     if (!table) return null

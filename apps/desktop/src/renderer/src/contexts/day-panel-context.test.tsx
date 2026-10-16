@@ -1,6 +1,7 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
+import { useCommandDispatcher } from '@/commands'
 import { DayPanelProvider, useDayPanel } from './day-panel-context'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -42,8 +43,15 @@ describe('DayPanelContext task selection', () => {
 })
 
 describe('DayPanelContext keyboard shortcut', () => {
+  let dispatcher: { unmount: () => void }
+
   beforeEach(() => {
     localStorage.clear()
+    dispatcher = renderHook(() => useCommandDispatcher())
+  })
+
+  afterEach(() => {
+    dispatcher.unmount()
   })
 
   const pressToggle = (): void => {

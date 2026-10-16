@@ -63,6 +63,7 @@ import { noteCardClaims } from './canvas-note-lock'
 import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
 import { onCanvasKeys, revealScroll } from './canvas-add-card'
+import { useAddCardDialog } from './use-add-card-dialog'
 import { planBatchPlacement, splitNewRefs } from './canvas-bulk-add'
 
 const log = createLogger('SpatialCanvas')
@@ -98,13 +99,16 @@ interface CanvasCardLayerProps {
   onSceneMutated: () => void
   /** Further board actions shown beside Add card. */
   extraActions?: React.ReactNode
+  /** Filled with the function that opens the "Add card" picker, for a command. */
+  openAddCardRef?: React.RefObject<(() => void) | null>
 }
 
 export const CanvasCardLayer = ({
   excalidrawAPI,
   wrapperRef,
   onSceneMutated,
-  extraActions
+  extraActions,
+  openAddCardRef
 }: CanvasCardLayerProps): React.JSX.Element => {
   const { t } = useT('common')
   const { openTab } = useTabActions()
@@ -134,8 +138,7 @@ export const CanvasCardLayer = ({
   // flash-on-failed-activation badge).
   const [claimFailedTick, setClaimFailedTick] = useState(0)
 
-  const [addOpen, setAddOpen] = useState(false)
-  const [addKeys, setAddKeys] = useState<ReadonlySet<string>>(() => new Set<string>())
+  const addDialog = useAddCardDialog(excalidrawAPI, openAddCardRef)
 
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const activeCardIdRef = useRef<string | null>(null)
@@ -900,16 +903,6 @@ export const CanvasCardLayer = ({
     [readScene, excalidrawAPI, recompute]
   )
 
-  // Snapshot the carded entities when the picker opens. A useMemo keyed on
-  // `addOpen` would read the scene on every render and trip exhaustive-deps
-  // (addOpen is not referenced in the computation).
-  const openAddDialog = useCallback(() => {
-    setAddKeys(
-      onCanvasKeys(getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[]))
-    )
-    setAddOpen(true)
-  }, [excalidrawAPI])
-
   const cards = useMemo(() => {
     // Referenced (no-op) purely so this memo re-evaluates after a failed
     // cross-pane claim — see the claimFailedTick declaration above.
@@ -996,7 +989,7 @@ export const CanvasCardLayer = ({
       >
         <button
           type="button"
-          onClick={openAddDialog}
+          onClick={addDialog.openDialog}
           data-testid="canvas-add-card"
           className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
         >
@@ -1006,9 +999,9 @@ export const CanvasCardLayer = ({
         {extraActions}
       </div>
       <CanvasAddCardDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onCanvasKeys={addKeys}
+        open={addDialog.open}
+        onOpenChange={addDialog.setOpen}
+        onCanvasKeys={addDialog.keys}
         onCreateNote={(title) => void handleCreateNote(title)}
         onPick={(entityType, entityId) => void placeCard(entityType, entityId)}
         onAddAll={(refs) => placeBatch(refs, null)}

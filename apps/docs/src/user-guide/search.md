@@ -6,10 +6,12 @@ Press <kbd>⌘</kbd>+<kbd>K</kbd> to search everything in the vault from anywher
 
 ## Opening
 
-| Where                 | Shortcut                                                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Anywhere in the app   | <kbd>⌘</kbd>+<kbd>K</kbd> (rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts)) or <kbd>⌘</kbd>+<kbd>P</kbd> |
-| Sidebar search button | Click                                                                                                                                           |
+| Where                 | Shortcut                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Anywhere in the app   | <kbd>⌘</kbd>+<kbd>K</kbd> (rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts)) |
+| Sidebar search button | Click                                                                                                              |
+
+<kbd>⌘</kbd>+<kbd>P</kbd> no longer opens search. It opens the [command palette](/user-guide/command-palette), which runs commands such as New note, Open Settings or Toggle Sidebar. If you press it looking for a note, the palette's **Search notes** button takes you here.
 
 <kbd>Esc</kbd> closes search. When a filter menu is open, the first <kbd>Esc</kbd> closes the menu and the second closes search.
 

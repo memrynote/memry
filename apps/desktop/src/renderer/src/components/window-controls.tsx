@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { runCommand } from '@/commands'
 import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { TabIcon } from '@/components/tabs/tab-icon'
@@ -173,7 +174,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
+                onClick={() => void runCommand('nav.search', 'ui')}
                 aria-label={t('action.search')}
                 className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
               >

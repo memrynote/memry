@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Activity } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { useCommandDispatcher } from '@/commands'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import {
@@ -59,13 +60,18 @@ function setWindowWidth(width: number): void {
   })
 }
 
+// The keystrokes reach the sidebar through the app's one command dispatcher.
+let dispatcher: { unmount: () => void }
+
 describe('SidebarProvider shortcuts', () => {
   beforeEach(() => {
     localStorage.clear()
     setWindowWidth(1024)
+    dispatcher = renderHook(() => useCommandDispatcher())
   })
 
   afterEach(() => {
+    dispatcher.unmount()
     act(() => {
       __setShortcutOverridesForTests({})
     })
@@ -234,9 +240,11 @@ describe('SidebarProvider open-state persistence', () => {
     localStorage.clear()
     setWindowWidth(1024)
     mocks.logger.error.mockClear()
+    dispatcher = renderHook(() => useCommandDispatcher())
   })
 
   afterEach(() => {
+    dispatcher.unmount()
     vi.restoreAllMocks()
   })
 

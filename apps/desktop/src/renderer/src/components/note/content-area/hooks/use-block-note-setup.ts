@@ -7,6 +7,7 @@ import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
 import { isFromWhiteboard } from '../whiteboard-events'
+import { useEditorTarget } from '@/commands'
 import { createLogger } from '@/lib/logger'
 
 const _log = createLogger('Hook:BlockNoteSetup')
@@ -81,21 +82,9 @@ export function useBlockNoteSetup({
     }
   }, [aiPort, editor])
 
-  // Expose the active editor on window. Production path for the Edit-menu
-  // undo/redo and Insert/Format commands (lib/menu-commands.ts), and E2E
-  // instrumentation. Read-only instances (template preview) must not claim the
-  // global, and cleanup only clears its own registration so unmounting a later
-  // preview/split pane doesn't deregister a still-live editor.
-  useEffect(() => {
-    if (!editor.isEditable) return
-    const host = window as unknown as { __memryEditor?: unknown }
-    host.__memryEditor = editor
-    return () => {
-      if (host.__memryEditor === editor) {
-        delete host.__memryEditor
-      }
-    }
-  }, [editor])
+  // Offer the editable editor to the Edit, Insert and Format commands of the
+  // tab it renders in. Read-only instances (template preview) never are one.
+  useEditorTarget(editor.isEditable ? editor : null)
 
   // SpellCheck DOM sync
   useEffect(() => {

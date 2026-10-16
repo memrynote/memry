@@ -49,7 +49,7 @@ async function createNote(page: Page, title: string, content: string): Promise<N
 
 async function readAlignments(page: Page): Promise<DocumentAlignment> {
   return page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
     if (!editor) return { first: null, heading: null }
 
     const describe = (block: any) =>
@@ -86,8 +86,8 @@ test.describe('Text alignment persistence', () => {
       .toEqual(UNALIGNED)
 
     await page.evaluate(() => {
-      const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
       const doc = editor.document as any[]
       const heading = doc.find((block) => block.type === 'heading')

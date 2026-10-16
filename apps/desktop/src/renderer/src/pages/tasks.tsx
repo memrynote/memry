@@ -103,6 +103,7 @@ import {
 } from './tasks-view-state'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { canvasTabData } from '@/lib/sidebar-tab-data'
+import { useTasksCommands } from './tasks/use-tasks-commands'
 
 const log = createLogger('Page:Tasks')
 
@@ -326,15 +327,6 @@ export const TasksPage = ({
     typeof taskTabViewState.focusQuickAddAt === 'number'
       ? taskTabViewState.focusQuickAddAt
       : undefined
-  // Stays a direct tab write: this nonce is stamped by OTHER surfaces (the
-  // sidebar's "Tasks" click, the empty state's "Add task") and has to be read
-  // live off the tab, which a `useState`-shaped hook does not do.
-  const focusQuickAdd = useCallback(() => {
-    if (!activeTab?.id) return
-    saveTabState(activeTab.id, {
-      viewState: { [TASKS_VIEW_STATE_KEYS.focusQuickAddAt]: Date.now() }
-    })
-  }, [activeTab?.id, saveTabState])
 
   // Saved filters
   const {
@@ -523,6 +515,12 @@ export const TasksPage = ({
     onComplete: deselectAll,
     registerUndo,
     onAddTask: (...args) => void contextAddTask(...args)
+  })
+
+  const { focusQuickAdd } = useTasksCommands({
+    hasSelection,
+    bulkComplete: bulkActions.bulkComplete,
+    openBulkDelete: () => setIsBulkDeleteDialogOpen(true)
   })
 
   // Toggle selection mode handler
@@ -739,8 +737,8 @@ export const TasksPage = ({
         selectAll()
       }
 
-      // Escape to clear selection
-      if (e.key === 'Escape' && hasSelection) {
+      // Escape to clear selection, unless an overlay (the commands palette) took it
+      if (e.key === 'Escape' && hasSelection && !e.defaultPrevented) {
         e.preventDefault()
         deselectAll()
       }

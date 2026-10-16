@@ -31,8 +31,8 @@ async function openNestedList(page: Page): Promise<void> {
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, [
       {
         type: 'bulletListItem',
@@ -110,7 +110,7 @@ test.describe('bullet fold', () => {
 
     // A fold is display state, never an edit: the blocks are all still there.
     const stillNested = await page.evaluate(() => {
-      const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
       return editor?.document?.[0]?.children?.length ?? 0
     })
     expect(stillNested).toBe(2)

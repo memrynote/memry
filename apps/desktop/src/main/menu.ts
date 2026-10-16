@@ -7,6 +7,12 @@ import {
   type MenuItemConstructorOptions,
   type WebContents
 } from 'electron'
+import {
+  COMMANDS,
+  resolvePlatformBinding,
+  type MenuAcceleratorCommandId,
+  type MenuCommandId
+} from '@memry/contracts/commands'
 import { AppChannels } from '@memry/contracts/ipc-channels'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -52,8 +58,8 @@ function sendNavigationToFocusedWindow(direction: 'back' | 'forward'): void {
   sendAppNavigationDirection(window.webContents, direction)
 }
 
-/** Send a menu command to the target window's renderer (see use-menu-commands.ts). */
-function sendMenuCommand(command: string): void {
+/** Send a menu command to the target window's renderer (`useMenuBridge` runs it as a command). */
+function sendMenuCommand(command: MenuCommandId): void {
   const window = resolveMenuTargetWindow()
   if (!window) return
 
@@ -91,7 +97,7 @@ export function bindingToAccelerator(binding: ShortcutBinding): string | null {
 }
 
 /**
- * Rebinds from Settings → Shortcuts, keyed by shortcut id (`tabs.closeTab`).
+ * Rebinds from Settings → Shortcuts, keyed by command id (`tabs.closeTab`).
  * The menu mirrors them because on macOS a menu accelerator is a live key
  * equivalent even with `registerAccelerator: false` (that flag is Windows/Linux
  * only): a stale ⌘W here would keep closing tabs after the user rebinds it.
@@ -101,11 +107,14 @@ export type ShortcutOverrides = Record<string, ShortcutBinding>
 export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = {}): Menu {
   const t = i18n.getFixedT(null, 'menu')
   const isMac = process.platform === 'darwin'
-  // A rebind the menu cannot express drops the accelerator rather than keep
-  // the default live.
-  const shortcut = (id: string, fallback: string): string | undefined => {
-    const override = overrides[id]
-    return override ? (bindingToAccelerator(override) ?? undefined) : fallback
+  // Only a command flagged `menuAccelerator` shows its binding here: the default
+  // from `COMMANDS`, or the user's rebind. A rebind the menu cannot express drops
+  // the accelerator rather than keep the default live. Commands the renderer
+  // yields to rich text (⌘B) are never flagged, because a macOS accelerator is a
+  // live key equivalent and would take the key from the editor.
+  const shortcut = (id: MenuAcceleratorCommandId): string | undefined => {
+    const binding = overrides[id] ?? resolvePlatformBinding(COMMANDS[id].keyboard.default, isMac)
+    return bindingToAccelerator(binding) ?? undefined
   }
 
   // Bridge item: a click that dispatches a command to the renderer. When an
@@ -113,7 +122,7 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
   // renderer/editor owns the shortcut, so registering it here would swallow the
   // keydown in the main process on Windows/Linux before the editor sees it.
   const cmd = (
-    command: string,
+    command: MenuCommandId,
     label: string,
     accelerator?: string
   ): MenuItemConstructorOptions => ({
@@ -154,7 +163,7 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
               { role: 'about' as const, label: t('help.about') },
               checkForUpdatesItem,
               { type: 'separator' as const },
-              cmd('app.preferences', t('app.preferences')),
+              cmd('nav.settings', t('app.preferences')),
               { type: 'separator' as const },
               { role: 'services' as const, label: t('app.services') },
               { type: 'separator' as const },
@@ -172,32 +181,33 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
     {
       label: t('file.label'),
       submenu: [
-        cmd('file.newNote', t('file.newNote')),
+        cmd('nav.newNote', t('file.newNote')),
         {
           label: t('navigation.back'),
-          accelerator: shortcut('tabs.navBack', 'CmdOrCtrl+['),
+          accelerator: shortcut('tabs.navBack'),
           visible: false,
           acceleratorWorksWhenHidden: true,
           click: () => sendNavigationToFocusedWindow('back')
         },
         {
           label: t('navigation.forward'),
-          accelerator: shortcut('tabs.navForward', 'CmdOrCtrl+]'),
+          accelerator: shortcut('tabs.navForward'),
           visible: false,
           acceleratorWorksWhenHidden: true,
           click: () => sendNavigationToFocusedWindow('forward')
         },
-        cmd('file.openQuickly', t('file.openQuickly')),
+        cmd('nav.search', t('file.openQuickly')),
+        cmd('nav.commands', t('file.commandPalette')),
         { type: 'separator' },
-        cmd('file.exportPdf', t('file.exportPdf')),
+        cmd('note.exportPdf', t('file.exportPdf')),
         { type: 'separator' },
-        cmd('file.closeTab', t('file.closeTab'), shortcut('tabs.closeTab', 'CmdOrCtrl+W')),
+        cmd('tabs.closeTab', t('file.closeTab'), shortcut('tabs.closeTab')),
         // Not role 'close': a role defaults its accelerator to CmdOrCtrl+W, and
         // registerAccelerator only suppresses that on Windows/Linux — so on macOS
         // the role owned ⌘W and closed the window instead of the active tab. The
         // renderer decides (tab close, or window close once only Home is left) and
         // closes through the IPC path that flushes pending work first.
-        cmd('file.closeWindow', t('file.close')),
+        cmd('app.closeWindow', t('file.close')),
         // Windows names this command "Exit", every other platform "Quit" — the
         // role default did the same split, so the label keeps both wordings.
         ...(isMac
@@ -220,9 +230,9 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
         // main process before the editor keymap ever sees it. The cmd() bridge
         // shows the shortcut without registering it. Windows redo follows the
         // platform's Ctrl+Y convention like the role did.
-        cmd('edit.undo', t('edit.undo'), 'CmdOrCtrl+Z'),
+        cmd('editor.undo', t('edit.undo'), 'CmdOrCtrl+Z'),
         cmd(
-          'edit.redo',
+          'editor.redo',
           t('edit.redo'),
           process.platform === 'win32' ? 'Control+Y' : 'CmdOrCtrl+Shift+Z'
         ),
@@ -234,7 +244,7 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
         { label: t('edit.delete'), role: 'delete' },
         { label: t('edit.selectAll'), role: 'selectAll', accelerator: 'CmdOrCtrl+A' },
         { type: 'separator' },
-        cmd('edit.find', t('edit.find')),
+        cmd('note.find', t('edit.find')),
         ...(isMac
           ? [
               { type: 'separator' as const },
@@ -252,32 +262,32 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
     {
       label: t('insert.label'),
       submenu: [
-        cmd('insert.codeBlock', t('insert.codeBlock')),
-        cmd('insert.table', t('insert.table')),
+        cmd('editor.insertCodeBlock', t('insert.codeBlock')),
+        cmd('editor.insertTable', t('insert.table')),
         { type: 'separator' },
-        cmd('insert.bulletList', t('insert.bulletList')),
-        cmd('insert.numberedList', t('insert.numberedList')),
-        cmd('insert.taskList', t('insert.taskList')),
+        cmd('editor.insertBulletList', t('insert.bulletList')),
+        cmd('editor.insertNumberedList', t('insert.numberedList')),
+        cmd('editor.insertTaskList', t('insert.taskList')),
         { type: 'separator' },
-        cmd('insert.attachment', t('insert.attachment'))
+        cmd('editor.insertAttachment', t('insert.attachment'))
       ]
     },
     {
       label: t('format.label'),
       submenu: [
-        cmd('format.heading1', t('format.heading1')),
-        cmd('format.heading2', t('format.heading2')),
-        cmd('format.heading3', t('format.heading3')),
-        cmd('format.heading4', t('format.heading4')),
-        cmd('format.heading5', t('format.heading5')),
-        cmd('format.heading6', t('format.heading6')),
-        cmd('format.body', t('format.body')),
+        cmd('editor.heading1', t('format.heading1')),
+        cmd('editor.heading2', t('format.heading2')),
+        cmd('editor.heading3', t('format.heading3')),
+        cmd('editor.heading4', t('format.heading4')),
+        cmd('editor.heading5', t('format.heading5')),
+        cmd('editor.heading6', t('format.heading6')),
+        cmd('editor.body', t('format.body')),
         { type: 'separator' },
-        cmd('format.bold', t('format.bold')),
-        cmd('format.italic', t('format.italic')),
-        cmd('format.code', t('format.code')),
-        cmd('format.highlight', t('format.highlight')),
-        cmd('format.strikethrough', t('format.strikethrough'))
+        cmd('editor.bold', t('format.bold')),
+        cmd('editor.italic', t('format.italic')),
+        cmd('editor.code', t('format.code')),
+        cmd('editor.highlight', t('format.highlight')),
+        cmd('editor.strikethrough', t('format.strikethrough'))
       ]
     },
     {
@@ -290,26 +300,22 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
         // zoom, which nothing persists, so the level was lost on every restart.
         // The renderer owns these keystrokes (see use-app-zoom), so the
         // accelerators here are labels only, like every other cmd() item.
-        cmd('view.actualSize', t('view.actualSize'), shortcut('view.actualSize', 'CmdOrCtrl+0')),
-        cmd('view.zoomIn', t('view.zoomIn'), shortcut('view.zoomIn', 'CmdOrCtrl+Plus')),
-        cmd('view.zoomOut', t('view.zoomOut'), shortcut('view.zoomOut', 'CmdOrCtrl+-')),
+        cmd('view.actualSize', t('view.actualSize'), shortcut('view.actualSize')),
+        cmd('view.zoomIn', t('view.zoomIn'), shortcut('view.zoomIn')),
+        cmd('view.zoomOut', t('view.zoomOut'), shortcut('view.zoomOut')),
         { type: 'separator' },
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },
         cmd('view.toggleSidebar', t('view.toggleSidebar')),
-        cmd(
-          'view.toggleDayPanel',
-          t('view.toggleDayPanel'),
-          shortcut('view.toggleDayPanel', 'CmdOrCtrl+Shift+B')
-        ),
+        cmd('view.toggleDayPanel', t('view.toggleDayPanel'), shortcut('view.toggleDayPanel')),
         { type: 'separator' },
         {
           label: t('view.theme'),
           submenu: [
-            cmd('view.theme.light', t('view.themeLight')),
-            cmd('view.theme.dark', t('view.themeDark')),
-            cmd('view.theme.white', t('view.themeWhite')),
-            cmd('view.theme.system', t('view.themeSystem'))
+            cmd('view.themeLight', t('view.themeLight')),
+            cmd('view.themeDark', t('view.themeDark')),
+            cmd('view.themeWhite', t('view.themeWhite')),
+            cmd('view.themeSystem', t('view.themeSystem'))
           ]
         }
       ]

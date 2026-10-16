@@ -1,6 +1,6 @@
 /**
  * Keyboard Shortcuts Dialog
- * Shows all available keyboard shortcuts
+ * Lists every command that has a keyboard entry, plus a few fixed page shortcuts
  */
 
 import {
@@ -11,21 +11,27 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
-import { getShortcutBinding } from '@/lib/shortcut-bindings'
-import { bindingParts, type ShortcutId } from '@/lib/shortcut-registry'
+import { getShortcutBinding, useShortcutOverrides } from '@/lib/shortcut-bindings'
+import {
+  bindingParts,
+  SHORTCUT_ENTRIES,
+  SHORTCUT_GROUP_ORDER,
+  type ShortcutId
+} from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
+import { COMMANDS, type CommandGroup, type CommandMeta } from '@memry/contracts/commands'
+import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import { useT } from '@memry/i18n/renderer'
 import type { TFunction } from 'i18next'
 
 interface ShortcutDefinition {
   combos: string[][]
   description: string
-  detail?: string
 }
 
 interface ShortcutGroup {
   title: string
-  description: string
+  description?: string
   shortcuts: ShortcutDefinition[]
 }
 
@@ -36,103 +42,62 @@ interface KeyboardShortcutsDialogProps {
   onClose: () => void
 }
 
-/** Keycaps for a registry shortcut as it is bound right now, rebinds included. */
+/** Keycaps for a command as it is bound right now, rebinds included. */
 const bound = (id: ShortcutId): string[] => bindingParts(getShortcutBinding(id))
 
-const getShortcutGroups = (
-  t: TFunction<'common'>,
-  tSettings: TFunction<'settings'>
-): ShortcutGroup[] => {
+/** The chords a command answers to besides its own binding, as the dispatcher sees them. */
+const aliasCombos = (id: ShortcutId, isRebound: boolean): string[][] => {
+  const meta: CommandMeta = COMMANDS[id]
+  const keyboard = meta.keyboard
+  if (keyboard?.owner !== 'app') return []
+  return (keyboard.aliases ?? [])
+    .filter((alias) => !(alias.whileDefault && isRebound))
+    .map((alias) => bindingParts(alias.chord))
+}
+
+/**
+ * Every command with a keyboard entry, grouped like Settings → Shortcuts. The
+ * only hand-written rows in this dialog are the fixed page shortcuts below.
+ */
+const getCommandGroups = (
+  tSettings: TFunction<'settings'>,
+  overrides: Readonly<Record<string, ShortcutBinding>>
+): Map<CommandGroup, ShortcutDefinition[]> => {
+  const groups = new Map<CommandGroup, ShortcutDefinition[]>()
+  for (const { id, group, i18nKey } of SHORTCUT_ENTRIES) {
+    const rows = groups.get(group) ?? []
+    rows.push({
+      combos: [bound(id), ...aliasCombos(id, overrides[id] !== undefined)],
+      description: tSettings(`shortcuts.entries.${i18nKey}.label`)
+    })
+    groups.set(group, rows)
+  }
+  return groups
+}
+
+/**
+ * Fixed shortcuts that belong to one surface or to a multi-key chord. They are
+ * not commands: no palette row, no Settings → Shortcuts entry, no rebinding.
+ * Anything that is a command comes from `getCommandGroups`, never from here.
+ */
+const getFixedShortcuts = (
+  t: TFunction<'common'>
+): {
+  /** Extra rows appended to a command group. */
+  inGroup: Partial<Record<CommandGroup, ShortcutDefinition[]>>
+  /** Sections made only of fixed shortcuts. */
+  sections: ShortcutGroup[]
+} => {
   const mod = isMac ? '⌘' : 'Ctrl'
   const shift = isMac ? '⇧' : 'Shift'
   const backspace = isMac ? '⌫' : 'Backspace'
 
-  return [
-    {
-      title: t('shortcuts.groups.general.title'),
-      description: t('shortcuts.groups.general.description'),
-      shortcuts: [
-        {
-          // ⌘P is a fixed alias kept for muscle memory from other editors.
-          combos: [bound('nav.search'), [mod, 'P']],
-          description: t('shortcuts.items.general.quickSearch')
-        },
-        { combos: [bound('nav.newNote')], description: t('shortcuts.items.general.createNote') },
-        {
-          combos: [bound('nav.settings')],
-          description: t('shortcuts.items.general.openSettings')
-        },
-        {
-          combos: [bound('nav.switchVault')],
-          description: t('shortcuts.items.general.switchVault')
-        },
-        {
-          combos: [bound('nav.prevVault'), bound('nav.nextVault')],
-          description: t('shortcuts.items.general.adjacentVault')
-        },
-        {
-          combos: [['?'], bound('view.shortcuts')],
-          description: t('shortcuts.items.general.keyboardShortcuts')
-        },
-        { combos: [[mod, 'Z']], description: t('shortcuts.items.general.undoTaskAction') },
-        {
-          combos: [bound('view.toggleSidebar')],
-          description: t('shortcuts.items.general.toggleSidebar')
-        },
-        {
-          combos: [bound('view.toggleDayPanel')],
-          description: t('shortcuts.items.general.toggleDayPanel')
-        },
-        { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') },
-        {
-          combos: [bound('view.zoomIn')],
-          description: tSettings('shortcuts.entries.view.zoomIn.label')
-        },
-        {
-          combos: [bound('view.zoomOut')],
-          description: tSettings('shortcuts.entries.view.zoomOut.label')
-        },
-        {
-          combos: [bound('view.actualSize')],
-          description: tSettings('shortcuts.entries.view.actualSize.label')
-        }
-      ]
-    },
-    {
-      title: t('shortcuts.groups.tabs.title'),
-      description: t('shortcuts.groups.tabs.description'),
-      shortcuts: [
-        { combos: [bound('tabs.newTab')], description: t('shortcuts.items.tabs.newTabMenu') },
-        { combos: [bound('tabs.closeTab')], description: t('shortcuts.items.tabs.closeTab') },
-        {
-          combos: [bound('tabs.closeAllTabs')],
-          description: t('shortcuts.items.tabs.closeAllInPane')
-        },
-        {
-          combos: [bound('tabs.reopenTab')],
-          description: t('shortcuts.items.tabs.reopenClosedTab')
-        },
-        { combos: [bound('tabs.nextTab')], description: t('shortcuts.items.tabs.nextTab') },
-        { combos: [bound('tabs.prevTab')], description: t('shortcuts.items.tabs.previousTab') },
-        {
-          combos: [bound('tabs.navBack')],
-          description: tSettings('shortcuts.entries.tabs.navBack.label')
-        },
-        {
-          combos: [bound('tabs.navForward')],
-          description: tSettings('shortcuts.entries.tabs.navForward.label')
-        },
-        { combos: [bound('tabs.pinTab')], description: t('shortcuts.items.tabs.pinTab') },
-        {
-          combos: [bound('tabs.duplicateTab')],
-          description: t('shortcuts.items.tabs.duplicateTab')
-        },
-        { combos: [bound('tabs.splitRight')], description: t('shortcuts.items.tabs.splitRight') },
-        { combos: [bound('tabs.splitDown')], description: t('shortcuts.items.tabs.splitDown') },
-        {
-          combos: [bound('tabs.closeSplit')],
-          description: t('shortcuts.items.tabs.closeSplitPane')
-        },
+  return {
+    inGroup: {
+      navigation: [
+        { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') }
+      ],
+      tabs: [
         {
           combos: [[mod, 'K', 'then', mod, '←/→/↑/↓']],
           description: t('shortcuts.items.tabs.focusPane')
@@ -142,100 +107,100 @@ const getShortcutGroups = (
           description: t('shortcuts.items.tabs.moveTabToPane')
         },
         { combos: [[mod, 'K', 'then', 'M']], description: t('shortcuts.items.tabs.maximizePane') }
-      ]
-    },
-    {
-      title: t('shortcuts.groups.inbox.title'),
-      description: t('shortcuts.groups.inbox.description'),
-      shortcuts: [
-        { combos: [['↓'], ['J']], description: t('shortcuts.items.inbox.nextItem') },
-        { combos: [['↑'], ['K']], description: t('shortcuts.items.inbox.previousItem') },
-        { combos: [['Home'], ['End']], description: t('shortcuts.items.inbox.firstOrLastItem') },
-        { combos: [['PageUp'], ['PageDown']], description: t('shortcuts.items.inbox.jumpByPage') },
-        { combos: [['Space']], description: t('shortcuts.items.inbox.togglePreview') },
-        { combos: [['X']], description: t('shortcuts.items.inbox.selectItem') },
-        { combos: [[mod, 'A']], description: t('shortcuts.items.inbox.selectAllVisible') },
-        { combos: [['Esc']], description: t('shortcuts.items.inbox.clearSelection') },
-        { combos: [['.'], ['F']], description: t('shortcuts.items.inbox.openQuickFile') },
-        { combos: [['1-5']], description: t('shortcuts.items.inbox.chooseQuickFileResult') },
-        {
-          combos: [['Delete'], [backspace]],
-          description: t('shortcuts.items.inbox.archiveItem')
-        },
-        { combos: [['O']], description: t('shortcuts.items.inbox.openOriginal') },
-        { combos: [['R']], description: t('shortcuts.items.inbox.refresh') },
-        { combos: [[mod, 'Enter']], description: t('shortcuts.items.inbox.confirmFiling') }
-      ]
-    },
-    {
-      title: t('shortcuts.groups.journal.title'),
-      description: t('shortcuts.groups.journal.description'),
-      shortcuts: [
-        { combos: [['Esc']], description: t('shortcuts.items.journal.returnFromOverview') },
-        { combos: [[mod, 'F']], description: t('shortcuts.items.journal.find') },
-        { combos: [bound('editor.bold')], description: t('shortcuts.items.journal.bold') },
-        { combos: [bound('editor.italic')], description: t('shortcuts.items.journal.italic') },
-        { combos: [bound('editor.underline')], description: t('shortcuts.items.journal.underline') }
-      ]
-    },
-    {
-      title: t('shortcuts.groups.notes.title'),
-      description: t('shortcuts.groups.notes.description'),
-      shortcuts: [
-        { combos: [bound('nav.newNote')], description: t('shortcuts.items.notes.createNote') },
+      ],
+      editor: [
         { combos: [[mod, 'F']], description: t('shortcuts.items.notes.find') },
-        { combos: [bound('editor.bold')], description: t('shortcuts.items.notes.bold') },
-        { combos: [bound('editor.italic')], description: t('shortcuts.items.notes.italic') },
-        { combos: [bound('editor.underline')], description: t('shortcuts.items.notes.underline') },
-        {
-          combos: [bound('editor.strikethrough')],
-          description: tSettings('shortcuts.entries.editor.strikethrough.label')
-        },
-        {
-          combos: [bound('editor.code')],
-          description: tSettings('shortcuts.entries.editor.code.label')
-        },
         { combos: [['/']], description: t('shortcuts.items.notes.commandMenu') },
         { combos: [['Esc']], description: t('shortcuts.items.notes.closeOverlays') }
       ]
     },
-    {
-      title: t('shortcuts.groups.tasks.title'),
-      description: t('shortcuts.groups.tasks.description'),
-      shortcuts: [
-        { combos: [[shift, 'F']], description: t('shortcuts.items.tasks.clearFilters') },
-        { combos: [[mod, 'A']], description: t('shortcuts.items.tasks.selectAllVisible') },
-        { combos: [['Esc']], description: t('shortcuts.items.tasks.clearSelection') },
-        { combos: [[mod, 'Enter']], description: t('shortcuts.items.tasks.completeSelected') },
-        { combos: [[mod, backspace]], description: t('shortcuts.items.tasks.deleteSelected') },
-        { combos: [['R']], description: t('shortcuts.items.tasks.configureRepeat') },
-        { combos: [[shift, 'S']], description: t('shortcuts.items.tasks.skipOccurrence') },
-        { combos: [[shift, 'X']], description: t('shortcuts.items.tasks.stopRepeating') }
-      ]
-    },
-    {
-      title: t('shortcuts.groups.settings.title'),
-      description: t('shortcuts.groups.settings.description'),
-      shortcuts: [
-        {
-          combos: [bound('nav.settings')],
-          description: t('shortcuts.items.settings.openSettings')
-        },
-        {
-          combos: [[t('shortcuts.combos.shortcutsTab')]],
-          description: t('shortcuts.items.settings.customizeShortcuts')
-        },
-        {
-          combos: [[t('shortcuts.combos.clickRow')]],
-          description: t('shortcuts.items.settings.recordShortcut')
-        },
-        { combos: [['Esc']], description: t('shortcuts.items.settings.cancelRecording') },
-        {
-          combos: [[t('shortcuts.combos.reset')]],
-          description: t('shortcuts.items.settings.resetShortcut')
-        }
-      ]
-    }
+    sections: [
+      {
+        title: t('shortcuts.groups.inbox.title'),
+        description: t('shortcuts.groups.inbox.description'),
+        shortcuts: [
+          { combos: [['↓'], ['J']], description: t('shortcuts.items.inbox.nextItem') },
+          { combos: [['↑'], ['K']], description: t('shortcuts.items.inbox.previousItem') },
+          { combos: [['Home'], ['End']], description: t('shortcuts.items.inbox.firstOrLastItem') },
+          {
+            combos: [['PageUp'], ['PageDown']],
+            description: t('shortcuts.items.inbox.jumpByPage')
+          },
+          { combos: [['Space']], description: t('shortcuts.items.inbox.togglePreview') },
+          { combos: [['X']], description: t('shortcuts.items.inbox.selectItem') },
+          { combos: [[mod, 'A']], description: t('shortcuts.items.inbox.selectAllVisible') },
+          { combos: [['Esc']], description: t('shortcuts.items.inbox.clearSelection') },
+          { combos: [['.'], ['F']], description: t('shortcuts.items.inbox.openQuickFile') },
+          { combos: [['1-5']], description: t('shortcuts.items.inbox.chooseQuickFileResult') },
+          {
+            combos: [['Delete'], [backspace]],
+            description: t('shortcuts.items.inbox.archiveItem')
+          },
+          { combos: [['O']], description: t('shortcuts.items.inbox.openOriginal') },
+          { combos: [['R']], description: t('shortcuts.items.inbox.refresh') },
+          { combos: [[mod, 'Enter']], description: t('shortcuts.items.inbox.confirmFiling') }
+        ]
+      },
+      {
+        title: t('shortcuts.groups.journal.title'),
+        description: t('shortcuts.groups.journal.description'),
+        shortcuts: [
+          { combos: [['Esc']], description: t('shortcuts.items.journal.returnFromOverview') },
+          { combos: [[mod, 'F']], description: t('shortcuts.items.journal.find') }
+        ]
+      },
+      {
+        title: t('shortcuts.groups.tasks.title'),
+        description: t('shortcuts.groups.tasks.description'),
+        shortcuts: [
+          { combos: [[mod, 'Z']], description: t('shortcuts.items.general.undoTaskAction') },
+          { combos: [[shift, 'F']], description: t('shortcuts.items.tasks.clearFilters') },
+          { combos: [[mod, 'A']], description: t('shortcuts.items.tasks.selectAllVisible') },
+          { combos: [['Esc']], description: t('shortcuts.items.tasks.clearSelection') },
+          { combos: [[mod, 'Enter']], description: t('shortcuts.items.tasks.completeSelected') },
+          { combos: [[mod, backspace]], description: t('shortcuts.items.tasks.deleteSelected') },
+          { combos: [['R']], description: t('shortcuts.items.tasks.configureRepeat') },
+          { combos: [[shift, 'S']], description: t('shortcuts.items.tasks.skipOccurrence') },
+          { combos: [[shift, 'X']], description: t('shortcuts.items.tasks.stopRepeating') }
+        ]
+      },
+      {
+        title: t('shortcuts.groups.settings.title'),
+        description: t('shortcuts.groups.settings.description'),
+        shortcuts: [
+          {
+            combos: [[t('shortcuts.combos.shortcutsTab')]],
+            description: t('shortcuts.items.settings.customizeShortcuts')
+          },
+          {
+            combos: [[t('shortcuts.combos.clickRow')]],
+            description: t('shortcuts.items.settings.recordShortcut')
+          },
+          { combos: [['Esc']], description: t('shortcuts.items.settings.cancelRecording') },
+          {
+            combos: [[t('shortcuts.combos.reset')]],
+            description: t('shortcuts.items.settings.resetShortcut')
+          }
+        ]
+      }
+    ]
+  }
+}
+
+const getShortcutGroups = (
+  t: TFunction<'common'>,
+  tSettings: TFunction<'settings'>,
+  overrides: Readonly<Record<string, ShortcutBinding>>
+): ShortcutGroup[] => {
+  const commandGroups = getCommandGroups(tSettings, overrides)
+  const fixed = getFixedShortcuts(t)
+
+  return [
+    ...SHORTCUT_GROUP_ORDER.map((group) => ({
+      title: tSettings(`shortcuts.categories.${group}`),
+      shortcuts: [...(commandGroups.get(group) ?? []), ...(fixed.inGroup[group] ?? [])]
+    })),
+    ...fixed.sections
   ]
 }
 
@@ -292,7 +257,8 @@ export const KeyboardShortcutsDialog = ({
 }: KeyboardShortcutsDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('settings')
   const { t } = useT('common')
-  const shortcutGroups = getShortcutGroups(t, tPhaseF)
+  const overrides = useShortcutOverrides()
+  const shortcutGroups = getShortcutGroups(t, tPhaseF, overrides)
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -313,9 +279,11 @@ export const KeyboardShortcutsDialog = ({
               >
                 <div className="mb-3">
                   <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {group.description}
-                  </p>
+                  {group.description && (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {group.description}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   {group.shortcuts.map((shortcut, shortcutIndex) => (
@@ -325,11 +293,6 @@ export const KeyboardShortcutsDialog = ({
                     >
                       <div className="min-w-0">
                         <p className="text-sm leading-5 text-foreground">{shortcut.description}</p>
-                        {shortcut.detail && (
-                          <p className="text-xs leading-5 text-muted-foreground">
-                            {shortcut.detail}
-                          </p>
-                        )}
                       </div>
                       <ShortcutCombos combos={shortcut.combos} />
                     </div>

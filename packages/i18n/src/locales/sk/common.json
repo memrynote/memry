@@ -1046,14 +1046,6 @@
     "or": "alebo",
     "then": "potom",
     "groups": {
-      "general": {
-        "title": "Všeobecné",
-        "description": "Navigácia a pomoc v celej aplikácii."
-      },
-      "tabs": {
-        "title": "Karty a rozdelenia",
-        "description": "Presúvajte sa medzi kartami a tablami."
-      },
       "inbox": {
         "title": "Prijaté",
         "description": "Rýchlo spracujte zaznamenané položky."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Denník",
         "description": "Prechádzajte zobrazenia denníka a presuňte sa do oblasti písania."
-      },
-      "notes": {
-        "title": "Poznámky / Editor",
-        "description": "Píšte, formátujte a hľadajte v poznámkach."
       },
       "tasks": {
         "title": "Úlohy",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Otvoriť rýchle vyhľadávanie",
-        "createNote": "Vytvoriť poznámku",
-        "openSettings": "Otvoriť nastavenia",
-        "switchVault": "Prepnúť trezor",
-        "adjacentVault": "Predchádzajúci alebo ďalší trezor",
-        "keyboardShortcuts": "Otvoriť klávesové skratky",
         "undoTaskAction": "Vrátiť späť poslednú akciu s úlohou",
-        "toggleSidebar": "Zobraziť/skryť bočný panel",
         "sidebarSection": "Prejsť na sekciu bočného panela"
       },
       "tabs": {
-        "newTabMenu": "Otvoriť ponuku novej karty",
-        "closeTab": "Zavrieť kartu",
-        "closeAllInPane": "Zavrieť všetky karty v table",
-        "reopenClosedTab": "Znova otvoriť zavretú kartu",
-        "nextTab": "Ďalšia karta",
-        "previousTab": "Predchádzajúca karta",
-        "pinTab": "Pripnúť alebo odopnúť kartu",
-        "duplicateTab": "Duplikovať kartu",
-        "splitRight": "Rozdeliť doprava",
-        "splitDown": "Rozdeliť nadol",
-        "closeSplitPane": "Zavrieť rozdelenú tablu",
         "focusPane": "Prejsť na inú tablu",
         "moveTabToPane": "Presunúť kartu do tably",
         "maximizePane": "Maximalizovať aktuálnu tablu"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Vrátiť sa z mesačného alebo ročného zobrazenia",
-        "find": "Hľadať v denníku",
-        "bold": "Tučné písmo pre vybraný text",
-        "italic": "Kurzíva pre vybraný text",
-        "underline": "Podčiarknutie pre vybraný text"
+        "find": "Hľadať v denníku"
       },
       "notes": {
-        "createNote": "Vytvoriť poznámku",
         "find": "Hľadať v poznámke",
-        "bold": "Tučné",
-        "italic": "Kurzíva",
-        "underline": "Podčiarknuté",
         "commandMenu": "Otvoriť príkazovú ponuku editora",
         "closeOverlays": "Zavrieť prekrytia editora"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Zastaviť opakovanie úlohy"
       },
       "settings": {
-        "openSettings": "Otvoriť nastavenia",
         "customizeShortcuts": "Prispôsobiť klávesové skratky",
         "recordShortcut": "Nahrať novú skratku",
         "cancelRecording": "Zrušiť nahrávanie skratky",

@@ -27,7 +27,6 @@ import {
   JournalHeaderActions,
   JournalDateDisplay,
   JournalStatsFooter,
-  type JournalMenuAction,
   type JournalViewState
 } from '@/components/journal'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
@@ -48,13 +47,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { notesService } from '@/services/notes-service'
 import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
-import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
@@ -128,6 +126,8 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
 import { useT } from '@memry/i18n/renderer'
+import { useDialogState } from '@/hooks/use-dialog-state'
+import { useJournalCommands, type JournalDialog } from './journal/use-journal-commands'
 
 const log = createLogger('Page:Journal')
 
@@ -206,15 +206,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [drill, selectedDate]
   )
 
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const dialog = useDialogState<JournalDialog>()
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const { createNote } = useNoteMutations()
-  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
-  const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
-  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // Opens the editor's template picker at the caret, same path as the note menu.
   const openTemplateInsertRef = useRef<(() => void) | null>(null)
@@ -963,93 +959,28 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     focusBlock: (blockId: string) => mindMapFocusRef.current?.(blockId) === true
   })
 
-  // Overflow-menu file actions. Journal entries live in the notes cache, so
-  // the note file APIs resolve them by id.
-  const handleCopyPath = useCallback(async () => {
-    if (!entryId) return
-    try {
-      const note = await notesService.get(entryId)
-      if (!note) throw new Error(notesT('page.toast.copyPathFailed'))
-      await navigator.clipboard.writeText(note.path)
-      toast.success(notesT('page.toast.pathCopied'))
-    } catch (err) {
-      toast.error(extractErrorMessage(err, notesT('page.toast.copyPathFailed')))
-    }
-  }, [entryId, notesT])
-
-  const handleRevealInFinder = useCallback(async () => {
-    if (!entryId) return
-    try {
-      await notesService.revealInFinder(entryId)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, notesT('page.toast.revealFailed')))
-    }
-  }, [entryId, notesT])
-
-  const handleOpenExternal = useCallback(async () => {
-    if (!entryId) return
-    try {
-      await notesService.openExternal(entryId)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, notesT('page.toast.openExternalFailed')))
-    }
-  }, [entryId, notesT])
-
-  const handleToggleLock = useCallback(async () => {
-    if (!entryId) return
-    try {
-      await setVaultLock('note', entryId, !hasOwnLock)
-    } catch (err) {
-      toast.error(extractErrorMessage(err, notesT('vaultLock.toggleFailed')))
-    }
-  }, [entryId, hasOwnLock, notesT])
-
-  const openFind = findInPage.open
-  const handleMenuAction = useCallback(
-    (action: JournalMenuAction) => {
-      switch (action) {
-        case 'local-graph':
-          setIsLocalGraphOpen((prev) => !prev)
-          break
-        case 'find':
-          openFind()
-          break
-        case 'insert-template':
-          openTemplateInsertRef.current?.()
-          break
-        case 'save-as-template':
-          setIsSaveAsTemplateOpen(true)
-          break
-        case 'add-name':
-          if (entryId) requestNoteNameInput(entryId)
-          break
-        case 'copy-path':
-          void handleCopyPath()
-          break
-        case 'reveal-in-finder':
-          void handleRevealInFinder()
-          break
-        case 'open-external':
-          void handleOpenExternal()
-          break
-        case 'attachments':
-          setIsAttachmentsOpen(true)
-          break
-        case 'lock':
-          void handleToggleLock()
-          break
-        case 'delete':
-          setIsDeleteConfirmOpen(true)
-          break
-        case 'version-history':
-        case 'export':
-        case 'settings':
-          // Routed through their dedicated header props.
-          break
-      }
-    },
-    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal, handleToggleLock, entryId]
-  )
+  const { commands: journalCommands, runMenuAction } = useJournalCommands({
+    viewType: currentViewState.type,
+    isToday,
+    entryId,
+    isLocked,
+    hasOwnLock,
+    isFullWidth,
+    isLocalGraphOpen,
+    setIsLocalGraphOpen,
+    dialog,
+    openTemplateInsertRef,
+    openFind: findInPage.open,
+    goPrevious: handleNavigationPrevious,
+    goNext: handleNavigationNext,
+    goToday: handleTodayClick,
+    isBookmarked,
+    toggleBookmark: handleBookmarkToggle,
+    toggleFullWidth: toggleJournalWidth,
+    mindMap
+  })
+  const runJournal = (id: keyof typeof journalCommands): void =>
+    void journalCommands[id].run({ source: 'ui' })
 
   const handleDeleteConfirm = useCallback(async () => {
     if (isDeleting) return
@@ -1060,7 +991,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         toast.error(t('toast.deleteFailed'))
         return
       }
-      setIsDeleteConfirmOpen(false)
+      dialog.close()
       setIsLocalGraphOpen(false)
       // The editor still holds the deleted body; a fresh one starts the day
       // empty instead of saving the old text back on the next keystroke.
@@ -1068,7 +999,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     } finally {
       setIsDeleting(false)
     }
-  }, [isDeleting, deleteEntry, t])
+  }, [isDeleting, deleteEntry, t, dialog])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
     setHeadings(
@@ -1264,15 +1195,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isMindMapOpen={isMindMapOpen}
               isLocalGraphOpen={isLocalGraphOpen}
               lockAction={lockAction}
-              onPrevious={handleNavigationPrevious}
-              onNext={handleNavigationNext}
-              onToggleFullWidth={toggleJournalWidth}
-              onBookmarkToggle={() => void handleBookmarkToggle()}
-              onToggleMindMap={mindMap.toggle}
-              onVersionHistory={() => setIsVersionHistoryOpen(true)}
-              onExport={() => setIsExportDialogOpen(true)}
+              onPrevious={() => runJournal('journal.previous')}
+              onNext={() => runJournal('journal.next')}
+              onToggleFullWidth={() => runJournal('journal.toggleFullWidth')}
+              onBookmarkToggle={() => runJournal('journal.toggleBookmark')}
+              onToggleMindMap={() => runJournal('journal.toggleMindMap')}
+              onVersionHistory={() => runJournal('journal.versionHistory')}
+              onExport={() => runJournal('journal.export')}
               onOpenSettings={() => openSettingsModal('journal')}
-              onMenuAction={handleMenuAction}
+              onMenuAction={runMenuAction}
             />
           </div>
 
@@ -1612,30 +1543,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
         />
         {entry && (
-          <ExportDialog
-            open={isExportDialogOpen}
-            onOpenChange={setIsExportDialogOpen}
-            noteId={entry.id}
-            noteTitle={journalNoteTitle}
-          />
+          <ExportDialog {...dialog.bind('export')} noteId={entry.id} noteTitle={journalNoteTitle} />
         )}
         {entryId && (
           <NoteAttachmentsDialog
-            open={isAttachmentsOpen}
-            onOpenChange={setIsAttachmentsOpen}
+            {...dialog.bind('attachments')}
             noteId={entryId}
             getOriginalNames={getAttachmentOriginalNames}
           />
         )}
         <SaveNoteAsTemplateDialog
           noteId={entryId}
-          isOpen={isSaveAsTemplateOpen}
-          onClose={() => setIsSaveAsTemplateOpen(false)}
+          isOpen={dialog.is('saveAsTemplate')}
+          onClose={dialog.close}
         />
-        <AlertDialog
-          open={isDeleteConfirmOpen}
-          onOpenChange={(open) => !open && setIsDeleteConfirmOpen(false)}
-        >
+        <AlertDialog {...dialog.bind('delete')}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
@@ -1664,8 +1586,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         </AlertDialog>
         {entry && (
           <VersionHistory
-            open={isVersionHistoryOpen}
-            onOpenChange={setIsVersionHistoryOpen}
+            {...dialog.bind('versionHistory')}
             noteId={entry.id}
             noteTitle={journalNoteTitle}
             onRestore={() => {

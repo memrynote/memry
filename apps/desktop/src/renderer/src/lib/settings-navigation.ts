@@ -5,6 +5,9 @@
  * `section` takes the same targets as `useSettingsModal().open`, including the
  * `section:focus` forms such as `vault:activity`.
  *
+ * This is not a command because `settings.open*` names a section only, with no
+ * focus target, and its owner mounts below the providers that call this.
+ *
  * @module lib/settings-navigation
  */
 

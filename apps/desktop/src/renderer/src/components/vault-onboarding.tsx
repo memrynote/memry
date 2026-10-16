@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { trackTelemetry } from '@/lib/telemetry'
-import { isMac } from '@/lib/shortcut-registry'
+import { isMac } from '@/lib/shortcut-catalog'
 import { CreateVaultForm } from '@/components/onboarding/create-vault-form'
 import { SyncVaultPanel } from '@/components/onboarding/sync-vault-panel'
 

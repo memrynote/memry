@@ -2,8 +2,8 @@
  * Vault switcher open requests
  *
  * The vault switcher lives in the sidebar footer and owns its own popover
- * state. The ⌘⇧O shortcut is registered app-wide in `App.tsx`, far from that
- * component, so this module carries the request between them instead of
+ * state. The `nav.switchVault` command is owned by the vault pager, a sibling
+ * of that component, so this module carries the request between them instead of
  * duplicating vault-selection logic in a second surface.
  *
  * Module-level (not React context) for the same reason `lib/shortcut-bindings.ts`

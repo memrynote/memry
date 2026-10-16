@@ -1046,14 +1046,6 @@
     "or": "eller",
     "then": "deretter",
     "groups": {
-      "general": {
-        "title": "Generelt",
-        "description": "Navigasjon og hjelp i hele appen."
-      },
-      "tabs": {
-        "title": "Faner og delte ruter",
-        "description": "Flytt mellom faner og ruter."
-      },
       "inbox": {
         "title": "Innboks",
         "description": "Behandle raskt det du har fanget opp."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dagbok",
         "description": "Naviger i dagbokvisninger og fokuser på skrivefeltet."
-      },
-      "notes": {
-        "title": "Notater / editor",
-        "description": "Skriv, formater og søk i notater."
       },
       "tasks": {
         "title": "Oppgaver",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Åpne hurtigsøk",
-        "createNote": "Opprett et notat",
-        "openSettings": "Åpne innstillinger",
-        "switchVault": "Bytt hvelv",
-        "adjacentVault": "Forrige eller neste hvelv",
-        "keyboardShortcuts": "Åpne hurtigtaster",
         "undoTaskAction": "Angre siste oppgavehandling",
-        "toggleSidebar": "Vis eller skjul sidefeltet",
         "sidebarSection": "Gå til seksjon i sidefeltet"
       },
       "tabs": {
-        "newTabMenu": "Åpne menyen for ny fane",
-        "closeTab": "Lukk fane",
-        "closeAllInPane": "Lukk alle faner i ruten",
-        "reopenClosedTab": "Åpne lukket fane på nytt",
-        "nextTab": "Neste fane",
-        "previousTab": "Forrige fane",
-        "pinTab": "Fest eller løsne fane",
-        "duplicateTab": "Dupliser fane",
-        "splitRight": "Del til høyre",
-        "splitDown": "Del nedover",
-        "closeSplitPane": "Lukk den delte ruten",
         "focusPane": "Fokuser en annen rute",
         "moveTabToPane": "Flytt fane til rute",
         "maximizePane": "Maksimer gjeldende rute"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Gå tilbake fra måneds- eller årsvisning",
-        "find": "Finn i dagboken",
-        "bold": "Gjør merket tekst fet",
-        "italic": "Gjør merket tekst kursiv",
-        "underline": "Understrek merket tekst"
+        "find": "Finn i dagboken"
       },
       "notes": {
-        "createNote": "Opprett et notat",
         "find": "Finn i notatet",
-        "bold": "Fet",
-        "italic": "Kursiv",
-        "underline": "Understrek",
         "commandMenu": "Åpne kommandomenyen i editoren",
         "closeOverlays": "Lukk overlegg i editoren"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Slutt å gjenta oppgaven"
       },
       "settings": {
-        "openSettings": "Åpne innstillinger",
         "customizeShortcuts": "Tilpass hurtigtaster",
         "recordShortcut": "Ta opp en ny hurtigtast",
         "cancelRecording": "Avbryt opptak av hurtigtast",

@@ -182,7 +182,7 @@ async function seedNoteOwningFileBlock(
   await page.reload()
   await ready(page)
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 20_000 })
-  await page.waitForFunction(() => Boolean((window as any).__memryEditor), undefined, {
+  await page.waitForFunction(() => Boolean((window as any).__memryActiveEditor), undefined, {
     timeout: 20_000
   })
 
@@ -200,8 +200,8 @@ async function seedNoteOwningFileBlock(
       const stored = attachments[0]?.filename
       if (!stored) throw new Error('uploaded attachment not listed')
 
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'file',

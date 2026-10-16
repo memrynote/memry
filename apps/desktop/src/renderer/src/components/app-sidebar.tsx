@@ -20,7 +20,13 @@ import {
   SidebarVaultPager,
   useSidebarVaultPages
 } from '@/components/sidebar/sidebar-vault-paging'
-import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarRail,
+  useSidebar
+} from '@/components/ui/sidebar'
 import { AppRail, type AppRailItem } from '@/components/sidebar/app-rail'
 import { SidebarPanelHeader } from '@/components/sidebar/sidebar-panel-header'
 import { SidebarSection } from '@/components/sidebar-section'
@@ -45,11 +51,11 @@ import { resolveSidebarSectionOrder } from '@/components/sidebar/sidebar-section
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
-import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarRailOrder, useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useNavigateToPage } from '@/hooks/use-navigate-to-page'
+import { useSidebarTreeCommands } from '@/components/sidebar/use-sidebar-tree-commands'
 import { useOpenPage } from '@/hooks/use-open-target'
-import type { OpenSidebarItemOptions } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useModifierHeld } from '@/hooks/use-modifier-held'
@@ -61,7 +67,6 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
 import { useInboxList } from '@/hooks/use-inbox'
-import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { Project } from '@/data/tasks-data'
 import type { AppPage } from '@/App'
 import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/shared/file-types'
@@ -69,8 +74,7 @@ import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
-import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
+import { runCommand } from '@/commands'
 import { useT } from '@memry/i18n/renderer'
 import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
@@ -118,7 +122,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
-  const targetFolderRef = useRef('')
 
   const { showFiles } = treeViewOptions
   const handleFileDrop = useCallback(
@@ -161,14 +164,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   const { setSelectedFolder } = useSelectedFolder()
 
-  const handleTargetFolderChange = useCallback(
-    (folder: string) => {
-      targetFolderRef.current = folder
-      setSelectedFolder(folder)
-    },
-    [setSelectedFolder]
-  )
-
   const { isDraggingFiles, dropFolder, dropHandlers } = useFileDrop({ onDrop: handleFileDrop })
 
   // Calculate today's tasks count for Tasks badge in sidebar
@@ -194,97 +189,11 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // First-launch interactive tour (runs once per install)
   useFirstRunTour()
 
-  // Tab actions for opening new notes (stable reference, won't cause re-renders)
-
-  const { settings: generalSettings } = useGeneralSettings()
-  const { open: openSettings, isOpen: isSettingsOpen, close: closeSettings } = useSettingsModal()
+  const { open: openSettings, isOpen: isSettingsOpen } = useSettingsModal()
   const { order: sectionOrder, setOrder: setSectionOrder } = useSidebarSectionOrder()
   const { order: railOrder, setOrder: setRailOrder } = useSidebarRailOrder()
 
-  // Handle creating a new note (⌘N shortcut target)
-  const handleNewNote = useCallback(async () => {
-    const folder = generalSettings.createInSelectedFolder ? targetFolderRef.current : ''
-
-    try {
-      const result = await notesService.create({
-        title: NEW_NOTE_TITLE,
-        content: '',
-        folder: folder || undefined
-      })
-
-      if (result.success && result.note) {
-        markNewNoteTitlePending(result.note.id)
-        openPage({
-          type: 'note',
-          title: result.note.title,
-          icon: 'file-text',
-          path: `/note/${result.note.id}`,
-          entityId: result.note.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false
-        })
-        // The folder may have come from `defaultNoteFolder` rather than the
-        // selection, so the created note is what says where to look.
-        revealNoteInSidebar(result.note.id)
-      }
-    } catch (error) {
-      log.error('Failed to create new note', error)
-      toast.error(
-        extractErrorMessage(
-          error,
-          getI18n().getFixedT(null, 'common')('phaseI.errors.failedToCreateNote')
-        )
-      )
-    }
-  }, [openPage, generalSettings.createInSelectedFolder])
-
-  // Open a top-level section as a tab. Shared by sidebar clicks and the
-  // ⌘/Ctrl+number shortcuts so both land the user in exactly the same state.
-  const navigateToPage = useCallback(
-    (page: AppPage, options?: OpenSidebarItemOptions) => {
-      // Settings covers the workspace; going to a page leaves it, even when the
-      // page's tab is already the active one.
-      if (isSettingsOpen) closeSettings()
-
-      // Map page to tab type and title
-      const pageToTabType: Record<AppPage, TabType> = {
-        home: 'home',
-        inbox: 'inbox',
-        calendar: 'calendar',
-        journal: 'journal',
-        tasks: 'tasks',
-        graph: 'graph'
-      }
-      const pageToTitle: Record<AppPage, string> = {
-        home: 'Home',
-        inbox: 'Inbox',
-        calendar: 'Calendar',
-        journal: 'Journal',
-        tasks: 'Tasks',
-        graph: 'Graph'
-      }
-
-      // Land the user ready-to-act: Inbox focuses capture, Tasks opens the default
-      // project + focuses quick-add. Calendar deliberately gets NO new-event popover
-      // from the sidebar — that only fires from the New menu and the new-tab +.
-      const pageToViewState: Partial<Record<AppPage, Record<string, unknown>>> = {
-        inbox: newItemViewState('inbox'),
-        tasks: newItemViewState('tasks')
-      }
-
-      // Open as tab in active pane
-      const item: SidebarItem = {
-        type: pageToTabType[page],
-        title: pageToTitle[page],
-        path: `/${page}`,
-        viewState: pageToViewState[page]
-      }
-      openSidebarItem(item, options)
-    },
-    [openSidebarItem, isSettingsOpen, closeSettings]
-  )
+  const navigateToPage = useNavigateToPage()
 
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
@@ -497,6 +406,16 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // required prop types without a reachable dead control.
   const noopProjectAction = useCallback((): void => {}, [])
 
+  const { state: sidebarState } = useSidebar()
+  useSidebarTreeCommands({
+    notesTreeRef: notesActionsRef,
+    isTreeVisible: sidebarState === 'expanded' && !isSettingsOpen,
+    isCanvasEnabled: isEnabled('spatialCanvas'),
+    createCanvas: handleCreateCanvas,
+    createProject: handleCreateProject,
+    onFoldersExpandedChange: setFoldersExpanded
+  })
+
   // Sections in their default order. What the user dragged lives in
   // `sidebar.sectionOrder` (per vault, synced); a saved order that names a
   // section this build does not render is filtered, and a section the saved
@@ -571,7 +490,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       >
         <NotesTree
           ref={notesActionsRef}
-          onTargetFolderChange={handleTargetFolderChange}
+          onTargetFolderChange={setSelectedFolder}
           fileDropFolder={isDraggingFiles ? dropFolder : null}
           scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
         />
@@ -825,37 +744,14 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             <SidebarVaultPager pages={vaultPages} paused={isSettingsOpen}>
               <SidebarPanelHeader
                 pages={vaultPages}
-                onNewNote={() => void handleNewNote()}
                 newItemActions={{
-                  onNewNote: () => void handleNewNote(),
-                  onJournal: () =>
-                    openSidebarItem({
-                      type: 'journal',
-                      title: 'Journal',
-                      path: '/journal'
-                    }),
+                  onNewNote: () => void runCommand('nav.newNote', 'ui'),
+                  onJournal: () => navigateToPage('journal'),
                   onCalendar: () =>
-                    openSidebarItem({
-                      type: 'calendar',
-                      title: 'Calendar',
-                      path: '/calendar',
-                      viewState: newItemViewState('calendar')
-                    }),
-                  onInbox: () =>
-                    openSidebarItem({
-                      type: 'inbox',
-                      title: 'Inbox',
-                      path: '/inbox',
-                      viewState: newItemViewState('inbox')
-                    }),
-                  onTasks: () =>
-                    openSidebarItem({
-                      type: 'tasks',
-                      title: 'Tasks',
-                      path: '/tasks',
-                      viewState: newItemViewState('tasks')
-                    }),
-                  onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
+                    navigateToPage('calendar', { viewState: newItemViewState('calendar') }),
+                  onInbox: () => navigateToPage('inbox'),
+                  onTasks: () => navigateToPage('tasks'),
+                  onTags: () => navigateToPage('tags')
                 }}
               />
               <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>

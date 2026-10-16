@@ -212,7 +212,7 @@ async function indexedBaseline(
 async function openInEditor(page: Page, title: string): Promise<void> {
   await openNoteByTitle(page, title)
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 15_000 })
-  await page.waitForFunction(() => Boolean((window as any).__memryEditor), undefined, {
+  await page.waitForFunction(() => Boolean((window as any).__memryActiveEditor), undefined, {
     timeout: 30_000
   })
 }
@@ -228,8 +228,8 @@ async function openInEditor(page: Page, title: string): Promise<void> {
  */
 async function nudgeDocument(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const before = (editor.document as any[]).map((block) => block.id)
     editor.insertBlocks(
@@ -268,8 +268,8 @@ async function waitForWritebackToSettle(
  */
 async function editorCommentSources(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const sources: string[] = []
     const walk = (parts: any): void => {
@@ -289,8 +289,8 @@ async function visibleBlocks(
   page: Page
 ): Promise<Array<{ type: string; language: string; text: string }>> {
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
 
     const readInline = (content: any): string => {
       if (!Array.isArray(content)) return ''
@@ -567,8 +567,8 @@ test.describe('Foreign markdown round-trip', () => {
 
     await openInEditor(pageA, title)
     await pageA.evaluate((line) => {
-      const editor = (window as any).__memryEditor
-      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const editor = (window as any).__memryActiveEditor
+      if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       const target = (editor.document as any[]).find((block) =>
         JSON.stringify(block.content ?? '').includes(line)
       )

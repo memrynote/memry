@@ -38,7 +38,8 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarFooter: ({ children }: { children: ReactNode }) => <footer>{children}</footer>,
   SidebarHeader: ({ children }: { children?: ReactNode }) => <header>{children}</header>,
-  SidebarRail: () => <div data-testid="sidebar-rail" />
+  SidebarRail: () => <div data-testid="sidebar-rail" />,
+  useSidebar: () => ({ state: 'expanded' })
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -52,6 +53,7 @@ vi.mock('@/components/sidebar/app-rail', () => ({
 }))
 
 vi.mock('@/components/sidebar-section', () => ({
+  expandSidebarSection: vi.fn(),
   SidebarSection: ({
     label,
     actions,

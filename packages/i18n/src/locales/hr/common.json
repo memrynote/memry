@@ -1046,14 +1046,6 @@
     "or": "ili",
     "then": "zatim",
     "groups": {
-      "general": {
-        "title": "Općenito",
-        "description": "Navigacija i pomoć u cijeloj aplikaciji."
-      },
-      "tabs": {
-        "title": "Kartice i podjele",
-        "description": "Krećite se između kartica i okana."
-      },
       "inbox": {
         "title": "Ulazni pretinac",
         "description": "Brzo obradite zabilježene stavke."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Dnevnik",
         "description": "Krećite se prikazima dnevnika i fokusirajte prostor za pisanje."
-      },
-      "notes": {
-        "title": "Bilješke / Uređivač",
-        "description": "Pišite, oblikujte i pretražujte bilješke."
       },
       "tasks": {
         "title": "Zadaci",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Otvori brzo pretraživanje",
-        "createNote": "Stvori bilješku",
-        "openSettings": "Otvori postavke",
-        "switchVault": "Promijeni trezor",
-        "adjacentVault": "Prethodni ili sljedeći trezor",
-        "keyboardShortcuts": "Otvori tipkovničke prečace",
         "undoTaskAction": "Poništi posljednju radnju sa zadatkom",
-        "toggleSidebar": "Prikaži/sakrij bočnu traku",
         "sidebarSection": "Idi na odjeljak bočne trake"
       },
       "tabs": {
-        "newTabMenu": "Otvori izbornik nove kartice",
-        "closeTab": "Zatvori karticu",
-        "closeAllInPane": "Zatvori sve kartice u oknu",
-        "reopenClosedTab": "Ponovno otvori zatvorenu karticu",
-        "nextTab": "Sljedeća kartica",
-        "previousTab": "Prethodna kartica",
-        "pinTab": "Prikvači ili otkvači karticu",
-        "duplicateTab": "Dupliciraj karticu",
-        "splitRight": "Podijeli udesno",
-        "splitDown": "Podijeli prema dolje",
-        "closeSplitPane": "Zatvori podijeljeno okno",
         "focusPane": "Fokusiraj drugo okno",
         "moveTabToPane": "Premjesti karticu u okno",
         "maximizePane": "Maksimiziraj trenutno okno"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Vrati se s mjesečnog ili godišnjeg prikaza",
-        "find": "Pronađi u dnevniku",
-        "bold": "Podebljaj odabrani tekst",
-        "italic": "Ukosi odabrani tekst",
-        "underline": "Podcrtaj odabrani tekst"
+        "find": "Pronađi u dnevniku"
       },
       "notes": {
-        "createNote": "Stvori bilješku",
         "find": "Pronađi u bilješci",
-        "bold": "Podebljano",
-        "italic": "Kurziv",
-        "underline": "Podcrtano",
         "commandMenu": "Otvori naredbeni izbornik uređivača",
         "closeOverlays": "Zatvori slojeve uređivača"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Zaustavi ponavljanje zadatka"
       },
       "settings": {
-        "openSettings": "Otvori postavke",
         "customizeShortcuts": "Prilagodi tipkovničke prečace",
         "recordShortcut": "Snimi novi prečac",
         "cancelRecording": "Odustani od snimanja prečaca",

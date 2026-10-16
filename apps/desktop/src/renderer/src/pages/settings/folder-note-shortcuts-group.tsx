@@ -9,7 +9,7 @@ import { SettingsGroup } from '@/components/settings/settings-primitives'
 import { AlertTriangle, Folder, Pencil, Plus, Trash2, X } from '@/lib/icons'
 import { useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { bindingFromKeyboardEvent } from '@/hooks/use-keyboard-shortcuts-base'
-import { bindingParts, findConflicts, folderNoteShortcutId } from '@/lib/shortcut-registry'
+import { bindingParts, findConflicts, folderNoteShortcutId } from '@/lib/shortcut-catalog'
 import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { cn } from '@/lib/utils'
 import {

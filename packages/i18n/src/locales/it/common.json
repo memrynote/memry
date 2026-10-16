@@ -1046,14 +1046,6 @@
     "or": "o",
     "then": "poi",
     "groups": {
-      "general": {
-        "title": "Generale",
-        "description": "Navigazione e aiuto in tutta l'app."
-      },
-      "tabs": {
-        "title": "Schede e riquadri",
-        "description": "Spostati tra schede e riquadri."
-      },
       "inbox": {
         "title": "Posta in arrivo",
         "description": "Smista rapidamente gli elementi catturati."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Diario",
         "description": "Spostati tra le viste del diario e passa all'area di scrittura."
-      },
-      "notes": {
-        "title": "Note / Editor",
-        "description": "Scrivi, formatta e cerca le note."
       },
       "tasks": {
         "title": "Attività",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Apri la ricerca rapida",
-        "createNote": "Crea una nota",
-        "openSettings": "Apri le impostazioni",
-        "switchVault": "Cambia vault",
-        "adjacentVault": "Vault precedente o successivo",
-        "keyboardShortcuts": "Apri le scorciatoie da tastiera",
         "undoTaskAction": "Annulla l'ultima azione sulle attività",
-        "toggleSidebar": "Mostra/nascondi la barra laterale",
         "sidebarSection": "Vai a una sezione della barra laterale"
       },
       "tabs": {
-        "newTabMenu": "Apri il menu Nuova scheda",
-        "closeTab": "Chiudi la scheda",
-        "closeAllInPane": "Chiudi tutte le schede del riquadro",
-        "reopenClosedTab": "Riapri la scheda chiusa",
-        "nextTab": "Scheda successiva",
-        "previousTab": "Scheda precedente",
-        "pinTab": "Fissa o non fissare più la scheda",
-        "duplicateTab": "Duplica la scheda",
-        "splitRight": "Dividi a destra",
-        "splitDown": "Dividi in basso",
-        "closeSplitPane": "Chiudi il riquadro diviso",
         "focusPane": "Passa a un altro riquadro",
         "moveTabToPane": "Sposta la scheda in un riquadro",
         "maximizePane": "Ingrandisci il riquadro corrente"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Torna dalla vista mese o anno",
-        "find": "Trova nel diario",
-        "bold": "Applica il grassetto al testo selezionato",
-        "italic": "Applica il corsivo al testo selezionato",
-        "underline": "Sottolinea il testo selezionato"
+        "find": "Trova nel diario"
       },
       "notes": {
-        "createNote": "Crea una nota",
         "find": "Trova nella nota",
-        "bold": "Grassetto",
-        "italic": "Corsivo",
-        "underline": "Sottolineato",
         "commandMenu": "Apri il menu comandi dell'editor",
         "closeOverlays": "Chiudi i pannelli dell'editor"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Interrompi la ripetizione dell'attività"
       },
       "settings": {
-        "openSettings": "Apri le impostazioni",
         "customizeShortcuts": "Personalizza le scorciatoie da tastiera",
         "recordShortcut": "Registra una nuova scorciatoia",
         "cancelRecording": "Annulla la registrazione della scorciatoia",

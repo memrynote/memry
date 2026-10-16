@@ -2,15 +2,17 @@ import { render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
+import { SHORTCUT_ENTRIES } from '@/lib/shortcut-catalog'
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog'
 
 vi.mock('@memry/i18n/renderer', () => {
   const groupTitles: Record<string, string> = {
-    'shortcuts.groups.general.title': 'General',
-    'shortcuts.groups.tabs.title': 'Tabs & Splits',
+    'shortcuts.categories.navigation': 'Navigation',
+    'shortcuts.categories.tabs': 'Tabs',
+    'shortcuts.categories.editor': 'Editor',
+    'shortcuts.categories.view': 'View',
     'shortcuts.groups.inbox.title': 'Inbox',
     'shortcuts.groups.journal.title': 'Journal',
-    'shortcuts.groups.notes.title': 'Notes / Editor',
     'shortcuts.groups.tasks.title': 'Tasks',
     'shortcuts.groups.settings.title': 'Settings'
   }
@@ -36,11 +38,12 @@ describe('KeyboardShortcutsDialog', () => {
     render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
 
     for (const section of [
-      'General',
-      'Tabs & Splits',
+      'Navigation',
+      'Tabs',
+      'Editor',
+      'View',
       'Inbox',
       'Journal',
-      'Notes / Editor',
       'Tasks',
       'Settings'
     ]) {
@@ -65,9 +68,40 @@ describe('KeyboardShortcutsDialog', () => {
 
     render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
 
-    const row = screen.getByText('shortcuts.items.tabs.splitRight').closest('div')!.parentElement!
+    const row = screen
+      .getByText('shortcuts.entries.tabs.splitRight.label')
+      .closest('div')!.parentElement!
     expect(within(row).getByText('Y')).toBeInTheDocument()
     expect(within(row).queryByText('\\')).toBeNull()
+  })
+
+  it('lists every command that has a keyboard entry', () => {
+    render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
+
+    const missing = SHORTCUT_ENTRIES.filter(
+      ({ i18nKey }) => screen.queryAllByText(`shortcuts.entries.${i18nKey}.label`).length !== 1
+    ).map(({ id }) => id)
+
+    expect(SHORTCUT_ENTRIES.length).toBeGreaterThan(0)
+    expect(missing).toEqual([])
+  })
+
+  it('lists the ? alias next to the shortcuts command and drops it for a whileDefault alias once rebound', () => {
+    __setShortcutOverridesForTests({
+      'view.zoomIn': { key: 'y', modifiers: { meta: true } }
+    })
+    render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
+
+    const helpRow = screen
+      .getByText('shortcuts.entries.view.shortcuts.label')
+      .closest('div')!.parentElement!
+    expect(within(helpRow).getByText('?')).toBeInTheDocument()
+
+    const zoomRow = screen
+      .getByText('shortcuts.entries.view.zoomIn.label')
+      .closest('div')!.parentElement!
+    expect(within(zoomRow).getByText('Y')).toBeInTheDocument()
+    expect(within(zoomRow).queryByText('+')).toBeNull()
   })
 
   it('does not advertise shortcuts nothing handles', () => {

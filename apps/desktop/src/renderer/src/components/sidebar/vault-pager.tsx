@@ -17,7 +17,6 @@ import {
 import {
   getVaultSwitchState,
   holdVaultReveal,
-  requestVaultPage,
   setVaultSwipeProgress,
   setVaultSwitchFrame,
   subscribeVaultSwitchState,
@@ -34,9 +33,7 @@ import {
   vaultTintStyle
 } from '@/lib/vault-sidebar-snapshot'
 import { pendingWorkspaceLoads, subscribeWorkspaceLoads } from '@/lib/workspace-load-tracker'
-import { useShortcutBinding } from '@/lib/shortcut-bindings'
-import { chordAllowedInInput, matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
-import { isPlainTextInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { useVaultPagerCommands } from '@/components/sidebar/use-vault-pager-commands'
 
 /** Motion values from DESIGN.md: settle is `--duration-slow`, cancel `--duration-normal`. */
 const SETTLE_MS = 300
@@ -478,7 +475,7 @@ export function VaultPager({
     )
   )
 
-  useAdjacentVaultShortcuts(!paused)
+  useVaultPagerCommands(paused)
 
   // Arriving under a cover: lift it once the new vault's list has loaded, both
   // its queries and the reads made outside TanStack Query (sort modes, section
@@ -635,31 +632,4 @@ export function VaultPager({
       </div>
     </div>
   )
-}
-
-/** Next/previous vault from the keyboard; bindings live in the shortcut registry. */
-function useAdjacentVaultShortcuts(enabled: boolean): void {
-  const next = useShortcutBinding('nav.nextVault')
-  const prev = useShortcutBinding('nav.prevVault')
-
-  useEffect(() => {
-    if (!enabled) return
-    const onKeyDown = (event: KeyboardEvent): void => {
-      // AltGr arrives as Ctrl+Alt on Windows, where Ctrl+Alt is the default
-      // chord: a layout that types characters with AltGr must not page vaults.
-      if (event.getModifierState('AltGraph')) return
-      const isNext = matchesShortcut(event, next.key, next.modifiers)
-      const isPrev = !isNext && matchesShortcut(event, prev.key, prev.modifiers)
-      if (!isNext && !isPrev) return
-      // ⌃⌘←/→ (Ctrl+Alt off macOS) moves no caret, so it works from any field.
-      if (!chordAllowedInInput(isNext ? next : prev) && isPlainTextInputFocused()) return
-      event.preventDefault()
-      event.stopPropagation()
-      // The arrows are spatial: in RTL the next vault sits to the left.
-      const rtl = document.documentElement.dir === 'rtl'
-      requestVaultPage({ step: isNext !== rtl ? 1 : -1 })
-    }
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [enabled, next, prev])
 }

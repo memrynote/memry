@@ -39,6 +39,7 @@ import { OverviewTab } from './tabs/overview-tab'
 import { ListTab } from './tabs/list-tab'
 import type { HubHandlers } from './tabs/hub-handlers'
 import { openLinkedEvent } from './open-linked-item'
+import { useProjectCommands } from './use-project-commands'
 
 const log = createLogger('ProjectHub')
 
@@ -103,6 +104,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   })
 
   const toggleRail = useCallback(() => setRailOpen((open) => !open), [setRailOpen])
+  const openEditor = useCallback(() => setIsEditing(true), [])
+  const focusCapture = useCallback(() => setCaptureFocusSignal((signal) => signal + 1), [])
+  const openFilePicker = useCallback(() => setImportSignal((signal) => signal + 1), [])
 
   const handleOpenNote = useCallback(
     (noteId: string) => void openRelatedVaultItem(noteId, openTab),
@@ -265,12 +269,14 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
       onNoteIconChange: handleNoteIconChange,
       onOpenFile: handleOpenNote,
       onOpenEvent: handleOpenEvent,
-      onAddTask: () => setCaptureFocusSignal((signal) => signal + 1),
+      onAddTask: focusCapture,
       onAddNote: () => void handleAddNote(),
-      onAddFile: () => setImportSignal((signal) => signal + 1),
+      onAddFile: openFilePicker,
       onAddEvent: handleAddEvent
     }),
     [
+      focusCapture,
+      openFilePicker,
       goToTab,
       updateTask,
       handleOpenTask,
@@ -282,6 +288,17 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
       handleAddEvent
     ]
   )
+
+  useProjectCommands({
+    hasProject: Boolean(projectId && project),
+    canArchive: !project?.isDefault,
+    openEditor,
+    archive: handleArchiveProject,
+    focusCapture,
+    addNote: handleAddNote,
+    openFilePicker,
+    addEvent: handleAddEvent
+  })
 
   if (!projectId || !project) {
     return (
@@ -325,7 +342,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
           counts={hub.counts}
           railOpen={railOpen}
           onToggleRail={toggleRail}
-          onEdit={() => setIsEditing(true)}
+          onEdit={openEditor}
           onArchive={() => void handleArchiveProject()}
           canArchive={!project?.isDefault}
         />

@@ -41,7 +41,7 @@ Day / week / month / year views over events and date-bound tasks. Optional Googl
 
 ## Search
 
-A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag search, recents, and (when AI is enabled) semantic ranking.
+Global search (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag search, recents, and (when AI is enabled) semantic ranking. A command palette (<kbd>Cmd</kbd>+<kbd>P</kbd>) runs any app command by name, with the commands for the current tab first.
 
 → [Search](/user-guide/search)
 

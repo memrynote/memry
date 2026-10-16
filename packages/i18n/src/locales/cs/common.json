@@ -1046,14 +1046,6 @@
     "or": "nebo",
     "then": "poté",
     "groups": {
-      "general": {
-        "title": "Obecné",
-        "description": "Navigace a nápověda v celé aplikaci."
-      },
-      "tabs": {
-        "title": "Karty a rozdělení",
-        "description": "Přechod mezi kartami a podokny."
-      },
       "inbox": {
         "title": "Doručené",
         "description": "Rychlé zpracování zachycených položek."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Deník",
         "description": "Procházení zobrazení deníku a přechod do psací plochy."
-      },
-      "notes": {
-        "title": "Poznámky / Editor",
-        "description": "Psaní, formátování a hledání v poznámkách."
       },
       "tasks": {
         "title": "Úkoly",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Otevřít rychlé hledání",
-        "createNote": "Vytvořit poznámku",
-        "openSettings": "Otevřít nastavení",
-        "switchVault": "Přepnout trezor",
-        "adjacentVault": "Předchozí nebo další trezor",
-        "keyboardShortcuts": "Otevřít klávesové zkratky",
         "undoTaskAction": "Vrátit zpět poslední akci s úkolem",
-        "toggleSidebar": "Zobrazit/skrýt boční panel",
         "sidebarSection": "Přejít na sekci bočního panelu"
       },
       "tabs": {
-        "newTabMenu": "Otevřít nabídku nové karty",
-        "closeTab": "Zavřít kartu",
-        "closeAllInPane": "Zavřít všechny karty v podokně",
-        "reopenClosedTab": "Znovu otevřít zavřenou kartu",
-        "nextTab": "Další karta",
-        "previousTab": "Předchozí karta",
-        "pinTab": "Připnout nebo odepnout kartu",
-        "duplicateTab": "Duplikovat kartu",
-        "splitRight": "Rozdělit doprava",
-        "splitDown": "Rozdělit dolů",
-        "closeSplitPane": "Zavřít podokno",
         "focusPane": "Přejít do jiného podokna",
         "moveTabToPane": "Přesunout kartu do podokna",
         "maximizePane": "Maximalizovat aktuální podokno"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Vrátit se ze zobrazení měsíce nebo roku",
-        "find": "Najít v deníku",
-        "bold": "Ztučnit vybraný text",
-        "italic": "Nastavit kurzívu vybraného textu",
-        "underline": "Podtrhnout vybraný text"
+        "find": "Najít v deníku"
       },
       "notes": {
-        "createNote": "Vytvořit poznámku",
         "find": "Najít v poznámce",
-        "bold": "Tučné",
-        "italic": "Kurzíva",
-        "underline": "Podtržení",
         "commandMenu": "Otevřít nabídku příkazů editoru",
         "closeOverlays": "Zavřít překryvná okna editoru"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Ukončit opakování úkolu"
       },
       "settings": {
-        "openSettings": "Otevřít nastavení",
         "customizeShortcuts": "Přizpůsobit klávesové zkratky",
         "recordShortcut": "Nahrát novou zkratku",
         "cancelRecording": "Zrušit nahrávání zkratky",

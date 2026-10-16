@@ -1,6 +1,7 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { runCommand, useCommandDispatcher } from '@/commands'
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import { useAppZoom } from './use-app-zoom'
 
@@ -44,6 +45,13 @@ const press = (key: string, options: Partial<KeyboardEventInit> = {}): void => {
   )
 }
 
+/** The zoom owner plus the app's one keyboard dispatcher, as App mounts them. */
+const mountZoom = (): ReturnType<typeof renderHook> =>
+  renderHook(() => {
+    useCommandDispatcher()
+    useAppZoom()
+  })
+
 describe('useAppZoom', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -56,7 +64,7 @@ describe('useAppZoom', () => {
 
   it('#given ⌘- #then the interface shrinks one stop and the stop is persisted', () => {
     mocks.settings = { zoomFactor: 1.2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('-')
 
@@ -66,7 +74,7 @@ describe('useAppZoom', () => {
 
   it('#given ⌘= #then the unshifted key still zooms in', () => {
     mocks.settings = { zoomFactor: 1.2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('=')
 
@@ -76,7 +84,7 @@ describe('useAppZoom', () => {
 
   it('#given ⌘⇧+ #then the shifted key zooms in too', () => {
     mocks.settings = { zoomFactor: 1.2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('+', { shiftKey: true })
 
@@ -86,7 +94,7 @@ describe('useAppZoom', () => {
 
   it('#given ⌘0 #then the interface returns to 100%', () => {
     mocks.settings = { zoomFactor: 1.7 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('0')
 
@@ -96,7 +104,7 @@ describe('useAppZoom', () => {
 
   it('#given the caret in a text input #then zoom still works', () => {
     mocks.settings = { zoomFactor: 1 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     const input = document.createElement('input')
     document.body.appendChild(input)
@@ -111,7 +119,7 @@ describe('useAppZoom', () => {
 
   it('#given the settings read has not resolved #then the keystroke is dropped', () => {
     mocks.isLoading = true
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('=')
 
@@ -121,7 +129,7 @@ describe('useAppZoom', () => {
 
   it('#given the largest zoom #then ⌘= holds at 200% rather than stepping past it', () => {
     mocks.settings = { zoomFactor: 2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('=')
 
@@ -131,7 +139,7 @@ describe('useAppZoom', () => {
 
   it('#given the smallest zoom #then ⌘- holds at 50% rather than stepping past it', () => {
     mocks.settings = { zoomFactor: 0.5 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('-')
 
@@ -140,25 +148,36 @@ describe('useAppZoom', () => {
   })
 
   it('#given a bare - with no ⌘ #then nothing zooms', () => {
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('-', { metaKey: false })
 
     expect(mocks.setZoomFactor).not.toHaveBeenCalled()
   })
 
-  it('#given the menu items #then they run the same actions as the keystrokes', () => {
+  it('#given the menu items #then they run the same actions as the keystrokes', async () => {
     mocks.settings = { zoomFactor: 1.2 }
-    const { result } = renderHook(() => useAppZoom())
+    mountZoom()
 
-    result.current.zoomIn()
+    await act(() => runCommand('view.zoomIn', 'menu'))
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1.3)
 
-    result.current.zoomOut()
+    await act(() => runCommand('view.zoomOut', 'menu'))
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1.1)
 
-    result.current.resetZoom()
+    await act(() => runCommand('view.actualSize', 'menu'))
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1)
+  })
+
+  it('#given no zoom owner mounted #then the keystroke is not consumed', () => {
+    renderHook(() => useCommandDispatcher())
+
+    const notConsumed = window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '=', metaKey: true, bubbles: true, cancelable: true })
+    )
+
+    expect(notConsumed).toBe(true)
+    expect(mocks.setZoomFactor).not.toHaveBeenCalled()
   })
 
   it('#given zoom in rebound to ⌘⌥I #then the new chord zooms and ⌘= / ⌘⇧+ no longer do', () => {
@@ -166,7 +185,7 @@ describe('useAppZoom', () => {
       'view.zoomIn': { key: 'i', modifiers: { meta: true, alt: true } }
     })
     mocks.settings = { zoomFactor: 1.2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('=')
     press('+', { shiftKey: true })
@@ -182,7 +201,7 @@ describe('useAppZoom', () => {
       'view.actualSize': { key: '9', modifiers: { meta: true } }
     })
     mocks.settings = { zoomFactor: 1.2 }
-    renderHook(() => useAppZoom())
+    mountZoom()
 
     press('-')
     press('0')

@@ -5,8 +5,8 @@ import { NewTabMenu } from '@/components/tabs/new-tab-menu'
 import { PinnedTab } from '@/components/tabs/pinned-tab'
 import { RegularTab } from '@/components/tabs/regular-tab'
 import { TabIcon } from '@/components/tabs/tab-icon'
+import { openNewTabMenu } from '@/contexts/tabs/new-tab-menu-opener'
 import type { Tab } from '@/contexts/tabs/types'
-import { notesService } from '@/services/notes-service'
 
 const tabsApi = {
   setActiveTab: vi.fn(),
@@ -50,17 +50,9 @@ vi.mock('@/lib/ipc-error', () => ({
     error instanceof Error ? error.message : fallback
 }))
 
-vi.mock('@/services/notes-service', () => ({
-  notesService: { create: vi.fn() }
-}))
-
-vi.mock('@/contexts/selected-folder-context', () => ({
-  useSelectedFolder: () => ({ selectedFolder: 'Work' })
-}))
-
-vi.mock('@/hooks/use-general-settings', () => ({
-  useGeneralSettings: () => ({ settings: { createInSelectedFolder: true } })
-}))
+const createNewNote = vi.fn()
+// The note itself is created by the shared new-note hook; its own suite covers it.
+vi.mock('@/hooks/use-create-new-note', () => ({ useCreateNewNote: () => createNewNote }))
 
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => tabsApi,
@@ -171,42 +163,29 @@ describe('tabs components coverage', () => {
     expect(tabsApi.closeTab).not.toHaveBeenCalled()
   })
 
-  it('opens new note and app tabs from the new tab menu', async () => {
-    vi.mocked(notesService.create).mockResolvedValue({
-      success: true,
-      note: { id: 'note-1', title: 'Untitled Note' }
-    } as never)
-    const dispatchSpy = vi.spyOn(window, 'dispatchEvent')
-
+  it('opens new note and app tabs from the new tab menu', () => {
     render(<NewTabMenu groupId="group-1" />)
 
     act(() => {
-      window.dispatchEvent(new Event('memry:new-tab-menu'))
+      openNewTabMenu('group-1')
     })
     fireEvent.click(screen.getByRole('option', { name: /newNote/ }))
-    await waitFor(() => expect(notesService.create).toHaveBeenCalled())
-    expect(dispatchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'memry:expand-folder' })
-    )
-    expect(tabsApi.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'note', entityId: 'note-1' }),
-      { groupId: 'group-1' }
-    )
+    expect(createNewNote).toHaveBeenCalledWith({ inNewTabOf: { groupId: 'group-1' } })
 
     act(() => {
-      window.dispatchEvent(new Event('memry:new-tab-menu'))
+      openNewTabMenu('group-1')
     })
     fireEvent.click(screen.getByRole('option', { name: /journal/ }))
     act(() => {
-      window.dispatchEvent(new Event('memry:new-tab-menu'))
+      openNewTabMenu('group-1')
     })
     fireEvent.click(screen.getByRole('option', { name: /calendar/ }))
     act(() => {
-      window.dispatchEvent(new Event('memry:new-tab-menu'))
+      openNewTabMenu('group-1')
     })
     fireEvent.click(screen.getByRole('option', { name: /inboxCapture/ }))
     act(() => {
-      window.dispatchEvent(new Event('memry:new-tab-menu'))
+      openNewTabMenu('group-1')
     })
     fireEvent.click(screen.getByRole('option', { name: /tasks/ }))
     expect(tabsApi.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'journal' }), {

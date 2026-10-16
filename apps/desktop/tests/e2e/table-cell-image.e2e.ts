@@ -56,7 +56,7 @@ async function placeCaretInCell(cell: Locator): Promise<void> {
       async () => {
         await cell.click()
         return cell.evaluate((element) => {
-          const view = (window as any).__memryEditor?.prosemirrorView
+          const view = (window as any).__memryActiveEditor?.prosemirrorView
           if (!view) return false
           return element.contains(view.domAtPos(view.state.selection.from).node)
         })
@@ -218,7 +218,7 @@ test.describe('Table cell images', () => {
 
     // …and no image block was added beside the table, which is the old bug
     const blockTypes = await page.evaluate(() =>
-      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+      (window as any).__memryActiveEditor.document.map((block: any) => block.type as string)
     )
     expect(blockTypes).not.toContain('image')
 
@@ -364,7 +364,7 @@ test.describe('Table cell images', () => {
 
     // #and no image block was pushed out beside the table
     const blockTypes = await page.evaluate(() =>
-      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+      (window as any).__memryActiveEditor.document.map((block: any) => block.type as string)
     )
     expect(blockTypes).not.toContain('image')
 

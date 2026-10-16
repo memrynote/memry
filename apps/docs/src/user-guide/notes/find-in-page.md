@@ -1,6 +1,6 @@
 # Find in Page
 
-Search the current note with <kbd>⌘</kbd>+<kbd>F</kbd>. For global search, use [the command palette](/user-guide/search) instead.
+Search the current note with <kbd>⌘</kbd>+<kbd>F</kbd>. For global search, use [Search](/user-guide/search) instead.
 
 <!-- screenshot: find-in-page bar at the top of a note -->
 
@@ -33,7 +33,7 @@ Whole-word matching is also a toggle in the options menu.
 
 ## Scope
 
-Find-in-page is **local to the current note**. To search across notes, journals, tasks, and the inbox, open the [command palette](/user-guide/search) with <kbd>⌘</kbd>+<kbd>K</kbd>.
+Find-in-page is **local to the current note**. To search across notes, journals, tasks, and the inbox, open [Search](/user-guide/search) with <kbd>⌘</kbd>+<kbd>K</kbd>.
 
 ## Inside Embedded PDF Previews
 

@@ -18,7 +18,6 @@ export {
   type KeyboardShortcut
 } from './use-keyboard-shortcuts-base'
 // Note: isMac is also exported from use-keyboard-shortcuts, using that one
-export * from './use-tab-keyboard-shortcuts'
 export * from './use-chord-shortcuts'
 export * from './use-mouse-nav-buttons'
 export * from './use-pane-navigation'
@@ -27,12 +26,6 @@ export * from './use-pane-navigation'
 export * from './use-vault'
 
 // Settings
-export * from './use-settings-shortcut'
-export * from './use-switch-vault-shortcut'
-
-// New note
-export * from './use-new-note-shortcut'
-
 // Undo
 export * from './use-undo'
 export * from './use-undoable-task-actions'
@@ -48,7 +41,6 @@ export * from './use-inbox-review-notifications'
 export * from './use-sync-status'
 
 // Search
-export * from './use-search-shortcut'
 export * from './use-search'
 
 // Hint mode

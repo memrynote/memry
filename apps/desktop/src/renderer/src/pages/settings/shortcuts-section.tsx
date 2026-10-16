@@ -13,16 +13,17 @@ import type {
   ShortcutBinding
 } from '@memry/contracts/settings-schemas'
 import type { ShortcutBindingDTO } from '../../../../preload/index.d'
+import type { CommandGroup } from '@memry/contracts/commands'
 import {
-  SHORTCUT_REGISTRY,
-  CATEGORY_ORDER,
+  SHORTCUT_ENTRIES,
+  SHORTCUT_GROUP_ORDER,
   bindingParts,
   resolveBinding,
   findConflicts,
   bindingsEqual,
   getGroupedShortcuts,
   type ShortcutEntry
-} from '@/lib/shortcut-registry'
+} from '@/lib/shortcut-catalog'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -51,13 +52,6 @@ import { FolderNoteShortcutsGroup } from './folder-note-shortcuts-group'
 
 const ALL_CATEGORIES = 'all'
 
-const CATEGORY_I18N_KEYS: Record<string, string> = {
-  Navigation: 'navigation',
-  Tabs: 'tabs',
-  Editor: 'editor',
-  View: 'view'
-}
-
 function shortcutLabel(t: SettingsT, entry: ShortcutEntry): string {
   return t(`shortcuts.entries.${entry.i18nKey}.label`)
 }
@@ -66,9 +60,8 @@ function shortcutDescription(t: SettingsT, entry: ShortcutEntry): string {
   return t(`shortcuts.entries.${entry.i18nKey}.description`)
 }
 
-function shortcutCategoryLabel(t: SettingsT, category: string): string {
-  const key = CATEGORY_I18N_KEYS[category]
-  return key ? t(`shortcuts.categories.${key}`) : category
+function shortcutCategoryLabel(t: SettingsT, group: CommandGroup): string {
+  return t(`shortcuts.categories.${group}`)
 }
 
 interface ShortcutRowProps {
@@ -117,7 +110,7 @@ function ShortcutRow({
   const label = shortcutLabel(t, entry)
   // Editor formatting keys belong to the note editor; a rebind here would be
   // recorded and then ignored at runtime, so the row is read-only.
-  const canRebind = entry.rebindable !== false
+  const canRebind = entry.rebindable
   const keyCaps = bindingParts(effectiveBinding).map((part) => (
     <Kbd key={part} className={KEYCAP}>
       {part}
@@ -427,7 +420,7 @@ export function ShortcutsSettings() {
 
   const handleRebind = useCallback(
     async (id: string, binding: ShortcutBinding): Promise<void> => {
-      const entry = SHORTCUT_REGISTRY.find((e) => e.id === id)
+      const entry = SHORTCUT_ENTRIES.find((e) => e.id === id)
       if (!entry) return
 
       if (bindingsEqual(binding, entry.defaultBinding)) {
@@ -476,8 +469,10 @@ export function ShortcutsSettings() {
   const grouped = getGroupedShortcuts()
 
   const visibleCategories =
-    category === ALL_CATEGORIES ? CATEGORY_ORDER : CATEGORY_ORDER.filter((cat) => cat === category)
-  const filteredGroups: [string, ShortcutEntry[]][] = visibleCategories.flatMap((cat) => {
+    category === ALL_CATEGORIES
+      ? SHORTCUT_GROUP_ORDER
+      : SHORTCUT_GROUP_ORDER.filter((group) => group === category)
+  const filteredGroups: [CommandGroup, ShortcutEntry[]][] = visibleCategories.flatMap((cat) => {
     const entries = grouped.get(cat) ?? []
     const filtered = query
       ? entries.filter(
@@ -486,7 +481,7 @@ export function ShortcutsSettings() {
             shortcutDescription(t, e).toLowerCase().includes(lowerQuery)
         )
       : entries
-    return filtered.length > 0 ? [[cat, filtered] as [string, ShortcutEntry[]]] : []
+    return filtered.length > 0 ? [[cat, filtered] as [CommandGroup, ShortcutEntry[]]] : []
   })
 
   const hasCustomBindings = Object.keys(overrides).length > 0
@@ -531,7 +526,7 @@ export function ShortcutsSettings() {
           <ToggleGroupItem value={ALL_CATEGORIES} className={SEGMENT_ITEM}>
             {t('shortcuts.v2.all')}
           </ToggleGroupItem>
-          {CATEGORY_ORDER.map((cat) => (
+          {SHORTCUT_GROUP_ORDER.map((cat) => (
             <ToggleGroupItem key={cat} value={cat} className={SEGMENT_ITEM}>
               {shortcutCategoryLabel(t, cat)}
             </ToggleGroupItem>

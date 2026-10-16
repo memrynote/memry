@@ -1046,14 +1046,6 @@
     "or": "veya",
     "then": "sonra",
     "groups": {
-      "general": {
-        "title": "Genel",
-        "description": "Uygulama genelinde gezinme ve yardım."
-      },
-      "tabs": {
-        "title": "Sekmeler ve bölmeler",
-        "description": "Sekmeler ve bölmeler arasında geçiş yapın."
-      },
       "inbox": {
         "title": "Gelen kutusu",
         "description": "Eklenen kayıtları hızlıca işleyin."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Günlük",
         "description": "Günlük görünümlerinde gezinin ve yazma alanına odaklanın."
-      },
-      "notes": {
-        "title": "Notlar / Düzenleyici",
-        "description": "Not yazın, biçimlendirin ve arayın."
       },
       "tasks": {
         "title": "Görevler",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Hızlı aramayı aç",
-        "createNote": "Not oluştur",
-        "openSettings": "Ayarları aç",
-        "switchVault": "Kasa değiştir",
-        "adjacentVault": "Önceki veya sonraki kasa",
-        "keyboardShortcuts": "Klavye kısayollarını aç",
         "undoTaskAction": "Son görev işlemini geri al",
-        "toggleSidebar": "Kenar çubuğunu aç/kapat",
         "sidebarSection": "Kenar çubuğu bölümüne git"
       },
       "tabs": {
-        "newTabMenu": "Yeni sekme menüsünü aç",
-        "closeTab": "Sekmeyi kapat",
-        "closeAllInPane": "Bölmedeki tüm sekmeleri kapat",
-        "reopenClosedTab": "Kapatılan sekmeyi yeniden aç",
-        "nextTab": "Sonraki sekme",
-        "previousTab": "Önceki sekme",
-        "pinTab": "Sekmeyi sabitle veya sabitlemeyi kaldır",
-        "duplicateTab": "Sekmeyi çoğalt",
-        "splitRight": "Sağa böl",
-        "splitDown": "Aşağı böl",
-        "closeSplitPane": "Bölünmüş bölmeyi kapat",
         "focusPane": "Başka bir bölmeye odaklan",
         "moveTabToPane": "Sekmeyi bölmeye taşı",
         "maximizePane": "Geçerli bölmeyi büyüt"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Ay veya yıl görünümünden dön",
-        "find": "Günlükte bul",
-        "bold": "Seçili metni kalın yap",
-        "italic": "Seçili metni italik yap",
-        "underline": "Seçili metnin altını çiz"
+        "find": "Günlükte bul"
       },
       "notes": {
-        "createNote": "Not oluştur",
         "find": "Notta bul",
-        "bold": "Kalın",
-        "italic": "İtalik",
-        "underline": "Altı çizili",
         "commandMenu": "Düzenleyici komut menüsünü aç",
         "closeOverlays": "Düzenleyici katmanlarını kapat"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Görev tekrarını durdur"
       },
       "settings": {
-        "openSettings": "Ayarları aç",
         "customizeShortcuts": "Klavye kısayollarını özelleştir",
         "recordShortcut": "Yeni bir kısayol kaydet",
         "cancelRecording": "Kısayol kaydını iptal et",

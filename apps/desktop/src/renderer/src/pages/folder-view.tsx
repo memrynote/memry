@@ -83,9 +83,9 @@ import {
   parseSearchQuery,
   parseViewName
 } from './folder-view-state'
-import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
+import { useFolderViewCommands } from './folder-view/use-folder-view-commands'
+import { useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
-import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import {
   DEFAULT_COLUMNS,
   scopeKey,
@@ -128,9 +128,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // the (unchanged) folder-only breadcrumb/icon logic below reads the same
   // as before the scope prop swap.
   const folderPath = scope.kind === 'folder' ? scope.path : undefined
-
-  // Use mutations hook for creating new notes (with folder template support)
-  const { createNote } = useNoteMutations()
 
   // Which of the folder's named views this tab is on. Stored by NAME, never by
   // index: `.folder.md` is a file other devices and the user's own editor can
@@ -818,40 +815,16 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Phase 20: Empty State Handlers
   // ============================================================================
 
-  /**
-   * Handle creating a new note.
-   * Folder scope: creates it in the current folder (template auto-applied
-   * from .folder.md if one exists). Tag scope: creates it in the default
-   * folder with the scoped tag already applied, so the new row appears in
-   * the view the user is standing in.
-   */
-  const handleCreateNote = useCallback(async () => {
-    try {
-      const result = await createNote.mutateAsync(
-        scope.kind === 'folder'
-          ? { title: NEW_NOTE_TITLE, folder: scope.path || undefined }
-          : { title: NEW_NOTE_TITLE, tags: [scope.tag] }
-      )
-
-      if (result.success && result.note) {
-        markNewNoteTitlePending(result.note.id)
-        openPage({
-          type: 'note',
-          title: result.note.title,
-          icon: 'file-text',
-          emoji: result.note.emoji,
-          path: `/notes/${result.note.id}`,
-          entityId: result.note.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false
-        })
-      }
-    } catch (err) {
-      log.error('Failed to create note:', err)
-    }
-  }, [createNote, scope, openPage])
+  // The header's buttons and the palette commands open these the same way.
+  const openSearch = (): void => setSearchOpen(true)
+  const openTagRename = (): void => setTagRenameOpen(true)
+  const openTagDelete = (): void => setTagDeleteOpen(true)
+  const { createNote: handleCreateNote } = useFolderViewCommands({
+    scope,
+    openSearch,
+    openTagRename,
+    openTagDelete
+  })
 
   /**
    * Handle clearing all search and filters.
@@ -1098,7 +1071,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                     variant="ghost"
                     size="sm"
                     className="gap-1.5 px-2"
-                    onClick={() => setSearchOpen(true)}
+                    onClick={openSearch}
                     aria-label={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
                   >
                     <Search className="h-4 w-4" />
@@ -1222,8 +1195,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             <TagOverflowMenu
               tag={scope.tag}
               color={tagResolvedColor}
-              onRequestRename={() => setTagRenameOpen(true)}
-              onRequestDelete={() => setTagDeleteOpen(true)}
+              onRequestRename={openTagRename}
+              onRequestDelete={openTagDelete}
             />
           )}
         </div>

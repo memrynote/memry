@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { DndContext } from '@dnd-kit/core'
 
+import { useAppCommands } from '@/commands'
 import { AppSidebar } from './app-sidebar'
 
 const mocks = vi.hoisted(() => ({
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   isActiveItem: vi.fn(() => false),
   openTab: vi.fn(),
   openSettings: vi.fn(),
-  createNote: vi.fn(),
+  newNote: vi.fn(),
   createCanvas: vi.fn(),
   importFiles: vi.fn(),
   notesTreeExpandAll: vi.fn(),
@@ -66,7 +67,8 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarFooter: ({ children }: { children: ReactNode }) => <footer>{children}</footer>,
   SidebarHeader: ({ children }: { children?: ReactNode }) => <header>{children}</header>,
-  SidebarRail: () => <div data-testid="sidebar-rail" />
+  SidebarRail: () => <div data-testid="sidebar-rail" />,
+  useSidebar: () => ({ state: 'expanded' })
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -103,6 +105,7 @@ vi.mock('@/components/sidebar/app-rail', () => ({
 }))
 
 vi.mock('@/components/sidebar-section', () => ({
+  expandSidebarSection: vi.fn(),
   SidebarSection: ({
     label,
     actions,
@@ -246,7 +249,6 @@ vi.mock('@/contexts/settings-modal-context', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
-    create: mocks.createNote,
     importFiles: mocks.importFiles
   }
 }))
@@ -339,14 +341,21 @@ const DndWrapper = ({ children }: { children: ReactNode }): React.JSX.Element =>
   <DndContext>{children}</DndContext>
 )
 
+/** The shell's `nav.newNote` owner, which creates the note for the sidebar's New button. */
+function ShellOwner(): null {
+  useAppCommands('shell', {
+    'nav.newNote': { run: mocks.newNote },
+    'nav.search': { run: vi.fn() },
+    'nav.commands': { run: vi.fn() },
+    'view.shortcuts': { run: vi.fn() }
+  })
+  return null
+}
+
 describe('AppSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.authState.status = 'unauthenticated'
-    mocks.createNote.mockResolvedValue({
-      success: true,
-      note: { id: 'note-1', title: 'New note' }
-    })
     mocks.createCanvas.mockResolvedValue({ id: 'canvas-1', title: 'Fresh canvas' })
   })
 
@@ -378,8 +387,14 @@ describe('AppSidebar', () => {
     expect(mocks.canvasTreeCreateFolder).toHaveBeenCalledTimes(1)
   })
 
-  it('opens app sections, creates notes in selected folders, and forwards tree actions', async () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{ today: 5 }} />, { wrapper: DndWrapper })
+  it('opens app sections, runs New note through its command, and forwards tree actions', () => {
+    render(
+      <>
+        <ShellOwner />
+        <AppSidebar currentPage="inbox" viewCounts={{ today: 5 }} />
+      </>,
+      { wrapper: DndWrapper }
+    )
 
     expect(screen.getByText('Inbox count 2')).toBeInTheDocument()
     expect(screen.getByText('Today count 5')).toBeInTheDocument()
@@ -401,20 +416,7 @@ describe('AppSidebar', () => {
     // The panel header's New button: its name is the label plus the shortcut Kbd,
     // so it is addressed by the title that carries the full hint.
     fireEvent.click(screen.getByTitle('newNoteN'))
-    await waitFor(() => {
-      expect(mocks.createNote).toHaveBeenCalledWith({
-        title: 'New note',
-        content: '',
-        folder: 'Projects'
-      })
-    })
-    expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'note',
-        title: 'New note',
-        entityId: 'note-1'
-      })
-    )
+    expect(mocks.newNote).toHaveBeenCalledWith({ source: 'ui' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand all folders' }))
     expect(mocks.notesTreeExpandAll).toHaveBeenCalled()
@@ -432,11 +434,10 @@ describe('AppSidebar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'newItemMenu' }))
     fireEvent.click(await screen.findByText('journal'))
 
-    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
-      type: 'journal',
-      title: 'Journal',
-      path: '/journal'
-    })
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      { type: 'journal', title: 'Journal', path: '/journal' },
+      {}
+    )
   })
 
   it('opens tags, account settings, and the settings panel via the gear', () => {

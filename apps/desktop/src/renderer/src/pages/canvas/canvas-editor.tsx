@@ -51,6 +51,7 @@ import {
   type LabelElement
 } from './canvas-link-label'
 import { lookupCardTitle } from './canvas-link-target-title'
+import { resolveLinkTarget } from './canvas-link-target'
 import { resolveCanvasLink } from './canvas-link-open'
 import {
   computeSceneSignature,
@@ -62,6 +63,7 @@ import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { CanvasNodeLinkLayer } from './canvas-node-link-overlay'
 import { CanvasFrameLayer } from './canvas-frame-layer'
+import { CanvasCommandOwner } from './canvas-command-owner'
 import { LayoutGrid } from '@/lib/icons'
 import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
@@ -110,12 +112,6 @@ const viewportAppState = (
     zoom: { value: viewport.zoom }
   }) as NonNullable<ExcalidrawInitialDataState['appState']>
 
-/** A scene element as this file reads it: cards carry `customData`. */
-interface LinkableElement {
-  id: string
-  customData?: { entityType?: string } | null
-}
-
 /** What a host that embeds the editor can ask of it. */
 export interface CanvasEditorHandle {
   /** Persist pending changes now rather than waiting out the autosave debounce. */
@@ -160,6 +156,7 @@ export const CanvasEditor = ({
   const [linkPickerOpen, setLinkPickerOpen] = useState(false)
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
   const [layoutOpen, setLayoutOpen] = useState(false)
+  const openAddCardRef = useRef<(() => void) | null>(null)
   /** Latched while Excalidraw's own link editor is being intercepted. */
   const linkEditorHandledRef = useRef(false)
   /** Card titles already resolved for the link bubble, so relabels are stable. */
@@ -768,39 +765,20 @@ export const CanvasEditor = ({
     [openHref]
   )
 
-  /**
-   * Opens the "Link to item" picker for the current selection.
-   *
-   * Exactly one shape must be selected: a link lives on a single element, and
-   * silently picking one out of several would attach it somewhere the user did
-   * not look. Memry cards are excluded — a card already opens its own entity,
-   * so a second, possibly different, link on it is a contradiction.
-   */
+  /** Opens the "Link to item" picker for the current selection (see `resolveLinkTarget`). */
   const openLinkPicker = useCallback((): void => {
     const api = apiRef.current
     if (!api) return
 
-    const selectedIds = Object.entries(api.getAppState().selectedElementIds)
-      .filter(([, selected]) => selected)
-      .map(([id]) => id)
-
-    if (selectedIds.length !== 1) {
-      toast.error(t('canvas.link.selectOneShape'))
+    const target = resolveLinkTarget(api)
+    if (target.kind !== 'shape') {
+      toast.error(
+        target.kind === 'card' ? t('canvas.link.cardsCannotLink') : t('canvas.link.selectOneShape')
+      )
       return
     }
 
-    const element = api.getSceneElements().find((el) => el.id === selectedIds[0]) as
-      LinkableElement | undefined
-    if (!element) {
-      toast.error(t('canvas.link.selectOneShape'))
-      return
-    }
-    if (element.customData?.entityType) {
-      toast.error(t('canvas.link.cardsCannotLink'))
-      return
-    }
-
-    setLinkTargetId(element.id)
+    setLinkTargetId(target.elementId)
     setLinkPickerOpen(true)
   }, [t])
 
@@ -985,6 +963,7 @@ export const CanvasEditor = ({
               excalidrawAPI={api}
               wrapperRef={wrapperRef}
               onSceneMutated={() => persisterRef.current?.notifyChange()}
+              openAddCardRef={openAddCardRef}
               extraActions={
                 viewMode ? null : (
                   <button
@@ -1012,6 +991,13 @@ export const CanvasEditor = ({
                 where the library would paint a glyph on every one of them; this
                 is the affordance they carry instead. */}
             <CanvasNodeLinkLayer excalidrawAPI={api} wrapperRef={wrapperRef} onOpen={openHref} />
+            {embedded ? null : (
+              <CanvasCommandOwner
+                openAddCardRef={openAddCardRef}
+                openLayout={() => setLayoutOpen(true)}
+                openLinkPicker={openLinkPicker}
+              />
+            )}
           </>
         ) : null}
         <CanvasLinkDialog

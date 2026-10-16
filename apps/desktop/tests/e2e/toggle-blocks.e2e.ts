@@ -60,8 +60,8 @@ async function waitForEditor(page: Page) {
 async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
   await waitForEditor(page)
   await page.evaluate((next) => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(editor.document, next)
   }, blocks)
 }
@@ -70,8 +70,8 @@ async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
 async function documentShape(page: Page): Promise<unknown[]> {
   await waitForEditor(page)
   return page.evaluate(() => {
-    const editor = (window as any).__memryEditor
-    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const editor = (window as any).__memryActiveEditor
+    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const shape = (blocks: any[]): unknown[] =>
       blocks.map((block) => ({
         type: block.type,

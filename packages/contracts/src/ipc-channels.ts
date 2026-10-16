@@ -8,6 +8,8 @@
  * @module shared/ipc-channels
  */
 
+import type { CommandId } from './commands'
+
 // ============================================================================
 // App Channels
 // ============================================================================
@@ -19,7 +21,7 @@ export interface AppNavigationCommandEvent {
 }
 
 export interface AppMenuCommandEvent {
-  command: string
+  command: CommandId
 }
 
 export const AppChannels = {

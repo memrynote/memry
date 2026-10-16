@@ -84,12 +84,14 @@ test.describe('New note from this note (#2329)', () => {
     await expect(
       page.getByText('Created with 2 tags and 3 properties from Project X').first()
     ).toBeVisible({ timeout: 10_000 })
-    const nameField = page.getByRole('textbox', { name: 'Rename' })
-    await expect(nameField, 'the caret lands in the new note name').toBeFocused({
+    // A new note opens with its title field empty and focused (#3323); the
+    // placeholder names the file, which the vault titled `New note`.
+    const titleField = page.locator(SELECTORS.noteTitle).first()
+    await expect(titleField, 'the caret lands in the new note title').toBeFocused({
       timeout: 10_000
     })
-    await expect(nameField).toHaveValue('Untitled')
-    await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue('Untitled')
+    await expect(titleField).toHaveValue('')
+    await expect(titleField).toHaveAttribute('placeholder', 'New note')
 
     const readNote = (notePath: string) =>
       page.evaluate(async (p) => {
@@ -110,9 +112,9 @@ test.describe('New note from this note (#2329)', () => {
       properties: SOURCE_PROPERTIES,
       content: ''
     }
-    await expect.poll(() => readNote(`${FOLDER}/Untitled.md`)).toEqual(expected)
+    await expect.poll(() => readNote(`${FOLDER}/New note.md`)).toEqual(expected)
 
-    await nameField.press('Escape')
+    await titleField.press('Escape')
     await page.evaluate(
       async ({ id, tags }) => {
         const updated = await window.api.notes.update({
@@ -124,7 +126,7 @@ test.describe('New note from this note (#2329)', () => {
       { id: sourceId, tags: SOURCE_TAGS }
     )
     expect(
-      (await readNote(`${FOLDER}/Untitled.md`))?.tags,
+      (await readNote(`${FOLDER}/New note.md`))?.tags,
       'a later edit to the source does not reach the copy'
     ).toEqual(SOURCE_TAGS)
 
@@ -132,7 +134,7 @@ test.describe('New note from this note (#2329)', () => {
     await page.getByRole('menuitem', { name: 'New note from this note' }).click()
 
     await expect
-      .poll(() => readNote(`${FOLDER}/Untitled 1.md`), {
+      .poll(() => readNote(`${FOLDER}/New note 1.md`), {
         message: 'the sidebar entry point creates a second copy in the same folder'
       })
       .toEqual({ ...expected, tags: ['changed-later'] })

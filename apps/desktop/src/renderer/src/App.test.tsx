@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryObserver } from '@tanstack/react-query'
 import type * as ReactQuery from '@tanstack/react-query'
 import App from './App'
+import { runCommand } from '@/commands'
+import { isNewNoteTitlePending } from '@/lib/new-note-title'
+import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import { useVaultScope } from '@/contexts/vault-scope'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { isNewNoteTitlePending } from '@/lib/new-note-title'
 
 /** Every QueryClient VaultStack created, in creation order. */
 const { createdQueryClients } = vi.hoisted(() => ({
@@ -68,7 +70,7 @@ let projects = [
   }
 ]
 let settingsOpenListener: ((section?: string) => void) | undefined
-let newNoteShortcut: (() => void) | undefined
+let selectedFolder = ''
 /** Rendered inside every vault workspace's (mocked) sidebar. */
 let sidebarSlot: React.ReactNode = null
 
@@ -160,18 +162,11 @@ vi.mock('@/services/notes-service', () => ({
 }))
 
 vi.mock('@/hooks', () => ({
-  useTabKeyboardShortcuts: vi.fn(),
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,
-  useSettingsShortcut: vi.fn(),
-  useSwitchVaultShortcut: vi.fn(),
-  useNewNoteShortcut: (callback: () => void) => {
-    newNoteShortcut = callback
-  },
   useUndoKeyboardShortcut: vi.fn(),
   useReminderNotifications: vi.fn(),
   useInboxReviewNotifications: vi.fn(),
-  useSearchShortcut: vi.fn(),
   useHintActivation: vi.fn(),
   useFolderViewEvents: vi.fn(),
   useFlushOnQuit: vi.fn(),
@@ -184,8 +179,7 @@ vi.mock('@/hooks', () => ({
   useDragHandlers: () => ({
     handleDragEnd: taskDragEnd,
     droppedPriorities: new Map([['task-1', 3]])
-  }),
-  isInputFocused: () => false
+  })
 }))
 
 vi.mock('@/hooks/use-folder-view-events', () => ({
@@ -223,6 +217,16 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab }),
   useTabActions: () => tabActions,
   useActiveTab: () => activeTab
+}))
+
+vi.mock('@/contexts/tabs/tabs-command-bridge', () => ({
+  // Owns the tabs commands; its own suite drives it through a real TabProvider.
+  TabsCommandBridge: () => null
+}))
+
+vi.mock('@/commands/workspace-command-owners', () => ({
+  // Owns the page and sync commands; its own suite drives it through real providers.
+  WorkspaceCommandOwners: () => null
 }))
 
 vi.mock('@/contexts/tabs/persistence', () => ({
@@ -314,7 +318,8 @@ vi.mock('@/contexts/sidebar-drill-down', () => ({
 }))
 
 vi.mock('@/contexts/selected-folder-context', () => ({
-  SelectedFolderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  SelectedFolderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSelectedFolder: () => ({ selectedFolder, setSelectedFolder: vi.fn() })
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({
@@ -407,6 +412,12 @@ vi.mock('@/components/hint-overlay', () => ({
   HintIndicator: () => <div data-testid="hint-indicator" />
 }))
 
+vi.mock('@/components/commands/commands-palette', () => ({
+  CommandsPalette: ({ open }: { open: boolean }) => (
+    <div data-testid="commands-palette">{String(open)}</div>
+  )
+}))
+
 vi.mock('@/components/search/command-palette', () => ({
   CommandPalette: ({ open }: { open: boolean }) => (
     <div data-testid="command-palette">{String(open)}</div>
@@ -455,7 +466,7 @@ describe('App', () => {
       }
     ]
     settingsOpenListener = undefined
-    newNoteShortcut = undefined
+    selectedFolder = ''
     sidebarSlot = null
     createNote.mockResolvedValue({
       success: true,
@@ -614,19 +625,84 @@ describe('App', () => {
     unsubscribe()
   })
 
-  it('handles global search, shortcut dialog, settings section, and new note events', async () => {
+  /** ⌘ is the Meta key on macOS and Ctrl elsewhere. Returns false when a listener consumed the key. */
+  const pressMod = (key: string, init: KeyboardEventInit = {}): boolean =>
+    fireEvent.keyDown(window, { key, ...(isMac ? { metaKey: true } : { ctrlKey: true }), ...init })
+
+  it('opens and toggles the search palette from ⌘K, the menu and buttons', async () => {
     render(<App />)
 
     // Lazy: the palette mounts closed once the window is idle, before any ⌘K.
-    expect(await screen.findByTestId('command-palette')).toHaveTextContent('false')
-    fireEvent(window, new Event('memry:open-search'))
-    await waitFor(() => expect(screen.getByTestId('command-palette')).toHaveTextContent('true'))
+    const palette = await screen.findByTestId('command-palette')
+    expect(palette).toHaveTextContent('false')
 
-    fireEvent(window, new Event('memry:open-shortcuts'))
+    expect(pressMod('k')).toBe(false)
+    await waitFor(() => expect(palette).toHaveTextContent('true'))
+    pressMod('k')
+    await waitFor(() => expect(palette).toHaveTextContent('false'))
+
+    // Anything but a key only ever opens: Open Quickly and the search buttons.
+    await act(() => runCommand('nav.search', 'menu'))
+    await act(() => runCommand('nav.search', 'ui'))
+    expect(palette).toHaveTextContent('true')
+  })
+
+  it('opens the commands palette from ⌘P, and never together with search', async () => {
+    render(<App />)
+    const search = await screen.findByTestId('command-palette')
+    const commands = await screen.findByTestId('commands-palette')
+    expect(commands).toHaveTextContent('false')
+
+    // ⌘P no longer opens search.
+    expect(pressMod('p')).toBe(false)
+    await waitFor(() => expect(commands).toHaveTextContent('true'))
+    expect(search).toHaveTextContent('false')
+
+    pressMod('k')
+    await waitFor(() => expect(search).toHaveTextContent('true'))
+    expect(commands).toHaveTextContent('false')
+
+    pressMod('p')
+    await waitFor(() => expect(commands).toHaveTextContent('true'))
+    expect(search).toHaveTextContent('false')
+    pressMod('p')
+    await waitFor(() => expect(commands).toHaveTextContent('false'))
+
+    await act(() => runCommand('nav.commands', 'menu'))
+    await act(() => runCommand('nav.commands', 'menu'))
+    expect(commands).toHaveTextContent('true')
+  })
+
+  it('toggles the shortcuts dialog from ⌘/ and ?, and opens it from the menu', async () => {
+    render(<App />)
+    expect(screen.queryByTestId('shortcuts-dialog')).not.toBeInTheDocument()
+
+    expect(pressMod('/')).toBe(false)
     await waitFor(() => expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('true'))
 
     fireEvent.keyDown(window, { key: '?' })
     await waitFor(() => expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('false'))
+
+    await act(() => runCommand('view.shortcuts', 'menu'))
+    expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('true')
+  })
+
+  it('leaves ? to a text field instead of opening the shortcuts dialog', async () => {
+    render(<App />)
+    await screen.findByTestId('command-palette')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+
+    const notConsumed = fireEvent.keyDown(input, { key: '?' })
+
+    expect(notConsumed).toBe(true)
+    expect(screen.queryByTestId('shortcuts-dialog')).not.toBeInTheDocument()
+    input.remove()
+  })
+
+  it('handles the settings section and test-open-note events', () => {
+    render(<App />)
 
     settingsOpenListener?.('general')
     expect(openSettings).toHaveBeenCalledWith('general')
@@ -643,9 +719,13 @@ describe('App', () => {
         title: 'Test note'
       })
     )
+  })
 
+  it('creates a note from ⌘N in the selected folder, titled for typing, and reveals it', async () => {
+    selectedFolder = 'Projects'
+    render(<App />)
     // The new note must also show itself in the sidebar. Where it landed is
-    // only knowable from the created note — with "create in selected folder"
+    // only knowable from the created note: with "create in selected folder"
     // off, main resolves the destination from `defaultNoteFolder`.
     const revealed: string[] = []
     const onReveal = (event: Event): void => {
@@ -653,17 +733,26 @@ describe('App', () => {
     }
     window.addEventListener('reveal-in-sidebar', onReveal)
 
-    newNoteShortcut?.()
+    expect(pressMod('n')).toBe(false)
 
-    await waitFor(() => expect(createNote).toHaveBeenCalledWith({ title: 'New note', content: '' }))
-    expect(isNewNoteTitlePending('note-1')).toBe(true)
-    expect(openTab).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'note',
-        title: 'Created note',
-        entityId: 'note-1'
+    await waitFor(() =>
+      expect(createNote).toHaveBeenCalledWith({
+        title: 'New note',
+        content: '',
+        folder: 'Projects'
       })
     )
+    await waitFor(() =>
+      expect(openTab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'note',
+          title: 'Created note',
+          entityId: 'note-1'
+        }),
+        expect.anything()
+      )
+    )
+    expect(isNewNoteTitlePending('note-1')).toBe(true)
     await waitFor(() => expect(revealed).toEqual(['note-1']))
     window.removeEventListener('reveal-in-sidebar', onReveal)
   })
@@ -677,22 +766,26 @@ describe('App', () => {
       }
     )
     render(<App />)
+    const palette = await screen.findByTestId('command-palette')
 
     act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
 
-    newNoteShortcut?.()
-    act(() => menuCommandListener?.({ command: 'file.newNote' }))
-    act(() => menuCommandListener?.({ command: 'file.openQuickly' }))
-    fireEvent(window, new Event('memry:open-search'))
+    // A key is held back by the runtime; the menu and buttons by the owners.
+    expect(pressMod('n')).toBe(true)
+    act(() => menuCommandListener?.({ command: 'nav.newNote' }))
+    act(() => menuCommandListener?.({ command: 'nav.search' }))
+    act(() => menuCommandListener?.({ command: 'nav.commands' }))
+    await act(() => runCommand('nav.search', 'ui'))
     await Promise.resolve()
 
     expect(createNote).not.toHaveBeenCalled()
     expect(openTab).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'note' }))
-    expect(await screen.findByTestId('command-palette')).toHaveTextContent('false')
+    expect(palette).toHaveTextContent('false')
+    expect(screen.getByTestId('commands-palette')).toHaveTextContent('false')
 
     // A failed switch leaves the vault open, and the commands work again.
     act(() => endVaultSwitch(false))
-    newNoteShortcut?.()
+    pressMod('n')
     await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1))
   })
 

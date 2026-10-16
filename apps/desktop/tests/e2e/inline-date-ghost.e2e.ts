@@ -42,7 +42,7 @@ async function focusEditor(page: Page) {
 async function clearEditor(page: Page): Promise<void> {
   await page.keyboard.press('Escape')
   await page.evaluate(() => {
-    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
     if (editor?.document?.length) editor.replaceBlocks(editor.document, [{ type: 'paragraph' }])
   })
   await focusEditor(page)

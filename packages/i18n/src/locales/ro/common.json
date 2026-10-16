@@ -1046,14 +1046,6 @@
     "or": "sau",
     "then": "apoi",
     "groups": {
-      "general": {
-        "title": "General",
-        "description": "Navigare și ajutor în toată aplicația."
-      },
-      "tabs": {
-        "title": "File și panouri",
-        "description": "Navigați între file și panouri."
-      },
       "inbox": {
         "title": "Inbox",
         "description": "Procesați rapid elementele capturate."
@@ -1061,10 +1053,6 @@
       "journal": {
         "title": "Jurnal",
         "description": "Navigați prin vizualizările jurnalului și focalizați zona de scriere."
-      },
-      "notes": {
-        "title": "Notițe / Editor",
-        "description": "Scrieți, formatați și căutați notițe."
       },
       "tasks": {
         "title": "Sarcini",
@@ -1077,28 +1065,10 @@
     },
     "items": {
       "general": {
-        "quickSearch": "Deschide căutarea rapidă",
-        "createNote": "Creează o notiță",
-        "openSettings": "Deschide setările",
-        "switchVault": "Schimbă seiful",
-        "adjacentVault": "Seiful anterior sau următor",
-        "keyboardShortcuts": "Deschide comenzile rapide de la tastatură",
         "undoTaskAction": "Anulează ultima acțiune pe sarcini",
-        "toggleSidebar": "Afișează/ascunde bara laterală",
         "sidebarSection": "Accesează o secțiune din bara laterală"
       },
       "tabs": {
-        "newTabMenu": "Deschide meniul pentru filă nouă",
-        "closeTab": "Închide fila",
-        "closeAllInPane": "Închide toate filele din panou",
-        "reopenClosedTab": "Redeschide fila închisă",
-        "nextTab": "Fila următoare",
-        "previousTab": "Fila anterioară",
-        "pinTab": "Fixează sau anulează fixarea filei",
-        "duplicateTab": "Duplică fila",
-        "splitRight": "Divizează la dreapta",
-        "splitDown": "Divizează în jos",
-        "closeSplitPane": "Închide panoul divizat",
         "focusPane": "Focalizează alt panou",
         "moveTabToPane": "Mută fila în panou",
         "maximizePane": "Maximizează panoul curent"
@@ -1121,17 +1091,10 @@
       },
       "journal": {
         "returnFromOverview": "Revino din vizualizarea pe lună sau an",
-        "find": "Caută în jurnal",
-        "bold": "Aplică aldin textului selectat",
-        "italic": "Aplică cursiv textului selectat",
-        "underline": "Subliniază textul selectat"
+        "find": "Caută în jurnal"
       },
       "notes": {
-        "createNote": "Creează o notiță",
         "find": "Caută în notiță",
-        "bold": "Aldin",
-        "italic": "Cursiv",
-        "underline": "Subliniat",
         "commandMenu": "Deschide meniul de comenzi al editorului",
         "closeOverlays": "Închide suprapunerile editorului"
       },
@@ -1146,7 +1109,6 @@
         "stopRepeating": "Oprește repetarea sarcinii"
       },
       "settings": {
-        "openSettings": "Deschide setările",
         "customizeShortcuts": "Personalizează comenzile rapide de la tastatură",
         "recordShortcut": "Înregistrează o comandă rapidă nouă",
         "cancelRecording": "Anulează înregistrarea comenzii rapide",
