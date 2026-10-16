@@ -36,7 +36,7 @@ const FIRST_PAINT_PROVIDERS: CalendarProviderDescriptor[] = [
       supportsCreateCalendar: true,
       supportsPush: true,
       supportsMultiAccount: true,
-      requiresMemryAccount: true,
+      requiresMemryAccount: false,
       mirrorScope: 'synced',
       sourceScope: 'synced',
       incrementalMode: 'sync-token',

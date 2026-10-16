@@ -166,7 +166,6 @@
     "sourceNotFound": "Kalenterilähdettä ei löytynyt",
     "onlySourcesSelectable": "Vain kalenterilähteitä voi valita",
     "onlyGoogleSourcesRetryable": "Vain Google-kalenterilähteitä voi yrittää uudelleen",
-    "signInBeforeRefresh": "Kirjaudu sisään memrynote-sovellukseen ennen Google Calendarin päivittämistä",
     "googleNotConnected": "Google Calendar ei ole yhdistettynä tällä laitteella",
     "syncFailed": "Synkronointi epäonnistui",
     "createEventFailed": "Kalenteritapahtuman luominen epäonnistui",

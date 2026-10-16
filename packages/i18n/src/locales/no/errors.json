@@ -166,7 +166,6 @@
     "sourceNotFound": "Finner ikke kalenderkilden",
     "onlySourcesSelectable": "Bare kalenderkilder kan velges",
     "onlyGoogleSourcesRetryable": "Bare Google-kalenderkilder kan forsøkes på nytt",
-    "signInBeforeRefresh": "Logg på memrynote før du oppdaterer Google Calendar",
     "googleNotConnected": "Google Calendar er ikke koblet til på denne enheten",
     "syncFailed": "Synkronisering mislyktes",
     "createEventFailed": "Kunne ikke opprette kalenderhendelsen",

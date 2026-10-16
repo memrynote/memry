@@ -166,7 +166,6 @@
     "sourceNotFound": "ไม่พบแหล่งปฏิทิน",
     "onlySourcesSelectable": "เลือกได้เฉพาะแหล่งปฏิทินเท่านั้น",
     "onlyGoogleSourcesRetryable": "ลองใหม่ได้เฉพาะแหล่งปฏิทินของ Google เท่านั้น",
-    "signInBeforeRefresh": "ลงชื่อเข้าใช้ memrynote ก่อนรีเฟรช Google Calendar",
     "googleNotConnected": "ยังไม่ได้เชื่อมต่อ Google Calendar ในอุปกรณ์นี้",
     "syncFailed": "ซิงค์ไม่สำเร็จ",
     "createEventFailed": "สร้างกิจกรรมในปฏิทินไม่สำเร็จ",

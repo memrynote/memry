@@ -27,7 +27,10 @@ vi.mock('../calendar/google/oauth', () => ({
   disconnectGoogleCalendar: vi.fn(),
   listGoogleAccountIds: () => []
 }))
-vi.mock('../calendar/google/sync-service', () => ({ stopGoogleCalendarSyncRunner: vi.fn() }))
+vi.mock('../calendar/google/sync-service', () => ({
+  startGoogleCalendarSyncRunner: vi.fn(async () => {}),
+  stopGoogleCalendarSyncRunner: vi.fn()
+}))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))

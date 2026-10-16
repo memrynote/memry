@@ -71,13 +71,13 @@ function seedExternal(db: TestDatabaseResult['db'], provider: string): string {
 }
 
 describe('provider capability table (#1391)', () => {
-  it('declares Google as it behaves today: writable, push relay, synced, Memry account', () => {
+  it('declares Google as it behaves today: writable, push relay, synced, no account needed', () => {
     expect(PROVIDER_CAPABILITIES[GOOGLE_CALENDAR_PROVIDER]).toEqual({
       supportsWrite: true,
       supportsCreateCalendar: true,
       supportsPush: true,
       supportsMultiAccount: true,
-      requiresMemryAccount: true,
+      requiresMemryAccount: false,
       mirrorScope: 'synced',
       sourceScope: 'synced',
       incrementalMode: 'sync-token',

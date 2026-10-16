@@ -166,7 +166,6 @@
     "sourceNotFound": "Agendabron niet gevonden",
     "onlySourcesSelectable": "Alleen agendabronnen kunnen worden geselecteerd",
     "onlyGoogleSourcesRetryable": "Alleen agendabronnen van Google kunnen opnieuw worden geprobeerd",
-    "signInBeforeRefresh": "Log in bij memrynote voordat je Google Calendar vernieuwt",
     "googleNotConnected": "Google Calendar is niet verbonden op dit apparaat",
     "syncFailed": "Synchronisatie mislukt",
     "createEventFailed": "Kan de afspraak niet maken",

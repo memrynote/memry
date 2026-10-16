@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   disconnectGoogleCalendar: vi.fn(),
   listGoogleAccountIds: vi.fn(),
   stopGoogleCalendarSyncRunner: vi.fn(),
+  startGoogleCalendarSyncRunner: vi.fn(async (..._args: unknown[]) => {}),
   postToServer: vi.fn(),
   logInfo: vi.fn(),
   logWarn: vi.fn(),
@@ -118,7 +119,9 @@ vi.mock('../calendar/google/oauth', () => ({
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
-  stopGoogleCalendarSyncRunner: (...args: unknown[]) => mocks.stopGoogleCalendarSyncRunner(...args)
+  stopGoogleCalendarSyncRunner: (...args: unknown[]) => mocks.stopGoogleCalendarSyncRunner(...args),
+  startGoogleCalendarSyncRunner: (...args: unknown[]) =>
+    mocks.startGoogleCalendarSyncRunner(...args)
 }))
 
 vi.mock('./http-client', () => ({
@@ -215,6 +218,8 @@ describe('session teardown', () => {
     expect(mocks.stopSyncRuntime).toHaveBeenCalledWith({ skipFinalSync: true })
     expect(mocks.postToServer).not.toHaveBeenCalled()
     expect(mocks.disconnectGoogleCalendar).not.toHaveBeenCalled()
+    // The still-connected Google account keeps polling without the session.
+    expect(mocks.startGoogleCalendarSyncRunner).toHaveBeenCalledTimes(1)
     expect(mocks.dbDelete).toHaveBeenCalled()
     expect(mocks.deleteWhere).toHaveBeenCalled()
     expect(mocks.transaction).not.toHaveBeenCalled()

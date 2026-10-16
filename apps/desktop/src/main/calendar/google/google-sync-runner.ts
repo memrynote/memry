@@ -33,6 +33,7 @@ let resumeHandler: (() => void) | null = null
 let lastTriggerAt = 0
 let startInFlight: Promise<void> | null = null
 let startGeneration = 0
+let pushArmed = false
 
 export function getCurrentPollIntervalMs(): number {
   return currentPollIntervalMs
@@ -116,7 +117,11 @@ export function reEvaluatePollCadence(activeChannelCount: number): void {
 // The in-flight latch is assigned synchronously, so the second caller joins the
 // first instead of arming a duplicate timer and resume listener.
 export async function startGoogleCalendarSyncRunner(): Promise<void> {
-  if (syncInterval) return
+  if (syncInterval) {
+    // Already polling: a sign-in after a signed-out start only adds push.
+    await armPushIfSignedIn()
+    return
+  }
   if (startInFlight) {
     await startInFlight
     return
@@ -141,7 +146,6 @@ async function runStart(): Promise<void> {
       log.warn('Archiving calendars of disconnected Google accounts failed', error)
     }
   }
-  if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
   // Sign-out / disconnect can call stop() while this start is still parked on
   // the awaits above. Installing now would arm a timer and resume listener that
@@ -161,6 +165,15 @@ async function runStart(): Promise<void> {
   resumeHandler = () => triggerGoogleCalendarSyncNow('system-resume')
   powerMonitor.on('resume', resumeHandler)
 
+  await armPushIfSignedIn()
+}
+
+// Polling needs only the Google account. Push channels register on the sync
+// server with the Memry session, so a signed-out install stays on polling.
+async function armPushIfSignedIn(): Promise<void> {
+  if (pushArmed || !(await isMemryUserSignedIn())) return
+  if (!syncInterval || pushArmed) return
+  pushArmed = true
   const pushRuntime = getOrInitGooglePushRuntime({
     onActiveCountChange: (count) => reEvaluatePollCadence(count)
   })
@@ -195,6 +208,7 @@ export function stopGoogleCalendarSyncRunner(): void {
   if (!syncInterval) return
   clearInterval(syncInterval)
   syncInterval = null
+  pushArmed = false
 
   const pushRuntime = getGooglePushRuntime()
   if (pushRuntime) {

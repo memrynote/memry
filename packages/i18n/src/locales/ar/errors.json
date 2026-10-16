@@ -166,7 +166,6 @@
     "sourceNotFound": "لم يتم العثور على مصدر التقويم",
     "onlySourcesSelectable": "يمكن تحديد مصادر التقويم فقط",
     "onlyGoogleSourcesRetryable": "يمكن إعادة المحاولة لمصادر تقويم Google فقط",
-    "signInBeforeRefresh": "سجّل الدخول إلى memrynote قبل تحديث Google Calendar",
     "googleNotConnected": "Google Calendar غير متصل على هذا الجهاز",
     "syncFailed": "فشلت المزامنة",
     "createEventFailed": "تعذّر إنشاء حدث التقويم",

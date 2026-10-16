@@ -172,7 +172,6 @@
     "sourceNotFound": "Calendar source not found",
     "onlySourcesSelectable": "Only calendar sources can be selected",
     "onlyGoogleSourcesRetryable": "Only Google calendar sources can be retried",
-    "signInBeforeRefresh": "Sign in to memrynote before refreshing Google Calendar",
     "googleNotConnected": "Google Calendar is not connected on this device",
     "syncFailed": "Sync failed",
     "createEventFailed": "Failed to create calendar event",

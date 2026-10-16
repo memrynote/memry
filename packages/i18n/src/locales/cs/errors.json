@@ -166,7 +166,6 @@
     "sourceNotFound": "Zdroj kalendáře nenalezen",
     "onlySourcesSelectable": "Vybrat lze pouze zdroje kalendáře",
     "onlyGoogleSourcesRetryable": "Zopakovat lze pouze zdroje kalendářů Google",
-    "signInBeforeRefresh": "Před obnovením Google Calendar se přihlaste do aplikace memrynote",
     "googleNotConnected": "Google Calendar není v tomto zařízení připojen",
     "syncFailed": "Synchronizace se nezdařila",
     "createEventFailed": "Nepodařilo se vytvořit událost v kalendáři",

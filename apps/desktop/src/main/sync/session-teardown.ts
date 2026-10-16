@@ -18,7 +18,10 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { createLogger } from '../lib/logger'
 import { disconnectGoogleCalendar, listGoogleAccountIds } from '../calendar/google/oauth'
-import { stopGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import {
+  startGoogleCalendarSyncRunner,
+  stopGoogleCalendarSyncRunner
+} from '../calendar/google/sync-service'
 
 const log = createLogger('SessionTeardown')
 
@@ -147,6 +150,12 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
     void getCrdtProvider()
       .initPersistence()
       .catch((err) => log.warn('CRDT persistence re-init after session teardown failed', err))
+    // Google Calendar does not need a Memry session: restart the runner so a
+    // still-connected account keeps polling, now without the push relay. After
+    // a logout no account is left and the start is a no-op.
+    void startGoogleCalendarSyncRunner().catch((err) =>
+      log.warn('Google Calendar runner restart after session teardown failed', err)
+    )
   }
 
   log.info('Session teardown complete', { reason, keychainFailures: keychainFailures.length })

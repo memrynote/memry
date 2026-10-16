@@ -166,7 +166,6 @@
     "sourceNotFound": "Không tìm thấy nguồn lịch",
     "onlySourcesSelectable": "Chỉ có thể chọn các nguồn lịch",
     "onlyGoogleSourcesRetryable": "Chỉ có thể thử lại các nguồn lịch Google",
-    "signInBeforeRefresh": "Đăng nhập vào memrynote trước khi làm mới Google Calendar",
     "googleNotConnected": "Google Calendar chưa được kết nối trên thiết bị này",
     "syncFailed": "Không thể đồng bộ",
     "createEventFailed": "Không thể tạo sự kiện lịch",

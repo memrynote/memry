@@ -1976,14 +1976,36 @@ describe('google calendar sync service', () => {
       expect(team?.isSelected).toBe(false)
     })
 
-    it('skips all Google API calls when memrynote user is not signed in', async () => {
+    it('syncs without a memrynote account', async () => {
       vi.mocked(isMemryUserSignedIn).mockResolvedValue(false)
-      const client = buildClient()
+      seedGoogleCalendarSource({
+        id: 'google-calendar:guest-work',
+        accountId: 'guest@example.com',
+        remoteId: 'guest-work',
+        title: 'Guest Work',
+        isMemryManaged: false
+      })
+      vi.mocked(listGoogleAccountIds).mockReturnValueOnce(['guest@example.com'])
+      const client = {
+        listCalendars: vi.fn(async () => [
+          { id: 'guest-memry', title: 'memrynote', timezone: 'UTC', color: null, isPrimary: false }
+        ]),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(async () => ({ nextSyncCursor: 'guest-cursor', events: [] }))
+      }
+      const clientSpy = vi
+        .spyOn(googleClientModule, 'createGoogleCalendarClient')
+        .mockImplementation(() => client as never)
 
-      await syncGoogleCalendarNow(db, { client })
+      try {
+        await syncGoogleCalendarNow(db)
+      } finally {
+        clientSpy.mockRestore()
+      }
 
-      expect(client.listCalendars).not.toHaveBeenCalled()
-      expect(client.listEvents).not.toHaveBeenCalled()
+      expect(client.listEvents).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: 'guest-work' })
+      )
     })
 
     it('skips all Google API calls when no Google Calendar connection exists', async () => {

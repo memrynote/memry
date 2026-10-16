@@ -166,7 +166,6 @@
     "sourceNotFound": "Izvor kalendara nije pronađen",
     "onlySourcesSelectable": "Mogu se odabrati samo izvori kalendara",
     "onlyGoogleSourcesRetryable": "Ponovni pokušaj moguć je samo za izvore Google kalendara",
-    "signInBeforeRefresh": "Prijavite se u aplikaciju memrynote prije osvježavanja usluge Google Calendar",
     "googleNotConnected": "Google Calendar nije povezan na ovom uređaju",
     "syncFailed": "Sinkronizacija nije uspjela",
     "createEventFailed": "Stvaranje događaja u kalendaru nije uspjelo",

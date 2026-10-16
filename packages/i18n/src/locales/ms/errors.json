@@ -166,7 +166,6 @@
     "sourceNotFound": "Sumber kalendar tidak ditemui",
     "onlySourcesSelectable": "Hanya sumber kalendar boleh dipilih",
     "onlyGoogleSourcesRetryable": "Hanya sumber kalendar Google boleh dicuba semula",
-    "signInBeforeRefresh": "Log masuk ke memrynote sebelum memuat semula Google Calendar",
     "googleNotConnected": "Google Calendar tidak disambungkan pada peranti ini",
     "syncFailed": "Penyegerakan gagal",
     "createEventFailed": "Gagal membuat acara kalendar",

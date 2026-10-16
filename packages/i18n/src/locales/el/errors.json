@@ -166,7 +166,6 @@
     "sourceNotFound": "Η πηγή ημερολογίου δεν βρέθηκε",
     "onlySourcesSelectable": "Μόνο πηγές ημερολογίου μπορούν να επιλεγούν",
     "onlyGoogleSourcesRetryable": "Νέα προσπάθεια είναι δυνατή μόνο για πηγές ημερολογίων Google",
-    "signInBeforeRefresh": "Συνδεθείτε στο memrynote πριν ανανεώσετε το Google Calendar",
     "googleNotConnected": "Το Google Calendar δεν είναι συνδεδεμένο σε αυτήν τη συσκευή",
     "syncFailed": "Ο συγχρονισμός απέτυχε",
     "createEventFailed": "Αποτυχία δημιουργίας συμβάντος ημερολογίου",

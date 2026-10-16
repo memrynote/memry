@@ -166,7 +166,6 @@
     "sourceNotFound": "Hindi nahanap ang source ng kalendaryo",
     "onlySourcesSelectable": "Mga source ng kalendaryo lang ang puwedeng piliin",
     "onlyGoogleSourcesRetryable": "Mga source ng Google Calendar lang ang puwedeng subukan ulit",
-    "signInBeforeRefresh": "Mag-sign in sa memrynote bago i-refresh ang Google Calendar",
     "googleNotConnected": "Hindi nakakonekta ang Google Calendar sa device na ito",
     "syncFailed": "Nabigo ang pag-sync",
     "createEventFailed": "Hindi makagawa ng kaganapan sa kalendaryo",

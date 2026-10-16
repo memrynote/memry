@@ -166,7 +166,6 @@
     "sourceNotFound": "未找到日历来源",
     "onlySourcesSelectable": "只能选择日历来源",
     "onlyGoogleSourcesRetryable": "只有 Google 日历来源可以重试",
-    "signInBeforeRefresh": "请先登录 memrynote，再刷新 Google Calendar",
     "googleNotConnected": "此设备尚未连接 Google Calendar",
     "syncFailed": "同步失败",
     "createEventFailed": "创建日程失败",

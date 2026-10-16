@@ -170,7 +170,6 @@
     "sourceNotFound": "Takvim kaynağı bulunamadı",
     "onlySourcesSelectable": "Yalnızca takvim kaynakları seçilebilir",
     "onlyGoogleSourcesRetryable": "Yalnızca Google takvim kaynakları yeniden denenebilir",
-    "signInBeforeRefresh": "Google Calendar'ı yenilemeden önce memrynote'ta oturum açın",
     "googleNotConnected": "Google Calendar bu cihazda bağlı değil",
     "syncFailed": "Eşitlenemedi",
     "createEventFailed": "Takvim etkinliği oluşturulamadı",

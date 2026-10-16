@@ -166,7 +166,6 @@
     "sourceNotFound": "Sursa de calendar nu a fost găsită",
     "onlySourcesSelectable": "Doar sursele de calendar pot fi selectate",
     "onlyGoogleSourcesRetryable": "Doar sursele Google Calendar pot fi reîncercate",
-    "signInBeforeRefresh": "Conectați-vă la memrynote înainte de a reîmprospăta Google Calendar",
     "googleNotConnected": "Google Calendar nu este conectat pe acest dispozitiv",
     "syncFailed": "Sincronizarea a eșuat",
     "createEventFailed": "Nu s-a putut crea evenimentul din calendar",

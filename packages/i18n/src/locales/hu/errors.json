@@ -166,7 +166,6 @@
     "sourceNotFound": "A naptárforrás nem található",
     "onlySourcesSelectable": "Csak naptárforrások választhatók ki",
     "onlyGoogleSourcesRetryable": "Csak a Google-naptárforrások próbálhatók újra",
-    "signInBeforeRefresh": "A Google Calendar frissítése előtt jelentkezzen be a memrynote-ba",
     "googleNotConnected": "A Google Calendar nincs csatlakoztatva ezen az eszközön",
     "syncFailed": "A szinkronizálás sikertelen",
     "createEventFailed": "Nem sikerült létrehozni a naptáreseményt",

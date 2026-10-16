@@ -166,7 +166,6 @@
     "sourceNotFound": "Джерело календаря не знайдено",
     "onlySourcesSelectable": "Вибрати можна лише джерела календаря",
     "onlyGoogleSourcesRetryable": "Повторити можна лише джерела Google Calendar",
-    "signInBeforeRefresh": "Увійдіть у memrynote, перш ніж оновлювати Google Calendar",
     "googleNotConnected": "Google Calendar не підключено на цьому пристрої",
     "syncFailed": "Не вдалося синхронізувати",
     "createEventFailed": "Не вдалося створити подію календаря",

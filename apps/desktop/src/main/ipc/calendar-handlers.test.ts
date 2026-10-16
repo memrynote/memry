@@ -1037,16 +1037,16 @@ describe('calendar-handlers', () => {
       error: 'Only calendar sources can be selected'
     })
 
-    mockIsMemryUserSignedIn.mockResolvedValueOnce(false)
+    // Google Calendar works without a memrynote account: refresh syncs anyway.
+    mockIsMemryUserSignedIn.mockResolvedValue(false)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValueOnce(true)
+    mockSyncGoogleCalendarNow.mockClear()
     const unsignedRefresh = await invokeHandler(CalendarChannels.invoke.REFRESH_PROVIDER, {
       provider: 'google'
     })
-    expect(unsignedRefresh).toEqual(
-      expect.objectContaining({
-        success: false,
-        error: 'Sign in to memrynote before refreshing Google Calendar'
-      })
-    )
+    expect(unsignedRefresh).toEqual(expect.objectContaining({ success: true }))
+    expect(mockSyncGoogleCalendarNow).toHaveBeenCalledTimes(1)
+    mockIsMemryUserSignedIn.mockResolvedValue(true)
 
     expect(await invokeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS, {})).toEqual({
       calendars: [],

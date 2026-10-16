@@ -11,7 +11,6 @@ import { calendarSources, type CalendarSource } from '@memry/db-schema/schema/ca
 import type { DataDb } from '../../database'
 import { createLogger } from '../../lib/logger'
 import { getMainI18n } from '../../lib/main-i18n'
-import { isMemryUserSignedIn } from '../../auth-state'
 import { trackMainError } from '../../telemetry/diagnostics'
 import { trackMainEvent } from '../../telemetry/track'
 import { emitCalendarChanged } from '../change-events'
@@ -292,14 +291,6 @@ async function refreshGoogle(
   db: DataDb,
   input: CalendarProviderRequest
 ): Promise<CalendarProviderMutationResponse> {
-  if (!(await isMemryUserSignedIn())) {
-    return {
-      success: false,
-      status: await buildProviderStatus(db, input.provider),
-      error: getMainI18n().t('errors:calendar.signInBeforeRefresh')
-    }
-  }
-
   if (!(await hasAnyGoogleCalendarLocalAuth(db))) {
     return {
       success: false,

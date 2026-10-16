@@ -1,15 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockDbHolder, powerMonitorHolder, syncNowMock, signedInMock, hasConnectionMock } =
-  vi.hoisted(() => ({
-    mockDbHolder: { db: {} as object },
-    powerMonitorHolder: {
-      resumeHandlers: [] as Array<() => void>
-    },
-    syncNowMock: vi.fn(async () => {}),
-    signedInMock: vi.fn(async () => true),
-    hasConnectionMock: vi.fn(async () => true)
-  }))
+const {
+  mockDbHolder,
+  powerMonitorHolder,
+  syncNowMock,
+  signedInMock,
+  hasConnectionMock,
+  ensurePushMock
+} = vi.hoisted(() => ({
+  mockDbHolder: { db: {} as object },
+  powerMonitorHolder: {
+    resumeHandlers: [] as Array<() => void>
+  },
+  syncNowMock: vi.fn(async () => {}),
+  signedInMock: vi.fn(async () => true),
+  hasConnectionMock: vi.fn(async () => true),
+  ensurePushMock: vi.fn(async () => {})
+}))
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
@@ -37,6 +44,20 @@ vi.mock('../../sync/auth-state', () => ({
   isMemryUserSignedIn: signedInMock
 }))
 
+vi.mock('../repositories/calendar-sources-repository', () => ({
+  listCalendarSources: vi.fn(() => [])
+}))
+
+vi.mock('./push-runtime', () => {
+  const runtime = {
+    ensureForSelectedSources: ensurePushMock,
+    stopAll: vi.fn(async () => {}),
+    handleSelectionToggle: vi.fn(async () => {}),
+    getActiveChannelCount: () => 0
+  }
+  return { getOrInitGooglePushRuntime: () => runtime, getGooglePushRuntime: () => runtime }
+})
+
 vi.mock('../../database', () => ({
   requireDatabase: vi.fn(() => mockDbHolder.db),
   getDatabase: vi.fn(() => mockDbHolder.db),
@@ -60,6 +81,7 @@ describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
     syncNowMock.mockClear()
     signedInMock.mockClear()
     hasConnectionMock.mockClear()
+    ensurePushMock.mockClear()
   })
 
   afterEach(() => {
@@ -129,16 +151,37 @@ describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
   })
 
   it('does not latch permanently when the start attempt bails out', async () => {
-    // #given the user is not signed in yet
-    signedInMock.mockResolvedValueOnce(false)
+    // #given no Google account is connected yet
+    hasConnectionMock.mockResolvedValueOnce(false)
     await startGoogleCalendarSyncRunner()
     expect(vi.getTimerCount()).toBe(0)
 
-    // #when they sign in and start is called again
+    // #when one is connected and start is called again
     await startGoogleCalendarSyncRunner()
 
     // #then the runner actually starts
     expect(vi.getTimerCount()).toBe(1)
     expect(powerMonitorHolder.resumeHandlers).toHaveLength(1)
+  })
+
+  it('polls without a memrynote account and adds push once the user signs in', async () => {
+    // #given a signed-out install with a connected Google account
+    signedInMock.mockResolvedValue(false)
+    await startGoogleCalendarSyncRunner()
+
+    // #then it polls, but registers no push channel on the sync server
+    expect(vi.getTimerCount()).toBe(1)
+    expect(syncNowMock).toHaveBeenCalledTimes(1)
+    expect(ensurePushMock).not.toHaveBeenCalled()
+
+    // #when the user signs in and sign-in starts the runner again
+    signedInMock.mockResolvedValue(true)
+    await startGoogleCalendarSyncRunner()
+
+    // #then push is armed once, on the same single poll timer
+    expect(ensurePushMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(1)
+    await startGoogleCalendarSyncRunner()
+    expect(ensurePushMock).toHaveBeenCalledTimes(1)
   })
 })

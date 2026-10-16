@@ -16,9 +16,9 @@ export const PROVIDER_CAPABILITIES: Readonly<Record<string, CalendarProviderCapa
     supportsCreateCalendar: true,
     supportsPush: true,
     supportsMultiAccount: true,
-    // Google sync is gated on isMemryUserSignedIn(): the push relay and token
-    // refresh go through the Memry account.
-    requiresMemryAccount: true,
+    // Sync and token refresh talk to Google directly. Only the optional push
+    // relay goes through the Memry account; signed out, the runner polls.
+    requiresMemryAccount: false,
     mirrorScope: 'synced',
     sourceScope: 'synced',
     incrementalMode: 'sync-token',

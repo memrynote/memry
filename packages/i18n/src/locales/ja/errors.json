@@ -166,7 +166,6 @@
     "sourceNotFound": "カレンダーソースが見つかりません",
     "onlySourcesSelectable": "選択できるのはカレンダーソースのみです",
     "onlyGoogleSourcesRetryable": "再試行できるのは Google のカレンダーソースのみです",
-    "signInBeforeRefresh": "Google Calendar を更新する前に memrynote にサインインしてください",
     "googleNotConnected": "このデバイスでは Google Calendar が接続されていません",
     "syncFailed": "同期できませんでした",
     "createEventFailed": "カレンダーの予定を作成できませんでした",

@@ -166,7 +166,6 @@
     "sourceNotFound": "Fuente de calendario no encontrada",
     "onlySourcesSelectable": "Solo se pueden seleccionar fuentes de calendario",
     "onlyGoogleSourcesRetryable": "Solo se pueden reintentar las fuentes de Google Calendar",
-    "signInBeforeRefresh": "Inicia sesión en memrynote antes de actualizar Google Calendar",
     "googleNotConnected": "Google Calendar no está conectado en este dispositivo",
     "syncFailed": "La sincronización falló",
     "createEventFailed": "No se pudo crear el evento de calendario",

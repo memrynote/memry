@@ -21,7 +21,7 @@ three renderer files. A third provider would have added a third branch at each s
 | `supportsWrite`        | yes                     | no                |
 | `supportsPush`         | yes (sync-server relay) | no (polled)       |
 | `supportsMultiAccount` | yes                     | no                |
-| `requiresMemryAccount` | yes                     | no                |
+| `requiresMemryAccount` | no                      | no                |
 | `mirrorScope`          | `synced`                | `device`          |
 | `sourceScope`          | `synced`                | `synced`          |
 | `incrementalMode`      | `sync-token`            | `conditional-get` |

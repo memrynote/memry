@@ -166,7 +166,6 @@
     "sourceNotFound": "캘린더 소스를 찾을 수 없습니다.",
     "onlySourcesSelectable": "캘린더 소스만 선택할 수 있습니다.",
     "onlyGoogleSourcesRetryable": "Google 캘린더 소스만 다시 시도할 수 있습니다.",
-    "signInBeforeRefresh": "Google Calendar를 새로고침하려면 먼저 memrynote에 로그인하세요.",
     "googleNotConnected": "이 기기에는 Google Calendar가 연결되어 있지 않습니다.",
     "syncFailed": "동기화에 실패했습니다.",
     "createEventFailed": "캘린더 일정을 만들지 못했습니다.",

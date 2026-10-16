@@ -166,7 +166,6 @@
     "sourceNotFound": "מקור לוח השנה לא נמצא",
     "onlySourcesSelectable": "רק מקורות לוח שנה ניתנים לבחירה",
     "onlyGoogleSourcesRetryable": "רק מקורות לוח שנה של Google ניתנים לניסיון חוזר",
-    "signInBeforeRefresh": "יש להתחבר ל-memrynote לפני רענון Google Calendar",
     "googleNotConnected": "Google Calendar אינו מחובר במכשיר הזה",
     "syncFailed": "הסנכרון נכשל",
     "createEventFailed": "יצירת האירוע בלוח השנה נכשלה",

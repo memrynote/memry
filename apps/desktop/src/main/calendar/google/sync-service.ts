@@ -14,7 +14,6 @@ import {
 } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { isGoogleAccountDisconnected } from './disconnected-accounts'
-import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createGoogleCalendarClient } from './client'
 import { mapGoogleEventToExternalEventRecord } from './mappers'
@@ -392,7 +391,6 @@ export async function syncLocalSourceToGoogleCalendar(
     >
   } = {}
 ): Promise<typeof calendarBindings.$inferSelect | null> {
-  if (!(await isMemryUserSignedIn())) return null
   if (!(await hasGoogleCalendarConnection(db))) return null
   // One-way (inbound-only) mode: pull Google → memrynote stays on, but never
   // push/update/delete memrynote items out to Google.
@@ -608,7 +606,6 @@ export async function syncGoogleCalendarNow(
 ): Promise<void> {
   // One pass at a time for Google; other providers keep their own slots (#1393).
   if (isSyncInFlight(GOOGLE_SYNC_KEY)) return
-  if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(db))) return
 
   await runExclusive(GOOGLE_SYNC_KEY, async () => {

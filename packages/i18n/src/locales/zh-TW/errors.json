@@ -166,7 +166,6 @@
     "sourceNotFound": "找不到行事曆來源",
     "onlySourcesSelectable": "只能選取行事曆來源",
     "onlyGoogleSourcesRetryable": "只有 Google 行事曆來源可以重試",
-    "signInBeforeRefresh": "請先登入 memrynote，再重新整理 Google Calendar",
     "googleNotConnected": "這部裝置尚未連結 Google Calendar",
     "syncFailed": "同步失敗",
     "createEventFailed": "無法建立行事曆活動",
