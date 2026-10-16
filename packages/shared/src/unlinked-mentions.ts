@@ -78,9 +78,13 @@ export function findPlainMentions(text: string, names: readonly string[]): Plain
   return out
 }
 
-/** Text that is already a link, a URL, or code: never a mention. */
+/**
+ * Text that is already a link or a URL: never a mention. Bracket runs exclude
+ * `[` and a scheme must start its word, so every match
+ * attempt stops at the next candidate start and the scan stays linear.
+ */
 const LINKED_RUNS =
-  /!?\[\[[^\]\n]*\]\]|!?\[[^\]\n]*\]\([^)\n]*\)|<?[a-z][a-z0-9+.-]*:\/\/[^\s>)]*>?/giu
+  /!?\[\[[^[\]\n]*\]\]|!?\[[^[\]\n]*\]\([^()\s]*\)|(?<![\p{L}\p{N}+.-])[a-z][a-z0-9+.-]*:\/\/[^\s<>()]*/giu
 
 function maskMarkdown(markdown: string): string {
   const blank = (run: string): string => run.replace(/[^\n]/g, ' ')

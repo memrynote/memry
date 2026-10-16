@@ -40,3 +40,12 @@ describe('linkUnlinkedMention', () => {
     expect(linkUnlinkedMention('nothing here', ['Plan'], 0, 'Plan')).toBeNull()
   })
 })
+
+describe('masking stays linear', () => {
+  it('scans adversarial runs quickly', () => {
+    const started = performance.now()
+    findUnlinkedMentions('['.repeat(50_000) + 'a'.repeat(50_000) + 'plan', ['plan'])
+    findUnlinkedMentions('a'.repeat(100_000) + ':', ['plan'])
+    expect(performance.now() - started).toBeLessThan(1000)
+  })
+})
