@@ -71,7 +71,7 @@ describe('useCreateNoteFromNote', () => {
     await result.current('source-1')
 
     expect(notesService.create).toHaveBeenCalledWith({
-      title: 'Untitled',
+      title: 'New note',
       content: '',
       folder: 'Clients/A',
       tags: ['client-a', '2026'],
@@ -90,7 +90,7 @@ describe('useCreateNoteFromNote', () => {
       isPreview: false,
       isDeleted: false
     })
-    expect(reveals).toEqual([{ path: '/notes/new-1', entityId: 'new-1', rename: true }])
+    expect(reveals).toEqual([{ path: '/notes/new-1', entityId: 'new-1' }])
     expect(toast.success).toHaveBeenCalledWith(
       'Created with 2 tags and 3 properties from Project X'
     )
@@ -112,7 +112,7 @@ describe('useCreateNoteFromNote', () => {
     await result.current('source-1')
 
     expect(notesService.create).toHaveBeenCalledWith({
-      title: 'Untitled',
+      title: 'New note',
       content: '',
       folder: undefined,
       tags: [],

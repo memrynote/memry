@@ -5,10 +5,13 @@ import { noteLinkStem } from '@memry/shared/wiki-target'
 import type { IndexDb } from '../../types'
 import { resolveLinkTargets } from './wiki-target-resolver'
 
+/** `unread` when the frontmatter was not read: the indexed aliases stay. */
+export type IndexedAliases = { kind: 'unread' } | { kind: 'read'; aliases: readonly string[] }
+
 export interface NoteNamesInput {
   noteId: string
   title: string
-  aliases: readonly string[] | null
+  aliases: IndexedAliases
 }
 
 function nameRows(input: NoteNamesInput, keptAliases: readonly string[]): NoteName[] {
@@ -16,7 +19,10 @@ function nameRows(input: NoteNamesInput, keptAliases: readonly string[]): NoteNa
   const rows: NoteName[] = titleKey
     ? [{ noteId: input.noteId, key: titleKey, display: input.title, kind: 'title' }]
     : []
-  for (const alias of normalizeAliases(input.title, input.aliases ?? keptAliases)) {
+  for (const alias of normalizeAliases(
+    input.title,
+    input.aliases.kind === 'read' ? input.aliases.aliases : keptAliases
+  )) {
     rows.push({
       noteId: input.noteId,
       key: nameKey(alias) as string,

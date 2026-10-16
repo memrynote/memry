@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { GITHUB_URL } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
+import { BrewInstall } from '@/components/shared/BrewInstall'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
 import { downloadHref, useDetectedOS, type DetectedOS, type DownloadPlatform } from '@/lib/download'
 
@@ -236,6 +237,8 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
             <PlatformPick key={p.id} platform={p} highlighted={detected === p.id} />
           ))}
         </motion.div>
+
+        <BrewInstall location="platforms" className="mt-12" />
 
         <p className="mt-12 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
           Automatic updates keep you current. Source stays open on GitHub.

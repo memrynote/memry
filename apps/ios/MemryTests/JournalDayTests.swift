@@ -20,6 +20,7 @@ struct JournalDayTests {
             id: "j2099-06-15",
             date: "2099-06-15",
             tags: tags,
+            aliases: [],
             properties: properties,
             createdAt: 1000,
             modifiedAt: 2000,
@@ -191,5 +192,17 @@ struct JournalDayTests {
         #expect(try await hidden.metadata(id: "j2099-06-15")?.tags.isEmpty == true)
         let shown = JournalNoteBridge(store: vault.store, date: JournalTestVault.today)
         #expect(try await shown.metadata(id: "j2099-06-15")?.tags == ["a"])
+    }
+
+    @Test func a_name_written_through_the_writer_lands_on_the_day_and_reads_back() async throws {
+        let vault = try JournalTestVault()
+        let bridge = JournalNoteBridge(store: vault.store, date: JournalTestVault.today)
+        let writer = JournalMetadataWriter(bridge: bridge)
+        try await writer.setAliases(id: "j2099-06-15", aliases: [" Launch day ", "2099-06-15"])
+        #expect(try vault.journal.entryId(date: JournalTestVault.today) == "j2099-06-15")
+        #expect(try await bridge.metadata(id: "j2099-06-15")?.aliases == ["Launch day"])
+        #expect(try await bridge.read(id: "j2099-06-15")?.summary.aliases == ["Launch day"])
+        try await writer.setAliases(id: "j2099-06-15", aliases: [])
+        #expect(try await bridge.metadata(id: "j2099-06-15")?.aliases == [])
     }
 }

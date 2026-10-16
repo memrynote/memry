@@ -326,7 +326,7 @@ export function CliWidget({ className }: CliWidgetProps) {
               {showFakeCursor && (
                 <span
                   aria-hidden
-                  className="ml-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] animate-blink"
+                  className="ms-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] animate-blink"
                   style={{ backgroundColor: TERM.slate }}
                 />
               )}

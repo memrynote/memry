@@ -77,8 +77,19 @@ export function PrivacyShowcase() {
   const { lines: scrambled, setHovered } = useScramble(scrambleActive, 4, 28)
 
   return (
-    <section ref={ref} className="page-rails zone-dark px-4 py-20 sm:px-6 md:py-28">
-      <Container size="md">
+    <section ref={ref} className="page-rails zone-dark relative px-4 py-20 sm:px-6 md:py-28">
+      {/* Paper fades into the dark at both edges, so the break reads as dusk falling over
+          the page rather than a hard cut into a different site. Both fades sit inside the
+          section's own padding, clear of the copy. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-paper to-transparent md:h-20"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-paper to-transparent md:h-20"
+      />
+      <Container size="md" className="relative">
         <motion.div
           className="mb-12 max-w-2xl md:mb-14"
           initial={RISE_INITIAL}
@@ -86,9 +97,6 @@ export function PrivacyShowcase() {
           viewport={RISE_VIEWPORT}
           transition={{ duration: 0.8, ease: EASE }}
         >
-          <p className="mb-4 font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
-            Privacy
-          </p>
           <h2 className="display-section text-ink-inverted! text-balance">
             Sealed before it <em className="text-terracotta">leaves your device.</em>
           </h2>

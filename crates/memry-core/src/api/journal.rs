@@ -201,6 +201,19 @@ impl Journal {
             .call_blocking(move |conn| metadata::set_tags(conn, &date, &tags, &device_id, now_ms()))
     }
 
+    /// Replaces the day's other names, creating the day when absent and the
+    /// list is not empty. Returns the stored, normalized list.
+    pub fn set_aliases(
+        &self,
+        date: String,
+        aliases: Vec<String>,
+    ) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            metadata::set_aliases(conn, &date, &aliases, &device_id, now_ms())
+        })
+    }
+
     /// Sets one property from JSON text. `date` is reserved and refused.
     pub fn set_property(
         &self,

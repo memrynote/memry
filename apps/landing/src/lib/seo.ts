@@ -187,7 +187,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   blogTerminalPkm: {
     title: 'Running a PKM from the terminal: scriptable notes, tasks, and journal — memrynote',
     description:
-      'Supercharge your personal knowledge management with a CLI. Query notes, capture tasks from git hooks, append to your daily journal, and automate workflows with Unix pipes.',
+      'Run your personal knowledge base from a CLI: query notes, capture tasks from git hooks, append to your daily journal, and script workflows with Unix pipes.',
     path: '/blog/running-a-pkm-from-the-terminal'
   },
   blogMarkdownMigration: {

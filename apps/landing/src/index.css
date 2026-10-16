@@ -78,6 +78,8 @@
   --color-brand-200: #ffaa80;
   --color-brand-100: #ffccb3;
 
+  /* Landing is light-only by brand decision: there is no prefers-color-scheme variant.
+     Dark appears only as deliberate zones (.zone-dark: the privacy break and the footer). */
   --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
   /* The top step is neutral white — the page ground the dot grid and grain are tuned
@@ -126,9 +128,9 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-card: 0 4px 12px -2px rgb(26 26 26 / 0.08);
-  --shadow-elevated: 0 12px 24px -4px rgb(26 26 26 / 0.12);
+  --shadow-sm: 0 1px 2px 0 rgb(20 18 16 / 0.05);
+  --shadow-card: 0 4px 12px -2px rgb(20 18 16 / 0.08);
+  --shadow-elevated: 0 12px 24px -4px rgb(20 18 16 / 0.12);
   --shadow-glow-terracotta: 0 0 30px -5px rgb(255 103 26 / 0.3);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);

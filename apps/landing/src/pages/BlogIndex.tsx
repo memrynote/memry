@@ -24,7 +24,7 @@ function PostCard({ post }: { post: BlogPost }) {
   const tintClass = TINT_CLASSES[post.heroTint === 'ink' ? 'sand' : post.heroTint]
 
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-ink/20 hover:shadow-card md:p-8">
+    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-ink/20 hover:shadow-card md:p-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <span
@@ -137,7 +137,7 @@ export function BlogIndexPage() {
                   Featured Guide
                 </h2>
               </div>
-              <div className="group relative overflow-hidden rounded-3xl border border-border/80 bg-paper-alt p-8 transition-all hover:border-ink/20 hover:shadow-elevated md:p-12">
+              <div className="group relative overflow-hidden rounded-3xl border border-border/80 bg-paper-alt p-8 transition hover:border-ink/20 hover:shadow-elevated md:p-12">
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted mb-4">
                   <span className="rounded-full bg-terracotta/10 px-3 py-1 font-mono-accent text-[11px] font-medium uppercase tracking-[0.14em] text-terracotta">
                     {featuredPost.category}
@@ -178,7 +178,7 @@ export function BlogIndexPage() {
 
                   <Link
                     to={`/blog/${featuredPost.slug}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-paper shadow-sm transition-all hover:bg-ink/90 group-hover:bg-terracotta"
+                    className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-paper shadow-sm transition hover:bg-ink/90 group-hover:bg-terracotta"
                     onClick={() =>
                       trackLandingEvent(
                         'landing_nav_click',
@@ -249,7 +249,7 @@ export function BlogIndexPage() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
               <Link
                 to="/download/desktop"
-                className="inline-flex items-center gap-2 rounded-full bg-terracotta px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-terracotta/90"
+                className="inline-flex items-center gap-2 rounded-full bg-terracotta px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-terracotta/90"
               >
                 Download Memrynote
               </Link>

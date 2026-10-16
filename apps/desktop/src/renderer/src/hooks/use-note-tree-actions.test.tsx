@@ -8,6 +8,7 @@ import { useNoteTreeActions, type NoteTreeActionsDeps } from './use-note-tree-ac
 import type { NoteListItem } from './use-notes-query'
 import { buildTreeFromNotes } from '@/components/notes-tree-utils'
 import { notesService } from '@/services/notes-service'
+import { clearNewNoteTitlePending, isNewNoteTitlePending } from '@/lib/new-note-title'
 
 const mocks = vi.hoisted(() => ({
   createInSelectedFolder: true,
@@ -226,11 +227,14 @@ describe('useNoteTreeActions', () => {
     expect(deps.expandFolderPath).toHaveBeenCalledWith('Work')
     expect(notesService.getFolderTemplate).toHaveBeenCalledWith('Work')
     expect(mutations.createNote.mutateAsync).toHaveBeenCalledWith({
-      title: 'Untitled',
+      title: 'New note',
       folder: 'Work',
       template: 'tpl-1'
     })
-    expect(result.current.renamingNoteId).toBe('new-note')
+    // The note page names it from its own title field, not the sidebar row.
+    expect(result.current.renamingNoteId).toBeNull()
+    expect(isNewNoteTitlePending('new-note')).toBe(true)
+    clearNewNoteTitlePending('new-note')
 
     await act(async () => {
       await result.current.handleCreateFolder()
@@ -490,7 +494,7 @@ describe('useNoteTreeActions', () => {
       await result.current.handleCreateNoteInFolder('Other')
     })
     expect(mutations.createNote.mutateAsync).toHaveBeenLastCalledWith({
-      title: 'Untitled',
+      title: 'New note',
       folder: 'Other',
       template: 'tpl-1'
     })
@@ -575,23 +579,20 @@ describe('useNoteTreeActions', () => {
     expect(result.current.isMoving).toBe(false)
   })
 
-  it('opens inline rename on everything it creates from a folder menu', async () => {
-    // Creating from a folder's context menu used to leave `Untitled` behind and
-    // make naming it a separate second step (#2272).
+  it('hands a note created from a folder menu to the note title, and renames a new subfolder inline', async () => {
     const mutations = createMutations()
     const { result, deps } = renderActions({ mutations })
 
     mutations.createNote.mutateAsync.mockResolvedValueOnce({
       success: true,
-      note: createNote('created', 'Work/Untitled 1.md')
+      note: createNote('created', 'Work/New note 1.md')
     })
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Work')
     })
-    expect(result.current.renamingNoteId).toBe('created')
-    // The name comes off the created path, not the requested title: blurring
-    // without typing must not rename `Untitled 1` back onto `Untitled`.
-    expect(result.current.renameValue).toBe('Untitled 1')
+    expect(result.current.renamingNoteId).toBeNull()
+    expect(isNewNoteTitlePending('created')).toBe(true)
+    clearNewNoteTitlePending('created')
 
     await act(async () => {
       await result.current.handleCreateSubfolder('Work')

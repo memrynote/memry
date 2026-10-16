@@ -403,7 +403,7 @@ describe('AppSidebar', () => {
     fireEvent.click(screen.getByTitle('newNoteN'))
     await waitFor(() => {
       expect(mocks.createNote).toHaveBeenCalledWith({
-        title: 'Untitled Note',
+        title: 'New note',
         content: '',
         folder: 'Projects'
       })

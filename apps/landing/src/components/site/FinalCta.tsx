@@ -33,6 +33,8 @@ export interface FinalCtaProps {
   secondary?: FinalCtaSecondary
   /** Small print under the buttons — Pricing carries its merchant-of-record line here. */
   footnote?: ReactNode
+  /** Secondary ask under the buttons, e.g. the home page's newsletter field. */
+  children?: ReactNode
   className?: string
 }
 
@@ -40,7 +42,15 @@ export interface FinalCtaProps {
  * The site's closing banner: the mark, the slogan, and the same download pill the hero
  * opens with — every page ends on the one ask, on a light panel rather than a dark one.
  */
-export function FinalCta({ title, sub, location, secondary, footnote, className }: FinalCtaProps) {
+export function FinalCta({
+  title,
+  sub,
+  location,
+  secondary,
+  footnote,
+  children,
+  className
+}: FinalCtaProps) {
   return (
     <section>
       <motion.div
@@ -94,6 +104,8 @@ export function FinalCta({ title, sub, location, secondary, footnote, className 
               </Link>
             )}
           </div>
+
+          {children}
 
           {footnote && (
             <p className="mt-12 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-muted/70">

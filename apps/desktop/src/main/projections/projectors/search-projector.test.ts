@@ -589,6 +589,7 @@ describe('search projector', () => {
         tags: [],
         headerTags: [],
         properties: null,
+        aliases: null,
         wikiLinks: []
       }
     })

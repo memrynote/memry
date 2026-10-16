@@ -236,8 +236,9 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
           target: targetOf(note),
           alias: alias || (name ?? alias),
           exists: true,
-          type: name === null ? 'note' : 'noteName',
-          ...(name !== null ? { noteTitle: note.title } : {}),
+          ...(name === null
+            ? { type: 'note' as const }
+            : { type: 'noteName' as const, noteTitle: note.title }),
           ...(shared ? { folder: folderOf(note.path) } : {}),
           lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
           ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
@@ -325,7 +326,11 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
         return
       }
 
-      if (item.insertMode === 'embed' && item.fileType === 'audio') {
+      if (
+        (item.type === 'note' || item.type === 'noteName') &&
+        item.insertMode === 'embed' &&
+        item.fileType === 'audio'
+      ) {
         const anchorBlock = editor.getTextCursorPosition?.().block
 
         try {

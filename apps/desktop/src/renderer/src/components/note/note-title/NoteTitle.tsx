@@ -27,6 +27,9 @@ export interface NoteTitleProps {
    * show nothing — the note page never offers a default placeholder glyph.
    */
   onIconChange?: (icon: string | null) => void
+  /** See `TitleInput`'s `fresh`. */
+  fresh?: boolean
+  onFreshEnd?: () => void
 }
 
 export function NoteTitle({
@@ -38,7 +41,9 @@ export function NoteTitle({
   autoFocus = false,
   disabled = false,
   inputRef,
-  onIconChange
+  onIconChange,
+  fresh,
+  onFreshEnd
 }: NoteTitleProps) {
   const { t } = useT('notes')
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -117,6 +122,8 @@ export function NoteTitle({
           autoFocus={autoFocus}
           disabled={disabled}
           inputRef={inputRef}
+          fresh={fresh}
+          onFreshEnd={onFreshEnd}
         />
       </div>
     </div>

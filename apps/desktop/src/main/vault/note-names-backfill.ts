@@ -9,7 +9,8 @@ import path from 'path'
 import {
   fillMissingLinkKeys,
   listNotesWithoutNames,
-  reindexNoteNames
+  reindexNoteNames,
+  type IndexedAliases
 } from '@main/database/queries/notes'
 import { reresolveAndAnnounce } from '../projections/projectors/note-derived-state-projector'
 import { createLogger } from '../lib/logger'
@@ -37,7 +38,9 @@ export async function backfillNoteNames(input: NoteNamesBackfillInput): Promise<
         note.fileType === 'markdown'
           ? await readHeadFrontmatter(path.join(input.vaultPath, note.path))
           : {}
-      const aliases = frontmatter ? extractAliases(frontmatter, note.title) : null
+      const aliases: IndexedAliases = frontmatter
+        ? { kind: 'read', aliases: extractAliases(frontmatter, note.title) }
+        : { kind: 'unread' }
       for (const key of reindexNoteNames(db, { noteId: note.id, title: note.title, aliases }))
         keys.add(key)
     }

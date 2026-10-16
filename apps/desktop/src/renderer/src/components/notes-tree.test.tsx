@@ -1007,7 +1007,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     await waitFor(() => {
       // folder should be undefined (root) because setting is OFF
       expect(createNoteMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Untitled', folder: undefined })
+        expect.objectContaining({ title: 'New note', folder: undefined })
       )
     })
 
@@ -1023,7 +1023,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
-      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled' }))
+      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'New note' }))
       // folder should be undefined (root)
       expect(createNoteMock).toHaveBeenCalledWith(
         expect.not.objectContaining({ folder: expect.any(String) })

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useT } from '@memry/i18n/renderer'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { notesService } from '@/services/notes-service'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Home')
@@ -42,11 +43,12 @@ export default function HomePage(): React.JSX.Element {
 
   const handleCreateNote = useCallback(async () => {
     try {
-      const result = await notesService.create({ title: 'Untitled', content: '' })
+      const result = await notesService.create({ title: NEW_NOTE_TITLE, content: '' })
       if (result.success && result.note) {
+        markNewNoteTitlePending(result.note.id)
         openPage({
           type: 'note',
-          title: result.note.title || 'Untitled',
+          title: result.note.title,
           icon: 'file-text',
           path: `/note/${result.note.id}`,
           entityId: result.note.id,

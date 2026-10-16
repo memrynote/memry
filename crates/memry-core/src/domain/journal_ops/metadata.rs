@@ -24,7 +24,7 @@ use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::domain::journal::{self, ITEM_TYPE};
-use crate::domain::notes::{failed, iso, next_clock, require_payload};
+use crate::domain::notes::{failed, iso, names, next_clock, require_payload};
 use crate::domain::properties::{self, PropertyError};
 use crate::domain::tags;
 use crate::storage::repositories::schema::Object;
@@ -49,6 +49,34 @@ pub fn set_tags(
     write_day(conn, date, creates, device_id, now_ms, |object| {
         let (next, changes) = tags::set_changes(object, ITEM_TYPE, date, tags)?;
         Ok((changes, next))
+    })
+}
+
+/// Replaces the day's `aliases`, normalized as a note's are with the date as
+/// the title (desktop `remoteAliases(data.aliases, date)`). An empty list is
+/// written as `[]`, which clears on every receiver; `null` would keep theirs.
+///
+/// Returns the stored list. An empty list on an absent day creates nothing.
+pub fn set_aliases(
+    conn: &Connection,
+    date: &str,
+    aliases: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let next = names::normalize_aliases(date, aliases);
+    write_day(conn, date, !next.is_empty(), device_id, now_ms, |object| {
+        let stored: Option<Vec<String>> = object
+            .get("aliases")
+            .and_then(|value| serde_json::from_value(value.clone()).ok());
+        if stored.as_ref() == Some(&next) || (stored.is_none() && next.is_empty()) {
+            return Ok((Vec::new(), next.clone()));
+        }
+        let values = next.iter().cloned().map(Value::String).collect();
+        Ok((
+            vec![("aliases", Change::Set(Value::Array(values)))],
+            next.clone(),
+        ))
     })
 }
 

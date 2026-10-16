@@ -10,41 +10,49 @@ import { useT } from '@memry/i18n/renderer'
 type WikiLinkFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 type WikiLinkInsertMode = 'wikiLink' | 'embed'
 
-export type WikiLinkSuggestionItem = {
+interface SuggestionBase {
   id: string
   title: string
   target: string
   alias?: string
   exists: boolean
-  /**
-   * `heading` is a heading inside the note the query already named exactly.
-   * `headingEmpty` is that note having no heading to offer — a row rather than
-   * a separate empty state so the menu stays open while the user backspaces
-   * over the `#`, and it carries no target, so picking it does nothing.
-   * `alias` is the whole menu once both halves of `[[target|alias]]` are
-   * settled: one row that commits the display name.
-   * `canvas` is a spatial canvas — a vault item with no headings and no
-   * embed form, so it is a plain row with the canvas icon (#1983).
-   */
-  type: 'note' | 'canvas' | 'create' | 'heading' | 'headingEmpty' | 'alias' | 'noteName' | 'addName'
-  noteTitle?: string
+  insertMode?: WikiLinkInsertMode
+}
+
+interface NoteFields {
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
   fileSize?: number | null
-  insertMode?: WikiLinkInsertMode
-  /** Heading rows only: indents the row so the note's outline is readable. */
-  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
-  /** Note rows whose title another note shares: the folder that tells them apart. */
+  /** A title or name another note shares: the folder that tells them apart. */
   folder?: string
-  /** `headingEmpty` only: whether a heading filter is what emptied the list. */
-  filtered?: boolean
 }
+
+/**
+ * `heading` is a heading inside the note the query already named exactly.
+ * `headingEmpty` is that note having no heading to offer — a row rather than
+ * a separate empty state so the menu stays open while the user backspaces
+ * over the `#`, and it carries no target, so picking it does nothing.
+ * `alias` is the whole menu once both halves of `[[target|alias]]` are
+ * settled: one row that commits the display name.
+ * `canvas` is a spatial canvas — a vault item with no headings and no
+ * embed form, so it is a plain row with the canvas icon (#1983).
+ */
+export type WikiLinkSuggestionItem = SuggestionBase &
+  (
+    | ({ type: 'note' } & NoteFields)
+    | ({ type: 'noteName'; noteTitle: string } & NoteFields)
+    | { type: 'canvas' | 'create' | 'alias' | 'addName' }
+    /** `headingLevel` indents the row so the note's outline is readable. */
+    | { type: 'heading'; headingLevel: 1 | 2 | 3 | 4 | 5 | 6 }
+    /** `filtered`: whether a heading filter is what emptied the list. */
+    | { type: 'headingEmpty'; filtered: boolean }
+  )
 
 const HEADING_INDENTS = ['', 'ms-2', 'ms-4', 'ms-6', 'ms-6', 'ms-6'] as const
 
-function headingIndent(level: WikiLinkSuggestionItem['headingLevel']): string {
-  return HEADING_INDENTS[(level ?? 1) - 1] ?? ''
+function headingIndent(level: 1 | 2 | 3 | 4 | 5 | 6): string {
+  return HEADING_INDENTS[level - 1] ?? ''
 }
 
 export function WikiLinkMenu({
@@ -243,7 +251,7 @@ export function WikiLinkMenu({
               ) : (
                 <>
                   <div className="truncate font-medium">{item.title}</div>
-                  {item.folder ? (
+                  {item.type === 'note' && item.folder ? (
                     <div className="truncate text-xs text-muted-foreground">{item.folder}</div>
                   ) : null}
                 </>
