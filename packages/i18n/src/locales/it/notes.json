@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Rimuovi modello predefinito",
       "setIcon": "Imposta icona",
       "removeIcon": "Rimuovi icona",
-      "deleteSelectedNotes": "Elimina {count} note",
       "deleteSelectedItems": "Elimina {count} elementi",
+      "newFolderWithSelection": "Nuova cartella con la selezione ({count} elementi)",
+      "moveSelectedItems": "Sposta {count} elementi in…",
+      "bookmarkSelectedItems": "Aggiungi {count} elementi ai segnalibri",
       "bookmark": "Aggiungi ai segnalibri",
       "removeFromBookmarks": "Rimuovi dai segnalibri",
       "journalSettings": "Impostazioni del diario…"
@@ -137,6 +139,10 @@
       "moreItems": "…e altri {count}",
       "deleting": "Eliminazione…",
       "deleteCount": "Elimina {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} elementi aggiunti ai segnalibri",
+      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Annulla",
       "currentFolderBadge": "(corrente)",
       "noFoldersMatchQuery": "Nessuna cartella corrisponde a “{query}”",
-      "createFolderNamed": "Crea “{name}”"
+      "createFolderNamed": "Crea “{name}”",
+      "moveItems": "Sposta {count} elementi"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Elimina ",

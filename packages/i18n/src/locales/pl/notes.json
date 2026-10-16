@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Wyczyść szablon domyślny",
       "setIcon": "Ustaw ikonę",
       "removeIcon": "Usuń ikonę",
-      "deleteSelectedNotes": "{count, plural, one {Usuń # notatkę} few {Usuń # notatki} many {Usuń # notatek} other {Usuń # notatki}}",
       "deleteSelectedItems": "{count, plural, one {Usuń # element} few {Usuń # elementy} many {Usuń # elementów} other {Usuń # elementu}}",
+      "newFolderWithSelection": "Nowy folder z zaznaczenia (elementy: {count})",
+      "moveSelectedItems": "Przenieś elementy ({count}) do…",
+      "bookmarkSelectedItems": "Dodaj elementy ({count}) do zakładek",
       "bookmark": "Dodaj zakładkę",
       "removeFromBookmarks": "Usuń z zakładek",
       "journalSettings": "Ustawienia dziennika…"
@@ -137,6 +139,10 @@
       "moreItems": "…i jeszcze {count}",
       "deleting": "Usuwanie…",
       "deleteCount": "Usuń {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Dodano elementy do zakładek: {count}",
+      "selectionBookmarkFailed": "Nie udało się dodać zaznaczonych elementów do zakładek"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Anuluj",
       "currentFolderBadge": "(bieżący)",
       "noFoldersMatchQuery": "Żaden folder nie pasuje do „{query}”",
-      "createFolderNamed": "Utwórz „{name}”"
+      "createFolderNamed": "Utwórz „{name}”",
+      "moveItems": "Przenieś elementy ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Usuń notatki: ",

@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Hapus templat default",
       "setIcon": "Atur ikon",
       "removeIcon": "Hapus ikon",
-      "deleteSelectedNotes": "Hapus {count} catatan",
       "deleteSelectedItems": "Hapus {count} item",
+      "newFolderWithSelection": "Folder baru dengan pilihan ({count} item)",
+      "moveSelectedItems": "Pindahkan {count} item ke…",
+      "bookmarkSelectedItems": "Tandai {count} item",
       "bookmark": "Markahi",
       "removeFromBookmarks": "Hapus dari markah",
       "journalSettings": "Pengaturan jurnal…"
@@ -137,6 +139,10 @@
       "moreItems": "…dan {count} lainnya",
       "deleting": "Menghapus…",
       "deleteCount": "Hapus {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} item ditandai",
+      "selectionBookmarkFailed": "Tidak dapat menandai item yang dipilih"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Batal",
       "currentFolderBadge": "(saat ini)",
       "noFoldersMatchQuery": "Tidak ada folder yang cocok dengan “{query}”",
-      "createFolderNamed": "Buat “{name}”"
+      "createFolderNamed": "Buat “{name}”",
+      "moveItems": "Pindahkan {count} item"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Hapus ",

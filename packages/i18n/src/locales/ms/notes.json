@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Kosongkan templat lalai",
       "setIcon": "Tetapkan ikon",
       "removeIcon": "Alih keluar ikon",
-      "deleteSelectedNotes": "Padam {count} nota",
       "deleteSelectedItems": "Padam {count} item",
+      "newFolderWithSelection": "Folder baharu dengan pilihan ({count} item)",
+      "moveSelectedItems": "Alih {count} item ke…",
+      "bookmarkSelectedItems": "Tanda buku {count} item",
       "bookmark": "Tambah penanda halaman",
       "removeFromBookmarks": "Alih keluar daripada penanda halaman",
       "journalSettings": "Tetapan jurnal…"
@@ -137,6 +139,10 @@
       "moreItems": "…dan {count} lagi",
       "deleting": "Memadamkan…",
       "deleteCount": "Padam {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} item ditanda buku",
+      "selectionBookmarkFailed": "Tidak dapat menanda buku item yang dipilih"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Batal",
       "currentFolderBadge": "(semasa)",
       "noFoldersMatchQuery": "Tiada folder sepadan dengan “{query}”",
-      "createFolderNamed": "Buat “{name}”"
+      "createFolderNamed": "Buat “{name}”",
+      "moveItems": "Alih {count} item"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Padam ",

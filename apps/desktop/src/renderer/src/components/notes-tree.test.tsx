@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { toast } from 'sonner'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -112,6 +112,10 @@ vi.mock('@/services/notes-service', () => ({
     deleteFolder: vi.fn().mockResolvedValue({}),
     renameFolder: vi.fn().mockResolvedValue({}),
     getAllPositions: vi.fn().mockResolvedValue({ success: true, positions: {} }),
+    getFolders: vi.fn().mockResolvedValue([
+      { path: 'Projects', icon: null },
+      { path: 'Archive', icon: null }
+    ]),
     reorder: vi.fn().mockResolvedValue({ success: true })
   }
 }))
@@ -809,25 +813,119 @@ describe('T522: NotesTree - multi-selection', () => {
 
     // Both should be selected (implementation may vary)
   })
+})
 
-  it('should show bulk delete option when multiple selected', async () => {
+describe('NotesTree - multi-selection context menu', () => {
+  let bulkCreate: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    patchTemplatesMock()
+    setupMocks()
+    bulkCreate = vi.fn().mockResolvedValue({ success: true, createdCount: 2 })
+    // SAFETY: the DOM test setup installs `window.api` as a plain mock object.
+    const w = window as unknown as { api: { bookmarks: Record<string, unknown> } }
+    w.api.bookmarks.bulkCreate = bulkCreate
+  })
+
+  // Folder "Projects" plus root note "Meeting Notes", then the menu of the folder row.
+  const openSelectionMenuOnFolder = async () => {
     const user = userEvent.setup()
     renderWithProviders(<NotesTree />)
-
-    const note1 = screen.getByText('Meeting Notes')
-    const note2 = screen.getByText('Daily Journal')
-
-    await user.click(note1)
+    const folder = screen.getByText('Projects')
+    await user.click(folder)
     await user.keyboard('{Meta>}')
-    await user.click(note2)
+    await user.click(screen.getByText('Meeting Notes'))
     await user.keyboard('{/Meta}')
+    await user.pointer({ target: folder, keys: '[MouseRight]' })
+    return user
+  }
 
-    // Right-click should show bulk delete
-    await user.pointer({ target: note2, keys: '[MouseRight]' })
+  it('shows the selection actions instead of the folder actions on a selected folder', async () => {
+    await openSelectionMenuOnFolder()
+
+    expect(await screen.findByText('New folder with selection (2 items)')).toBeInTheDocument()
+    expect(screen.getByText('Move 2 items to…')).toBeInTheDocument()
+    expect(screen.getByText('Bookmark 2 items')).toBeInTheDocument()
+    expect(screen.getByText('Delete 2 items')).toBeInTheDocument()
+    expect(screen.queryByText('New Note')).not.toBeInTheDocument()
+  })
+
+  it('creates a folder in the common parent and moves the note and the folder into it', async () => {
+    const user = await openSelectionMenuOnFolder()
+    const { createFolder } = (useNoteFoldersQuery as ReturnType<typeof vi.fn>).mock.results[0]
+      .value as { createFolder: ReturnType<typeof vi.fn> }
+    const { moveNote } = (useNoteMutations as ReturnType<typeof vi.fn>).mock.results[0].value as {
+      moveNote: { mutateAsync: ReturnType<typeof vi.fn> }
+    }
+
+    await user.click(await screen.findByText('New folder with selection (2 items)'))
+
+    const { notesService } = await import('@/services/notes-service')
+    await waitFor(() => {
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Projects', 'Untitled Folder/Projects')
+    })
+    expect(createFolder).toHaveBeenCalledWith('Untitled Folder')
+    expect(moveNote.mutateAsync).toHaveBeenCalledWith({
+      id: 'note-1',
+      newFolder: 'Untitled Folder'
+    })
+  })
+
+  it('moves the selection to the folder picked in the dialog, never into a moved folder', async () => {
+    const user = await openSelectionMenuOnFolder()
+    const { moveNote } = (useNoteMutations as ReturnType<typeof vi.fn>).mock.results[0].value as {
+      moveNote: { mutateAsync: ReturnType<typeof vi.fn> }
+    }
+
+    await user.click(await screen.findByText('Move 2 items to…'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Move 2 items')).toBeInTheDocument()
+    await user.click(await within(dialog).findByText('Archive'))
+
+    const { notesService } = await import('@/services/notes-service')
+    await waitFor(() => {
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Projects', 'Archive/Projects')
+    })
+    expect(moveNote.mutateAsync).toHaveBeenCalledWith({ id: 'note-1', newFolder: 'Archive' })
+  })
+
+  it('does not offer a selected folder or its subfolders as the destination', async () => {
+    const { notesService } = await import('@/services/notes-service')
+    ;(notesService.getFolders as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      ...mockFolders,
+      { path: 'Projects/Sub', icon: null }
+    ])
+    const user = await openSelectionMenuOnFolder()
+
+    await user.click(await screen.findByText('Move 2 items to…'))
+
+    const dialog = await screen.findByRole('dialog')
+    await within(dialog).findByText('Archive')
+    expect(within(dialog).queryByText('Projects')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('Projects/Sub')).not.toBeInTheDocument()
+  })
+
+  it('bookmarks every selected note and folder', async () => {
+    const user = await openSelectionMenuOnFolder()
+
+    await user.click(await screen.findByText('Bookmark 2 items'))
 
     await waitFor(() => {
-      expect(screen.getByText(/delete.*notes/i)).toBeInTheDocument()
+      expect(bulkCreate).toHaveBeenCalledWith([
+        { itemType: 'note', itemId: 'note-1' },
+        { itemType: 'folder', itemId: 'Projects' }
+      ])
     })
+  })
+
+  it('deletes the selected note and folder after confirmation', async () => {
+    const user = await openSelectionMenuOnFolder()
+
+    await user.click(await screen.findByText('Delete 2 items'))
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
   })
 })
 

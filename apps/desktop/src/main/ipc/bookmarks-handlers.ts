@@ -381,6 +381,7 @@ export function registerBookmarksHandlers(): void {
 
       createdBookmarks.forEach((bookmark) => {
         enqueueBookmarkCreate(bookmark.id)
+        emitBookmarkEvent(BookmarksChannels.events.CREATED, { bookmark })
       })
 
       return { success: true, createdCount: createdBookmarks.length }

@@ -45,6 +45,28 @@ project too. If the folder has a default template, the template body fills the e
 template and the source note set the same property or icon, the source note wins, and tags from both
 are kept.
 
+### Several notes and folders at once
+
+To file or clean up a batch of items in the sidebar, select them first. <kbd>⌘</kbd>-click (Windows
+and Linux: <kbd>Ctrl</kbd>-click) adds or removes one note or folder, and <kbd>Shift</kbd>-click
+selects everything between the last click and this one. Then right-click any selected row:
+
+| Action                                  | What it does                                                                                                     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **New folder with selection (N items)** | Makes a folder in the deepest folder the items share, moves them into it, and opens its name field               |
+| **Move N items to…**                    | Opens the folder picker and moves every item to the folder you choose                                            |
+| **Bookmark N items**                    | Adds every item to [Bookmarks](/user-guide/notes/bookmarks-reminders). Items already bookmarked stay as they are |
+| **Delete N items**                      | Asks for confirmation, then deletes them                                                                         |
+
+For example, select the folder `Projects` and the note `Loose idea` at the top level, then choose
+**New folder with selection**. You get `Untitled Folder/Projects` and `Untitled Folder/Loose idea`,
+with the name field open on the new folder.
+
+These moves follow the same rules as dragging. A folder never moves into itself or one of its
+subfolders, so the folder picker leaves those out. When you select a folder together with something
+inside it, the inner item moves with its folder and stays inside it. Journal entries are not
+bookmarked from here, the same as on a single entry's menu.
+
 ## Block Types
 
 Available from the slash menu (`/`) or the block-handle drag-out:

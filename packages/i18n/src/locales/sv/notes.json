@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Rensa standardmall",
       "setIcon": "Ställ in ikon",
       "removeIcon": "Ta bort ikon",
-      "deleteSelectedNotes": "Radera {count} anteckningar",
       "deleteSelectedItems": "Radera {count} objekt",
+      "newFolderWithSelection": "Ny mapp med markering ({count} objekt)",
+      "moveSelectedItems": "Flytta {count} objekt till…",
+      "bookmarkSelectedItems": "Bokmärk {count} objekt",
       "bookmark": "Lägg till bokmärke",
       "removeFromBookmarks": "Ta bort från bokmärken",
       "journalSettings": "Dagboksinställningar…"
@@ -137,6 +139,10 @@
       "moreItems": "…och {count} till",
       "deleting": "Raderar…",
       "deleteCount": "Radera {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} objekt bokmärkta",
+      "selectionBookmarkFailed": "Det gick inte att bokmärka de markerade objekten"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Avbryt",
       "currentFolderBadge": "(nuvarande)",
       "noFoldersMatchQuery": "Inga mappar matchar ”{query}”",
-      "createFolderNamed": "Skapa ”{name}”"
+      "createFolderNamed": "Skapa ”{name}”",
+      "moveItems": "Flytta {count} objekt"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Radera ",

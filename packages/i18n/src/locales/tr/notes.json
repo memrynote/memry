@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Varsayılan şablonu kaldır",
       "setIcon": "Simge ayarla",
       "removeIcon": "Simgeyi kaldır",
-      "deleteSelectedNotes": "{count} notu sil",
       "deleteSelectedItems": "{count} öğeyi sil",
+      "newFolderWithSelection": "Seçimle yeni klasör ({count} öğe)",
+      "moveSelectedItems": "{count} öğeyi şuraya taşı…",
+      "bookmarkSelectedItems": "{count} öğeyi yer imlerine ekle",
       "bookmark": "Yer imlerine ekle",
       "removeFromBookmarks": "Yer imlerinden kaldır",
       "journalSettings": "Günlük ayarları…"
@@ -137,6 +139,10 @@
       "moreItems": "…ve {count} öğe daha",
       "deleting": "Siliniyor…",
       "deleteCount": "{count} öğeyi sil"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} öğe yer imlerine eklendi",
+      "selectionBookmarkFailed": "Seçili öğeler yer imlerine eklenemedi"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "İptal",
       "currentFolderBadge": "(geçerli)",
       "noFoldersMatchQuery": "“{query}” ile eşleşen klasör yok",
-      "createFolderNamed": "“{name}” oluştur"
+      "createFolderNamed": "“{name}” oluştur",
+      "moveItems": "{count} öğeyi taşı"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Sil: ",

@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "مسح القالب الافتراضي",
       "setIcon": "تعيين أيقونة",
       "removeIcon": "إزالة الأيقونة",
-      "deleteSelectedNotes": "حذف الملاحظات ({count})",
       "deleteSelectedItems": "حذف العناصر ({count})",
+      "newFolderWithSelection": "مجلد جديد بالعناصر المحددة ({count})",
+      "moveSelectedItems": "نقل العناصر ({count}) إلى…",
+      "bookmarkSelectedItems": "إضافة العناصر ({count}) إلى الإشارات المرجعية",
       "bookmark": "إضافة إشارة مرجعية",
       "removeFromBookmarks": "إزالة من الإشارات المرجعية",
       "journalSettings": "إعدادات اليوميات…"
@@ -137,6 +139,10 @@
       "moreItems": "…و{count} أخرى",
       "deleting": "جارٍ الحذف…",
       "deleteCount": "حذف {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "تمت إضافة العناصر ({count}) إلى الإشارات المرجعية",
+      "selectionBookmarkFailed": "تعذّرت إضافة العناصر المحددة إلى الإشارات المرجعية"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "إلغاء",
       "currentFolderBadge": "(الحالي)",
       "noFoldersMatchQuery": "لا توجد مجلدات تطابق «{query}»",
-      "createFolderNamed": "إنشاء «{name}»"
+      "createFolderNamed": "إنشاء «{name}»",
+      "moveItems": "نقل العناصر ({count})"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "حذف ",

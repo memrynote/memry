@@ -189,6 +189,23 @@ describe('bookmarks-handlers', () => {
       ]
     })
     expect(bulkCreate).toEqual({ success: true, createdCount: 2 })
+    // The sidebar bookmark list refreshes off CREATED, one per new row.
+    expect(mockSend).toHaveBeenCalledWith(BookmarksChannels.events.CREATED, {
+      bookmark: {
+        id: 'bookmark-3',
+        itemType: BookmarkItemTypes.NOTE,
+        itemId: 'note-1',
+        position: 0
+      }
+    })
+    expect(mockSend).toHaveBeenCalledWith(BookmarksChannels.events.CREATED, {
+      bookmark: {
+        id: 'bookmark-4',
+        itemType: BookmarkItemTypes.TASK,
+        itemId: 'task-1',
+        position: 1
+      }
+    })
   })
 
   it('emits DELETED event when un-bookmarking via toggle', async () => {

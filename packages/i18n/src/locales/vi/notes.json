@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Bỏ mẫu mặc định",
       "setIcon": "Đặt biểu tượng",
       "removeIcon": "Gỡ biểu tượng",
-      "deleteSelectedNotes": "Xóa {count} ghi chú",
       "deleteSelectedItems": "Xóa {count} mục",
+      "newFolderWithSelection": "Thư mục mới từ lựa chọn ({count} mục)",
+      "moveSelectedItems": "Di chuyển {count} mục đến…",
+      "bookmarkSelectedItems": "Đánh dấu {count} mục",
       "bookmark": "Đánh dấu trang",
       "removeFromBookmarks": "Gỡ khỏi dấu trang",
       "journalSettings": "Cài đặt nhật ký…"
@@ -137,6 +139,10 @@
       "moreItems": "…và {count} mục khác",
       "deleting": "Đang xóa…",
       "deleteCount": "Xóa {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "Đã đánh dấu {count} mục",
+      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Hủy",
       "currentFolderBadge": "(hiện tại)",
       "noFoldersMatchQuery": "Không có thư mục nào khớp với “{query}”",
-      "createFolderNamed": "Tạo “{name}”"
+      "createFolderNamed": "Tạo “{name}”",
+      "moveItems": "Di chuyển {count} mục"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Xóa ",

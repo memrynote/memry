@@ -132,7 +132,7 @@ describe('MoveToFolderDialog', () => {
       />
     )
 
-    expect(screen.getByRole('heading', { name: 'Move 2 Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'moveItems:2' })).toBeInTheDocument()
 
     await user.type(await screen.findByPlaceholderText('searchFolders'), 'Research/New')
     await user.click(screen.getByRole('button', { name: 'createFolderNamed:Research/New' }))

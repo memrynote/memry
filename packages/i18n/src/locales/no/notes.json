@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "Fjern standardmal",
       "setIcon": "Sett ikon",
       "removeIcon": "Fjern ikon",
-      "deleteSelectedNotes": "Slett {count} notater",
       "deleteSelectedItems": "Slett {count} elementer",
+      "newFolderWithSelection": "Ny mappe med utvalg ({count} elementer)",
+      "moveSelectedItems": "Flytt {count} elementer til…",
+      "bookmarkSelectedItems": "Bokmerk {count} elementer",
       "bookmark": "Legg til bokmerke",
       "removeFromBookmarks": "Fjern fra bokmerker",
       "journalSettings": "Dagbokinnstillinger …"
@@ -137,6 +139,10 @@
       "moreItems": "… og {count} til",
       "deleting": "Sletter …",
       "deleteCount": "Slett {count}"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} elementer bokmerket",
+      "selectionBookmarkFailed": "Kunne ikke bokmerke de valgte elementene"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "Avbryt",
       "currentFolderBadge": "(nåværende)",
       "noFoldersMatchQuery": "Ingen mapper samsvarer med «{query}»",
-      "createFolderNamed": "Opprett «{name}»"
+      "createFolderNamed": "Opprett «{name}»",
+      "moveItems": "Flytt {count} elementer"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slett ",

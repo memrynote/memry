@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "기본 템플릿 지우기",
       "setIcon": "아이콘 설정",
       "removeIcon": "아이콘 제거",
-      "deleteSelectedNotes": "노트 {count}개 삭제",
       "deleteSelectedItems": "항목 {count}개 삭제",
+      "newFolderWithSelection": "선택 항목으로 새 폴더 만들기({count}개)",
+      "moveSelectedItems": "항목 {count}개 이동…",
+      "bookmarkSelectedItems": "항목 {count}개 북마크",
       "bookmark": "북마크에 추가",
       "removeFromBookmarks": "북마크에서 제거",
       "journalSettings": "저널 설정…"
@@ -137,6 +139,10 @@
       "moreItems": "…외 {count}개",
       "deleting": "삭제 중…",
       "deleteCount": "{count}개 삭제"
+    },
+    "toast": {
+      "selectionBookmarked": "항목 {count}개를 북마크했습니다",
+      "selectionBookmarkFailed": "선택한 항목을 북마크하지 못했습니다"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "취소",
       "currentFolderBadge": "(현재)",
       "noFoldersMatchQuery": "“{query}”와(과) 일치하는 폴더가 없습니다",
-      "createFolderNamed": "“{name}” 만들기"
+      "createFolderNamed": "“{name}” 만들기",
+      "moveItems": "항목 {count}개 이동"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "노트 ",

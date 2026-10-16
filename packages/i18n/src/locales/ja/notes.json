@@ -108,8 +108,10 @@
       "clearDefaultTemplate": "デフォルトのテンプレートをクリア",
       "setIcon": "アイコンを設定",
       "removeIcon": "アイコンを削除",
-      "deleteSelectedNotes": "ノート {count} 件を削除",
       "deleteSelectedItems": "{count} 件の項目を削除",
+      "newFolderWithSelection": "選択項目で新規フォルダ（{count} 件）",
+      "moveSelectedItems": "{count} 件を移動…",
+      "bookmarkSelectedItems": "{count} 件をブックマーク",
       "bookmark": "ブックマークに追加",
       "removeFromBookmarks": "ブックマークを解除",
       "journalSettings": "ジャーナルの設定…"
@@ -137,6 +139,10 @@
       "moreItems": "…ほか {count} 件",
       "deleting": "削除中…",
       "deleteCount": "{count} 件を削除"
+    },
+    "toast": {
+      "selectionBookmarked": "{count} 件をブックマークしました",
+      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした"
     }
   },
   "editor": {
@@ -1024,7 +1030,8 @@
       "cancel": "キャンセル",
       "currentFolderBadge": "（現在）",
       "noFoldersMatchQuery": "「{query}」に一致するフォルダーはありません",
-      "createFolderNamed": "「{name}」を作成"
+      "createFolderNamed": "「{name}」を作成",
+      "moveItems": "{count} 件を移動"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "ノートを削除 ",

@@ -252,6 +252,12 @@ const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNo
     noteMap,
     onMove: vi.fn(),
     onBulkDelete: vi.fn(),
+    selectionActions: {
+      onCreateFolderWithSelection: vi.fn(),
+      onMoveSelection: vi.fn(),
+      onBookmarkSelection: vi.fn(),
+      onDeleteSelection: vi.fn()
+    },
     onRenameNote: vi.fn(),
     onDeleteNote: vi.fn(),
     onOpenExternal: vi.fn(),
@@ -384,6 +390,20 @@ describe('VirtualizedNotesTree', () => {
 
     expect(openFolderView).toHaveFocus()
     expect(isRevealed(reveal!)).toBe(true)
+  })
+
+  it('offers the selection actions on both the selected folder and the selected note', async () => {
+    const user = userEvent.setup()
+    const props = renderTree({ selectedIds: ['folder-Work', 'note-root'] })
+
+    // The context-menu mock renders every row's menu inline.
+    expect(screen.getAllByText('New folder with selection (2 items)')).toHaveLength(2)
+    expect(screen.getAllByText('Bookmark 2 items')).toHaveLength(2)
+    expect(screen.getAllByText('Delete 2 items')).toHaveLength(2)
+    const moveItems = screen.getAllByText('Move 2 items to…')
+    expect(moveItems).toHaveLength(2)
+    await user.click(moveItems[0])
+    expect(props.selectionActions.onMoveSelection).toHaveBeenCalledTimes(1)
   })
 
   it('supports folder actions, imperative expansion, and bulk delete keyboard shortcuts', async () => {
