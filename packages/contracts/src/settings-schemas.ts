@@ -231,16 +231,29 @@ export const ShortcutBindingSchema = z.object({
 
 export type ShortcutBinding = z.infer<typeof ShortcutBindingSchema>
 
+/** A chord that creates a note in `folder`, a vault-relative folder path. */
+export const FolderNoteShortcutSchema = z.object({
+  folder: z.string().min(1),
+  binding: ShortcutBindingSchema
+})
+
+export type FolderNoteShortcut = z.infer<typeof FolderNoteShortcutSchema>
+
 export const KeyboardShortcutsSchema = z.object({
   overrides: z.record(z.string(), ShortcutBindingSchema),
-  globalCapture: ShortcutBindingSchema.nullable()
+  globalCapture: ShortcutBindingSchema.nullable(),
+  // Local to this vault's data.db, like the rest of this group. Additive: a
+  // stored blob without it reads the default, and older builds keep it
+  // untouched because they write the group back as a spread of what they read.
+  folderNoteShortcuts: z.array(FolderNoteShortcutSchema).default([])
 })
 
 export type KeyboardShortcuts = z.infer<typeof KeyboardShortcutsSchema>
 
 export const KEYBOARD_SHORTCUTS_DEFAULTS: KeyboardShortcuts = {
   overrides: {},
-  globalCapture: null
+  globalCapture: null,
+  folderNoteShortcuts: []
 }
 
 /**

@@ -12,7 +12,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
+import type { FolderNoteShortcut, ShortcutBinding } from '@memry/contracts/settings-schemas'
 import { SHORTCUT_REGISTRY, type ShortcutId } from './shortcut-registry'
 
 const DEFAULT_BINDINGS = new Map<string, ShortcutBinding>(
@@ -23,6 +23,7 @@ const DEFAULT_BINDINGS = new Map<string, ShortcutBinding>(
 const NEVER_MATCHES: ShortcutBinding = { key: '', modifiers: {} }
 
 let overrides: Record<string, ShortcutBinding> = {}
+let folderNoteShortcuts: FolderNoteShortcut[] = []
 /** Cached per id so `useSyncExternalStore` sees a stable snapshot. */
 let resolved = new Map<string, ShortcutBinding>()
 const listeners = new Set<() => void>()
@@ -31,6 +32,11 @@ let started = false
 function setOverrides(next: Record<string, ShortcutBinding>): void {
   overrides = next
   resolved = new Map()
+  for (const listener of listeners) listener()
+}
+
+function setFolderNoteShortcuts(next: FolderNoteShortcut[]): void {
+  folderNoteShortcuts = next
   for (const listener of listeners) listener()
 }
 
@@ -49,7 +55,9 @@ function start(): void {
     void Promise.resolve(getKeyboardSettings.call(api.settings))
       .then((settings) => {
         // A slower read from the vault we just left must not win.
-        if (request === latestLoad) setOverrides(settings.overrides ?? {})
+        if (request !== latestLoad) return
+        setOverrides(settings.overrides ?? {})
+        setFolderNoteShortcuts(settings.folderNoteShortcuts ?? [])
       })
       .catch(() => {
         // Settings unavailable — registry defaults stay in effect.
@@ -69,8 +77,13 @@ function start(): void {
 
   api.onSettingsChanged?.((event) => {
     if (event.key !== 'keyboard') return
-    const value = event.value as { overrides?: Record<string, ShortcutBinding> } | undefined
+    const value = event.value as
+      | { overrides?: Record<string, ShortcutBinding>; folderNoteShortcuts?: FolderNoteShortcut[] }
+      | undefined
     if (value && 'overrides' in value) setOverrides(value.overrides ?? {})
+    if (value && 'folderNoteShortcuts' in value) {
+      setFolderNoteShortcuts(value.folderNoteShortcuts ?? [])
+    }
   })
 }
 
@@ -100,6 +113,15 @@ export function useShortcutBinding(id: ShortcutId): ShortcutBinding {
     subscribe,
     () => getShortcutBinding(id),
     () => getShortcutBinding(id)
+  )
+}
+
+/** The open vault's "new note in folder" chords. */
+export function useFolderNoteShortcuts(): FolderNoteShortcut[] {
+  return useSyncExternalStore(
+    subscribe,
+    () => folderNoteShortcuts,
+    () => folderNoteShortcuts
   )
 }
 

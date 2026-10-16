@@ -75,6 +75,7 @@ import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
+import { useFolderNoteShortcutsRuntime } from '@/hooks/use-folder-note-shortcuts'
 import { onOpenSettingsRequested } from '@/lib/settings-navigation'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
@@ -345,6 +346,7 @@ const AppContent = (): React.JSX.Element => {
   useSettingsShortcut(openSettings)
   useSwitchVaultShortcut(requestVaultSwitcherOpen)
   useNewNoteShortcut(() => void handleNewNote())
+  useFolderNoteShortcutsRuntime()
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click

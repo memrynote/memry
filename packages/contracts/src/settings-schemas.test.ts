@@ -336,6 +336,11 @@ describe('KeyboardShortcutsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('reads a payload written before folder shortcuts existed as having none', () => {
+    const result = KeyboardShortcutsSchema.safeParse({ overrides: {}, globalCapture: null })
+    expect(result.success && result.data.folderNoteShortcuts).toEqual([])
+  })
+
   it('accepts overrides map keyed by command name', () => {
     const result = KeyboardShortcutsSchema.safeParse({
       overrides: {

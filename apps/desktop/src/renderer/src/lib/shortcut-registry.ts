@@ -5,7 +5,7 @@
  * categories, and conflict detection.
  */
 
-import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
+import type { FolderNoteShortcut, ShortcutBinding } from '@memry/contracts/settings-schemas'
 
 /**
  * Every id in the registry has a runtime owner that reads its effective binding
@@ -423,24 +423,44 @@ export function getDefaultBinding(id: ShortcutId): ShortcutBinding | undefined {
   return SHORTCUT_REGISTRY.find((entry) => entry.id === id)?.defaultBinding
 }
 
+/** Conflict ids for "new note in folder" shortcuts, which live outside the registry. */
+export const FOLDER_NOTE_SHORTCUT_PREFIX = 'folderNote:'
+
+export const folderNoteShortcutId = (folder: string): string =>
+  `${FOLDER_NOTE_SHORTCUT_PREFIX}${folder}`
+
 /**
- * Find conflicts: other rebindable shortcuts that use the same binding.
+ * Find conflicts: other shortcuts, registry or per-folder, that use the same
+ * binding. A folder shortcut's conflict carries the folder path as its label.
  *
- * Editor formatting keys are excluded: they only apply while the caret is in
- * rich text, so sharing a chord with an app-level shortcut (⌘B is both Bold and
- * Toggle Sidebar) is resolved by focus at keypress time, not a real collision.
+ * Editor formatting keys do not conflict with registry shortcuts: they only
+ * apply while the caret is in rich text, so sharing a chord with an app-level
+ * shortcut (⌘B is both Bold and Toggle Sidebar) is resolved by focus at
+ * keypress time. A folder shortcut has no such focus rule and fires inside the
+ * editor too, so it may not take an editor key.
  */
 export function findConflicts(
   id: string,
   binding: ShortcutBinding,
-  overrides: Record<string, ShortcutBinding>
+  overrides: Record<string, ShortcutBinding>,
+  folderNoteShortcuts: FolderNoteShortcut[] = []
 ): ShortcutConflict[] {
-  return SHORTCUT_REGISTRY.filter((entry) => {
+  const isFolderShortcut = id.startsWith(FOLDER_NOTE_SHORTCUT_PREFIX)
+  const registryConflicts = SHORTCUT_REGISTRY.filter((entry) => {
     if (entry.id === id) return false
-    if (entry.rebindable === false) return false
+    if (entry.rebindable === false && !isFolderShortcut) return false
     const effective = resolveBinding(entry, overrides)
     return bindingsEqual(effective, binding)
   }).map((entry) => ({ conflictingId: entry.id, conflictingLabel: entry.label }))
+  const folderConflicts = folderNoteShortcuts
+    .filter(
+      (entry) => folderNoteShortcutId(entry.folder) !== id && bindingsEqual(entry.binding, binding)
+    )
+    .map((entry) => ({
+      conflictingId: folderNoteShortcutId(entry.folder),
+      conflictingLabel: entry.folder
+    }))
+  return [...registryConflicts, ...folderConflicts]
 }
 
 /**

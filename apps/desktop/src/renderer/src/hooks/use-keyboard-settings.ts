@@ -6,7 +6,8 @@ import { getI18n } from 'react-i18next'
 
 const DEFAULTS: KeyboardShortcutsDTO = {
   overrides: {},
-  globalCapture: null
+  globalCapture: null,
+  folderNoteShortcuts: []
 }
 
 interface UseKeyboardSettingsReturn {
@@ -84,7 +85,7 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
     try {
       const result = await window.api.settings.resetKeyboardSettings()
       if (result.success) {
-        setSettings(DEFAULTS)
+        setSettings((prev) => ({ ...DEFAULTS, folderNoteShortcuts: prev.folderNoteShortcuts }))
         return true
       }
       setError(result.error ?? 'Reset failed')

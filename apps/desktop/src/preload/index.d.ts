@@ -1433,6 +1433,7 @@ export interface ShortcutBindingDTO {
 export interface KeyboardShortcutsDTO {
   overrides: Record<string, ShortcutBindingDTO>
   globalCapture: ShortcutBindingDTO | null
+  folderNoteShortcuts: Array<{ folder: string; binding: ShortcutBindingDTO }>
 }
 
 export interface SyncSettingsDTO {
