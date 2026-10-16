@@ -3,6 +3,7 @@ narration placed on its cue, a quiet synthesized bed that ducks under the voice,
 
     uv run --with pillow --with numpy --with scipy python engine/compose.py <tutorial-dir>
 Reads out/take/ and vo/, writes out/<slug>.mp4, .srt and .chapters.txt.
+A YouTube film (narration.json has a youtube block) masters at 2560x1440, any other at 1920x1080.
 """
 import json, os, subprocess, sys
 import numpy as np
@@ -17,22 +18,24 @@ TL = json.load(open(os.path.join(take, 'timeline.json')))
 EV = json.load(open(os.path.join(take, 'events.json')))
 
 SW, SH, DPR = 3200, 1800, 2
-OW, OH, FPS = 1920, 1080, 60
-WW, WH = 1760, 990
+# The 3200x1800 capture has the pixels for 1440p, and channels upload 1440p to get YouTube's sharper
+# encodes (common practice, not a documented rule). The landing demo stays 1080p. Sizes below are
+# designed at 1080p and scaled by S; card.mjs renders the cards at the same size.
+OW, OH = (2560, 1440) if 'youtube' in N else (1920, 1080)
+S = OW / 1920
+FPS = 60
+WW, WH = round(1760 * S), round(990 * S)
 WX, WY = (OW - WW) // 2, (OH - WH) // 2
-R = 18
+R = round(18 * S)
 RAMP = 0.8
 SR = 48000
 
 # ------------------------------------------------------------------ picture
-segments, cur = [], None
-for e in EV:
-    if e['type'] == 'zoom':
-        if cur: cur['t1'] = e['t']; segments.append(cur)
-        cur = {'t0': e['t'], 'x': e['x'], 'y': e['y'], 'z': e['z']}
-    elif e['type'] == 'unzoom' and cur:
-        cur['t1'] = e['t']; segments.append(cur); cur = None
-if cur: cur['t1'] = 1e9; segments.append(cur)
+# Camera keys from the recorder's marks. Each one eases from wherever the camera is to its target over
+# RAMP s, so a zoom can hand over to the next one without passing through the wide shot. An unzoom
+# starts RAMP/2 early, so the pull-back is under way by the time the next scene starts.
+keys = sorted((e['t'], e['x'] * DPR, e['y'] * DPR, e['z']) if e['type'] == 'zoom' else (e['t'] - RAMP / 2, SW / 2, SH / 2, 1.0)
+              for e in EV if e['type'] in ('zoom', 'unzoom'))
 
 
 def ease(k):
@@ -42,12 +45,10 @@ def ease(k):
 
 def camera(t):
     z, cx, cy = 1.0, SW / 2, SH / 2
-    for s in segments:
-        a = ease((t - s['t0']) / RAMP) * ease((s['t1'] + RAMP * 0.5 - t) / RAMP)
-        if a > 0:
-            z = 1 + (s['z'] - 1) * a
-            cx = SW / 2 + (s['x'] * DPR - SW / 2) * a
-            cy = SH / 2 + (s['y'] * DPR - SH / 2) * a
+    for t0, x, y, zz in keys:
+        if t < t0: break
+        k = ease((t - t0) / RAMP)
+        z, cx, cy = z + (zz - z) * k, cx + (x - cx) * k, cy + (y - cy) * k
     w, h = SW / z, SH / z
     return w, h, min(max(cx, w / 2), SW - w / 2), min(max(cy, h / 2), SH - h / 2)
 
@@ -58,8 +59,8 @@ bg = Image.fromarray((np.array([246, 214, 186]) * (1 - g) + np.array([236, 120, 
 mask = Image.new('L', (WW, WH), 0)
 ImageDraw.Draw(mask).rounded_rectangle((0, 0, WW - 1, WH - 1), R, fill=255)
 shadow = Image.new('L', (OW, OH), 0)
-ImageDraw.Draw(shadow).rounded_rectangle((WX, WY + 14, WX + WW, WY + WH + 14), R, fill=110)
-base = Image.composite(Image.new('RGB', (OW, OH), (60, 30, 10)), bg, shadow.filter(ImageFilter.GaussianBlur(28)))
+ImageDraw.Draw(shadow).rounded_rectangle((WX, WY + 14 * S, WX + WW, WY + WH + 14 * S), R, fill=110)
+base = Image.composite(Image.new('RGB', (OW, OH), (60, 30, 10)), bg, shadow.filter(ImageFilter.GaussianBlur(28 * S)))
 
 video_tmp = base_out + '.video.mp4'
 dec = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-i', os.path.join(take, 'take.mp4'), '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)
@@ -80,10 +81,15 @@ def window_hidden(name, c, t):
     if name == 'outro': return t > c['timing']['start'] + 0.3
     return False
 
+last = max((c['frames'][1] for c in cards.values()), default=0)
 n = 0
 while True:
     buf = dec.stdout.read(SW * SH * 3)
-    if len(buf) < SW * SH * 3: break
+    if len(buf) < SW * SH * 3:
+        # A YouTube film's end card outlasts the take (card.mjs): hold the take's last frame under it.
+        if n > last or n == 0: break
+        buf = prev
+    prev = buf
     t = n / FPS
     name, c = card_at(n)
     if c and window_hidden(name, c, t):
@@ -209,10 +215,12 @@ for s in TL:
 with open(base_out + '.srt', 'w') as f:
     for k, (a, b, txt) in enumerate(cues, 1):
         f.write(f'{k}\n{ts(a)} --> {ts(b)}\n{txt}\n\n')
-titles = {s['id']: s['title'] for s in N['scenes']}
+# The title card covers the first scene (card.mjs), so it opens the first real chapter at 0:00: YouTube
+# shows no chapters at all when one runs under 10 s. engine/youtube.mjs checks YouTube's rules.
+titles = {s['id']: s['title'] for s in N['scenes'] if 'title' in s}
 with open(base_out + '.chapters.txt', 'w') as f:
-    for s in TL:
-        m, sec = divmod(int(s['t']), 60)
+    for k, s in enumerate(TL[1:] if 'card' in N else TL):
+        m, sec = divmod(0 if k == 0 else int(s['t']), 60)
         f.write(f"{m}:{sec:02} {titles[s['id']]}\n")
 os.remove(video_tmp); os.remove(comp); os.remove(wav.replace('.comp.wav', '.mix.wav'))
 print(f'{n} frames, {total:.1f}s -> {out}')

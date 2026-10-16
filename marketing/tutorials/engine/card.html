@@ -116,9 +116,13 @@
     <div id="url"></div>
     <script>
       // window.P = { kind: 'intro'|'outro', logo: { mark, words: [mem, ry, note], wordColor },
-      //   label, title, topics, url, timing }, set by card.mjs before render(t).
+      //   label, title, topics, url, endScreen, timing }, set by card.mjs before render(t).
       const W = { x: 80, y: 45, w: 1760, h: 990, r: 18 } // the app window in the film
       const C = { x: 350, y: 200, w: 1220, h: 680, r: 28 } // the card panel
+      // A YouTube film's end card (endScreen): the lockup and url keep to the top, so Studio's
+      // end-screen elements fit side by side below them, a 615x345 video and a 294 px subscribe
+      // circle at 1080p, inside the 1840x780 area 140 px from the top that Studio allows.
+      const E = { x: 240, y: 135, w: 1440, h: 810, r: 28, logo: 2, cy: 290, url: 340 }
       const clamp = (v) => Math.min(1, Math.max(0, v))
       const ease = (k) => (
         (k = clamp(k)),
@@ -142,6 +146,7 @@
           .map((t, i) => `<div class="topic"><b>${String(i + 1).padStart(2, '0')}</b>${t}</div>`)
           .join('')
         $('url').textContent = P.url ?? ''
+        $('url').style.top = (P.endScreen ? E.url : 610) + 'px'
         parts = {
           mark: document.querySelector('#mark'),
           words: [0, 1, 2].map((i) => $('w' + i)),
@@ -149,14 +154,14 @@
         }
       }
 
-      function panel(k, opacity) {
-        // k = 0: card panel, k = 1: exactly the app window.
+      function panel(k, opacity, card = C) {
+        // k = 0: the card's panel, k = 1: exactly the app window.
         const p = $('panel').style
-        p.left = lerp(C.x, W.x, k) + 'px'
-        p.top = lerp(C.y, W.y, k) + 'px'
-        p.width = lerp(C.w, W.w, k) + 'px'
-        p.height = lerp(C.h, W.h, k) + 'px'
-        p.borderRadius = lerp(C.r, W.r, k) + 'px'
+        p.left = lerp(card.x, W.x, k) + 'px'
+        p.top = lerp(card.y, W.y, k) + 'px'
+        p.width = lerp(card.w, W.w, k) + 'px'
+        p.height = lerp(card.h, W.h, k) + 'px'
+        p.borderRadius = lerp(card.r, W.r, k) + 'px'
         p.opacity = opacity
       }
       function logo(scale, cy, markIn, wordIns, opacity = 1) {
@@ -182,15 +187,16 @@
           const grow = ease((t - T.morph) / 0.6)
           const fade = clamp((t - T.reveal) / (T.end - T.reveal))
           panel(grow, 1 - fade)
-          const lift = ease((t - 1.35) / 0.7)
+          // The lockup is built by 0.75 s, so the first line can start at 0.6 s (the scene's lead).
+          const lift = ease((t - 0.8) / 0.5)
           logo(
             lerp(3.1, 1.75, lift),
             lerp(540, 330, lift),
-            clamp(t / 0.5),
-            [0.45, 0.65, 0.85].map((s) => clamp((t - s) / 0.35)),
+            clamp(t / 0.3),
+            [0.3, 0.4, 0.5].map((s) => clamp((t - s) / 0.25)),
             1 - leave
           )
-          const textIn = out((t - 2.0) / 0.5)
+          const textIn = out((t - 1.15) / 0.4)
           const tx = $('text').style
           tx.opacity = textIn * (1 - leave)
           tx.transform = `translateY(${lerp(18, 0, textIn) - leave * 10}px)`
@@ -204,11 +210,11 @@
           // outro: the window turns into the panel, the lockup and url land, then hold.
           const appear = clamp((t - T.start) / 0.3)
           const shrink = ease((t - T.start - 0.25) / 0.6)
-          panel(1 - shrink, appear)
+          panel(1 - shrink, appear, P.endScreen ? E : C)
           const s = T.start + 0.6
           logo(
-            2.6,
-            470,
+            P.endScreen ? E.logo : 2.6,
+            P.endScreen ? E.cy : 470,
             clamp((t - s) / 0.4),
             [0.3, 0.5, 0.7].map((d) => clamp((t - s - d) / 0.35))
           )

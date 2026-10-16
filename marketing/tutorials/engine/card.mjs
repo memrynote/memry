@@ -1,5 +1,6 @@
 // Title and end cards: card.html rendered frame by frame (60 fps, transparent) over the film's
-// wallpaper. Writes out/cards/{intro,outro}/NNNNN.png and out/cards/cards.json for compose.py.
+// wallpaper, at the film's master size (compose.py: 2560x1440 for a YouTube film, else 1920x1080).
+// Writes out/cards/{intro,outro}/NNNNN.png and out/cards/cards.json for compose.py.
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -8,6 +9,9 @@ import { chromium } from 'playwright'
 const ENGINE = path.dirname(fileURLToPath(import.meta.url))
 const LOGO = path.resolve(ENGINE, '../../../assets/brand/memrynote/logo.svg')
 const FPS = 60
+// YouTube shows end-screen elements only in a film's last 5-20 s, so a YouTube film's end card holds
+// this long, past the take if it has to (compose.py holds the take's last frame under it).
+const END_HOLD = 12
 
 /** The master logo, with the wordmark split into the syllables mem / ry / note. */
 function logoParts() {
@@ -43,7 +47,7 @@ export async function renderCards(dir) {
     // The title card covers the whole first scene; its line is read over the card.
     const s = TL[0]
     const topics = N.card.topics
-    const from = Math.max(2.3, s.vo + 0.3)
+    const from = Math.max(1.7, s.vo + 0.3)
     const to = s.vo + s.dur * 0.55
     const step = (to - from) / Math.max(1, topics.length - 1)
     const end = s.end
@@ -68,15 +72,19 @@ export async function renderCards(dir) {
     plan.outro = {
       kind: 'outro',
       url: N.endCard.url ?? 'memrynote.com',
+      endScreen: Boolean(N.youtube),
       start,
-      // Hold to the film's last frame: encode cuts 0.3 s after the last scene.
-      end: s.end + 0.3,
+      // At least to the take's last frame: encode cuts 0.3 s after the last scene.
+      end: Math.max(s.end + 0.3, N.youtube ? start + END_HOLD : 0),
       timing: { start }
     }
   }
 
   const browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
+  const page = await browser.newPage({
+    viewport: { width: 1920, height: 1080 },
+    deviceScaleFactor: N.youtube ? 4 / 3 : 1
+  })
   await page.goto(pathToFileURL(path.join(ENGINE, 'card.html')).href)
   await page.evaluate(() => document.fonts.ready)
   const logo = logoParts()

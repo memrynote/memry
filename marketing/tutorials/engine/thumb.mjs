@@ -1,11 +1,10 @@
-#!/usr/bin/env node
 // YouTube thumbnails from the film's own frames: thumb.html, the channel's template, rendered at
 // 1280x720 CSS px and 3x, so 3840x2160 JPEGs (YouTube's recommended size), one per `thumbnails`
 // variant in narration.json, written as out/<topic>.thumb-<n>.jpg. out/<topic>.thumbs.png shows
 // each one at the widths YouTube draws it: 640, 320 (home and search) and 168 px (phone lists),
 // and the first one beside the other topics' first thumbnails, as a phone list would show them.
 //
-//   node marketing/tutorials/engine/thumb.mjs <topic>
+//   node marketing/tutorials/engine/build.mjs <topic> --only youtube
 //
 // A variant: { text, shot: { scene, at?, x, y, w, h } }.
 // - text: one or two lines (\n), at most four words, with one orange mark: a single →, drawn as
@@ -114,15 +113,4 @@ export async function renderThumbs(dir) {
   fs.rmSync(sheet)
   await browser.close()
   return { files, warnings }
-}
-
-if (process.argv[1] && import.meta.url === url(process.argv[1])) {
-  const dir = process.argv[2] && path.resolve(path.dirname(ENGINE), process.argv[2])
-  if (!dir || !fs.existsSync(path.join(dir, 'narration.json')))
-    throw new Error('Usage: thumb.mjs <topic>')
-  const { files, warnings } = await renderThumbs(dir)
-  for (const w of warnings) console.log(`  warning: ${w}`)
-  console.log(
-    `  ${files.length} thumbnails and ${path.basename(dir)}.thumbs.png in ${path.dirname(files[0])}`
-  )
 }

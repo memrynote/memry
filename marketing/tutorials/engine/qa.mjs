@@ -43,15 +43,23 @@ export async function qa(dir) {
       `Scribe word error rate ${(score * 100).toFixed(1)}% on the final mix, want <= 5%`
     )
 
-  // Stills: the middle of every scene and of every zoom, for the agent to look at.
+  // Stills for the agent to look at. The middle of every scene and of every zoom at 844 px, the width
+  // of a phone held sideways (844 pt), where the UI a line names has to be readable; the
+  // phone-upright-<n>.png sheets have the same moments at 390 px, a phone held upright, 3 across so
+  // a sheet stays under the 1200 px an image reader shows unscaled. The cards at 1280 px.
   const qaDir = path.join(dir, 'out/qa')
   fs.rmSync(qaDir, { recursive: true, force: true })
   fs.mkdirSync(qaDir, { recursive: true })
-  const stills = TL.map((s) => [`${s.id}`, (s.t + s.end) / 2])
+  const PHONE = 844
+  const stills = TL.map((s) => [`${s.id}`, (s.t + s.end) / 2, PHONE])
   const zooms = events.filter((e) => e.type === 'zoom')
   for (const z of zooms) {
     const next = events.find((e) => e.t > z.t && (e.type === 'zoom' || e.type === 'unzoom'))
-    stills.push([`zoom-${TL.findLast((s) => s.t <= z.t).id}`, next ? (z.t + next.t) / 2 : z.t + 2])
+    stills.push([
+      `zoom-${TL.findLast((s) => s.t <= z.t).id}`,
+      next ? (z.t + next.t) / 2 : z.t + 2,
+      PHONE
+    ])
   }
   // Cards: the mark alone, the lockup, every topic pill, mid-morph; the end card in and at rest.
   const cardsFile = path.join(dir, 'out/cards/cards.json')
@@ -60,18 +68,20 @@ export async function qa(dir) {
     if (intro) {
       const T = intro.timing
       stills.push(
-        ['card-mark', 0.4],
-        ['card-lockup', 1.2],
-        ['card-topics', T.morph - 0.1],
-        ['card-morph', T.reveal - 0.15]
+        ['card-mark', 0.2, 1280],
+        ['card-lockup', 0.78, 1280],
+        ['card-topics', T.morph - 0.1, 1280],
+        ['card-morph', T.reveal - 0.15, 1280]
       )
     }
     if (outro)
-      stills.push(['endcard-in', outro.timing.start + 0.5], ['endcard-rest', outro.end - 0.1])
+      stills.push(
+        ['endcard-in', outro.timing.start + 0.5, 1280],
+        ['endcard-rest', outro.end - 0.1, 1280]
+      )
   }
   stills.sort((a, b) => a[1] - b[1])
-  stills.forEach(([name, t], i) => {
-    const f = path.join(qaDir, `${String(i).padStart(2, '0')}-${name}-${t.toFixed(1)}s.png`)
+  const still = (t, width, f) =>
     ff([
       '-y',
       '-loglevel',
@@ -83,10 +93,36 @@ export async function qa(dir) {
       '-frames:v',
       '1',
       '-vf',
-      'scale=1280:-1',
+      `scale=${width}:-1`,
       f
     ])
-  })
+  stills.forEach(([name, t, width], i) =>
+    still(t, width, path.join(qaDir, `${String(i).padStart(2, '0')}-${name}-${t.toFixed(1)}s.png`))
+  )
+  const phone = stills.filter(([, , width]) => width === PHONE)
+  for (let sheet = 0; sheet * 15 < phone.length; sheet++) {
+    const tiles = phone.slice(sheet * 15, sheet * 15 + 15)
+    const upright = path.join(qaDir, 'upright')
+    fs.mkdirSync(upright)
+    tiles.forEach(([, t], i) =>
+      still(t, 390, path.join(upright, `${String(i).padStart(2, '0')}.png`))
+    )
+    ff([
+      '-y',
+      '-loglevel',
+      'error',
+      '-framerate',
+      '1',
+      '-i',
+      path.join(upright, '%02d.png'),
+      '-vf',
+      `tile=3x${Math.ceil(tiles.length / 3)}:padding=4:margin=4:color=white`,
+      '-frames:v',
+      '1',
+      path.join(qaDir, `phone-upright-${sheet + 1}.png`)
+    ])
+    fs.rmSync(upright, { recursive: true })
+  }
 
   const duration = Number(
     execFileSync(

@@ -2,12 +2,14 @@
 /**
  * One tutorial, end to end:
  *   check -> seed -> narrate -> record (+ checks) -> compose (cards, picture, sound) -> qa
+ *   -> youtube (title, description, tags and thumbnails, when narration.json has a youtube block)
  *
  *   node marketing/tutorials/engine/build.mjs <tutorial>                 # everything
  *   node marketing/tutorials/engine/build.mjs <tutorial> --from record   # keep narration, re-shoot
  *   node marketing/tutorials/engine/build.mjs <tutorial> --only narrate  # voice only
  *   node marketing/tutorials/engine/build.mjs <tutorial> --takes 3       # more takes per line
  *   node marketing/tutorials/engine/build.mjs <tutorial> --app <checkout> # film another checkout's build
+ *   node marketing/tutorials/engine/build.mjs <tutorial> --only youtube  # metadata + thumbnails again
  *
  * <tutorial> is a folder under marketing/tutorials/ holding narration.json and scenes.mjs.
  */
@@ -22,12 +24,14 @@ import { encode } from './encode.mjs'
 import { narrate } from './narrate.mjs'
 import { qa } from './qa.mjs'
 import { record } from './record.mjs'
+import { renderThumbs } from './thumb.mjs'
+import { buildMetadata } from './youtube.mjs'
 
 const ENGINE = path.dirname(fileURLToPath(import.meta.url))
 const TUTORIALS = path.dirname(ENGINE)
 const ROOT = path.resolve(TUTORIALS, '../..')
 const VAULT = '/tmp/memry-tutorials/vault/Tutorial'
-const STEPS = ['check', 'seed', 'narrate', 'record', 'compose', 'qa']
+const STEPS = ['check', 'seed', 'narrate', 'record', 'compose', 'qa', 'youtube']
 
 const args = process.argv.slice(2)
 const flag = (name) => {
@@ -49,6 +53,7 @@ if (!name) {
 const dir = path.join(TUTORIALS, name)
 if (!fs.existsSync(path.join(dir, 'narration.json')))
   throw new Error(`${dir}/narration.json missing`)
+const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
 const steps = only ? [only] : STEPS.slice(from ? STEPS.indexOf(from) : 0)
 if (!steps.length || steps.some((s) => !STEPS.includes(s)))
   throw new Error(`Unknown step. Steps: ${STEPS.join(', ')}`)
@@ -139,5 +144,20 @@ if (step('qa')) {
   if (r.problems.length) {
     console.error(`  PROBLEMS:\n  - ${r.problems.join('\n  - ')}`)
     process.exitCode = 1
+  }
+}
+
+if (step('youtube')) {
+  if (!N.youtube) console.log('  no youtube block in narration.json, so nothing to package')
+  else {
+    const meta = buildMetadata(dir)
+    const thumbs = await renderThumbs(dir)
+    for (const w of [...meta.warnings, ...thumbs.warnings]) console.log(`  warning: ${w}`)
+    console.log(
+      `  title ${meta.titleChars}/100 characters, description ${meta.bytes}/5000 bytes, tags ${meta.tagChars}/500, ${meta.chapters} chapters`
+    )
+    console.log(
+      `  ${thumbs.files.length} thumbnails; look at ${path.basename(dir)}.thumbs.png in ${path.join(dir, 'out')}`
+    )
   }
 }

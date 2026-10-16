@@ -1,11 +1,10 @@
-#!/usr/bin/env node
 // YouTube metadata for a topic's film, from narration.json's `youtube` block, ../channel.json,
 // out/<topic>.chapters.txt and out/qa.json:
 //   out/<topic>.youtube.json      the videos.insert body (snippet and status)
 //   out/<topic>.description.txt   the same description, to paste into Studio
 // It fails on anything YouTube would reject or silently drop, naming the field and the limit.
 //
-//   node marketing/tutorials/engine/youtube.mjs <topic>
+//   node marketing/tutorials/engine/build.mjs <topic> --only youtube
 //
 // Limits: the Data API's videos resource (title 100 characters, description 5000 bytes, tags
 // 500 characters, no < or >) and YouTube Help's chapter rules (the first at 0:00, at least
@@ -13,7 +12,7 @@
 // category both benchmark channels use.
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 const TUTORIALS = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
@@ -126,15 +125,4 @@ export function buildMetadata(dir) {
   fs.writeFileSync(path.join(out, `${topic}.youtube.json`), `${JSON.stringify(body, null, 2)}\n`)
   fs.writeFileSync(path.join(out, `${topic}.description.txt`), `${description}\n`)
   return { titleChars, bytes, tagChars, chapters: chapters.length, warnings }
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const dir = process.argv[2] && path.resolve(TUTORIALS, process.argv[2])
-  if (!dir || !fs.existsSync(path.join(dir, 'narration.json')))
-    throw new Error('Usage: youtube.mjs <topic>')
-  const r = buildMetadata(dir)
-  for (const w of r.warnings) console.log(`  warning: ${w}`)
-  console.log(
-    `  title ${r.titleChars}/100 characters, description ${r.bytes}/5000 bytes, tags ${r.tagChars}/500, ${r.chapters} chapters`
-  )
 }
