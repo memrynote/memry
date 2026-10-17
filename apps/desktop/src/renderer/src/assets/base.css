@@ -1102,8 +1102,8 @@
 }
 
 /* ===== Formatting toolbar =====
-   One row, grouped by intent, shared by the floating popup and the pinned bar.
-   Quiet at rest: neutral glyphs, a neutral tint on hover, the user's accent
+   Floating popup: a compact panel (block type, five-column icon grid,
+   comment). Pinned bar: one row grouped by intent. Quiet at rest: neutral glyphs, a neutral tint on hover, the user's accent
    only for a mark that is on. */
 .memry-format-toolbar {
   display: flex;
@@ -1128,6 +1128,38 @@
 .memry-format-toolbar[data-variant='sticky'] {
   flex-wrap: wrap;
   row-gap: 4px;
+}
+
+.memry-format-toolbar[data-variant='floating'] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.memry-format-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+}
+
+.memry-format-toolbar[data-variant='floating'] > .memry-format-toolbar-block-type:not(:empty),
+.memry-format-toolbar-footer {
+  display: flex;
+  padding-block: 0 3px;
+  border-block-end: 1px solid var(--border);
+}
+
+.memry-format-toolbar-footer {
+  padding-block: 3px 0;
+  border-block-end: none;
+  border-block-start: 1px solid var(--border);
+}
+
+.memry-format-toolbar[data-variant='floating'] .memry-format-toolbar-block-type button,
+.memry-format-toolbar-footer .review-formatting-toolbar-action,
+.memry-format-toolbar-footer .bn-button {
+  flex: 1;
+  justify-content: flex-start;
 }
 
 .memry-format-toolbar-divider {

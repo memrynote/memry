@@ -70,41 +70,71 @@ export function ReviewFormattingToolbar({
 
   if (variant === 'floating' && isNodeSelection) return null
 
-  // One row, same items and order in both variants, grouped by intent with a
-  // hairline between groups. Rarely used block actions (align, indent) live in
-  // the overflow menu so the row stays short enough to float over a line.
+  // Same actions in both variants. Rarely used block actions (align, indent)
+  // live in the overflow menu. Renders null for blocks outside the block type
+  // list (task blocks, callouts, files); the slot collapses via `:empty`.
+  const blockType = (
+    <div className="memry-format-toolbar-block-type">
+      <ToolbarBlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
+    </div>
+  )
+  const comment = <ReviewToolbarButton onSelect={onAddComment} />
+  const more = <ToolbarMoreMenu isPinned={variant === 'sticky'} onPinnedChange={onStickyChange} />
+
+  // Floating: a compact panel (block type, a five-column icon grid, comment)
+  // so it covers a few lines of text instead of a full-width row.
+  if (variant === 'floating') {
+    return (
+      <FormattingToolbar {...toolbarProps}>
+        <div className="memry-format-toolbar" data-variant="floating">
+          {blockType}
+          <div className="memry-format-toolbar-grid">
+            <ToolbarActions />
+            {more}
+          </div>
+          {onAddComment && <div className="memry-format-toolbar-footer">{comment}</div>}
+        </div>
+      </FormattingToolbar>
+    )
+  }
+
+  // Pinned: one row grouped by intent with a hairline between groups.
   return (
     <FormattingToolbar {...toolbarProps}>
       <div className="memry-format-toolbar" data-variant={variant}>
-        {/* Renders null for blocks outside the block type list (task blocks,
-            callouts, files); the slot collapses via `:empty`, and so does the
-            divider after it. */}
-        <div className="memry-format-toolbar-block-type">
-          <ToolbarBlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
-        </div>
+        {blockType}
         <ToolbarDivider />
-        <BasicTextStyleButton basicTextStyle="bold" />
-        <BasicTextStyleButton basicTextStyle="italic" />
-        <BasicTextStyleButton basicTextStyle="underline" />
-        <BasicTextStyleButton basicTextStyle="strike" />
-        {/* Inline code (the backtick style) is in the schema and in the
-            markdown round-trip, but no toolbar surfaced it — the only way in
-            was typing backticks. */}
-        <BasicTextStyleButton basicTextStyle="code" />
-        <ColorStyleButton />
-        <ToolbarDivider />
-        {/* Turning selected lines into a list is the reason most people open
-            this popup (#1206), so the toggles stay on the row rather than
-            behind the block type dropdown. */}
-        <ListTypeButtons />
-        <ToolbarDivider />
-        <CreateLinkButton />
-        <LinkToNoteButton />
+        <ToolbarActions divided />
         {onAddComment && <ToolbarDivider />}
-        <ReviewToolbarButton onSelect={onAddComment} />
-        <ToolbarMoreMenu isPinned={variant === 'sticky'} onPinnedChange={onStickyChange} />
+        {comment}
+        {more}
       </div>
     </FormattingToolbar>
+  )
+}
+
+/** Marks, colour, list toggles and links, in that order. */
+function ToolbarActions({ divided = false }: { divided?: boolean }) {
+  return (
+    <>
+      <BasicTextStyleButton basicTextStyle="bold" />
+      <BasicTextStyleButton basicTextStyle="italic" />
+      <BasicTextStyleButton basicTextStyle="underline" />
+      <BasicTextStyleButton basicTextStyle="strike" />
+      {/* Inline code (the backtick style) is in the schema and in the
+            markdown round-trip, but no toolbar surfaced it — the only way in
+            was typing backticks. */}
+      <BasicTextStyleButton basicTextStyle="code" />
+      <ColorStyleButton />
+      {divided && <ToolbarDivider />}
+      {/* Turning selected lines into a list is the reason most people open
+            this popup (#1206), so the toggles stay on the row rather than
+            behind the block type dropdown. */}
+      <ListTypeButtons />
+      {divided && <ToolbarDivider />}
+      <CreateLinkButton />
+      <LinkToNoteButton />
+    </>
   )
 }
 

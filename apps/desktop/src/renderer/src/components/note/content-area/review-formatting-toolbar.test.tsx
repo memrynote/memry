@@ -294,8 +294,8 @@ describe('ReviewFormattingToolbar', () => {
     expect(screen.getByLabelText('Check list')).toBeInTheDocument()
   })
 
-  // Both variants render the same row, so pinning the toolbar never changes
-  // which actions exist or where they sit.
+  // The floating panel and the pinned row arrange the actions differently, but
+  // pinning never changes which actions exist.
   it('renders the same actions in the sticky and floating variants', () => {
     const { unmount } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
     const floating = screen.getAllByRole('button').map((button) => button.textContent)
@@ -304,7 +304,7 @@ describe('ReviewFormattingToolbar', () => {
     render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
     const sticky = screen.getAllByRole('button').map((button) => button.textContent)
 
-    expect(sticky).toEqual(floating)
+    expect([...sticky].sort()).toEqual([...floating].sort())
     expect(screen.getByText('more')).toHaveAttribute('data-pinned', 'true')
   })
 
