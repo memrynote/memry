@@ -1,5 +1,5 @@
 // YouTube metadata for a topic's film, from narration.json's `youtube` block, ../channel.json,
-// out/<topic>.chapters.txt and out/qa.json:
+// the playlist's ID in ../youtube-ids.json, out/<topic>.chapters.txt and out/qa.json:
 //   out/<topic>.youtube.json      the videos.insert body (snippet and status)
 //   out/<topic>.description.txt   the same description, to paste into Studio
 // It fails on anything YouTube would reject or silently drop, naming the field and the limit.
@@ -16,6 +16,10 @@ import { fileURLToPath } from 'node:url'
 
 const TUTORIALS = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
+
+export const IDS = path.join(TUTORIALS, 'youtube-ids.json')
+/** What publish.mjs created on YouTube: playlist IDs by channel.json key, video IDs by topic. */
+export const readIds = () => (fs.existsSync(IDS) ? read(IDS) : { playlists: {}, videos: {} })
 
 /** Seconds in a chapter stamp: "1:02" or "1:02:03". */
 const seconds = (stamp) => stamp.split(':').reduce((s, part) => s * 60 + Number(part), 0)
@@ -72,13 +76,14 @@ export function buildMetadata(dir) {
   if (Y.next && !Y.next.url)
     errors.push('youtube.next: needs a url, so name the next video only once it is published')
   const playlist = C.playlists[Y.playlist]
+  const playlistId = readIds().playlists[Y.playlist]
   if (!playlist)
     errors.push(
       `youtube.playlist: "${Y.playlist}" is not one of channel.json's playlists (${Object.keys(C.playlists).join(', ')})`
     )
-  else if (!playlist.id)
+  else if (!playlistId)
     warnings.push(
-      `channel.json playlists.${Y.playlist}: no id yet, so the description leaves the link out`
+      `the ${playlist.title} playlist is not on YouTube yet, so the description leaves its link out`
     )
 
   const download = new URL(C.download)
@@ -96,7 +101,7 @@ export function buildMetadata(dir) {
       .join('\n'),
     [
       Y.next && `Next: ${Y.next.title} ${Y.next.url}`,
-      playlist?.id && `${playlist.title}: https://www.youtube.com/playlist?list=${playlist.id}`
+      playlistId && `${playlist.title}: https://www.youtube.com/playlist?list=${playlistId}`
     ]
       .filter(Boolean)
       .join('\n'),
