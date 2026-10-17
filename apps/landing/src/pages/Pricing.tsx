@@ -621,10 +621,10 @@ function BelieverNarrative() {
                 Prefer to spread it out? Believer can be paid in monthly installments on request.
                 Email{' '}
                 <a
-                  href="mailto:kaan@memrynote.com?subject=Believer%20installments"
+                  href="mailto:billing@memrynote.com?subject=Believer%20installments"
                   className="text-terracotta underline-offset-2 hover:underline"
                 >
-                  kaan@memrynote.com
+                  billing@memrynote.com
                 </a>
                 .
               </p>

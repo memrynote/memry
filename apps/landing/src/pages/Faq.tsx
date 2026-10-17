@@ -34,10 +34,10 @@ export function FaqPage() {
               </a>{' '}
               or email{' '}
               <a
-                href="mailto:kaan@memrynote.com"
+                href="mailto:hey@memrynote.com"
                 className="text-ink underline underline-offset-4 hover:text-terracotta"
               >
-                kaan@memrynote.com
+                hey@memrynote.com
               </a>
               .
             </>

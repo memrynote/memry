@@ -851,7 +851,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'Can I pay for Believer in installments?',
     answer:
-      'Yes, on request. Email kaan@memrynote.com and we will set up monthly installments through Paddle. Believer activates after the first payment.'
+      'Yes, on request. Email billing@memrynote.com and we will set up monthly installments through Paddle. Believer activates after the first payment.'
   },
   {
     question: 'Can I upgrade or downgrade later?',

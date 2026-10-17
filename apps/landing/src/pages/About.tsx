@@ -122,11 +122,13 @@ const HOW_IT_WORKS: readonly { title: string; body: ReactNode }[] = [
     title: 'Communication channels and response times',
     body: (
       <>
-        Every question, whether general, billing, privacy, or a vulnerability report, goes to{' '}
-        <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a>. General questions get a reply
-        within five business days, privacy requests within 30 days, and security reports within 24
-        hours. Community discussion happens on <a href={REDDIT_URL}>r/MemryNote</a> and bug reports
-        on <a href={GITHUB_URL}>GitHub</a>.
+        General questions go to <a href="mailto:hey@memrynote.com">hey@memrynote.com</a>, billing to{' '}
+        <a href="mailto:billing@memrynote.com">billing@memrynote.com</a>, account and privacy
+        requests to <a href="mailto:support@memrynote.com">support@memrynote.com</a>, and
+        vulnerability reports to <a href="mailto:security@memrynote.com">security@memrynote.com</a>.
+        General questions get a reply within five business days, privacy requests within 30 days,
+        and security reports within 24 hours. Community discussion happens on{' '}
+        <a href={REDDIT_URL}>r/MemryNote</a> and bug reports on <a href={GITHUB_URL}>GitHub</a>.
       </>
     )
   },
@@ -192,7 +194,7 @@ const KEY_FACTS: readonly { term: string; detail: ReactNode }[] = [
   { term: 'License', detail: 'Open source, AGPL-3.0' },
   {
     term: 'Communication',
-    detail: 'Email (kaan@memrynote.com), Reddit r/MemryNote, GitHub issues, X'
+    detail: 'Email (hey@memrynote.com), Reddit r/MemryNote, GitHub issues, X'
   },
   {
     term: 'Notable Clients',
@@ -251,7 +253,7 @@ const ABOUT_FAQS: readonly { question: string; answer: string }[] = [
   {
     question: 'How do I contact the team?',
     answer:
-      'Email kaan@memrynote.com for anything, from general questions to billing. Kaan reads every message, and replies go out within five business days.'
+      'Email hey@memrynote.com for general questions, billing@memrynote.com for billing, and security@memrynote.com for vulnerability reports. Kaan reads every message, and replies go out within five business days.'
   }
 ]
 

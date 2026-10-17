@@ -271,7 +271,7 @@ export function PrivacyPage() {
         </ul>
         <p>
           To exercise any of these rights, email{' '}
-          <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a> from the address tied to your
+          <a href="mailto:support@memrynote.com">support@memrynote.com</a> from the address tied to your
           account. We respond within 30 days.
         </p>
         <p>
@@ -283,7 +283,7 @@ export function PrivacyPage() {
         <p>
           memrynote is not designed for children under 13 (or under 16 in jurisdictions that require
           it). We do not knowingly collect data from children. If you believe a child has signed up,
-          email <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a> and we will delete the
+          email <a href="mailto:support@memrynote.com">support@memrynote.com</a> and we will delete the
           account.
         </p>
 
@@ -304,7 +304,7 @@ export function PrivacyPage() {
         <h2>16. Contact</h2>
         <p>
           Privacy questions and anything else:{' '}
-          <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a>.
+          <a href="mailto:support@memrynote.com">support@memrynote.com</a>.
         </p>
       </LegalLayout>
     </>

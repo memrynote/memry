@@ -315,11 +315,11 @@ export function SecurityPage() {
               We take security reports seriously. Reach out and we will respond within 24 hours.
             </p>
             <a
-              href="mailto:kaan@memrynote.com"
+              href="mailto:security@memrynote.com"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ink text-paper font-medium text-sm hover:bg-ink/90 transition-colors"
             >
               <Mail className="w-4 h-4" />
-              kaan@memrynote.com
+              security@memrynote.com
             </a>
           </motion.div>
         </Container>
