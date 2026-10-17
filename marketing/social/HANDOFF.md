@@ -8,7 +8,8 @@ asks.
 ## Where things are
 
 - **Work checkout:** `/Users/h4yfans/workspace/personal/memry-social`.
-  - Git worktree on branch `feat/social-q4-clips`, created from origin/main. Everything is uncommitted.
+  - Git worktree on branch `feat/social-q4-clips`, created from origin/main. The work so far is on
+    main, pushed with Kaan's OK on Oct 17. New work stays uncommitted until Kaan asks.
   - Leave `/Users/h4yfans/workspace/personal/memry` alone; other sessions use it.
 - **Build being filmed:** `/Users/h4yfans/workspace/personal/memry-social-app`, detached at tag
   `v2026-10-15`, with the desktop build already made. Only features shipped in that build may be
@@ -54,16 +55,16 @@ three things:
 Commit `media/` and `CHECKLIST.md` together with the clip sources. Push to main only when Kaan
 says so.
 
-**Final:** 17 clips, QA'd and approved, with copy fixes applied. They are in `media/`.
+**Final, approved and in `media/`:** 45 clips. [`CHECKLIST.md`](CHECKLIST.md) shows which post
+days they cover.
+
+QA'd against their post copy, with copy fixes applied:
 
 - tags-fields, files-terminal, cli, pricing, roadmap, github
 - pdf-search, tasks-inline, columns-callouts, themes, tour
 - inbox-triage, journal-day, note-task-calendar, calendar-sources, timeline-view, day-panel
 
-These cover every post from Oct 20 to Nov 1, plus Nov 19, 21, 22 and 27 and Dec 26 and 29.
-
-**MP4 exists but is unverified.** Its agent stopped mid-iteration. For each one, look at
-`out/qa/phone-upright.png` and check the clip against its post copy. Keep it or re-record it.
+Checked by Kaan on Oct 17 and approved as they are:
 
 - **W3:** backlinks, graph-edit, canvas-live, canvas-sections, similar-notes (also used Dec 17),
   whiteboard-block
@@ -90,14 +91,14 @@ These cover every post from Oct 20 to Nov 1, plus Nov 19, 21, 22 and 27 and Dec 
 - shortcuts, tabs-split, vault-switcher, settings-search, video-attach, bookmarks (W8)
 - year-review, apple-journal-import, book-tag, duck-canvas, journal-folders (W10)
 
-**Compilations:** none built yet, run last.
+**Compilations:** none built yet.
 
 - `montage-fall`, `montage-2026` (lists in their `montage.json`)
 - `week-01` … `week-11`
 
 Build each with `node marketing/social/engine/clip.mjs <slug>`. Every clip a compilation cuts from
-must be approved first. `week-01` and `week-02` can be built and approved now, because all their
-clips are final.
+must be approved first. `week-01`, `week-02`, `week-05` and `montage-fall` can be built and
+approved now, because all their clips are approved. `montage-2026` waits only on home-dashboard.
 
 ## How to continue
 
@@ -125,7 +126,8 @@ clips are final.
      - diagrams + iphone: `…03-34-03-441Z_f527…`
      - W9: `…03-38-29-191Z_4aa3…`
      - W10: `…03-38-29-179Z_0287…`
-2. **Order:** by posting date. W3, W4, W5 and W6 first, then W7, W8, W9, W10, W11.
+2. **Order:** by posting date: the Partial and Not started clips of W3, W4, W6, W7, W8, W9, W10,
+   then W11.
 3. **Special clips:**
    - **Agent clips (W9):** may use the Claude Code CLI already installed and signed in
      (`/Users/h4yfans/.local/bin/claude`) against the demo vault.
