@@ -1,0 +1,3 @@
+# Takes, renders and QA stills: rebuilt by engine/clip.mjs. kit/ is the dated posting folder.
+clips/*/out/
+kit/

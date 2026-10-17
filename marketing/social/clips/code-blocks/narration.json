@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "post": "Sat Nov 14",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Code blocks that *follow your theme*" },
+    { "id": "paste", "dur": 4.4, "text": "Paste a snippet" },
+    { "id": "language", "dur": 3.6, "text": "Pick a language, get *colors*" },
+    { "id": "theme", "dur": 6.8, "text": "Switch the app to *dark*" },
+    { "id": "dark", "dur": 3.4, "text": "The code block *follows*" },
+    { "id": "copy", "dur": 3.4, "text": "Copy it in *one click*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

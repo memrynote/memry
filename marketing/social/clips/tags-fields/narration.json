@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Tue Oct 20",
+  "scenes": [
+    { "id": "hook", "dur": 3.2, "text": "Tags can carry *fields* now" },
+    { "id": "tag", "dur": 4.6, "text": "Tag a note *person*" },
+    { "id": "fill", "dur": 7.0, "text": "Its fields appear. Fill them in" },
+    { "id": "linked", "dur": 6.0, "text": "The company sees it *too*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

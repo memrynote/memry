@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Wed Nov 11",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Index pages that *maintain themselves*" },
+    { "id": "insert", "dur": 4.6, "text": "Type */view* in any note" },
+    { "id": "tag", "dur": 4.4, "text": "List every *meeting* note" },
+    { "id": "write", "dur": 7.4, "text": "Write a new meeting note" },
+    { "id": "live", "dur": 4.6, "text": "It shows up *on its own*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

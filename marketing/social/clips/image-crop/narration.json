@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Fri Nov 13",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Crop images, keep the *original*" },
+    { "id": "crop", "dur": 7.6, "text": "Drag over the part you *want*" },
+    { "id": "cropped", "dur": 3.6, "text": "The note shows *just that*" },
+    { "id": "resize", "dur": 4.6, "text": "Resize it from *any corner*" },
+    { "id": "whole", "dur": 5.4, "text": "The original file stays *whole*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

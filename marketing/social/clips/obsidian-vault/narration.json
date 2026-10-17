@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Wed Nov 18",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Your Obsidian vault opens *as is*" },
+    { "id": "open", "dur": 5.4, "text": "Open the folder. *No import*" },
+    { "id": "props", "dur": 4.2, "text": "Frontmatter shows up as *properties*" },
+    { "id": "embed", "dur": 3.8, "text": "*![[embeds]]* render in place" },
+    { "id": "links", "dur": 4.4, "text": "Wiki links *just work*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

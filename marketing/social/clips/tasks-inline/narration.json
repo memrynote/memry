@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Thu Oct 22",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Real tasks, right in your *notes*" },
+    { "id": "start", "dur": 5.2, "text": "Start a line with *[ ]*" },
+    { "id": "markers", "dur": 5.6, "text": "Add a *date*, *priority* and *project*" },
+    { "id": "chips", "dur": 5.0, "text": "Change any chip in *place*" },
+    { "id": "details", "dur": 5.6, "text": "Details open right in the *note*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

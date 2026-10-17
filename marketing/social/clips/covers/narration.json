@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Tue Nov 10",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Give any note a *cover*" },
+    { "id": "pick", "dur": 6.2, "text": "Pick a photo from your *vault*" },
+    { "id": "focus", "dur": 5.2, "text": "Drag to set the *focus*" },
+    { "id": "taller", "dur": 5.0, "text": "Zoom in, make it *taller*" },
+    { "id": "icon", "dur": 5.8, "text": "Icons sit on the *title row*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

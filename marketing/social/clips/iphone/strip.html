@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- The six App Store screenshots side by side, as the App Store shows them, filmed at the app
+         window's size (1600x900). They come from marketing/app-store-screenshots/out/, which is
+         gitignored: run `node marketing/app-store-screenshots/render.mjs` first. The strip repeats
+         once, so the pan can run past the sixth screenshot into the first again. Each one is drawn
+         into a canvas at device resolution up front: an <img> decodes and resamples its 1320x2868
+         PNG the first time it scrolls into view, and that stalled the screencast for over a second.
+         strip.pan(plan) starts one slow pan; scenes.mjs calls it, so the motion follows the clock.
+         Times are film seconds: the page clock runs window.SLOW times slower than real time, and
+         scenes.mjs plays the take back that much faster (see there). -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 900px;
+        overflow: hidden;
+        background: #efe9e1;
+      }
+      #strip {
+        position: absolute;
+        left: 40px;
+        top: 36px;
+        display: flex;
+        gap: 22px;
+        will-change: transform;
+      }
+      #strip canvas {
+        display: block;
+        width: 381px;
+        height: 828px;
+        border-radius: 26px;
+        box-shadow:
+          0 22px 44px -22px rgba(70, 45, 20, 0.38),
+          0 0 0 1px rgba(70, 45, 20, 0.07);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="strip"></div>
+    <script>
+      const NAMES = ['01-hero', '02-capture', '03-notes', '04-tasks', '05-journal', '06-private']
+      const el = document.getElementById('strip')
+      const canvases = [0, 1].flatMap(() =>
+        NAMES.map(() => el.appendChild(document.createElement('canvas')))
+      )
+      window.ready = Promise.all(
+        NAMES.map(async (name, i) => {
+          const img = new Image()
+          img.src = `../../../app-store-screenshots/out/${name}.png`
+          await img.decode()
+          for (const c of [canvases[i], canvases[i + NAMES.length]]) {
+            c.width = Math.round(381 * devicePixelRatio)
+            c.height = Math.round(828 * devicePixelRatio)
+            const g = c.getContext('2d')
+            g.imageSmoothingQuality = 'high'
+            g.drawImage(img, 0, 0, c.width, c.height)
+          }
+        })
+      )
+
+      // A pan at speed `v` px/s that eases in over `rampIn` s and out over `rampOut` s (the speed
+      // follows a smoothstep, so the strip never jerks), ending after `total` s.
+      function offset({ v, rampIn, rampOut, total }, t) {
+        const ramp = (x) => x * x * x * (1 - x / 2) // integral of 3x^2 - 2x^3, from 0
+        const inD = v * rampIn * ramp(1)
+        if (t <= 0) return 0
+        if (t < rampIn) return v * rampIn * ramp(t / rampIn)
+        const cruiseEnd = total - rampOut
+        if (t < cruiseEnd) return inD + v * (t - rampIn)
+        const k = Math.min(1, (t - cruiseEnd) / rampOut)
+        return inD + v * (cruiseEnd - rampIn) + v * rampOut * (k - ramp(k))
+      }
+      window.SLOW = 1
+      const clock = () => performance.now() / 1000 / window.SLOW
+      window.strip = {
+        offset,
+        pan(plan) {
+          const t0 = clock()
+          const tick = () => {
+            const t = clock() - t0
+            el.style.transform = `translateX(${-offset(plan, t).toFixed(2)}px)`
+            if (t < plan.total) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+        }
+      }
+    </script>
+  </body>
+</html>

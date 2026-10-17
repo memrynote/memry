@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "post": "Mon Nov 30",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "The whole task in *one line*" },
+    { "id": "type", "dur": 3.6, "text": "Type it like you'd say it" },
+    { "id": "date", "dur": 3.0, "text": "*@* sets the date" },
+    { "id": "more", "dur": 5.4, "text": "*!* priority, *+* project, *#* tag" },
+    { "id": "enter", "dur": 3.0, "text": "*Enter*, and it's on your list" },
+    { "id": "open", "dur": 3.6, "text": "Exactly what the chips showed" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

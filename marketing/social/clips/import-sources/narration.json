@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "post": "Mon Nov 16",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Bring everything from your *old app*" },
+    { "id": "sources", "dur": 4.2, "text": "*15* apps and formats, one list" },
+    { "id": "pick", "dur": 4.8, "text": "Pick your Todoist *export*" },
+    { "id": "import", "dur": 3.4, "text": "One click, *14* tasks in" },
+    { "id": "projects", "dur": 4.0, "text": "Each export, its own *project*" },
+    { "id": "tasks", "dur": 5.4, "text": "Dates, priorities and subtasks *kept*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

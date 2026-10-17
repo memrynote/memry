@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "page": "diagram.html",
+  "post": "Mon Dec 14",
+  "scenes": [
+    { "id": "hook", "dur": 3.2, "text": "Only *you* can read your notes" },
+    { "id": "seal", "dur": 4.4, "text": "Encrypted on her laptop *first*" },
+    { "id": "travel", "dur": 3.8, "text": "Only *ciphertext* leaves the laptop" },
+    { "id": "server", "dur": 4.2, "text": "The server can't *open* it" },
+    { "id": "phone", "dur": 5.2, "text": "It opens on her *phone*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

@@ -1,0 +1,541 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- What the sync server stores for one note, as a diagram, at the app window's size
+         (1600x900). Left: Maya's note as she sees it. Right: what the server keeps for it: the
+         plaintext columns of its sync_items row (apps/sync-server/migrations/0001_baseline.sql:
+         162-183) and the encrypted payload (docs/protocol/13-payload-schemas.md:199-213).
+         scenes.mjs hands in the note from the demo vault and its real envelope (id, size,
+         ciphertext), then drives each beat (ss.send, reveal, never). Times are film seconds: the
+         page clock runs window.SLOW times slower than real time (see scenes.mjs).
+         Icons: lucide 0.562.0 (ISC). -->
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(../../../explainer-30s/fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(../../../explainer-30s/fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 900px;
+        overflow: hidden;
+        background: #fbf9f5;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        color: #2f2d2a;
+        -webkit-font-smoothing: antialiased;
+      }
+      .a {
+        position: absolute;
+      }
+      svg.i {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .head {
+        top: 74px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 30px;
+        font-weight: 600;
+        color: #6b6560;
+      }
+      .head svg {
+        width: 32px;
+        height: 32px;
+      }
+      .card {
+        top: 130px;
+        height: 540px;
+        border-radius: 26px;
+      }
+
+      /* Maya's note */
+      #note {
+        left: 50px;
+        width: 560px;
+        padding: 40px 44px;
+        background: #fff;
+        border: 1.5px solid #e9e4db;
+        box-shadow:
+          0 40px 70px -40px rgba(70, 45, 20, 0.35),
+          0 4px 14px rgba(70, 45, 20, 0.05);
+      }
+      .crumb {
+        font:
+          500 18px 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.06em;
+        color: #a39e97;
+      }
+      #title {
+        margin-top: 10px;
+        font-size: 46px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      #prop {
+        display: inline-flex;
+        gap: 10px;
+        margin-top: 18px;
+        padding: 6px 14px;
+        border-radius: 10px;
+        background: #fce4d6;
+        color: #a1461a;
+        font-size: 21px;
+        font-weight: 600;
+      }
+      #prop span {
+        font-weight: 500;
+        opacity: 0.75;
+      }
+      #body {
+        margin-top: 22px;
+        font-size: 28px;
+        line-height: 1.55;
+      }
+      #body b {
+        font-weight: 500;
+        color: #e2560b;
+        text-decoration: underline;
+        text-decoration-color: rgba(226, 86, 11, 0.35);
+        text-underline-offset: 5px;
+      }
+      .eye {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: #2f2d2a;
+        color: #ff8a4c;
+        box-shadow: 0 8px 18px -8px rgba(30, 20, 10, 0.6);
+        opacity: 0;
+      }
+      .eye svg {
+        width: 28px;
+        height: 28px;
+      }
+      #key {
+        left: 44px;
+        top: 400px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 22px 0 16px;
+        border-radius: 26px;
+        background: #ff671a;
+        color: #fff;
+        font-size: 24px;
+        font-weight: 700;
+        box-shadow: 0 10px 22px -8px rgba(255, 103, 26, 0.6);
+        opacity: 0;
+      }
+      #key span {
+        font-weight: 500;
+      }
+      #key svg {
+        width: 27px;
+        height: 27px;
+      }
+
+      /* the server's row */
+      #row {
+        left: 740px;
+        width: 810px;
+        padding: 26px 36px;
+        background: #1e1b18;
+        border: 1.5px solid #2e2a25;
+        box-shadow: 0 40px 70px -40px rgba(30, 20, 10, 0.6);
+        color: #f5f0ea;
+      }
+      .table {
+        font:
+          500 17px 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.06em;
+        color: #8a8279;
+      }
+      .field {
+        left: 36px;
+        right: 36px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        border-top: 1.5px solid #2e2a25;
+      }
+      .field .k {
+        width: 190px;
+        flex: none;
+        line-height: 1.1;
+      }
+      .field .k b {
+        display: block;
+        font-size: 25px;
+        font-weight: 600;
+        color: #d8cfc6;
+      }
+      .field .k i {
+        display: block;
+        font:
+          normal 500 14px 'JetBrains Mono',
+          monospace;
+        color: #6b6156;
+      }
+      .field .v {
+        font:
+          500 29px 'JetBrains Mono',
+          monospace;
+        color: #f5f0ea;
+        white-space: nowrap;
+      }
+      .field .v.empty {
+        color: #4a433c;
+      }
+      .field .note {
+        margin-inline-start: 14px;
+        padding: 3px 10px;
+        border-radius: 8px;
+        background: #2e2a25;
+        font:
+          500 16px 'JetBrains Mono',
+          monospace;
+        color: #a39e97;
+        opacity: 0;
+      }
+      .field.on {
+        background: linear-gradient(90deg, rgba(255, 103, 26, 0.16), rgba(255, 103, 26, 0));
+      }
+      #payload {
+        left: 226px;
+        top: 372px;
+        width: 548px;
+        height: 140px;
+        padding: 14px 18px;
+        border-radius: 14px;
+        background: #141210;
+        border: 1.5px dashed #3a352f;
+        overflow: hidden;
+      }
+      #cipher {
+        font:
+          400 17px/1.45 'JetBrains Mono',
+          monospace;
+        color: #ff7a33;
+        word-break: break-all;
+      }
+      #plock {
+        right: 14px;
+        bottom: 12px;
+        width: 40px;
+        height: 46px;
+        opacity: 0;
+      }
+      #wire {
+        left: 618px;
+        top: 398px;
+      }
+      .box {
+        left: 0;
+        top: 0;
+        width: 150px;
+        height: 108px;
+        border-radius: 16px;
+        background: #1e1b18;
+        border: 2px solid #3a352f;
+        box-shadow: 0 16px 30px -14px rgba(30, 20, 10, 0.55);
+        transform-origin: 75px 54px;
+        opacity: 0;
+      }
+      .box .ct {
+        display: block;
+        height: 100%;
+        overflow: hidden;
+        padding: 30px 12px 0;
+        font:
+          400 14px/1.3 'JetBrains Mono',
+          monospace;
+        color: #ff7a33;
+        word-break: break-all;
+      }
+      .box .lock {
+        position: absolute;
+        left: 49px;
+        top: -34px;
+        width: 52px;
+        height: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="a head" style="left: 54px">
+      <svg class="i" viewBox="0 0 24 24">
+        <path
+          d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"
+        />
+        <path d="M20.054 15.987H3.946" /></svg
+      >Maya's laptop
+    </div>
+    <div class="a head" style="left: 744px">
+      <svg class="i" viewBox="0 0 24 24">
+        <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+        <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+        <line x1="6" x2="6.01" y1="6" y2="6" />
+        <line x1="6" x2="6.01" y1="18" y2="18" /></svg
+      >What my sync server stores
+    </div>
+
+    <div id="note" class="a card">
+      <div class="crumb" id="crumb"></div>
+      <div id="title"></div>
+      <div id="prop"></div>
+      <div id="body"></div>
+      <div id="eyeTitle" class="a eye" style="right: -25px; top: 62px">
+        <svg class="i" viewBox="0 0 24 24">
+          <path
+            d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"
+          />
+          <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+          <path
+            d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"
+          />
+          <path d="m2 2 20 20" />
+        </svg>
+      </div>
+      <div id="eyeBody" class="a eye" style="right: -25px; top: 270px">
+        <svg class="i" viewBox="0 0 24 24">
+          <path
+            d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"
+          />
+          <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+          <path
+            d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"
+          />
+          <path d="m2 2 20 20" />
+        </svg>
+      </div>
+      <div id="key" class="a">
+        <svg class="i" viewBox="0 0 24 24" style="stroke-width: 2.4">
+          <path
+            d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"
+          />
+          <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></svg
+        >key <span>· only on her devices</span>
+      </div>
+    </div>
+
+    <svg id="wire" class="a" width="114" height="4">
+      <line
+        x1="2"
+        y1="2"
+        x2="112"
+        y2="2"
+        stroke="#dcd3c7"
+        stroke-width="4"
+        stroke-dasharray="2 12"
+        stroke-linecap="round"
+      />
+    </svg>
+
+    <div id="row" class="a card">
+      <div class="table">D1 · sync_items · one row</div>
+      <div class="a field" data-f="id" style="top: 66px">
+        <div class="k"><b>id</b><i>item_id</i></div>
+        <div class="v empty">—</div>
+        <div class="note">random</div>
+      </div>
+      <div class="a field" data-f="type" style="top: 126px">
+        <div class="k"><b>type</b><i>item_type</i></div>
+        <div class="v empty">—</div>
+      </div>
+      <div class="a field" data-f="size" style="top: 186px">
+        <div class="k"><b>size</b><i>size_bytes</i></div>
+        <div class="v empty">—</div>
+      </div>
+      <div class="a field" data-f="changed" style="top: 246px">
+        <div class="k"><b>changed</b><i>updated_at</i></div>
+        <div class="v empty">—</div>
+      </div>
+      <div class="a field" data-f="device" style="top: 306px">
+        <div class="k"><b>device</b><i>signer_device_id</i></div>
+        <div class="v empty">—</div>
+      </div>
+      <div
+        class="a field"
+        data-f="payload"
+        style="top: 366px; height: 146px; align-items: flex-start; padding-top: 14px"
+      >
+        <div class="k"><b>payload</b><i>R2 · encrypted</i></div>
+      </div>
+      <div id="payload" class="a">
+        <div id="cipher"></div>
+        <svg id="plock" class="a" viewBox="0 0 52 60">
+          <path
+            d="M14 28 V18 a12 12 0 0 1 24 0 V28"
+            fill="none"
+            stroke="#ff671a"
+            stroke-width="7"
+            stroke-linecap="round"
+          />
+          <rect x="4" y="26" width="44" height="32" rx="9" fill="#ff671a" />
+          <circle cx="26" cy="39" r="5" fill="#1e1b18" />
+          <rect x="23.6" y="40" width="4.8" height="10" rx="2.4" fill="#1e1b18" />
+        </svg>
+      </div>
+    </div>
+
+    <div id="box" class="a box">
+      <span class="ct"></span>
+      <svg class="lock" viewBox="0 0 52 60">
+        <path
+          d="M14 28 V18 a12 12 0 0 1 24 0 V28"
+          fill="none"
+          stroke="#ff671a"
+          stroke-width="7"
+          stroke-linecap="round"
+        />
+        <rect x="4" y="26" width="44" height="32" rx="9" fill="#ff671a" />
+        <circle cx="26" cy="39" r="5" fill="#1e1b18" />
+        <rect x="23.6" y="40" width="4.8" height="10" rx="2.4" fill="#1e1b18" />
+      </svg>
+    </div>
+
+    <script>
+      window.SLOW = 1
+      const $ = (id) => document.getElementById(id)
+      const now = () => performance.now() / 1000 / window.SLOW
+      const clamp = (k) => Math.min(1, Math.max(0, k))
+      const lerp = (a, b, k) => a + (b - a) * k
+      const E = {
+        linear: (k) => k,
+        inOut: (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2),
+        out: (k) => 1 - Math.pow(1 - k, 3),
+        back: (k) => 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2)
+      }
+      /** Runs fn(easedK, k) every frame for `dur` film seconds; resolves when done. */
+      function tween(dur, fn, ease = E.inOut) {
+        return new Promise((done) => {
+          const t0 = now()
+          const tick = () => {
+            const k = clamp((now() - t0) / dur)
+            fn(ease(k), k)
+            if (k < 1) requestAnimationFrame(tick)
+            else done()
+          }
+          tick()
+        })
+      }
+      const wait = (s) => new Promise((r) => setTimeout(r, s * 1000 * window.SLOW))
+      const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+      const noise = (n) => Array.from({ length: n }, () => B64[(Math.random() * 64) | 0]).join('')
+      const pop = (el, dur = 0.35) =>
+        tween(
+          dur,
+          (k, raw) => {
+            el.style.opacity = clamp(raw * 2.5)
+            el.style.transform = `scale(${lerp(0.5, 1, k)})`
+          },
+          E.back
+        )
+      const field = (f) => document.querySelector(`.field[data-f="${f}"]`)
+      // Page px of things the camera frames.
+      const FOCUS = {
+        payload: [1240, 470],
+        top: [1145, 300],
+        middle: [1145, 400],
+        note: [330, 400]
+      }
+      let data = null
+
+      window.ss = {
+        focus: (name) => FOCUS[name],
+        /** The note as Maya sees it, and its stored envelope (id, size, ciphertext, time, device). */
+        init(d) {
+          data = d
+          $('crumb').textContent = `${d.folder.toUpperCase()} /`
+          $('title').textContent = d.title
+          $('prop').innerHTML = `<span>${esc(d.prop[0])}</span>${esc(d.prop[1])}`
+          // [[wiki links]] read as links, as the editor shows them.
+          $('body').innerHTML = esc(d.body).replace(/\[\[([^\]]+)\]\]/g, '<b>$1</b>')
+          document.querySelector('#box .ct').textContent = d.cipher
+        },
+        /** The note leaves the laptop sealed, and its ciphertext fills the payload. */
+        async send() {
+          const box = $('box')
+          const at = (x, y, s) =>
+            (box.style.transform = `translate(${x - 75}px,${y - 54}px) scale(${s})`)
+          at(330, 330, 1.2)
+          await tween(0.3, (k) => (box.style.opacity = k))
+          await tween(1.2, (k) =>
+            at(
+              lerp(330, 1240, k),
+              lerp(330, 572, k) - 90 * Math.sin(Math.PI * k),
+              lerp(1.2, 0.9, k)
+            )
+          )
+          await tween(0.25, (k) => (box.style.opacity = 1 - k))
+          $('payload').style.borderStyle = 'solid'
+        },
+        async fill() {
+          const out = $('cipher')
+          const text = data.cipher.slice(0, 168)
+          pop($('plock'), 0.4)
+          await tween(
+            0.9,
+            (k) => {
+              const n = Math.round(k * text.length)
+              out.textContent = text.slice(0, n) + (k < 1 ? noise(3) : '')
+            },
+            E.linear
+          )
+        },
+        /** One stored column gets its value. */
+        async reveal(f) {
+          const el = field(f)
+          const v = el.querySelector('.v')
+          el.classList.add('on')
+          v.classList.remove('empty')
+          const value = data[f]
+          await tween(
+            0.45,
+            (k) => {
+              const n = Math.round(k * value.length)
+              v.textContent =
+                value.slice(0, n) + (k < 1 ? noise(Math.min(2, value.length - n)) : '')
+            },
+            E.linear
+          )
+          const note = el.querySelector('.note')
+          if (note) pop(note)
+          await wait(0.35)
+          el.classList.remove('on')
+        },
+        /** What never reaches the server readable: the title, the text, the key. */
+        async never() {
+          pop($('eyeTitle'))
+          await wait(0.35)
+          pop($('eyeBody'))
+          await wait(0.35)
+          await pop($('key'), 0.45)
+        }
+      }
+    </script>
+  </body>
+</html>

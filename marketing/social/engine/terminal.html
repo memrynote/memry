@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- A terminal for clips that show the vault from the shell. Scenes run real commands, then
+         replay each one here with term.run(command, output): the command is typed at a human
+         pace, then its real output prints. 1600x900, the app window's size. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 900px;
+        overflow: hidden;
+        background: #1e1a17;
+      }
+      #bar {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 18px;
+        background: #2b2521;
+        border-bottom: 1px solid #3a322c;
+        font:
+          500 15px -apple-system,
+          system-ui,
+          sans-serif;
+        color: #b8aca2;
+      }
+      #bar i {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        margin-right: 8px;
+        display: inline-block;
+      }
+      #title {
+        flex: 1;
+        text-align: center;
+        margin-right: 63px;
+      }
+      #screen {
+        position: absolute;
+        top: 44px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 26px 34px;
+        overflow: hidden;
+        font:
+          29px/1.45 'SF Mono',
+          Menlo,
+          monospace;
+        color: #efe7df;
+        white-space: pre-wrap;
+      }
+      .prompt {
+        color: #f59a62;
+      }
+      .path {
+        color: #8fc7a6;
+      }
+      .dim {
+        color: #8c8079;
+      }
+      .hit {
+        color: #ffd479;
+        font-weight: 600;
+      }
+      #caret {
+        display: inline-block;
+        width: 13px;
+        height: 28px;
+        margin-bottom: -6px;
+        background: #efe7df;
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar">
+      <i style="background: #ff5f57"></i><i style="background: #febc2e"></i
+      ><i style="background: #28c840"></i>
+      <span id="title">maya — zsh</span>
+    </div>
+    <div id="screen">
+      <div id="lines"></div>
+      <span id="live"></span><span id="caret"></span>
+    </div>
+    <script>
+      const lines = document.getElementById('lines')
+      const live = document.getElementById('live')
+      const screen = document.getElementById('screen')
+      let cwd = '~'
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+      const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+      const promptHtml = () =>
+        `<span class="path">${esc(cwd)}</span> <span class="prompt">%</span> `
+      function scroll() {
+        while (screen.scrollHeight > screen.clientHeight && lines.firstChild)
+          lines.firstChild.remove()
+      }
+      window.term = {
+        setTitle(t) {
+          document.getElementById('title').textContent = t
+        },
+        setCwd(c) {
+          cwd = c
+          live.innerHTML = promptHtml()
+        },
+        /** Type `command` at `cps`, print `output` (highlighting `hit`), leave a fresh prompt. Resolves when done. */
+        async run(command, output = '', { cps = 13, hit, dim = false, after } = {}) {
+          live.innerHTML = promptHtml()
+          for (const ch of command) {
+            live.insertAdjacentText('beforeend', ch)
+            await sleep((1000 / cps) * (0.6 + Math.random() * 0.8) + (ch === ' ' ? 30 : 0))
+          }
+          await sleep(260)
+          const done = document.createElement('div')
+          done.innerHTML = live.innerHTML
+          lines.append(done)
+          live.innerHTML = ''
+          if (after) cwd = after
+          for (const line of output.replace(/\n$/, '').split('\n')) {
+            if (!output) break
+            const el = document.createElement('div')
+            let html = esc(line) || ' '
+            if (hit)
+              html = html.replace(new RegExp(`(${hit})`, 'gi'), '<span class="hit">$1</span>')
+            el.innerHTML = html
+            if (dim) el.className = 'dim'
+            lines.append(el)
+            scroll()
+            await sleep(18)
+          }
+          live.innerHTML = promptHtml()
+          scroll()
+        },
+        clear() {
+          lines.replaceChildren()
+          live.innerHTML = promptHtml()
+        },
+        /** Box of the last `n` printed lines, for zooming on output. */
+        box(n = 1) {
+          const els = [...lines.children].slice(-n)
+          const r = els.map((e) => e.getBoundingClientRect())
+          const top = Math.min(...r.map((x) => x.top))
+          const bottom = Math.max(...r.map((x) => x.bottom))
+          return { x: 34, y: top, width: 1500, height: bottom - top }
+        }
+      }
+      term.setCwd('~')
+    </script>
+  </body>
+</html>

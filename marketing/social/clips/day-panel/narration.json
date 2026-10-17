@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Sat Oct 31",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Your day *beside* every note" },
+    { "id": "open", "dur": 4.0, "text": "*⌘⇧B* opens the day panel" },
+    { "id": "day", "dur": 4.6, "text": "Today's calendar and *tasks*" },
+    { "id": "write", "dur": 5.6, "text": "Keep writing *beside* it" },
+    { "id": "close", "dur": 3.6, "text": "Same keys *close* it" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

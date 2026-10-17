@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Wed Nov 4",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Canvas cards that stay *live*" },
+    { "id": "edit", "dur": 6.6, "text": "Edit the note, its card *follows*" },
+    { "id": "arrow", "dur": 5.0, "text": "Draw an arrow between *cards*" },
+    { "id": "backlink", "dur": 4.6, "text": "It counts as a *backlink*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

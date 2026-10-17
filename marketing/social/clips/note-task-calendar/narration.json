@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Wed Oct 28",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "From a note to your *calendar*" },
+    { "id": "task", "dur": 5.6, "text": "*[ ]* makes a line a task" },
+    { "id": "today", "dur": 5.0, "text": "*@today* puts it on today" },
+    { "id": "drag", "dur": 5.0, "text": "Drag it onto a *time*" },
+    { "id": "same", "dur": 3.8, "text": "Same task, *nothing* copied" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

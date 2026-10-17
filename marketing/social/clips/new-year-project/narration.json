@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Fri Jan 1",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Give 2027's big thing a *project*" },
+    { "id": "hub", "dur": 4.2, "text": "Notes, tasks and dates *together*" },
+    { "id": "add", "dur": 6.4, "text": "Plan a step in *one line*" },
+    { "id": "today", "dur": 5.2, "text": "Jan 1's page shows *step one*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

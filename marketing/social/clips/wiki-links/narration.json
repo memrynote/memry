@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Sun Nov 8",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Two brackets link *anything*" },
+    { "id": "note", "dur": 4.4, "text": "Link a *note*" },
+    { "id": "canvas", "dur": 4.0, "text": "Or a *canvas*" },
+    { "id": "day", "dur": 5.6, "text": "Or a journal day, by its *date*" },
+    { "id": "folder", "dur": 5.8, "text": "Same name? Pick the *folder*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

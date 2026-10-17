@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Mon Nov 23",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Repeating tasks in *plain English*" },
+    { "id": "type", "dur": 5.8, "text": "Type it like you'd *say it*" },
+    { "id": "save", "dur": 4.2, "text": "It repeats *every 2 weeks*" },
+    { "id": "paid", "dur": 5.0, "text": "Finish one, *the next is waiting*" },
+    { "id": "next", "dur": 4.6, "text": "Same day, *next month*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

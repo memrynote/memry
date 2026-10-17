@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "page": "../../engine/terminal.html",
+  "post": "Thu Nov 19",
+  "scenes": [
+    { "id": "hook", "dur": 3.2, "text": "memrynote has a *command line*" },
+    { "id": "note", "dur": 4.5, "text": "Create notes" },
+    { "id": "task", "dur": 4.0, "text": "Add tasks with a due date" },
+    { "id": "list", "dur": 4.0, "text": "Script the *boring* parts" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

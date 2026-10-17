@@ -26,13 +26,15 @@ export async function installCursor(page) {
     st.textContent = `@keyframes __tut_ring{from{transform:translate(-50%,-50%) scale(.3);opacity:.55}to{transform:translate(-50%,-50%) scale(1);opacity:0}}
       .__tut_ring{position:fixed;width:44px;height:44px;border-radius:50%;background:rgba(240,120,40,.35);border:2px solid rgba(240,120,40,.8);pointer-events:none;z-index:2147483646;animation:__tut_ring .45s ease-out forwards}`
     document.documentElement.appendChild(st)
-    addEventListener(
-      'mousemove',
-      (e) => {
-        c.style.transform = `translate(${e.clientX - 5}px,${e.clientY - 3}px)`
-      },
-      true
-    )
+    // pointermove too: drag-and-drop libraries cancel mousemove while a drag is under way.
+    for (const type of ['mousemove', 'pointermove'])
+      addEventListener(
+        type,
+        (e) => {
+          c.style.transform = `translate(${e.clientX - 5}px,${e.clientY - 3}px)`
+        },
+        true
+      )
     addEventListener(
       'mousedown',
       (e) => {
@@ -67,8 +69,7 @@ export class Recorder {
   /** Recording time -> film time, with the fast-forward spans squeezed. */
   remap(t) {
     let cut = 0
-    for (const s of this.spans)
-      if (t > s.t0) cut += (Math.min(t, s.t1) - s.t0) * (1 - 1 / s.rate)
+    for (const s of this.spans) if (t > s.t0) cut += (Math.min(t, s.t1) - s.t0) * (1 - 1 / s.rate)
     return t - cut
   }
   async start() {

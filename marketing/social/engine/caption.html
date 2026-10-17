@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- One caption at a time, drawn on a transparent 1920x1080 page by captions.mjs.
+         hook: the first frame's line, top center. step: one line per step, bottom center.
+         end: the logo and a line, centered. *word* in the text is set in the accent color. -->
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(../../tutorials/engine/fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        background: transparent;
+        overflow: hidden;
+      }
+      #cap {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: 1480px;
+        font-family: 'DM Sans', system-ui;
+        text-align: center;
+        text-wrap: balance;
+      }
+      .hook {
+        top: 44px;
+        padding: 26px 48px;
+        border-radius: 30px;
+        background: #fff;
+        color: #1d1813;
+        font-size: 70px;
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+        box-shadow: 0 18px 60px rgba(60, 30, 10, 0.35);
+      }
+      .hook em {
+        color: #c4561d;
+      }
+      .step {
+        bottom: 84px;
+        padding: 20px 42px;
+        border-radius: 28px;
+        background: rgba(29, 24, 19, 0.93);
+        color: #fff;
+        font-size: 54px;
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.015em;
+        box-shadow: 0 14px 44px rgba(0, 0, 0, 0.3);
+      }
+      .step em {
+        color: #f59a62;
+      }
+      .end {
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        padding: 64px 96px;
+        border-radius: 40px;
+        background: #fff;
+        color: #5c5047;
+        font-size: 46px;
+        font-weight: 500;
+        box-shadow: 0 24px 80px rgba(60, 30, 10, 0.4);
+      }
+      .end img {
+        height: 96px;
+      }
+      em {
+        font-style: normal;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cap"></div>
+    <script>
+      window.show = (text, style, logo) => {
+        const cap = document.getElementById('cap')
+        cap.className = style
+        cap.replaceChildren()
+        if (style === 'end') {
+          const img = document.createElement('img')
+          img.src = logo
+          cap.append(img)
+        }
+        const line = document.createElement('div')
+        for (const [i, part] of text.split('*').entries()) {
+          const node = i % 2 ? document.createElement('em') : document.createTextNode(part)
+          if (i % 2) node.textContent = part
+          line.append(node)
+        }
+        cap.append(line)
+        return Promise.all([...cap.querySelectorAll('img')].map((img) => img.decode()))
+      }
+    </script>
+  </body>
+</html>

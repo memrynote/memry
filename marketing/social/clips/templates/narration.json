@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Thu Nov 12",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Any note becomes a *template*" },
+    { "id": "save", "dur": 4.4, "text": "Save it as a *template*" },
+    { "id": "keeps", "dur": 3.6, "text": "Body, tag and property *included*" },
+    { "id": "type", "dur": 6.0, "text": "In another note, type */*" },
+    { "id": "insert", "dur": 4.0, "text": "It lands at the *cursor*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

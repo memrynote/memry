@@ -1,0 +1,14 @@
+{
+  "silent": true,
+  "page": "strip.html",
+  "post": "F1",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "memrynote, now on *iPhone*" },
+    { "id": "capture", "dur": 4.2, "text": "Capture links, photos and voice memos" },
+    { "id": "notes", "dur": 4.2, "text": "Notes that link to each other" },
+    { "id": "tasks", "dur": 4.2, "text": "Type tasks like you'd say them" },
+    { "id": "journal", "dur": 4.2, "text": "A journal page for every day" },
+    { "id": "privacy", "dur": 4.2, "text": "Synced, end-to-end *encrypted*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on iphone, mac, windows and linux" }
+  ]
+}

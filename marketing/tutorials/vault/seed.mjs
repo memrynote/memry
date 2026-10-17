@@ -8,6 +8,7 @@
  *   node marketing/tutorials/vault/seed.mjs [/tmp/memry-tutorials/vault/Tutorial]
  *
  * The CLI runs under Electron's Node because the native modules are built for Electron.
+ * MEMRY_APP=<checkout> uses that checkout's CLI, so the data matches the build being filmed.
  */
 import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
@@ -17,8 +18,9 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const VAULT = path.resolve(process.argv[2] ?? '/tmp/memry-tutorials/vault/Tutorial')
-const ELECTRON = createRequire(path.join(ROOT, 'apps/desktop/package.json'))('electron')
-const CLI = path.join(ROOT, 'apps/cli/src/index.ts')
+const APP = path.resolve(process.env.MEMRY_APP ?? ROOT)
+const ELECTRON = createRequire(path.join(APP, 'apps/desktop/package.json'))('electron')
+const CLI = path.join(APP, 'apps/cli/src/index.ts')
 
 function cli(...args) {
   const r = spawnSync(

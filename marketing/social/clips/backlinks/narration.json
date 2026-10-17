@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Mon Nov 2",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Link now, write the note *later*" },
+    { "id": "type", "dur": 6.8, "text": "Link a note that doesn't *exist*" },
+    { "id": "links", "dur": 4.8, "text": "See what links in and *out*" },
+    { "id": "create", "dur": 5.8, "text": "Write the note when you're *ready*" },
+    { "id": "back", "dur": 4.4, "text": "Its backlinks are already *there*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

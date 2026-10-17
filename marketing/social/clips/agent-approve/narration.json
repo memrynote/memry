@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Tue Dec 15",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "The agent *asks* before it writes" },
+    { "id": "ask", "dur": 4.4, "text": "Ask it for a small edit" },
+    { "id": "draft", "dur": 2.6, "text": "It drafts the edit, *sped up*" },
+    { "id": "preview", "dur": 4.0, "text": "Nothing is saved until you *accept*" },
+    { "id": "accept", "dur": 3.6, "text": "Accept, and it's in the note" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

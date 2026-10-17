@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Sun Nov 15",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Lock notes. They stay *finished*" },
+    { "id": "finish", "dur": 4.6, "text": "Write the last line" },
+    { "id": "lock", "dur": 5.4, "text": "Then *lock* the note" },
+    { "id": "locked", "dur": 3.2, "text": "Read-only for you and *agents*" },
+    { "id": "type", "dur": 5.0, "text": "Typing does *nothing*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

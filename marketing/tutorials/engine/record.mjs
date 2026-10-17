@@ -1,6 +1,8 @@
 // Runs a tutorial's scenes.mjs against the running app and records it.
 // Every scene starts its narration on a clock; `at(phrase)` waits for the word an action belongs to,
-// so picture and voice stay in step. Writes out/take/{frames,frames.json,events.json,timeline.json}.
+// so picture and voice stay in step. A silent film (narration.json `"silent": true`, the social
+// clips) has no voice: each scene runs for its `dur` seconds and `at(seconds)` waits on the clock.
+// Writes out/take/{frames,frames.json,events.json,timeline.json}.
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -12,13 +14,14 @@ import { Recorder, installCursor, sleep } from './rec.mjs'
 const LEAD = 0.5
 const TAIL = 0.7
 
-export async function record(dir) {
+/** `page` films that page instead of the app (the social clips' terminal and diagram scenes). */
+export async function record(dir, { page: given } = {}) {
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
   const mod = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
   const missing = N.scenes.filter((s) => !mod.scenes[s.id]).map((s) => s.id)
   if (missing.length) throw new Error(`scenes.mjs has no scene for: ${missing.join(', ')}`)
 
-  const { browser, page } = await connect()
+  const { browser, page } = given ? { page: given } : await connect()
   const out = path.join(dir, 'out/take')
   const rec = new Recorder(page, out)
   const timeline = []
@@ -29,11 +32,15 @@ export async function record(dir) {
     rec,
     sleep,
     L: (s) => page.locator(s),
-    /** Wait until the narration reaches `phrase` (+ offset seconds). */
+    /** Wait until the narration reaches `phrase`, or until `phrase` seconds into the line (+ offset). */
     async at(phrase, offset = 0) {
-      const i = scene.chars.indexOf(phrase)
-      if (i < 0) throw new Error(`"${phrase}" is not in the narration of ${scene.id}`)
-      const wait = scene.vo + scene.a.character_start_times_seconds[i] + offset - rec.now()
+      let t = phrase
+      if (typeof phrase === 'string') {
+        const i = scene.chars.indexOf(phrase)
+        if (i < 0) throw new Error(`"${phrase}" is not in the narration of ${scene.id}`)
+        t = scene.a.character_start_times_seconds[i]
+      }
+      const wait = scene.vo + t + offset - rec.now()
       if (wait > 0) await sleep(wait * 1000)
     },
     /** Wait out the rest of the line. Called for you if the scene does not. */
@@ -61,14 +68,16 @@ export async function record(dir) {
   await mod.setup?.(ctx)
   await rec.start()
   for (const s of N.scenes) {
-    const a = JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
+    const a = N.silent
+      ? null
+      : JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
     scene = {
       id: s.id,
       t: rec.now(),
-      vo: rec.now() + (s.lead ?? LEAD),
-      tail: s.tail ?? TAIL,
-      dur: a.character_end_times_seconds.at(-1),
-      chars: a.characters.join(''),
+      vo: rec.now() + (s.lead ?? (N.silent ? 0 : LEAD)),
+      tail: s.tail ?? (N.silent ? 0 : TAIL),
+      dur: a ? a.character_end_times_seconds.at(-1) : s.dur,
+      chars: a ? a.characters.join('') : '',
       a
     }
     rec.mark('scene', { id: s.id })
@@ -86,6 +95,6 @@ export async function record(dir) {
     end: rec.remap(end)
   }))
   fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
-  await browser.close()
+  await browser?.close()
   return film
 }

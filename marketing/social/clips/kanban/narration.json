@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "post": "Wed Dec 2",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "List or board, *one click* apart" },
+    { "id": "board", "dur": 3.4, "text": "Same tasks, now a *board*" },
+    { "id": "drag", "dur": 4.0, "text": "Drag a card to *move* it" },
+    { "id": "rename", "dur": 5.4, "text": "The columns are *your* statuses" },
+    { "id": "save", "dur": 1.6 },
+    { "id": "follows", "dur": 3.8, "text": "Rename one, the board *follows*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

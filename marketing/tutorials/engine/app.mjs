@@ -24,10 +24,15 @@ export function startApp(vault) {
       `agent-app did not open the tutorial vault. Is PR #3273 (MEMRY_AGENT_VAULT_TEMPLATE) in this checkout?\n${out}`
     )
   }
-  mainEval(`(() => {
+  // The inspector can answer before the renderer window exists, so wait for it (up to 15 s).
+  mainEval(`(async () => {
     const { BrowserWindow } = process.mainModule.require('electron')
-    BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('renderer/index.html'))
-      .setContentSize(${WINDOW.width}, ${WINDOW.height})
+    for (let i = 0; i < 150; i++) {
+      const w = BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('renderer/index.html'))
+      if (w) return w.setContentSize(${WINDOW.width}, ${WINDOW.height})
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    throw new Error('The renderer window did not open within 15 s')
   })()`)
 }
 

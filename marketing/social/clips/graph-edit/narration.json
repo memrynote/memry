@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Tue Nov 3",
+  "scenes": [
+    { "id": "hook", "dur": 3.2, "text": "Link notes right in the *graph*" },
+    { "id": "link", "dur": 6.2, "text": "Option-drag one note onto *another*" },
+    { "id": "tag", "dur": 5.8, "text": "Right-click to add a *tag*" },
+    { "id": "pin", "dur": 4.6, "text": "Drag a note, it stays *pinned*" },
+    { "id": "save", "dur": 6.6, "text": "Save the view for *later*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

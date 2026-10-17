@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Thu Dec 3",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Every action item, *one right-click*" },
+    { "id": "menu", "dur": 3.2, "text": "Right-click your *Meetings* folder" },
+    { "id": "show", "dur": 3.6, "text": "*Show Tasks* lists every one" },
+    { "id": "group", "dur": 4.4, "text": "Group them by their *note*" },
+    { "id": "source", "dur": 5.0, "text": "Tasks remember where they were *born*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

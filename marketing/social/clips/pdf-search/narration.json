@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Wed Oct 21",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Search reads your *PDFs* and screenshots" },
+    { "id": "search", "dur": 5.2, "text": "Search a word, not a filename" },
+    { "id": "pdf", "dur": 5.4, "text": "Found inside a warranty *PDF*" },
+    { "id": "receipt", "dur": 6.2, "text": "And inside a receipt *screenshot*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

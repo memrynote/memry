@@ -4,6 +4,8 @@ narration placed on its cue, a quiet synthesized bed that ducks under the voice,
     uv run --with pillow --with numpy --with scipy python engine/compose.py <tutorial-dir>
 Reads out/take/ and vo/, writes out/<slug>.mp4, .srt and .chapters.txt.
 A YouTube film (narration.json has a youtube block) masters at 2560x1440, any other at 1920x1080.
+A silent film (narration.json "silent": true, the social clips) writes the picture only, with the
+captions from out/captions/ burned in.
 """
 import json, os, subprocess, sys
 import numpy as np
@@ -81,6 +83,43 @@ def window_hidden(name, c, t):
     if name == 'outro': return t > c['timing']['start'] + 0.3
     return False
 
+# On-screen captions (marketing/social/engine/captions.mjs): full-frame transparent PNGs, each shown
+# from t0 to t1 with a short fade, over the window and the wallpaper alike.
+caps_dir = os.path.join(HERE, 'out', 'captions')
+caps = json.load(open(os.path.join(caps_dir, 'captions.json'))) if os.path.exists(os.path.join(caps_dir, 'captions.json')) else []
+for cap in caps:
+    cap['img'] = np.asarray(Image.open(os.path.join(caps_dir, cap['file'])).convert('RGBA'))
+FADE = 0.25
+def with_captions(canvas, t):
+    on = [cap for cap in caps if cap['t0'] <= t <= cap['t1']]
+    if not on: return canvas
+    canvas = canvas.convert('RGBA')
+    for cap in on:
+        k = min(1, (cap['t1'] - t) / FADE, (t - cap['t0']) / FADE if cap.get('fadeIn', True) else 1)
+        img = cap['img'] if k >= 1 else (cap['img'] * np.array([1, 1, 1, k])).astype(np.uint8)
+        canvas.alpha_composite(Image.fromarray(img))
+    return canvas.convert('RGB')
+
+# A silent film opens on its hook: the window sits smaller and lower, the hook caption on the
+# wallpaper above it, and the window grows into place as the hook leaves (k: 0 hook, 1 full).
+hook = next((cap for cap in caps if cap.get('style') == 'hook'), None)
+HOOK_SCALE, GROW = 0.8, 0.7
+def geometry(k):
+    s = HOOK_SCALE + (1 - HOOK_SCALE) * k
+    w, h = round(WW * s), round(WH * s)
+    y0 = OH - round(WH * HOOK_SCALE) - round(30 * S)
+    return w, h, (OW - w) // 2, round(y0 + (WY - y0) * k)
+def stage_base(w, h, x, y):
+    m = Image.new('L', (w, h), 0)
+    ImageDraw.Draw(m).rounded_rectangle((0, 0, w - 1, h - 1), R, fill=255)
+    sh = Image.new('L', (OW, OH), 0)
+    ImageDraw.Draw(sh).rounded_rectangle((x, y + 14 * S, x + w, y + h + 14 * S), R, fill=110)
+    return Image.composite(Image.new('RGB', (OW, OH), (60, 30, 10)), bg, sh.filter(ImageFilter.GaussianBlur(28 * S))), m
+hook_geo = geometry(0)
+hook_bm = stage_base(*hook_geo) if hook else None
+def stage(t):
+    return 1.0 if not hook else ease((t - (hook['t1'] - GROW / 2)) / GROW)
+
 last = max((c['frames'][1] for c in cards.values()), default=0)
 n = 0
 while True:
@@ -96,14 +135,24 @@ while True:
         canvas = bg.copy()
     else:
         w, h, cx, cy = camera(t)
-        win = Image.frombuffer('RGB', (SW, SH), buf).resize((WW, WH), Image.LANCZOS, box=(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
-        canvas = base.copy(); canvas.paste(win, (WX, WY), mask)
+        k = stage(t)
+        if k >= 1: (ww, wh, wx, wy), (b, m) = (WW, WH, WX, WY), (base, mask)
+        elif k <= 0: (ww, wh, wx, wy), (b, m) = hook_geo, hook_bm
+        else: (ww, wh, wx, wy) = geometry(k); b, m = stage_base(ww, wh, wx, wy)
+        win = Image.frombuffer('RGB', (SW, SH), buf).resize((ww, wh), Image.LANCZOS, box=(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
+        canvas = b.copy(); canvas.paste(win, (wx, wy), m)
     if c:
         overlay = Image.open(os.path.join(cards_dir, name, f'{n:05d}.png')).convert('RGBA')
         canvas = canvas.convert('RGBA'); canvas.alpha_composite(overlay); canvas = canvas.convert('RGB')
+    canvas = with_captions(canvas, t)
     enc.stdin.write(canvas.tobytes()); n += 1
 enc.stdin.close(); enc.wait()
 total = n / FPS
+
+if N.get('silent'):
+    os.replace(video_tmp, out)
+    print(f'{n} frames, {total:.1f}s -> {out}')
+    sys.exit(0)
 
 # ------------------------------------------------------------------ sound
 def load(path):
