@@ -4,8 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToolbarMoreMenu } from './toolbar-more-menu'
 
 const mocks = vi.hoisted(() => ({
-  blocks: [] as Array<{ id: string; props?: Record<string, unknown> }>,
+  blocks: [] as Array<{
+    id: string
+    type?: string
+    props?: Record<string, unknown>
+    content?: unknown
+  }>,
+  cellSelection: undefined as { cells: Array<{ row: number; col: number }> } | undefined,
   editor: {
+    getExtension: vi.fn(() => ({ getCellSelection: () => mocks.cellSelection })),
+    setTextCursorPosition: vi.fn(),
     isEditable: true,
     getSelection: vi.fn(() => ({ blocks: mocks.blocks })),
     getTextCursorPosition: vi.fn(() => ({ block: mocks.blocks[0] })),
@@ -83,6 +91,7 @@ describe('ToolbarMoreMenu', () => {
       { id: 'a', props: { textAlignment: 'center' } },
       { id: 'b', props: { textAlignment: 'left' } }
     ]
+    mocks.cellSelection = undefined
     mocks.editor.updateBlock.mockClear()
     mocks.editor.nestBlock.mockClear()
     mocks.editor.unnestBlock.mockClear()
@@ -98,6 +107,50 @@ describe('ToolbarMoreMenu', () => {
     expect(mocks.editor.updateBlock).toHaveBeenCalledWith('b', {
       props: { textAlignment: 'right' }
     })
+  })
+
+  // A table keeps alignment per cell, not on the block (the reported bug: the
+  // block-props check hid alignment for every table).
+  it('aligns the selected table cells and leaves the others alone', () => {
+    const cell = (text: string, textAlignment = 'left') => ({
+      type: 'tableCell',
+      content: [{ type: 'text', text, styles: {} }],
+      props: {
+        textAlignment,
+        backgroundColor: 'default',
+        textColor: 'default',
+        colspan: 1,
+        rowspan: 1
+      }
+    })
+    mocks.blocks = [
+      {
+        id: 't',
+        type: 'table',
+        props: { textColor: 'default' },
+        content: {
+          type: 'tableContent',
+          columnWidths: [null, null],
+          rows: [{ cells: [cell('a', 'center'), cell('b')] }]
+        }
+      }
+    ]
+    mocks.cellSelection = { cells: [{ row: 0, col: 0 }] }
+
+    render(<ToolbarMoreMenu isPinned={false} />)
+
+    expect(screen.getByText('Align center')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByText('Align right'))
+
+    const [id, update] = mocks.editor.updateBlock.mock.calls[0] as unknown as [
+      string,
+      { content: { rows: Array<{ cells: Array<{ props: { textAlignment: string } }> }> } }
+    ]
+    expect(id).toBe('t')
+    expect(update.content.rows[0].cells.map((c) => c.props.textAlignment)).toEqual([
+      'right',
+      'left'
+    ])
   })
 
   // Blocks like images carry no textAlignment prop; offering

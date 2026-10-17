@@ -1,5 +1,9 @@
 import { BLOCK_COLORS_LINE_REGEX, TABLE_CELL_COLORS_LINE_REGEX } from './block-colors.ts'
-import { BLOCK_ALIGN_LINE_REGEX, TABLE_LAYOUT_LINE_REGEX } from './block-markers.ts'
+import {
+  BLOCK_ALIGN_LINE_REGEX,
+  TABLE_ALIGN_LINE_REGEX,
+  TABLE_LAYOUT_LINE_REGEX
+} from './block-markers.ts'
 import { replaceMarkdownComments } from './markdown-code.ts'
 
 /**
@@ -81,6 +85,7 @@ const MARKER_LINE_REGEXES = [
   NESTING_MARKER_REGEX,
   BLOCK_COLORS_LINE_REGEX,
   TABLE_CELL_COLORS_LINE_REGEX,
+  TABLE_ALIGN_LINE_REGEX,
   BLOCK_ALIGN_LINE_REGEX,
   TABLE_LAYOUT_LINE_REGEX
 ]

@@ -537,6 +537,10 @@ const blockMarkerCases: RoundtripCase[] = [
       '<!-- table-layout:{"columnWidths":[120,null]} -->',
       tableOf(['Name', 'Status'], ['Ship', 'Done'])
     ].join('\n')
+  },
+  {
+    name: 'table with aligned cells',
+    markdown: `<!-- table-align:{"0:1":"center","1:1":"right"} -->\n${tableOf(['Name', 'Status'], ['Ship', 'Done'])}`
   }
 ]
 

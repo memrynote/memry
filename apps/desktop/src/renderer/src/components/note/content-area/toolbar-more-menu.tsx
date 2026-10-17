@@ -1,4 +1,5 @@
-import type { BlockNoteEditor } from '@blocknote/core'
+import { mapTableCell, type BlockNoteEditor, type TableContent } from '@blocknote/core'
+import { TableHandlesExtension } from '@blocknote/core/extensions'
 import {
   useBlockNoteEditor,
   useComponentsContext,
@@ -54,9 +55,10 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
       const blocks = getSelectedBlocks(editor as BlockNoteEditor)
       const alignable = blocks.filter((block) => 'textAlignment' in (block.props ?? {}))
       const first = alignable[0]?.props as { textAlignment?: TextAlignment } | undefined
+      const cells = selectedTableCells(editor as BlockNoteEditor, blocks)
       return {
-        canAlign: alignable.length > 0,
-        alignment: first?.textAlignment ?? 'left',
+        canAlign: alignable.length > 0 || cells !== null,
+        alignment: first?.textAlignment ?? cells?.alignment ?? 'left',
         canNest: editor.isEditable && (editor as BlockNoteEditor).canNestBlock(),
         canUnnest: editor.isEditable && (editor as BlockNoteEditor).canUnnestBlock()
       }
@@ -69,8 +71,14 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
 
   const setAlignment = (textAlignment: TextAlignment): void => {
     editor.focus()
+    const blocks = getSelectedBlocks(editor)
+    const cells = selectedTableCells(editor, blocks)
+    if (cells) {
+      alignTableCells(editor, cells, textAlignment)
+      return
+    }
     editor.transact(() => {
-      for (const block of getSelectedBlocks(editor)) {
+      for (const block of blocks) {
         if (!('textAlignment' in (block.props ?? {}))) continue
         editor.updateBlock(block.id, { props: { textAlignment } } as never)
       }
@@ -136,7 +144,53 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
   )
 }
 
-type AnyBlock = { id: string; props?: Record<string, unknown> }
+type AnyBlock = { id: string; type?: string; props?: Record<string, unknown>; content?: unknown }
+
+interface SelectedTableCells {
+  block: AnyBlock
+  positions: Array<{ row: number; col: number }>
+  alignment: TextAlignment
+}
+
+/**
+ * The cells selected inside a table, or null outside one. A table keeps
+ * alignment per cell, not on the block, so the block-props path cannot see it.
+ */
+function selectedTableCells(
+  editor: BlockNoteEditor,
+  blocks: AnyBlock[]
+): SelectedTableCells | null {
+  const block = blocks[0]
+  if (blocks.length !== 1 || block?.type !== 'table') return null
+  const selection = editor.getExtension(TableHandlesExtension)?.getCellSelection()
+  if (!selection || selection.cells.length === 0) return null
+  const { row, col } = selection.cells[0]
+  const rows = (block.content as TableContent<never, never>).rows
+  const alignment = mapTableCell(rows[row].cells[col]).props.textAlignment
+  return {
+    block,
+    positions: selection.cells,
+    alignment: alignment === 'justify' ? 'left' : alignment
+  }
+}
+
+function alignTableCells(
+  editor: BlockNoteEditor,
+  { block, positions }: SelectedTableCells,
+  textAlignment: TextAlignment
+): void {
+  const content = block.content as TableContent<never, never>
+  const rows = content.rows.map((row) => ({
+    ...row,
+    cells: row.cells.map((cell) => mapTableCell(cell))
+  }))
+  for (const { row, col } of positions) {
+    rows[row].cells[col].props.textAlignment = textAlignment
+  }
+  editor.updateBlock(block.id, { type: 'table', content: { ...content, rows } } as never)
+  // updateBlock moves the selection out of the table; put the cursor back.
+  editor.setTextCursorPosition(block.id)
+}
 
 function getSelectedBlocks(editor: BlockNoteEditor): AnyBlock[] {
   return (editor.getSelection()?.blocks ?? [editor.getTextCursorPosition().block]) as AnyBlock[]

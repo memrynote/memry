@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 260,
+    "exportedCaseCount": 261,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 270,
+    "caseCount": 271,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -747,6 +747,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "table with aligned cells",
+      "markdown": "<!-- table-align:{\"0:1\":\"center\",\"1:1\":\"right\"} -->\n| Name | Status |\n| ---- | ------ |\n| Ship | Done   |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "99bdb67dc08915f17d6859696920638eae81cc9d97d0ced788bd3cc466ea2a68"
     },
     {
       "name": "task line with bold and a wiki link",

@@ -3104,6 +3104,24 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
     expect(await blocksToMd(reparsed!)).toBe(saved)
   })
 
+  it('writes an aligned cell as a marker and reads it back onto the same cell', async () => {
+    // #given a table whose second-row second cell was centred from the toolbar
+    const blocks = await markdownToBlocks(TABLE_MD)
+    Object.assign(cellsOf(blocks![0])[1].cells[1].props, { textAlignment: 'center' })
+
+    // #when it is saved
+    const saved = await blocksToMd(blocks!)
+
+    // #then the alignment is on disk, in front of the table
+    expect(saved).toContain('<!-- table-align:{"1:1":"center"} -->')
+
+    // #and reading the note back puts it on the cell it came from
+    const reparsed = await markdownToBlocks(saved!)
+    expect(cellsOf(reparsed![0])[1].cells[1].props).toMatchObject({ textAlignment: 'center' })
+    expect(cellsOf(reparsed![0])[0].cells[0].props).toMatchObject({ textAlignment: 'left' })
+    expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+
   it('keeps a table-level colour and its cell colours on separate marker lines', async () => {
     // #given both colour paths used on one table
     const blocks = await markdownToBlocks(TABLE_MD)

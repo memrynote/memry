@@ -44,6 +44,81 @@ export function parseBlockAlignMarker(line: string): Exclude<TextAlignment, 'lef
 }
 
 /**
+ * A table's non-default cell alignments, keyed `"<rowIndex>:<cellIndex>"`.
+ *
+ * BlockNote keeps a cell's alignment in the cell's own props, and a GFM row has
+ * nowhere to put it per cell, so an aligned table carries a marker line shaped
+ * like the `table-colors` one. Only non-left cells appear, so a table nobody
+ * has aligned writes no marker and keeps its bytes.
+ */
+export type TableCellAlignments = Record<string, Exclude<TextAlignment, 'left'>>
+
+/** A whole line that is nothing but a table cell alignment marker. */
+export const TABLE_ALIGN_LINE_REGEX = /^<!-- table-align:(\{.*\}) -->$/
+
+const NON_DEFAULT_ALIGNMENTS = new Set<unknown>(['center', 'right', 'justify'])
+
+function mutableCellProps(cell: unknown): Record<string, unknown> | null {
+  if (!cell || typeof cell !== 'object' || Array.isArray(cell)) return null
+  const props = (cell as { props?: unknown }).props
+  return props && typeof props === 'object' ? (props as Record<string, unknown>) : null
+}
+
+/** The alignment of every non-left cell, or null when there is none. */
+export function extractTableCellAlignments(content: unknown): TableCellAlignments | null {
+  const rows = tableContent(content)?.rows
+  if (!rows) return null
+
+  const alignments: TableCellAlignments = {}
+  rows.forEach((row, rowIndex) => {
+    row?.cells?.forEach((cell, cellIndex) => {
+      const alignment = mutableCellProps(cell)?.textAlignment
+      if (NON_DEFAULT_ALIGNMENTS.has(alignment)) {
+        alignments[`${rowIndex}:${cellIndex}`] = alignment as Exclude<TextAlignment, 'left'>
+      }
+    })
+  })
+  return Object.keys(alignments).length > 0 ? alignments : null
+}
+
+export function serializeTableCellAlignmentsMarker(alignments: TableCellAlignments): string {
+  return `<!-- table-align:${JSON.stringify(alignments)} -->`
+}
+
+/** Parse a table cell alignment marker; null unless every value is a non-left alignment. */
+export function parseTableCellAlignmentsMarker(line: string): TableCellAlignments | null {
+  const match = line.match(TABLE_ALIGN_LINE_REGEX)
+  if (!match) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(match[1])
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  if (!Object.values(parsed).every((value) => NON_DEFAULT_ALIGNMENTS.has(value))) return null
+  return parsed as TableCellAlignments
+}
+
+/**
+ * Put parsed cell alignments back on a freshly parsed table. A key naming a
+ * cell the table no longer has (a row deleted in another editor) is skipped.
+ */
+export function applyTableCellAlignments(content: unknown, alignments: TableCellAlignments): void {
+  const rows = tableContent(content)?.rows
+  if (!rows) return
+
+  for (const [key, textAlignment] of Object.entries(alignments)) {
+    const [rowIndex, cellIndex] = key.split(':').map(Number)
+    if (!Number.isInteger(rowIndex) || !Number.isInteger(cellIndex)) continue
+    const cell = rows[rowIndex]?.cells?.[cellIndex]
+    const props = mutableCellProps(cell)
+    if (!props) continue
+    ;(cell as { props: Record<string, unknown> }).props = { ...props, textAlignment }
+  }
+}
+
+/**
  * The widths of a table's columns, one slot per column, null where the column
  * is whatever width the editor picks for it.
  *
@@ -161,6 +236,17 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
       const cellColors = parseTableCellColorsMarker(line)
       if (!cellColors) return null
       return (block) => applyTableCellColors(block.content, cellColors)
+    }
+  },
+  {
+    write: (block) => {
+      const alignments = extractTableCellAlignments(block.content)
+      return alignments ? serializeTableCellAlignmentsMarker(alignments) : null
+    },
+    read: (line) => {
+      const alignments = parseTableCellAlignmentsMarker(line)
+      if (!alignments) return null
+      return (block) => applyTableCellAlignments(block.content, alignments)
     }
   },
   {
