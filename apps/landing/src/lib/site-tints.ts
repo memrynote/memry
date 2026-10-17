@@ -11,7 +11,7 @@
  * <PageHead page="..." />. site-tints.test.ts binds the two maps together.
  *
  * `home` is deliberately absent: it carries the painted landscape wallpaper instead, and
- * The conversion pages (`pricing`, `downloadDesktop`), the timeline pages (`roadmap`,
+ * The conversion pages (`pricing`, `download`), the timeline pages (`roadmap`,
  * `changelog`) and `features` are absent too: their heroes run untinted on the page
  * ground, so the plan cards, the download buttons and each page's own content colour
  * carry them alone.

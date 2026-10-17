@@ -115,7 +115,7 @@ function NotesHero() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
-              <Link to="/download/desktop">
+              <Link to="/download">
                 Download
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -1029,7 +1029,7 @@ function NotesFinalCta() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-8" asChild>
-              <Link to="/download/desktop">
+              <Link to="/download">
                 Download
                 <ArrowRight className="h-4 w-4" />
               </Link>

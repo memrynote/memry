@@ -122,6 +122,9 @@ function AppContent() {
             <Route key={path} path={path} element={<Component />} />
           ))}
           <Route path="/alternatives" element={<Navigate to="/compare" replace />} />
+          {/* The pre-/download URL. vercel.json 308s it on a full load; this covers
+              in-app navigation and `vite preview`, which reads no vercel.json. */}
+          <Route path="/download/desktop" element={<Navigate to="/download" replace />} />
           <Route path="/auth" element={<LegacyAuthRedirect />} />
           <Route
             path="/account"

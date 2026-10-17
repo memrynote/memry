@@ -87,11 +87,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Clip and save any link into memrynote. One click sends the page, text, and URL to your Inbox. Live on Chrome Web Store and Firefox Add-ons.',
     path: '/features/web-clipper'
   },
-  downloadDesktop: {
-    title: 'memrynote for Desktop — macOS, Windows & Linux',
+  download: {
+    // No iPhone in the title: the beta is an invite list until TestFlight opens.
+    title: 'Download memrynote — Mac, Windows & Linux',
     description:
-      'memrynote desktop for macOS, Windows, and Linux. Plain Markdown vault, end-to-end encrypted sync, open source.',
-    path: '/download/desktop'
+      'Download memrynote for macOS, Windows, and Linux, add the Web Clipper to Chrome or Firefox, or join the iPhone beta list. The CLI ships with the desktop app.',
+    path: '/download'
   },
   cli: {
     title: 'memrynote CLI — Your vault from the terminal',
@@ -340,7 +341,7 @@ export const SITELINK_CANDIDATE_PATHS = [
   '/',
   '/features',
   '/pricing',
-  '/download/desktop',
+  '/download',
   '/changelog',
   '/roadmap'
 ] as const
@@ -399,7 +400,7 @@ function getSoftwareApplicationJsonLdObject() {
     operatingSystem: 'macOS, Windows, Linux',
     description: PAGE_META.home.description,
     url: `${BASE_URL}/`,
-    downloadUrl: `${BASE_URL}/download/desktop`,
+    downloadUrl: `${BASE_URL}/download`,
     screenshot: SCREENSHOT_CAPTIONS.map(([id, caption]) => ({
       '@type': 'ImageObject',
       url: `${BASE_URL}/screenshots/${id}_white.png`,
@@ -560,7 +561,7 @@ function breadcrumbLabel(title: string): string {
 }
 
 // BreadcrumbList for inner pages. Intermediate segments without their own PAGE_META
-// entry (e.g. /download) are skipped so no crumb links to a non-existent page.
+// entry are skipped so no crumb links to a non-existent page.
 export function getBreadcrumbJsonLd(page: keyof typeof PAGE_META): string | null {
   const meta = PAGE_META[page]
   if (!meta || meta.path === '/') return null

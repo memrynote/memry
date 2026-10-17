@@ -149,7 +149,7 @@ function DownloadCta() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
       <Link
-        to="/download/desktop"
+        to="/download"
         className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-ink/90"
       >
         <Download className="h-4 w-4" />

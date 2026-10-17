@@ -35,13 +35,13 @@ export function DownloadPill({ location }: { location: string }) {
       {content}
     </a>
   ) : (
-    <Link to="/download/desktop" onClick={track} className={className}>
+    <Link to="/download" onClick={track} className={className}>
       {content}
     </Link>
   )
 }
 
-export function DownloadButton({
+function DownloadButton({
   location,
   size = 'lg',
   className
@@ -64,7 +64,7 @@ export function DownloadButton({
           {label}
         </a>
       ) : (
-        <Link to="/download/desktop" onClick={track}>
+        <Link to="/download" onClick={track}>
           <Download className="h-4 w-4" />
           {label}
         </Link>
@@ -97,7 +97,7 @@ export function DownloadCTA({
         asChild
       >
         <Link
-          to="/download/desktop"
+          to="/download"
           onClick={() =>
             trackLandingEvent('landing_nav_click', `download:all-platforms:${location}`)
           }

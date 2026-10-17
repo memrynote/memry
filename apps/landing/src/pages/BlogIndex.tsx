@@ -248,7 +248,7 @@ export function BlogIndexPage() {
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
               <Link
-                to="/download/desktop"
+                to="/download"
                 className="inline-flex items-center gap-2 rounded-full bg-terracotta px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-terracotta/90"
               >
                 Download Memrynote

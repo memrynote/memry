@@ -448,7 +448,7 @@ function TierCard({
         ) : !isCheckoutEnabled ? (
           <Button variant="outline" size="lg" className={ctaClass} asChild>
             <Link
-              to="/download/desktop"
+              to="/download"
               onClick={() =>
                 trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, cadence))
               }
@@ -819,7 +819,7 @@ function LimitMatrix({
                               asChild
                             >
                               <Link
-                                to="/download/desktop"
+                                to="/download"
                                 onClick={() =>
                                   trackLandingEvent(
                                     'landing_pricing_cta_click',

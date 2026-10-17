@@ -19,6 +19,10 @@ export const GITHUB_URL = 'https://github.com/memrynote/memry'
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
+export const CHROME_WEBSTORE_URL =
+  'https://chromewebstore.google.com/detail/memrynote-web-clipper/jnhaegegapkdlpmigfilekablabnhdnk'
+export const FIREFOX_ADDONS_URL =
+  'https://addons.mozilla.org/en-US/firefox/addon/memrynote-web-clipper/'
 export const CHECKOUT_RELEASE_TIMING = 'Coming soon'
 
 type LandingDropdownItemBase = {
@@ -86,38 +90,8 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   }
 ] as const
 
-export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
-  {
-    label: 'Web Clipper',
-    description: 'Clip and save any link',
-    href: '/features/web-clipper',
-    icon: '/mascots/web-clipper.webp',
-    iconType: 'image'
-  },
-  {
-    label: 'memrynote for Mobile',
-    description: 'iPhone beta on TestFlight',
-    href: '/ios-beta',
-    icon: '/mascots/mobile.webp',
-    iconType: 'image'
-  },
-  {
-    label: 'memrynote for Desktop',
-    description: 'macOS · Windows · Linux',
-    href: '/download/desktop',
-    icon: '/mascots/desktop.webp',
-    iconType: 'image'
-  },
-  {
-    label: 'memrynote CLI',
-    description: 'Terminal workflows',
-    href: '/cli',
-    icon: '/mascots/cli.webp',
-    iconType: 'image'
-  }
-] as const
-
 export const DIRECT_NAV_LINKS = [
+  { label: 'Download', href: '/download' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Roadmap', href: '/roadmap' }
 ] as const
@@ -125,7 +99,7 @@ export const DIRECT_NAV_LINKS = [
 export const FOOTER_LINKS = {
   product: [
     { label: 'Features', href: '/features' },
-    { label: 'Download', href: '/download/desktop' },
+    { label: 'Download', href: '/download' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Changelog', href: '/changelog' },
@@ -869,4 +843,3 @@ export const PRICING_FAQ_ITEMS = [
       'Cards, Apple Pay, Google Pay, PayPal, and several regional methods depending on your country, all processed through Paddle.'
   }
 ] as const
-

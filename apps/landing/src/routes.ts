@@ -100,10 +100,7 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
     path: '/features/web-clipper',
     Component: lazyPage(() => import('@/pages/WebClipper'), 'WebClipperFeaturePage')
   },
-  {
-    path: '/download/desktop',
-    Component: lazyPage(() => import('@/pages/DownloadDesktop'), 'DownloadDesktopPage')
-  },
+  { path: '/download', Component: lazyPage(() => import('@/pages/Download'), 'DownloadPage') },
   { path: '/cli', Component: lazyPage(() => import('@/pages/Cli'), 'CliPage') },
   { path: '/use-cases', Component: lazyPage(() => import('@/pages/UseCases'), 'UseCasesPage') },
   { path: '/about', Component: lazyPage(() => import('@/pages/About'), 'AboutPage') },
@@ -206,7 +203,13 @@ export function preloadRoute(pathname: string): Promise<unknown> {
   if (normalized === '/account' || normalized.startsWith('/account/')) {
     return AccountLayoutPage.preload()
   }
-  // /alternatives and /auth are redirects; they render no page of their own.
-  if (normalized === '/alternatives' || normalized === '/auth') return Promise.resolve()
+  // /alternatives, /auth and /download/desktop are redirects; they render no page of their own.
+  if (
+    normalized === '/alternatives' ||
+    normalized === '/auth' ||
+    normalized === '/download/desktop'
+  ) {
+    return Promise.resolve()
+  }
   return NotFoundPage.preload()
 }

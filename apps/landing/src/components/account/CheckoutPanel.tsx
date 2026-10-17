@@ -583,7 +583,7 @@ export function NoTokenNotice() {
         the Memrynote desktop app so we can link the purchase to your account.
       </p>
       <Button asChild className="mt-6 w-full">
-        <Link to="/download/desktop">Download Memrynote</Link>
+        <Link to="/download">Download Memrynote</Link>
       </Button>
     </div>
   )

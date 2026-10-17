@@ -17,7 +17,7 @@ const REQUIREMENTS = [
 
 /**
  * Invite list for the iPhone TestFlight beta. Unlisted (noindex, not in PAGE_META or the
- * sitemap): visitors arrive from the navbar, the phone hero, and the beta email. The address
+ * sitemap): visitors arrive from /download, the phone hero, and the beta email. The address
  * goes to the Resend "iOS beta" segment through /api/subscribe.
  */
 export function IosBetaPage() {

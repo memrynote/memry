@@ -6,14 +6,13 @@ import { Mascot } from '@/components/ui/mascot'
 import { Container } from './Container'
 import {
   DIRECT_NAV_LINKS,
-  DOWNLOAD_NAV_ITEMS,
   FEATURE_NAV_ITEMS,
   GITHUB_URL,
   type LandingDropdownItem
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
-import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+import { trackLandingEvent } from '@/lib/analytics'
 import { useAuth } from '@/contexts/auth-context'
 
 function isExternalHref(href: string) {
@@ -28,20 +27,13 @@ function analyticsTarget(scope: string, label: string) {
   return `${scope}:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
-function dropdownEvent(label: string): LandingEventName {
-  return label === 'Download' ? 'landing_download_click' : 'landing_nav_click'
-}
-
-type MobileDropdownKey = 'features' | 'download'
+type MobileDropdownKey = 'features'
 
 const MOBILE_DROPDOWN_SECTIONS: readonly {
   key: MobileDropdownKey
   label: string
   items: readonly LandingDropdownItem[]
-}[] = [
-  { key: 'features', label: 'Features', items: FEATURE_NAV_ITEMS },
-  { key: 'download', label: 'Download', items: DOWNLOAD_NAV_ITEMS }
-] as const
+}[] = [{ key: 'features', label: 'Features', items: FEATURE_NAV_ITEMS }] as const
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const className =
@@ -176,13 +168,7 @@ function DropdownIcon({ item, className }: { item: LandingDropdownItem; classNam
   return <Icon className={className} strokeWidth={2.4} aria-hidden />
 }
 
-function DropdownItem({
-  item,
-  eventName
-}: {
-  item: LandingDropdownItem
-  eventName: LandingEventName
-}) {
+function DropdownItem({ item }: { item: LandingDropdownItem }) {
   const className = cn(
     'flex min-h-[68px] items-start gap-4 rounded-2xl px-4 py-3 text-start transition-colors',
     item.disabled
@@ -213,7 +199,8 @@ function DropdownItem({
       </span>
     </>
   )
-  const handleClick = () => trackLandingEvent(eventName, analyticsTarget('dropdown', item.label))
+  const handleClick = () =>
+    trackLandingEvent('landing_nav_click', analyticsTarget('dropdown', item.label))
 
   return item.disabled ? (
     <button type="button" className={className} aria-disabled="true" tabIndex={-1}>
@@ -233,16 +220,12 @@ function DropdownItem({
 function DesktopDropdown({
   label,
   items,
-  icon,
-  columns = 2
+  icon
 }: {
   label: string
   items: readonly LandingDropdownItem[]
   icon?: LucideIcon
-  columns?: 1 | 2
 }) {
-  const eventName = dropdownEvent(label)
-
   return (
     <div className="group relative">
       <DropdownTrigger label={label} icon={icon} />
@@ -252,15 +235,10 @@ function DesktopDropdown({
           transition ends (glass "popping in" late). Transform is safe.
           focus-within keeps the menu reachable by keyboard, not just hover. */}
       <div className="invisible absolute start-1/2 top-full z-50 mt-3 origin-top -translate-x-1/2 translate-y-1 scale-[0.97] transition-[transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] rtl:translate-x-1/2 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
-        <div
-          className={cn(
-            'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
-            columns === 2 ? 'w-[574px]' : 'w-[320px]'
-          )}
-        >
-          <div className={cn('grid gap-2', columns === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
+        <div className="w-[574px] rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]">
+          <div className="grid grid-cols-2 gap-2">
             {items.map((item) => (
-              <DropdownItem key={item.label} item={item} eventName={eventName} />
+              <DropdownItem key={item.label} item={item} />
             ))}
           </div>
         </div>
@@ -284,7 +262,6 @@ function MobileDropdownSection({
   onToggle: () => void
   onNavigate: () => void
 }) {
-  const eventName = dropdownEvent(label)
   const panelId = `mobile-nav-${sectionKey}`
 
   return (
@@ -335,7 +312,10 @@ function MobileDropdownSection({
                     : 'hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/35'
                 )
                 const handleClick = () => {
-                  trackLandingEvent(eventName, analyticsTarget('mobile-dropdown', item.label))
+                  trackLandingEvent(
+                    'landing_nav_click',
+                    analyticsTarget('mobile-dropdown', item.label)
+                  )
                   onNavigate()
                 }
 
@@ -473,7 +453,6 @@ export function Header() {
 
           <div className="hidden items-center justify-center gap-2 lg:flex">
             <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
-            <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
             {DIRECT_NAV_LINKS.map((link) => (
               <NavLink key={link.label} href={link.href} label={link.label} />
             ))}

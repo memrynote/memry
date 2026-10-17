@@ -16,6 +16,7 @@ export type LandingEventName =
   | 'landing_pricing_cadence_change'
   | 'landing_pricing_cta_click'
   | 'landing_download_click'
+  | 'landing_download_share'
   | 'landing_external_click'
   | 'landing_demo_start'
   | 'landing_demo_pause'

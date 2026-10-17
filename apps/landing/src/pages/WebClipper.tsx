@@ -16,6 +16,7 @@ import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { ClipperStack } from '@/components/site/ClipperStack'
 import { Button } from '@/components/ui/button'
+import { CHROME_WEBSTORE_URL, FIREFOX_ADDONS_URL } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
@@ -72,9 +73,6 @@ function LivePill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   )
 }
 
-const CHROME_WEBSTORE_URL =
-  'https://chromewebstore.google.com/detail/memrynote-web-clipper/jnhaegegapkdlpmigfilekablabnhdnk'
-
 // Official browser logos live in public/browsers/*.svg.
 const BROWSERS: { logo: string; name: string; store: string; url?: string }[] = [
   {
@@ -87,7 +85,7 @@ const BROWSERS: { logo: string; name: string; store: string; url?: string }[] = 
     logo: '/browsers/firefox.svg',
     name: 'Firefox',
     store: 'Firefox Add-ons',
-    url: 'https://addons.mozilla.org/en-US/firefox/addon/memrynote-web-clipper/'
+    url: FIREFOX_ADDONS_URL
   },
   { logo: '/browsers/edge.svg', name: 'Edge', store: 'Edge Add-ons' }
 ]
@@ -302,7 +300,7 @@ function FinalCta() {
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
-              <Link to="/download/desktop">
+              <Link to="/download">
                 Download memrynote
                 <ArrowRight className="h-4 w-4" />
               </Link>

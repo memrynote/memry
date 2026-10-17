@@ -98,9 +98,9 @@ const HOW_IT_WORKS: readonly { title: string; body: ReactNode }[] = [
     title: 'Onboarding',
     body: (
       <>
-        <Link to="/download/desktop">Download the desktop app</Link> for macOS, Windows, or Linux,
-        pick a folder for your vault, and start writing in under a minute. No account, email, or
-        card is required for local use.
+        <Link to="/download">Download the desktop app</Link> for macOS, Windows, or Linux, pick a
+        folder for your vault, and start writing in under a minute. No account, email, or card is
+        required for local use.
       </>
     )
   },

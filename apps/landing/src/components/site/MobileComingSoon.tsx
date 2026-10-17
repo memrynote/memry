@@ -26,7 +26,7 @@ export function MobileComingSoon({ location }: { location: string }) {
       </Link>
 
       <Link
-        to="/download/desktop"
+        to="/download"
         onClick={() => trackLandingEvent('landing_nav_click', `download:all-platforms:${location}`)}
         className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
       >

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
-import { DIRECT_NAV_LINKS, DOWNLOAD_NAV_ITEMS, FOOTER_LINKS } from './constants.ts'
+import { DIRECT_NAV_LINKS, FOOTER_LINKS } from './constants.ts'
 import {
   BASE_URL,
   getArticleJsonLd,
@@ -13,6 +13,21 @@ import {
   SITELINK_CANDIDATE_PATHS
 } from './seo.ts'
 
+type VercelRedirect = {
+  source: string
+  has?: { type: string; value: string }[]
+  destination: string
+  permanent?: boolean
+}
+
+function readVercelRedirects(): VercelRedirect[] {
+  const config = JSON.parse(
+    readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')
+  ) as { redirects?: VercelRedirect[] }
+
+  return config.redirects ?? []
+}
+
 describe('landing SEO signals', () => {
   it('uses memrynote.com as the canonical host', () => {
     assert.equal(BASE_URL, 'https://memrynote.com')
@@ -21,22 +36,12 @@ describe('landing SEO signals', () => {
   })
 
   it('keeps landing deployment config focused on memrynote.com', () => {
-    const vercelConfig = JSON.parse(
-      readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')
-    ) as {
-      redirects?: {
-        has?: { type: string; value: string }[]
-        destination: string
-        permanent?: boolean
-      }[]
-    }
-
     // memrynote.ai is a legitimately owned alias domain. It may appear ONLY as a
     // redirect SOURCE that forwards to memrynote.com — that redirect is what makes
     // memrynote.com canonical, so banning the string outright (as this test used to)
     // would forbid the very mechanism it exists to protect. What must never happen is
     // .ai appearing as a destination, which would split link equity across two hosts.
-    const redirects = vercelConfig.redirects ?? []
+    const redirects = readVercelRedirects()
     const aliasRedirects = redirects.filter((redirect) =>
       redirect.has?.some((condition) => condition.value.endsWith('memrynote.ai'))
     )
@@ -53,12 +58,28 @@ describe('landing SEO signals', () => {
     }
   })
 
+  it('keeps the retired /download/desktop URL forwarding to /download', () => {
+    // Shipped desktop builds (the update-failed dialog), sent emails, the docs install
+    // guide and search indexes all link to /download/desktop, so it must keep forwarding.
+    // /download must never forward back: the old 308 ran that way, and a reverse entry
+    // would bounce visitors between the two URLs.
+    const redirects = readVercelRedirects()
+    const legacy = redirects.find((redirect) => redirect.source === '/download/desktop')
+
+    assert.equal(legacy?.destination, '/download')
+    assert.equal(legacy?.permanent, true)
+    assert.ok(
+      !redirects.some((redirect) => redirect.source === '/download'),
+      '/download is the page itself, not a redirect'
+    )
+  })
+
   it('keeps the main sitelink candidates as real route metadata', () => {
     assert.deepEqual(SITELINK_CANDIDATE_PATHS, [
       '/',
       '/features',
       '/pricing',
-      '/download/desktop',
+      '/download',
       '/changelog',
       '/roadmap'
     ])
@@ -71,15 +92,12 @@ describe('landing SEO signals', () => {
   })
 
   it('links the main sitelink candidates from visible navigation surfaces', () => {
+    assert.ok(DIRECT_NAV_LINKS.some((link) => link.href === '/download'))
     assert.ok(DIRECT_NAV_LINKS.some((link) => link.href === '/roadmap'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/features'))
+    assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/download'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/changelog'))
     assert.ok(FOOTER_LINKS.resources.some((link) => link.href === '/blog'))
-
-    const desktopDownload = DOWNLOAD_NAV_ITEMS.find((item) => item.href === '/download/desktop')
-
-    assert.equal(desktopDownload?.label, 'memrynote for Desktop')
-    assert.notEqual(desktopDownload?.disabled, true)
   })
 
   it('emits WebSite JSON-LD for Google site identity', () => {

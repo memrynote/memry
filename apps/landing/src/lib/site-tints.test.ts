@@ -37,7 +37,7 @@ const UNTINTED_PAGES = [
   'home',
   'features',
   'pricing',
-  'downloadDesktop',
+  'download',
   'roadmap',
   'changelog',
   'terms',

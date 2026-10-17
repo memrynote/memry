@@ -25,7 +25,7 @@
       "permanent": true
     },
     { "source": "/alternatives", "destination": "/compare", "permanent": true },
-    { "source": "/download", "destination": "/download/desktop", "permanent": true }
+    { "source": "/download/desktop", "destination": "/download", "permanent": true }
   ],
   "headers": [
     {

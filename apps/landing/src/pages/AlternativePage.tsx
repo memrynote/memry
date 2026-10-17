@@ -65,7 +65,7 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">{config.intro}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
-                <Link to="/download/desktop">Download memrynote</Link>
+                <Link to="/download">Download memrynote</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
                 <Link to="/pricing">See pricing</Link>
@@ -241,7 +241,7 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Button asChild size="lg">
-                <Link to="/download/desktop">Download memrynote</Link>
+                <Link to="/download">Download memrynote</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
                 <Link to={`/features`}>Explore features</Link>

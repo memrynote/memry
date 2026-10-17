@@ -7,7 +7,7 @@ import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
 import { DownloadPill } from '@/components/shared/DownloadCTA'
 import { MobileComingSoon } from '@/components/site/MobileComingSoon'
 import { trackLandingEvent } from '@/lib/analytics'
-import { useDetectedOS } from '@/lib/download'
+import { isMobileOS, useDetectedOS } from '@/lib/download'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -121,7 +121,7 @@ export function Hero2() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pauseTimer = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
-  const isMobile = useDetectedOS() === 'mobile'
+  const isMobile = isMobileOS(useDetectedOS())
 
   useEffect(
     () => () => {
