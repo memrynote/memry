@@ -2,6 +2,8 @@
 
 Two views over the same tasks.
 
+<YouTube id="zXzxBvmnEvw" start="2:08" title="Capture tasks and plan projects inside your notes" />
+
 <!-- screenshot: side-by-side list and kanban -->
 
 ## List View

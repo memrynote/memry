@@ -2,6 +2,8 @@
 
 Projects group tasks under a custom status workflow.
 
+<YouTube id="zXzxBvmnEvw" start="1:42" title="Capture tasks and plan projects inside your notes" />
+
 <!-- screenshot: sidebar projects tree with task counts -->
 
 ## Project Tree

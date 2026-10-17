@@ -2,6 +2,8 @@
 
 Quick add, inline create, and natural-language dates.
 
+<YouTube id="zXzxBvmnEvw" title="Capture tasks and plan projects inside your notes" />
+
 <!-- screenshot: quick-add input above a task list -->
 
 ## Quick Add

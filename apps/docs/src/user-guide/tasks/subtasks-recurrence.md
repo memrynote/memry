@@ -2,6 +2,8 @@
 
 Nest tasks under parents, and schedule repeating tasks.
 
+<YouTube id="zXzxBvmnEvw" start="0:34" title="Capture tasks and plan projects inside your notes" />
+
 <!-- screenshot: parent task with expanded subtasks and a recurrence picker -->
 
 ## Subtasks
