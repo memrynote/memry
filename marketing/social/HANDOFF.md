@@ -157,7 +157,7 @@ approved now, because all their clips are approved. `montage-2026` waits only on
 X posts go out through a local Postiz in `/Users/h4yfans/workspace/personal/postiz` (Docker,
 `http://127.0.0.1:4007`, MemryNote account, Build in Public community). Its `schedule-x.mjs`
 reads `2026-q4.md` and `media/`, and queues every dated post whose `.mp4` is in `media/`, at
-9:00 AM New York time, with the first reply as a thread. It skips days already in its
+5:00 PM New York time, with the first reply as a thread. It skips days already in its
 `scheduled.json`, so rerun it after each approval:
 
 ```bash

@@ -133,7 +133,7 @@ for (const d of posts) {
   if (d.reddit)
     md.push(
       '',
-      `## r/MemryNote · ~10:00 AM ET · [${d.reddit.flair}]`,
+      `## r/MemryNote · 5:00 PM ET · [${d.reddit.flair}]`,
       '',
       `Media: ${rMedia ?? `bekliyor (${d.reddit.slug})`}`,
       '',
