@@ -281,13 +281,6 @@
         "label": "Kaldırılacak kenar",
         "left": "Sol kenar",
         "right": "Sağ kenar"
-      },
-      "paper": {
-        "label": "Kağıt",
-        "peach": "Şeftali",
-        "butter": "Tereyağı",
-        "mint": "Nane",
-        "lavender": "Lavanta"
       }
     }
   },

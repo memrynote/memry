@@ -103,8 +103,7 @@ describe('GeneralSettings i18n', () => {
     api.settings.getStickySettings = vi.fn().mockResolvedValue({
       defaultKind: 'last',
       lastKind: 'note',
-      tuckEdge: 'right',
-      paper: 'peach'
+      tuckEdge: 'right'
     })
     api.updater = {
       getState: vi.fn().mockResolvedValue(updateState),

@@ -291,13 +291,6 @@
         "label": "Tuck to",
         "left": "Left edge",
         "right": "Right edge"
-      },
-      "paper": {
-        "label": "Paper",
-        "peach": "Peach",
-        "butter": "Butter",
-        "mint": "Mint",
-        "lavender": "Lavender"
       }
     }
   },

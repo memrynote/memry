@@ -33,7 +33,9 @@ export function StickyKindBar({
             className={cn(
               'no-drag rounded-full px-2.5 py-1 text-[12px]/4 font-medium transition-colors duration-150',
               'focus-visible:outline-2 focus-visible:outline-[var(--tint)]',
-              selected ? 'bg-black/[0.08]' : 'opacity-55 hover:opacity-90'
+              selected
+                ? 'bg-foreground/[0.08] text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {t(`sticky.kinds.${kind}`)}

@@ -53,12 +53,12 @@ export function StickySent({
   return (
     <div role="status" className="flex flex-1 flex-col justify-center gap-3 px-5 py-4">
       <div className="flex items-center gap-2">
-        <span className="flex size-5 items-center justify-center rounded-full bg-black/[0.08]">
+        <span className="flex size-5 items-center justify-center rounded-full bg-foreground/[0.08]">
           <Check className="size-3" aria-hidden="true" />
         </span>
         <span className="text-[14px]/5 font-medium">{t(`sticky.sent.${kind}`)}</span>
       </div>
-      {title && <p className="truncate text-[13px]/5 opacity-70">{title}</p>}
+      {title && <p className="truncate text-[13px]/5 text-muted-foreground">{title}</p>}
       <div className="flex gap-2">
         <button
           type="button"
@@ -71,7 +71,7 @@ export function StickySent({
           <button
             type="button"
             onClick={onUndo}
-            className="no-drag rounded-md bg-black/[0.06] px-2.5 py-1 text-[12px]/4 font-medium hover:bg-black/[0.1] focus-visible:outline-2 focus-visible:outline-[var(--tint)]"
+            className="no-drag rounded-md bg-foreground/[0.06] px-2.5 py-1 text-[12px]/4 font-medium hover:bg-foreground/[0.1] focus-visible:outline-2 focus-visible:outline-[var(--tint)]"
           >
             {t('sticky.undo')} <span className="opacity-60">{`${modKey}Z`}</span>
           </button>

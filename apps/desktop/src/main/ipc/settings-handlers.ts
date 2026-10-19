@@ -1421,7 +1421,7 @@ export function registerSettingsHandlers(): void {
         STICKY_SETTINGS_DEFAULTS,
         updates
       )
-      // The edge tab re-reads its edge and paper.
+      // The edge tab re-reads its edge.
       if (result.success) refreshEdgeTab()
       return result
     }

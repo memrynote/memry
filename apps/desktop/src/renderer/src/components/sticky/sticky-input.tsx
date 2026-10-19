@@ -38,7 +38,7 @@ export function StickyInput({
         disabled={disabled}
         rows={3}
         aria-label={t('sticky.inputLabel')}
-        className="min-h-[66px] max-h-[240px] w-full resize-none bg-transparent font-sans text-[15px]/[22px] text-inherit placeholder:text-black/[0.32] focus:outline-none disabled:opacity-50"
+        className="min-h-[66px] max-h-[240px] w-full resize-none bg-transparent font-sans text-[15px]/[22px] text-inherit placeholder:text-muted-foreground/70 focus:outline-none disabled:opacity-50"
       />
     </div>
   )

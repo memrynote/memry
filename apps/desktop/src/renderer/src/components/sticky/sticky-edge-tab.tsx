@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { StickyPaper } from '@memry/contracts/settings-schemas'
 import type { StickyDraft } from '@memry/contracts/sticky-api'
 import { useT } from '@memry/i18n/renderer'
 import { Plus, StickyNote } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
-import { STICKY_INK, STICKY_PAPER } from './sticky-paper'
 
 const log = createLogger('Component:StickyEdgeTab')
 
@@ -23,7 +21,6 @@ function firstLine(content: string): string {
 export function StickyEdgeTab(): React.JSX.Element {
   const { t } = useT('inbox')
   const [drafts, setDrafts] = useState<StickyDraft[]>([])
-  const [paper, setPaper] = useState<StickyPaper>('peach')
   const [edge, setEdge] = useState<'left' | 'right'>('right')
   const [peeking, setPeeking] = useState(false)
 
@@ -34,7 +31,6 @@ export function StickyEdgeTab(): React.JSX.Element {
         window.api.settings.getStickySettings()
       ])
       setDrafts(list)
-      setPaper(settings.paper)
       setEdge(settings.tuckEdge)
     } catch (err) {
       log.error('Failed to load sticky drafts', err)
@@ -60,10 +56,10 @@ export function StickyEdgeTab(): React.JSX.Element {
       type="button"
       onClick={() => unfold(drafts[0]?.id ?? null)}
       aria-label={t('sticky.tab.label', { count: drafts.length })}
-      style={{ backgroundColor: STICKY_PAPER[paper], color: STICKY_INK }}
       className={cn(
         'flex h-[72px] w-8 shrink-0 flex-col items-center justify-center gap-1.5',
-        'shadow-[0_4px_14px_rgba(42,38,34,0.22)]',
+        'border border-border bg-popover text-popover-foreground',
+        'shadow-[0_4px_14px_rgba(0,0,0,0.18)]',
         edge === 'right' ? 'rounded-s-xl' : 'rounded-e-xl'
       )}
     >
@@ -83,22 +79,19 @@ export function StickyEdgeTab(): React.JSX.Element {
     >
       {tab}
       {peeking && (
-        <div
-          style={{ backgroundColor: STICKY_PAPER[paper], color: STICKY_INK }}
-          className="mx-1.5 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl py-1.5 shadow-[0_8px_24px_rgba(42,38,34,0.22)]"
-        >
+        <div className="mx-1.5 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-popover py-1.5 text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
           <ul>
             {drafts.slice(0, PEEK_MAX_ROWS).map((draft) => (
               <li key={draft.id}>
                 <button
                   type="button"
                   onClick={() => unfold(draft.id)}
-                  className="flex h-[52px] w-full flex-col justify-center px-3 text-start hover:bg-black/[0.06]"
+                  className="flex h-[52px] w-full flex-col justify-center px-3 text-start hover:bg-foreground/[0.06]"
                 >
                   <span className="truncate text-[13px]/5 font-medium">
                     {firstLine(draft.content)}
                   </span>
-                  <span className="text-[11px]/4 opacity-55">
+                  <span className="text-[11px]/4 text-muted-foreground">
                     {t(`sticky.kinds.${draft.kind}`)}
                   </span>
                 </button>
@@ -108,7 +101,7 @@ export function StickyEdgeTab(): React.JSX.Element {
           <button
             type="button"
             onClick={() => unfold(null)}
-            className="mt-auto flex items-center gap-1.5 px-3 py-2 text-[12px]/4 font-medium text-[var(--tint)] hover:bg-black/[0.06]"
+            className="mt-auto flex items-center gap-1.5 px-3 py-2 text-[12px]/4 font-medium text-[var(--tint)] hover:bg-foreground/[0.06]"
           >
             <Plus className="size-3.5" aria-hidden="true" />
             {t('sticky.tab.newSticky')}

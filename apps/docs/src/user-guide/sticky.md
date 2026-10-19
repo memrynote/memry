@@ -51,4 +51,5 @@ Under [Settings → General → Sticky](/user-guide/settings#sticky):
 
 - **New stickies send as** — the kind a blank sticky starts on: the last one you used, or always Note, Task or Journal.
 - **Tuck to** — the screen edge the tab sits on.
-- **Paper** — peach, butter, mint or lavender.
+
+The sticky and its tab use your theme, color theme and accent color from [Settings → Appearance](/user-guide/settings#appearance), and follow them when you change them.

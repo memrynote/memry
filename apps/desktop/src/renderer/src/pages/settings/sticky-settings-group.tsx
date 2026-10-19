@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import {
-  STICKY_SETTINGS_DEFAULTS,
-  type StickyPaper,
-  type StickySettings
-} from '@memry/contracts/settings-schemas'
+import { STICKY_SETTINGS_DEFAULTS, type StickySettings } from '@memry/contracts/settings-schemas'
 import { STICKY_KINDS } from '@memry/contracts/sticky-api'
 import {
   Select,
@@ -15,9 +11,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { STICKY_PAPER } from '@/components/sticky/sticky-paper'
 import { createLogger } from '@/lib/logger'
-import { cn } from '@/lib/utils'
 import {
   COMPACT_SELECT,
   SEGMENTED,
@@ -28,9 +22,7 @@ import {
 
 const log = createLogger('StickySettings')
 
-const PAPERS = Object.keys(STICKY_PAPER) as StickyPaper[]
-
-/** Settings → General → Sticky: how the global-shortcut sticky opens and looks. */
+/** Settings → General → Sticky: how the sticky opens. It follows the app theme. */
 export function StickySettingsGroup(): React.JSX.Element {
   const { t } = useT('settings')
   const [settings, setSettings] = useState<StickySettings>(STICKY_SETTINGS_DEFAULTS)
@@ -98,33 +90,6 @@ export function StickySettingsGroup(): React.JSX.Element {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-      </SettingRow>
-
-      <SettingRow label={t('general.sticky.paper.label')}>
-        <div
-          role="radiogroup"
-          aria-label={t('general.sticky.paper.label')}
-          className="flex gap-1.5"
-        >
-          {PAPERS.map((paper) => (
-            <button
-              key={paper}
-              type="button"
-              role="radio"
-              aria-checked={settings.paper === paper}
-              aria-label={t(`general.sticky.paper.${paper}`)}
-              title={t(`general.sticky.paper.${paper}`)}
-              onClick={() => void update({ paper })}
-              style={{ backgroundColor: STICKY_PAPER[paper] }}
-              className={cn(
-                'size-5 rounded-full border border-black/10',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tint)]',
-                settings.paper === paper &&
-                  'ring-2 ring-[var(--tint)] ring-offset-2 ring-offset-card'
-              )}
-            />
-          ))}
-        </div>
       </SettingRow>
     </SettingsGroup>
   )

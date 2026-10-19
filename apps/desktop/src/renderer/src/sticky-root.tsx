@@ -1,12 +1,12 @@
 import { ThemeProvider } from 'next-themes'
 import { StickyCapture } from './components/sticky/sticky-capture'
-import { useUserAccentColor } from './hooks/use-user-accent-color'
+import { useAppearanceSync } from './hooks/use-theme-sync'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
 
 const startupTheme = getStartupTheme()
 
 function StickyWindow(): React.JSX.Element {
-  useUserAccentColor()
+  useAppearanceSync()
   return <StickyCapture />
 }
 

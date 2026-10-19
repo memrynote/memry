@@ -544,7 +544,7 @@ export const SettingsChannels = {
     GET_INBOX_SETTINGS: 'settings:getInboxSettings',
     /** Update inbox settings (partial merge) */
     SET_INBOX_SETTINGS: 'settings:setInboxSettings',
-    /** Get sticky preferences (default kind, tuck edge, paper) */
+    /** Get sticky preferences (default kind, tuck edge) */
     GET_STICKY_SETTINGS: 'settings:getStickySettings',
     /** Update sticky preferences (partial merge) */
     SET_STICKY_SETTINGS: 'settings:setStickySettings',

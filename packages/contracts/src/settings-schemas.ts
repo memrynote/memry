@@ -648,16 +648,12 @@ export const INBOX_SETTINGS_DEFAULTS: InboxSettings = {
 // Sticky Settings
 // ============================================================================
 
-export const STICKY_PAPERS = ['peach', 'butter', 'mint', 'lavender'] as const
-export type StickyPaper = (typeof STICKY_PAPERS)[number]
-
 export const StickySettingsSchema = z.object({
   /** The kind a blank sticky starts on; `last` follows the previous send. */
   defaultKind: z.enum(['last', 'note', 'task', 'journal']).default('last'),
   lastKind: z.enum(['note', 'task', 'journal']).default('note'),
   /** The screen edge the drafts tab sits on. */
-  tuckEdge: z.enum(['right', 'left']).default('right'),
-  paper: z.enum(STICKY_PAPERS).default('peach')
+  tuckEdge: z.enum(['right', 'left']).default('right')
 })
 
 export type StickySettings = z.infer<typeof StickySettingsSchema>
@@ -665,8 +661,7 @@ export type StickySettings = z.infer<typeof StickySettingsSchema>
 export const STICKY_SETTINGS_DEFAULTS: StickySettings = {
   defaultKind: 'last',
   lastKind: 'note',
-  tuckEdge: 'right',
-  paper: 'peach'
+  tuckEdge: 'right'
 }
 
 // ============================================================================

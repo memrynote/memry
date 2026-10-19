@@ -53,8 +53,7 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   ]),
   ...group('general', 'general.groups.sticky', [
     ['general.sticky.defaultKind.label'],
-    ['general.sticky.tuckEdge.label'],
-    ['general.sticky.paper.label']
+    ['general.sticky.tuckEdge.label']
   ]),
   ...group('general', 'general.groups.newNotes', [
     ['general.fileCreation.defaultNoteFolder.label'],

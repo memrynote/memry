@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { StickyPaper } from '@memry/contracts/settings-schemas'
 import { STICKY_KINDS, type StickyKind, type StickySendResult } from '@memry/contracts/sticky-api'
 import { useT } from '@memry/i18n/renderer'
 import { Loader2, Minus, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { createLogger } from '@/lib/logger'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { StickyInput } from './sticky-input'
 import { StickyKindBar } from './sticky-kind-bar'
-import { STICKY_INK, STICKY_PAPER } from './sticky-paper'
 import { StickySent } from './sticky-sent'
 import { useStickyDraft } from './use-sticky-draft'
-
-const log = createLogger('Component:Sticky')
 
 /** How long a deleted draft can be brought back. */
 const DELETE_UNDO_MS = 5000
@@ -33,7 +28,6 @@ export function StickyCapture(): React.JSX.Element {
   const draft = useStickyDraft()
   const { isEnabled } = useFeatureFlags()
 
-  const [paper, setPaper] = useState<StickyPaper>('peach')
   const [sent, setSent] = useState<SentState | null>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -52,13 +46,6 @@ export function StickyCapture(): React.JSX.Element {
     [isEnabled]
   )
   const kind: StickyKind = kinds.includes(draft.kind) ? draft.kind : 'note'
-
-  useEffect(() => {
-    void window.api.settings
-      .getStickySettings()
-      .then((settings) => setPaper(settings.paper))
-      .catch((err) => log.warn('Failed to read sticky settings', err))
-  }, [])
 
   useEffect(() => {
     if (draft.ready) textareaRef.current?.focus()
@@ -169,10 +156,10 @@ export function StickyCapture(): React.JSX.Element {
   return (
     <div ref={containerRef} className="p-2.5">
       <div
-        style={{ backgroundColor: STICKY_PAPER[paper], color: STICKY_INK }}
         className={cn(
           'drag-region relative flex flex-col overflow-hidden rounded-[14px]',
-          'shadow-[0_10px_28px_rgba(42,38,34,0.22),0_1px_3px_rgba(42,38,34,0.16)]'
+          'border border-border bg-popover text-popover-foreground',
+          'shadow-[0_10px_28px_rgba(0,0,0,0.18),0_1px_3px_rgba(0,0,0,0.12)]'
         )}
       >
         {sent ? (
@@ -191,7 +178,7 @@ export function StickyCapture(): React.JSX.Element {
           <>
             <div className="flex items-center gap-2 px-3 pt-2.5">
               <StickyKindBar kinds={kinds} value={kind} onChange={draft.setKind} modKey={MOD_KEY} />
-              <span aria-live="polite" className="ms-auto text-[11px]/4 opacity-55">
+              <span aria-live="polite" className="ms-auto text-[11px]/4 text-muted-foreground">
                 {draft.saveStatus === 'saving' && t('sticky.saving')}
                 {draft.saveStatus === 'saved' && t('sticky.saved')}
                 {draft.saveStatus === 'failed' && t('sticky.saveFailed')}
@@ -201,7 +188,7 @@ export function StickyCapture(): React.JSX.Element {
                 onClick={() => void tuck()}
                 aria-label={t('sticky.tuck')}
                 title={`${t('sticky.tuck')} (Esc)`}
-                className="no-drag flex size-6 items-center justify-center rounded-md opacity-55 hover:bg-black/[0.06] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--tint)]"
+                className="no-drag flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-2 focus-visible:outline-[var(--tint)]"
               >
                 <Minus className="size-3.5" />
               </button>
@@ -220,12 +207,12 @@ export function StickyCapture(): React.JSX.Element {
 
             {sendError && (
               <div role="alert" className="flex items-center gap-2 px-4 pb-1 text-[12px]/4">
-                <span className="flex-1 truncate text-[#B42318]">{sendError}</span>
+                <span className="flex-1 truncate text-destructive">{sendError}</span>
                 <button
                   type="button"
                   onClick={() => setSendError('')}
                   aria-label={t('sticky.dismissError')}
-                  className="no-drag shrink-0 rounded p-0.5 opacity-55 hover:opacity-90"
+                  className="no-drag shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3" />
                 </button>
@@ -234,7 +221,7 @@ export function StickyCapture(): React.JSX.Element {
 
             {deleted && (
               <div role="status" className="flex items-center gap-2 px-4 pb-1 text-[12px]/4">
-                <span className="opacity-70">{t('sticky.deleted')}</span>
+                <span className="text-muted-foreground">{t('sticky.deleted')}</span>
                 <button
                   type="button"
                   onClick={undoDelete}
@@ -246,7 +233,7 @@ export function StickyCapture(): React.JSX.Element {
             )}
 
             <div className="flex items-center gap-3 px-4 pt-1 pb-3 text-[11px]/4">
-              <span className="opacity-50">{t('sticky.hints', { mod: MOD_KEY })}</span>
+              <span className="text-muted-foreground">{t('sticky.hints', { mod: MOD_KEY })}</span>
               <button
                 type="button"
                 onClick={(e) => void send(e.altKey)}

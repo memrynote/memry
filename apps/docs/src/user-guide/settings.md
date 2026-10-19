@@ -156,7 +156,7 @@ The setting syncs across your devices.
 
 ### Sticky
 
-How the [Sticky](/user-guide/sticky) opens. **New stickies send as** picks the kind a blank sticky starts on (the last one you used, or always Note, Task or Journal). **Tuck to** picks the screen edge for the drafts tab, and **Paper** the sticky's color. These settings stay on this device.
+How the [Sticky](/user-guide/sticky) opens. **New stickies send as** picks the kind a blank sticky starts on (the last one you used, or always Note, Task or Journal). **Tuck to** picks the screen edge for the drafts tab. The sticky follows your theme and accent color from [Appearance](#appearance). These settings stay on this device.
 
 ### File Creation
 
