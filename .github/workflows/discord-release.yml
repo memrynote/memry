@@ -38,6 +38,10 @@ jobs:
             echo "::error::Set DISCORD_CHANGELOG_WEBHOOK to the #changelog channel webhook URL."
             exit 1
           fi
+          if ! [[ "$DISCORD_CHANGELOG_WEBHOOK" =~ ^https://(discord|discordapp)\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+$ ]]; then
+            echo "::error::DISCORD_CHANGELOG_WEBHOOK is not a webhook URL (length ${#DISCORD_CHANGELOG_WEBHOOK}, starts with https: $([[ "$DISCORD_CHANGELOG_WEBHOOK" == https://* ]] && echo yes || echo no)). Copy it from Channel settings > Integrations > Webhooks and set it without quotes."
+            exit 1
+          fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,url > "$RUNNER_TEMP/release.json"
           node - <<'EOF'
           const { readFileSync } = require('node:fs')
