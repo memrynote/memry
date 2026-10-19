@@ -138,7 +138,7 @@ A client MUST NOT add a required field to an existing payload type.
 ## 13.4 Absent versus null
 
 **Normative, and load-bearing.** It is stated in three separate schema comments
-(`packages/contracts/src/sync-payloads.ts:141-142`, `:348-350`, `:355-356`):
+(`packages/contracts/src/sync-payloads.ts:314-315`, `:373-375`, `:380-381`):
 
 - **`undefined` (key absent)** means the sender does not know the field; **the
   local value MUST be kept**.
@@ -196,7 +196,7 @@ entry and corrupt each other's state
 Every schema below is a **reader** (§13.2). `clock` is `VectorClockSchema`
 optional on every type; `fieldClocks` appears only where §13.9 says so.
 
-### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:255-271`
+### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:230-246`
 
 | Field                                                            | Type                                          | Rule                                                                                                                                   |
 | ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -266,7 +266,7 @@ journal `:184-191`).
 Builds before this rule never sent `aliases` from desktop, so their pushes keep
 every peer's list. They also ignore a pulled list on update, until the user
 upgrades and the next push carries it. A journal day follows the same rule
-(`packages/contracts/src/sync-payloads.ts:344`).
+(`packages/contracts/src/sync-payloads.ts:369`).
 
 ### 13.7.2 `journal` — `:273-288`
 
@@ -947,15 +947,22 @@ is no settings-specific mechanism).**
 
 `home_page` is in `RECORD_SYNC_ITEM_TYPES`
 (`packages/contracts/src/sync-api.ts:61`) and this feature does not subscribe to
-it (§13.1). Its payload is `{ name, icon, position, widgets, clock, createdAt,
-updatedAt }` (`packages/contracts/src/sync-payloads.ts:145-153`), where
-`widgets` is an opaque string.
+it (§13.1). Its payload is `{ name, icon, position, widgets, cover, clock,
+createdAt, updatedAt }` (`packages/contracts/src/sync-payloads.ts:317-329`),
+where `widgets` is an opaque string and `cover` is the board's banner
+(`packages/contracts/src/sync-payloads.ts:292-298`): the note cover's shape plus
+an optional `attachmentId`. `cover` follows the `icon` rule: absent keeps the
+receiver's value, `null` removes it, and an unreadable value is read as absent
+(`packages/sync-client/src/item-handlers/home-page-handler.ts:71`). Its bytes
+are an attachment; see chapter 14 §14.7.1.
 
 **Normative — not subscribing to it orphans nothing.** Nothing in any subscribed
 payload references a `home_page` id: `note` carries `folderPath` and
 `attachmentReferences` (§13.7.1), `project` carries `homeNoteId` — **a note id,
-not a home page id** (`packages/contracts/src/sync-payloads.ts:251`) — and no
+not a home page id** (`packages/contracts/src/sync-payloads.ts:226`) — and no
 subscribed type has a `homePageId`. The type is a leaf in the reference graph.
+A board's `cover.attachmentId` points from the board to an attachment, never
+from anything to the board, so the board stays a leaf.
 
 Because the server serves only the declared set (chapter 05 §5.3), a
 non-subscribing client never receives one, never applies one, and never pushes

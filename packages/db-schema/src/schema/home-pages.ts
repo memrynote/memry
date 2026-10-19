@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
 
 export const homePages = sqliteTable(
   'home_pages',
@@ -11,6 +12,8 @@ export const homePages = sqliteTable(
     position: integer('position').notNull().default(0),
     // JSON-encoded WidgetInstance[]; parsed by the caller.
     widgets: text('widgets').notNull().default('[]'),
+    /** The board's banner; NULL = none. Same shape as the sync payload's `cover`. */
+    cover: text('cover', { mode: 'json' }).$type<HomePageCoverSync>(),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),

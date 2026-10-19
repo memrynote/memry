@@ -1,11 +1,14 @@
-import { ipcMain } from 'electron'
+import { ipcMain, net } from 'electron'
 import { nanoid } from 'nanoid'
 import { HomePagesChannels } from '@memry/contracts/ipc-channels'
 import {
   HomePageCreateSchema,
   HomePageUpdateSchema,
   HomePageReorderSchema,
+  HomePageSetCoverFramingSchema,
+  HomePageSetCoverSchema,
   type HomePage,
+  type HomePageSetCoverResult,
   type WidgetInstance
 } from '@memry/contracts/home-page-api'
 import {
@@ -25,6 +28,14 @@ import {
   enqueueHomePageDelete,
   enqueueHomePageUpdate
 } from '../home/runtime-effects'
+import {
+  deleteHomeCoverFiles,
+  reconcileHomeCovers,
+  removeHomeCover,
+  requireVaultPath,
+  setHomeCover,
+  setHomeCoverFraming
+} from '../home/cover-service'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('HomePageHandlers')
@@ -84,7 +95,8 @@ function rowToHomePage(row: HomePageRow): HomePage {
     name: row.name,
     icon: row.icon ?? undefined,
     position: row.position,
-    widgets
+    widgets,
+    ...(row.cover ? { cover: row.cover } : {})
   }
 }
 
@@ -130,6 +142,7 @@ export function makeHomePageHandlers(db: DataDb) {
       if (!success) return { success }
       enqueueHomePageDelete(id, snapshot)
       broadcastToAllWindows(HomePagesChannels.events.DELETED, { id })
+      await deleteHomeCoverFiles(id)
       return { success }
     },
     reorder: async (input: unknown): Promise<{ success: boolean }> => {
@@ -138,6 +151,27 @@ export function makeHomePageHandlers(db: DataDb) {
         enqueueHomePageUpdate(id)
         broadcastToAllWindows(HomePagesChannels.events.UPDATED, { id })
       }
+      return { success: true }
+    },
+    setCover: async (input: unknown): Promise<HomePageSetCoverResult> => {
+      const { id, source } = HomePageSetCoverSchema.parse(input)
+      // `net.fetch` rather than global fetch: it honours the system proxy and
+      // the app's session, like every other outbound call in main.
+      const result = await setHomeCover(id, source, {
+        db,
+        vaultPath: requireVaultPath(),
+        fetch: (url, init) => net.fetch(url, init)
+      })
+      return result.ok ? { ok: true, page: rowToHomePage(result.row) } : result
+    },
+    setCoverFraming: async (input: unknown): Promise<HomePage> => {
+      const { id, changes } = HomePageSetCoverFramingSchema.parse(input)
+      return rowToHomePage(setHomeCoverFraming(db, id, changes))
+    },
+    removeCover: async (id: string): Promise<HomePage> =>
+      rowToHomePage(await removeHomeCover(db, requireVaultPath(), id)),
+    materializeCover: async (id: string): Promise<{ success: boolean }> => {
+      await reconcileHomeCovers({ db, vaultPath: requireVaultPath() }, id)
       return { success: true }
     }
   }
@@ -162,6 +196,18 @@ export function registerHomePageHandlers(): void {
   ipcMain.handle(HomePagesChannels.invoke.REORDER, (_e, input) =>
     makeHomePageHandlers(requireDatabase()).reorder(input)
   )
+  ipcMain.handle(HomePagesChannels.invoke.SET_COVER, (_e, input) =>
+    makeHomePageHandlers(requireDatabase()).setCover(input)
+  )
+  ipcMain.handle(HomePagesChannels.invoke.SET_COVER_FRAMING, (_e, input) =>
+    makeHomePageHandlers(requireDatabase()).setCoverFraming(input)
+  )
+  ipcMain.handle(HomePagesChannels.invoke.REMOVE_COVER, (_e, id: string) =>
+    makeHomePageHandlers(requireDatabase()).removeCover(id)
+  )
+  ipcMain.handle(HomePagesChannels.invoke.MATERIALIZE_COVER, (_e, id: string) =>
+    makeHomePageHandlers(requireDatabase()).materializeCover(id)
+  )
 }
 
 export function unregisterHomePageHandlers(): void {
@@ -171,4 +217,8 @@ export function unregisterHomePageHandlers(): void {
   ipcMain.removeHandler(HomePagesChannels.invoke.UPDATE)
   ipcMain.removeHandler(HomePagesChannels.invoke.DELETE)
   ipcMain.removeHandler(HomePagesChannels.invoke.REORDER)
+  ipcMain.removeHandler(HomePagesChannels.invoke.SET_COVER)
+  ipcMain.removeHandler(HomePagesChannels.invoke.SET_COVER_FRAMING)
+  ipcMain.removeHandler(HomePagesChannels.invoke.REMOVE_COVER)
+  ipcMain.removeHandler(HomePagesChannels.invoke.MATERIALIZE_COVER)
 }

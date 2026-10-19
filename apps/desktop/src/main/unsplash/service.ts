@@ -10,7 +10,9 @@
 import {
   UnsplashPhotoSchema,
   type UnsplashDownloadInput,
+  type UnsplashCredit,
   type UnsplashDownloadResult,
+  type UnsplashFailureReason,
   type UnsplashPhoto,
   type UnsplashSearchInput,
   type UnsplashSearchResult
@@ -215,14 +217,21 @@ function extensionFor(response: UnsplashResponse): string {
   return (contentType && EXTENSION_BY_MIME[contentType]) || 'jpg'
 }
 
-export async function downloadPhoto(
-  input: UnsplashDownloadInput,
+export type UnsplashPhotoFetchResult =
+  | { ok: true; bytes: Buffer; filename: string; credit: UnsplashCredit }
+  | { ok: false; reason: UnsplashFailureReason }
+
+/**
+ * Fetch a photo's bytes, after the download-tracking ping the API guidelines
+ * require. The caller decides where they land: a note's attachments here, a
+ * Home board's cover folder in `home/cover-service`.
+ */
+export async function fetchUnsplashPhoto(
+  photo: UnsplashPhoto,
   deps: UnsplashDeps
-): Promise<UnsplashDownloadResult> {
+): Promise<UnsplashPhotoFetchResult> {
   const accessKey = getAccessKey()
   if (!accessKey) return { ok: false, reason: 'not-configured' }
-
-  const { noteId, photo } = input
 
   await pingDownloadLocation(photo, accessKey, deps.fetch)
 
@@ -248,11 +257,23 @@ export async function downloadPhoto(
     return { ok: false, reason: 'failed' }
   }
 
-  const saved = await saveAttachment(
-    noteId,
+  return {
+    ok: true,
     bytes,
-    `unsplash-${photo.id}.${extensionFor(response)}`
-  )
+    filename: `unsplash-${photo.id}.${extensionFor(response)}`,
+    credit: { name: photo.authorName, url: photo.htmlUrl }
+  }
+}
+
+export async function downloadPhoto(
+  input: UnsplashDownloadInput,
+  deps: UnsplashDeps
+): Promise<UnsplashDownloadResult> {
+  const { noteId, photo } = input
+  const fetched = await fetchUnsplashPhoto(photo, deps)
+  if (!fetched.ok) return fetched
+
+  const saved = await saveAttachment(noteId, fetched.bytes, fetched.filename)
   if (!saved.success || !saved.path) {
     logger.error('Unsplash cover could not be written to the vault', { noteId, error: saved.error })
     return { ok: false, reason: 'write-failed' }
@@ -279,6 +300,6 @@ export async function downloadPhoto(
   return {
     ok: true,
     ref: saved.path,
-    credit: { name: photo.authorName, url: photo.htmlUrl }
+    credit: fetched.credit
   }
 }

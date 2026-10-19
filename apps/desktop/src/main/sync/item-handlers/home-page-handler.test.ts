@@ -14,6 +14,7 @@ vi.mock('../../lib/logger', () => ({
 
 import { homePageHandler } from '@memry/sync-client/item-handlers/home-page-handler'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import { HomePageSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 
 let db: TestDataDb
 const emit = vi.fn()
@@ -225,6 +226,42 @@ describe('homePageHandler', () => {
 
     homePageHandler.applyUpsert(ctx(), 'board-1', { name: 'Work', icon: null }, { deviceA: 3 })
     expect(rowOf('board-1')?.icon).toBeNull()
+  })
+
+  it('carries a cover across devices, keeps it for an older sender, and clears it on null', () => {
+    const cover = {
+      ref: '.memry/home-covers/board-1/ab12cd-sky.jpg',
+      focus: 40,
+      focusX: 50,
+      zoom: 1.2,
+      height: 240,
+      attachmentId: '0123456789abcdef0123456789abcdef'
+    }
+    homePageHandler.applyUpsert(ctx(), 'board-1', { name: 'Work', cover }, { deviceA: 1 })
+
+    // The push of device A, read on device B through the wire schema.
+    const pushed = homePageHandler.buildPushPayload(db, 'board-1', 'deviceA', 'update')
+    const receiver = createTestDataDb()
+    homePageHandler.applyUpsert(
+      { db: receiver, emit },
+      'board-1',
+      HomePageSyncPayloadSchema.parse(JSON.parse(pushed!)),
+      { deviceA: 1 }
+    )
+    expect(receiver.select().from(homePages).get()?.cover).toEqual(cover)
+
+    // An older build has no `cover` key in its row, so its push omits the field.
+    const olderBuild = HomePageSyncPayloadSchema.parse({ name: 'Renamed', widgets: WIDGETS })
+    homePageHandler.applyUpsert(ctx(), 'board-1', olderBuild, { deviceA: 2 })
+    expect(rowOf('board-1')).toMatchObject({ name: 'Renamed', cover })
+
+    // A cover this build cannot read is treated as absent, not as a removal.
+    const unreadable = HomePageSyncPayloadSchema.parse({ name: 'Renamed', cover: { ref: 7 } })
+    homePageHandler.applyUpsert(ctx(), 'board-1', unreadable, { deviceA: 3 })
+    expect(rowOf('board-1')?.cover).toEqual(cover)
+
+    homePageHandler.applyUpsert(ctx(), 'board-1', { name: 'Renamed', cover: null }, { deviceA: 4 })
+    expect(rowOf('board-1')?.cover).toBeNull()
   })
 
   it('deletes the row and emits home-pages:deleted when the remote delete clock dominates', () => {

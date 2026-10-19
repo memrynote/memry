@@ -35,7 +35,7 @@ vi.mock('../home/runtime-effects', () => ({
 }))
 
 describe('registerHomePageHandlers — lazy DB resolution', () => {
-  it('does not throw at registration and registers all 6 channels without touching the DB', async () => {
+  it('does not throw at registration and registers all 10 channels without touching the DB', async () => {
     const { ipcMain } = await import('electron')
     const handleMock = vi.mocked(ipcMain.handle)
     handleMock.mockClear()
@@ -43,8 +43,8 @@ describe('registerHomePageHandlers — lazy DB resolution', () => {
     // If the fix regresses, requireDatabase() is called eagerly here → throws
     expect(() => registerHomePageHandlers()).not.toThrow()
 
-    // All 6 channels must be registered
-    expect(handleMock.mock.calls.length).toBe(6)
+    // All 10 channels must be registered
+    expect(handleMock.mock.calls.length).toBe(10)
   })
 })
 

@@ -172,6 +172,19 @@ interface SyncRuntimeState {
   onNetworkStatusChanged: (event: { online: boolean }) => void
 }
 
+/**
+ * Settle Home board cover bytes (#3384) once the attachment queues exist.
+ * Lazy import: the cover service reaches back into the IPC attachment module,
+ * which imports this one.
+ */
+function reconcileHomeCoversNow(): void {
+  void import('../home/cover-service')
+    .then(({ reconcileHomeCovers, requireVaultPath }) =>
+      reconcileHomeCovers({ db: getDatabase(), vaultPath: requireVaultPath() })
+    )
+    .catch((error: unknown) => log.warn('Home cover reconcile skipped', { error }))
+}
+
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
   return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
 }
@@ -775,6 +788,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           void import('./attachment-download-redriver')
             .then(({ redriveAttachmentDownloads }) => redriveAttachmentDownloads())
             .catch(() => {})
+          reconcileHomeCoversNow()
         } else {
           noteBodyOutbox.pause()
         }
@@ -946,6 +960,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           await import('./attachment-download-redriver')
         startAttachmentDownloadRedriver()
         await redriveAttachmentDownloads()
+        reconcileHomeCoversNow()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the

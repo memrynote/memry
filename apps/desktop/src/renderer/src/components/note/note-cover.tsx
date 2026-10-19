@@ -5,7 +5,8 @@
  * drag its focal point, zoom around it, and drag the band's bottom edge to set
  * its height. A wash cover paints a gradient from a fixed pigment table. A photo
  * that fails to load falls back to a wash keyed off the note id, so a moved or
- * deleted file leaves a calm colour rather than a broken image.
+ * deleted file leaves a calm colour rather than a broken image. The owner
+ * resolves the image URL, so a Home board's banner (#3384) uses the same band.
  *
  * @module components/note/note-cover
  */
@@ -37,13 +38,15 @@ import {
 import { Image, Move, X, ZoomIn, ZoomOut } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Kbd } from '@/components/ui/kbd'
-import { useVault } from '@/hooks/use-vault'
-import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 
 export interface NoteCoverProps {
   cover: CoverValue
-  noteId: string
-  notePath: string
+  /** The image's loadable URL; null when it has none and the wash shows instead. */
+  src: string | null
+  /** Picks the fallback wash, so one owner always falls back to the same colour. */
+  washSeed: string
+  /** The image failed to load and the wash is showing in its place. */
+  onImageError?: () => void
   /** Focal point, zoom and band height; see `CoverFraming`. */
   framing: CoverFraming
   credit?: string | null
@@ -101,8 +104,9 @@ function changedFraming(original: CoverFraming, draft: CoverFraming): Partial<Co
 
 export const NoteCover = memo(function NoteCover({
   cover,
-  noteId,
-  notePath,
+  src: imageSrc,
+  washSeed,
+  onImageError,
   framing,
   credit,
   creditUrl,
@@ -114,11 +118,9 @@ export const NoteCover = memo(function NoteCover({
   disabled = false
 }: NoteCoverProps) {
   const { t } = useT('notes')
-  const { vaultPath } = useVault()
   const bandRef = useRef<HTMLDivElement | null>(null)
 
-  const src =
-    cover.kind === 'image' ? resolveNoteRelativeUrl(cover.ref, notePath, vaultPath, noteId) : null
+  const src = cover.kind === 'image' ? imageSrc : null
 
   // Keyed on the source so switching covers retries the new one rather than
   // inheriting the previous image's failure.
@@ -215,7 +217,7 @@ export const NoteCover = memo(function NoteCover({
 
   const zoomBy = (delta: number) => updateDraft({ zoom: clampCoverZoom(applied.zoom + delta) })
 
-  const washId = cover.kind === 'wash' ? cover.id : coverWashForSeed(noteId)
+  const washId = cover.kind === 'wash' ? cover.id : coverWashForSeed(washSeed)
   // Scaled around the focal point, so zooming keeps the chosen subject in place.
   const imageStyle: CSSProperties = {
     objectPosition: `${applied.focusX}% ${applied.focusY}%`,
@@ -294,7 +296,10 @@ export const NoteCover = memo(function NoteCover({
           src={src ?? undefined}
           alt={t('cover.alt')}
           draggable={false}
-          onError={() => setFailedSrc(src)}
+          onError={() => {
+            setFailedSrc(src)
+            onImageError?.()
+          }}
           className="h-full w-full object-cover"
           style={imageStyle}
         />

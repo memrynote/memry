@@ -5,6 +5,9 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
+import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
+import type { CoverFraming } from '@memry/shared/cover-image'
 import type {
   ImpactQuery,
   ImpactResult,
@@ -672,6 +675,7 @@ export interface HomePage {
   icon?: string
   position: number
   widgets: WidgetInstance[]
+  cover?: HomePageCoverSync
 }
 
 export interface VaultLocksClientAPI {
@@ -711,6 +715,10 @@ export interface HomePagesClientAPI {
   }): Promise<HomePage>
   delete(id: string): Promise<{ success: boolean }>
   reorder(ids: string[]): Promise<{ success: boolean }>
+  setCover(id: string, source: HomePageCoverSource): Promise<HomePageSetCoverResult>
+  setCoverFraming(id: string, changes: Partial<CoverFraming>): Promise<HomePage>
+  removeCover(id: string): Promise<HomePage>
+  materializeCover(id: string): Promise<{ success: boolean }>
 }
 
 // Bookmark types

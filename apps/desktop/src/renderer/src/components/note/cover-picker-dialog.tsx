@@ -1,5 +1,6 @@
 /**
- * CoverPickerDialog — the one surface for choosing a note's cover.
+ * CoverPickerDialog — the one surface for choosing a cover, a note's or a Home
+ * board's. `target` decides where a picked image is stored.
  *
  * A command palette rather than a gallery modal, and a non-modal popover opened
  * at the click point rather than a centred sheet: a search row, a tab row, and a
@@ -48,6 +49,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
 import { Link as LinkIcon, Loader2, Search, Upload } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import type { CoverImageTarget } from './cover-image-target'
 import {
   attachmentKey,
   attachmentKindMatches,
@@ -198,8 +200,8 @@ export function coverPickerAnchorFrom(event: ReactMouseEvent<HTMLElement>): Cove
 export interface CoverPickerDialogProps {
   anchor: CoverPickerAnchor | null
   onOpenChange: (open: boolean) => void
-  /** The note that will own an uploaded file. */
-  noteId: string
+  /** Where a picked image is stored: the note's attachments or a Home board's folder. */
+  target: CoverImageTarget
   onApply: (
     value: CoverValue,
     opts: { reposition: boolean; credit?: { name: string; url: string } }
@@ -209,7 +211,7 @@ export interface CoverPickerDialogProps {
 export function CoverPickerDialog({
   anchor,
   onOpenChange,
-  noteId,
+  target,
   onApply
 }: CoverPickerDialogProps) {
   const open = anchor !== null
@@ -235,7 +237,7 @@ export function CoverPickerDialog({
 
   // Reopening resets the palette during render rather than from an effect, the
   // way AttachmentPickerDialog does.
-  const openKey = open ? noteId : null
+  const openKey = open ? target.key : null
   const [loadedKey, setLoadedKey] = useState(openKey)
   if (openKey !== loadedKey) {
     setLoadedKey(openKey)
@@ -402,7 +404,7 @@ export function CoverPickerDialog({
       if (item.kind === 'photo') {
         setPhotoDownload({ kind: 'running', photoId: item.photo.id })
         try {
-          const result = await unsplashService.download({ noteId, photo: item.photo })
+          const result = await target.fromUnsplash(item.photo)
           if (!result.ok) {
             setPhotoDownload({ kind: 'failed', reason: result.reason })
             return
@@ -419,7 +421,7 @@ export function CoverPickerDialog({
       if (item.kind === 'link') {
         setLinkDownload({ kind: 'running' })
         try {
-          const result = await notesService.downloadAttachmentFromUrl(noteId, item.url)
+          const result = await target.fromUrl(item.url)
           if (!result.ok) {
             setLinkDownload({ kind: 'failed', reason: result.reason })
             return
@@ -434,30 +436,23 @@ export function CoverPickerDialog({
         return
       }
       try {
-        const result = await notesService.insertExistingAttachment(
-          noteId,
-          item.entry.ownerNoteId,
-          item.entry.filename
-        )
-        onApply({ kind: 'image', ref: result.url }, { reposition })
+        const ref = await target.fromVaultImage(item.entry)
+        onApply({ kind: 'image', ref }, { reposition })
         onOpenChange(false)
       } catch (err) {
         logger.error('Failed to reference a vault image as a cover', err)
         toast.error(extractErrorMessage(err, t('cover.picker.insertFailed')))
       }
     },
-    [noteId, onApply, onOpenChange, t]
+    [target, onApply, onOpenChange, t]
   )
 
   const upload = useCallback(
     async (file: File) => {
       setUploading(true)
       try {
-        const result = await notesService.uploadAttachment(noteId, file)
-        if (!result.success || !result.path) {
-          throw new Error(result.error ?? t('cover.picker.uploadFailed'))
-        }
-        onApply({ kind: 'image', ref: result.path }, { reposition: false })
+        const ref = await target.upload(file)
+        onApply({ kind: 'image', ref }, { reposition: false })
         onOpenChange(false)
       } catch (err) {
         logger.error('Failed to upload a cover image', err)
@@ -466,7 +461,7 @@ export function CoverPickerDialog({
         setUploading(false)
       }
     },
-    [noteId, onApply, onOpenChange, t]
+    [target, onApply, onOpenChange, t]
   )
 
   const handleKeyDown = useCallback(

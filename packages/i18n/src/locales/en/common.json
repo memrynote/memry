@@ -1067,6 +1067,9 @@
     "edit": "Edit",
     "done": "Done",
     "addWidget": "Add widget",
+    "cover": {
+      "add": "Add cover"
+    },
     "empty": {
       "title": "Your board is empty",
       "body": "Widgets bring your notes, tasks, and bookmarks together in one calm place.",

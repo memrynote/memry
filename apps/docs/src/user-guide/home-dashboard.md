@@ -19,9 +19,17 @@ A fresh vault auto-seeds a single board named **Home**. You can keep just that o
 
 Each board stores its own set of widgets and their layout in the vault database.
 
+### Board cover
+
+Each board can carry its own banner across the top, the same cover a note has. Click the image button beside the board switcher to open the cover picker, which offers the same sources as a note cover: a color wash, an Unsplash photo, a pasted image link, an image already in your vault, or an upload.
+
+Once a board has a cover, hover it for **Change cover**, **Reposition** and remove. Reposition lets you drag the focal point, zoom, and drag the bottom edge to set the height, as on a note. The cover scrolls away with the page and the header stays pinned.
+
+A board keeps its own copy of the image in the hidden `.memry/home-covers/` folder of your vault, so deleting the note an image came from does not break the cover. Deleting the board deletes its cover.
+
 ### Boards sync
 
-Boards travel with your account. Everything about a board syncs: its name and icon, which widgets are on it and how each one is configured, the exact grid position and size of every widget, and the order the boards appear in the switcher. Arrange Home once and the second machine opens looking the same — the grid keeps eight columns at every window width, so a layout means the same thing on a laptop and a desktop.
+Boards travel with your account. Everything about a board syncs: its name, icon and cover, which widgets are on it and how each one is configured, the exact grid position and size of every widget, and the order the boards appear in the switcher. Arrange Home once and the second machine opens looking the same — the grid keeps eight columns at every window width, so a layout means the same thing on a laptop and a desktop.
 
 One thing stays per-device on purpose: **which board is currently open**. Each machine remembers its own active board, so a laptop can sit on your Reading board while the desktop stays on Work.
 
@@ -29,6 +37,8 @@ Two details worth knowing:
 
 - On a device that is signed in, Home waits until the first download from your account has finished before it seeds a starter board, so a new machine shows the boards you already have instead of adding one. Uploading this machine's own changes does not count. While that first download is still running, Home keeps waiting. If the server can't be reached it stops waiting after a few seconds and gives you a board anyway.
 - Boards you already had before this shipped are not lost. The first sync after upgrading uploads them, so nothing is orphaned on the machine that made them.
+
+A cover image syncs end-to-end encrypted, like a note attachment. Until its upload finishes, and on another device until the image has downloaded, the banner shows a color wash in its place. Older app versions don't show board covers, and editing a board there leaves its cover alone.
 
 If two devices reorder boards at the same time, the last write wins for position — both devices still end up showing the same order as each other, just not necessarily the order either one intended. Redrag once and it settles.
 
