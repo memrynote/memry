@@ -130,14 +130,41 @@ describe('sync hooks', () => {
     expect(result.current.hasIssues).toBe(true)
 
     await result.current.triggerSync()
-    await result.current.pause()
-    await result.current.resume()
+    await result.current.pause('popover')
+    await result.current.resume('popover')
     result.current.clearError()
     expect(mocks.triggerSync).toHaveBeenCalled()
     expect(mocks.pause).toHaveBeenCalled()
     expect(mocks.resume).toHaveBeenCalled()
     expect(mocks.clearError).toHaveBeenCalled()
     expect(notesService.getLocalOnlyCount).toHaveBeenCalled()
+  })
+
+  // #3382: a paused Mac showed Synced for three days with its changes going
+  // nowhere. Idle is what the engine reports while it believes all is well.
+  it('reads stalled only when idle changes have waited out three missed pulls', async () => {
+    const minutesAgo = (minutes: number): number => Date.now() - minutes * 60_000
+    Object.assign(mocks.syncState, { pendingCount: 3, lastSyncAt: minutesAgo(16) })
+    const { result, rerender } = renderHook(() => useSyncStatus(), { wrapper })
+    expect(result.current.stalled).toBe(true)
+
+    for (const healthy of [
+      { lastSyncAt: minutesAgo(14) },
+      { pendingCount: 0 },
+      { lastSyncAt: null },
+      { status: 'paused' },
+      { status: 'offline' },
+      { status: 'syncing' }
+    ]) {
+      Object.assign(mocks.syncState, {
+        status: 'idle',
+        pendingCount: 3,
+        lastSyncAt: minutesAgo(16),
+        ...healthy
+      })
+      rerender()
+      expect(result.current.stalled, JSON.stringify(healthy)).toBe(false)
+    }
   })
 
   it('loads, filters, paginates, refreshes, and reloads sync history after sync changes', async () => {

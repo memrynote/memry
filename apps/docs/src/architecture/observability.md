@@ -191,11 +191,12 @@ Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 - Raw (unredacted) exception messages — a desktop error message can embed a note title or content
 - Scraped page metadata — the `<title>`, description or address of a URL the user clipped
 
-The contract uses string-typed enums for surfaces and actions; arbitrary strings can't sneak
-through. The one exception is error diagnostics, which additionally ship a redacted **stack
-trace** of code locations and, optionally, a message — but only after the client has run it
-through `redactText` (`packages/contracts/src/redact.ts`), never the raw string — see
-[Error Reporting](#error-reporting).
+Event names, surfaces and results are enums in the contract. Actions, sources and the other short
+labels are strings held to the same safe-value shape as dimension values (below), so an address, a
+path or an identifier can't sneak through. The one exception is error diagnostics, which
+additionally ship a redacted **stack trace** of code locations and, optionally, a message — but
+only after the client has run it through `redactText` (`packages/contracts/src/redact.ts`), never
+the raw string — see [Error Reporting](#error-reporting).
 
 #### The dimension allowlist
 
@@ -352,11 +353,35 @@ snapshot push so `close-vault` always keeps at least 2s of the shared budget.
 | Command palette | `command_palette_opened` with `surface` = `app` and `objectType` = `commands` when Cmd+P opens the commands palette; no event for which command ran                                                                              |
 | Graph           | `graph_opened` — on graph page mount                                                                                                                                                                                             |
 | Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                                                                                                                |
-| Settings        | `setting_changed` — surface only, never the value                                                                                                                                                                                |
+| Settings        | `setting_changed` — surface only, never the value, except sync pause and resume (see [Sync runs](#sync-runs))                                                                                                                    |
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request))                                                                                          |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request)); see [Sync runs](#sync-runs)                                                             |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
+
+### Sync runs
+
+`sync_run_completed` carries more than finished runs: `push_lag` and `e2e_latency` are latency
+samples (see [Sync Protocol](/architecture/sync-protocol#end-to-end-latency-trace)), so a chart that
+counts runs filters on `action`. A push, pull or full sync that returns sends `action`
+`push_completed`, `pull_completed` or `full_completed`, `source` set to the kind, and a `result`
+that says what the run did (#3382):
+
+| `result`  | The run                                                  | Dimension                                                        |
+| --------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| `success` | Delivered: it ran to the end                             | `transport: record`                                              |
+| `failed`  | Started and stopped early, on a refused page or an error | `transport: record`                                              |
+| `skipped` | Never started                                            | `skip_reason`: `paused`, `busy`, `cancelled` or `no_credentials` |
+
+A run that throws sends `sync_error` with `push_failed`, `pull_failed` or `full_failed` instead.
+Before #3382 every run that returned reported `success`, so a paused device logged hundreds of
+successful runs a day while it sent nothing. Read `success` from older builds as "returned", not
+"delivered".
+
+Pausing and resuming sync reuse `setting_changed`, because a new event name would fail the whole
+batch on an older server. The event carries `action` `paused` or `resumed`, `dimensions.setting`
+`sync_paused`, and a `source` naming what asked: `popover`, `settings`, `command_palette`,
+`sync_now` (Sync Now ended a pause) or `clock_skew`. It fires only when the flag changes.
 
 ## Crash & Unclean-Shutdown Detection
 

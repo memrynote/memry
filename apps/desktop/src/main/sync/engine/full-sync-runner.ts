@@ -8,7 +8,8 @@ import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import { trackMainEvent } from '../../telemetry/track'
-import type { SyncContext } from './sync-context'
+import type { SyncContext, SyncRunOutcome } from './sync-context'
+import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
 import {
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
@@ -55,15 +56,15 @@ export const CRDT_REQUEUED_PULL_FLOOR_MS = 60 * 1000
 
 export interface FullSyncActions {
   /**
-   * Resolves TRUE only when the pull actually delivered. Every error path out
-   * of a pull is swallowed (`SyncEngine.pull` catches everything,
-   * `PullCoordinator.pull` returns early on a busy lock, missing credentials or
-   * a refused page), so non-rejection is not evidence of anything (#1835).
+   * Every error path out of a pull is swallowed (`SyncEngine.pull` catches
+   * everything, `PullCoordinator.pull` returns early on a busy lock, missing
+   * credentials or a refused page), so non-rejection is not evidence of
+   * anything (#1835). Only the outcome is.
    */
-  pull: () => Promise<boolean>
-  push: () => Promise<void>
+  pull: () => Promise<SyncRunOutcome>
+  push: () => Promise<SyncRunOutcome>
   /** False when the engine dropped `fn` because a full sync is running. */
-  scheduleSync: (fn: () => Promise<void>) => boolean
+  scheduleSync: (fn: () => Promise<unknown>) => boolean
 }
 
 export class FullSyncRunner {
@@ -349,7 +350,12 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
   }
 
-  async run(): Promise<void> {
+  async run(): Promise<SyncRunOutcome> {
+    // A paused device runs no part of a full sync (#3382). Its pull and push
+    // were refused at the lock, yet the manifest check still fetched, reset
+    // the cursor for a re-pull the pause refused, and the run counted as a
+    // success.
+    if (this.stateManager.isPaused()) return skipped('paused')
     log.debug('fullSync started')
     if (this.disposed) this.wirePullTimers()
     // No persisted cursor = this device has never completed a pull for this
@@ -388,6 +394,7 @@ export class FullSyncRunner {
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
     let pullDelivered = false
+    let pushesDelivered = true
     try {
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
@@ -396,7 +403,14 @@ export class FullSyncRunner {
       // nothing outside a unit test whose `pull` was a bare mock.
       const repairFrom = await this.beginCursorSkipRepair()
       const changedBeforePull = this.ctx.applier.changedCount
-      pullDelivered = await this.actions.pull()
+      const pull = await this.actions.pull()
+      // No session, a cancelled engine or a pause refuses the push and the
+      // manifest check as surely as the pull. A busy lock is only this moment.
+      if (pull.status === 'skipped' && pull.reason !== 'busy') {
+        this.lastRunCaughtUp = false
+        return pull
+      }
+      pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
         this.bootstrapPullSucceeded = true
         if (repairFrom !== null) {
@@ -435,71 +449,12 @@ export class FullSyncRunner {
         } satisfies InitialSyncProgressEvent)
       }
 
-      await this.actions.push()
+      pushesDelivered = (await this.actions.push()).status === 'delivered'
       log.debug('fullSync: push complete')
 
-      this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
-        phase: 'manifest',
-        processedItems: 0,
-        totalItems: 0
-      } satisfies InitialSyncProgressEvent)
-
-      const persistedRaw = Number(
-        this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT) ?? '0'
-      )
-      // Clamp to now: a future-dated persisted timestamp (clock skew, machine
-      // migration) would otherwise throttle the check until the wall clock
-      // catches up with it.
-      const persistedCheckAt = Number.isFinite(persistedRaw)
-        ? Math.min(persistedRaw, Date.now())
-        : 0
-      const manifestResult = await checkManifestIntegrity({
-        db: this.ctx.deps.db,
-        queue: this.ctx.deps.queue,
-        getAccessToken: this.ctx.deps.getAccessToken,
-        isOnline: () => this.ctx.deps.network.online,
-        lastCheckAt: Math.max(this.lastManifestCheckAt, persistedCheckAt),
-        isQuarantined: this.isQuarantined,
-        // #2302: no local re-upload unless this run's pull delivered first.
-        reuploadLocalOnly: pullDelivered
-      })
-      this.lastManifestCheckAt = manifestResult.checkedAt
-      // Persist only when a manifest was actually fetched and diffed: stamping
-      // the no-token or fetch-failure paths would silently defer the next REAL
-      // check by the full 30-minute window.
-      if (manifestResult.performed) {
-        this.stateManager.setStateValue(
-          SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT,
-          String(manifestResult.checkedAt)
-        )
-      }
-      if (manifestResult.performed) {
-        log.debug('fullSync: manifest check complete', {
-          rePullNeeded: manifestResult.rePullNeeded,
-          serverOnlyCount: manifestResult.serverOnlyCount
-        })
-      } else {
-        // Never log serverOnlyCount here: its 0 reads as "verified clean" when
-        // no manifest was fetched (#2310).
-        const { skipped } = manifestResult
-        log.debug('fullSync: manifest check skipped', {
-          reason: skipped?.reason,
-          nextEligibleAt: skipped ? new Date(skipped.nextEligibleAt).toISOString() : undefined
-        })
-      }
-
-      // The re-pull runs from cursor 0, so every note and journal record it
-      // applies pulls its whole body (#2421).
-      if (manifestResult.rePullNeeded) {
-        log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
-          serverOnlyCount: manifestResult.serverOnlyCount
-        })
-        this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
-        // Same evidence rule: the re-pull can deliver where the first one was
-        // refused, and that is a delivery like any other.
-        pullDelivered = await this.actions.pull()
-        if (pullDelivered) this.bootstrapPullSucceeded = true
-      }
+      // A pause ends the run here: the check would still fetch the manifest
+      // and reset the cursor for a re-pull the pause refuses (#3382).
+      if (!this.stateManager.isPaused()) pullDelivered = await this.checkManifest(pullDelivered)
 
       // Only a delivered pull says which packed notes live: one that stopped
       // early has not applied every record yet. Undelivered, the markers wait.
@@ -510,7 +465,7 @@ export class FullSyncRunner {
       const pendingAfterManifest = this.ctx.deps.queue.getPendingCount()
       if (pendingAfterManifest > 0 && !this.stateManager.isPaused()) {
         log.debug('fullSync: follow-up push', { pendingAfterManifest })
-        await this.actions.push()
+        if ((await this.actions.push()).status !== 'delivered') pushesDelivered = false
       }
 
       this.ctx.deps.queue.purgeOldErrors(
@@ -523,6 +478,8 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
+      if (!pullDelivered && pull.status === 'skipped') return pull
+      return pullDelivered && pushesDelivered ? DELIVERED : INCOMPLETE
     } catch (error) {
       this.lastRunCaughtUp = false
       // A first attempt that never completed a pull measured nothing
@@ -569,6 +526,74 @@ export class FullSyncRunner {
   }
 
   /**
+   * The manifest check and, when it finds server-only items, the re-pull from
+   * cursor 0. Answers whether the latest pull of this run delivered.
+   */
+  private async checkManifest(pullDelivered: boolean): Promise<boolean> {
+    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+      phase: 'manifest',
+      processedItems: 0,
+      totalItems: 0
+    } satisfies InitialSyncProgressEvent)
+
+    const persistedRaw = Number(
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT) ?? '0'
+    )
+    // Clamp to now: a future-dated persisted timestamp (clock skew, machine
+    // migration) would otherwise throttle the check until the wall clock
+    // catches up with it.
+    const persistedCheckAt = Number.isFinite(persistedRaw) ? Math.min(persistedRaw, Date.now()) : 0
+    const manifestResult = await checkManifestIntegrity({
+      db: this.ctx.deps.db,
+      queue: this.ctx.deps.queue,
+      getAccessToken: this.ctx.deps.getAccessToken,
+      isOnline: () => this.ctx.deps.network.online,
+      lastCheckAt: Math.max(this.lastManifestCheckAt, persistedCheckAt),
+      isQuarantined: this.isQuarantined,
+      // #2302: no local re-upload unless this run's pull delivered first.
+      reuploadLocalOnly: pullDelivered
+    })
+    this.lastManifestCheckAt = manifestResult.checkedAt
+    // Persist only when a manifest was actually fetched and diffed: stamping
+    // the no-token or fetch-failure paths would silently defer the next REAL
+    // check by the full 30-minute window.
+    if (manifestResult.performed) {
+      this.stateManager.setStateValue(
+        SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT,
+        String(manifestResult.checkedAt)
+      )
+    }
+    if (manifestResult.performed) {
+      log.debug('fullSync: manifest check complete', {
+        rePullNeeded: manifestResult.rePullNeeded,
+        serverOnlyCount: manifestResult.serverOnlyCount
+      })
+    } else {
+      // Never log serverOnlyCount here: its 0 reads as "verified clean" when
+      // no manifest was fetched (#2310).
+      const { skipped } = manifestResult
+      log.debug('fullSync: manifest check skipped', {
+        reason: skipped?.reason,
+        nextEligibleAt: skipped ? new Date(skipped.nextEligibleAt).toISOString() : undefined
+      })
+    }
+
+    // The re-pull runs from cursor 0, so every note and journal record it
+    // applies pulls its whole body (#2421).
+    if (manifestResult.rePullNeeded) {
+      log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
+        serverOnlyCount: manifestResult.serverOnlyCount
+      })
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      // Same evidence rule: the re-pull can deliver where the first one was
+      // refused, and that is a delivery like any other.
+      pullDelivered = (await this.actions.pull()).status === 'delivered'
+      if (pullDelivered) this.bootstrapPullSucceeded = true
+    }
+    return pullDelivered
+  }
+
+  /**
    * Starts or resumes the one-time re-pull (#2382); see
    * `SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR`. Returns the cursor the repair reset
    * from while it is pending, else null.
@@ -583,8 +608,8 @@ export class FullSyncRunner {
     const pendingFrom = Number(recorded?.match(/^pending:(\d+)$/)?.[1])
     if (Number.isInteger(pendingFrom)) return pendingFrom
 
-    const release = await this.ctx.acquireLock()
-    if (!release) return null
+    const lock = await this.ctx.acquireLock()
+    if ('refused' in lock) return null
     try {
       const cursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0')
       if (!Number.isInteger(cursor) || cursor <= 0) {
@@ -599,7 +624,7 @@ export class FullSyncRunner {
       return cursor
     } finally {
       this.ctx.releaseLock()
-      release()
+      lock.release()
     }
   }
 
@@ -833,9 +858,13 @@ export class FullSyncRunner {
    * endpoint batches the incrementals and not the per-note snapshot baselines.
    * The pacing below is what keeps a sweep inside both of the server's buckets.
    * See CRDT_SWEEP_CHUNK_NOTES for the arithmetic on each.
+   *
+   * A pause holds note bodies as well as records (#3382), so nothing drains
+   * while it is on: the debts stay owed, and the full sync resume starts pays
+   * them.
    */
   flushPendingCrdtPulls(): void {
-    if (this.disposed) return
+    if (this.disposed || this.stateManager.isPaused()) return
     if (this.crdtSync.pendingPullCount > 0) {
       log.debug('fullSync: flushing pending CRDT pulls', {
         count: this.crdtSync.pendingPullCount
@@ -908,7 +937,7 @@ export class FullSyncRunner {
     if (this.requeuedPullTimer || this.disposed) return
     this.requeuedPullTimer = setTimeout(() => {
       this.requeuedPullTimer = null
-      if (this.ctx.fullSyncActive || this.stateManager.isPaused()) return
+      if (this.ctx.fullSyncActive) return
       this.flushPendingCrdtPulls()
     }, CRDT_REQUEUED_PULL_FLOOR_MS)
     this.requeuedPullTimer.unref?.()
@@ -1043,10 +1072,16 @@ export class FullSyncRunner {
 
     const crdtProvider = this.ctx.deps.crdtProvider
     // `scheduleSync` silently
-    // drops its callback while a fullSync is active, and pulls issued offline
-    // are guaranteed to fail. Keep the queue intact and look again next tick
-    // rather than spending a chunk on a request that cannot land.
-    if (this.ctx.fullSyncActive || !this.ctx.deps.network.online || !crdtProvider) {
+    // drops its callback while a fullSync is active, pulls issued offline
+    // are guaranteed to fail, and a pause holds note bodies (#3382). Keep the
+    // queue intact and look again next tick rather than spending a chunk on a
+    // request that cannot land.
+    if (
+      this.ctx.fullSyncActive ||
+      !this.ctx.deps.network.online ||
+      this.stateManager.isPaused() ||
+      !crdtProvider
+    ) {
       this.armPacedCrdtPullTimer()
       // A drain that cannot run is not being paced by the elevated session, so
       // a block that STAYS blocked held the slot until its TTL for a drain

@@ -253,25 +253,25 @@ describe('SyncEngine', () => {
   })
 
   describe('#given engine #when pause called', () => {
-    it('#then stores paused state and emits event', () => {
+    it('#then the status the renderer gets and the one it reads both say paused', () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
 
-      const result = engine.pause()
+      const result = engine.pause('popover')
 
-      expect(result.success).toBe(true)
-      expect(result.wasPaused).toBe(false)
-      expect(deps.emitToRenderer).toHaveBeenCalledWith(
-        'sync:paused',
-        expect.objectContaining({ pendingCount: 0 })
+      expect(result).toEqual({ success: true, wasPaused: false })
+      expect(deps.emitToRenderer).toHaveBeenLastCalledWith(
+        'sync:status-changed',
+        expect.objectContaining({ status: 'paused' })
       )
+      expect(engine.getStatus().status).toBe('paused')
     })
 
-    it('#then prevents push and pull', async () => {
+    it('#then push and pull are skipped as paused', async () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
 
-      engine.pause()
+      engine.pause('popover')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -279,8 +279,8 @@ describe('SyncEngine', () => {
         payload: '{}'
       })
 
-      await engine.push()
-
+      await expect(engine.push()).resolves.toEqual({ status: 'skipped', reason: 'paused' })
+      await expect(engine.pull()).resolves.toEqual({ status: 'skipped', reason: 'paused' })
       expect(deps.queue.getPendingCount()).toBe(1)
     })
   })
@@ -295,15 +295,16 @@ describe('SyncEngine', () => {
       })
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
-      engine.pause()
+      engine.pause('popover')
 
-      const result = engine.resume()
+      const result = engine.resume('popover')
 
-      expect(result.success).toBe(true)
+      expect(result).toEqual({ success: true, pendingCount: 0 })
       expect(deps.emitToRenderer).toHaveBeenCalledWith(
-        'sync:resumed',
-        expect.objectContaining({ pendingCount: 0 })
+        'sync:status-changed',
+        expect.objectContaining({ status: 'idle' })
       )
+      expect(engine.getStatus().status).not.toBe('paused')
       await engine.stop()
       vi.restoreAllMocks()
     })
@@ -313,9 +314,9 @@ describe('SyncEngine', () => {
     it('#then reports wasPaused=true', () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
-      engine.pause()
+      engine.pause('popover')
 
-      const result = engine.pause()
+      const result = engine.pause('popover')
 
       expect(result.wasPaused).toBe(true)
     })

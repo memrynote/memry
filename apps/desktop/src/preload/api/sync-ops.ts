@@ -1,5 +1,5 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
-import type { VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
+import type { SyncControlSurface, VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
 import type { CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
@@ -9,8 +9,8 @@ export const syncOps = {
   getHistory: (input: { limit?: number; offset?: number }) =>
     invoke(SYNC_CHANNELS.GET_HISTORY, input),
   getQueueSize: () => invoke(SYNC_CHANNELS.GET_QUEUE_SIZE),
-  pause: () => invoke(SYNC_CHANNELS.PAUSE),
-  resume: () => invoke(SYNC_CHANNELS.RESUME),
+  pause: (surface: SyncControlSurface) => invoke(SYNC_CHANNELS.PAUSE, { surface }),
+  resume: (surface: SyncControlSurface) => invoke(SYNC_CHANNELS.RESUME, { surface }),
   updateSyncedSetting: (fieldPath: string, value: unknown) =>
     invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),

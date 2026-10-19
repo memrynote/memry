@@ -45,7 +45,15 @@ export type RepairDeviceKeysResult =
   | { status: 'sync-not-started'; reason: SyncNotStartedReason }
   | { status: 'sign-in-required' }
 
-export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error' | 'local_only'
+/**
+ * `paused`: sync is paused on this device, by the user or by a clock-skew check.
+ * The pause is persisted, so it outlasts a restart, and only Resume or Sync Now
+ * ends it (#3382).
+ */
+export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error' | 'local_only' | 'paused'
+
+/** Where the user paused or resumed sync. */
+export type SyncControlSurface = z.infer<typeof SyncControlSchema>['surface']
 
 export type SyncErrorCategory =
   | 'network_offline'
@@ -128,10 +136,20 @@ export interface ResolveVaultBindingResult {
   error?: string
 }
 
-export interface TriggerSyncResult {
-  success: boolean
-  error?: string
-}
+/**
+ * Why Sync Now sent and received nothing (#3382):
+ * - `offline`: the device has no network.
+ * - `signed_out`: no usable session here (no access token, signing keys or vault key).
+ * - `busy`: another sync cycle held the sync lock.
+ * - `paused`: sync was paused again while it ran.
+ * - `failed`: the sync stopped on an error; `error` carries it when known.
+ * - `unavailable`: sync is not running on this device.
+ */
+export type SyncNowBlockedReason =
+  'offline' | 'signed_out' | 'busy' | 'paused' | 'failed' | 'unavailable'
+
+export type TriggerSyncResult =
+  { success: true } | { success: false; reason: SyncNowBlockedReason; error?: string }
 
 export interface GetHistoryInput {
   limit?: number
@@ -282,6 +300,10 @@ export const GetNoteSyncStateSchema = z.object({
 
 export const ResolveVaultBindingSchema = z.object({
   choice: z.enum(['sync', 'merge', 'local'])
+})
+
+export const SyncControlSchema = z.object({
+  surface: z.enum(['popover', 'settings', 'command_palette'])
 })
 
 export const UpdateSyncedSettingSchema = z.object({

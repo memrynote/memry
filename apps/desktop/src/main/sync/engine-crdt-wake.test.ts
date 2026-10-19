@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { NOTE_BODY_LEGACY_SWEEP_DONE, SYNC_STATE_KEYS } from './engine/sync-context'
+import {
+  NOTE_BODY_LEGACY_SWEEP_DONE,
+  SYNC_STATE_KEYS,
+  type SyncRunOutcome
+} from './engine/sync-context'
+import { DELIVERED } from './engine/sync-run-outcome'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
 /**
@@ -22,8 +27,8 @@ interface EngineInternals {
     pullCrdtForNotes(ids: string[], signal?: AbortSignal): Promise<unknown>
     pullCrdtForNote(noteId: string): Promise<boolean>
   }
-  pullCoordinator: { pull(): Promise<boolean> }
-  fullSyncRunner: { run(): Promise<void>; flushPendingCrdtPulls(): void }
+  pullCoordinator: { pull(): Promise<SyncRunOutcome> }
+  fullSyncRunner: { run(): Promise<SyncRunOutcome>; flushPendingCrdtPulls(): void }
 }
 
 const internals = (engine: SyncEngine): EngineInternals => engine as unknown as EngineInternals
@@ -77,11 +82,12 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
   // once the sync ends.
   it('pulls a wake that arrived during a full sync once the sync ends', async () => {
     const engine = doneEngine()
-    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(DELIVERED)
     vi.spyOn(internals(engine).fullSyncRunner, 'run').mockImplementation(async () => {
       internals(engine).ctx.fullSyncActive = true
       internals(engine).handleWsMessage(frame('note-w', 12))
       internals(engine).ctx.fullSyncActive = false
+      return DELIVERED
     })
 
     await engine.fullSync()
@@ -91,11 +97,12 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
 
   it('keeps a wake at or below LAST_CURSOR dropped after the full sync', async () => {
     const engine = doneEngine()
-    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(DELIVERED)
     vi.spyOn(internals(engine).fullSyncRunner, 'run').mockImplementation(async () => {
       internals(engine).ctx.fullSyncActive = true
       internals(engine).handleWsMessage(frame('note-w', 10))
       internals(engine).ctx.fullSyncActive = false
+      return DELIVERED
     })
 
     await engine.fullSync()
@@ -118,7 +125,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
       // The direct full sync starts while this wake pull is in flight.
       ctx.fullSyncActive = true
       await new Promise<void>((resolve) => (pullDone = resolve))
-      return true
+      return DELIVERED
     })
 
     internals(engine).handleWsMessage(frame('note-w', 12))
@@ -142,7 +149,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
       .mockResolvedValue({ snapshotGets: 0, batchPosts: 0 })
     vi.spyOn(pullCoordinator, 'pull').mockImplementation(async () => {
       crdtSync.addPendingPull('note-owed', 'feed_owed')
-      return true
+      return DELIVERED
     })
 
     internals(engine).runPullTick()
@@ -177,7 +184,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
   // pull keeps its cursor across a direct full sync.
   it('pulls a wake coalesced into a queued wake pull after a direct full sync', async () => {
     const engine = doneEngine()
-    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(DELIVERED)
     const ctx = internals(engine).ctx as unknown as {
       fullSyncActive: boolean
       inFlightSync: Promise<void> | null
@@ -192,6 +199,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
       release()
       await new Promise((resolve) => setTimeout(resolve, 0))
       ctx.fullSyncActive = false
+      return DELIVERED
     })
 
     await engine.fullSync()
@@ -203,13 +211,14 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
   // when the sync ends.
   it('pulls after a full sync that refused a reconnect', async () => {
     const engine = doneEngine()
-    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+    const pull = vi.spyOn(engine, 'pull').mockResolvedValue(DELIVERED)
     const handleWsConnected = (engine as unknown as { handleWsConnected: () => void })
       .handleWsConnected
     vi.spyOn(internals(engine).fullSyncRunner, 'run').mockImplementation(async () => {
       internals(engine).ctx.fullSyncActive = true
       handleWsConnected()
       internals(engine).ctx.fullSyncActive = false
+      return DELIVERED
     })
 
     await engine.fullSync()
@@ -235,7 +244,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
     getDb().sqlite.prepare("UPDATE sync_state SET value = '90' WHERE key = 'lastCursor'").run()
 
     const next = new SyncEngine(createMockDeps(getDb(), { crdtProvider: providerStub() }))
-    vi.spyOn(next, 'fullSync').mockResolvedValue()
+    vi.spyOn(next, 'fullSync').mockResolvedValue(DELIVERED)
     await next.start()
 
     expect(next.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBeUndefined()
@@ -248,7 +257,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
     getDb().sqlite.prepare("DELETE FROM sync_state WHERE key = 'noteBodyFeedCursor'").run()
 
     const next = new SyncEngine(createMockDeps(getDb(), { crdtProvider: providerStub() }))
-    vi.spyOn(next, 'fullSync').mockResolvedValue()
+    vi.spyOn(next, 'fullSync').mockResolvedValue(DELIVERED)
     await next.start()
 
     expect(next.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done')

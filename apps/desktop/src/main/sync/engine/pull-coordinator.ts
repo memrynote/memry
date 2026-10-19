@@ -14,7 +14,8 @@ import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
-import type { SyncContext } from './sync-context'
+import type { SyncContext, SyncRunOutcome } from './sync-context'
+import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
 import { emitInitialSyncProgress } from './initial-sync-progress'
 import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
@@ -128,10 +129,10 @@ export class PullCoordinator {
   }
 
   /**
-   * Resolves TRUE only when the run finished clean enough for
-   * `finalizePullSuccess` to record it. A busy lock, missing credentials, a
-   * page the run refused to apply and an error this coordinator swallowed all
-   * resolve FALSE (#1835).
+   * Delivered only when the run finished clean enough for
+   * `finalizePullSuccess` to record it (#1835). A refused lock or missing
+   * credentials skip the run; a page the run refused to apply and an error this
+   * coordinator swallowed leave it incomplete.
    *
    * Nothing that used to be swallowed is rethrown here and nothing that used to
    * be rethrown is swallowed — the outcome is only *reported* alongside the
@@ -139,13 +140,13 @@ export class PullCoordinator {
    * caller that needs to know whether anything was actually delivered cannot
    * infer it from the promise not rejecting.
    */
-  async pull(): Promise<boolean> {
-    const release = await this.ctx.acquireLock()
-    if (!release) return false
+  async pull(): Promise<SyncRunOutcome> {
+    const lock = await this.ctx.acquireLock()
+    if ('refused' in lock) return skipped(lock.refused)
 
-    const cleanup = this.createPullCleanup(release)
+    const cleanup = this.createPullCleanup(lock.release)
     let vaultKey: Uint8Array | null = null
-    let delivered = false
+    let outcome = INCOMPLETE
     this.deviceKeyCache.clear()
 
     try {
@@ -157,7 +158,7 @@ export class PullCoordinator {
       const abortController = (this.ctx.abortController = new AbortController())
 
       const credentials = await this.getPullCredentials()
-      if (!credentials) return false
+      if (!credentials) return skipped('no_credentials')
       vaultKey = credentials.vaultKey
 
       const runState = this.createPullRunState(credentials, pullStartedAt, abortController.signal)
@@ -196,7 +197,7 @@ export class PullCoordinator {
           })
         } else {
           this.finalizePullSuccess(runState)
-          delivered = true
+          outcome = DELIVERED
         }
       } catch (error) {
         this.handlePullError(error, runState.startTime)
@@ -204,7 +205,7 @@ export class PullCoordinator {
     } finally {
       this.cleanupAfterPull(vaultKey, cleanup)
     }
-    return delivered
+    return outcome
   }
 
   /** `run` is the pull the tick schedules; the engine passes its pull-then-flush (#2421). */

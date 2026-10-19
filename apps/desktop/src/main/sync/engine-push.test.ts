@@ -591,9 +591,10 @@ describe('SyncEngine', () => {
         expect.objectContaining({ skewSeconds: expect.any(Number) })
       )
       expect(deps.emitToRenderer).toHaveBeenCalledWith(
-        'sync:paused',
-        expect.objectContaining({ pendingCount: expect.any(Number) })
+        'sync:status-changed',
+        expect.objectContaining({ status: 'paused' })
       )
+      expect(engine.getStatus().status).toBe('paused')
 
       vi.restoreAllMocks()
     })
@@ -639,10 +640,7 @@ describe('SyncEngine', () => {
       )
       expect(clockSkewCalls).toHaveLength(0)
 
-      const pausedCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (call) => call[0] === 'sync:paused'
-      )
-      expect(pausedCalls).toHaveLength(0)
+      expect(engine.getStatus().status).not.toBe('paused')
 
       vi.restoreAllMocks()
     })
@@ -782,7 +780,7 @@ describe('SyncEngine', () => {
     it('#then does not schedule push', async () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
-      engine.pause()
+      engine.pause('popover')
 
       let pushCallCount = 0
       const origPush = engine.push.bind(engine)

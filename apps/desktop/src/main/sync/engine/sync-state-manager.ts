@@ -5,13 +5,16 @@ import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
-  SyncPausedEvent,
-  SyncResumedEvent,
   ClockSkewWarningEvent
 } from '@memry/contracts/ipc-events'
-import type { SyncStatusValue } from '@memry/contracts/ipc-sync-ops'
+import type {
+  GetSyncStatusResult,
+  SyncControlSurface,
+  SyncStatusValue
+} from '@memry/contracts/ipc-sync-ops'
 import { createLogger } from '../../lib/logger'
-import type { SyncContext } from './sync-context'
+import { trackMainEvent } from '../../telemetry/track'
+import type { EngineSyncState, SyncContext } from './sync-context'
 import { SYNC_STATE_KEYS, CLOCK_SKEW_THRESHOLD_SECONDS } from './sync-context'
 import type { SyncErrorInfo } from '../sync-errors'
 
@@ -24,6 +27,9 @@ const DEVICE_KEYS_MISSING: SyncErrorInfo = {
 }
 
 export type NodeEmit = (event: string, ...args: unknown[]) => boolean
+
+/** Who paused or resumed sync: the user on a surface, or the engine itself. */
+export type SyncPauseSource = SyncControlSurface | 'clock_skew' | 'sync_now'
 
 export class SyncStateManager {
   private ctx: SyncContext
@@ -61,7 +67,7 @@ export class SyncStateManager {
     return this.ctx.state
   }
 
-  setState(requestedState: SyncStatusValue): void {
+  setState(requestedState: EngineSyncState): void {
     // No cycle reports Synced while pushes abort for want of keys (#2866).
     if (requestedState === 'idle' && this.deviceKeysMissing) {
       this.reportDeviceKeysMissing()
@@ -122,6 +128,27 @@ export class SyncStateManager {
     this.ctx.state = 'error'
     this.ctx.offlineSince = null
     this.emitStatusChanged()
+  }
+
+  /**
+   * The one writer of the pause flag (#3382). Every status the device reports
+   * derives "paused" from the flag, so writing it is enough to show it, and
+   * nothing a cycle does afterwards can hide it. Ending a pause sends on the
+   * note bodies it held.
+   */
+  setPaused(paused: boolean, source: SyncPauseSource): void {
+    const changed = this.isPaused() !== paused
+    this.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, paused ? 'true' : 'false')
+    this.emitStatusChanged()
+    if (!changed) return
+    log.info(paused ? 'Sync paused' : 'Sync resumed', { source })
+    trackMainEvent('setting_changed', {
+      surface: 'sync',
+      action: paused ? 'paused' : 'resumed',
+      source,
+      dimensions: { setting: 'sync_paused' }
+    })
+    if (!paused) this.ctx.deps.onSyncResumed?.()
   }
 
   isPaused(): boolean {
@@ -213,15 +240,33 @@ export class SyncStateManager {
       .run()
   }
 
-  emitStatusChanged(): void {
-    const event: SyncStatusChangedEvent = {
-      status: this.ctx.state,
+  status(): GetSyncStatusResult {
+    return {
+      status: this.reportedStatus(),
       lastSyncAt: this.getLastSyncAt(),
       pendingCount: this.ctx.deps.queue.getPendingCount(),
       error: this.ctx.lastError,
       errorCategory: this.ctx.lastErrorInfo?.category,
       offlineSince: this.ctx.offlineSince ?? undefined
     }
+  }
+
+  /**
+   * Paused outranks idle, syncing and offline (#3382). It is the user's
+   * choice and outlasts a restart, so neither a finished cycle nor a network
+   * flap may report over it: a Mac that showed Synced for three days while
+   * paused offered its user no Resume. An error and a plan without sync keep
+   * their own status, because each asks for a different action, and Sync Now
+   * resumes anyway.
+   */
+  private reportedStatus(): SyncStatusValue {
+    const { state } = this.ctx
+    if (state === 'error' || state === 'local_only') return state
+    return this.isPaused() ? 'paused' : state
+  }
+
+  emitStatusChanged(): void {
+    const event: SyncStatusChangedEvent = this.status()
     this.ctx.deps.emitToRenderer(EVENT_CHANNELS.STATUS_CHANGED, event)
     this.nodeEmit('status-changed', event)
   }
@@ -235,18 +280,6 @@ export class SyncStateManager {
     const event: ItemSyncedEvent = { itemId, type, operation, itemOperation }
     this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_SYNCED, event)
     this.nodeEmit('item-synced', event)
-  }
-
-  emitPaused(pendingCount: number): void {
-    const event: SyncPausedEvent = { pendingCount }
-    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.PAUSED, event)
-    this.nodeEmit('paused', event)
-  }
-
-  emitResumed(pendingCount: number): void {
-    const event: SyncResumedEvent = { pendingCount }
-    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.RESUMED, event)
-    this.nodeEmit('resumed', event)
   }
 
   checkClockSkew(serverTimeSeconds: number): void {
@@ -263,10 +296,8 @@ export class SyncStateManager {
         serverTime: serverTimeSeconds,
         skewSeconds: skew
       } satisfies ClockSkewWarningEvent)
-      this.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'true')
+      this.setPaused(true, 'clock_skew')
       this.ctx.abortController?.abort()
-      const pendingCount = this.ctx.deps.queue.getPendingCount()
-      this.emitPaused(pendingCount)
     }
   }
 }

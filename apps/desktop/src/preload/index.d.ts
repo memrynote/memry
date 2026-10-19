@@ -77,8 +77,6 @@ import type {
   DownloadProgressEvent,
   InitialSyncProgressEvent,
   QueueClearedEvent,
-  SyncPausedEvent,
-  SyncResumedEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
@@ -98,7 +96,9 @@ import type {
 import type {
   RepairDeviceKeysResult,
   ResolveVaultBindingResult,
+  SyncControlSurface,
   SyncErrorCategory,
+  TriggerSyncResult,
   VaultBindingChoice,
   VaultBindingState
 } from '@memry/contracts/ipc-sync-ops'
@@ -1775,10 +1775,7 @@ interface SyncOpsClientAPI {
     errorCategory?: SyncErrorCategory
     offlineSince?: number
   }>
-  triggerSync: () => Promise<{
-    success: boolean
-    error?: string
-  }>
+  triggerSync: () => Promise<TriggerSyncResult>
   getHistory: (input: { limit?: number; offset?: number }) => Promise<{
     entries: Array<{
       id: string
@@ -1795,11 +1792,11 @@ interface SyncOpsClientAPI {
     pending: number
     failed: number
   }>
-  pause: () => Promise<{
+  pause: (surface: SyncControlSurface) => Promise<{
     success: boolean
     wasPaused: boolean
   }>
-  resume: () => Promise<{
+  resume: (surface: SyncControlSurface) => Promise<{
     success: boolean
     pendingCount: number
   }>
@@ -2116,8 +2113,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onAttachmentMaterialized: (callback: (event: AttachmentMaterializedEvent) => void) => () => void
   onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void) => () => void
   onQueueCleared: (callback: (event: QueueClearedEvent) => void) => () => void
-  onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
-  onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
   onTokenRefreshed: (callback: () => void) => () => void
   onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void

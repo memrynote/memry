@@ -782,6 +782,53 @@ Compatibility: every field is optional. An old desktop strips the new ref fields
 none and the desktop then emits no `e2e_latency`, and rows written before migration `0010` keep a
 NULL commit time that the change feed omits.
 
+## Pause, Sync Now and Run Outcomes
+
+A paused Mac once reported **Synced** for three days while 831 changes went nowhere (#3382). Main
+held the pause in `sync_state`, but the renderer learned about it from a one-shot event. The next
+status event overwrote it, a restart forgot it, and every refused run still reported success.
+
+The pause now has one owner:
+
+- **The flag.** `syncPaused` in `sync_state` is the only record of the pause, and `setPaused` in
+  `sync-state-manager.ts` is its only writer. Pause and resume from every surface, Sync Now, and
+  the clock-skew check all go through it. Every call reports the status again, even when the flag
+  did not change.
+- **The status.** The engine never holds `paused` as a state. Each status report derives it from
+  the flag, so it outranks `idle`, `syncing` and `offline`, and only `error` and `local_only`
+  outrank it. A finished cycle or a network flap cannot report over it, and it survives a restart.
+- **What it holds.** The sync lock refuses every push and pull. A full sync returns before it
+  seeds, reports progress or checks the manifest, so a pause no longer resets `LAST_CURSOR` for a
+  re-pull. Note bodies wait too (see [CRDT](/architecture/crdt#note-body-outbox)). The WebSocket
+  stays connected.
+
+Push, pull and full sync each return an outcome:
+
+| Outcome      | Meaning                                                                    |
+| ------------ | -------------------------------------------------------------------------- |
+| `delivered`  | Ran to the end: a pull reached the head of the feed, a push sent the queue |
+| `incomplete` | Started and stopped early, on a refused page or an error it handled        |
+| `skipped`    | Never started: `paused`, `busy`, `cancelled` or `no_credentials`           |
+
+A full sync delivers only when its pull and every push delivered. Only one runs at a time
+(`full-sync-flight.ts`): a request made during a run waits for one follow-up run that every waiting
+request shares. Each Sync Now click used to start its own full sync next to the running one, and
+one stuck device ran 14 manifest scans at once and drew 332 rate-limit refusals.
+
+**Sync Now** (`sync:trigger-sync`) ends a pause, waits for a scheduled cycle that holds the lock,
+then runs a full sync. A sync that is still busy gets one more attempt. It returns
+`{ success: true }` only for a delivered run. Otherwise it returns a `reason` the renderer turns into
+a notice: `offline`, `signed_out`, `busy`, `paused` (paused again during the run), `failed` or
+`unavailable`. `sync:pause` and `sync:resume` take the surface that asked (`popover`, `settings` or
+`command_palette`), which telemetry records (see
+[Observability](/architecture/observability#sync-runs)).
+
+The CLI's `sync pause` and `sync resume` write the flag straight into SQLite, past `setPaused`. This
+is a known limitation. A running desktop app caches only the _not paused_ answer (see "Dead-letter
+purge and the pause flag are kept off the enqueue path"), so it misses a CLI pause until it
+restarts. It sees a CLI resume, but nothing starts the full sync or the note-body flush that a
+resume in the app starts. Run those CLI commands while the app is closed.
+
 ## Pull Scheduling and Hang Recovery
 
 A periodic tick fires every 60 seconds; WebSocket `changes_available` and `connected` messages

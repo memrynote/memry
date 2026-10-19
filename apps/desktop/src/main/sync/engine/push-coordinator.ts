@@ -21,8 +21,9 @@ import { isNoteKnownDeleted } from '../pending-deletes'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
 import { PushLagTrace } from './sync-latency-telemetry'
-import type { SyncContext } from './sync-context'
+import type { SyncContext, SyncRunOutcome } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
+import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
 import {
   MAX_PUSH_ITERATIONS,
   MIN_PUSH_BATCH_SIZE,
@@ -124,7 +125,7 @@ export class PushCoordinator {
     this.stateManager = stateManager
   }
 
-  async push(): Promise<void> {
+  async push(): Promise<SyncRunOutcome> {
     const pendingCount = this.ctx.deps.queue.getPendingCount()
     log.debug('Push entered', {
       queuePending: pendingCount,
@@ -135,13 +136,13 @@ export class PushCoordinator {
 
     if (pendingCount === 0) {
       log.debug('Push skipped: queue empty')
-      return
+      return DELIVERED
     }
 
-    const release = await this.ctx.acquireLock()
-    if (!release) {
-      log.debug('Push skipped', { syncing: this.ctx.syncing, paused: this.stateManager.isPaused() })
-      return
+    const lock = await this.ctx.acquireLock()
+    if ('refused' in lock) {
+      log.debug('Push skipped', { reason: lock.refused })
+      return skipped(lock.refused)
     }
 
     let released = false
@@ -155,7 +156,7 @@ export class PushCoordinator {
         this.settlePushWaiters()
       }
       this.ctx.releaseLock()
-      release()
+      lock.release()
     }
 
     const timer = new SyncTimer()
@@ -176,20 +177,20 @@ export class PushCoordinator {
       let token = await this.ctx.deps.getAccessToken()
       if (!token) {
         log.debug('Push aborted: no access token')
-        return
+        return skipped('no_credentials')
       }
 
       const signingKeys = await this.ctx.deps.getSigningKeys()
       if (!signingKeys) {
         log.debug('Push aborted: no signing keys')
-        return
+        return skipped('no_credentials')
       }
       signingKeyBytes = signingKeys.secretKey
 
       vaultKey = await this.ctx.deps.getVaultKey()
       if (!vaultKey) {
         log.debug('Push aborted: no vault key')
-        return
+        return skipped('no_credentials')
       }
 
       // #2897: the services must already read this id, or re-running an edit
@@ -534,7 +535,7 @@ export class PushCoordinator {
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           log.debug('Push aborted (likely network change)')
-          return
+          return INCOMPLETE
         }
         const errorInfo = classifyError(error)
         this.ctx.lastErrorInfo = errorInfo
@@ -548,8 +549,8 @@ export class PushCoordinator {
           throw error
         }
         // Swallowed here (the user sees the error banner via state), so
-        // engine.push() records sync_run_completed success — the sync_error for
-        // this terminal outcome must be emitted from inside this catch.
+        // engine.push() records only an incomplete run: the sync_error with
+        // the cause must be emitted from inside this catch.
         trackMainEvent('sync_error', {
           surface: 'sync',
           action: 'push_failed',
@@ -561,7 +562,9 @@ export class PushCoordinator {
         })
         this.stateManager.setState('error')
         this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
+        return INCOMPLETE
       }
+      return abortSignal.aborted ? INCOMPLETE : DELIVERED
     } finally {
       try {
         if (vaultKey && signingKeyBytes) {

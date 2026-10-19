@@ -659,7 +659,7 @@ describe('SyncEngine', () => {
         new SyncServerError('Bad request', 400, 'VALIDATION_ERROR')
       )
 
-      await expect(engine.pull()).resolves.toBe(false)
+      await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
       await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()
@@ -679,7 +679,7 @@ describe('SyncEngine', () => {
         new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
       )
 
-      await expect(engine.pull()).resolves.toBe(false)
+      await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
       // Proof the throw really travelled out of the coordinator and through the
       // engine's catch, rather than being swallowed one layer down.
       expect(deps.ws.disconnect).toHaveBeenCalled()
@@ -700,7 +700,7 @@ describe('SyncEngine', () => {
       })
       vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({ items: [] })
 
-      await expect(engine.pull()).resolves.toBe(true)
+      await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
       await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()

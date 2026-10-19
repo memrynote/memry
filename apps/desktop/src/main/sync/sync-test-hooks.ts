@@ -57,7 +57,7 @@ export const syncStateTestHooks = {
     if (!engine) {
       throw new Error('Sync runtime is not initialized')
     }
-    engine.pause()
+    engine.pause('popover')
   },
 
   /**
@@ -192,7 +192,7 @@ export const syncStateTestHooks = {
     if (!engine) {
       throw new Error('Sync runtime is not initialized')
     }
-    return engine.pull()
+    return (await engine.pull()).status === 'delivered'
   },
 
   async getSyncWakeProbeForTests(): Promise<SyncWakeProbeCounts> {
