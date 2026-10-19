@@ -5,6 +5,8 @@ import { BoardGrid } from '@/components/home/board-grid'
 import { BoardEmptyState } from '@/components/home/board-empty-state'
 import { BoardManagerDialog } from '@/components/home/board-manager-dialog'
 import { HomeDisabledLauncher } from '@/components/home/home-disabled-launcher'
+import { HomeCover } from '@/components/home/home-cover'
+import type { CoverPickerAnchor } from '@/components/note/cover-picker-dialog'
 import { useHomeBoards } from '@/hooks/use-home-boards'
 import { useHomeSeedGate } from '@/hooks/use-home-seed-gate'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
@@ -30,6 +32,7 @@ function asLocalPage(page: {
   icon?: string
   position: number
   widgets: unknown[]
+  cover?: unknown
 }): HomePage {
   return page as unknown as HomePage
 }
@@ -65,6 +68,7 @@ export default function HomePage(): React.JSX.Element {
 
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [managerOpen, setManagerOpen] = useState(false)
+  const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
   // The header floats over the board (.home-chrome, sticky); its material (blur + translucent
   // background) only appears once content actually scrolls underneath it.
   const [scrolled, setScrolled] = useState(false)
@@ -145,6 +149,14 @@ export default function HomePage(): React.JSX.Element {
 
   return (
     <div data-testid="home-page" className="h-full overflow-auto" onScroll={handleScroll}>
+      {/* Above the sticky chrome, so the banner scrolls away and the header stays. */}
+      {activeBoard && (
+        <HomeCover
+          board={activeBoard}
+          pickerAnchor={coverPickerAnchor}
+          onPickerAnchorChange={setCoverPickerAnchor}
+        />
+      )}
       <div className="home-chrome" data-scrolled={scrolled ? 'true' : 'false'}>
         <HomeHeader
           boards={localBoards}
@@ -157,6 +169,7 @@ export default function HomePage(): React.JSX.Element {
           galleryOpen={galleryOpen}
           onGalleryOpenChange={setGalleryOpen}
           onAddWidget={handleAddWidget}
+          onAddCover={activeBoard && !activeBoard.cover ? setCoverPickerAnchor : undefined}
         />
       </div>
       <BoardManagerDialog

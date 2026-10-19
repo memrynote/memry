@@ -50,6 +50,9 @@ import {
   coverPickerAnchorFrom,
   type CoverPickerAnchor
 } from '@/components/note/cover-picker-dialog'
+import { noteCoverImageTarget } from '@/components/note/cover-image-target'
+import { useVault } from '@/hooks/use-vault'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { useNoteCover } from '@/components/note/use-note-cover'
 import {
   BacklinksSection,
@@ -297,6 +300,14 @@ export function NotePage({ noteId }: NotePageProps) {
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
+  const { vaultPath } = useVault()
+  const uploadFailedMessage = t('cover.picker.uploadFailed')
+  // `noteId` is always set by the time the picker renders; hooks run before the
+  // empty-state return.
+  const coverImageTarget = useMemo(
+    () => noteCoverImageTarget(noteId ?? '', uploadFailedMessage),
+    [noteId, uploadFailedMessage]
+  )
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -1826,8 +1837,12 @@ export function NotePage({ noteId }: NotePageProps) {
         cover && (
           <NoteCover
             cover={cover}
-            noteId={noteId}
-            notePath={note.path}
+            src={
+              cover.kind === 'image'
+                ? resolveNoteRelativeUrl(cover.ref, note.path, vaultPath, noteId)
+                : null
+            }
+            washSeed={noteId}
             framing={coverFraming}
             credit={coverCredit}
             creditUrl={coverCreditUrl}
@@ -2165,7 +2180,7 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={(next) => {
           if (!next) setCoverPickerAnchor(null)
         }}
-        noteId={noteId}
+        target={coverImageTarget}
         onApply={(value, { reposition, credit }) => {
           void setCover(value, credit)
           setIsRepositioningCover(reposition)

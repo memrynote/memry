@@ -66,6 +66,9 @@ class HomePageHandler extends BaseItemHandler<HomePageSyncPayload> {
             icon: data.icon !== undefined ? data.icon : existing.icon,
             position: data.position ?? existing.position,
             widgets: data.widgets ?? existing.widgets,
+            // `!==`, never `??`: `null` is an explicit removal, and only an absent
+            // field (an older sender) keeps the local cover.
+            cover: data.cover !== undefined ? data.cover : existing.cover,
             clock: resolution.mergedClock,
             syncedAt: now,
             updatedAt: data.updatedAt ?? now
@@ -93,6 +96,7 @@ class HomePageHandler extends BaseItemHandler<HomePageSyncPayload> {
           icon: data.icon ?? null,
           position: data.position ?? 0,
           widgets: data.widgets ?? '[]',
+          cover: data.cover ?? null,
           clock: remoteClock,
           syncedAt: now,
           createdAt: data.createdAt ?? now,

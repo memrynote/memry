@@ -127,31 +127,6 @@ export const TemplateSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
-/**
- * Home board sync payload. Field names are Drizzle property names because the
- * push payload is `JSON.stringify(row)`.
- *
- * `widgets` travels as an OPAQUE JSON string, exactly as stored — the same call
- * `canvas.scene` makes. A typed `z.array(WidgetInstanceSchema)` here would both
- * zod-strip unknown widget keys written by a newer build and reject the legacy
- * `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts` turns either into a
- * silent `'skipped'` that still advances the cursor, so the board would land on
- * zero peers forever with no user-visible error. Shape is validated at the
- * apply site instead.
- *
- * `icon` is `.nullable().optional()`: `null` is an explicit clear, absent means
- * the sender does not know the field and the local value is kept.
- */
-export const HomePageSyncPayloadSchema = z.object({
-  name: z.string().optional(),
-  icon: z.string().nullable().optional(),
-  position: z.number().optional(),
-  widgets: z.string().optional(),
-  clock: VectorClockSchema.optional(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional()
-})
-
 export const BookmarkSyncPayloadSchema = z.object({
   itemType: z.string().optional(),
   itemId: z.string().optional(),
@@ -303,6 +278,55 @@ export const NoteCoverSyncSchema = z.object({
 })
 
 export type NoteCoverSync = z.infer<typeof NoteCoverSyncSchema>
+
+/**
+ * A Home board's cover: the note cover's shape plus `attachmentId`.
+ *
+ * `ref` is `wash:<id>`, an http(s) URL, or the vault path
+ * `.memry/home-covers/<boardId>/<file>`. A vault image's bytes travel as the
+ * encrypted attachment `attachmentId` names, and every client downloads it to
+ * exactly `ref`, so the path names the same file on each device. The id is
+ * absent while the first upload is still pending; a receiver then keeps
+ * showing the wash fallback until a later push carries it.
+ */
+export const HomePageCoverSyncSchema = NoteCoverSyncSchema.extend({
+  attachmentId: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/)
+    .optional()
+    .catch(undefined)
+})
+
+export type HomePageCoverSync = z.infer<typeof HomePageCoverSyncSchema>
+
+/**
+ * Home board sync payload. Field names are Drizzle property names because the
+ * push payload is `JSON.stringify(row)`.
+ *
+ * `widgets` travels as an OPAQUE JSON string, exactly as stored — the same call
+ * `canvas.scene` makes. A typed `z.array(WidgetInstanceSchema)` here would both
+ * zod-strip unknown widget keys written by a newer build and reject the legacy
+ * `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts` turns either into a
+ * silent `'skipped'` that still advances the cursor, so the board would land on
+ * zero peers forever with no user-visible error. Shape is validated at the
+ * apply site instead.
+ *
+ * `icon` is `.nullable().optional()`: `null` is an explicit clear, absent means
+ * the sender does not know the field and the local value is kept.
+ */
+export const HomePageSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  icon: z.string().nullable().optional(),
+  position: z.number().optional(),
+  widgets: z.string().optional(),
+  // Absent means the sender does not know the field (an older build) and the
+  // receiver keeps its own cover; `null` removes it. A value this build cannot
+  // read is treated as absent rather than failing the whole board.
+  cover: HomePageCoverSyncSchema.nullable().optional().catch(undefined),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional()
+})
 
 export const NoteSyncPayloadSchema = z.object({
   title: z.string().optional(),

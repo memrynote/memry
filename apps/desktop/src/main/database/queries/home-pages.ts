@@ -35,7 +35,7 @@ export function insertHomePage(db: DataDb, row: NewHomePageRow): HomePageRow {
 export function updateHomePage(
   db: DataDb,
   id: string,
-  patch: Partial<Pick<NewHomePageRow, 'name' | 'icon' | 'position' | 'widgets'>>
+  patch: Partial<Pick<NewHomePageRow, 'name' | 'icon' | 'position' | 'widgets' | 'cover'>>
 ): HomePageRow | undefined {
   return db
     .update(homePages)

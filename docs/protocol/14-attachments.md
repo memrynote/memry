@@ -184,7 +184,7 @@ requests per 60 s (`apps/sync-server/src/routes/blob.ts:120-124`).
 ## 14.7 What connects a note to a manifest — Q14.2
 
 **Normative.** The `note` payload carries `attachmentReferences`, an array of
-**attachment ids** (`packages/contracts/src/sync-payloads.ts:266`; chapter 13
+**attachment ids** (`packages/contracts/src/sync-payloads.ts:241`; chapter 13
 §13.7.1). An attachment id is exactly the `:attachment_id` path parameter of
 `GET /sync/attachments/:attachment_id/manifest`
 (`apps/sync-server/src/routes/blob.ts:827`) and the `id` field inside the
@@ -214,6 +214,27 @@ has no attachments" from an absent key, and MUST NOT clear the local list on
 seeing one.
 
 **Disposition of Q14.2: answered** (this section).
+
+### 14.7.1 A Home board's cover (#3384)
+
+**Normative.** A `home_page` payload's `cover.attachmentId` names one
+attachment, resolved by the same chain as a note's
+(`packages/contracts/src/sync-payloads.ts:292-298`). Its `ref` is the vault
+path `.memry/home-covers/<boardId>/<file>`, and a client MUST write the
+downloaded bytes to exactly that path. A client MUST refuse a `ref` outside
+the board's own folder rather than write there
+(`apps/desktop/src/main/home/cover-service.ts:97`).
+
+`attachmentId` is absent until the first upload completes, so a receiver that
+has the `ref` but no file and no id shows the cover's fallback until a later
+push carries the id. Desktop uploads and downloads cover bytes through the
+shared attachment queues (`apps/desktop/src/main/home/cover-service.ts:291`,
+`:311`) and settles both directions in one idempotent pass
+(`apps/desktop/src/main/home/cover-service.ts:324`).
+
+The Rust core does not subscribe to `home_page`
+(`crates/memry-core/src/protocol/types.rs:77`), so it never meets a board
+cover.
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 

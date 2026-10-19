@@ -567,7 +567,7 @@ unpaid), a note leaving local-only, and ids imported once from the pre-#2298
 `crdt-pending-notes.json` (`note-body-outbox.ts:295`). The client merges the
 server's state for that document first, then pushes `Y.encodeStateAsUpdate(doc)`
 as an update, one document at a time (`note-body-outbox.ts:76`;
-`apps/desktop/src/main/sync/runtime.ts:957-965`); a merge that does not
+`apps/desktop/src/main/sync/runtime.ts:972-980`); a merge that does not
 complete keeps the row. State too large for the incremental route goes to the
 snapshot endpoint under the §7.13.2 gate.
 
@@ -676,11 +676,11 @@ edited document's log does not grow unboundedly:
 
 | Trigger                         | Rule                                                               | Source                                                                                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| after its own incremental batch | 30 s quiet, 120 s cap from the first request                       | `packages/sync-client/src/crdt-snapshot-scheduler.ts:9` (`SNAPSHOT_QUIET_MS = 30_000`), `:16` (`SNAPSHOT_MAX_WAIT_MS = 120_000`), `:51`; requested at `apps/desktop/src/main/sync/runtime.ts:577-580` |
+| after its own incremental batch | 30 s quiet, 120 s cap from the first request                       | `packages/sync-client/src/crdt-snapshot-scheduler.ts:9` (`SNAPSHOT_QUIET_MS = 30_000`), `:16` (`SNAPSHOT_MAX_WAIT_MS = 120_000`), `:51`; requested at `apps/desktop/src/main/sync/runtime.ts:590-593` |
 | document close                  | when `pendingSnapshotBytes > 0` and the document is not local-only | `apps/desktop/src/main/sync/crdt-provider.ts:1044-1060`; debt is bytes of non-network-origin updates, `:2046-2049`                                                                                    |
 | shutdown                        | `pushAllSnapshots` for documents holding debt                      | `apps/desktop/src/main/sync/crdt-provider.ts:1476`                                                                                                                                                    |
 | local compaction                | encoded size over 1 MiB, no editor open, 60 s check interval       | `apps/desktop/src/main/sync/crdt-provider.ts:81`, `:2196-2219`                                                                                                                                        |
-| oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:554-575`                                                                                                                                                       |
+| oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:567-588`                                                                                                                                                       |
 
 ### 7.13.4 What the platform-free engine does today, and #2187
 

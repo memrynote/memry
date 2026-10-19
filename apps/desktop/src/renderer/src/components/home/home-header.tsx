@@ -16,7 +16,11 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { WidgetGallery } from '@/components/home/widget-gallery'
-import { Check, ChevronDown, Plus, Settings2, Trash } from '@/lib/icons/icon-map'
+import { Check, ChevronDown, Image, Plus, Settings2, Trash } from '@/lib/icons/icon-map'
+import {
+  coverPickerAnchorFrom,
+  type CoverPickerAnchor
+} from '@/components/note/cover-picker-dialog'
 
 interface HomeHeaderProps {
   boards: HomePage[]
@@ -29,6 +33,8 @@ interface HomeHeaderProps {
   galleryOpen: boolean
   onGalleryOpenChange: (open: boolean) => void
   onAddWidget: (type: WidgetType) => void
+  /** Shown only while the active board has no cover. */
+  onAddCover?: (anchor: CoverPickerAnchor) => void
 }
 
 /**
@@ -45,7 +51,8 @@ export function HomeHeader({
   showAddWidget,
   galleryOpen,
   onGalleryOpenChange,
-  onAddWidget
+  onAddWidget,
+  onAddCover
 }: HomeHeaderProps): React.JSX.Element {
   const { t, i18n } = useT('common')
 
@@ -102,6 +109,18 @@ export function HomeHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {onAddCover && (
+          <button
+            type="button"
+            data-testid="home-add-cover"
+            aria-label={t('home.cover.add')}
+            title={t('home.cover.add')}
+            onClick={(event) => onAddCover(coverPickerAnchorFrom(event))}
+            className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
+          >
+            <Image className="size-4" aria-hidden="true" />
+          </button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="home-layout-switcher"

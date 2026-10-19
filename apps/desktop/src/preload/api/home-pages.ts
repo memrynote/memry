@@ -1,6 +1,11 @@
 import { HomePagesChannels } from '@memry/contracts/ipc-channels'
 import { invoke, subscribe } from '../lib/ipc'
-import type { HomePage } from '@memry/contracts/home-page-api'
+import type {
+  HomePage,
+  HomePageCoverSource,
+  HomePageSetCoverResult
+} from '@memry/contracts/home-page-api'
+import type { CoverFraming } from '@memry/shared/cover-image'
 
 export const homePagesApi = {
   list: (): Promise<HomePage[]> => invoke(HomePagesChannels.invoke.LIST),
@@ -21,7 +26,14 @@ export const homePagesApi = {
   delete: (id: string): Promise<{ success: boolean }> =>
     invoke(HomePagesChannels.invoke.DELETE, id),
   reorder: (ids: string[]): Promise<{ success: boolean }> =>
-    invoke(HomePagesChannels.invoke.REORDER, { ids })
+    invoke(HomePagesChannels.invoke.REORDER, { ids }),
+  setCover: (id: string, source: HomePageCoverSource): Promise<HomePageSetCoverResult> =>
+    invoke(HomePagesChannels.invoke.SET_COVER, { id, source }),
+  setCoverFraming: (id: string, changes: Partial<CoverFraming>): Promise<HomePage> =>
+    invoke(HomePagesChannels.invoke.SET_COVER_FRAMING, { id, changes }),
+  removeCover: (id: string): Promise<HomePage> => invoke(HomePagesChannels.invoke.REMOVE_COVER, id),
+  materializeCover: (id: string): Promise<{ success: boolean }> =>
+    invoke(HomePagesChannels.invoke.MATERIALIZE_COVER, id)
 }
 
 export const homePagesEvents = {

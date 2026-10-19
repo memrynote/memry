@@ -1,6 +1,7 @@
 /**
- * `NoteCover` resolves a note-relative ref for rendering only, and never paints
- * a broken image.
+ * `NoteCover` paints the URL its owner resolves, and never paints a broken
+ * image. The note page resolves a note-relative ref with
+ * `resolveNoteRelativeUrl`, which `srcFor` mirrors here.
  *
  * The resolved `memry-file://` URL carries this machine's vault path. Anywhere
  * it lands other than `src` is a path this machine could write back into the
@@ -17,12 +18,10 @@ import {
   coverWashGradient
 } from '@memry/shared/cover-image'
 
-const VAULT_PATH = vi.hoisted(() => '/Users/kaan/Vault')
+const VAULT_PATH = '/Users/kaan/Vault'
 
-vi.mock('@/hooks/use-vault', () => ({
-  useVault: () => ({ vaultPath: VAULT_PATH })
-}))
-
+import type { CoverValue } from '@memry/shared/cover-image'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { NoteCover, type NoteCoverProps } from './note-cover'
 
 const NOTE_ID = 'nte_9f2c1a'
@@ -30,16 +29,24 @@ const NOTE_PATH = 'notes/Books/Dune.md'
 const COVER_REF = `../../attachments/${NOTE_ID}/abc123-photo.jpg`
 const EXPECTED_SRC = `memry-file://local${VAULT_PATH}/attachments/${NOTE_ID}/abc123-photo.jpg`
 
+/** The URL the note page hands the band for a cover. */
+function srcFor(cover: CoverValue): string | null {
+  return cover.kind === 'image'
+    ? resolveNoteRelativeUrl(cover.ref, NOTE_PATH, VAULT_PATH, NOTE_ID)
+    : null
+}
+
 function renderCover(overrides: Partial<NoteCoverProps> = {}) {
+  const cover = overrides.cover ?? { kind: 'image', ref: COVER_REF }
   const onChange = vi.fn()
   const onRemove = vi.fn()
   const onFramingChange = vi.fn()
   const onRepositioningChange = vi.fn()
   const result = render(
     <NoteCover
-      cover={{ kind: 'image', ref: COVER_REF }}
-      noteId={NOTE_ID}
-      notePath={NOTE_PATH}
+      cover={cover}
+      src={srcFor(cover)}
+      washSeed={NOTE_ID}
       framing={DEFAULT_COVER_FRAMING}
       onChange={onChange}
       onRemove={onRemove}
@@ -197,8 +204,8 @@ describe('NoteCover wash covers', () => {
     rerender(
       <NoteCover
         cover={{ kind: 'image', ref: 'https://cdn.example.com/other.webp' }}
-        noteId={NOTE_ID}
-        notePath={NOTE_PATH}
+        src="https://cdn.example.com/other.webp"
+        washSeed={NOTE_ID}
         framing={DEFAULT_COVER_FRAMING}
         onChange={vi.fn()}
         onRemove={vi.fn()}
@@ -223,8 +230,8 @@ describe('NoteCover credit', () => {
     rerender(
       <NoteCover
         cover={{ kind: 'image', ref: COVER_REF }}
-        noteId={NOTE_ID}
-        notePath={NOTE_PATH}
+        src={EXPECTED_SRC}
+        washSeed={NOTE_ID}
         framing={DEFAULT_COVER_FRAMING}
         credit="Ana Ruiz"
         onChange={vi.fn()}

@@ -9,6 +9,7 @@
  */
 
 import type {
+  DownloadAttachmentFromUrlFailure,
   DownloadAttachmentFromUrlInput,
   DownloadAttachmentFromUrlResult
 } from '@memry/contracts/notes-api'
@@ -68,13 +69,22 @@ function filenameFor(url: string, extension: string): string {
   return `${base.slice(0, 64) || 'linked-image'}.${extension}`
 }
 
-export async function downloadAttachmentFromUrl(
-  input: DownloadAttachmentFromUrlInput,
+export type RemoteImageFetchResult =
+  | { ok: true; bytes: Buffer; filename: string }
+  | { ok: false; reason: Exclude<DownloadAttachmentFromUrlFailure, 'write-failed'> }
+
+/**
+ * Fetch the image at a public URL, refusing anything that is not an image or
+ * is too large. The caller decides where the bytes land: a note's attachments
+ * folder here, a Home board's cover folder in `home/cover-service`.
+ */
+export async function fetchRemoteImage(
+  url: string,
   deps: RemoteAttachmentDeps
-): Promise<DownloadAttachmentFromUrlResult> {
+): Promise<RemoteImageFetchResult> {
   let response: RemoteFetchResponse
   try {
-    response = await deps.fetch(input.url)
+    response = await deps.fetch(url)
   } catch (error) {
     logger.warn('A linked image could not be fetched', { error })
     return { ok: false, reason: 'offline' }
@@ -106,7 +116,17 @@ export async function downloadAttachmentFromUrl(
   // Checked again on the real body: `Content-Length` is a claim, not a limit.
   if (bytes.byteLength > MAX_BYTES) return { ok: false, reason: 'too-large' }
 
-  const saved = await saveAttachment(input.noteId, bytes, filenameFor(input.url, extension))
+  return { ok: true, bytes, filename: filenameFor(url, extension) }
+}
+
+export async function downloadAttachmentFromUrl(
+  input: DownloadAttachmentFromUrlInput,
+  deps: RemoteAttachmentDeps
+): Promise<DownloadAttachmentFromUrlResult> {
+  const fetched = await fetchRemoteImage(input.url, deps)
+  if (!fetched.ok) return fetched
+
+  const saved = await saveAttachment(input.noteId, fetched.bytes, fetched.filename)
   if (!saved.success || !saved.path) {
     logger.error('A linked image could not be written to the vault', {
       noteId: input.noteId,

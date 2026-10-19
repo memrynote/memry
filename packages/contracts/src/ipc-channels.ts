@@ -690,7 +690,12 @@ export const HomePagesChannels = {
     CREATE: 'home-pages:create',
     UPDATE: 'home-pages:update',
     DELETE: 'home-pages:delete',
-    REORDER: 'home-pages:reorder'
+    REORDER: 'home-pages:reorder',
+    SET_COVER: 'home-pages:set-cover',
+    SET_COVER_FRAMING: 'home-pages:set-cover-framing',
+    REMOVE_COVER: 'home-pages:remove-cover',
+    /** Fetch a synced cover whose bytes are not on this device yet. */
+    MATERIALIZE_COVER: 'home-pages:materialize-cover'
   },
   events: {
     /** A board arrived from a peer, or was created locally */

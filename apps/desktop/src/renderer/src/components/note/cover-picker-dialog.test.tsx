@@ -36,6 +36,7 @@ vi.mock('@/services/unsplash-service', () => ({
 }))
 
 import { COVER_PICKER_TABS, CoverPickerDialog } from './cover-picker-dialog'
+import { noteCoverImageTarget } from './cover-image-target'
 
 const NOTE_ID = 'nte_9f2c1a'
 
@@ -64,7 +65,7 @@ function renderPicker() {
     <CoverPickerDialog
       anchor={{ x: 0, y: 0 }}
       onOpenChange={onOpenChange}
-      noteId={NOTE_ID}
+      target={noteCoverImageTarget(NOTE_ID, 'Upload failed')}
       onApply={onApply}
     />
   )
@@ -475,7 +476,7 @@ describe('CoverPickerDialog photos', () => {
         <CoverPickerDialog
           anchor={{ x: 0, y: 0 }}
           onOpenChange={vi.fn()}
-          noteId={NOTE_ID}
+          target={noteCoverImageTarget(NOTE_ID, 'Upload failed')}
           onApply={vi.fn()}
         />
       )
