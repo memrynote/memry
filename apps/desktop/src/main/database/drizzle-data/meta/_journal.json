@@ -540,6 +540,13 @@
       "when": 1791581371087,
       "tag": "0076_home_page_cover",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "6",
+      "when": 1791581372087,
+      "tag": "0077_sticky_drafts",
+      "breakpoints": true
     }
   ]
 }

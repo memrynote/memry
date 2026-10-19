@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# snoozed item} other {# snoozed items}}",
     "notificationBody": "{count, plural, one {Your snoozed item is ready for review} other {Your snoozed items are ready}}",
     "toast": "{count, plural, =1 {\"{itemTitle}\" is back from snooze} other {# snoozed items are back}}"
+  },
+  "sticky": {
+    "kindLabel": "Send as",
+    "kinds": {
+      "note": "Note",
+      "task": "Task",
+      "journal": "Journal"
+    },
+    "placeholders": {
+      "note": "Jot it down…",
+      "task": "Call Ana @tomorrow #home !high",
+      "journal": "Add to today’s journal…"
+    },
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveFailed": "Not saved",
+    "tuck": "Tuck away",
+    "send": "Send",
+    "hints": "Esc tuck · {mod}⌫ delete",
+    "sendAndCloseHint": "⌥{mod}↵ sends and closes",
+    "deleted": "Draft deleted",
+    "open": "Open",
+    "undo": "Undo",
+    "sent": {
+      "note": "Saved to the Sticky folder",
+      "task": "Task added",
+      "journal": "Added to today’s journal"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky draft} other {# sticky drafts}}",
+      "newSticky": "New sticky"
+    },
+    "errors": {
+      "empty": "Write something first.",
+      "taskFailed": "Couldn’t create the task.",
+      "tasksOff": "Tasks are turned off in Settings.",
+      "journalOff": "Journal is turned off in Settings.",
+      "sendFailed": "Couldn’t send the sticky.",
+      "undoExpired": "It’s too late to undo this.",
+      "undoFailed": "Couldn’t undo the send."
+    },
+    "inputLabel": "Sticky text",
+    "dismissError": "Dismiss"
   }
 }

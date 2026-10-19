@@ -27,14 +27,15 @@ last, in chapter 05's apply order (source, event, external event, binding).
 Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
 added for the phone's whiteboard block and is appended last.
 
-Five more **record types** are served by the server and **not** subscribed to
+Six more **record types** are served by the server and **not** subscribed to
 here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`,
-`vault_lock` (desktop read-only locks, #2606).
+`vault_lock` (desktop read-only locks, #2606), `sticky_draft` (unsent desktop
+sticky text, §13.13).
 **A conforming client omits them from the header and never sees them**
 (chapter 05 §5.3.1).
 
-Twenty-one plus five is the **twenty-six record types**, which is the set
-chapter 05 §5.3 calls recognised. `attachment` is the twenty-seventh member of
+Twenty-one plus six is the **twenty-seven record types**, which is the set
+chapter 05 §5.3 calls recognised. `attachment` is the twenty-eighth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
 
@@ -901,7 +902,7 @@ chapter 06 §6.11 on every apply path, in addition to the type's algorithm in th
 table.
 
 `settings` is also the one record type **exempt from the clock requirement**
-(chapter 00 §0.7, `packages/contracts/src/sync-api.ts:64-89`).
+(chapter 00 §0.7, `packages/contracts/src/sync-api.ts:68-95`).
 
 ## 13.10 The `settings` payload merges rather than replaces — Q13.1
 
@@ -997,3 +998,25 @@ refused row — the row is not corrupt, it is expired.
 
 **Disposition of Q13.4: answered (a 90-day age rule enforced on apply and on
 write; no re-pull loop).**
+
+## 13.13 `sticky_draft`
+
+A `sticky_draft` is text typed into the desktop sticky and not sent yet
+(`StickyDraftSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:481-487`).
+Its payload carries `content`, `kind`, `clock`, `createdAt` and `modifiedAt`,
+all optional on the wire. One vector clock covers the whole record (chapter 06),
+so concurrent edits on two devices keep the later one.
+
+`kind` names where the text goes when sent: `note`, `task` or `journal`
+(`STICKY_KINDS`, `packages/contracts/src/sticky-api.ts:13`). It is a free-form
+string on the wire, so a kind a newer build adds still parses. **A reader MUST
+treat a kind it does not know as `note`** (`parseStickyKind`,
+`packages/contracts/src/sticky-api.ts:16-20`).
+
+Sending a draft or discarding it deletes the record. Draft ids are random and
+never come back after a delete, so the type is not in
+`RECREATABLE_AFTER_PURGE_ITEM_TYPES`. No other payload references a draft id:
+the type is a leaf in the reference graph, and a client that does not subscribe
+to it orphans nothing.
+
+This feature does not subscribe to `sticky_draft` (§13.1).

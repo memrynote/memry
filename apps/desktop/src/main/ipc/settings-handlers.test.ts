@@ -7,7 +7,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
-import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
+import {
+  DEFAULT_STICKY_SHORTCUT,
+  GENERAL_SETTINGS_DEFAULTS
+} from '@memry/contracts/settings-schemas'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -75,6 +78,8 @@ vi.mock('electron', () => ({
     isTrustedAccessibilityClient: electronMocks.isTrustedAccessibilityClient
   }
 }))
+
+vi.mock('../stickies/sticky-window', () => ({ showStickyWindow: vi.fn() }))
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
@@ -152,12 +157,14 @@ vi.mock('../store', () => ({
 
 import {
   applyGlobalCaptureShortcut,
+  applyStickyShortcut,
   followFolderRenameInShortcuts,
   registerSettingsHandlers,
   setQuickCaptureShortcutHost,
   unregisterSettingsHandlers
 } from './settings-handlers'
 import { getDatabase } from '../database'
+import { showStickyWindow } from '../stickies/sticky-window'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
 import * as projections from '../projections'
@@ -1299,6 +1306,70 @@ describe('settings-handlers', () => {
       })
       expect([...held.keys()]).toEqual(['Control+J'])
     })
+
+    describe('sticky shortcut', () => {
+      const STICKY_DEFAULT = 'CommandOrControl+Shift+M'
+
+      it('#given a blob without the field #when applied #then the default opens the sticky', () => {
+        const held = fakeOs()
+        keyboardStore({ overrides: {}, globalCapture: null })
+
+        expect(applyStickyShortcut()).toEqual({ status: 'registered' })
+        held.get(STICKY_DEFAULT)?.()
+        expect(showStickyWindow).toHaveBeenCalledTimes(1)
+        expect(quickCaptureOpens).toBe(0)
+      })
+
+      it('#given both shortcuts bound #when applied #then each holds its own accelerator', () => {
+        const held = fakeOs()
+        keyboardStore({ overrides: {}, globalCapture: J, stickyShortcut: L })
+
+        applyGlobalCaptureShortcut()
+        applyStickyShortcut()
+
+        expect([...held.keys()].sort()).toEqual(['Control+J', 'Control+L'])
+        held.get('Control+J')?.()
+        held.get('Control+L')?.()
+        expect(quickCaptureOpens).toBe(1)
+        expect(showStickyWindow).toHaveBeenCalledTimes(1)
+      })
+
+      it('#given a combo another app owns #when saved #then keeps the previous binding', async () => {
+        const held = fakeOs(['Control+M'])
+        const saved = keyboardStore({ overrides: {}, stickyShortcut: J })
+        applyStickyShortcut()
+
+        const result = await invokeHandler(SettingsChannels.invoke.SET_STICKY_SHORTCUT, M)
+
+        expect(result).toEqual({ status: 'in_use' })
+        expect(saved().stickyShortcut).toEqual(J)
+        expect([...held.keys()]).toContain('Control+J')
+      })
+
+      it('#given a binding #when cleared #then saves null and releases it', async () => {
+        const held = fakeOs()
+        const saved = keyboardStore({ overrides: {}, stickyShortcut: J })
+        applyStickyShortcut()
+
+        const result = await invokeHandler(SettingsChannels.invoke.SET_STICKY_SHORTCUT, null)
+
+        expect(result).toEqual({ status: 'unbound' })
+        expect(saved().stickyShortcut).toBeNull()
+        expect([...held.keys()]).not.toContain('Control+J')
+      })
+
+      it('#given the vault closes #when applied #then the sticky shortcut is released', () => {
+        const held = fakeOs()
+        keyboardStore({ overrides: {}, stickyShortcut: J })
+        applyStickyShortcut()
+        ;(getDatabase as Mock).mockImplementation(() => {
+          throw new Error('no vault')
+        })
+
+        expect(applyStickyShortcut()).toEqual({ status: 'unbound' })
+        expect([...held.keys()]).not.toContain('Control+J')
+      })
+    })
   })
 
   describe('startup accent color', () => {
@@ -1579,7 +1650,8 @@ describe('settings-handlers', () => {
       await expect(invokeHandler(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS)).resolves.toEqual({
         overrides: {},
         globalCapture: null,
-        folderNoteShortcuts: []
+        folderNoteShortcuts: [],
+        stickyShortcut: DEFAULT_STICKY_SHORTCUT
       })
     })
 
@@ -1618,7 +1690,12 @@ describe('settings-handlers', () => {
 
       await invokeHandler(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS)
 
-      expect(saved()).toEqual({ overrides: {}, globalCapture: null, folderNoteShortcuts })
+      expect(saved()).toEqual({
+        overrides: {},
+        globalCapture: null,
+        folderNoteShortcuts,
+        stickyShortcut: DEFAULT_STICKY_SHORTCUT
+      })
     })
 
     it('#given no shortcut under the folder #when renamed #then settings are not rewritten', () => {

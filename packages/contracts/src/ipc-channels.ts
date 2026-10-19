@@ -544,6 +544,10 @@ export const SettingsChannels = {
     GET_INBOX_SETTINGS: 'settings:getInboxSettings',
     /** Update inbox settings (partial merge) */
     SET_INBOX_SETTINGS: 'settings:setInboxSettings',
+    /** Get sticky preferences (default kind, tuck edge, paper) */
+    GET_STICKY_SETTINGS: 'settings:getStickySettings',
+    /** Update sticky preferences (partial merge) */
+    SET_STICKY_SETTINGS: 'settings:setStickySettings',
     /** Fire the daily-review notification now, to verify OS delivery/permission */
     SEND_TEST_INBOX_REVIEW_NOTIFICATION: 'settings:sendTestInboxReviewNotification',
     /** Store API key in OS keychain (never in DB) */
@@ -570,6 +574,10 @@ export const SettingsChannels = {
     REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture',
     /** Register a global capture binding, then save it only if the OS accepted it */
     SET_GLOBAL_CAPTURE: 'settings:setGlobalCapture',
+    /** Register (or release) the OS-level shortcut that opens the sticky */
+    REGISTER_STICKY_SHORTCUT: 'settings:registerStickyShortcut',
+    /** Register a sticky shortcut binding, then save it only if the OS accepted it */
+    SET_STICKY_SHORTCUT: 'settings:setStickyShortcut',
     /** Get status for the terminal `memrynote` command shim */
     GET_TERMINAL_COMMAND_STATUS: 'settings:getTerminalCommandStatus',
     /** Install the terminal `memrynote` command shim */
@@ -1140,6 +1148,46 @@ export type VaultLocksInvokeChannel =
   (typeof VaultLocksChannels.invoke)[keyof typeof VaultLocksChannels.invoke]
 export type VaultLocksEventChannel =
   (typeof VaultLocksChannels.events)[keyof typeof VaultLocksChannels.events]
+
+// ============================================================================
+// Sticky Channels
+// ============================================================================
+
+export const StickyChannels = {
+  invoke: {
+    /** Every unsent draft, newest first */
+    LIST_DRAFTS: 'sticky:list-drafts',
+    /** Create or update one draft */
+    SAVE_DRAFT: 'sticky:save-draft',
+    /** Delete one draft */
+    DELETE_DRAFT: 'sticky:delete-draft',
+    /** Send text to a note, a task, or today's journal entry */
+    SEND: 'sticky:send',
+    /** Remove what a note or task send created and bring the draft back */
+    UNDO_SEND: 'sticky:undo-send',
+    /** Show what a send created in the main window */
+    OPEN_TARGET: 'sticky:open-target',
+    /** Which draft the sticky window opened on */
+    GET_SESSION: 'sticky:get-session',
+    /** Hide the sticky window; the edge tab shows when drafts remain */
+    TUCK: 'sticky:tuck',
+    /** Open the sticky window on a draft, or blank */
+    UNFOLD: 'sticky:unfold',
+    /** Grow or shrink the edge tab for the draft list */
+    PEEK: 'sticky:peek',
+    /** Fit the sticky window to its card */
+    RESIZE: 'sticky:resize'
+  },
+  events: {
+    /** The draft list changed (locally or from a peer) */
+    DRAFTS_CHANGED: 'sticky:drafts-changed',
+    /** Main window: show what a sticky send created */
+    OPEN_TARGET_REQUESTED: 'sticky:open-target-requested'
+  }
+} as const
+
+export type StickyInvokeChannel = (typeof StickyChannels.invoke)[keyof typeof StickyChannels.invoke]
+export type StickyEventChannel = (typeof StickyChannels.events)[keyof typeof StickyChannels.events]
 
 // ============================================================================
 // Telemetry Channels

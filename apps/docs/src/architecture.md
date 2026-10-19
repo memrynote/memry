@@ -40,9 +40,10 @@ renderer is ESM over a large graph whose lazy boundaries rollup already derives 
 `import()` calls in the page switch.
 
 The entry itself holds only the boot path: i18n, the startup locale, and a hash check that
-imports either `main-window-root` (auth and sync providers plus `App`) or
-`quick-capture-root`. The main window therefore never loads Quick Capture and the Quick
-Capture window never loads `App`. Shell surfaces that are closed on first paint (settings,
+imports `main-window-root` (auth and sync providers plus `App`), `quick-capture-root`,
+`sticky-root` (the sticky) or `sticky-tab-root` (the sticky's edge tab). The main window
+therefore never loads Quick Capture or the sticky, and those windows never load `App`. The edge tab is a `BaseWindow` holding a
+`WebContentsView`, so it stays out of `BrowserWindow.getAllWindows()`. Shell surfaces that are closed on first paint (settings,
 onboarding, the keyboard shortcuts dialog, the search and commands palettes) sit behind
 `lazy()`; both palettes are mounted closed on the first idle callback so the first Cmd+K or
 Cmd+P opens an already loaded palette. Keep new closed-by-default shell surfaces on the same pattern.

@@ -62,28 +62,42 @@ try {
   // localStorage may be unavailable; ignore
 }
 
-// Check if this is the quick capture window (opened via global shortcut)
-// Handle both '#/quick-capture' and '#quick-capture' formats
-const isQuickCaptureWindow =
-  window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
+// Quick Capture, the sticky and the sticky's edge tab load the same entry with
+// their own hash; both '#/route' and '#route' forms are accepted.
+const windowRoute = window.location.hash.replace(/^#\/?/, '')
+const isQuickCaptureWindow = windowRoute === 'quick-capture'
+const isStickyWindow = windowRoute === 'sticky'
+const isStickyTabWindow = windowRoute === 'sticky-tab'
+const isSecondaryWindow = isQuickCaptureWindow || isStickyWindow || isStickyTabWindow
 const startupLocale = getStartupLocale()
 
+// The sticky windows are transparent; only their card and tab are painted.
+if (isStickyWindow || isStickyTabWindow) {
+  document.documentElement.style.background = 'transparent'
+  document.body.style.background = 'transparent'
+  document.body.style.overflow = 'hidden'
+}
+
 // Dynamic on purpose: the window kind is known from the hash before anything
-// else loads, so each window evaluates only its own tree. The quick capture
-// window never loads App, and the main window never loads QuickCapture.
+// else loads, so each window evaluates only its own tree. The secondary
+// windows never load App, and the main window never loads them.
 // Started at module scope so the chunk fetch overlaps the i18n boot below.
 const rootComponentReady: Promise<React.ComponentType> = isQuickCaptureWindow
   ? import('./quick-capture-root').then((module) => module.QuickCaptureRoot)
-  : import('./main-window-root').then((module) => module.MainWindowRoot)
+  : isStickyWindow
+    ? import('./sticky-root').then((module) => module.StickyRoot)
+    : isStickyTabWindow
+      ? import('./sticky-tab-root').then((module) => module.StickyTabRoot)
+      : import('./main-window-root').then((module) => module.MainWindowRoot)
 
 // Kicked off at module scope, before `boot()` even starts, so the restored
 // tab's chunk download overlaps everything boot() awaits (i18n, vault open,
 // tab restore) instead of queueing behind them. `prefetchRestoredTabPage`
 // already reads localStorage synchronously and no-ops when there is nothing
 // to restore, so a wrong guess costs one speculative chunk fetch. Skipped for
-// the quick-capture window, which never renders a note tab and would just be
-// paying for a chunk it never uses.
-if (!isQuickCaptureWindow) prefetchRestoredTabPage()
+// the secondary windows, which never render a note tab and would just be
+// paying for a chunk they never use.
+if (!isSecondaryWindow) prefetchRestoredTabPage()
 
 // Started at module scope rather than inside boot(): the locale is already
 // known, so there is nothing left for the 11 locale namespace chunks to wait

@@ -287,30 +287,62 @@ function globalCaptureProblem(t: SettingsT, status: GlobalCaptureRowStatus): str
   return null
 }
 
-function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): React.JSX.Element {
+/** The two system-wide shortcuts: Quick Capture and the sticky. */
+const SYSTEM_SHORTCUTS = {
+  globalCapture: {
+    labelKey: 'shortcuts.v2.globalCapture',
+    descriptionKey: 'shortcuts.globalCapture.description',
+    saveFailedKey: 'shortcuts.toasts.saveGlobalFailed',
+    register: () => window.api.settings.registerGlobalCapture(),
+    save: (binding: ShortcutBindingDTO | null) => window.api.settings.setGlobalCapture(binding)
+  },
+  sticky: {
+    labelKey: 'shortcuts.v2.sticky',
+    descriptionKey: 'shortcuts.sticky.description',
+    saveFailedKey: 'shortcuts.toasts.saveStickyFailed',
+    // The sticky has no built-in fallback, so an unbound sticky is not a problem.
+    register: async (): Promise<GlobalCaptureResult> => ({
+      ...(await window.api.settings.registerStickyShortcut()),
+      fallbackRegistered: true
+    }),
+    save: async (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> => ({
+      ...(await window.api.settings.setStickyShortcut(binding)),
+      fallbackRegistered: true
+    })
+  }
+} as const
+
+function SystemShortcutRow({
+  shortcut,
+  binding
+}: {
+  shortcut: keyof typeof SYSTEM_SHORTCUTS
+  binding: ShortcutBindingDTO | null
+}): React.JSX.Element {
   const { t } = useT('settings')
+  const config = SYSTEM_SHORTCUTS[shortcut]
   const [status, setStatus] = useState<GlobalCaptureRowStatus>({ kind: 'unknown' })
 
   useEffect(() => {
     let cancelled = false
-    void window.api.settings.registerGlobalCapture().then((result) => {
+    void config.register().then((result) => {
       if (!cancelled) setStatus(toRowStatus(result, binding))
     })
     return () => {
       cancelled = true
     }
-  }, [binding])
+  }, [config, binding])
 
   const save = useCallback(
     async (next: ShortcutBindingDTO | null): Promise<void> => {
       try {
-        setStatus(toRowStatus(await window.api.settings.setGlobalCapture(next), next))
+        setStatus(toRowStatus(await config.save(next), next))
       } catch {
         trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
-        toast.error(t('shortcuts.toasts.saveGlobalFailed'))
+        toast.error(t(config.saveFailedKey))
       }
     },
-    [t]
+    [config, t]
   )
 
   const capture = useShortcutCapture((e, stop) => {
@@ -335,7 +367,7 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
       {isCapturing && <RecordingBar />}
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex items-center gap-2.5">
-          <span className="text-[13px]/4 text-foreground">{t('shortcuts.v2.globalCapture')}</span>
+          <span className="text-[13px]/4 text-foreground">{t(config.labelKey)}</span>
           {status.kind === 'active' && (
             <span className="flex items-center gap-1.5 text-xs/4 text-muted-foreground">
               <span aria-hidden="true" className="size-1.5 rounded-full bg-green-500" />
@@ -344,7 +376,7 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
           )}
         </div>
         <span className="text-xs/4 text-muted-foreground">
-          {isCapturing ? t('shortcuts.v2.recordingHint') : t('shortcuts.globalCapture.description')}
+          {isCapturing ? t('shortcuts.v2.recordingHint') : t(config.descriptionKey)}
         </span>
         {problem && (
           <span role="alert" className="text-xs/4 text-destructive">
@@ -416,6 +448,7 @@ export function ShortcutsSettings() {
 
   const overrides = settings.overrides
   const globalCapture = settings.globalCapture ?? null
+  const stickyShortcut = settings.stickyShortcut ?? null
   const folderNoteShortcuts = settings.folderNoteShortcuts ?? []
 
   const handleRebind = useCallback(
@@ -536,7 +569,8 @@ export function ShortcutsSettings() {
 
       {category === ALL_CATEGORIES && (
         <SettingsGroup label={t('shortcuts.v2.systemWide')}>
-          <GlobalCaptureRow binding={globalCapture} />
+          <SystemShortcutRow shortcut="globalCapture" binding={globalCapture} />
+          <SystemShortcutRow shortcut="sticky" binding={stickyShortcut} />
         </SettingsGroup>
       )}
 

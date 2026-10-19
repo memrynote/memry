@@ -22,6 +22,7 @@ import {
   CALENDAR_SETTINGS_DEFAULTS,
   FEATURES_SETTINGS_DEFAULTS,
   INBOX_SETTINGS_DEFAULTS,
+  STICKY_SETTINGS_DEFAULTS,
   GetCalendarProviderSettingsSchema,
   SetCalendarProviderSettingsSchema,
   ShortcutBindingSchema
@@ -41,7 +42,9 @@ import type {
   CalendarProviderSettings,
   CalendarSettings,
   FeaturesSettings,
-  InboxSettings
+  InboxSettings,
+  StickySettings,
+  StickyShortcutResult
 } from '@memry/contracts/settings-schemas'
 import {
   GRAPH_SETTINGS_DEFAULTS,
@@ -123,6 +126,9 @@ import {
 } from '@memry/contracts/sidebar-sort'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { sendTestReviewNotification } from '../inbox/review-notification'
+import { STICKY_SETTINGS_GROUP_KEY } from '../settings/sticky-settings'
+import { refreshEdgeTab } from '../stickies/edge-tab'
+import { showStickyWindow } from '../stickies/sticky-window'
 import { trackMainEvent } from '../telemetry/track'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { SafeDimensionValueSchema } from '@memry/contracts/telemetry-api'
@@ -1260,6 +1266,7 @@ export function registerSettingsHandlers(): void {
       if ('globalCapture' in updates) {
         applyGlobalCaptureShortcut()
       }
+      if ('stickyShortcut' in updates) applyStickyShortcut()
       if ('overrides' in updates) keyboardOverridesListener?.()
       return result
     }
@@ -1403,6 +1410,22 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.SET_INBOX_SETTINGS,
     (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
   )
+  ipcMain.handle(SettingsChannels.invoke.GET_STICKY_SETTINGS, () =>
+    readGroupSettings(STICKY_SETTINGS_GROUP_KEY, STICKY_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_STICKY_SETTINGS,
+    (_event, updates: Partial<StickySettings>) => {
+      const result = writeGroupSettings(
+        STICKY_SETTINGS_GROUP_KEY,
+        STICKY_SETTINGS_DEFAULTS,
+        updates
+      )
+      // The edge tab re-reads its edge and paper.
+      if (result.success) refreshEdgeTab()
+      return result
+    }
+  )
   ipcMain.handle(SettingsChannels.invoke.SEND_TEST_INBOX_REVIEW_NOTIFICATION, () =>
     sendTestReviewNotification()
   )
@@ -1420,6 +1443,7 @@ export function registerSettingsHandlers(): void {
     const reset = { ...KEYBOARD_SHORTCUTS_DEFAULTS, folderNoteShortcuts }
     setSetting(db, 'keyboard', JSON.stringify(reset))
     keyboardOverridesListener?.()
+    applyStickyShortcut()
 
     broadcastToAllWindows(SettingsChannels.events.CHANGED, {
       key: 'keyboard',
@@ -1435,6 +1459,12 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, (_event, binding: unknown) =>
     saveGlobalCaptureShortcut(ShortcutBindingSchema.nullable().parse(binding))
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.REGISTER_STICKY_SHORTCUT, () => applyStickyShortcut())
+
+  ipcMain.handle(SettingsChannels.invoke.SET_STICKY_SHORTCUT, (_event, binding: unknown) =>
+    saveStickyShortcut(ShortcutBindingSchema.nullable().parse(binding))
   )
 }
 
@@ -1472,11 +1502,29 @@ export function setQuickCaptureShortcutHost(host: QuickCaptureShortcutHost | nul
 }
 
 /**
- * Accelerator currently held by the configured global capture shortcut. Only
- * this one is released on re-apply: `globalShortcut.unregisterAll()` would also
- * drop the quick capture fallback shortcut owned by `main/index.ts`.
+ * A configured system-wide shortcut and the accelerator it currently holds.
+ * Only that accelerator is released on re-apply: `globalShortcut.unregisterAll()`
+ * would also drop the quick capture fallback owned by `main/index.ts` and the
+ * other configured shortcut.
  */
-let registeredGlobalCaptureAccelerator: string | null = null
+interface ConfiguredShortcut {
+  /** Log prefix and telemetry action stem. */
+  label: string
+  telemetryAction: string
+  held: string | null
+}
+
+const globalCaptureShortcut: ConfiguredShortcut = {
+  label: 'Global capture',
+  telemetryAction: 'global_capture_register_failed',
+  held: null
+}
+
+const stickyShortcut: ConfiguredShortcut = {
+  label: 'Sticky shortcut',
+  telemetryAction: 'sticky_shortcut_register_failed',
+  held: null
+}
 
 let keyboardOverridesListener: (() => void) | null = null
 
@@ -1544,21 +1592,61 @@ function saveGlobalCaptureShortcut(binding: ShortcutBinding | null): GlobalCaptu
 }
 
 function applyGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCaptureResult {
-  const status = registerGlobalCaptureBinding(binding)
+  const status = registerConfiguredShortcut(globalCaptureShortcut, binding, {
+    // The configured binding gets first claim on every accelerator, including the
+    // fallback's own: this process already holding it would make register() fail.
+    beforeRegister: () => quickCaptureShortcutHost?.syncFallback(true),
+    onFire: () => quickCaptureShortcutHost?.open()
+  })
   const fallbackRegistered =
     quickCaptureShortcutHost?.syncFallback(status === 'registered') ?? false
   return { status, fallbackRegistered }
 }
 
-function releaseGlobalCaptureAccelerator(): void {
-  if (!registeredGlobalCaptureAccelerator) return
-  globalShortcut.unregister(registeredGlobalCaptureAccelerator)
-  registeredGlobalCaptureAccelerator = null
+/**
+ * Register the sticky's binding while a vault is open, and release it with no
+ * vault: the sticky's drafts live in the vault database. Converges like
+ * `applyGlobalCaptureShortcut`, so vault status changes can call it freely.
+ */
+export function applyStickyShortcut(): StickyShortcutResult {
+  const binding = getDbOrNull()
+    ? readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).stickyShortcut
+    : null
+  return { status: applyStickyBinding(binding) }
 }
 
-function registerGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCaptureStatus {
+/** Register first, save second, as `saveGlobalCaptureShortcut` does. */
+function saveStickyShortcut(binding: ShortcutBinding | null): StickyShortcutResult {
+  if (!getDbOrNull()) throw new Error(getMainI18n().t('errors:ipc.noVaultOpen'))
+
+  const previous = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).stickyShortcut
+  const status = applyStickyBinding(binding)
+  if (status === 'in_use' || status === 'unsupported') {
+    applyStickyBinding(previous)
+    return { status }
+  }
+
+  writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, { stickyShortcut: binding })
+  return { status }
+}
+
+function applyStickyBinding(binding: ShortcutBinding | null): GlobalCaptureStatus {
+  return registerConfiguredShortcut(stickyShortcut, binding, { onFire: () => showStickyWindow() })
+}
+
+function releaseConfiguredShortcut(shortcut: ConfiguredShortcut): void {
+  if (!shortcut.held) return
+  globalShortcut.unregister(shortcut.held)
+  shortcut.held = null
+}
+
+function registerConfiguredShortcut(
+  shortcut: ConfiguredShortcut,
+  binding: ShortcutBinding | null,
+  hooks: { beforeRegister?: () => void; onFire: () => void }
+): GlobalCaptureStatus {
   if (!binding) {
-    releaseGlobalCaptureAccelerator()
+    releaseConfiguredShortcut(shortcut)
     return 'unbound'
   }
 
@@ -1567,40 +1655,38 @@ function registerGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCa
   // Gating on it blocked the binding for users whose permission entry was missing
   // or stale, while the ungated fallback shortcut kept working (#2452).
   const accelerator = toElectronAccelerator(binding)
-  if (accelerator === registeredGlobalCaptureAccelerator) return 'registered'
+  if (accelerator === shortcut.held) return 'registered'
 
-  releaseGlobalCaptureAccelerator()
-  // The configured binding gets first claim on every accelerator, including the
-  // fallback's own: this process already holding it would make register() fail.
-  quickCaptureShortcutHost?.syncFallback(true)
+  releaseConfiguredShortcut(shortcut)
+  hooks.beforeRegister?.()
 
   let registered: boolean
   try {
-    registered = globalShortcut.register(accelerator, () => quickCaptureShortcutHost?.open())
+    registered = globalShortcut.register(accelerator, hooks.onFire)
   } catch (err) {
     // Electron throws on accelerators it cannot parse, e.g. the non-ASCII keys
     // macOS reports for Option combos, which older versions saved as-is.
-    logger.warn(`Global capture: ${accelerator} is not a valid accelerator`, err)
+    logger.warn(`${shortcut.label}: ${accelerator} is not a valid accelerator`, err)
     trackMainLog('warn', {
       scope: 'Settings',
-      action: 'global_capture_register_failed',
+      action: shortcut.telemetryAction,
       errorCode: 'shortcut_unsupported'
     })
     return 'unsupported'
   }
 
   if (!registered) {
-    logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
+    logger.warn(`${shortcut.label}: failed to register ${accelerator} (may be in use)`)
     trackMainLog('warn', {
       scope: 'Settings',
-      action: 'global_capture_register_failed',
+      action: shortcut.telemetryAction,
       errorCode: 'shortcut_in_use'
     })
     return 'in_use'
   }
 
-  registeredGlobalCaptureAccelerator = accelerator
-  logger.info(`Global capture: registered ${accelerator}`)
+  shortcut.held = accelerator
+  logger.info(`${shortcut.label}: registered ${accelerator}`)
   return 'registered'
 }
 
@@ -1701,8 +1787,12 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_INBOX_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_INBOX_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_STICKY_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_STICKY_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE)
+  ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_STICKY_SHORTCUT)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_STICKY_SHORTCUT)
 
   logger.info('Settings handlers unregistered')
 }

@@ -603,6 +603,10 @@ const createMockApi = () => ({
   onReminderSnoozed: vi.fn().mockReturnValue(() => {}),
   onReminderClicked: vi.fn().mockReturnValue(() => {}),
   onInboxOpenItem: vi.fn().mockReturnValue(() => {}),
+  sticky: {
+    onOpenTargetRequested: vi.fn().mockReturnValue(() => {}),
+    onDraftsChanged: vi.fn().mockReturnValue(() => {})
+  },
   onUpdaterStateChanged: vi.fn().mockReturnValue(() => {}),
   onCrdtWriteBackFailed: vi.fn().mockReturnValue(() => {}),
 

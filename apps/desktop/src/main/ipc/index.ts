@@ -53,6 +53,7 @@ import { registerImportHandlers, unregisterImportHandlers } from './import-handl
 import { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 import { registerCustomIconHandlers, unregisterCustomIconHandlers } from './custom-icon-handlers'
 import { registerVaultLockHandlers, unregisterVaultLockHandlers } from './vault-lock-handlers'
+import { registerStickyHandlers, unregisterStickyHandlers } from './sticky-handlers'
 import {
   registerOcrLanguagesHandlers,
   unregisterOcrLanguagesHandlers
@@ -207,6 +208,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   registerHomePageHandlers()
   registerCustomIconHandlers()
   registerVaultLockHandlers()
+  registerStickyHandlers()
   registerOcrLanguagesHandlers()
 
   handlersRegistered = true
@@ -259,6 +261,7 @@ export function unregisterAllHandlers(): void {
   unregisterHomePageHandlers()
   unregisterCustomIconHandlers()
   unregisterVaultLockHandlers()
+  unregisterStickyHandlers()
   unregisterOcrLanguagesHandlers()
 
   handlersRegistered = false

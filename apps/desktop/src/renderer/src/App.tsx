@@ -85,6 +85,7 @@ import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
 import { useVaultLockRestoreNotice } from '@/hooks/use-vault-lock-restore-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
+import { useStickyOpenTarget } from '@/hooks/use-sticky-open-target'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { VaultSwitchingScreen } from '@/components/vault-switching-screen'
@@ -340,6 +341,7 @@ const AppContent = (): React.JSX.Element => {
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
   useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
+  useStickyOpenTarget() // The sticky's Open shows what a send created
   const togglePalette = useCallback((palette: ActivePalette) => {
     if (isVaultSwitchPending()) return
     setActivePalette((prev) => (prev === palette ? null : palette))

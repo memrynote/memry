@@ -110,7 +110,8 @@
       "fileCreation": "Dosya oluşturma",
       "privacy": "Gizlilik",
       "startupWindows": "Başlangıç ve pencereler",
-      "newNotes": "Yeni notlar"
+      "newNotes": "Yeni notlar",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -264,6 +265,29 @@
           "description": "Karşılaştığınız sorunu çözmemize yardımcı olmak için maskelenmiş teknik günlüklerden oluşan tek seferlik bir rapor gönderin.",
           "button": "Rapor gönder…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Sticky kısayolu (Klavye Kısayolları → Sistem genelinde) Memry açıkken sticky’yi açar. Gönderilmemiş metin ekran kenarında taslak olarak kalır.",
+      "error": "Sticky ayarları kaydedilemedi.",
+      "defaultKind": {
+        "label": "Yeni sticky’ler şu olarak gönderilir",
+        "last": "Son kullanılan",
+        "note": "Not",
+        "task": "Görev",
+        "journal": "Günlük"
+      },
+      "tuckEdge": {
+        "label": "Kaldırılacak kenar",
+        "left": "Sol kenar",
+        "right": "Sağ kenar"
+      },
+      "paper": {
+        "label": "Kağıt",
+        "peach": "Şeftali",
+        "butter": "Tereyağı",
+        "mint": "Nane",
+        "lavender": "Lavanta"
       }
     }
   },
@@ -1904,7 +1928,8 @@
       "saveFailed": "Kısayol kaydedilemedi",
       "resetFailed": "Kısayol sıfırlanamadı",
       "resetAllSuccess": "Tüm kısayollar varsayılanlara sıfırlandı",
-      "resetAllFailed": "Kısayollar sıfırlanamadı"
+      "resetAllFailed": "Kısayollar sıfırlanamadı",
+      "saveStickyFailed": "Sticky kısayolu kaydedilemedi"
     },
     "categories": {
       "navigation": "Gezinme",
@@ -2065,7 +2090,11 @@
       "globalCapture": "Her yerden hızlı kayıt",
       "recordingHint": "Tuşlara basın… iptal için esc",
       "reset": "Sıfırla",
-      "resetAll": "Tümünü varsayılana sıfırla"
+      "resetAll": "Tümünü varsayılana sıfırla",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "memrynote açıkken sticky’yi her uygulamadan açın"
     }
   },
   "phaseF": {

@@ -100,6 +100,12 @@ describe('GeneralSettings i18n', () => {
       tabCloseButton: 'hover'
     })
     api.settings.setTabSettings = vi.fn().mockResolvedValue({ success: true })
+    api.settings.getStickySettings = vi.fn().mockResolvedValue({
+      defaultKind: 'last',
+      lastKind: 'note',
+      tuckEdge: 'right',
+      paper: 'peach'
+    })
     api.updater = {
       getState: vi.fn().mockResolvedValue(updateState),
       checkForUpdates: vi.fn().mockResolvedValue(updateState),

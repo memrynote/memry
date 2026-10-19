@@ -28,16 +28,19 @@ const useKeyboardSettingsMock = vi.mocked(useKeyboardSettings)
 function mockGlobalCaptureApi(
   current: GlobalCaptureResult,
   onSave: GlobalCaptureResult | Error = { status: 'registered', fallbackRegistered: false }
-): { setGlobalCapture: ReturnType<typeof vi.fn> } {
+): { setGlobalCapture: ReturnType<typeof vi.fn>; setStickyShortcut: ReturnType<typeof vi.fn> } {
   const api = createMockApi()
   const setGlobalCapture =
     onSave instanceof Error ? vi.fn().mockRejectedValue(onSave) : vi.fn().mockResolvedValue(onSave)
+  const setStickyShortcut = vi.fn().mockResolvedValue({ status: 'registered' })
   Object.assign(api.settings, {
     registerGlobalCapture: vi.fn().mockResolvedValue(current),
-    setGlobalCapture
+    setGlobalCapture,
+    registerStickyShortcut: vi.fn().mockResolvedValue({ status: 'unbound' }),
+    setStickyShortcut
   })
   window.api = api as unknown as typeof window.api
-  return { setGlobalCapture }
+  return { setGlobalCapture, setStickyShortcut }
 }
 
 function globalCaptureRow(): HTMLElement {
@@ -204,6 +207,40 @@ describe('ShortcutsSettings', () => {
     expect(screen.queryByText('Capture a note from anywhere')).not.toBeInTheDocument()
   })
 
+  it('lists the sticky next to Quick Capture and rebinds it on its own', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: {},
+        globalCapture: null,
+        stickyShortcut: { key: 'M', modifiers: { meta: true, shift: true } }
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+    const { setGlobalCapture, setStickyShortcut } = mockGlobalCaptureApi({
+      status: 'unbound',
+      fallbackRegistered: true
+    })
+
+    render(<ShortcutsSettings />)
+
+    const stickyRow = screen
+      .getByText('Open the sticky from any app while memrynote is running')
+      .closest('.group') as HTMLElement
+    expect(within(stickyRow).getByTitle('Click to rebind')).toHaveTextContent('CtrlShiftM')
+
+    await userEvent.click(within(stickyRow).getByTitle('Click to rebind'))
+    fireEvent.keyDown(window, { key: 'y', code: 'KeyY', ctrlKey: true, shiftKey: true })
+
+    expect(setStickyShortcut).toHaveBeenCalledWith({
+      key: 'Y',
+      modifiers: { meta: true, shift: true, alt: undefined }
+    })
+    expect(setGlobalCapture).not.toHaveBeenCalled()
+  })
+
   it('shows global capture save failures', async () => {
     const { setGlobalCapture } = mockGlobalCaptureApi(
       { status: 'unbound', fallbackRegistered: true },
@@ -212,7 +249,7 @@ describe('ShortcutsSettings', () => {
 
     render(<ShortcutsSettings />)
 
-    await userEvent.click(screen.getByText('Click to set'))
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
     fireEvent.keyDown(window, { key: 'x', code: 'KeyX', ctrlKey: true })
 
     expect(setGlobalCapture).toHaveBeenCalledWith({
@@ -263,14 +300,14 @@ describe('ShortcutsSettings', () => {
 
     render(<ShortcutsSettings />)
 
-    await userEvent.click(screen.getByText('Click to set'))
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
     fireEvent.keyDown(window, { key: '˚', code: 'KeyK', metaKey: true, altKey: true })
     expect(setGlobalCapture).toHaveBeenLastCalledWith({
       key: 'K',
       modifiers: { meta: true, shift: undefined, alt: true }
     })
 
-    await userEvent.click(screen.getByText('Click to set'))
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
     fireEvent.keyDown(window, { key: ' ', code: 'Space', metaKey: true, shiftKey: true })
     expect(setGlobalCapture).toHaveBeenLastCalledWith({
       key: 'Space',

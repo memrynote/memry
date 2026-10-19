@@ -68,6 +68,10 @@ vi.mock('@memry/sync-client/vault-lock-sync', () => ({
   getVaultLockSyncService: vi.fn()
 }))
 
+vi.mock('@memry/sync-client/sticky-draft-sync', () => ({
+  getStickyDraftSyncService: vi.fn()
+}))
+
 vi.mock('./calendar-event-sync', () => ({
   getCalendarEventSyncService: vi.fn()
 }))
@@ -94,7 +98,8 @@ vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementTemplateClockOffline: vi.fn(),
   incrementHomePageClockOffline: vi.fn(),
   incrementNoteClockOffline: vi.fn(),
-  incrementVaultLockClockOffline: vi.fn()
+  incrementVaultLockClockOffline: vi.fn(),
+  incrementStickyDraftClockOffline: vi.fn()
 }))
 
 import { getDatabase } from '../database'
@@ -115,9 +120,11 @@ import {
   incrementTaskClocksOffline,
   incrementTemplateClockOffline,
   incrementHomePageClockOffline,
-  incrementVaultLockClockOffline
+  incrementVaultLockClockOffline,
+  incrementStickyDraftClockOffline
 } from '@memry/sync-client/offline-clock'
 import { getVaultLockSyncService } from '@memry/sync-client/vault-lock-sync'
+import { getStickyDraftSyncService } from '@memry/sync-client/sticky-draft-sync'
 import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
 import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { getTemplateSyncService } from '@memry/sync-client/template-sync'
@@ -196,6 +203,12 @@ describe('local-mutations', () => {
       getService: getHomePageSyncService,
       offlineBump: incrementHomePageClockOffline,
       itemId: 'board-1'
+    },
+    {
+      type: 'sticky_draft' as const,
+      getService: getStickyDraftSyncService,
+      offlineBump: incrementStickyDraftClockOffline,
+      itemId: 'draft-1'
     }
   ])('$type local mutations', ({ type, getService, offlineBump, itemId }) => {
     it('routes creates to the live service', () => {

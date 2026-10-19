@@ -110,7 +110,8 @@
       "fileCreation": "File Creation",
       "privacy": "Privacy",
       "startupWindows": "Startup & windows",
-      "newNotes": "New notes"
+      "newNotes": "New notes",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -274,6 +275,29 @@
           "description": "Send a one-time report of redacted technical logs to help us debug an issue you hit.",
           "button": "Send report…"
         }
+      }
+    },
+    "sticky": {
+      "description": "The Sticky shortcut (Keyboard Shortcuts → System-wide) opens the sticky while Memry is running. Unsent text stays as a draft on the screen edge.",
+      "error": "Couldn’t save sticky settings.",
+      "defaultKind": {
+        "label": "New stickies send as",
+        "last": "Last used",
+        "note": "Note",
+        "task": "Task",
+        "journal": "Journal"
+      },
+      "tuckEdge": {
+        "label": "Tuck to",
+        "left": "Left edge",
+        "right": "Right edge"
+      },
+      "paper": {
+        "label": "Paper",
+        "peach": "Peach",
+        "butter": "Butter",
+        "mint": "Mint",
+        "lavender": "Lavender"
       }
     }
   },
@@ -1956,7 +1980,8 @@
       "saveFailed": "Failed to save shortcut",
       "resetFailed": "Failed to reset shortcut",
       "resetAllSuccess": "All shortcuts reset to defaults",
-      "resetAllFailed": "Failed to reset shortcuts"
+      "resetAllFailed": "Failed to reset shortcuts",
+      "saveStickyFailed": "Failed to save sticky shortcut"
     },
     "categories": {
       "navigation": "Navigation",
@@ -2125,7 +2150,11 @@
       "globalCapture": "Global capture",
       "recordingHint": "Press keys… esc to cancel",
       "reset": "Reset",
-      "resetAll": "Reset all to defaults"
+      "resetAll": "Reset all to defaults",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Open the sticky from any app while memrynote is running"
     }
   },
   "phaseF": {

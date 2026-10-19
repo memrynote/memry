@@ -88,6 +88,7 @@
     "./writing-tools-api": "./src/writing-tools-api.ts",
     "./vault-api": "./src/vault-api.ts",
     "./vault-locks-api": "./src/vault-locks-api.ts",
+    "./sticky-api": "./src/sticky-api.ts",
     "./capture-api": "./src/capture-api.ts",
     "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json",
     "./test-vectors/bip39-unlock.json": "./test-vectors/bip39-unlock.json",

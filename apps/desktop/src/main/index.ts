@@ -34,6 +34,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
+import { initStickyRuntime } from './stickies/runtime'
 import {
   applyGlobalCaptureShortcut,
   getMinimizeToTraySetting,
@@ -1695,6 +1696,7 @@ const appReady = app.whenReady().then(async () => {
   })
   applyGlobalCaptureShortcut()
   registerQuickCaptureTestHooks()
+  initStickyRuntime()
 
   // Configure CSP, cert pinning, and permission handlers before the window loads
   configureCsp()

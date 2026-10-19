@@ -470,6 +470,22 @@ export const VaultLockSyncPayloadSchema = z.object({
   updatedAt: z.string().optional()
 })
 
+/**
+ * Unsent sticky text (`kind`: where it goes when sent: `note`, `task` or
+ * `journal`). Sending or discarding it deletes the record. One clock covers
+ * the whole record, so a concurrent edit on two devices keeps the later one.
+ *
+ * `kind` stays a free-form string for the reason `targetKind` does above; a
+ * reader treats a kind it does not know as `note`.
+ */
+export const StickyDraftSyncPayloadSchema = z.object({
+  content: z.string().optional(),
+  kind: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export const CalendarEventSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -697,6 +713,7 @@ export const AgentMessageSyncPayloadSchema = z.object({
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
 export type CustomIconSyncPayload = z.infer<typeof CustomIconSyncPayloadSchema>
 export type VaultLockSyncPayload = z.infer<typeof VaultLockSyncPayloadSchema>
+export type StickyDraftSyncPayload = z.infer<typeof StickyDraftSyncPayloadSchema>
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
 export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>

@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# ertelenen öğe} other {# ertelenen öğe}}",
     "notificationBody": "{count, plural, one {Ertelenen öğeniz gözden geçirilmeye hazır} other {Ertelenen öğeleriniz hazır}}",
     "toast": "{count, plural, =1 {“{itemTitle}” ertelemeden döndü} one {# ertelenen öğe geri döndü} other {# ertelenen öğe geri döndü}}"
+  },
+  "sticky": {
+    "kindLabel": "Şu olarak gönder",
+    "kinds": {
+      "note": "Not",
+      "task": "Görev",
+      "journal": "Günlük"
+    },
+    "placeholders": {
+      "note": "Hemen yaz…",
+      "task": "Ana’yı ara @tomorrow #ev !high",
+      "journal": "Bugünün günlüğüne ekle…"
+    },
+    "saving": "Kaydediliyor…",
+    "saved": "Kaydedildi",
+    "saveFailed": "Kaydedilmedi",
+    "tuck": "Kenara kaldır",
+    "send": "Gönder",
+    "hints": "Esc kaldır · {mod}⌫ sil",
+    "sendAndCloseHint": "⌥{mod}↵ gönderir ve kapatır",
+    "deleted": "Taslak silindi",
+    "open": "Aç",
+    "undo": "Geri al",
+    "sent": {
+      "note": "Sticky klasörüne kaydedildi",
+      "task": "Görev eklendi",
+      "journal": "Bugünün günlüğüne eklendi"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky taslağı} other {# sticky taslağı}}",
+      "newSticky": "Yeni sticky"
+    },
+    "errors": {
+      "empty": "Önce bir şey yaz.",
+      "taskFailed": "Görev oluşturulamadı.",
+      "tasksOff": "Görevler Ayarlar’da kapalı.",
+      "journalOff": "Günlük Ayarlar’da kapalı.",
+      "sendFailed": "Sticky gönderilemedi.",
+      "undoExpired": "Bunu geri almak için çok geç.",
+      "undoFailed": "Gönderim geri alınamadı."
+    },
+    "inputLabel": "Sticky metni",
+    "dismissError": "Kapat"
   }
 }
