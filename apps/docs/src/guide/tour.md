@@ -121,7 +121,7 @@ The **Notes** tree loads 10,000 notes at a time, most recently modified first. I
 At the foot of the rail:
 
 - **Sync status** — shows whether sync is connected; click it to open account settings (or to sign in when you're signed out).
-- **Feedback** — report a bug or suggest a feature.
+- **Help and feedback** — send feedback, report a bug, suggest a feature, or join the community on Discord, X, and Reddit. The same community links are in the app's **Help** menu.
 - **Settings** (gear) — opens the settings modal, the same as <kbd>⌘</kbd>+<kbd>,</kbd>.
 
 ### Switching vaults
