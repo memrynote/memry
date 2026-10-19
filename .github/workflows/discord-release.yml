@@ -1,0 +1,101 @@
+name: Announce Release on Discord
+
+# Posts a summary of each published desktop release to the read-only
+# #changelog channel on the MemryNote Discord. `pnpm release` publishes the
+# draft with the maintainer's own token, so this `release: published` event
+# fires. Re-run by hand with:
+#   gh workflow run discord-release.yml -f tag=<tag>
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to announce
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    name: Post to #changelog
+    if: github.event_name == 'workflow_dispatch' || (!github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v20'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Post release summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Webhook of #changelog (Channel settings > Integrations > Webhooks).
+          DISCORD_CHANGELOG_WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DISCORD_CHANGELOG_WEBHOOK:-}" ]; then
+            echo "::error::Set DISCORD_CHANGELOG_WEBHOOK to the #changelog channel webhook URL."
+            exit 1
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,url > "$RUNNER_TEMP/release.json"
+          node - <<'EOF'
+          const { readFileSync } = require('node:fs')
+          const release = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/release.json`, 'utf8'))
+          const MAX_ITEMS = 5
+
+          // release-drafter body: "## <emoji> <Section>" headings over "- type(scope): msg @author (#123)" lines.
+          const sections = []
+          const seen = new Set()
+          for (const line of (release.body || '').split('\n')) {
+            const heading = line.match(/^##\s+(.+)$/)
+            if (heading) {
+              if (!/what's changed/i.test(heading[1])) sections.push({ title: heading[1].trim(), items: [] })
+              continue
+            }
+            const item = line.match(/^[-*]\s+(.+)$/)
+            if (!item || sections.length === 0) continue
+            const text = item[1]
+              .replace(/\s+@[\w-]+(\s+\(#\d+\))?\s*$/, '')
+              .replace(/^\w+(\([^)]*\))?!?:\s*/, '')
+              .replace(/\\_/g, '_')
+            if (seen.has(text)) continue
+            seen.add(text)
+            sections.at(-1).items.push(text.charAt(0).toUpperCase() + text.slice(1))
+          }
+
+          const fields = sections
+            .filter((s) => s.items.length > 0)
+            .map((s) => {
+              const shown = s.items.slice(0, MAX_ITEMS).map((t) => `• ${t}`)
+              if (s.items.length > MAX_ITEMS) shown.push(`…and ${s.items.length - MAX_ITEMS} more`)
+              return { name: `${s.title} (${s.items.length})`, value: shown.join('\n').slice(0, 1024) }
+            })
+            .slice(0, 25)
+
+          const payload = {
+            username: 'MemryNote Releases',
+            allowed_mentions: { parse: [] },
+            embeds: [{
+              title: `🚀 ${release.name || release.tagName} is out`,
+              url: release.url,
+              color: 0x8b5cf6,
+              description: `Update from inside the app, or download it from [GitHub](${release.url}).`,
+              fields,
+              footer: { text: release.tagName },
+              timestamp: new Date().toISOString(),
+            }],
+          }
+
+          fetch(process.env.DISCORD_CHANGELOG_WEBHOOK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }).then(async (res) => {
+            if (!res.ok) {
+              console.error(`Discord webhook failed: ${res.status} ${await res.text()}`)
+              process.exit(1)
+            }
+            console.log(`Announced ${release.tagName} with ${fields.length} sections.`)
+          })
+          EOF
