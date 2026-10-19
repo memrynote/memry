@@ -47,29 +47,41 @@ the app.
 
 ## Status Indicator
 
-A small indicator in the app chrome shows the current state:
+A cloud in the sidebar footer shows the current state. The dot on its corner carries the color:
 
-| Color  | Meaning                                           |
-| ------ | ------------------------------------------------- |
-| Green  | Idle, in sync                                     |
-| Blue   | Syncing right now                                 |
-| Yellow | Paused, retrying with backoff, or temporary error |
-| Gray   | Offline, or local only (no active sync plan)      |
-| Red    | Authentication or quota issue requiring action    |
+| Indicator          | Meaning                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| Green dot          | Synced                                                                |
+| Spinning arrows    | Syncing right now                                                     |
+| Amber dot          | Paused, offline, or stalled                                           |
+| Red dot            | Sync needs you: an error, an expired session, or a conflict to review |
+| Cloud with a slash | Local only: no active sync plan, or this vault stays on this device   |
 
-Click the indicator for details, recent activity, and a pause toggle.
+Click the indicator for details, recent activity, **Sync Now**, and **Pause** or **Resume**.
+
+**Stalled** means changes are waiting to sync, nothing has synced for more than 15 minutes, and
+sync reports no error. A healthy device syncs at least every five minutes, so the dot turns amber
+instead of staying green, and the details say "Changes haven't synced in a while. Try Sync Now."
 
 ## Pause / Resume
 
-Pause sync from the indicator menu when:
+Pause sync from the indicator menu, from **Settings -> Account**, or with **Pause Sync** in the
+command palette when:
 
 - Working offline intentionally
 - Investigating a sync issue
 - Conserving bandwidth on a slow connection
 
-Resume sync to push and pull queued changes. Outgoing changes queue locally until paused → resumed.
+While sync is paused, this device sends nothing and stops pulling in changes from your other
+devices. Records and note text both wait on this device. The indicator shows **Paused** until you
+resume, and a restart does not end the pause. Resume from the same places, or press **Sync Now**,
+which ends the pause and syncs at once. Everything that waited goes out, and the changes your other
+devices made come in.
 
-Quitting while paused or offline does not lose those queued note edits. Everything you typed is
+memrynote also pauses sync by itself when this computer's clock is more than five minutes off the
+server's. Set the clock right, then resume.
+
+Quitting while paused or offline does not lose queued note edits. Everything you typed is
 already on disk, and memrynote records which notes still owe the server an update. The next time
 sync runs — on the next launch, or as soon as the network comes back — it pushes those notes'
 current state. A long offline editing session also stays cheap in memory: queued edits for a note
@@ -140,7 +152,11 @@ Sync runs **continuously** while the app is open and online:
 - Pull runs on a polling interval and after every push
 - Backoff with jitter on repeated errors
 
-There's no "sync now" button because there doesn't need to be — but you can pause and resume to force a fresh attempt.
+**Sync Now**, in the indicator menu or the command palette, runs a full sync right away, and ends a
+pause first. When nothing could be sent, a notice says why: the device is offline, it needs you to
+sign in again (with a button that opens **Settings -> Account**), or another sync is still running.
+Pressing it during a sync does not start a second sync next to the first. One more sync runs after
+the current one ends.
 
 ## End-to-End Encryption
 

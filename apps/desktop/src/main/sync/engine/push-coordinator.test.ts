@@ -172,7 +172,7 @@ function createHarness(testDb: TestDatabaseResult): {
     offlineSince: null,
     rateLimitConsecutive: 0,
     scheduleSync: vi.fn(),
-    acquireLock: vi.fn().mockResolvedValue(() => {}),
+    acquireLock: vi.fn().mockResolvedValue({ release: () => {} }),
     releaseLock: vi.fn(),
     requestPush: vi.fn()
   } as unknown as SyncContext

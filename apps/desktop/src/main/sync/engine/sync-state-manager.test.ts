@@ -8,6 +8,9 @@ import type { SyncStatusValue } from '@memry/contracts/ipc-sync-ops'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
+import { trackMainEvent } from '../../telemetry/track'
+
+vi.mock('../../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 
 function createCtx(testDb: TestDatabaseResult): SyncContext {
   return {
@@ -33,6 +36,7 @@ describe('SyncStateManager', () => {
   let mgr: SyncStateManager
 
   beforeEach(() => {
+    vi.mocked(trackMainEvent).mockClear()
     testDb = createTestDataDb()
     ctx = createCtx(testDb)
     nodeEmit = vi.fn().mockReturnValue(true)
@@ -119,7 +123,7 @@ describe('SyncStateManager', () => {
 
     it('#then a repeat 402 while already local_only leaves no error behind', () => {
       // #given — already demoted, so setState early-returns on the same state
-      ctx.state = 'local_only' as SyncStatusValue
+      ctx.state = 'local_only'
       ctx.lastError = 'A paid Sync plan is required'
       ctx.lastErrorInfo = {
         category: 'sync_payment_required',
@@ -225,6 +229,41 @@ describe('SyncStateManager', () => {
 
       // #then
       expect(mgr.isPaused()).toBe(false)
+    })
+  })
+
+  // #3382: pause() emitted nothing when sync was already paused, so a renderer
+  // that had lost the pause could never get it back.
+  describe('#given setPaused, the one writer of the pause', () => {
+    it('#then every call reports the status, and only a change is tracked', () => {
+      mgr.setPaused(true, 'popover')
+      mgr.setPaused(true, 'settings')
+
+      const reported = vi
+        .mocked(ctx.deps.emitToRenderer)
+        .mock.calls.filter(([channel]) => channel === EVENT_CHANNELS.STATUS_CHANGED)
+      expect(reported.map(([, event]) => (event as { status: string }).status)).toEqual([
+        'paused',
+        'paused'
+      ])
+      expect(trackMainEvent).toHaveBeenCalledExactlyOnceWith('setting_changed', {
+        surface: 'sync',
+        action: 'paused',
+        source: 'popover',
+        dimensions: { setting: 'sync_paused' }
+      })
+    })
+
+    it('#then ending a pause sends on what it held, once', () => {
+      const onSyncResumed = vi.fn()
+      ctx.deps.onSyncResumed = onSyncResumed
+
+      mgr.setPaused(true, 'popover')
+      expect(onSyncResumed).not.toHaveBeenCalled()
+      mgr.setPaused(false, 'popover')
+      mgr.setPaused(false, 'sync_now')
+
+      expect(onSyncResumed).toHaveBeenCalledOnce()
     })
   })
 

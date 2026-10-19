@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
     ),
     isAnimating: false,
     hasIssues: false,
+    stalled: false,
     pendingCount: 0,
     localOnlyCount: 0,
     conflicts: [] as unknown[],
@@ -343,6 +344,7 @@ describe('sync components coverage', () => {
       dotColor: 'bg-green-500',
       isAnimating: false,
       hasIssues: false,
+      stalled: false,
       pendingCount: 0,
       localOnlyCount: 0,
       conflicts: [],
@@ -485,6 +487,15 @@ describe('sync components coverage', () => {
     mocks.syncStatus.status = 'idle'
     const { rerender } = render(<SyncStatus onOpenSettings={openSettings} iconOnly />)
     expect(screen.getByTestId('dock-badge')).toHaveAttribute('data-tone', 'success')
+    expect(screen.queryByText('phaseF.componentsSyncSyncStatus.stalled')).not.toBeInTheDocument()
+
+    // #3382: changes that stopped leaving are not Synced, and the popover says
+    // what to do about it.
+    Object.assign(mocks.syncStatus, { stalled: true, pendingCount: 2 })
+    rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
+    expect(screen.getByTestId('dock-badge')).toHaveAttribute('data-tone', 'warning')
+    expect(screen.getByText('phaseF.componentsSyncSyncStatus.stalled')).toBeInTheDocument()
+    Object.assign(mocks.syncStatus, { stalled: false, pendingCount: 0 })
 
     mocks.syncStatus.status = 'offline'
     rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)

@@ -125,7 +125,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       failSlice: (itemIds) =>
         itemIds.includes('filter-300') ? new SyncServerError('crash', 400, 'crash') : null
     })
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
     expect(filterEvents(deps.emitToRenderer)).toHaveLength(300)
@@ -133,7 +133,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
     vi.restoreAllMocks()
     ;(deps.emitToRenderer as ReturnType<typeof vi.fn>).mockClear()
     const postSpy = await mockFilterPage()
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(postSpy).toHaveBeenCalledTimes(5)
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')
@@ -204,7 +204,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       return apply.apply(this, args)
     })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
   })
@@ -218,7 +218,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       throw new Error(`decryption failed for ${input.id}`)
     })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(engine.currentState).toBe('error')
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')
@@ -238,7 +238,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
         : post(path, body, token)
     )
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
     expect(filterEvents(deps.emitToRenderer)).toEqual(ids(0, 400))
@@ -254,7 +254,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       nextCursor: 42
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('42')
   })
@@ -325,7 +325,7 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
     })
     const seen = recordAtCommit(engine)
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(seen.map((c) => c.cursor)).toEqual(['0', '0', '0', '0', '0'])
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')

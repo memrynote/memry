@@ -25,13 +25,13 @@ export function useSyncCommands(): void {
     'sync.pause': {
       enabled: reachable && status !== 'paused',
       run: async () => {
-        await sync?.pause()
+        await sync?.pause('command_palette')
       }
     },
     'sync.resume': {
       enabled: reachable && status === 'paused',
       run: async () => {
-        await sync?.resume()
+        await sync?.resume('command_palette')
       }
     }
   })

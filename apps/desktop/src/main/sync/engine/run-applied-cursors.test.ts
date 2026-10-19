@@ -141,7 +141,7 @@ describe('a pull run re-applies a newer version of an item it applied earlier (#
       }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(taskRow(db, 'task-x')).toBeUndefined()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('100')
@@ -163,7 +163,7 @@ describe('a pull run re-applies a newer version of an item it applied earlier (#
       }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(taskRow(db, 'task-x')?.title).toBe('v2')
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('100')
@@ -185,7 +185,7 @@ describe('a pull run re-applies a newer version of an item it applied earlier (#
       }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(taskRow(db, 'task-x')).toBeUndefined()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('100')
@@ -210,7 +210,7 @@ describe('a pull run re-applies a newer version of an item it applied earlier (#
       }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(taskRow(db, 'task-x')).toBeUndefined()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('100')
@@ -233,7 +233,7 @@ describe('a pull run re-applies a newer version of an item it applied earlier (#
     ])
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy).toHaveBeenCalledTimes(1)
     expect(taskRow(db, 'task-x')?.title).toBe('v1')

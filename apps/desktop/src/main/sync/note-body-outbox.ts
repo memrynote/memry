@@ -73,6 +73,11 @@ export interface NoteBodyOutboxDeps {
   recordPush?: NoteBodyPushRecorder
   /** Requests a whole-doc snapshot for a note whose refused rows were dropped. */
   requestSnapshot?: (noteId: string) => void
+  /**
+   * The user's pause (#3382). Rows wait in sync_queue while it is on, and
+   * `flushAll` sends them once it ends.
+   */
+  isSyncPaused?: () => boolean
 }
 
 interface NoteBodyFlush {
@@ -176,8 +181,14 @@ export class NoteBodyOutbox {
     return this.deps.queue.countNoteBodyRows()
   }
 
-  private flushAll(): void {
+  /** Flush every note with queued rows; a no-op while the outbox is held. */
+  flushAll(): void {
     for (const noteId of this.deps.queue.listNoteBodyNoteIds()) this.flushNote(noteId)
+  }
+
+  /** Stopped, paused for the transport, or paused by the user. */
+  private held(): boolean {
+    return !this.running || this.paused || (this.deps.isSyncPaused?.() ?? false)
   }
 
   /**
@@ -186,7 +197,7 @@ export class NoteBodyOutbox {
    * mid-push is flushed once after it and never through a re-armed timer.
    */
   private scheduleFlush(noteId: string): void {
-    if (!this.running || this.paused) return
+    if (this.held()) return
     if (this.flushingNotes.has(noteId) || this.flushTimers.has(noteId)) return
     if (!this.deps.queue.hasNoteBody(noteId)) return
 
@@ -212,7 +223,7 @@ export class NoteBodyOutbox {
   }
 
   private flushNote(noteId: string): void {
-    if (!this.running || this.paused) return
+    if (this.held()) return
     if (Date.now() < this.heldUntil(noteId)) {
       this.scheduleFlush(noteId)
       return

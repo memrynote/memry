@@ -52,6 +52,11 @@ export interface SyncEngineDeps {
    * keeps the row queued for the next cycle.
    */
   prepareCanvasPush?: (canvasId: string) => Promise<boolean>
+  /**
+   * The user's pause ended (#3382). Note bodies wait out a pause in their own
+   * outbox, which this sends on.
+   */
+  onSyncResumed?: () => void
 }
 
 export interface SyncEngineOptions {
@@ -68,12 +73,38 @@ export interface QuarantineEntry {
   lastError: string
 }
 
+/**
+ * The engine's own state. `paused` is not one of them: it is derived from the
+ * persisted flag when the status is reported (#3382), so no cycle can end a
+ * pause by setting a state.
+ */
+export type EngineSyncState = Exclude<SyncStatusValue, 'paused'>
+
+/** Why a cycle could not take the sync lock. */
+export type SyncLockRefusal = 'cancelled' | 'busy' | 'paused'
+
+export type SyncLock = { release: () => void } | { refused: SyncLockRefusal }
+
+/** Why a push, pull or full sync never started. */
+export type SyncSkipReason = SyncLockRefusal | 'no_credentials'
+
+/**
+ * What a push, pull or full sync did (#3382):
+ * - `delivered`: it ran to the end. A pull applied every page to the head of
+ *   the feed; a push sent what the queue held, or found it empty.
+ * - `incomplete`: it started and stopped early, on a refused page or an error
+ *   it handled.
+ * - `skipped`: it never started.
+ */
+export type SyncRunOutcome =
+  { status: 'delivered' } | { status: 'incomplete' } | { status: 'skipped'; reason: SyncSkipReason }
+
 export interface SyncContext {
   deps: SyncEngineDeps
   options: SyncEngineOptions
   applier: ItemApplier
 
-  state: SyncStatusValue
+  state: EngineSyncState
   syncing: boolean
   fullSyncActive: boolean
   abortController: AbortController | null
@@ -83,11 +114,11 @@ export interface SyncContext {
   offlineSince: number | null
   rateLimitConsecutive: number
 
-  scheduleSync: (fn: () => Promise<void>) => void
-  acquireLock: () => Promise<(() => void) | null>
+  scheduleSync: (fn: () => Promise<unknown>) => void
+  acquireLock: () => Promise<SyncLock>
   releaseLock: () => void
   requestPush: () => void
-  doPush?: () => Promise<void>
+  doPush?: () => Promise<SyncRunOutcome>
 }
 
 export const SYNC_STATE_KEYS = {

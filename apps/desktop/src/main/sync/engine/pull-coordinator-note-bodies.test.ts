@@ -255,7 +255,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     const engine = engineWith(getDb, provider)
     await mockServer([{ noteBodies: [update('note-1', 4, A)], nextCursor: 4 }])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-1', A]])
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
@@ -292,7 +292,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     expect(provider.stored).toEqual([])
 
     land.mockRestore()
-    await expect(first.pull()).resolves.toBe(true)
+    await expect(first.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-1', A]])
     expect(first.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('5')
@@ -316,7 +316,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       set.call(this, key, value)
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-2', B]])
     expect(ledgerKeys(engine)).toEqual(['note_body:note-1'])
@@ -403,7 +403,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     const { ItemApplier } = await import('../apply-item')
     vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(insertNoteRow(getDb))
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([])
     expect(provider.open).not.toHaveBeenCalled()
@@ -574,7 +574,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-good', B]])
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('7')
@@ -613,7 +613,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       { updates: { 'note-1': new SyncServerError('no such note', 404, 'not found') } }
     )
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-3', B]])
     expect(ledgerKeys(engine)).toEqual(['note_body:note-1', 'note_body:note-2'])
@@ -631,7 +631,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       { noteBodies: [update('note-1', 3), update('note-2', 4, A)], nextCursor: 4 }
     ])
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(get).not.toHaveBeenCalledWith(expect.stringContaining('/sync/crdt/'), expect.anything())
     expect(provider.stored).toEqual([])
@@ -678,7 +678,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       throw new Error('decryption failed')
     })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(checkAccountKey).toHaveBeenCalledOnce()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('1')
@@ -804,7 +804,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       return 'applied'
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(provider.stored).toEqual([['note-2', B]])
     expect(provider.open).not.toHaveBeenCalledWith('note-1', undefined, { skipSeed: true })
@@ -859,7 +859,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(ledgerKeys(engine)).toEqual([])
     expect(owedPulls(engine)).toEqual([])
@@ -1018,7 +1018,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       { updates: Object.fromEntries(ids.map((id) => [id, new RateLimitError(60)])) }
     )
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(bodyGets(get)).toHaveLength(4)
     expect(owedPulls(engine)).toEqual(ids)
@@ -1089,7 +1089,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       { noteBodies: [update('note-1', 3, A), update('note-2', 4, B)], nextCursor: 4 }
     ])
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(provider.mergeRemoteUpdate).toHaveBeenCalledOnce()
     expect(ledgerKeys(engine)).toEqual([])
@@ -1227,7 +1227,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
       throw new SyncServerError('Too many requests', 429, 'RATE_LIMITED')
     })
 
-    await expect(first.pull()).resolves.toBe(true)
+    await expect(first.pull()).resolves.toEqual({ status: 'delivered' })
     expect(first.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
     await first.stop({ skipFinalPush: true })
 
@@ -1396,7 +1396,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     await mockRecordPage('note-1', batch, [])
     const pulled = vi.spyOn(crdtSyncOf(engine), 'pullCrdtForNotes')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(debts()).toEqual([])
     expect(pulled).not.toHaveBeenCalled()

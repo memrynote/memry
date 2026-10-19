@@ -288,12 +288,13 @@ describe('sync IPC handlers', () => {
     const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
     expect(result).toEqual({
       success: false,
+      reason: 'unavailable',
       error: 'errors:sync.engineNotInitialized'
     })
   })
 
   it('TRIGGER_SYNC starts the runtime when no engine is running', async () => {
-    const startedEngine = { fullSync: vi.fn().mockResolvedValue(undefined) }
+    const startedEngine = { syncNow: vi.fn().mockResolvedValue({ success: true }) }
     vi.mocked(syncRuntime.startSyncRuntime).mockResolvedValueOnce(startedEngine as never)
 
     registerSyncHandlers()
@@ -301,7 +302,7 @@ describe('sync IPC handlers', () => {
     const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
 
     expect(syncRuntime.startSyncRuntime).toHaveBeenCalledTimes(1)
-    expect(startedEngine.fullSync).toHaveBeenCalledTimes(1)
+    expect(startedEngine.syncNow).toHaveBeenCalledTimes(1)
     expect(result).toEqual({ success: true })
   })
 
@@ -336,7 +337,7 @@ describe('sync IPC handlers', () => {
   it('delegates core status, sync, queue, pause, resume, quarantine, device, and wipe handlers', async () => {
     const engine = {
       getStatus: vi.fn(() => ({ status: 'syncing', pendingCount: 2 })),
-      fullSync: vi.fn(async () => undefined),
+      syncNow: vi.fn(async () => ({ success: false, reason: 'signed_out' })),
       getQueueStats: vi.fn(() => ({ pending: 3, failed: 1 })),
       pause: vi.fn(() => ({ success: true, wasPaused: false })),
       resume: vi.fn(() => ({ success: true, pendingCount: 3 })),
@@ -350,20 +351,27 @@ describe('sync IPC handlers', () => {
       status: 'syncing',
       pendingCount: 2
     })
-    await expect(invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)).resolves.toEqual({ success: true })
-    expect(engine.fullSync).toHaveBeenCalledTimes(1)
+    await expect(invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)).resolves.toEqual({
+      success: false,
+      reason: 'signed_out'
+    })
+    expect(engine.syncNow).toHaveBeenCalledTimes(1)
     await expect(invokeHandler(SYNC_CHANNELS.GET_QUEUE_SIZE)).resolves.toEqual({
       pending: 3,
       failed: 1
     })
-    await expect(invokeHandler(SYNC_CHANNELS.PAUSE)).resolves.toEqual({
+    await expect(invokeHandler(SYNC_CHANNELS.PAUSE, { surface: 'settings' })).resolves.toEqual({
       success: true,
       wasPaused: false
     })
-    await expect(invokeHandler(SYNC_CHANNELS.RESUME)).resolves.toEqual({
+    expect(engine.pause).toHaveBeenCalledWith('settings')
+    await expect(
+      invokeHandler(SYNC_CHANNELS.RESUME, { surface: 'command_palette' })
+    ).resolves.toEqual({
       success: true,
       pendingCount: 3
     })
+    expect(engine.resume).toHaveBeenCalledWith('command_palette')
     await expect(invokeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)).resolves.toEqual([
       { id: 'bad-item' }
     ])
@@ -388,11 +396,11 @@ describe('sync IPC handlers', () => {
       pending: 0,
       failed: 0
     })
-    await expect(invokeHandler(SYNC_CHANNELS.PAUSE)).resolves.toEqual({
+    await expect(invokeHandler(SYNC_CHANNELS.PAUSE, { surface: 'popover' })).resolves.toEqual({
       success: false,
       wasPaused: false
     })
-    await expect(invokeHandler(SYNC_CHANNELS.RESUME)).resolves.toEqual({
+    await expect(invokeHandler(SYNC_CHANNELS.RESUME, { surface: 'popover' })).resolves.toEqual({
       success: false,
       pendingCount: 0
     })
@@ -567,9 +575,9 @@ describe('sync IPC handlers', () => {
     })
   })
 
-  it('returns the sync trigger error key when full sync fails without a concrete message', async () => {
+  it('returns the sync trigger error key when Sync Now fails without a concrete message', async () => {
     registerSyncHandlers({
-      fullSync: vi.fn(async () => {
+      syncNow: vi.fn(async () => {
         throw null
       })
     } as never)
@@ -577,6 +585,7 @@ describe('sync IPC handlers', () => {
     const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
     expect(result).toEqual({
       success: false,
+      reason: 'failed',
       error: 'errors:sync.triggerFailed'
     })
   })

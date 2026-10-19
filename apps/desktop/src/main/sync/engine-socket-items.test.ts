@@ -5,6 +5,7 @@ import { syncTombstoneClocks } from '@memry/db-schema/schema/sync-tombstone-cloc
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
+import { DELIVERED } from './engine/sync-run-outcome'
 import { ItemApplier } from './apply-item'
 import { SignatureVerificationError } from './decrypt'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
@@ -96,7 +97,7 @@ async function startEngineWithHeldPull(
 
   const ws = createMockWs()
   const engine = new SyncEngine(createMockDeps(getDb, { ws, ...overrides }))
-  vi.spyOn(engine, 'fullSync').mockResolvedValue()
+  vi.spyOn(engine, 'fullSync').mockResolvedValue(DELIVERED)
   await engine.start()
   engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '4')
   started = true
@@ -354,7 +355,7 @@ describe('SyncEngine socket items (#2300)', () => {
       })
       const ws = deps.ws as unknown as ReturnType<typeof createMockWs>
       const engine = new SyncEngine(deps)
-      vi.spyOn(engine, 'fullSync').mockResolvedValue()
+      vi.spyOn(engine, 'fullSync').mockResolvedValue(DELIVERED)
       await engine.start()
       engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '4')
       return {

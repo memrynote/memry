@@ -35,19 +35,23 @@ const runtimeMocks = vi.hoisted(() => {
     onBatch: (noteId: string, updates: Uint8Array[]) => Promise<void>
     readFullState: ((noteId: string) => Promise<Uint8Array | null>) | null = null
     requestSnapshot?: (noteId: string) => void
+    isSyncPaused?: () => boolean
     start = vi.fn()
     pause = vi.fn()
     resume = vi.fn()
     stop = vi.fn()
+    flushAll = vi.fn()
     enableFullStateFlush = vi.fn((reader: (noteId: string) => Promise<Uint8Array | null>) => {
       this.readFullState = reader
     })
     constructor(deps: {
       push: (noteId: string, updates: Uint8Array[]) => Promise<void>
       requestSnapshot?: (noteId: string) => void
+      isSyncPaused?: () => boolean
     }) {
       this.onBatch = deps.push
       this.requestSnapshot = deps.requestSnapshot
+      this.isSyncPaused = deps.isSyncPaused
       NoteBodyOutbox.instances.push(this)
     }
   }
@@ -95,6 +99,7 @@ const runtimeMocks = vi.hoisted(() => {
     stop = vi.fn(async () => undefined)
     requestCancel = vi.fn()
     requestPush = vi.fn()
+    isPaused = vi.fn(() => false)
     isCaughtUpWithServer = vi.fn(() => false)
     mergeRemoteCrdtForNote = vi.fn(async (_noteId: string) => true)
     hasUnmergedRemoteCrdtState = vi.fn((noteId: string) =>
@@ -214,6 +219,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotCoverage: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       setRemoteMerge: vi.fn(),
+      setSyncPaused: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushSnapshotsForNotes: vi.fn(),
@@ -1251,6 +1257,26 @@ describe('sync runtime', () => {
   })
 
   // #2299: the provider reads coverage at the encode, from the engine.
+  // #3382: a pause held records only, while note text kept leaving through the
+  // outbox and the snapshot pushes.
+  it("holds note bodies on the engine's pause and sends them on when it ends", async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const outbox = runtimeMocks.NoteBodyOutbox.instances.at(-1)!
+    const snapshotsPaused = runtimeMocks.crdtProvider.setSyncPaused.mock.calls.at(
+      -1
+    )![0] as () => boolean
+
+    engine.isPaused.mockReturnValue(true)
+    expect([outbox.isSyncPaused?.(), snapshotsPaused()]).toEqual([true, true])
+    engine.isPaused.mockReturnValue(false)
+    expect([outbox.isSyncPaused?.(), snapshotsPaused()]).toEqual([false, false])
+
+    ;(engine.deps.onSyncResumed as () => void)()
+    expect(outbox.flushAll).toHaveBeenCalledTimes(1)
+  })
+
   it("wires the engine's snapshot coverage into the provider and owes a pull on a refusal", async () => {
     const runtime = await loadRuntime()
     await runtime.startSyncRuntime()

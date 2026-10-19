@@ -12,8 +12,6 @@ import type {
   DownloadProgressEvent,
   InitialSyncProgressEvent,
   QueueClearedEvent,
-  SyncPausedEvent,
-  SyncResumedEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
@@ -67,12 +65,6 @@ export const syncEvents = {
 
   onQueueCleared: (callback: (event: QueueClearedEvent) => void): (() => void) =>
     subscribe<QueueClearedEvent>(SYNC_EVENTS.QUEUE_CLEARED, callback),
-
-  onSyncPaused: (callback: (event: SyncPausedEvent) => void): (() => void) =>
-    subscribe<SyncPausedEvent>(SYNC_EVENTS.PAUSED, callback),
-
-  onSyncResumed: (callback: (event: SyncResumedEvent) => void): (() => void) =>
-    subscribe<SyncResumedEvent>(SYNC_EVENTS.RESUMED, callback),
 
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void): (() => void) =>
     subscribe<SessionExpiredEvent>(SYNC_EVENTS.SESSION_EXPIRED, callback),

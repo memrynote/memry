@@ -24,12 +24,14 @@ import {
   type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import type {
+  SyncControlSurface,
   SyncErrorCategory,
   VaultBindingChoice,
   VaultBindingState
 } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
 import type { SyncStatus } from '@/sync/collaboration-status'
+import { announceSyncNowResult } from '@/sync/sync-now-feedback'
 
 interface ProgressEntry {
   progress: number
@@ -101,8 +103,6 @@ type SyncAction =
       errorCategory?: SyncErrorCategory
       offlineSince?: number
     }
-  | { type: 'PAUSED'; pendingCount: number }
-  | { type: 'RESUMED'; pendingCount: number }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'UPLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
@@ -194,15 +194,6 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
-    case 'PAUSED':
-      return {
-        ...state,
-        status: 'paused',
-        pendingCount: action.pendingCount,
-        initialSyncProgress: null
-      }
-    case 'RESUMED':
-      return { ...state, status: 'idle', pendingCount: action.pendingCount }
     case 'SET_ERROR':
       return { ...state, status: 'error', error: action.error }
     case 'CLEAR_ERROR':
@@ -307,8 +298,8 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
 interface SyncContextValue {
   state: SyncState
   triggerSync: () => Promise<void>
-  pause: () => Promise<void>
-  resume: () => Promise<void>
+  pause: (surface: SyncControlSurface) => Promise<void>
+  resume: (surface: SyncControlSurface) => Promise<void>
   clearError: () => void
   clearConflicts: () => void
   linkingRequest: LinkingRequestEvent | null
@@ -463,20 +454,6 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           duration: 10000,
           action: activityAction()
         })
-      })
-    )
-
-    cleanups.push(
-      window.api.onSyncPaused((event) => {
-        if (cancelled) return
-        dispatch({ type: 'PAUSED', pendingCount: event.pendingCount })
-      })
-    )
-
-    cleanups.push(
-      window.api.onSyncResumed((event) => {
-        if (cancelled) return
-        dispatch({ type: 'RESUMED', pendingCount: event.pendingCount })
       })
     )
 
@@ -650,29 +627,38 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      await window.api.syncOps.triggerSync()
+      announceSyncNowResult(await window.api.syncOps.triggerSync(), t)
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.triggerFailed')) })
     }
   }, [authState.status, t])
 
-  const pause = useCallback(async (): Promise<void> => {
-    if (authState.status !== 'authenticated') return
-    try {
-      await window.api.syncOps.pause()
-    } catch (err) {
-      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
-    }
-  }, [authState.status, t])
+  // Main reports the pause in every status it sends, so these only ask for it.
+  const pause = useCallback(
+    async (surface: SyncControlSurface): Promise<void> => {
+      if (authState.status !== 'authenticated') return
+      try {
+        const result = await window.api.syncOps.pause(surface)
+        if (!result.success) toast.error(t('sync.pauseFailed'))
+      } catch (err) {
+        dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
+      }
+    },
+    [authState.status, t]
+  )
 
-  const resume = useCallback(async (): Promise<void> => {
-    if (authState.status !== 'authenticated') return
-    try {
-      await window.api.syncOps.resume()
-    } catch (err) {
-      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
-    }
-  }, [authState.status, t])
+  const resume = useCallback(
+    async (surface: SyncControlSurface): Promise<void> => {
+      if (authState.status !== 'authenticated') return
+      try {
+        const result = await window.api.syncOps.resume(surface)
+        if (!result.success) toast.error(t('sync.resumeFailed'))
+      } catch (err) {
+        dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
+      }
+    },
+    [authState.status, t]
+  )
 
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' })

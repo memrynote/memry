@@ -49,7 +49,7 @@ describe('PullCoordinator', () => {
       })
       // #2285: the page must re-arrive, so the cursor holds and the run is refused.
       expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
-      expect(delivered).toBe(false)
+      expect(delivered).toEqual({ status: 'incomplete' })
       expect(engine.getStatus()).toMatchObject({ status: 'error', errorCategory: 'server_error' })
 
       vi.restoreAllMocks()
@@ -364,7 +364,7 @@ describe('#given a second changes page #when page one is still being applied', (
     releasePageOnePull()
     releasePageTwoFetch()
     // Both pages landed clean, so the run reports that it delivered (#1835).
-    await expect(pullPromise).resolves.toBe(true)
+    await expect(pullPromise).resolves.toEqual({ status: 'delivered' })
     expect(postSpy).toHaveBeenCalledTimes(1)
     vi.restoreAllMocks()
   })
@@ -574,7 +574,7 @@ describe('#given teardown nulls the controller while a page applies #when the pu
       return 'applied'
     })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(engine.getStatus().error).toBeUndefined()
     // The run's own signal stays aborted, so the item loop stops too.
@@ -615,7 +615,7 @@ describe('#given a cancel landing before the first page is fetched #when the pul
     const getSpy = vi.spyOn(await import('../http-client'), 'getFromServer')
     const historySpy = vi.spyOn(eng.stateManager, 'recordHistory')
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(getSpy).not.toHaveBeenCalled()
     expect(historySpy).not.toHaveBeenCalled()
@@ -679,7 +679,7 @@ describe('#given a pull whose page the run refused to apply #when the pull finis
       ]
     })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
 
