@@ -149,6 +149,7 @@ const runtimeMocks = vi.hoisted(() => {
     homePageSync: service('home_page'),
     customIconSync: service('custom_icon'),
     vaultLockSync: service('vault_lock'),
+    stickyDraftSync: service('sticky_draft'),
     projectSync: service('project'),
     settingsSync: service('settings'),
     noteSync: service('note'),
@@ -375,6 +376,10 @@ vi.mock('@memry/sync-client/custom-icon-sync', () => ({
 vi.mock('@memry/sync-client/vault-lock-sync', () => ({
   initVaultLockSyncService: runtimeMocks.vaultLockSync.init,
   resetVaultLockSyncService: runtimeMocks.vaultLockSync.reset
+}))
+vi.mock('@memry/sync-client/sticky-draft-sync', () => ({
+  initStickyDraftSyncService: runtimeMocks.stickyDraftSync.init,
+  resetStickyDraftSyncService: runtimeMocks.stickyDraftSync.reset
 }))
 vi.mock('@memry/sync-client/reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,

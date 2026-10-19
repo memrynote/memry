@@ -179,6 +179,10 @@ vi.mock('./ipc', () => ({
   registerAllHandlers: registerAllHandlersMock
 }))
 
+vi.mock('./stickies/runtime', () => ({
+  initStickyRuntime: vi.fn()
+}))
+
 vi.mock('./ipc/settings-handlers', () => ({
   applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock,
   getMinimizeToTraySetting: () => false,

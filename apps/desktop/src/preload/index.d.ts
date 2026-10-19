@@ -46,7 +46,7 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
-import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
 import type { GraphViewsSettings, GraphViewsSettingsPatch } from '@memry/contracts/graph-api'
 import type {
   AppleNotesFoldersInput,
@@ -120,6 +120,15 @@ import type {
   VaultLockSetInput,
   VaultLockState
 } from '@memry/contracts/vault-locks-api'
+import type {
+  StickyDraft,
+  StickyOpenTargetInput,
+  StickySaveDraftInput,
+  StickySendInput,
+  StickySendResult,
+  StickyUndoResult,
+  StickyWindowSession
+} from '@memry/contracts/sticky-api'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -681,6 +690,22 @@ export interface HomePage {
 export interface VaultLocksClientAPI {
   list(): Promise<VaultLockState>
   set(input: VaultLockSetInput): Promise<VaultLockState>
+}
+
+export interface StickyClientAPI {
+  listDrafts(): Promise<StickyDraft[]>
+  saveDraft(input: StickySaveDraftInput): Promise<StickyDraft>
+  deleteDraft(id: string): Promise<{ success: boolean }>
+  send(input: StickySendInput): Promise<StickySendResult>
+  undoSend(undoToken: string): Promise<StickyUndoResult>
+  openTarget(input: StickyOpenTargetInput): Promise<void>
+  getSession(): Promise<StickyWindowSession>
+  tuck(): Promise<void>
+  unfold(draftId: string | null): Promise<void>
+  peek(open: boolean): Promise<void>
+  resize(height: number): Promise<void>
+  onDraftsChanged(callback: () => void): () => void
+  onOpenTargetRequested(callback: (target: StickyOpenTargetInput) => void): () => void
 }
 
 export interface OcrLanguagesClientAPI {
@@ -1442,6 +1467,7 @@ export interface KeyboardShortcutsDTO {
   overrides: Record<string, ShortcutBindingDTO>
   globalCapture: ShortcutBindingDTO | null
   folderNoteShortcuts: Array<{ folder: string; binding: ShortcutBindingDTO }>
+  stickyShortcut: ShortcutBindingDTO | null
 }
 
 export interface SyncSettingsDTO {
@@ -1571,6 +1597,8 @@ export interface SettingsClientAPI {
   setGraphViews(patch: GraphViewsSettingsPatch): Promise<GraphViewsSettings>
   registerGlobalCapture(): Promise<GlobalCaptureResult>
   setGlobalCapture(binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult>
+  registerStickyShortcut(): Promise<StickyShortcutResult>
+  setStickyShortcut(binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult>
 }
 
 // Sync Auth API
@@ -1996,6 +2024,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   homePages: HomePagesClientAPI
   customIcons: CustomIconsClientAPI
   vaultLocks: VaultLocksClientAPI
+  sticky: StickyClientAPI
   ocrLanguages: OcrLanguagesClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI

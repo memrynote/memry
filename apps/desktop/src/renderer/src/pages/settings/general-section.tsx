@@ -21,6 +21,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
 import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
 import { OcrLanguagesRow } from './ocr-languages-row'
+import { StickySettingsGroup } from './sticky-settings-group'
 import { useVault } from '@/hooks/use-vault'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
@@ -419,6 +420,8 @@ export function GeneralSettings() {
           />
         </SettingRow>
       </SettingsGroup>
+
+      <StickySettingsGroup />
 
       <SettingsGroup label={t('general.groups.newNotes')}>
         <SettingRow

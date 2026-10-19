@@ -159,6 +159,7 @@ function unifiedSidebar() {
             { text: 'Command Palette', link: '/user-guide/command-palette' },
             { text: 'Command Line', link: '/user-guide/cli' },
             { text: 'Templates', link: '/user-guide/templates' },
+            { text: 'Sticky', link: '/user-guide/sticky' },
             { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },
             { text: 'Folder View', link: '/user-guide/folder-view' },
             { text: 'Day Panel', link: '/user-guide/day-panel' },

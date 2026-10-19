@@ -57,6 +57,8 @@ const FIXTURE_OVERRIDES: Partial<Record<SyncItemType, Record<string, unknown>>> 
   // The `{}` fixture hits home-page-handler's ghost guard, which returns
   // 'skipped' — the emit probe would short-circuit green while proving nothing.
   home_page: { name: 'Registry probe' },
+  // `{}` hits the sticky draft ghost guard (no content) and would skip.
+  sticky_draft: { content: 'Registry probe', kind: 'note' },
   // tasks.project_id is NOT NULL and FK-bound (#837), so the parent is seeded
   // in beforeEach and referenced here.
   task: { projectId: PROJECT_ID },

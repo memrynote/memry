@@ -10,6 +10,8 @@ import type {
   GeneralSettings,
   GlobalCaptureResult,
   InboxSettings,
+  StickySettings,
+  StickyShortcutResult,
   KeyboardShortcuts,
   ShortcutBinding,
   SyncSettings,
@@ -396,6 +398,13 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_INBOX_SETTINGS,
       params: ['settings']
     }),
+    getStickySettings: defineMethod<() => Promise<StickySettings>>({
+      channel: SettingsChannels.invoke.GET_STICKY_SETTINGS
+    }),
+    setStickySettings: defineMethod<(settings: Partial<StickySettings>) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_STICKY_SETTINGS,
+      params: ['settings']
+    }),
     sendTestInboxReviewNotification: defineMethod<() => Promise<{ supported: boolean }>>({
       channel: SettingsChannels.invoke.SEND_TEST_INBOX_REVIEW_NOTIFICATION
     }),
@@ -406,6 +415,15 @@ export const settingsRpc = defineDomain({
       (binding: ShortcutBinding | null) => Promise<GlobalCaptureResult>
     >({
       channel: SettingsChannels.invoke.SET_GLOBAL_CAPTURE,
+      params: ['binding']
+    }),
+    registerStickyShortcut: defineMethod<() => Promise<StickyShortcutResult>>({
+      channel: SettingsChannels.invoke.REGISTER_STICKY_SHORTCUT
+    }),
+    setStickyShortcut: defineMethod<
+      (binding: ShortcutBinding | null) => Promise<StickyShortcutResult>
+    >({
+      channel: SettingsChannels.invoke.SET_STICKY_SHORTCUT,
       params: ['binding']
     }),
     getTerminalCommandStatus: defineMethod<() => Promise<TerminalCommandStatus>>({

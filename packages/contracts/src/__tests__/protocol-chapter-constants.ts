@@ -127,19 +127,19 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'SYNC_ITEM_TYPES size',
     value: SYNC_ITEM_TYPES.length,
-    spelledAs: ['| `SYNC_ITEM_TYPES` | **27** |']
+    spelledAs: ['| `SYNC_ITEM_TYPES` | **28** |']
   },
   {
     slug: C00,
     label: 'RECORD_SYNC_ITEM_TYPES size',
     value: RECORD_SYNC_ITEM_TYPES.length,
-    spelledAs: ['| `RECORD_SYNC_ITEM_TYPES` | 26 |']
+    spelledAs: ['| `RECORD_SYNC_ITEM_TYPES` | 27 |']
   },
   {
     slug: C00,
     label: 'RECORD_CLOCK_REQUIRED_ITEM_TYPES size',
     value: RECORD_CLOCK_REQUIRED_ITEM_TYPES.length,
-    spelledAs: ['| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` | 25 |']
+    spelledAs: ['| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` | 26 |']
   },
   {
     slug: C00,
@@ -157,7 +157,7 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'ENCRYPTABLE_ITEM_TYPES size',
     value: ENCRYPTABLE_ITEM_TYPES.length,
-    spelledAs: ['| `ENCRYPTABLE_ITEM_TYPES` | 26 |']
+    spelledAs: ['| `ENCRYPTABLE_ITEM_TYPES` | 27 |']
   },
   {
     slug: C00,
@@ -175,7 +175,7 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'NEGOTIABLE_SYNC_TYPES size',
     value: NEGOTIABLE_SYNC_TYPES.length,
-    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 28 |']
+    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 29 |']
   },
   {
     slug: C00,

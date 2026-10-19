@@ -19,8 +19,15 @@ export interface ThemeSyncState {
   reduceMotion: 'system' | 'on'
 }
 
-export function useThemeSync(): ThemeSyncState {
-  const { settings, isLoading } = useGeneralSettings()
+/**
+ * Paints the user's appearance settings (theme, color theme, accent, font,
+ * cursor and motion preferences) on this window's document. The main window
+ * runs it through `useThemeSync`; the sticky windows run it alone, since their
+ * size is set in pixels by main and app zoom would clip them.
+ */
+export function useAppearanceSync(): ReturnType<typeof useGeneralSettings> {
+  const general = useGeneralSettings()
+  const { settings, isLoading } = general
   const { setTheme } = useTheme()
 
   useEffect(() => {
@@ -88,11 +95,6 @@ export function useThemeSync(): ThemeSyncState {
 
   useEffect(() => {
     if (isLoading) return
-    window.api.setZoomFactor(clampZoomFactor(settings.zoomFactor))
-  }, [isLoading, settings.zoomFactor])
-
-  useEffect(() => {
-    if (isLoading) return
     const chosen = FONT_FAMILY_MAP[settings.fontFamily]
     // A custom font is a preference in front of the chosen family, not instead
     // of it: it goes first in the stack, so a name this machine does not have
@@ -108,6 +110,17 @@ export function useThemeSync(): ThemeSyncState {
       document.documentElement.style.removeProperty('--font-sans')
     }
   }, [isLoading, settings.fontFamily, settings.customFontFamily])
+
+  return general
+}
+
+export function useThemeSync(): ThemeSyncState {
+  const { settings, isLoading } = useAppearanceSync()
+
+  useEffect(() => {
+    if (isLoading) return
+    window.api.setZoomFactor(clampZoomFactor(settings.zoomFactor))
+  }, [isLoading, settings.zoomFactor])
 
   // Keep format-date's module cache in sync so pure (non-React) date helpers
   // format with the user's chosen format.

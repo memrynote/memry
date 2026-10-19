@@ -14,6 +14,7 @@ import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
+import { stickyDrafts } from '@memry/db-schema/schema/sticky-drafts'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -376,6 +377,20 @@ export function incrementVaultLockClockOffline(db: DrizzleDb, lockId: string): v
     log.debug('Incremented offline vault lock clock', { lockId })
   } catch (err) {
     log.warn('Failed to increment offline vault lock clock', { lockId, error: err })
+  }
+}
+
+export function incrementStickyDraftClockOffline(db: DrizzleDb, draftId: string): void {
+  try {
+    const draft = db.select().from(stickyDrafts).where(eq(stickyDrafts.id, draftId)).get()
+    if (!draft) return
+
+    const newClock = increment(draft.clock ?? {}, OFFLINE_DEVICE_KEY)
+    db.update(stickyDrafts).set({ clock: newClock }).where(eq(stickyDrafts.id, draftId)).run()
+
+    log.debug('Incremented offline sticky draft clock', { draftId })
+  } catch (err) {
+    log.warn('Failed to increment offline sticky draft clock', { draftId, error: err })
   }
 }
 

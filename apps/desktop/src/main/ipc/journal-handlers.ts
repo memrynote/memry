@@ -26,18 +26,15 @@ import {
   type DayContext,
   type GetAllTagsOutput
 } from '@memry/contracts/journal-api'
-import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
 import { createJournalEntry, findStoredJournalEntry } from '../journal/create-entry'
+import { updateJournalEntry } from '../journal/update-entry'
 import {
   readJournalEntry,
-  writeJournalEntryWithContent,
   deleteJournalEntryFile,
   getJournalRelativePath,
-  extractPreview,
-  serializeJournalEntry
+  extractPreview
 } from '../vault/journal'
-import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import {
   getNoteCacheByPath,
   getJournalEntryByDate,
@@ -51,20 +48,12 @@ import {
   calculateActivityLevel as calculateActivityLevelFromCharCount
 } from '../journal/store'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
-import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
-import {
-  enqueueJournalDelete,
-  enqueueJournalUpdate,
-  feedJournalBodyToCrdt
-} from '../journal/runtime-effects'
+import { enqueueJournalDelete } from '../journal/runtime-effects'
 import { unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
-import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
+import { deleteJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
-import { shouldEmitThrottled } from '../telemetry/throttle'
-
-const logger = createLogger('IPC:Journal')
 
 // ============================================================================
 // Event Emitters
@@ -138,114 +127,9 @@ export function registerJournalHandlers(): void {
   // journal:updateEntry - Update an existing journal entry
   ipcMain.handle(
     JournalChannels.invoke.UPDATE_ENTRY,
-    createValidatedHandler(UpdateEntryInputSchema, async (input): Promise<JournalEntry> => {
-      const db = getIndexDatabase()
-      const dataDb = getDatabase()
-
-      // Resolve the canonical journal identity from data.db.
-      const journalPath = getJournalRelativePath(input.date)
-      const cached = getJournalEntryByDate(db, input.date) ?? getNoteCacheByPath(db, journalPath)
-      const canonical = getCanonicalJournalByDate(dataDb, input.date)
-
-      // Read current entry to get existing data
-      const existing = await readJournalEntry(input.date)
-      const givenTags = input.tags ?? existing?.tags ?? []
-      const newTags = input.inlineTags
-        ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
-        : givenTags
-      if (!existing) {
-        // If entry doesn't exist, create it (properties serialized to frontmatter)
-        return createJournalEntry({
-          date: input.date,
-          content: input.content ?? '',
-          tags: newTags,
-          properties: input.properties
-        })
-      }
-
-      // Merge updates
-      const newContent = input.content ?? existing.content
-      // Merge properties: use input.properties if provided, otherwise keep existing
-      const newProperties = input.properties !== undefined ? input.properties : existing.properties
-
-      // Create snapshot before significant content changes (T111)
-      // Use the canonical note ID when available so snapshots stay attached across rebuilds.
-      const entryId = canonical?.id ?? cached?.id ?? existing.id
-      if (input.content !== undefined && input.content !== existing.content) {
-        try {
-          // Create the current file content (before save) for snapshot
-          // Include existing properties in snapshot frontmatter
-          const snapshotFrontmatter: Parameters<typeof serializeJournalEntry>[0] = {
-            date: existing.date,
-            ...(existing.tags.length > 0 ? { tags: existing.tags } : {})
-          }
-          if (existing.properties && Object.keys(existing.properties).length > 0) {
-            snapshotFrontmatter.properties = existing.properties
-          }
-          const currentFileContent = serializeJournalEntry(snapshotFrontmatter, existing.content)
-          maybeCreateSignificantSnapshot(
-            entryId,
-            currentFileContent,
-            existing.content,
-            newContent,
-            `Journal - ${input.date}`
-          )
-        } catch (err) {
-          logger.error('Failed to create snapshot:', err)
-        }
-      }
-
-      // Write to file (properties are now serialized to frontmatter)
-      const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
-        input.date,
-        newContent,
-        newTags,
-        existing,
-        newProperties // properties serialized to frontmatter
-      )
-      const cacheId = canonical?.id ?? cached?.id ?? entry.id
-
-      syncJournalCache(
-        db,
-        {
-          id: cacheId,
-          path: journalPath,
-          fileContent,
-          frontmatter,
-          parsedContent: entry.content,
-          title: entry.date,
-          createdAt: entry.createdAt,
-          modifiedAt: entry.modifiedAt
-        },
-        { isNew: !cached }
-      )
-      enqueueJournalUpdate(cacheId, entry.date)
-
-      // An open editor is bound to the entry's doc (see feedJournalBodyToCrdt).
-      if (input.content !== undefined) await feedJournalBodyToCrdt(cacheId, input.content)
-
-      // Same identity rule as the create path: the renderer caches whatever this
-      // returns (and whatever the event carries) as the open entry, so both have
-      // to carry the cache id rather than the file-derived `j<date>`.
-      const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
-
-      // Emit event
-      emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
-        date: syncedEntry.date,
-        entry: syncedEntry
-      })
-
-      if (shouldEmitThrottled(`journal_updated:${syncedEntry.date}`)) {
-        trackMainEvent('journal_updated', {
-          surface: 'journal',
-          action: 'updated',
-          objectType: 'journal',
-          result: 'success'
-        })
-      }
-
-      return syncedEntry
-    })
+    createValidatedHandler(UpdateEntryInputSchema, (input): Promise<JournalEntry> =>
+      updateJournalEntry(input)
+    )
   )
 
   // journal:deleteEntry - Delete a journal entry

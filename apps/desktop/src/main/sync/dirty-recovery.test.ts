@@ -15,6 +15,7 @@ import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
+import { stickyDrafts } from '@memry/db-schema/schema/sticky-drafts'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
@@ -41,6 +42,10 @@ import {
   resetVaultLockSyncService
 } from '@memry/sync-client/vault-lock-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
+import {
+  initStickyDraftSyncService,
+  resetStickyDraftSyncService
+} from '@memry/sync-client/sticky-draft-sync'
 import {
   initCanvasFolderSyncService,
   resetCanvasFolderSyncService
@@ -1077,6 +1082,27 @@ describe('dirty-recovery', () => {
             .run(),
         tracksModification: true,
         readClock: (id) => db.select().from(vaultLocks).where(eq(vaultLocks.id, id)).get()?.clock
+      },
+      {
+        type: 'sticky_draft',
+        init: () => initStickyDraftSyncService(deps()),
+        reset: resetStickyDraftSyncService,
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(stickyDrafts)
+            .values({
+              id,
+              content: 'Draft',
+              kind: 'note',
+              clock,
+              syncedAt,
+              createdAt: modifiedAt,
+              modifiedAt
+            })
+            .run(),
+        tracksModification: true,
+        readClock: (id) =>
+          db.select().from(stickyDrafts).where(eq(stickyDrafts.id, id)).get()?.clock
       },
       {
         type: 'reminder',

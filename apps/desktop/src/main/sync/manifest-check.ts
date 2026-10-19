@@ -15,6 +15,7 @@ import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
+import { stickyDrafts } from '@memry/db-schema/schema/sticky-drafts'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
@@ -297,6 +298,7 @@ const REUPLOADABLE_TYPES = [
   'home_page',
   'custom_icon',
   'vault_lock',
+  'sticky_draft',
   'bookmark',
   'reminder',
   'canvas',
@@ -497,6 +499,15 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: lock.id, type: 'vault_lock' })
   }
 
+  const syncedStickyDrafts = db
+    .select({ id: stickyDrafts.id })
+    .from(stickyDrafts)
+    .where(isNotNull(stickyDrafts.clock))
+    .all()
+  for (const draft of syncedStickyDrafts) {
+    addLocalRef({ id: draft.id, type: 'sticky_draft' })
+  }
+
   const syncedBookmarks = db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -630,6 +641,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'vault_lock': {
       const row = db.select().from(vaultLocks).where(eq(vaultLocks.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'sticky_draft': {
+      const row = db.select().from(stickyDrafts).where(eq(stickyDrafts.id, ref.id)).get()
       return row ? JSON.stringify(row) : null
     }
     case 'bookmark': {

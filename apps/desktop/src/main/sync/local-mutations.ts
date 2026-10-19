@@ -21,6 +21,7 @@ import {
   incrementHomePageClockOffline,
   incrementCustomIconClockOffline,
   incrementVaultLockClockOffline,
+  incrementStickyDraftClockOffline,
   incrementCanvasClockOffline,
   incrementCanvasFolderClockOffline,
   incrementFilterClockOffline,
@@ -36,6 +37,7 @@ import { getTemplateSyncService } from '@memry/sync-client/template-sync'
 import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
 import { getCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
 import { getVaultLockSyncService } from '@memry/sync-client/vault-lock-sync'
+import { getStickyDraftSyncService } from '@memry/sync-client/sticky-draft-sync'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
 import { getFilterSyncService } from '@memry/sync-client/filter-sync'
@@ -280,6 +282,47 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
   return flushed
 }
 
+/**
+ * A record type whose create and update go to its live sync service, or bump
+ * the item's clock while sync is down so the change is pushed later. A delete
+ * carries the deleted row as its payload. Callers pass closures so nothing is
+ * resolved before the first mutation.
+ */
+function clockedRecordAdapter<T extends LocalSyncType>(
+  type: T,
+  getService: () =>
+    | (DeleteEnqueuer & {
+        enqueueCreate(itemId: string): void
+        enqueueUpdate(itemId: string): void
+      })
+    | null
+    | undefined,
+  incrementClockOffline: (db: DrizzleDb, itemId: string) => void
+) {
+  const enqueueOrBump =
+    (method: 'enqueueCreate' | 'enqueueUpdate') =>
+    (itemId: string): void => {
+      const service = getService()
+      if (service) {
+        service[method](itemId)
+        return
+      }
+      incrementClockOffline(getDatabase(), itemId)
+    }
+  return {
+    type,
+    kind: 'record' as const,
+    local: {
+      enqueueCreate: enqueueOrBump('enqueueCreate'),
+      enqueueUpdate: enqueueOrBump('enqueueUpdate'),
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        enqueueDeleteOrDefer(type, getService(), itemId, snapshotPayload)
+      }
+    }
+  }
+}
+
 const localSyncRegistry = createSyncAdapterRegistry([
   {
     type: 'task',
@@ -391,118 +434,26 @@ const localSyncRegistry = createSyncAdapterRegistry([
       }
     }
   },
-  {
-    type: 'filter',
-    kind: 'record',
-    local: {
-      enqueueCreate(itemId: string): void {
-        const service = getFilterSyncService()
-        if (service) {
-          service.enqueueCreate(itemId)
-          return
-        }
-
-        incrementFilterClockOffline(getDatabase(), itemId)
-      },
-      enqueueUpdate(itemId: string): void {
-        const service = getFilterSyncService()
-        if (service) {
-          service.enqueueUpdate(itemId)
-          return
-        }
-
-        incrementFilterClockOffline(getDatabase(), itemId)
-      },
-      enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        if (!snapshotPayload) return
-        enqueueDeleteOrDefer('filter', getFilterSyncService(), itemId, snapshotPayload)
-      }
-    }
-  },
-  {
-    type: 'template',
-    kind: 'record',
-    local: {
-      enqueueCreate(itemId: string): void {
-        const service = getTemplateSyncService()
-        if (service) {
-          service.enqueueCreate(itemId)
-          return
-        }
-
-        incrementTemplateClockOffline(getDatabase(), itemId)
-      },
-      enqueueUpdate(itemId: string): void {
-        const service = getTemplateSyncService()
-        if (service) {
-          service.enqueueUpdate(itemId)
-          return
-        }
-
-        incrementTemplateClockOffline(getDatabase(), itemId)
-      },
-      enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        if (!snapshotPayload) return
-        enqueueDeleteOrDefer('template', getTemplateSyncService(), itemId, snapshotPayload)
-      }
-    }
-  },
-  {
-    type: 'home_page',
-    kind: 'record',
-    local: {
-      enqueueCreate(itemId: string): void {
-        const service = getHomePageSyncService()
-        if (service) {
-          service.enqueueCreate(itemId)
-          return
-        }
-
-        incrementHomePageClockOffline(getDatabase(), itemId)
-      },
-      enqueueUpdate(itemId: string): void {
-        const service = getHomePageSyncService()
-        if (service) {
-          service.enqueueUpdate(itemId)
-          return
-        }
-
-        incrementHomePageClockOffline(getDatabase(), itemId)
-      },
-      enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        if (!snapshotPayload) return
-        enqueueDeleteOrDefer('home_page', getHomePageSyncService(), itemId, snapshotPayload)
-      }
-    }
-  },
-  {
-    type: 'custom_icon',
-    kind: 'record',
-    local: {
-      enqueueCreate(itemId: string): void {
-        const service = getCustomIconSyncService()
-        if (service) {
-          service.enqueueCreate(itemId)
-          return
-        }
-
-        incrementCustomIconClockOffline(getDatabase(), itemId)
-      },
-      enqueueUpdate(itemId: string): void {
-        const service = getCustomIconSyncService()
-        if (service) {
-          service.enqueueUpdate(itemId)
-          return
-        }
-
-        incrementCustomIconClockOffline(getDatabase(), itemId)
-      },
-      enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        if (!snapshotPayload) return
-        enqueueDeleteOrDefer('custom_icon', getCustomIconSyncService(), itemId, snapshotPayload)
-      }
-    }
-  },
+  clockedRecordAdapter(
+    'filter',
+    () => getFilterSyncService(),
+    (db, itemId) => incrementFilterClockOffline(db, itemId)
+  ),
+  clockedRecordAdapter(
+    'template',
+    () => getTemplateSyncService(),
+    (db, itemId) => incrementTemplateClockOffline(db, itemId)
+  ),
+  clockedRecordAdapter(
+    'home_page',
+    () => getHomePageSyncService(),
+    (db, itemId) => incrementHomePageClockOffline(db, itemId)
+  ),
+  clockedRecordAdapter(
+    'custom_icon',
+    () => getCustomIconSyncService(),
+    (db, itemId) => incrementCustomIconClockOffline(db, itemId)
+  ),
   {
     type: 'vault_lock',
     kind: 'record',
@@ -530,6 +481,11 @@ const localSyncRegistry = createSyncAdapterRegistry([
       }
     }
   },
+  clockedRecordAdapter(
+    'sticky_draft',
+    () => getStickyDraftSyncService(),
+    (db, itemId) => incrementStickyDraftClockOffline(db, itemId)
+  ),
   {
     type: 'bookmark',
     kind: 'record',

@@ -154,12 +154,17 @@ Platform differences:
 
 The setting syncs across your devices.
 
+### Sticky
+
+How the [Sticky](/user-guide/sticky) opens. **New stickies send as** picks the kind a blank sticky starts on (the last one you used, or always Note, Task or Journal). **Tuck to** picks the screen edge for the drafts tab. The sticky follows your theme and accent color from [Appearance](#appearance). These settings stay on this device.
+
 ### File Creation
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
 
 **Default Location for New Notes** names the folder an unplaced new note goes to — a note created
 with no folder in mind, such as from a quick capture. Leave it empty to use the vault root.
+Notes sent from the [Sticky](/user-guide/sticky) always go to the `Sticky` folder instead.
 
 It only affects where a new note is written. It is not a root:
 
@@ -417,6 +422,12 @@ Set a system-wide hotkey that opens quick capture from any app. No extra system 
 Until you set one, the built-in hotkey `Cmd`/`Ctrl` + `Shift` + `Space` opens quick capture. memrynote releases it once your own hotkey registers.
 
 If another app already holds the combination you press, the Global Capture row says so, nothing is saved, and your previous hotkey keeps working. The row also tells you when another app holds the built-in hotkey at launch, or when a saved hotkey cannot be used as a global shortcut. macOS does not report conflicts with other apps, so on a Mac a conflicting hotkey can register and still fire in the other app.
+
+### Sticky Shortcut
+
+Set a system-wide hotkey that opens the [Sticky](/user-guide/sticky) from any app while memrynote is running and a vault is open. It starts as `Cmd`/`Ctrl` + `Shift` + `M`; clear it with the trash button to turn it off.
+
+As with Global Capture, if another app already holds the combination you press, the Sticky row says so, nothing is saved, and your previous hotkey keeps working.
 
 ### Shortcut List
 

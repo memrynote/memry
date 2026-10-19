@@ -3,11 +3,13 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { mergeSettingsPatch } from '@/lib/settings-patch'
 import type { KeyboardShortcutsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
+import { DEFAULT_STICKY_SHORTCUT } from '@memry/contracts/settings-schemas'
 
 const DEFAULTS: KeyboardShortcutsDTO = {
   overrides: {},
   globalCapture: null,
-  folderNoteShortcuts: []
+  folderNoteShortcuts: [],
+  stickyShortcut: DEFAULT_STICKY_SHORTCUT
 }
 
 interface UseKeyboardSettingsReturn {

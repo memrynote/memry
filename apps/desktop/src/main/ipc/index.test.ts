@@ -82,6 +82,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterCustomIconHandlers: vi.fn(),
   registerVaultLockHandlers: vi.fn(),
   unregisterVaultLockHandlers: vi.fn(),
+  registerStickyHandlers: vi.fn(),
+  unregisterStickyHandlers: vi.fn(),
   registerOcrLanguagesHandlers: vi.fn(),
   unregisterOcrLanguagesHandlers: vi.fn()
 }))
@@ -241,6 +243,10 @@ vi.mock('./custom-icon-handlers', () => ({
 vi.mock('./vault-lock-handlers', () => ({
   registerVaultLockHandlers: hoisted.registerVaultLockHandlers,
   unregisterVaultLockHandlers: hoisted.unregisterVaultLockHandlers
+}))
+vi.mock('./sticky-handlers', () => ({
+  registerStickyHandlers: hoisted.registerStickyHandlers,
+  unregisterStickyHandlers: hoisted.unregisterStickyHandlers
 }))
 
 vi.mock('./ocr-languages-handlers', () => ({

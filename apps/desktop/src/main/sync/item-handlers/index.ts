@@ -24,6 +24,7 @@ import { tagCategoryHandler } from '@memry/sync-client/item-handlers/tag-categor
 import { folderConfigHandler } from './folder-config-handler'
 import { customIconHandler } from './custom-icon-handler'
 import { vaultLockHandler } from './vault-lock-handler'
+import { stickyDraftHandler } from './sticky-draft-handler'
 import { calendarEventHandler } from './calendar-event-handler'
 import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
 import { calendarBindingHandler } from '@memry/sync-client/item-handlers/calendar-binding-handler'
@@ -68,7 +69,8 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['canvas_folder', canvasFolderHandler],
   ['template', templateHandler],
   ['home_page', homePageHandler],
-  ['vault_lock', vaultLockHandler]
+  ['vault_lock', vaultLockHandler],
+  ['sticky_draft', stickyDraftHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>

@@ -51,6 +51,10 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     ['general.tabs.closeButton.label'],
     ['general.window.minimizeToTray.label']
   ]),
+  ...group('general', 'general.groups.sticky', [
+    ['general.sticky.defaultKind.label'],
+    ['general.sticky.tuckEdge.label']
+  ]),
   ...group('general', 'general.groups.newNotes', [
     ['general.fileCreation.defaultNoteFolder.label'],
     ['general.fileCreation.createInSelectedFolder.label']

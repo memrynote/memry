@@ -239,13 +239,22 @@ export const FolderNoteShortcutSchema = z.object({
 
 export type FolderNoteShortcut = z.infer<typeof FolderNoteShortcutSchema>
 
+/** Cmd/Ctrl+Shift+M: the sticky's system-wide shortcut until the user changes it. */
+export const DEFAULT_STICKY_SHORTCUT: ShortcutBinding = {
+  key: 'M',
+  modifiers: { meta: true, shift: true }
+}
+
 export const KeyboardShortcutsSchema = z.object({
   overrides: z.record(z.string(), ShortcutBindingSchema),
   globalCapture: ShortcutBindingSchema.nullable(),
   // Local to this vault's data.db, like the rest of this group. Additive: a
   // stored blob without it reads the default, and older builds keep it
   // untouched because they write the group back as a spread of what they read.
-  folderNoteShortcuts: z.array(FolderNoteShortcutSchema).default([])
+  folderNoteShortcuts: z.array(FolderNoteShortcutSchema).default([]),
+  // Opens the sticky from any app. Null once the user clears it. Additive in
+  // the same way as `folderNoteShortcuts`.
+  stickyShortcut: ShortcutBindingSchema.nullable().default(DEFAULT_STICKY_SHORTCUT)
 })
 
 export type KeyboardShortcuts = z.infer<typeof KeyboardShortcutsSchema>
@@ -253,7 +262,8 @@ export type KeyboardShortcuts = z.infer<typeof KeyboardShortcutsSchema>
 export const KEYBOARD_SHORTCUTS_DEFAULTS: KeyboardShortcuts = {
   overrides: {},
   globalCapture: null,
-  folderNoteShortcuts: []
+  folderNoteShortcuts: [],
+  stickyShortcut: DEFAULT_STICKY_SHORTCUT
 }
 
 /**
@@ -267,6 +277,11 @@ export interface GlobalCaptureResult {
   status: GlobalCaptureStatus
   /** Whether the built-in CommandOrControl+Shift+Space fallback holds quick capture. */
   fallbackRegistered: boolean
+}
+
+/** What happened to the sticky's shortcut on the last apply. */
+export interface StickyShortcutResult {
+  status: GlobalCaptureStatus
 }
 
 // ============================================================================
@@ -627,6 +642,26 @@ export const INBOX_SETTINGS_DEFAULTS: InboxSettings = {
   reviewReminderTime: '18:00',
   imageFilingMode: 'embed',
   imageFilingModeRemembered: false
+}
+
+// ============================================================================
+// Sticky Settings
+// ============================================================================
+
+export const StickySettingsSchema = z.object({
+  /** The kind a blank sticky starts on; `last` follows the previous send. */
+  defaultKind: z.enum(['last', 'note', 'task', 'journal']).default('last'),
+  lastKind: z.enum(['note', 'task', 'journal']).default('note'),
+  /** The screen edge the drafts tab sits on. */
+  tuckEdge: z.enum(['right', 'left']).default('right')
+})
+
+export type StickySettings = z.infer<typeof StickySettingsSchema>
+
+export const STICKY_SETTINGS_DEFAULTS: StickySettings = {
+  defaultKind: 'last',
+  lastKind: 'note',
+  tuckEdge: 'right'
 }
 
 // ============================================================================

@@ -47,6 +47,10 @@ import {
   initVaultLockSyncService,
   resetVaultLockSyncService
 } from '@memry/sync-client/vault-lock-sync'
+import {
+  initStickyDraftSyncService,
+  resetStickyDraftSyncService
+} from '@memry/sync-client/sticky-draft-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import {
@@ -287,6 +291,7 @@ function resetSyncServiceSingletons(): void {
   resetHomePageSyncService()
   resetCustomIconSyncService()
   resetVaultLockSyncService()
+  resetStickyDraftSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetCanvasFolderSyncService()
@@ -506,6 +511,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const homePageSync = initHomePageSyncService(recordSyncDeps)
       const customIconSync = initCustomIconSyncService(recordSyncDeps)
       const vaultLockSync = initVaultLockSyncService(recordSyncDeps)
+      const stickyDraftSync = initStickyDraftSyncService(recordSyncDeps)
       const reminderSync = initReminderSyncService(recordSyncDeps)
       const canvasSync = initCanvasSyncService(recordSyncDeps)
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
@@ -546,6 +552,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordAdapter('home_page', homePageSync),
         recordAdapter('custom_icon', customIconSync),
         recordAdapter('vault_lock', vaultLockSync),
+        recordAdapter('sticky_draft', stickyDraftSync),
         recordAdapter('reminder', reminderSync),
         recordAdapter('project', projectSync),
         recordAdapter('settings', settingsSync),
