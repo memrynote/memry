@@ -2,18 +2,23 @@
 
 Continue Kaan's task: generate the media for every post in the fall social series, then report.
 Talk to Kaan in Turkish, briefly. **Don't ask him questions; decide yourself.** Continue until all
-media is done. Posting to X and Reddit, and automating it, is out of scope. Commit only if Kaan
-asks.
+media is done. Commit only if Kaan asks.
+
+Posting is automated and out of scope for this task, with one exception: after you approve a clip,
+queue its X post (see [Posting](#posting)). X goes out through a local Postiz; r/MemryNote through
+the Devvit app `memrynote-scheduler` (repo root, being built in another session; don't touch it).
 
 ## Where things are
 
-- **Work checkout:** `/Users/h4yfans/workspace/personal/memry-social`.
-  - Git worktree on branch `feat/social-q4-clips`, created from origin/main. The work so far is on
-    main, pushed with Kaan's OK on Oct 17. New work stays uncommitted until Kaan asks.
+- **Work checkout:** `/Users/h4yfans/workspace/personal/memry-social`. It was removed after Oct 17.
+  Recreate it from the branch before working:
+  `git -C /Users/h4yfans/workspace/personal/memry worktree add ../memry-social feat/social-q4-clips`
+  - The work so far, 45 approved clips, is on main. New work stays uncommitted until Kaan asks.
   - Leave `/Users/h4yfans/workspace/personal/memry` alone; other sessions use it.
 - **Build being filmed:** `/Users/h4yfans/workspace/personal/memry-social-app`, detached at tag
-  `v2026-10-15`, with the desktop build already made. Only features shipped in that build may be
-  shown.
+  `v2026-10-15`, with the desktop build made. It was also removed; recreate it with
+  `git -C /Users/h4yfans/workspace/personal/memry worktree add --detach ../memry-social-app v2026-10-15`
+  and build desktop there. Only features shipped in that build may be shown.
 - **Before any `clip.mjs` or `probe.mjs` call:**
   `export MEMRY_SOCIAL_APP=/Users/h4yfans/workspace/personal/memry-social-app`
 - **Read first, in full:**
@@ -141,10 +146,26 @@ approved now, because all their clips are approved. `montage-2026` waits only on
 5. **Finish:**
    - Approve each clip after its QA.
    - Build the compilations, then approve them.
+   - Queue each newly approved clip's X post ([Posting](#posting)).
    - Run `node marketing/social/engine/export-kit.mjs`. It must print `all media present`.
    - Do a final pass over every `out/qa/phone-upright.png`.
    - Check every MP4 is `1920,1080,60/1, audio streams: 0`.
    - Report to Kaan in Turkish: counts, paths, anything missing.
+
+## Posting
+
+X posts go out through a local Postiz in `/Users/h4yfans/workspace/personal/postiz` (Docker,
+`http://127.0.0.1:4007`, MemryNote account, Build in Public community). Its `schedule-x.mjs`
+reads `2026-q4.md` and `media/`, and queues every dated post whose `.mp4` is in `media/`, at
+9:00 AM New York time, with the first reply as a thread. It skips days already in its
+`scheduled.json`, so rerun it after each approval:
+
+```bash
+cd /Users/h4yfans/workspace/personal/postiz
+POSTIZ_KEY=$(docker exec postiz-postgres psql -U postiz -tAc 'select "apiKey" from "Organization" limit 1') node schedule-x.mjs
+```
+
+Oct 20 is empty on purpose: its post went out on Oct 19. A post whose day has passed is skipped.
 
 ## Engine facts that bite
 
