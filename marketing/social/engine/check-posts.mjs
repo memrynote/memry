@@ -4,7 +4,8 @@
 // - every X post fits 280 weighted characters (X counts a URL as 23 and most non-Latin as 2);
 // - no @ or # in X copy (X would turn them into mentions and hashtags), no links in the body;
 // - one X post per day from the first day to the last, each with media;
-// - Reddit posts fall on Tue, Thu and Sat only;
+// - Reddit posts fall on Tue, Thu and Sat only (a post marked 🔁 is carried over and scheduled
+//   later by the Devvit queue builder, so it is exempt from the day rules);
 // - every clip a post names is in the Clips table.
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -66,7 +67,8 @@ for (let i = 0; i < lines.length; i++) {
   if (!day) continue
   const isX = l.startsWith('**X**')
   const isReddit = l.startsWith('**r/MemryNote**')
-  if (isReddit) day.reddit = true
+  if (isReddit && !l.includes(' · 🔁')) day.reddit = true
+  if (isReddit && l.includes(' · 🔁')) day.carryOver = true
   if (!isX) continue
   if (day.x) problems.push(`${day.label}: two X posts`)
   const media = l.match(/(🎬|🖼️|🧩) `([a-z0-9-]+)`/)
@@ -107,7 +109,7 @@ for (const d of missingReddit) problems.push(`${d.label}: Tue/Thu/Sat without a 
 const lengths = dated.map((d) => d.x?.n ?? 0)
 console.log(
   `${dated.length} days (${dated[0]?.label} → ${dated.at(-1)?.label}), ` +
-    `${dated.filter((d) => d.reddit).length} Reddit posts, ${clips.size} clips in the table, ` +
+    `${dated.filter((d) => d.reddit).length} Reddit posts (+${dated.filter((d) => d.carryOver).length} carried over), ${clips.size} clips in the table, ` +
     `X length ${Math.min(...lengths)}–${Math.max(...lengths)}`
 )
 for (const w of warnings) console.log(`  warning: ${w}`)
