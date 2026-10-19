@@ -332,6 +332,26 @@ describe('NoteBodyOutbox', () => {
     expect(push).toHaveBeenCalledTimes(1)
   })
 
+  // #3382: the user's pause held records only, and note text kept leaving.
+  it("keeps every row through the user's pause, even when the network comes back", async () => {
+    const { updates } = recordEdits(['a'])
+    let userPaused = true
+    const outbox = new NoteBodyOutbox({ queue, push, isSyncPaused: () => userPaused })
+    outboxes.push(outbox)
+    outbox.start()
+    outbox.enqueue('note-a', updates[0])
+    outbox.pause()
+    outbox.resume()
+    vi.advanceTimersByTime(5000)
+    await flushPromises()
+    expect(push).not.toHaveBeenCalled()
+
+    userPaused = false
+    outbox.flushAll()
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+
   it('drops a note’s rows without pushing them, and an in-flight ack does not bring them back', async () => {
     const { updates } = recordEdits(['a', 'b'])
     let resolvePush!: () => void

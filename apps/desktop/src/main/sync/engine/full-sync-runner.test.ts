@@ -17,6 +17,8 @@ import {
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
+import type { SyncRunOutcome } from './sync-context'
+import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
 import { SyncServerError } from '@memry/sync-client/http-errors'
@@ -267,7 +269,7 @@ function createHarness(
       ...(options.crdtProvider !== undefined && { crdtProvider: options.crdtProvider })
     },
     applier: { changedCount: 0 },
-    acquireLock: vi.fn(async () => () => {}),
+    acquireLock: vi.fn(async () => ({ release: () => {} })),
     releaseLock: vi.fn(),
     fullSyncActive: false
   } as unknown as SyncContext
@@ -287,15 +289,16 @@ function createHarness(
   const crdtSync = (options.crdtSync?.(ctx) ?? new FakeCrdtSync()) as FakeCrdtSync
 
   const actions = {
-    // Resolves TRUE: the real `SyncEngine.pull()` reports whether the pull
-    // actually delivered. Resolving without a value would model the old,
-    // vacuous contract in which "the await did not reject" was the evidence.
-    pull: vi.fn(async () => {
+    // Delivers: the real `SyncEngine.pull()` reports what the pull did.
+    // Resolving without a value would model the old, vacuous contract in which
+    // "the await did not reject" was the evidence.
+    pull: vi.fn(async (): Promise<SyncRunOutcome> => {
       calls.push('pull')
-      return true
+      return DELIVERED
     }),
-    push: vi.fn(async () => {
+    push: vi.fn(async (): Promise<SyncRunOutcome> => {
       calls.push('push')
+      return DELIVERED
     }),
     // The real SyncEngine.scheduleSync runs the callback (chained onto any
     // in-flight sync). The paced CRDT drain arms its next chunk from the
@@ -398,6 +401,7 @@ describe('FullSyncRunner', () => {
       let activeDuringPull: boolean | undefined
       h.actions.pull.mockImplementation(async () => {
         activeDuringPull = h.ctx.fullSyncActive
+        return DELIVERED
       })
 
       await h.runner.run()
@@ -487,7 +491,7 @@ describe('FullSyncRunner', () => {
       const delivered = createHarness()
       await delivered.runner.run()
       const refused = createHarness()
-      refused.actions.pull.mockImplementation(async () => false)
+      refused.actions.pull.mockImplementation(async () => INCOMPLETE)
       await refused.runner.run()
 
       const [first, second] = mocks.checkManifestIntegrity.mock.calls.map(
@@ -655,7 +659,7 @@ describe('FullSyncRunner', () => {
         seen.push(state.get(SYNC_STATE_KEYS.LAST_CURSOR))
         state.set(SYNC_STATE_KEYS.LAST_CURSOR, outcome.cursorAfter)
         ;(h.ctx.applier as { changedCount: number }).changedCount += outcome.changed ?? 0
-        return outcome.delivered
+        return outcome.delivered ? DELIVERED : INCOMPLETE
       })
       return seen
     }
@@ -744,7 +748,7 @@ describe('FullSyncRunner', () => {
     it('#then a busy sync lock defers the repair to the next full sync', async () => {
       const h = createHarness()
       const state = withState(h, { [SYNC_STATE_KEYS.LAST_CURSOR]: '40' })
-      vi.mocked(h.ctx.acquireLock).mockResolvedValueOnce(null)
+      vi.mocked(h.ctx.acquireLock).mockResolvedValueOnce({ refused: 'busy' })
 
       await h.runner.run()
 
@@ -763,13 +767,70 @@ describe('FullSyncRunner', () => {
       expect(h.actions.push).toHaveBeenCalledTimes(2)
     })
 
-    it('#then a paused vault skips the follow-up push', async () => {
+    it('#then a pause during the run skips the manifest check and the follow-up push', async () => {
       const h = createHarness({ pendingCounts: [0, 0, 0, 5] })
-      h.isPaused.mockReturnValue(true)
+      h.isPaused.mockReturnValueOnce(false).mockReturnValue(true)
 
       await h.runner.run()
 
       expect(h.actions.push).toHaveBeenCalledTimes(1)
+      expect(mocks.checkManifestIntegrity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given sync is paused (#3382)', () => {
+    it('#then the run reads and writes nothing and reports itself skipped', async () => {
+      // A paused Mac's every Sync Now still ran the manifest check, reset the
+      // cursor for a re-pull its pause refused, and counted as a success.
+      const h = createHarness()
+      h.isPaused.mockReturnValue(true)
+      mocks.checkManifestIntegrity.mockResolvedValue(manifestResult({ rePullNeeded: true }))
+
+      await expect(h.runner.run()).resolves.toEqual({ status: 'skipped', reason: 'paused' })
+
+      expect(h.actions.pull).not.toHaveBeenCalled()
+      expect(h.actions.push).not.toHaveBeenCalled()
+      expect(mocks.checkManifestIntegrity).not.toHaveBeenCalled()
+      expect(h.calls).not.toContain(`setState:${SYNC_STATE_KEYS.LAST_CURSOR}`)
+    })
+  })
+
+  describe('#given a pull that never started', () => {
+    it.each(['paused', 'cancelled', 'no_credentials'] as const)(
+      '#then a %s pull ends the run before the push and the manifest check',
+      async (reason) => {
+        const h = createHarness({ pendingCounts: [3] })
+        h.actions.pull.mockResolvedValue({ status: 'skipped', reason })
+
+        await expect(h.runner.run()).resolves.toEqual({ status: 'skipped', reason })
+
+        expect(h.actions.push).not.toHaveBeenCalled()
+        expect(mocks.checkManifestIntegrity).not.toHaveBeenCalled()
+        expect(h.ctx.fullSyncActive).toBe(false)
+      }
+    )
+
+    it('#then a pull refused by a busy lock still lets the push run, and the run says busy', async () => {
+      const h = createHarness({ pendingCounts: [3] })
+      h.actions.pull.mockResolvedValue({ status: 'skipped', reason: 'busy' })
+
+      await expect(h.runner.run()).resolves.toEqual({ status: 'skipped', reason: 'busy' })
+
+      expect(h.actions.push).toHaveBeenCalled()
+    })
+  })
+
+  describe('#given a run that started', () => {
+    it('#then it delivers only when the pull and every push delivered', async () => {
+      const delivered = createHarness()
+      const pullStopped = createHarness()
+      pullStopped.actions.pull.mockResolvedValue(INCOMPLETE)
+      const pushFailed = createHarness({ pendingCounts: [1] })
+      pushFailed.actions.push.mockResolvedValue(INCOMPLETE)
+
+      await expect(delivered.runner.run()).resolves.toEqual(DELIVERED)
+      await expect(pullStopped.runner.run()).resolves.toEqual(INCOMPLETE)
+      await expect(pushFailed.runner.run()).resolves.toEqual(INCOMPLETE)
     })
   })
 
@@ -1426,7 +1487,7 @@ describe('FullSyncRunner', () => {
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
       const state = withLegacySweep(h)
-      h.actions.pull.mockResolvedValue(false)
+      h.actions.pull.mockResolvedValue(INCOMPLETE)
 
       await h.runner.run()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -1776,6 +1837,25 @@ describe('FullSyncRunner', () => {
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
     })
 
+    // #3382: a pause held records only, and the sweep kept pulling note text.
+    it('#then a pause holds the paced sweep and the owed pulls until it ends', async () => {
+      const h = sweepingHarness(250, fakeCrdtProvider({ activeNoteIds: ['note-open'] }))
+      await h.runner.run()
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      h.isPaused.mockReturnValue(true)
+      h.crdtSync.addPendingPull('note-open')
+      h.runner.flushPendingCrdtPulls()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 10)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      h.isPaused.mockReturnValue(false)
+      h.runner.flushPendingCrdtPulls()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 10)
+      expect(pulledNoteIds(h)).toContain('note-open')
+      expect(pulledNoteIds(h)).toHaveLength(251)
+    })
+
     it('#then disposing the runner aborts the chunk already in flight', async () => {
       // Clearing the queue and the timer only stops the NEXT chunk. A paced
       // sweep spans minutes, so at teardown there is almost always one in
@@ -2024,7 +2104,7 @@ describe('FullSyncRunner', () => {
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       h.actions.pull.mockImplementation(async () => {
         h.calls.push('pull')
-        return false
+        return INCOMPLETE
       })
 
       await h.runner.run()

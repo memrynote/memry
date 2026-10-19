@@ -9,8 +9,6 @@ type EventCallback = (event: Record<string, unknown>) => void
 type VoidCallback = () => void
 
 let syncStatusListeners: EventCallback[] = []
-let pausedListeners: EventCallback[] = []
-let resumedListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
 let attachmentUploadFailedListeners: EventCallback[] = []
@@ -80,9 +78,9 @@ const mockSyncOps = {
     pendingCount: 0,
     error: undefined
   }),
-  triggerSync: vi.fn().mockResolvedValue(undefined),
-  pause: vi.fn().mockResolvedValue(undefined),
-  resume: vi.fn().mockResolvedValue(undefined),
+  triggerSync: vi.fn().mockResolvedValue({ success: true }),
+  pause: vi.fn().mockResolvedValue({ success: true, wasPaused: false }),
+  resume: vi.fn().mockResolvedValue({ success: true, pendingCount: 0 }),
   getVaultBinding: vi.fn().mockResolvedValue({ status: 'bound' }),
   resolveVaultBinding: vi.fn()
 }
@@ -97,15 +95,13 @@ beforeEach(async () => {
     pendingCount: 0,
     error: undefined
   })
-  mockSyncOps.triggerSync.mockResolvedValue(undefined)
-  mockSyncOps.pause.mockResolvedValue(undefined)
-  mockSyncOps.resume.mockResolvedValue(undefined)
+  mockSyncOps.triggerSync.mockResolvedValue({ success: true })
+  mockSyncOps.pause.mockResolvedValue({ success: true, wasPaused: false })
+  mockSyncOps.resume.mockResolvedValue({ success: true, pendingCount: 0 })
   mockSyncOps.getVaultBinding.mockResolvedValue({ status: 'bound' })
   mockSyncOps.resolveVaultBinding.mockReset()
 
   syncStatusListeners = []
-  pausedListeners = []
-  resumedListeners = []
   uploadProgressListeners = []
   downloadProgressListeners = []
   attachmentUploadFailedListeners = []
@@ -135,18 +131,6 @@ beforeEach(async () => {
     syncStatusListeners.push(cb)
     return () => {
       syncStatusListeners = syncStatusListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onSyncPaused = vi.fn((cb: EventCallback) => {
-    pausedListeners.push(cb)
-    return () => {
-      pausedListeners = pausedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onSyncResumed = vi.fn((cb: EventCallback) => {
-    resumedListeners.push(cb)
-    return () => {
-      resumedListeners = resumedListeners.filter((l) => l !== cb)
     }
   })
   api.onUploadProgress = vi.fn((cb: EventCallback) => {
@@ -337,36 +321,64 @@ describe('SyncProvider', () => {
     })
   })
 
-  describe('#given sync:paused event fired #when listening', () => {
-    it('#then state transitions to paused', async () => {
+  // #3382: the result used to be dropped, so a Sync Now that moved nothing
+  // looked exactly like one that worked, from the popover and the palette alike.
+  describe('#given Sync Now moved nothing #when it answers', () => {
+    it.each([
+      ['offline', 'info', 'You are offline. Changes will sync when you reconnect.'],
+      ['busy', 'info', 'Sync is already running. Try again in a moment.'],
+      ['paused', 'info', 'Sync was paused while it ran. Resume it from the sync menu.'],
+      ['unavailable', 'error', 'Sync engine not initialized. Open a vault to start sync.']
+    ] as const)('#then a %s answer says why in a toast', async (reason, kind, message) => {
+      mockSyncOps.triggerSync.mockResolvedValueOnce({
+        success: false,
+        reason,
+        ...(reason === 'unavailable' && { error: 'errors:sync.engineNotInitialized' })
+      })
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
 
-      act(() => {
-        for (const cb of pausedListeners) {
-          cb({ pendingCount: 3 })
-        }
+      await act(async () => {
+        await result.current.triggerSync()
       })
 
-      expect(result.current.state.status).toBe('paused')
-      expect(result.current.state.pendingCount).toBe(3)
-    })
-  })
-
-  describe('#given sync:resumed event fired #when listening', () => {
-    it('#then state transitions back to idle', async () => {
-      const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
-
-      act(() => {
-        for (const cb of pausedListeners) cb({ pendingCount: 2 })
-      })
-      expect(result.current.state.status).toBe('paused')
-
-      act(() => {
-        for (const cb of resumedListeners) cb({ pendingCount: 2 })
-      })
+      expect(toastMock[kind].mock.calls.at(-1)?.[0]).toBe(message)
       expect(result.current.state.status).toBe('idle')
+    })
+
+    it('#then a signed-out answer offers the account settings', async () => {
+      mockSyncOps.triggerSync.mockResolvedValueOnce({ success: false, reason: 'signed_out' })
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      await act(async () => {
+        await result.current.triggerSync()
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'Sync needs you to sign in again on this device.',
+        expect.objectContaining({ action: expect.objectContaining({ label: 'Open settings' }) })
+      )
+      const { action } = toastMock.error.mock.calls.at(-1)?.[1] as {
+        action: { onClick: () => void }
+      }
+      const opened = vi.fn()
+      const unsubscribe = onOpenSettingsRequested(opened)
+      action.onClick()
+      unsubscribe()
+      expect(opened).toHaveBeenCalledWith('account')
+    })
+
+    it('#then a sync that delivered stays quiet', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      await act(async () => {
+        await result.current.triggerSync()
+      })
+
+      expect(toastMock.error).not.toHaveBeenCalled()
+      expect(toastMock.info).not.toHaveBeenCalled()
     })
   })
 
@@ -768,15 +780,23 @@ describe('SyncProvider', () => {
 
       mockSyncOps.pause.mockRejectedValueOnce(new Error('pause broke'))
       await act(async () => {
-        await result.current.pause()
+        await result.current.pause('popover')
       })
       expect(result.current.state.error).toBe('pause broke')
 
       mockSyncOps.resume.mockRejectedValueOnce(new Error('resume broke'))
       await act(async () => {
-        await result.current.resume()
+        await result.current.resume('popover')
       })
       expect(result.current.state.error).toBe('resume broke')
+
+      // No engine to pause: main refuses without throwing, and the click must
+      // not look like it worked.
+      mockSyncOps.pause.mockResolvedValueOnce({ success: false, wasPaused: false })
+      await act(async () => {
+        await result.current.pause('popover')
+      })
+      expect(toastMock.error).toHaveBeenCalledWith('Failed to pause sync')
 
       vi.mocked(useAuth).mockReturnValue({
         state: { status: 'unauthenticated' },
@@ -785,11 +805,11 @@ describe('SyncProvider', () => {
       rerender()
       await act(async () => {
         await result.current.triggerSync()
-        await result.current.pause()
-        await result.current.resume()
+        await result.current.pause('popover')
+        await result.current.resume('popover')
       })
       expect(mockSyncOps.triggerSync).toHaveBeenCalledTimes(1)
-      expect(mockSyncOps.pause).toHaveBeenCalledTimes(1)
+      expect(mockSyncOps.pause).toHaveBeenCalledTimes(2)
       expect(mockSyncOps.resume).toHaveBeenCalledTimes(1)
     })
 
@@ -897,7 +917,7 @@ describe('SyncProvider', () => {
       const { result } = await mountWithProgress()
 
       act(() => {
-        for (const cb of pausedListeners) cb({ pendingCount: 4 })
+        for (const cb of syncStatusListeners) cb({ status: 'paused', pendingCount: 4 })
       })
 
       expect(result.current.state.status).toBe('paused')

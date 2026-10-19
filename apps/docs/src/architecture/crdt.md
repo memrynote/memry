@@ -1000,6 +1000,9 @@ The feed is the body channel. Once the legacy sweep is `done`, a `crdt_updated` 
 carries a `cursor` is only a wake: the same coalesced pull a `changes_available` frame schedules,
 skipped when the cursor is at or below `LAST_CURSOR` (#2421). Before `done`, and for a frame
 without a cursor (a server before #2420), the broadcast still pulls the named note, durably owed.
+While sync is paused a broadcast pulls nothing (#3382). A frame with a cursor only sets the wake
+flag below; one without queues the note's pull and its durable debt, which the full sync that ends
+the pause drains.
 
 - **Wake flag.** The note counts as unmerged until `LAST_CURSOR` reaches the frame's cursor, so
   no snapshot push prunes the write just announced.
@@ -1009,7 +1012,7 @@ without a cursor (a server before #2420), the broadcast still pulls the named no
   again while it is above `LAST_CURSOR`.
 - **Flush rule.** Every pull outside a full sync (a wake, a reconnect, the 60 s tick) flushes the
   paced drain when it ends, unless a full sync runs (its own closing flush drains it), sync is
-  paused or the engine is cancelled. A body the feed owed (past the page's GET budget, a missing
+  paused (the drain keeps its queue until the pause ends) or the engine is cancelled. A body the feed owed (past the page's GET budget, a missing
   base) is paid at once. An active-editor pull the engine refuses goes back to the pending set, and
   a 60 s floor timer flushes pulls re-queued after a rate limit.
 
@@ -1536,6 +1539,15 @@ record push never sees them.
   the push function rejects with `NoteBodyCredentialsMissingError` rather than returns, because
   returning would ack the rows. A token refresh, a reconnect, or a sign-in that reuses the running
   runtime resumes it.
+- **User pause.** The user's sync pause holds note bodies as well as records (#3382). The outbox
+  reads the engine's `syncPaused` flag before every flush, so its rows stay queued through
+  reconnects and token refreshes, and ending the pause flushes every note that has rows. Snapshot
+  pushes (`close()`, `pushAllSnapshots` and so the final snapshots at quit, `compactDoc`, and the
+  scheduler's batches) take the provider's no-push branch while paused. A snapshot is only a
+  compaction point, so nothing is lost: each note the outbox sends after the pause requests one
+  again. One read still runs while paused: a provider running without its store opens a note by
+  merging the server's body before it seeds (#2544), because a seed that shares no Yjs items with
+  that body would fork the note.
 
 ## BlockNote Compatibility
 

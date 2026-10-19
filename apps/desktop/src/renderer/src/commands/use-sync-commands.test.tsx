@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   } as {
     state: { status: string }
     triggerSync: () => void
-    pause: () => void
-    resume: () => void
+    pause: (surface: string) => void
+    resume: (surface: string) => void
   } | null
 }))
 
@@ -76,6 +76,6 @@ describe('sync commands', () => {
     await runCommand('sync.syncNow', 'palette')
     await runCommand('sync.pause', 'palette')
     expect(mocks.sync?.triggerSync).toHaveBeenCalledTimes(1)
-    expect(mocks.sync?.pause).toHaveBeenCalledTimes(1)
+    expect(mocks.sync?.pause).toHaveBeenCalledExactlyOnceWith('command_palette')
   })
 })

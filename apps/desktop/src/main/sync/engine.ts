@@ -12,18 +12,24 @@ import type {
   GetSyncStatusResult,
   PauseSyncResult,
   ResumeSyncResult,
-  SyncStatusValue
+  SyncStatusValue,
+  TriggerSyncResult
 } from '@memry/contracts/ipc-sync-ops'
 import type { QueueStats } from '@memry/sync-client/queue'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
-import { syncErrorTelemetryFor } from './sync-error-telemetry'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
-import type { SyncContext, SyncEngineDeps, SyncEngineOptions } from './engine/sync-context'
+import type {
+  SyncContext,
+  SyncEngineDeps,
+  SyncEngineOptions,
+  SyncLock,
+  SyncRunOutcome
+} from './engine/sync-context'
 import {
   NOTE_BODY_LEGACY_SWEEP_DONE,
   PUSH_BATCH_SIZE,
@@ -31,7 +37,14 @@ import {
   STALE_CURSOR_THRESHOLD_MS,
   SYNC_STATE_KEYS
 } from './engine/sync-context'
-import { SyncStateManager } from './engine/sync-state-manager'
+import { SyncStateManager, type SyncPauseSource } from './engine/sync-state-manager'
+import { FullSyncFlight } from './engine/full-sync-flight'
+import {
+  INCOMPLETE,
+  syncNowResult,
+  trackSyncRun,
+  trackSyncRunFailure
+} from './engine/sync-run-outcome'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
 import { isKnownNote } from './note-body-apply'
@@ -41,7 +54,6 @@ import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 import { createSocketApplier, type SocketApplier } from './engine/socket-apply'
 import { reportConflict } from './engine/conflict-report'
-import { trackMainEvent } from '../telemetry/track'
 import type { SnapshotCoverage, SnapshotRefusal } from './crdt-provider'
 
 export type { SyncEngineDeps, SyncEngineOptions }
@@ -89,6 +101,7 @@ export class SyncEngine extends SyncEventEmitter {
   private pullCoordinator: PullCoordinator
   private errorRecovery: ErrorRecoveryHandler
   private fullSyncRunner: FullSyncRunner
+  private readonly fullSyncFlight = new FullSyncFlight(() => this.runFullSync())
   private socketApply: SocketApplier
   private pullInterval: ReturnType<typeof setInterval> | null = null
   private networkReconnectAbortController: AbortController | null = null
@@ -393,71 +406,43 @@ export class SyncEngine extends SyncEventEmitter {
 
   // --- Public sync operations (delegated) ---
 
-  async push(): Promise<void> {
+  async push(): Promise<SyncRunOutcome> {
     const start = Date.now()
     const startingPending = this.ctx.deps.queue.getPendingCount()
     try {
-      await this.pushCoordinator.push()
-      trackMainEvent('sync_run_completed', {
-        surface: 'sync',
-        action: 'push_completed',
-        result: 'success',
-        metrics: {
-          durationMs: Date.now() - start,
-          queueCount: this.ctx.deps.queue.getPendingCount(),
-          itemCount: Math.max(0, startingPending - this.ctx.deps.queue.getPendingCount())
-        },
-        source: 'push',
-        dimensions: { transport: 'record' }
+      const outcome = await this.pushCoordinator.push()
+      const queueCount = this.ctx.deps.queue.getPendingCount()
+      trackSyncRun('push', outcome, {
+        durationMs: Date.now() - start,
+        queueCount,
+        itemCount: Math.max(0, startingPending - queueCount)
       })
+      return outcome
     } catch (error) {
-      trackMainEvent('sync_error', {
-        surface: 'sync',
-        action: 'push_failed',
-        result: 'failed',
-        ...syncErrorTelemetryFor(error),
-        metrics: { durationMs: Date.now() - start },
-        source: 'push',
-        dimensions: { transport: 'record' }
-      })
+      trackSyncRunFailure('push', error, Date.now() - start)
       await this.handleCoordinatorError(error)
+      return INCOMPLETE
     }
   }
 
   /**
-   * Resolves TRUE only when the pull actually delivered. Every failure below is
-   * swallowed exactly as it always has been — `handleCoordinatorError` returns
-   * from every branch — so the returned outcome is the only thing that
-   * separates a delivered pull from a silent one (#1835).
+   * Every failure below is swallowed exactly as it always has been —
+   * `handleCoordinatorError` returns from every branch — so the outcome is the
+   * only thing that separates a delivered pull from a silent one (#1835).
    */
-  async pull(): Promise<boolean> {
+  async pull(): Promise<SyncRunOutcome> {
     const start = Date.now()
     try {
-      const delivered = await this.pullCoordinator.pull()
-      trackMainEvent('sync_run_completed', {
-        surface: 'sync',
-        action: 'pull_completed',
-        result: 'success',
-        metrics: {
-          durationMs: Date.now() - start,
-          queueCount: this.ctx.deps.queue.getPendingCount()
-        },
-        source: 'pull',
-        dimensions: { transport: 'record' }
+      const outcome = await this.pullCoordinator.pull()
+      trackSyncRun('pull', outcome, {
+        durationMs: Date.now() - start,
+        queueCount: this.ctx.deps.queue.getPendingCount()
       })
-      return delivered
+      return outcome
     } catch (error) {
-      trackMainEvent('sync_error', {
-        surface: 'sync',
-        action: 'pull_failed',
-        result: 'failed',
-        ...syncErrorTelemetryFor(error),
-        metrics: { durationMs: Date.now() - start },
-        source: 'pull',
-        dimensions: { transport: 'record' }
-      })
+      trackSyncRunFailure('pull', error, Date.now() - start)
       await this.handleCoordinatorError(error)
-      return false
+      return INCOMPLETE
     }
   }
 
@@ -607,31 +592,22 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync.clearUnmergedForDroppedNote(noteId)
   }
 
-  async fullSync(): Promise<void> {
+  /** One full sync at a time; a request made during a run gets one run after it (#3382). */
+  fullSync(): Promise<SyncRunOutcome> {
+    return this.fullSyncFlight.run()
+  }
+
+  private async runFullSync(): Promise<SyncRunOutcome> {
     const start = Date.now()
     try {
-      await this.fullSyncRunner.run()
-      trackMainEvent('sync_run_completed', {
-        surface: 'sync',
-        action: 'full_completed',
-        result: 'success',
-        metrics: {
-          durationMs: Date.now() - start,
-          queueCount: this.ctx.deps.queue.getPendingCount()
-        },
-        source: 'full',
-        dimensions: { transport: 'record' }
+      const outcome = await this.fullSyncRunner.run()
+      trackSyncRun('full', outcome, {
+        durationMs: Date.now() - start,
+        queueCount: this.ctx.deps.queue.getPendingCount()
       })
+      return outcome
     } catch (error) {
-      trackMainEvent('sync_error', {
-        surface: 'sync',
-        action: 'full_failed',
-        result: 'failed',
-        ...syncErrorTelemetryFor(error),
-        metrics: { durationMs: Date.now() - start },
-        source: 'full',
-        dimensions: { transport: 'record' }
-      })
+      trackSyncRunFailure('full', error, Date.now() - start)
       throw error
     } finally {
       this.pushCoordinator.onSyncCycleEnded()
@@ -656,14 +632,12 @@ export class SyncEngine extends SyncEventEmitter {
   // --- Status & control ---
 
   getStatus(): GetSyncStatusResult {
-    return {
-      status: this.ctx.state,
-      lastSyncAt: this.stateManager.getLastSyncAt(),
-      pendingCount: this.ctx.deps.queue.getPendingCount(),
-      error: this.ctx.lastError,
-      errorCategory: this.ctx.lastErrorInfo?.category,
-      offlineSince: this.ctx.offlineSince ?? undefined
-    }
+    return this.stateManager.status()
+  }
+
+  /** The user's pause. It holds note bodies as well as records (#3382). */
+  isPaused(): boolean {
+    return this.stateManager.isPaused()
   }
 
   getQueueStats(): QueueStats {
@@ -678,29 +652,41 @@ export class SyncEngine extends SyncEventEmitter {
     this.stateManager.setStateValue(key, value)
   }
 
-  pause(): PauseSyncResult {
+  pause(source: SyncPauseSource): PauseSyncResult {
     const wasPaused = this.stateManager.isPaused()
-    this.stateManager.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'true')
-
-    if (!wasPaused) {
-      this.ctx.abortController?.abort()
-      const pendingCount = this.ctx.deps.queue.getPendingCount()
-      this.stateManager.emitPaused(pendingCount)
-    }
-
+    this.stateManager.setPaused(true, source)
+    if (!wasPaused) this.ctx.abortController?.abort()
     return { success: true, wasPaused }
   }
 
-  resume(): ResumeSyncResult {
-    this.stateManager.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'false')
-    const pendingCount = this.ctx.deps.queue.getPendingCount()
-    this.stateManager.emitResumed(pendingCount)
-
+  resume(source: SyncPauseSource): ResumeSyncResult {
+    this.stateManager.setPaused(false, source)
     if (this.ctx.deps.network.online) {
       this.scheduleSync(() => this.fullSync())
     }
+    return { success: true, pendingCount: this.ctx.deps.queue.getPendingCount() }
+  }
 
-    return { success: true, pendingCount }
+  /**
+   * Sync Now (#3382). The user asked for a sync, so it ends a pause instead of
+   * doing nothing, and when nothing moved the answer says why. Offline, the
+   * pause still ends, so the changes go out on reconnect as the answer says.
+   */
+  async syncNow(): Promise<TriggerSyncResult> {
+    if (this.stateManager.isPaused()) this.stateManager.setPaused(false, 'sync_now')
+    if (!this.ctx.deps.network.online) return { success: false, reason: 'offline' }
+    let outcome = await this.fullSyncAfterScheduledCycles()
+    // A wake pull can take the lock as a previous run ends: try once more.
+    if (outcome.status === 'skipped' && outcome.reason === 'busy') {
+      outcome = await this.fullSyncAfterScheduledCycles()
+    }
+    return syncNowResult(outcome, this.getStatus())
+  }
+
+  /** A scheduled cycle holds the lock while it runs and would refuse this pull. */
+  private async fullSyncAfterScheduledCycles(): Promise<SyncRunOutcome> {
+    await this.ctx.inFlightSync
+    return this.fullSync()
   }
 
   // --- Security ---
@@ -780,16 +766,17 @@ export class SyncEngine extends SyncEventEmitter {
   private syncLock: Promise<void> = Promise.resolve()
 
   /** False when `fn` was dropped because a fullSync is running. */
-  private scheduleSync(fn: () => Promise<void>): boolean {
+  private scheduleSync(fn: () => Promise<unknown>): boolean {
     if (this.ctx.fullSyncActive) return false
-    const run = () =>
-      fn()
-        .catch((error) => {
-          log.error('Scheduled sync failed', error)
-        })
-        .finally(() => {
-          this.ctx.inFlightSync = null
-        })
+    const run = async (): Promise<void> => {
+      try {
+        await fn()
+      } catch (error) {
+        log.error('Scheduled sync failed', error)
+      } finally {
+        this.ctx.inFlightSync = null
+      }
+    }
 
     if (this.ctx.inFlightSync) {
       log.debug('scheduleSync: chaining onto in-flight sync')
@@ -838,16 +825,18 @@ export class SyncEngine extends SyncEventEmitter {
    * with the paced drain of what it owed: a feed entry past the page's GET
    * budget, a missing base (#2421). Not while a full sync runs, whose
    * `finally` flushes anyway (its `scheduleSync` would drop the drained
-   * active-editor pulls), nor paused or cancelled.
+   * active-editor pulls), nor cancelled. The flush itself waits out a pause.
    */
   private async pullOutsideFullSync(): Promise<void> {
     await this.pull()
-    if (this.ctx.fullSyncActive || this.cancelRequested || this.stateManager.isPaused()) return
+    if (this.ctx.fullSyncActive || this.cancelRequested) return
     this.fullSyncRunner.flushPendingCrdtPulls()
   }
 
-  private async acquireSyncLock(): Promise<(() => void) | null> {
-    if (this.cancelRequested || this.ctx.syncing || this.stateManager.isPaused()) return null
+  private async acquireSyncLock(): Promise<SyncLock> {
+    if (this.cancelRequested) return { refused: 'cancelled' }
+    if (this.ctx.syncing) return { refused: 'busy' }
+    if (this.stateManager.isPaused()) return { refused: 'paused' }
     this.ctx.syncing = true
     this.syncLockAcquiredAt = Date.now()
 
@@ -858,7 +847,7 @@ export class SyncEngine extends SyncEventEmitter {
     })
     await prev
     this.activeLockRelease = release
-    return release
+    return { release }
   }
 
   private armPeriodicPull(): void {
@@ -1027,7 +1016,7 @@ export class SyncEngine extends SyncEventEmitter {
         break
       case 'crdt_updated': {
         const { noteId } = message
-        if (!this.ctx.deps.crdtProvider || this.stateManager.isPaused()) break
+        if (!this.ctx.deps.crdtProvider) break
         // A wake once the legacy sweep is done and the frame carries a cursor
         // (#2421): the feed serves every body row above LAST_CURSOR, and the
         // cursor is only the #2290 skip filter, never a pull cursor. Before
@@ -1043,10 +1032,14 @@ export class SyncEngine extends SyncEventEmitter {
           // prunes the write just announced (#2421, 07 §7.13.2).
           const woken = this.wakeCursorByNote.get(noteId) ?? -Infinity
           this.wakeCursorByNote.set(noteId, Math.max(woken, message.cursor))
-          this.scheduleWakePull(message.cursor)
+          // Paused, the full sync that ends the pause reads the feed (#3382).
+          if (!this.stateManager.isPaused()) this.scheduleWakePull(message.cursor)
           break
         }
-        if (this.ctx.fullSyncActive) {
+        // Queued, flagged and owed during a full sync, whose closing flush
+        // drains it, and during a pause, which holds note bodies too (#3382):
+        // the full sync that resume starts drains it then.
+        if (this.ctx.fullSyncActive || this.stateManager.isPaused()) {
           this.crdtSync.queuePulls([noteId], 'broadcast')
         } else {
           // Marked before the pull is even scheduled. The broadcast is the

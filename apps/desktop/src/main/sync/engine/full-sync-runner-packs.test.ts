@@ -9,6 +9,7 @@ import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import type { SyncStateManager } from './sync-state-manager'
+import { DELIVERED } from './sync-run-outcome'
 
 /**
  * The #1840 seam inside `FullSyncRunner.run()`: pack bootstrap runs for a
@@ -129,7 +130,7 @@ const createHarness = (
       ...(provider ? { crdtProvider: provider } : {})
     },
     applier: { changedCount: 0 },
-    acquireLock: vi.fn(async () => () => {}),
+    acquireLock: vi.fn(async () => ({ release: () => {} })),
     releaseLock: vi.fn(),
     fullSyncActive: false
   } as unknown as SyncContext
@@ -147,10 +148,11 @@ const createHarness = (
   const actions: FullSyncActions = {
     pull: vi.fn(async () => {
       order.push('pull')
-      return true
+      return DELIVERED
     }),
     push: vi.fn(async () => {
       order.push('push')
+      return DELIVERED
     }),
     scheduleSync: vi.fn()
   }
@@ -234,7 +236,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     const harness = createHarness()
     mocks.runPackBootstrap.mockRejectedValue(new Error('pack list exploded'))
 
-    await expect(harness.runner.run()).resolves.toBeUndefined()
+    await expect(harness.runner.run()).resolves.toEqual(DELIVERED)
 
     expect(harness.order).toContain('pull')
     expect(

@@ -233,7 +233,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
           })
           await mockDecrypt()
 
-          await expect(engine.pull()).resolves.toBe(true)
+          await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
           expect(localRow(db, type, 'x-signed') !== undefined).toBe(survives)
           expect(localRow(db, type, 'x-purged') !== undefined).toBe(survives)
@@ -254,7 +254,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     })
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
@@ -323,7 +323,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     await mockDecrypt()
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy.mock.calls.map(([input]) => input.itemId)).toEqual(['task-ok'])
     expect(localRow(db, 'task', 'task-lost')).toEqual(before)
@@ -342,7 +342,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     await servePage({ deleted: ['task-1'], pull: { items: [] } })
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
@@ -362,7 +362,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     await mockDecrypt()
     vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(localRow(db, 'task', 'task-legacy-purged')).toBeDefined()
   })
@@ -378,7 +378,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     await mockDecrypt()
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy.mock.calls.map(([input]) => input.itemId)).toEqual(['task-ok'])
     expect(engine['pullCoordinator'].schemaInvalid.quarantinedItems()).toEqual([])
@@ -395,7 +395,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     })
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
@@ -444,8 +444,8 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     })
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
 
-    await expect(engine.pull()).resolves.toBe(true)
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('7')
@@ -521,7 +521,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
       pull: { items: [], purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)] }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(seen).toEqual([{ cursor: '7', itemSynced: 0 }])
     expect(localRow(db, 'task', 'task-1')).toBeUndefined()
@@ -553,7 +553,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
       }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(seen).toEqual([{ cursor: '7', itemSynced: 0 }])
     expect(localRow(db, 'task', 'task-clockless')).toBeDefined()
@@ -774,7 +774,7 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
         const warn = vi.mocked(createLogger('PullEnvelope').warn)
         warn.mockClear()
 
-        await expect(engine.pull()).resolves.toBe(true)
+        await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
         expect(applySpy).not.toHaveBeenCalled()
         expect(matrixRow(db, type)).toEqual(before)
@@ -802,7 +802,7 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
       }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(localRow(db, 'task', 'task-synced')).toBeDefined()
   })
@@ -817,7 +817,7 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
       pull: { items: [], purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)] }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(localRow(db, 'task', 'task-1')).toBeUndefined()
   })
@@ -849,7 +849,7 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
       verified: true
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(localRow(db, 'task', 'task-1')).toBeUndefined()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')

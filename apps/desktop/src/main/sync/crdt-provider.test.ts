@@ -1146,6 +1146,27 @@ describe('CrdtProvider', () => {
     expect(pushSnapshot).not.toHaveBeenCalled()
   })
 
+  // #3382: a pause held records only, and note text kept leaving as snapshots.
+  it('sends no snapshot while sync is paused, and keeps the pending one owed until it ends', async () => {
+    let paused = true
+    provider.setSyncPaused(() => paused)
+    await provider.open('note-1', undefined, { skipSeed: true })
+    await provider.open('note-2', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Pending snapshot' })
+    provider.updateMeta('note-2', { title: 'Closed while paused' })
+
+    await expect(provider.pushAllSnapshots()).resolves.toBe(0)
+    await expect(provider.pushSnapshotForNote('note-1')).resolves.toBe(false)
+    await provider.close('note-2')
+    expect(pushSnapshot).not.toHaveBeenCalled()
+
+    paused = false
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    expect(pushSnapshot).toHaveBeenCalledExactlyOnceWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
+  })
+
   it('stops the snapshot walk before the next note once aborted', async () => {
     // #given two notes with pending snapshots and a push that aborts the walk
     await provider.open('note-1', undefined, { skipSeed: true })
@@ -3458,6 +3479,17 @@ describe('CrdtProvider batched snapshot pushes', () => {
     expect(pushSnapshot).not.toHaveBeenCalled()
     expect(results.size).toBe(120)
     expect([...results.values()].every(Boolean)).toBe(true)
+  })
+
+  // #3382: the pause holds note bodies, so the batch endpoint sends nothing either.
+  it('sends no batch while sync is paused', async () => {
+    provider.setSyncPaused(() => true)
+
+    const results = await provider.pushSnapshotsForNotes(['note-1', 'note-2'])
+
+    expect(pushBatch).not.toHaveBeenCalled()
+    expect(pushSnapshot).not.toHaveBeenCalled()
+    expect([...results.values()]).toEqual([false, false])
   })
 
   // #2448: the batch opened a doc nobody held, an editor bound to it while the

@@ -15,8 +15,6 @@ export const EVENT_CHANNELS = {
   DOWNLOAD_PROGRESS: 'sync:download-progress',
   INITIAL_SYNC_PROGRESS: 'sync:initial-sync-progress',
   QUEUE_CLEARED: 'sync:queue-cleared',
-  PAUSED: 'sync:paused',
-  RESUMED: 'sync:resumed',
   SESSION_EXPIRED: 'auth:session-expired',
   TOKEN_REFRESHED: 'auth:token-refreshed',
   OTP_DETECTED: 'auth:otp-detected',
@@ -122,14 +120,6 @@ export interface InitialSyncProgressEvent {
 export interface QueueClearedEvent {
   itemCount: number
   duration: number
-}
-
-export interface SyncPausedEvent {
-  pendingCount: number
-}
-
-export interface SyncResumedEvent {
-  pendingCount: number
 }
 
 /**

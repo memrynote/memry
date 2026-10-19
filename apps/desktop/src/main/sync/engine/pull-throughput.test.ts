@@ -102,7 +102,7 @@ describe('PullCoordinator slice prefetch', () => {
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
     const server = await fakeServer({ latencyMs: 20 })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(server.maxInFlight()).toBe(2)
     expect(server.posts).toEqual([
@@ -122,7 +122,7 @@ describe('PullCoordinator slice prefetch', () => {
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
     const server = await fakeServer({ bad: (itemIds) => itemIds.includes('filter-100') })
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(server.posts).toEqual(['filter-0', 'filter-100', 'filter-200'])
     expect(itemSyncedIds(deps.emitToRenderer)).toEqual(ids(0, 100))
@@ -142,7 +142,7 @@ describe('PullCoordinator slice prefetch', () => {
       await fakeServer({ pages: 3, latencyMs })
 
       const started = performance.now()
-      await expect(engine.pull()).resolves.toBe(true)
+      await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
       const ms = Math.round(performance.now() - started)
 
       process.stdout.write(`PULL_PERF slices=15 latencyMs=${latencyMs} wallMs=${ms}\n`)
@@ -188,7 +188,7 @@ describe('PullCoordinator deferred retries', () => {
       }
     })
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     // 500 first applies, then 60 retries, then the 60 events.
     expect(appliesAtEmit).toEqual(Array.from({ length: 60 }, () => 560))
@@ -215,7 +215,7 @@ describe('PullCoordinator deferred retries', () => {
       })
 
       const started = performance.now()
-      await expect(engine.pull()).resolves.toBe(true)
+      await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
       const ms = Math.round(performance.now() - started)
 
       process.stdout.write(`DEFERRED_PERF retries=126 refetchMs=20 pullWallMs=${ms}\n`)

@@ -677,12 +677,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           secureCleanup(signingSecretKey)
         }
       }
+      // The user's pause holds note bodies as well as records (#3382). The
+      // engine owns it; until the engine exists, nothing may leave.
+      let pauseOwner: SyncEngine | null = null
+      const isSyncPaused = (): boolean => pauseOwner?.isPaused() ?? true
       const noteBodyOutbox = new NoteBodyOutbox({
         queue,
         push: pushNoteBody,
         recordPush: (noteId, event, pushed) =>
           recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
-        requestSnapshot: (noteId) => snapshotScheduler.request(noteId)
+        requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        isSyncPaused
       })
 
       // `engine` is referenced lazily: nothing invokes these fns between
@@ -753,6 +758,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       const crdtProvider = getCrdtProvider()
+      crdtProvider.setSyncPaused(isSyncPaused)
       await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
       // Once, then the pre-#2298 file is gone: its notes become full-state rows.
       importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
@@ -781,10 +787,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const network = new NetworkMonitor()
       network.start()
-      if (!network.online) {
-        noteBodyOutbox.pause()
-      }
-      noteBodyOutbox.start()
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           noteBodyOutbox.resume()
@@ -880,6 +882,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           })
         },
         prepareCanvasPush: (canvasId) => holdCanvasAssetsBeforePush(canvasId),
+        onSyncResumed: () => noteBodyOutbox.flushAll(),
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
         onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
         onVaultKeyMismatch: () => {
@@ -905,6 +908,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             .catch((err) => log.error('Key-mismatch sign-out failed', err))
         }
       })
+
+      // Started once the pause it reads has an owner.
+      pauseOwner = engine
+      if (!network.online) {
+        noteBodyOutbox.pause()
+      }
+      noteBodyOutbox.start()
 
       queue.setOnItemEnqueued(() => engine.requestPush())
       crdtProvider.setSnapshotCoverage((noteId, heldRevision) =>

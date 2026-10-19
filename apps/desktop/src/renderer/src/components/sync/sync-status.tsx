@@ -112,12 +112,14 @@ function SyncPopoverFooter({
 /**
  * Footer-dock glyph: one cloud whose corner dot carries the state, so the dock
  * never flips between five unrelated icons. Syncing swaps to the spinning arrows
- * and a plan-less or unknown account shows the struck cloud with no dot.
+ * and a plan-less or unknown account shows the struck cloud with no dot. A
+ * stalled idle is not green: its changes are not leaving (#3382).
  */
 function dockGlyph(
   status: string,
   hasIssues: boolean,
-  bindingHeld: boolean
+  bindingHeld: boolean,
+  stalled: boolean
 ): { Icon: AppIcon; badge: DockBadgeTone | null; spin: boolean } {
   if (bindingHeld) return { Icon: CloudOff, badge: null, spin: false }
   if (hasIssues || status === 'error') return { Icon: Cloud, badge: 'destructive', spin: false }
@@ -125,7 +127,7 @@ function dockGlyph(
     case 'syncing':
       return { Icon: RefreshCw, badge: null, spin: true }
     case 'idle':
-      return { Icon: Cloud, badge: 'success', spin: false }
+      return { Icon: Cloud, badge: stalled ? 'warning' : 'success', spin: false }
     case 'offline':
     case 'paused':
       return { Icon: Cloud, badge: 'warning', spin: false }
@@ -152,6 +154,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     IconComponent,
     isAnimating,
     hasIssues,
+    stalled,
     pendingCount,
     localOnlyCount,
     conflicts,
@@ -175,7 +178,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // The popover sells the upgrade instead of showing a dead Retry (#2201).
   const isLocalOnly = status === 'local_only'
   const heldBinding = useHeldVaultBinding()
-  const glyph = dockGlyph(status, hasIssues, heldBinding !== null)
+  const glyph = dockGlyph(status, hasIssues, heldBinding !== null, stalled)
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -215,9 +218,9 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   const handlePauseResume = async (): Promise<void> => {
     try {
       if (status === 'paused') {
-        await resume()
+        await resume('popover')
       } else {
-        await pause()
+        await pause('popover')
       }
     } catch (err) {
       log.error('Pause/resume failed', err)
@@ -333,6 +336,11 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               {isOffline && pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
                   {tPhaseF('phaseF.componentsSyncSyncStatus.willSyncWhenBackOnline')}
+                </p>
+              )}
+              {stalled && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.stalled')}
                 </p>
               )}
             </div>

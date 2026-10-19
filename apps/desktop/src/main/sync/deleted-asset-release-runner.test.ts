@@ -65,12 +65,12 @@ describe('deleted-asset release runner', () => {
     // Paused: still nothing, even after a sync that delivered.
     get.mockResolvedValue({ items: [], deleted: [], hasMore: false, nextCursor: 0 })
     await engine.fullSync()
-    engine.pause()
+    engine.pause('popover')
     deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
     await new Promise((r) => setTimeout(r, 20))
     expect(ctx.dereference).not.toHaveBeenCalled()
 
-    engine.resume()
+    engine.resume('popover')
     deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
     await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
     await engine.stop({ skipFinalPush: true })

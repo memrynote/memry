@@ -26,6 +26,7 @@ import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import type { SyncStateManager } from './sync-state-manager'
+import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 
 /**
  * Pack bootstrap (#1840) seeds note bodies before the first record pull, so a
@@ -396,7 +397,7 @@ async function runSync(
       crdtProvider: device.provider
     },
     applier: { changedCount: 0 },
-    acquireLock: async () => () => {},
+    acquireLock: async () => ({ release: () => {} }),
     releaseLock: vi.fn(),
     fullSyncActive: false,
     abortController: device.abortController
@@ -435,7 +436,11 @@ async function runSync(
         return device.debtDurable
       }
     } as unknown as CrdtSyncCoordinator,
-    { pull: options.pull, push: async () => {}, scheduleSync: vi.fn() } satisfies FullSyncActions
+    {
+      pull: async () => ((await options.pull()) ? DELIVERED : INCOMPLETE),
+      push: async () => DELIVERED,
+      scheduleSync: vi.fn()
+    } satisfies FullSyncActions
   )
 
   await runner.run().catch(() => {})

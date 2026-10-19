@@ -762,8 +762,12 @@ describe('preload api wrappers', () => {
       limit: 5
     })
     await expectInvoke(() => syncOps.getQueueSize(), SYNC_CHANNELS.GET_QUEUE_SIZE)
-    await expectInvoke(() => syncOps.pause(), SYNC_CHANNELS.PAUSE)
-    await expectInvoke(() => syncOps.resume(), SYNC_CHANNELS.RESUME)
+    await expectInvoke(() => syncOps.pause('popover'), SYNC_CHANNELS.PAUSE, {
+      surface: 'popover'
+    })
+    await expectInvoke(() => syncOps.resume('settings'), SYNC_CHANNELS.RESUME, {
+      surface: 'settings'
+    })
     await expectInvoke(
       () => syncOps.updateSyncedSetting('editor.theme', 'dark'),
       SYNC_CHANNELS.UPDATE_SYNCED_SETTING,
@@ -1081,8 +1085,6 @@ describe('preload api wrappers', () => {
       SYNC_EVENTS.INITIAL_SYNC_PROGRESS
     )
     expectSubscribe(() => syncEvents.onQueueCleared(callback), SYNC_EVENTS.QUEUE_CLEARED)
-    expectSubscribe(() => syncEvents.onSyncPaused(callback), SYNC_EVENTS.PAUSED)
-    expectSubscribe(() => syncEvents.onSyncResumed(callback), SYNC_EVENTS.RESUMED)
     expectSubscribe(() => syncEvents.onSessionExpired(callback), SYNC_EVENTS.SESSION_EXPIRED)
     expectSubscribe(() => syncEvents.onTokenRefreshed(callback), SYNC_EVENTS.TOKEN_REFRESHED)
     expectSubscribe(() => syncEvents.onDeviceRevoked(callback), SYNC_EVENTS.DEVICE_REMOVED)

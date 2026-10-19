@@ -638,7 +638,7 @@ export function AccountSettings() {
               checked={isSyncActive}
               disabled={isToggleDisabled}
               onCheckedChange={(checked) =>
-                void (checked ? syncStatus.resume() : syncStatus.pause())
+                void (checked ? syncStatus.resume('settings') : syncStatus.pause('settings'))
               }
               className={ACCENT_SWITCH}
             />

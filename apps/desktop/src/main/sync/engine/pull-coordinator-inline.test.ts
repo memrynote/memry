@@ -70,7 +70,7 @@ describe('PullCoordinator with inline changes pages (#2292)', () => {
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '3')
 
-    await expect(engine.pull()).resolves.toBe(true)
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
 
     expect(getSpy).toHaveBeenCalledWith(
       '/sync/changes?limit=500&cursor=3&inline=1',
@@ -169,7 +169,7 @@ describe('PullCoordinator with inline changes pages (#2292)', () => {
     const applySpy = vi.spyOn(ItemApplier.prototype, 'apply')
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '4')
 
-    await expect(engine.pull()).resolves.toBe(false)
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')

@@ -13,7 +13,9 @@ import {
 } from '@/lib/icons'
 import { useSync } from '@/contexts/sync-context'
 import { notesService } from '@/services/notes-service'
+import { useNowMinute } from '@/hooks/use-now-minute'
 import { useT } from '@memry/i18n/renderer'
+import type { SyncControlSurface } from '@memry/contracts/ipc-sync-ops'
 
 type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'local_only' | 'unknown'
 
@@ -44,9 +46,11 @@ interface SyncStatusResult extends SyncStatusDisplay {
   syncActivity: SyncActivityInfo
   lastSyncLabel: string
   hasIssues: boolean
+  /** See `isSyncStalled`. */
+  stalled: boolean
   triggerSync: () => Promise<void>
-  pause: () => Promise<void>
-  resume: () => Promise<void>
+  pause: (surface: SyncControlSurface) => Promise<void>
+  resume: (surface: SyncControlSurface) => Promise<void>
   clearError: () => void
   clearConflicts: () => void
 }
@@ -100,6 +104,27 @@ const STATUS_MAP: Record<string, Omit<SyncStatusDisplay, 'label'> & { labelKey: 
 
 const FALLBACK_DISPLAY = STATUS_MAP.unknown
 
+/** A healthy device completes a pull at least every five minutes; three missed read as stalled. */
+const SYNC_STALL_AFTER_MS = 15 * 60_000
+
+/**
+ * Idle with changes waiting, and no sync has completed for longer than a
+ * healthy device ever goes (#3382). Idle is what the engine reports while it
+ * believes all is well, so this is the one state where a stall would show as
+ * Synced. A device that never synced has no clock to measure from.
+ */
+function isSyncStalled(
+  sync: { status: string; pendingCount: number; lastSyncAt: number | null },
+  now: number
+): boolean {
+  return (
+    sync.status === 'idle' &&
+    sync.pendingCount > 0 &&
+    sync.lastSyncAt !== null &&
+    now - sync.lastSyncAt > SYNC_STALL_AFTER_MS
+  )
+}
+
 export function useSyncStatus(): SyncStatusResult {
   const { t } = useT('settings')
   const { state, triggerSync, pause, resume, clearError, clearConflicts } = useSync()
@@ -116,6 +141,8 @@ export function useSyncStatus(): SyncStatusResult {
     syncActivity
   } = state
   const deviceKeysMissing = status === 'error' && errorCategory === 'device_keys_missing'
+  const now = useNowMinute()
+  const stalled = isSyncStalled({ status, pendingCount, lastSyncAt }, now)
 
   const { data: localOnlyData } = useQuery({
     queryKey: ['notes', 'localOnlyCount'],
@@ -200,6 +227,7 @@ export function useSyncStatus(): SyncStatusResult {
     ...display,
     lastSyncLabel,
     hasIssues,
+    stalled,
     triggerSync,
     pause,
     resume,

@@ -180,6 +180,7 @@ export const TELEMETRY_DIMENSION_KEYS = [
   'result_bucket',
   'setting',
   'size_bucket',
+  'skip_reason',
   'target',
   'target_app_version',
   'tool',

@@ -11,6 +11,8 @@ import {
   GetNoteSyncStateSchema,
   ResolveVaultBindingSchema,
   StorageBreakdownResult,
+  SyncControlSchema,
+  type TriggerSyncResult,
   UpdateSyncedSettingSchema
 } from '@memry/contracts/ipc-sync-ops'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
@@ -29,7 +31,7 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { getFromServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, withErrorHandler } from './validate'
+import { createValidatedHandler } from './validate'
 import { registerCommand } from './lib/register-command'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { getKeychainUnavailableStatus } from '../sync/keychain-retry'
@@ -235,18 +237,24 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return engine.getStatus()
   })
 
-  ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async () => {
+  ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async (): Promise<TriggerSyncResult> => {
     let engine: SyncEngine | null = resolveSyncEngine()
     if (!engine) {
       engine = await startSyncRuntime()
     }
     if (!engine) {
-      return { success: false, error: 'errors:sync.engineNotInitialized' }
+      return { success: false, reason: 'unavailable', error: 'errors:sync.engineNotInitialized' }
     }
-    return withErrorHandler(async () => {
-      await engine.fullSync()
-      return { success: true }
-    }, 'errors:sync.triggerFailed')()
+    try {
+      return await engine.syncNow()
+    } catch (error) {
+      logger.error('Sync Now failed', error)
+      return {
+        success: false,
+        reason: 'failed',
+        error: error instanceof Error ? error.message : 'errors:sync.triggerFailed'
+      }
+    }
   })
 
   registerCommand(
@@ -293,17 +301,19 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return { pending: stats.pending, failed: stats.failed }
   })
 
-  ipcMain.handle(SYNC_CHANNELS.PAUSE, () => {
-    const engine = resolveSyncEngine()
-    if (!engine) return { success: false, wasPaused: false }
-    return engine.pause()
-  })
+  registerCommand(
+    SYNC_CHANNELS.PAUSE,
+    SyncControlSchema,
+    ({ surface }) => resolveSyncEngine()?.pause(surface) ?? { success: false, wasPaused: false },
+    'errors:sync.pauseFailed'
+  )
 
-  ipcMain.handle(SYNC_CHANNELS.RESUME, () => {
-    const engine = resolveSyncEngine()
-    if (!engine) return { success: false, pendingCount: 0 }
-    return engine.resume()
-  })
+  registerCommand(
+    SYNC_CHANNELS.RESUME,
+    SyncControlSchema,
+    ({ surface }) => resolveSyncEngine()?.resume(surface) ?? { success: false, pendingCount: 0 },
+    'errors:sync.resumeFailed'
+  )
 
   registerCommand(
     SYNC_CHANNELS.UPDATE_SYNCED_SETTING,

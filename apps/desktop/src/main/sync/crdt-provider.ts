@@ -122,6 +122,7 @@ export interface SnapshotRefusal {
 }
 
 const NO_COVERAGE: SnapshotCoverageReader = () => ({ unmerged: false })
+const NOT_PAUSED = (): boolean => false
 
 /** The pre-encode read `encodeForPush` needs; only `readPushBase` makes one. */
 interface PushBase {
@@ -245,6 +246,8 @@ export class CrdtProvider {
   private updateQueue: NoteBodyOutbox | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
+  /** See `setSyncPaused`. */
+  private syncPaused: () => boolean = NOT_PAUSED
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
   /** See `setSnapshotDeferral`. */
   private deferSnapshot: ((noteId: string) => void) | null = null
@@ -386,6 +389,28 @@ export class CrdtProvider {
    */
   setRemoteMerge(merge: ((noteId: string) => Promise<boolean>) | null): void {
     this.mergeRemote = merge
+  }
+
+  /**
+   * Wired by the sync runtime to the user's pause (#3382), which holds note
+   * bodies as well as records. While it is on, every snapshot path takes its
+   * no-push branch, the one a provider with no runtime takes, and sends
+   * nothing. No edit waits on a snapshot, which is only a compaction point:
+   * the edits wait in the outbox, and each note its flush sends after the
+   * pause requests a snapshot again.
+   */
+  setSyncPaused(isPaused: (() => boolean) | null): void {
+    this.syncPaused = isPaused ?? NOT_PAUSED
+  }
+
+  /** The snapshot push, or none while sync is paused. */
+  private snapshotSender(): SnapshotPushFn | null {
+    return this.snapshotPushFn && !this.syncPaused() ? this.snapshotPushFn : null
+  }
+
+  /** The batch snapshot push, or none while sync is paused. */
+  private snapshotBatchSender(): SnapshotBatchPushFn | null {
+    return this.snapshotBatchPushFn && !this.syncPaused() ? this.snapshotBatchPushFn : null
   }
 
   /**
@@ -1039,7 +1064,7 @@ export class CrdtProvider {
 
     this.flushNetworkBroadcast(noteId)
 
-    const push = this.snapshotPushFn
+    const push = this.snapshotSender()
     const defer = options.deferSnapshot ? this.deferSnapshot : null
     if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
       if (defer) {
@@ -1428,6 +1453,7 @@ export class CrdtProvider {
     this.updateQueue = null
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
+    this.syncPaused = NOT_PAUSED
     this.snapshotCoverage = NO_COVERAGE
     this.deferSnapshot = null
     this.oweRemoteMerge = null
@@ -1474,8 +1500,9 @@ export class CrdtProvider {
    * the walk before the next note; the push already in flight is not cut.
    */
   async pushAllSnapshots(signal?: AbortSignal): Promise<number> {
-    if (!this.snapshotPushFn) {
-      log.debug('No snapshotPushFn configured, skipping server push')
+    const push = this.snapshotSender()
+    if (!push) {
+      log.debug('No snapshot push available (no runtime, or sync paused), skipping server push')
       return 0
     }
 
@@ -1487,7 +1514,7 @@ export class CrdtProvider {
       try {
         const base = await this.readPushBase(noteId)
         const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(entry.doc))
-        await this.snapshotPushFn(noteId, state, coverage)
+        await push(noteId, state, coverage)
         entry.accumulatedBytes = 0
         entry.pendingSnapshotBytes = 0
         pushed++
@@ -1681,7 +1708,7 @@ export class CrdtProvider {
     noteId: string,
     options: { skipSeed?: boolean } = {}
   ): Promise<boolean> {
-    const push = this.snapshotPushFn
+    const push = this.snapshotSender()
     if (!push) return false
 
     const prepared = await this.prepareSnapshotForNote(noteId, options.skipSeed)
@@ -1733,7 +1760,7 @@ export class CrdtProvider {
     if (unique.length === 0) return results
 
     const concurrency = Math.max(1, options.concurrency ?? 1)
-    const batchPush = this.snapshotBatchPushFn
+    const batchPush = this.snapshotBatchSender()
 
     if (!batchPush) {
       const tasks = unique.map((noteId) => async () => {
@@ -2301,7 +2328,8 @@ export class CrdtProvider {
     this.compactionBuffers.set(noteId, [])
 
     try {
-      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+      const push = this.snapshotSender()
+      if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
         // Credit only the bytes this payload actually covers. result.compacted
         // was encoded before the await, and applyIpcUpdate writes straight to
         // entry.doc with no compaction guard (only remote updates are
@@ -2311,7 +2339,7 @@ export class CrdtProvider {
         // read as pushed and stayed unpushed until a later edit re-armed it.
         // Clamped: close() may have zeroed the counter mid-push.
         const pushedBytes = entry.pendingSnapshotBytes
-        await this.snapshotPushFn(noteId, result.compacted, coverage)
+        await push(noteId, result.compacted, coverage)
         entry.pendingSnapshotBytes = Math.max(0, entry.pendingSnapshotBytes - pushedBytes)
       }
 

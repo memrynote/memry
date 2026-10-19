@@ -2194,6 +2194,7 @@
       "clockSkewDetected": "Clock skew detected",
       "items": "items",
       "willSyncWhenBackOnline": "Will sync when back online",
+      "stalled": "Changes haven't synced in a while. Try Sync Now.",
       "openSyncSettings": "Open sync settings",
       "repairDeviceKeys": "Repair",
       "signInToRepair": "Sign in again to set up this device's keys. Unsynced notes, tasks and projects are kept. You may need your recovery phrase.",

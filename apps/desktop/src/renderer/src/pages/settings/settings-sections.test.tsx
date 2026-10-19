@@ -690,7 +690,7 @@ describe('settings section coverage', () => {
     // The account section now has a second switch (attachment auto-download);
     // the sync toggle is the first one in the group.
     fireEvent.click(screen.getAllByRole('switch')[0])
-    expect(mocks.syncStatus.pause).toHaveBeenCalled()
+    expect(mocks.syncStatus.pause).toHaveBeenCalledWith('settings')
   })
 
   it('sells sync to an unpaid account with benefits and the guarantee, not an error', async () => {

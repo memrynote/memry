@@ -33,8 +33,6 @@ import type {
   SecurityWarningEvent,
   SessionExpiredEvent,
   SessionExpiredReason,
-  SyncPausedEvent,
-  SyncResumedEvent,
   SyncStatusChangedEvent,
   UploadProgressEvent
 } from './ipc-events'
@@ -145,11 +143,9 @@ describe('event payload types (compile-time shape locks)', () => {
     }
   })
 
-  it('QueueClearedEvent / SyncPausedEvent / SyncResumedEvent', () => {
+  it('QueueClearedEvent', () => {
     const cleared: QueueClearedEvent = { itemCount: 3, duration: 100 }
-    const paused: SyncPausedEvent = { pendingCount: 2 }
-    const resumed: SyncResumedEvent = { pendingCount: 0 }
-    expect(cleared.itemCount + paused.pendingCount + resumed.pendingCount).toBe(5)
+    expect(cleared.itemCount).toBe(3)
   })
 
   it('SessionExpiredEvent reason union', () => {
