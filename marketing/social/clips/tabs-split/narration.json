@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Wed Dec 9",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Drag a tab to *split*" },
+    { "id": "hover", "dur": 5.0, "text": "Hover a tab to *peek*" },
+    { "id": "drag", "dur": 6.0, "text": "Drag it to the *edge*" },
+    { "id": "split", "dur": 6.0, "text": "Brief left, ideas *right*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

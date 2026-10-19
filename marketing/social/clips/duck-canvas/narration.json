@@ -1,0 +1,37 @@
+{
+  "silent": true,
+  "post": "Fri Dec 25",
+  "scenes": [
+    {
+      "id": "hook",
+      "dur": 3.0,
+      "text": "A duck, drawn *shape by shape*"
+    },
+    {
+      "id": "body",
+      "dur": 4.6,
+      "text": "Start with an *ellipse*"
+    },
+    {
+      "id": "head",
+      "dur": 7.4,
+      "text": "Add a head and a *beak*"
+    },
+    {
+      "id": "face",
+      "dur": 4.2,
+      "text": "An *eye* for the face"
+    },
+    {
+      "id": "water",
+      "dur": 4.6,
+      "text": "Then a little *water*"
+    },
+    {
+      "id": "end",
+      "dur": 2.4,
+      "style": "end",
+      "text": "free on mac, windows and linux"
+    }
+  ]
+}

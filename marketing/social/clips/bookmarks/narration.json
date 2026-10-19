@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "post": "Sun Dec 13",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "*Bookmark* what you return to" },
+    { "id": "note", "dur": 4.2, "text": "A *note*" },
+    { "id": "folder", "dur": 3.8, "text": "A *folder*" },
+    { "id": "tag", "dur": 3.8, "text": "A *tag*" },
+    { "id": "home", "dur": 5.0, "text": "On the sidebar and *Home*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

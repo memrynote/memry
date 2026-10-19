@@ -1,0 +1,13 @@
+{
+  "silent": true,
+  "post": "Wed Dec 23",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Bring your *Apple Journal* along" },
+    { "id": "sources", "dur": 4.0, "text": "Pick *Apple Journal* in Import" },
+    { "id": "pick", "dur": 4.6, "text": "Choose the *export* files" },
+    { "id": "import", "dur": 3.4, "text": "One click, *6* entries in" },
+    { "id": "folder", "dur": 4.4, "text": "Every day becomes a *note*" },
+    { "id": "note", "dur": 5.0, "text": "Each entry keeps its *date*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

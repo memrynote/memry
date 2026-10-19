@@ -1,0 +1,37 @@
+{
+  "silent": true,
+  "post": "Sat Dec 5",
+  "scenes": [
+    {
+      "id": "hook",
+      "dur": 2.8,
+      "text": "Filter by *several* tags"
+    },
+    {
+      "id": "open",
+      "dur": 3.8,
+      "text": "Open a *tag*"
+    },
+    {
+      "id": "narrow",
+      "dur": 5.4,
+      "text": "Cmd-click another to *narrow*"
+    },
+    {
+      "id": "save",
+      "dur": 6.6,
+      "text": "Save the *combination*"
+    },
+    {
+      "id": "reopen",
+      "dur": 7.4,
+      "text": "Back in *one click*"
+    },
+    {
+      "id": "end",
+      "dur": 2.4,
+      "style": "end",
+      "text": "free on mac, windows and linux"
+    }
+  ]
+}

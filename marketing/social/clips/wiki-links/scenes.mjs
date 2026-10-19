@@ -2,7 +2,11 @@
 // journal day by its date (typed in full: the menu does not suggest days), and the trip's Budget by
 // its folder path, since Studio North has a Budget too.
 import { hideSidebar, openAlone, vaultFile } from '../graph-edit/ui.mjs'
+import { day as dayOf } from '../../vault/cli.mjs'
 import { NOTE } from './vault.mjs'
+
+// The base vault's flights journal entry is 5 days back, so the date moves with the recording day.
+const FLIGHTS_DAY = dayOf(-5)
 
 const options = (page) =>
   page.getByRole('listbox', { name: 'Note suggestions' }).getByRole('option')
@@ -64,15 +68,15 @@ export const scenes = {
   },
   async day({ rec, page, sleep, at }) {
     await rec.key('Enter')
-    await rec.type('Flights booked on [[2026-10-12]] ', { cps: 15 })
-    const c = await chip(page, '2026-10-12').boundingBox()
+    await rec.type(`Flights booked on [[${FLIGHTS_DAY}]] `, { cps: 15 })
+    const c = await chip(page, FLIGHTS_DAY).boundingBox()
     await rec.glide(c.x + c.width / 2, c.y + c.height / 2 + 2, 500)
     await preview(page).filter({ hasText: 'Booked the flights' }).waitFor()
     await at(5.4)
   },
   async folder({ rec, page, sleep, at }) {
     // Off the chip and up, away from its card (which opens below it), so the card closes.
-    const day = await chip(page, '2026-10-12').boundingBox()
+    const day = await chip(page, FLIGHTS_DAY).boundingBox()
     await rec.glide(day.x + day.width + 220, day.y - 50, 350)
     await preview(page).waitFor({ state: 'hidden' })
     await rec.key('Enter')
@@ -97,7 +101,7 @@ export const checks = [
         'Two weeks to go. What is left:',
         '[[Sintra day trip]]',
         '[[Lisbon board]]',
-        '[[2026-10-12]]',
+        `[[${FLIGHTS_DAY}]]`,
         '[[Lisbon/Budget]]'
       ].filter((s) => !md.includes(s))
       return missing.length ? `missing: ${missing.join(', ')}` : null

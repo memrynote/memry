@@ -1,0 +1,10 @@
+{
+  "silent": true,
+  "post": "Tue Dec 8",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Rebind any *shortcut*" },
+    { "id": "rebind", "dur": 7.0, "text": "Click it, press your *keys*" },
+    { "id": "use", "dur": 9.0, "text": "It works while you *type*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

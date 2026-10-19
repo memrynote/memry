@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Sun Dec 27",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Split your journal into *folders*" },
+    { "id": "open", "dur": 4.4, "text": "Open the *journal* settings" },
+    { "id": "format", "dur": 6.4, "text": "Add */* to the date format" },
+    { "id": "folders", "dur": 7.4, "text": "Year and month *folders*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

@@ -1,7 +1,12 @@
 {
   "silent": true,
+  "post": "Sun Dec 20",
   "scenes": [
-    { "id": "hook", "dur": 3.0, "text": "placeholder" },
+    { "id": "hook", "dur": 3.0, "text": "Export a *clean* PDF" },
+    { "id": "menu", "dur": 3.4, "text": "Export from the note menu" },
+    { "id": "export", "dur": 3.8, "text": "PDF or HTML, one *click*" },
+    { "id": "find", "dur": 4.2, "text": "Open the PDF" },
+    { "id": "clean", "dur": 5.2, "text": "No comment, *footnote* kept" },
     { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
   ]
 }

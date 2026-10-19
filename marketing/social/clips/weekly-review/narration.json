@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Sun Dec 6",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "Sunday review in *five minutes*" },
+    { "id": "overdue", "dur": 4.4, "text": "See what's *overdue*" },
+    { "id": "move", "dur": 7.0, "text": "Move it in *one click*" },
+    { "id": "done", "dur": 6.2, "text": "Or *finish* it" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

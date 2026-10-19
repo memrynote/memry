@@ -51,7 +51,7 @@ export const scenes = {
   async add({ rec, page, zoom, sleep, at }) {
     zoom(790, 200, 1.6)
     await rec.click(page.getByRole('tab', { name: /^Tasks/ }), { pause: 120 })
-    await page.getByText('TO DO', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Task: Pick the studio name' }).waitFor()
     await sleep(450)
     await rec.click(page.getByRole('textbox', { name: `Add to ${PROJECT}` }), {
       dx: -300,
@@ -77,7 +77,7 @@ export const scenes = {
     await page.getByText('Friday, January 1', { exact: true }).first().waitFor()
     await sleep(700)
     const t = await rec.center(page.getByText('Pick the studio name', { exact: true }).last())
-    zoom(1440, t.y - 40, 1.9)
+    zoom(1440, t.y - 90, 1.7)
     await rec.glide(t.x + 120, t.y + 20, 900)
     await at(5.1)
   },

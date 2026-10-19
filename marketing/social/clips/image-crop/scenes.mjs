@@ -70,12 +70,19 @@ async function drag({ rec, page, sleep }, from, to, ms) {
 
 /** Hover the photo, open its File actions menu, pick Crop…, wait for the dialog's picture. */
 async function openCrop({ rec, page, sleep }) {
-  const i = await image(page).boundingBox()
-  await rec.glide(i.x + i.width - 60, i.y + 50, 700)
+  // The photo's frame is the parent of its <img> (the img keeps the full size under the crop).
+  const f = await image(page).evaluate((img) => {
+    const r = img.parentElement.getBoundingClientRect()
+    return { x: r.x, y: r.y, width: r.width, height: r.height }
+  })
+  await rec.glide(f.x + f.width - 60, f.y + 50, 700)
   const menu = page.getByTestId('attachment-menu-button')
   await menu.waitFor()
   await sleep(300)
-  await rec.click(menu)
+  // The button sits at the corner of the uncropped box, outside the cropped frame, and hides
+  // when the pointer is not over the photo: open it from the keyboard.
+  await menu.focus()
+  await page.keyboard.press('Enter')
   const item = page.getByRole('menuitem', { name: 'Crop…' })
   await item.waitFor()
   await sleep(450)

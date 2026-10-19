@@ -1,0 +1,11 @@
+{
+  "silent": true,
+  "post": "Thu Dec 24",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "A *Book* tag with its own fields" },
+    { "id": "tag", "dur": 4.4, "text": "Tag a note *book*" },
+    { "id": "fill", "dur": 7.0, "text": "Author, *shelf*, rating, finished" },
+    { "id": "list", "dur": 6.4, "text": "Live list of books you're *reading*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}

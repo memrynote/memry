@@ -39,11 +39,22 @@ export function weekClips(n) {
   return [...new Set([...section.matchAll(/^\*\*X\*\*.*🎬 `([a-z0-9-]+)`/gm)].map((m) => m[1]))]
 }
 
-/** Where a clip's excerpt starts: its first zoom after the hook, once the camera has arrived. */
-function excerptStart(slug, seconds) {
+/**
+ * Where a clip's excerpt starts: its first zoom after the hook, once the camera has arrived. The
+ * take's timeline is gitignored, so a clip recorded in another checkout falls back to its
+ * narration.json: the hook length plus the usual 0.9 s the camera needs to arrive.
+ */
+function excerptStart(slug, seconds, film) {
   const take = path.join(SOCIAL, 'clips', slug, 'out/take')
-  const film = path.join(SOCIAL, 'clips', slug, 'out', `${slug}.mp4`)
   const total = duration(film)
+  if (!fs.existsSync(path.join(take, 'timeline.json'))) {
+    const scenes = JSON.parse(
+      fs.readFileSync(path.join(SOCIAL, 'clips', slug, 'narration.json'), 'utf8')
+    ).scenes
+    const hookEnd = scenes[0].dur
+    const lastEnd = total - scenes.at(-1).dur - seconds
+    return Math.max(hookEnd + 0.3, Math.min(hookEnd + 1.4, lastEnd))
+  }
   const TL = JSON.parse(fs.readFileSync(path.join(take, 'timeline.json'), 'utf8'))
   const events = JSON.parse(fs.readFileSync(path.join(take, 'events.json'), 'utf8'))
   const hookEnd = TL[0].end
@@ -87,9 +98,11 @@ export async function montage(slug) {
 
   const parts = cfg.clips.map((c) => {
     const s = typeof c === 'string' ? { slug: c } : c
-    const film = path.join(SOCIAL, 'clips', s.slug, 'out', `${s.slug}.mp4`)
+    const recorded = path.join(SOCIAL, 'clips', s.slug, 'out', `${s.slug}.mp4`)
+    const approved = path.join(SOCIAL, 'media', `${s.slug}.mp4`)
+    const film = fs.existsSync(recorded) ? recorded : approved
     if (!fs.existsSync(film)) throw new Error(`${s.slug} has no film yet: ${film}`)
-    return { ...s, film, at: s.at ?? excerptStart(s.slug, seconds) }
+    return { ...s, film, at: s.at ?? excerptStart(s.slug, seconds, film) }
   })
   const title = path.join(out, 'cards/title.png')
   const end = path.join(out, 'cards/end.png')

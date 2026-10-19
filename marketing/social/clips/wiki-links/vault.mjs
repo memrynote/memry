@@ -1,6 +1,6 @@
 // Maya's month (../graph-edit/world.mjs) plus what the links on camera point at: a Lisbon board (a
 // plain .excalidraw file, as the app writes canvases), the journal day she booked the flights on
-// (journal/2026-10-12 in the base vault), and a second note titled Budget, in Studio North, so the
+// (journal/<today - 5 days> in the base vault), and a second note titled Budget, in Studio North, so the
 // trip's Budget is linked by its folder path. "Lisbon prep" is the note the links are written in.
 import { addWorld, writeCanvas } from '../graph-edit/world.mjs'
 

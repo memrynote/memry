@@ -1,0 +1,32 @@
+{
+  "silent": true,
+  "post": "Fri Dec 11",
+  "scenes": [
+    {
+      "id": "hook",
+      "dur": 3.0,
+      "text": "Settings have *search*"
+    },
+    {
+      "id": "pages",
+      "dur": 4.0,
+      "text": "Grouped into *pages*"
+    },
+    {
+      "id": "font",
+      "dur": 5.4,
+      "text": "Type *font*, land on it"
+    },
+    {
+      "id": "week",
+      "dur": 5.8,
+      "text": "*Week starts on*, found"
+    },
+    {
+      "id": "end",
+      "dur": 2.4,
+      "style": "end",
+      "text": "free on mac, windows and linux"
+    }
+  ]
+}

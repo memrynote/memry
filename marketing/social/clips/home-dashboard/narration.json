@@ -1,7 +1,11 @@
 {
   "silent": true,
+  "post": "Sat Nov 28",
   "scenes": [
-    { "id": "hook", "dur": 3, "text": "stub" },
+    { "id": "hook", "dur": 3.0, "text": "Home is yours to *arrange*" },
+    { "id": "add", "dur": 4.6, "text": "Add a *journal widget*" },
+    { "id": "drag", "dur": 5.4, "text": "Drag it where you *want*" },
+    { "id": "resize", "dur": 6.0, "text": "Pull a corner to *see more*" },
     { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
   ]
 }

@@ -1,0 +1,12 @@
+{
+  "silent": true,
+  "page": "diagram.html",
+  "post": "Fri Dec 18",
+  "scenes": [
+    { "id": "hook", "dur": 3.0, "text": "What my server *sees*" },
+    { "id": "send", "dur": 4.2, "text": "A note arrives *sealed*" },
+    { "id": "meta", "dur": 5.4, "text": "Its size, kind and *time*" },
+    { "id": "never", "dur": 4.2, "text": "Never the title or *text*" },
+    { "id": "end", "dur": 2.4, "style": "end", "text": "free on mac, windows and linux" }
+  ]
+}
