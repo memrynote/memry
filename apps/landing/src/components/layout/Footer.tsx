@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Container } from './Container'
+import { SocialLinks } from './SocialLinks'
 import { AskAi } from '@/components/site/AskAi'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -10,8 +11,7 @@ import { PAGE_META } from '@/lib/seo'
 const FOOTER_COLUMNS = [
   { title: 'Product', links: FOOTER_LINKS.product },
   { title: 'Compare', links: FOOTER_LINKS.compare },
-  { title: 'Resources', links: FOOTER_LINKS.resources },
-  { title: 'Connect', links: FOOTER_LINKS.social }
+  { title: 'Resources', links: FOOTER_LINKS.resources }
 ] as const
 
 // Every comparison page plus /use-cases, so each one gets a sitewide inbound link
@@ -111,6 +111,13 @@ export function Footer() {
               </ul>
             </div>
           ))}
+
+          <div>
+            <h4 className="mb-5 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-ink-inverted/60">
+              Connect
+            </h4>
+            <SocialLinks />
+          </div>
         </div>
 
         <div className="mb-16 border-t border-white/10 pt-10">

@@ -4,6 +4,8 @@ import {
   GITHUB_URL,
   HOME_FAQ_ITEMS,
   REDDIT_URL,
+  DISCORD_URL,
+  YOUTUBE_URL,
   TWITTER_DEV_URL
 } from './constants'
 
@@ -372,7 +374,7 @@ function getOrganizationJsonLdObject() {
       '@type': 'ImageObject',
       url: `${BASE_URL}/favicon.svg`
     },
-    sameAs: [GITHUB_URL, TWITTER_DEV_URL, REDDIT_URL],
+    sameAs: [GITHUB_URL, TWITTER_DEV_URL, REDDIT_URL, DISCORD_URL, YOUTUBE_URL],
     foundingDate: '2025',
     founder: {
       '@type': 'Person',

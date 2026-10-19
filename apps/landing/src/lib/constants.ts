@@ -17,6 +17,8 @@ import {
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
+export const DISCORD_URL = 'https://discord.gg/NkCvW3uE75'
+export const YOUTUBE_URL = 'https://www.youtube.com/@memrynote'
 const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
 export const CHROME_WEBSTORE_URL =
@@ -120,11 +122,6 @@ export const FOOTER_LINKS = {
     { label: 'Terms of Service', href: '/terms' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Refund Policy', href: '/refund' }
-  ],
-  social: [
-    { label: 'Reddit', href: 'https://www.reddit.com/r/MemryNote/' },
-    { label: 'Twitter', href: 'https://x.com/h4yfans' },
-    { label: 'GitHub', href: 'https://github.com/memrynote/memry' }
   ]
 } as const
 

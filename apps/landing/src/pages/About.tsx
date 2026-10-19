@@ -4,7 +4,7 @@ import { motion } from 'motion/react'
 import { PageHead } from '@/components/shared/PageHead'
 import { Container } from '@/components/layout/Container'
 import { ALTERNATIVES } from '@/lib/alternatives'
-import { GITHUB_URL, REDDIT_URL, TWITTER_DEV_URL } from '@/lib/constants'
+import { DISCORD_URL, GITHUB_URL, REDDIT_URL, TWITTER_DEV_URL, YOUTUBE_URL } from '@/lib/constants'
 import { getAboutPageJsonLd } from '@/lib/seo'
 import { trackLandingEvent } from '@/lib/analytics'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
@@ -128,7 +128,8 @@ const HOW_IT_WORKS: readonly { title: string; body: ReactNode }[] = [
         vulnerability reports to <a href="mailto:security@memrynote.com">security@memrynote.com</a>.
         General questions get a reply within five business days, privacy requests within 30 days,
         and security reports within 24 hours. Community discussion happens on{' '}
-        <a href={REDDIT_URL}>r/MemryNote</a> and bug reports on <a href={GITHUB_URL}>GitHub</a>.
+        <a href={DISCORD_URL}>Discord</a> and <a href={REDDIT_URL}>r/MemryNote</a>, tutorials live
+        on <a href={YOUTUBE_URL}>YouTube</a>, and bug reports on <a href={GITHUB_URL}>GitHub</a>.
       </>
     )
   },
@@ -194,7 +195,7 @@ const KEY_FACTS: readonly { term: string; detail: ReactNode }[] = [
   { term: 'License', detail: 'Open source, AGPL-3.0' },
   {
     term: 'Communication',
-    detail: 'Email (hey@memrynote.com), Reddit r/MemryNote, GitHub issues, X'
+    detail: 'Email (hey@memrynote.com), Discord, Reddit r/MemryNote, GitHub issues, X'
   },
   {
     term: 'Notable Clients',
@@ -213,7 +214,8 @@ const KEY_FACTS: readonly { term: string; detail: ReactNode }[] = [
     detail: (
       <>
         <a href={TWITTER_DEV_URL}>X</a>, <a href={GITHUB_URL}>GitHub</a>,{' '}
-        <a href={REDDIT_URL}>Reddit</a>
+        <a href={REDDIT_URL}>Reddit</a>, <a href={DISCORD_URL}>Discord</a>,{' '}
+        <a href={YOUTUBE_URL}>YouTube</a>
       </>
     )
   }
@@ -426,6 +428,12 @@ export function AboutPage() {
             </ExternalLink>
             <ExternalLink href={REDDIT_URL} target="reddit">
               r/MemryNote on Reddit
+            </ExternalLink>
+            <ExternalLink href={DISCORD_URL} target="discord">
+              memrynote on Discord
+            </ExternalLink>
+            <ExternalLink href={YOUTUBE_URL} target="youtube">
+              memrynote on YouTube
             </ExternalLink>
           </div>
         </div>
