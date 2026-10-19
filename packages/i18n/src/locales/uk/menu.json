@@ -90,7 +90,10 @@
     "documentation": "Документація",
     "shortcuts": "Комбінації клавіш",
     "about": "Про MemryNote",
-    "aboutVersion": "Версія {version}"
+    "aboutVersion": "Версія {version}",
+    "joinDiscord": "Приєднатися до Discord",
+    "followOnX": "Стежити в X",
+    "redditCommunity": "Спільнота в Reddit"
   },
   "tray": {
     "show": "Показати MemryNote"

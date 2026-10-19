@@ -90,7 +90,10 @@
     "documentation": "เอกสาร",
     "shortcuts": "แป้นพิมพ์ลัด",
     "about": "เกี่ยวกับ MemryNote",
-    "aboutVersion": "เวอร์ชัน {version}"
+    "aboutVersion": "เวอร์ชัน {version}",
+    "joinDiscord": "เข้าร่วม Discord",
+    "followOnX": "ติดตามบน X",
+    "redditCommunity": "ชุมชน Reddit"
   },
   "tray": {
     "show": "แสดง MemryNote"

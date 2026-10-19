@@ -90,7 +90,10 @@
     "documentation": "Dokumentation",
     "shortcuts": "Tastaturgenveje",
     "about": "Om MemryNote",
-    "aboutVersion": "Version {version}"
+    "aboutVersion": "Version {version}",
+    "joinDiscord": "Tilmeld dig Discord",
+    "followOnX": "Følg på X",
+    "redditCommunity": "Reddit-fællesskab"
   },
   "tray": {
     "show": "Vis MemryNote"

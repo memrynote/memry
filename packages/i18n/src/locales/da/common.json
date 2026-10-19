@@ -1178,7 +1178,10 @@
     "requestFeature": "Foreslå en funktion",
     "starOnGithub": "Giv en stjerne på GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Nyheder"
+    "whatsNew": "Nyheder",
+    "joinDiscord": "Tilmeld dig Discord",
+    "followOnX": "Følg på X",
+    "redditCommunity": "Reddit-fællesskab"
   },
   "sidebarStar": {
     "title": "MemryNote er open source",

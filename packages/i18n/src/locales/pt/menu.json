@@ -90,7 +90,10 @@
     "documentation": "Documentação",
     "shortcuts": "Atalhos de teclado",
     "about": "Sobre o MemryNote",
-    "aboutVersion": "Versão {version}"
+    "aboutVersion": "Versão {version}",
+    "joinDiscord": "Entrar no Discord",
+    "followOnX": "Seguir no X",
+    "redditCommunity": "Comunidade no Reddit"
   },
   "tray": {
     "show": "Mostrar MemryNote"

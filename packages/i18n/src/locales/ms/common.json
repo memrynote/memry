@@ -1178,7 +1178,10 @@
     "requestFeature": "Minta ciri",
     "starOnGithub": "Beri bintang di GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Apa yang baharu"
+    "whatsNew": "Apa yang baharu",
+    "joinDiscord": "Sertai Discord",
+    "followOnX": "Ikuti di X",
+    "redditCommunity": "Komuniti Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote ialah sumber terbuka",

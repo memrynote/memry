@@ -1178,7 +1178,10 @@
     "requestFeature": "Ehdota toimintoa",
     "starOnGithub": "Anna tähti GitHubissa",
     "version": "MemryNote {version}",
-    "whatsNew": "Mitä uutta"
+    "whatsNew": "Mitä uutta",
+    "joinDiscord": "Liity Discordiin",
+    "followOnX": "Seuraa X:ssä",
+    "redditCommunity": "Reddit-yhteisö"
   },
   "sidebarStar": {
     "title": "MemryNote on avointa lähdekoodia",

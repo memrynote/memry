@@ -1178,7 +1178,10 @@
     "requestFeature": "ขอฟีเจอร์",
     "starOnGithub": "ให้ดาวบน GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "มีอะไรใหม่"
+    "whatsNew": "มีอะไรใหม่",
+    "joinDiscord": "เข้าร่วม Discord",
+    "followOnX": "ติดตามบน X",
+    "redditCommunity": "ชุมชน Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote เป็นโอเพนซอร์ส",

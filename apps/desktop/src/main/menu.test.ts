@@ -163,6 +163,21 @@ describe('buildAppMenu', () => {
     expect(openExternal).toHaveBeenCalledWith('https://docs.memrynote.com')
   })
 
+  it('opens the community channels from the Help menu', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    findMenuItem('Join Discord')?.click?.()
+    findMenuItem('Follow on X')?.click?.()
+    findMenuItem('Reddit community')?.click?.()
+    expect(openExternal.mock.calls.map((call) => call[0])).toEqual([
+      'https://discord.gg/NkCvW3uE75',
+      'https://x.com/memrynote',
+      'https://www.reddit.com/r/MemryNote/'
+    ])
+  })
+
   it('offers Check for Updates… on every platform and routes it to the renderer', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()

@@ -1178,7 +1178,10 @@
     "requestFeature": "Özellik iste",
     "starOnGithub": "GitHub'da yıldız ver",
     "version": "MemryNote {version}",
-    "whatsNew": "Yenilikler"
+    "whatsNew": "Yenilikler",
+    "joinDiscord": "Discord'a katıl",
+    "followOnX": "X'te takip et",
+    "redditCommunity": "Reddit topluluğu"
   },
   "sidebarStar": {
     "title": "MemryNote açık kaynak",

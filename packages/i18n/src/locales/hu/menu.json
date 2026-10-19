@@ -90,7 +90,10 @@
     "documentation": "Dokumentáció",
     "shortcuts": "Billentyűparancsok",
     "about": "A MemryNote névjegye",
-    "aboutVersion": "{version} verzió"
+    "aboutVersion": "{version} verzió",
+    "joinDiscord": "Csatlakozz a Discordhoz",
+    "followOnX": "Kövess minket X-en",
+    "redditCommunity": "Reddit-közösség"
   },
   "tray": {
     "show": "MemryNote megjelenítése"

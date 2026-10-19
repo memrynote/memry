@@ -90,7 +90,10 @@
     "documentation": "문서",
     "shortcuts": "키보드 단축키",
     "about": "MemryNote 정보",
-    "aboutVersion": "버전 {version}"
+    "aboutVersion": "버전 {version}",
+    "joinDiscord": "Discord 참여하기",
+    "followOnX": "X에서 팔로우",
+    "redditCommunity": "Reddit 커뮤니티"
   },
   "tray": {
     "show": "MemryNote 보기"

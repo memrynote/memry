@@ -90,7 +90,10 @@
     "documentation": "Dokumentácia",
     "shortcuts": "Klávesové skratky",
     "about": "O aplikácii MemryNote",
-    "aboutVersion": "Verzia {version}"
+    "aboutVersion": "Verzia {version}",
+    "joinDiscord": "Pridať sa na Discord",
+    "followOnX": "Sledovať na X",
+    "redditCommunity": "Komunita na Reddite"
   },
   "tray": {
     "show": "Zobraziť MemryNote"

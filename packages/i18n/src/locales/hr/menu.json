@@ -90,7 +90,10 @@
     "documentation": "Dokumentacija",
     "shortcuts": "Tipkovnički prečaci",
     "about": "O aplikaciji MemryNote",
-    "aboutVersion": "Verzija {version}"
+    "aboutVersion": "Verzija {version}",
+    "joinDiscord": "Pridruži se na Discordu",
+    "followOnX": "Prati na X-u",
+    "redditCommunity": "Reddit zajednica"
   },
   "tray": {
     "show": "Prikaži MemryNote"

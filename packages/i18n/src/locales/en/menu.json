@@ -91,7 +91,10 @@
     "documentation": "Documentation",
     "shortcuts": "Keyboard Shortcuts",
     "about": "About MemryNote",
-    "aboutVersion": "Version {version}"
+    "aboutVersion": "Version {version}",
+    "joinDiscord": "Join Discord",
+    "followOnX": "Follow on X",
+    "redditCommunity": "Reddit community"
   },
   "tray": {
     "show": "Show MemryNote"

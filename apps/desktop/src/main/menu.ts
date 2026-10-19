@@ -13,6 +13,7 @@ import {
   type MenuAcceleratorCommandId,
   type MenuCommandId
 } from '@memry/contracts/commands'
+import { COMMUNITY_LINKS } from '@memry/contracts/community-links'
 import { AppChannels } from '@memry/contracts/ipc-channels'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -348,7 +349,17 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
           accelerator: 'F1',
           click: () => void shell.openExternal(DOCS_URL)
         },
-        cmd('view.shortcuts', t('help.shortcuts'))
+        cmd('view.shortcuts', t('help.shortcuts')),
+        { type: 'separator' as const },
+        {
+          label: t('help.joinDiscord'),
+          click: () => void shell.openExternal(COMMUNITY_LINKS.discord)
+        },
+        { label: t('help.followOnX'), click: () => void shell.openExternal(COMMUNITY_LINKS.x) },
+        {
+          label: t('help.redditCommunity'),
+          click: () => void shell.openExternal(COMMUNITY_LINKS.reddit)
+        }
       ]
     }
   ]

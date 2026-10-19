@@ -1178,7 +1178,10 @@
     "requestFeature": "Predloži značajku",
     "starOnGithub": "Dodaj zvjezdicu na GitHubu",
     "version": "MemryNote {version}",
-    "whatsNew": "Novosti"
+    "whatsNew": "Novosti",
+    "joinDiscord": "Pridruži se na Discordu",
+    "followOnX": "Prati na X-u",
+    "redditCommunity": "Reddit zajednica"
   },
   "sidebarStar": {
     "title": "MemryNote je otvorenog koda",

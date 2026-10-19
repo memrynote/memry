@@ -90,7 +90,10 @@
     "documentation": "Dokumentaatio",
     "shortcuts": "Pikanäppäimet",
     "about": "Tietoja MemryNotesta",
-    "aboutVersion": "Versio {version}"
+    "aboutVersion": "Versio {version}",
+    "joinDiscord": "Liity Discordiin",
+    "followOnX": "Seuraa X:ssä",
+    "redditCommunity": "Reddit-yhteisö"
   },
   "tray": {
     "show": "Näytä MemryNote"

@@ -1178,7 +1178,10 @@
     "requestFeature": "기능 요청",
     "starOnGithub": "GitHub에서 스타 주기",
     "version": "MemryNote {version}",
-    "whatsNew": "새로운 기능"
+    "whatsNew": "새로운 기능",
+    "joinDiscord": "Discord 참여하기",
+    "followOnX": "X에서 팔로우",
+    "redditCommunity": "Reddit 커뮤니티"
   },
   "sidebarStar": {
     "title": "MemryNote는 오픈 소스입니다",

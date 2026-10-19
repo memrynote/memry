@@ -90,7 +90,10 @@
     "documentation": "Dokumentasi",
     "shortcuts": "Pintasan Keyboard",
     "about": "Tentang MemryNote",
-    "aboutVersion": "Versi {version}"
+    "aboutVersion": "Versi {version}",
+    "joinDiscord": "Gabung Discord",
+    "followOnX": "Ikuti di X",
+    "redditCommunity": "Komunitas Reddit"
   },
   "tray": {
     "show": "Tampilkan MemryNote"

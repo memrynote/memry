@@ -1178,7 +1178,10 @@
     "requestFeature": "Запропонувати функцію",
     "starOnGithub": "Поставити зірку на GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Що нового"
+    "whatsNew": "Що нового",
+    "joinDiscord": "Приєднатися до Discord",
+    "followOnX": "Стежити в X",
+    "redditCommunity": "Спільнота в Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote — проєкт із відкритим кодом",

@@ -1178,7 +1178,10 @@
     "requestFeature": "طلب ميزة",
     "starOnGithub": "منح نجمة على GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "ما الجديد"
+    "whatsNew": "ما الجديد",
+    "joinDiscord": "انضم إلى Discord",
+    "followOnX": "تابعنا على X",
+    "redditCommunity": "مجتمع Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote مفتوح المصدر",

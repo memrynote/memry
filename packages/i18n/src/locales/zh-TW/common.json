@@ -1178,7 +1178,10 @@
     "requestFeature": "提出功能建議",
     "starOnGithub": "在 GitHub 上加星號",
     "version": "MemryNote {version}",
-    "whatsNew": "新功能"
+    "whatsNew": "新功能",
+    "joinDiscord": "加入 Discord",
+    "followOnX": "在 X 上追蹤",
+    "redditCommunity": "Reddit 社群"
   },
   "sidebarStar": {
     "title": "MemryNote 是開放原始碼軟體",

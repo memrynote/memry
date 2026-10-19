@@ -1178,7 +1178,10 @@
     "requestFeature": "Solicitar una función",
     "starOnGithub": "Dar una estrella en GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Novedades"
+    "whatsNew": "Novedades",
+    "joinDiscord": "Únete a Discord",
+    "followOnX": "Síguenos en X",
+    "redditCommunity": "Comunidad de Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote es de código abierto",

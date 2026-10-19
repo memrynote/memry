@@ -90,7 +90,10 @@
     "documentation": "Tài liệu",
     "shortcuts": "Phím tắt",
     "about": "Giới thiệu về MemryNote",
-    "aboutVersion": "Phiên bản {version}"
+    "aboutVersion": "Phiên bản {version}",
+    "joinDiscord": "Tham gia Discord",
+    "followOnX": "Theo dõi trên X",
+    "redditCommunity": "Cộng đồng Reddit"
   },
   "tray": {
     "show": "Hiển thị MemryNote"

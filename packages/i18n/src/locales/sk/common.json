@@ -1178,7 +1178,10 @@
     "requestFeature": "Navrhnúť funkciu",
     "starOnGithub": "Dať hviezdičku v službe GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Novinky"
+    "whatsNew": "Novinky",
+    "joinDiscord": "Pridať sa na Discord",
+    "followOnX": "Sledovať na X",
+    "redditCommunity": "Komunita na Reddite"
   },
   "sidebarStar": {
     "title": "MemryNote má otvorený zdrojový kód",

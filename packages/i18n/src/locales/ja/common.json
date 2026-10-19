@@ -1178,7 +1178,10 @@
     "requestFeature": "機能をリクエスト",
     "starOnGithub": "GitHub でスターを付ける",
     "version": "MemryNote {version}",
-    "whatsNew": "新機能"
+    "whatsNew": "新機能",
+    "joinDiscord": "Discordに参加",
+    "followOnX": "Xでフォロー",
+    "redditCommunity": "Redditコミュニティ"
   },
   "sidebarStar": {
     "title": "MemryNote はオープンソースです",

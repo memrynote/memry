@@ -90,7 +90,10 @@
     "documentation": "Documentație",
     "shortcuts": "Comenzi rapide de la tastatură",
     "about": "Despre MemryNote",
-    "aboutVersion": "Versiunea {version}"
+    "aboutVersion": "Versiunea {version}",
+    "joinDiscord": "Alătură-te pe Discord",
+    "followOnX": "Urmărește pe X",
+    "redditCommunity": "Comunitatea Reddit"
   },
   "tray": {
     "show": "Afișează MemryNote"

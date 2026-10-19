@@ -1178,7 +1178,10 @@
     "requestFeature": "Humiling ng feature",
     "starOnGithub": "I-star sa GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Ano ang bago"
+    "whatsNew": "Ano ang bago",
+    "joinDiscord": "Sumali sa Discord",
+    "followOnX": "I-follow sa X",
+    "redditCommunity": "Komunidad sa Reddit"
   },
   "sidebarStar": {
     "title": "Open source ang MemryNote",

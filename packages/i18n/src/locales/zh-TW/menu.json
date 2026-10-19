@@ -90,7 +90,10 @@
     "documentation": "文件",
     "shortcuts": "鍵盤快速鍵",
     "about": "關於 MemryNote",
-    "aboutVersion": "版本 {version}"
+    "aboutVersion": "版本 {version}",
+    "joinDiscord": "加入 Discord",
+    "followOnX": "在 X 上追蹤",
+    "redditCommunity": "Reddit 社群"
   },
   "tray": {
     "show": "顯示 MemryNote"

@@ -1178,7 +1178,10 @@
     "requestFeature": "Solicită o funcție",
     "starOnGithub": "Marchează cu stea pe GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Noutăți"
+    "whatsNew": "Noutăți",
+    "joinDiscord": "Alătură-te pe Discord",
+    "followOnX": "Urmărește pe X",
+    "redditCommunity": "Comunitatea Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote are cod sursă deschis",

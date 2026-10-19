@@ -1178,7 +1178,10 @@
     "requestFeature": "Functie aanvragen",
     "starOnGithub": "Ster geven op GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Wat is er nieuw"
+    "whatsNew": "Wat is er nieuw",
+    "joinDiscord": "Word lid van Discord",
+    "followOnX": "Volg op X",
+    "redditCommunity": "Reddit-community"
   },
   "sidebarStar": {
     "title": "MemryNote is open source",

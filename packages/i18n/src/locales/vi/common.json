@@ -1178,7 +1178,10 @@
     "requestFeature": "Đề xuất tính năng",
     "starOnGithub": "Gắn sao trên GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Có gì mới"
+    "whatsNew": "Có gì mới",
+    "joinDiscord": "Tham gia Discord",
+    "followOnX": "Theo dõi trên X",
+    "redditCommunity": "Cộng đồng Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote là mã nguồn mở",

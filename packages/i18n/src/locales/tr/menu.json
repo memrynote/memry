@@ -90,7 +90,10 @@
     "documentation": "Belgeler",
     "shortcuts": "Klavye Kısayolları",
     "about": "MemryNote Hakkında",
-    "aboutVersion": "Sürüm {version}"
+    "aboutVersion": "Sürüm {version}",
+    "joinDiscord": "Discord'a katıl",
+    "followOnX": "X'te takip et",
+    "redditCommunity": "Reddit topluluğu"
   },
   "tray": {
     "show": "MemryNote'u Göster"

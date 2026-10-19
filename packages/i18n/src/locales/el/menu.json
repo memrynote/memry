@@ -90,7 +90,10 @@
     "documentation": "Τεκμηρίωση",
     "shortcuts": "Συντομεύσεις πληκτρολογίου",
     "about": "Σχετικά με το MemryNote",
-    "aboutVersion": "Έκδοση {version}"
+    "aboutVersion": "Έκδοση {version}",
+    "joinDiscord": "Συμμετοχή στο Discord",
+    "followOnX": "Ακολουθήστε στο X",
+    "redditCommunity": "Κοινότητα Reddit"
   },
   "tray": {
     "show": "Εμφάνιση MemryNote"

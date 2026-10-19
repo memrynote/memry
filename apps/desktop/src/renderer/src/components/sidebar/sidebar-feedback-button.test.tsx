@@ -62,17 +62,23 @@ beforeEach(() => {
 })
 
 describe('SidebarFeedbackButton', () => {
-  it('opens the GitHub bug, feature and repo links from the help menu', () => {
+  it('opens the GitHub and community links from the help menu', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<SidebarFeedbackButton />)
 
     fireEvent.click(screen.getByRole('menuitem', { name: /reportBug/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: /requestFeature/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /joinDiscord/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /followOnX/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /redditCommunity/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: /starOnGithub/ }))
 
     expect(open.mock.calls.map((call) => call[0])).toEqual([
       'https://github.com/memrynote/memry/issues/new?template=bug.yml',
       'https://github.com/memrynote/memry/issues/new?template=feature.yml',
+      'https://discord.gg/NkCvW3uE75',
+      'https://x.com/memrynote',
+      'https://www.reddit.com/r/MemryNote/',
       'https://github.com/memrynote/memry'
     ])
     open.mockRestore()

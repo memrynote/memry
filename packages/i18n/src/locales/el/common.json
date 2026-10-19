@@ -1178,7 +1178,10 @@
     "requestFeature": "Πρόταση λειτουργίας",
     "starOnGithub": "Προσθήκη αστεριού στο GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "Τι νέο υπάρχει"
+    "whatsNew": "Τι νέο υπάρχει",
+    "joinDiscord": "Συμμετοχή στο Discord",
+    "followOnX": "Ακολουθήστε στο X",
+    "redditCommunity": "Κοινότητα Reddit"
   },
   "sidebarStar": {
     "title": "Το MemryNote είναι ανοιχτού κώδικα",

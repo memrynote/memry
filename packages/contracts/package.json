@@ -11,6 +11,7 @@
     "./bootstrap-api": "./src/bootstrap-api.ts",
     "./blob-api": "./src/blob-api.ts",
     "./bookmark-types": "./src/bookmark-types.ts",
+    "./community-links": "./src/community-links.ts",
     "./bookmarks-api": "./src/bookmarks-api.ts",
     "./calendar-api": "./src/calendar-api.ts",
     "./caldav-presets": "./src/caldav-presets.ts",

@@ -90,7 +90,10 @@
     "documentation": "ドキュメント",
     "shortcuts": "キーボードショートカット",
     "about": "MemryNote について",
-    "aboutVersion": "バージョン {version}"
+    "aboutVersion": "バージョン {version}",
+    "joinDiscord": "Discordに参加",
+    "followOnX": "Xでフォロー",
+    "redditCommunity": "Redditコミュニティ"
   },
   "tray": {
     "show": "MemryNote を表示"

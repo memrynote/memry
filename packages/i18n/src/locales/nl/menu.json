@@ -90,7 +90,10 @@
     "documentation": "Documentatie",
     "shortcuts": "Sneltoetsen",
     "about": "Over MemryNote",
-    "aboutVersion": "Versie {version}"
+    "aboutVersion": "Versie {version}",
+    "joinDiscord": "Word lid van Discord",
+    "followOnX": "Volg op X",
+    "redditCommunity": "Reddit-community"
   },
   "tray": {
     "show": "MemryNote tonen"

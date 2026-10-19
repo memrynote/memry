@@ -1178,7 +1178,10 @@
     "requestFeature": "Funkció kérése",
     "starOnGithub": "Csillagozás a GitHubon",
     "version": "MemryNote {version}",
-    "whatsNew": "Újdonságok"
+    "whatsNew": "Újdonságok",
+    "joinDiscord": "Csatlakozz a Discordhoz",
+    "followOnX": "Kövess minket X-en",
+    "redditCommunity": "Reddit-közösség"
   },
   "sidebarStar": {
     "title": "A MemryNote nyílt forráskódú",

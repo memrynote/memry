@@ -1267,7 +1267,10 @@
     "requestFeature": "Request a feature",
     "starOnGithub": "Star on GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "What's new"
+    "whatsNew": "What's new",
+    "joinDiscord": "Join Discord",
+    "followOnX": "Follow on X",
+    "redditCommunity": "Reddit community"
   },
   "sidebarStar": {
     "title": "MemryNote is open source",

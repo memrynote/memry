@@ -1178,7 +1178,10 @@
     "requestFeature": "בקשת תכונה",
     "starOnGithub": "כוכב ב-GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "מה חדש"
+    "whatsNew": "מה חדש",
+    "joinDiscord": "הצטרפו ל-Discord",
+    "followOnX": "עקבו ב-X",
+    "redditCommunity": "קהילת Reddit"
   },
   "sidebarStar": {
     "title": "MemryNote הוא קוד פתוח",

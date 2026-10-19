@@ -90,7 +90,10 @@
     "documentation": "תיעוד",
     "shortcuts": "קיצורי מקלדת",
     "about": "אודות MemryNote",
-    "aboutVersion": "גרסה {version}"
+    "aboutVersion": "גרסה {version}",
+    "joinDiscord": "הצטרפו ל-Discord",
+    "followOnX": "עקבו ב-X",
+    "redditCommunity": "קהילת Reddit"
   },
   "tray": {
     "show": "הצגת MemryNote"
