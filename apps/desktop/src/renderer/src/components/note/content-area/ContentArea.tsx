@@ -164,6 +164,7 @@ import {
   isDateMentionActive,
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
+import { createAutoCloseBracketsPlugin } from './auto-close-brackets-plugin'
 import { createWikiLinkEditPlugin, editWikiLinkAt, wikiLinkAtCoords } from './wiki-link-edit-plugin'
 import {
   WikiLinkContextMenu,
@@ -1163,6 +1164,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     })
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor, openWikiLinkSuggestions])
+
+  // `(` and `[[` write their closing half. Prepended so its Backspace and
+  // type-over handling runs before the default keymap deletes one character.
+  useEffect(
+    () =>
+      registerEditorPlugin(editor, createAutoCloseBracketsPlugin(), (p, plugins) => [
+        p,
+        ...plugins
+      ]),
+    [editor]
+  )
 
   // A chevron beside every bullet that has nested blocks and every heading
   // that has a section, folding them away.
