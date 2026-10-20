@@ -893,6 +893,32 @@ describe('embeddings', () => {
     // so a test that expects a retry here fails if the backoff wrongly escalated.
     const FIRST_BACKOFF_ELAPSED_MS = 70_000
 
+    it('opens the breaker when a worker that loads fine keeps dying on embed (#3407)', async () => {
+      vi.useFakeTimers()
+      // #given the projector's pattern: load succeeds, then the embed aborts the worker
+      const crashOnce = async (): Promise<void> => {
+        await succeedOneLoad()
+        const embedding = generateEmbedding('content long enough for embeddings')
+        const worker = mockUtilityProcessInstance
+        await vi.waitFor(() => {
+          expect(worker.postMessage.mock.calls.at(-1)?.[0]).toMatchObject({ type: 'embed' })
+        })
+        worker.emit('exit', 5)
+        await expect(embedding).resolves.toBeNull()
+      }
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(10 * 60_000)
+        await crashOnce()
+      }
+
+      // #then no further worker is forked, however long we wait
+      mockFork.mockClear()
+      await vi.advanceTimersByTimeAsync(60 * 60_000)
+      await expect(initEmbeddingModel()).resolves.toBe(false)
+      expect(mockFork).not.toHaveBeenCalled()
+    })
+
     it('does not retry the download immediately after a failure', async () => {
       vi.useFakeTimers()
       await failOneLoad()
