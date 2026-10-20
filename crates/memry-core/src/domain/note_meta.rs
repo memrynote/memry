@@ -27,7 +27,7 @@ use serde_json::{Map, Value};
 use crate::api::errors::StorageError;
 use crate::domain::tag_fields::{self, TagFieldGroup};
 use crate::domain::wiki_target::WikiNames;
-use crate::domain::{notes, properties, tags};
+use crate::domain::{note_status, notes, properties, tags};
 
 /// One property on a note: its name, its value, and the type the vault
 /// declared for it.
@@ -103,6 +103,21 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
     let definitions = properties::definitions(conn)?;
 
     let tag_fields = tag_fields::groups(conn, &tags, &values, &definitions)?;
+    let mut values = values;
+    if values.contains_key(note_status::HEADER_STATUS_PROPERTY) {
+        let declared = definitions
+            .iter()
+            .find(|it| it.name == note_status::HEADER_STATUS_PROPERTY)
+            .map(|it| (it.type_name.as_str(), it.options.as_deref()));
+        // The stored value stays in the payload; only what the shell is handed
+        // changes, and only while the note has tasks.
+        if let Some(derived) = note_status::derive(conn, id, declared)? {
+            values.insert(
+                note_status::HEADER_STATUS_PROPERTY.to_owned(),
+                Value::String(derived),
+            );
+        }
+    }
     let properties: Vec<NoteProperty> = values
         .into_iter()
         .map(|(name, value)| {

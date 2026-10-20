@@ -839,6 +839,7 @@
     "nameAria": "Property name",
     "typeSection": "Type",
     "empty": "Empty",
+    "derivedFromTasks": "Set by the tasks in this note",
     "dragAria": "Drag to reorder property",
     "editName": "Edit property name",
     "delete": "Delete property",

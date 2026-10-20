@@ -284,4 +284,24 @@ describe('note info property editors', () => {
     rerender(<StatusEditor value={null} categories={categories} onChange={onChange} />)
     expect(screen.getByText('properties.empty')).toBeInTheDocument()
   })
+  it('shows a read-only status as a chip with its reason and no picker', () => {
+    const categories = {
+      todo: { label: 'To-do', options: [{ value: 'Not started', color: 'stone' }] },
+      in_progress: { label: 'In progress', options: [] },
+      done: { label: 'Complete', options: [{ value: 'Done', color: 'emerald' }] }
+    }
+    const onChange = vi.fn()
+    render(
+      <StatusEditor
+        value="Done"
+        categories={categories}
+        readOnlyHint="set by tasks"
+        defaultOpen
+        onChange={onChange}
+      />
+    )
+
+    expect(screen.getByText('Done').closest('[title]')).toHaveAttribute('title', 'set by tasks')
+    expect(screen.queryByRole('region', { name: 'To-do' })).not.toBeInTheDocument()
+  })
 })

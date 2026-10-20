@@ -36,6 +36,7 @@ import {
   writeMarkdownNote
 } from '@memry/app-core/markdown'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
+import { withDerivedHeaderStatus } from './note-header-status.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
@@ -263,6 +264,11 @@ export function createNotesService({
   dataDb: DataDb
   indexDb: IndexDb
 }): NotesService {
+  // What the service hands out. The raw `readNote` stays for the paths that
+  // write a note's properties back, so a derived status never reaches the file.
+  const readOutputNote = async (row: NoteMetadataRow): Promise<NoteRecord> =>
+    withDerivedHeaderStatus(dataDb, await readNote(vaultPath, row))
+
   return {
     async create(input) {
       const now = new Date().toISOString()
@@ -291,7 +297,7 @@ export function createNotesService({
         createdAt: now,
         modifiedAt: now
       })
-      return readNote(vaultPath, {
+      return readOutputNote({
         id,
         path: relativePath,
         title: input.title,
@@ -302,10 +308,10 @@ export function createNotesService({
       })
     },
 
-    async get(idOrPath) {
+    async get(idOrPath, options = {}) {
       const row = getMetadata(dataDb, idOrPath)
       if (!row) return null
-      return readNote(vaultPath, row)
+      return options.raw ? readNote(vaultPath, row) : readOutputNote(row)
     },
 
     async list(options = {}) {
@@ -317,7 +323,7 @@ export function createNotesService({
         journalOnly: options.journalOnly ?? false,
         limit: options.limit ?? 100
       })
-      const notes = await Promise.all(rows.map((row) => readNote(vaultPath, row)))
+      const notes = await Promise.all(rows.map((row) => readOutputNote(row)))
       return notes
     },
 
@@ -393,7 +399,7 @@ export function createNotesService({
           to: { title: nextTitle, pathStem: noteLinkStem(nextPath) }
         })
       }
-      return readNote(vaultPath, {
+      return readOutputNote({
         ...row,
         path: nextPath,
         title: nextTitle,
@@ -458,7 +464,7 @@ export function createNotesService({
           to: { title: row.title, pathStem: noteLinkStem(nextPath) }
         })
       }
-      return readNote(vaultPath, { ...row, path: nextPath, modifiedAt: now })
+      return readOutputNote({ ...row, path: nextPath, modifiedAt: now })
     },
 
     async getLinks(idOrPath) {
@@ -549,7 +555,7 @@ export function createNotesService({
     async getJournalByDate(date) {
       const row = getJournalNoteMetadataByDate(dataDb, date)
       if (!row) return null
-      return readNote(vaultPath, row)
+      return readOutputNote(row)
     },
 
     async upsertJournal(date, content, mode) {
@@ -580,7 +586,7 @@ export function createNotesService({
         properties: {},
         journalDate: date
       })
-      return readNote(vaultPath, {
+      return readOutputNote({
         id,
         path: relativePath,
         title: date,

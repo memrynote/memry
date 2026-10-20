@@ -83,6 +83,8 @@ import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
+import { useNoteTaskCategories } from '@/hooks/use-derived-header-status'
+import { HEADER_STATUS_PROPERTY } from '@memry/shared/note-status'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
@@ -1097,10 +1099,19 @@ export function NotePage({ noteId }: NotePageProps) {
     () => buildFieldGroups(note?.headerTags ?? [], tagSchemas, propertyValues),
     [note?.headerTags, tagSchemas, propertyValues]
   )
+  const noteTaskCategories = useNoteTaskCategories(note?.content ?? '')
   const ownProperties = useMemo(() => {
     const own = new Set(fieldGroups.rest.map((entry) => entry.name))
-    return properties.filter((property) => own.has(property.name))
-  }, [fieldGroups.rest, properties])
+    return properties
+      .filter((property) => own.has(property.name))
+      .map((property) =>
+        property.name === HEADER_STATUS_PROPERTY &&
+        property.type === 'status' &&
+        noteTaskCategories?.length
+          ? { ...property, derivedFrom: noteTaskCategories }
+          : property
+      )
+  }, [fieldGroups.rest, properties, noteTaskCategories])
   const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || isLocked)
   const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
   const noteBodyEmpty = !(note?.content ?? '').trim()

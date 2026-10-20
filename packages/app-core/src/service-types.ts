@@ -5,7 +5,6 @@
  * contracts without reaching the node implementations.
  */
 
-
 export interface NoteRecord {
   id: string
   path: string
@@ -73,7 +72,12 @@ export interface ResolvedWikiTargetRecord extends ResolvedNoteRecord {
 
 export interface NotesService {
   create(input: CreateNoteInput): Promise<NoteRecord>
-  get(idOrPath: string): Promise<NoteRecord | null>
+  /**
+   * `raw` returns the properties as stored. Without it the header status is the
+   * one the note's tasks imply (#3176), so a caller that writes properties back
+   * reads raw to keep the derived value out of the file.
+   */
+  get(idOrPath: string, options?: { raw?: boolean }): Promise<NoteRecord | null>
   list(options?: { folder?: string; journalOnly?: boolean; limit?: number }): Promise<NoteRecord[]>
   update(input: UpdateNoteInput): Promise<NoteRecord>
   exists(idOrPath: string): Promise<boolean>
@@ -89,7 +93,6 @@ export interface NotesService {
   getJournalByDate(date: string): Promise<NoteRecord | null>
   upsertJournal(date: string, content: string, mode: 'write' | 'append'): Promise<NoteRecord>
 }
-
 
 export interface InboxRecord {
   id: string
@@ -216,7 +219,6 @@ export interface InboxService {
   removeTag(id: string, tag: string): Promise<InboxRecord>
   markViewed(id: string): Promise<InboxRecord>
 }
-
 
 export interface TemplateProperty {
   name: string

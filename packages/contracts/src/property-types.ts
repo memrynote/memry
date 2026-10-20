@@ -73,6 +73,21 @@ export const DEFAULT_STATUS_DEFINITION: PropertyDefinition = {
   categories: DEFAULT_STATUS_CATEGORIES
 }
 
+/**
+ * The categories a status property definition carries in its stored `options`
+ * JSON, or the defaults when the definition is missing, empty or malformed.
+ */
+export function parseStatusCategories(options: string | null | undefined): StatusCategories {
+  if (!options) return DEFAULT_STATUS_CATEGORIES
+  try {
+    const parsed: unknown = JSON.parse(options)
+    const categories = (parsed as { categories?: StatusCategories } | null)?.categories
+    return categories ?? DEFAULT_STATUS_CATEGORIES
+  } catch {
+    return DEFAULT_STATUS_CATEGORIES
+  }
+}
+
 const SelectOptionSchema = z.object({
   value: z.string().min(1),
   color: z.string().min(1),

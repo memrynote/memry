@@ -34,7 +34,7 @@ import {
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import {
-  DEFAULT_STATUS_DEFINITION,
+  parseStatusCategories,
   type SelectOption,
   type StatusCategories,
   type StatusCategoryKey
@@ -42,6 +42,7 @@ import {
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { deriveHeaderStatus } from '@memry/shared/note-status'
 import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -168,6 +169,7 @@ function SelectPropertyRenderer({
 }) {
   const { getDefinition, refresh } = usePropertyDefinitions()
   const { t } = useT('settings')
+  const { t: tNotes } = useT('notes')
   const definition = getDefinition(property.name)
 
   const options: SelectOption[] = useMemo(() => {
@@ -181,17 +183,10 @@ function SelectPropertyRenderer({
     }
   }, [definition?.options])
 
-  const categories: StatusCategories | undefined = useMemo(() => {
-    if (property.type !== 'status') return undefined
-    if (!definition?.options) return DEFAULT_STATUS_DEFINITION.categories
-    try {
-      const parsed = JSON.parse(definition.options)
-      if (parsed?.categories) return parsed.categories as StatusCategories
-      return DEFAULT_STATUS_DEFINITION.categories
-    } catch {
-      return DEFAULT_STATUS_DEFINITION.categories
-    }
-  }, [property.type, definition?.options])
+  const categories: StatusCategories | undefined = useMemo(
+    () => (property.type === 'status' ? parseStatusCategories(definition?.options) : undefined),
+    [property.type, definition?.options]
+  )
 
   const handleAddOption = useCallback(
     async (option: SelectOption) => {
@@ -235,8 +230,13 @@ function SelectPropertyRenderer({
   if (property.type === 'status' && categories) {
     return (
       <StatusEditor
-        value={(property.value as string) ?? null}
+        value={
+          property.derivedFrom
+            ? deriveHeaderStatus(property.derivedFrom, categories)
+            : ((property.value as string) ?? null)
+        }
         categories={categories}
+        readOnlyHint={property.derivedFrom ? tNotes('properties.derivedFromTasks') : undefined}
         defaultOpen={autoOpen}
         onChange={onValueChange}
         onAddOption={(...args) => void handleAddStatusOption(...args)}

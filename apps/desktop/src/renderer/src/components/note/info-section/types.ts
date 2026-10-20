@@ -11,6 +11,7 @@ import {
   FolderKanban,
   type AppIcon
 } from '@/lib/icons'
+import type { TaskStatusCategory } from '@memry/shared/note-status'
 
 export type PropertyType =
   | 'text'
@@ -31,6 +32,11 @@ export interface Property {
   value: unknown
   isCustom: boolean
   isRequired?: boolean
+  /**
+   * Where the note's own tasks sit. A status property that carries them shows
+   * the status they imply and cannot be edited (#3176).
+   */
+  derivedFrom?: TaskStatusCategory[]
 }
 
 export interface PropertyTemplate {
