@@ -23,6 +23,7 @@ import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '../notes/store'
 import { getIndexDatabase } from '../database'
 import { mergeEntityProperties, setEntityProperties } from '../notes/entity-properties'
+import { fillHeaderStatus } from '../notes/header-status'
 import { getMainI18n } from '../lib/main-i18n'
 import { flushProjectionEvents } from '../projections'
 import { fileSpelling } from '../vault/yaml-dates'
@@ -65,6 +66,7 @@ export function registerPropertiesHandlers(): void {
         const result = await setEntityProperties(input.entityId, input.properties)
         if (!result.success) return result
         await flushProjectionEvents()
+        fillHeaderStatus(input.entityId)
         const stored = Object.fromEntries(
           getNoteProperties(db, input.entityId).map((p) => [p.name, fileSpelling(p.value)])
         )
@@ -84,6 +86,7 @@ export function registerPropertiesHandlers(): void {
       withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
         const result = await mergeEntityProperties(input.entityId, input.values)
         if (!result.success) return result
+        fillHeaderStatus(input.entityId)
         const stored = Object.fromEntries(
           getNoteProperties(getIndexDatabase(), input.entityId).map((p) => [
             p.name,

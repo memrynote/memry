@@ -53,6 +53,7 @@ import type { SyncService } from './sync.ts'
 import { createSyncService } from './sync.ts'
 import type { TaskRecord, TasksService } from '@memry/app-core/tasks'
 import { createTasksService } from '@memry/app-core/tasks'
+import { withHeaderStatusSync } from './note-header-status.ts'
 import type { TemplatesService } from './templates.ts'
 import { createTemplatesService } from './templates.ts'
 import type { VersionsService } from './versions.ts'
@@ -183,7 +184,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const folders = createFoldersService({ vaultPath, config })
   const folderView = createFolderViewService({ vaultPath, config, notes })
   const properties = createPropertiesService({ notes, dataDb: databases.dataDb, vaultPath })
-  const tasks = createTasksService(databases.dataDb)
+  const tasks = withHeaderStatusSync(createTasksService(databases.dataDb), databases.dataDb, notes)
   const inbox = createInboxService({ dataDb: databases.dataDb, vaultPath, notes, tasks })
   const tags = createTagsService({ dataDb: databases.dataDb, notes })
   const reminders = createRemindersService(databases.dataDb)

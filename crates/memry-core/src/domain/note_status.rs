@@ -1,24 +1,26 @@
-//! A note's header status, derived from the tasks written in its body (#3176).
+//! A note's header status follows the tasks written in its body (#3176).
 //!
-//! The note's own `status` property stays in the payload untouched: builds from
-//! before this rule read it, and sync carries it. [`metadata`](super::note_meta)
-//! swaps it for [`derive`] when the note has tasks, so the shell shows what the
-//! tasks imply and cannot edit it.
+//! The status is stored, as any property is. A task write refreshes it through
+//! [`refresh`]: the notes holding the changed task get the status their tasks
+//! imply. A user's own pick is an ordinary property edit and stays until the
+//! next task change writes over it, last writer wins, so every reader (a
+//! folder view, a filter, the CLI, sync) just reads the stored value.
 //!
 //! The rule is the TypeScript `packages/shared/src/note-status.ts`: all to-do
-//! is to-do, all done is done, anything else is in progress. It is a read-time
-//! product rule and changes no synced byte, so there is no vector; both sides
-//! test the same cases, and a change to the rule changes both. A task id with
-//! no live row, such as one a sync has not delivered yet, is skipped.
+//! is to-do, all done is done, anything else is in progress. It is a product
+//! rule and changes no synced byte, so there is no vector; both sides test the
+//! same cases, and a change to the rule changes both. A task id with no live
+//! row, such as one a sync has not delivered yet, is skipped.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::projects::StatusType;
-use crate::domain::{note_tasks, task_records};
+use crate::domain::tasks::TaskWrite;
+use crate::domain::{note_tasks, notes, properties, task_records};
 
 /// Whether a property is the one that holds a note's header status. Case does
 /// not matter: the property picker names a new one after its type, `Status`,
@@ -29,6 +31,9 @@ pub fn is_header_status_property(name: &str) -> bool {
 
 /// The type a status property must declare for the rule to apply.
 const STATUS_TYPE_NAME: &str = "status";
+
+/// Task fields whose change can move a note's status.
+const STATUS_FIELDS: [&str; 3] = ["statusId", "completedAt", "projectId"];
 
 /// Where one task sits. A done status is done. A status past the first default
 /// one is in progress, whatever `completed_at` says: the status pickers change
@@ -91,37 +96,130 @@ fn stock_value(category: StatusType) -> &'static str {
     }
 }
 
-/// The derived header status of `note_id`, or `None` when the stored one
-/// stands: the note has no task rows, or `status` is not declared as a status
-/// property.
-pub fn derive(
+/// Writes the status the tasks in `note_id` imply into its status property.
+///
+/// Nothing is written when the note has no such property, the property is not
+/// declared as a status, no task of the note has a row, or the stored value is
+/// already the derived one. `also_task` counts a task the body has not caught up
+/// with yet.
+pub fn sync_note(
     conn: &Connection,
     note_id: &str,
-    status_definition: Option<(&str, Option<&str>)>,
-) -> Result<Option<String>, StorageError> {
-    let Some((type_name, options)) = status_definition else {
-        return Ok(None);
+    also_task: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let values = properties::values(conn, notes::ITEM_TYPE, note_id)?;
+    let Some(name) = values
+        .keys()
+        .find(|name| is_header_status_property(name))
+        .cloned()
+    else {
+        return Ok(());
     };
-    if type_name != STATUS_TYPE_NAME {
-        return Ok(None);
+    let definitions = properties::definitions(conn)?;
+    let Some(definition) = definitions.iter().find(|it| it.name == name) else {
+        return Ok(());
+    };
+    if definition.type_name != STATUS_TYPE_NAME {
+        return Ok(());
     }
+
     let lines = note_tasks::read_task_lines(conn, note_id)
         .map_err(|error| StorageError::Failed {
             what: format!("note {note_id} body will not read: {error}"),
         })?
         .unwrap_or_default();
-
     let mut seen = HashSet::new();
     let mut categories = Vec::new();
-    for line in lines {
-        if !seen.insert(line.task_id.clone()) {
+    let ids = lines
+        .iter()
+        .map(|line| line.task_id.as_str())
+        .chain(std::iter::once(also_task));
+    for task_id in ids {
+        if !seen.insert(task_id.to_owned()) {
             continue;
         }
-        if let Some(task) = task_records::get(conn, &line.task_id)? {
+        if let Some(task) = task_records::get(conn, task_id)? {
             categories.push(task_category(task.completed_at.is_some(), task.status_type));
         }
     }
-    Ok(header_value(&categories, options))
+
+    let Some(value) = header_value(&categories, definition.options.as_deref()) else {
+        return Ok(());
+    };
+    if values.get(&name) == Some(&Value::String(value.clone())) {
+        return Ok(());
+    }
+    properties::set(
+        conn,
+        notes::ITEM_TYPE,
+        note_id,
+        &name,
+        Value::String(value),
+        device_id,
+        now_ms,
+    )
+    .map_err(|error| StorageError::Failed {
+        what: format!("header status of {note_id}: {error}"),
+    })?;
+    Ok(())
+}
+
+/// After a task write has committed: the notes holding a task it created,
+/// deleted or moved to another status refresh their header status.
+///
+/// `before` is every live task's source note read before the write, which is
+/// the only place a deleted task's note is still named. Best effort, like the
+/// activity rows beside it: a task write that landed is not reported as failed
+/// because a status property did not follow.
+pub fn refresh(
+    conn: &Connection,
+    write: &TaskWrite,
+    current: &HashMap<String, task_records::TaskRecord>,
+    before: &HashMap<String, (String, String)>,
+    device_id: &str,
+    now_ms: i64,
+) {
+    let mut reached: Vec<(String, String)> = Vec::new();
+    let mut reach = |task_id: &str, note_id: &str| {
+        let pair = (note_id.to_owned(), task_id.to_owned());
+        if !reached.contains(&pair) {
+            reached.push(pair);
+        }
+    };
+    let holding = |task: &task_records::TaskRecord| -> Vec<String> {
+        task.source_note_id
+            .iter()
+            .chain(task.linked_note_ids.iter())
+            .cloned()
+            .collect()
+    };
+    for id in &write.created {
+        for note in current.get(id).map(holding).unwrap_or_default() {
+            reach(id, &note);
+        }
+    }
+    for prior in &write.changed {
+        if !prior
+            .fields
+            .iter()
+            .any(|(field, _)| STATUS_FIELDS.contains(&field.as_str()))
+        {
+            continue;
+        }
+        for note in current.get(&prior.task_id).map(holding).unwrap_or_default() {
+            reach(&prior.task_id, &note);
+        }
+    }
+    for id in &write.deleted {
+        if let Some((note, _)) = before.get(id) {
+            reach(id, note);
+        }
+    }
+    for (note, task) in reached {
+        let _ = sync_note(conn, &note, &task, device_id, now_ms);
+    }
 }
 
 #[cfg(test)]

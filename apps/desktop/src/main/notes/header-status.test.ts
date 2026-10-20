@@ -9,48 +9,63 @@ import { insertProject, insertStatus } from '../database/queries/projects'
 import { insertTask } from '../database/queries/tasks'
 import { insertNoteCache } from '../database/queries/notes'
 import { setNoteProperties } from '../database/queries/notes/property-queries'
-import { withDerivedHeaderStatus } from './header-status'
+import { fillHeaderStatus, syncHeaderStatus, syncHeaderStatusForTask } from './header-status'
 
-const mocks = vi.hoisted(() => ({ dataDb: {} as unknown, indexDb: {} as unknown }))
+const mocks = vi.hoisted(() => ({
+  dataDb: {} as unknown,
+  indexDb: {} as unknown,
+  content: '',
+  merge: vi.fn(async (_noteId: string, _values: Record<string, unknown>) => ({
+    success: true as const
+  }))
+}))
 vi.mock('../database', () => ({
   getDatabase: () => mocks.dataDb,
   getIndexDatabase: () => mocks.indexDb
 }))
+vi.mock('../vault/notes-crud', () => ({
+  getNoteById: async (id: string) => ({ id, content: mocks.content })
+}))
+vi.mock('./entity-properties', () => ({ mergeEntityProperties: mocks.merge }))
 
-type TaskState =
-  'todo' | 'doing' | 'done' | 'reopened' | 'completed-on-todo' | 'unfiled' | 'unfiled-done'
+type TaskState = 'todo' | 'doing' | 'done' | 'reopened' | 'completed-on-todo' | 'unfiled-done'
 
-describe('header status derived from the tasks in a note body', () => {
+describe('a note header status written from the tasks in its body', () => {
   let data: TestDatabaseResult
   let index: TestDatabaseResult
 
-  const addTask = (id: string, state: TaskState): void => {
+  const addTask = (id: string, state: TaskState, sourceNoteId = 'n1'): void => {
     const statusId = {
       todo: 's-todo',
       'completed-on-todo': 's-todo',
       doing: 's-doing',
       done: 's-done',
-      reopened: 's-doing'
-    }[state as 'todo' | 'completed-on-todo' | 'doing' | 'done' | 'reopened']
+      reopened: 's-doing',
+      'unfiled-done': null
+    }[state]
     insertTask(asClientDb(data.db), {
       id,
       projectId: 'p1',
       title: id,
-      statusId: statusId ?? null,
-      // `reopened` is a done task whose status the inline picker moved to In
-      // Progress: the picker leaves completedAt behind.
+      statusId,
+      sourceNoteId,
+      // `reopened` is a done task moved back to In Progress by a picker that
+      // leaves completedAt behind.
       completedAt: ['done', 'reopened', 'completed-on-todo', 'unfiled-done'].includes(state)
         ? new Date().toISOString()
         : null
     })
   }
-  const body = (...ids: string[]): string => ids.map((id) => `- [ ] ${id} {task:${id}}`).join('\n')
+  const holding = (...ids: string[]): void => {
+    mocks.content = ids.map((id) => `- [ ] ${id} {task:${id}}`).join('\n')
+  }
   const storeStatus = (value: unknown = 'Not started', name = 'status', type = 'status'): void =>
     setNoteProperties(index.db as never, 'n1', { [name]: value }, () => type as never)
-  const shown = (content: string, name = 'status'): unknown =>
-    withDerivedHeaderStatus('n1', content, { [name]: 'stored' })[name]
+  const written = (): unknown => mocks.merge.mock.calls[0]?.[1]
 
   beforeEach(() => {
+    mocks.merge.mockClear()
+    mocks.content = ''
     data = createTestDataDb()
     index = createTestIndexDb()
     mocks.dataDb = asClientDb(data.db)
@@ -75,81 +90,123 @@ describe('header status derived from the tasks in a note body', () => {
     index.close()
   })
 
-  it('reads all to-do tasks as Not started', () => {
+  it('writes Not started, In Progress or Done by the rule', async () => {
     storeStatus('Done')
     addTask('a', 'todo')
     addTask('b', 'todo')
-    expect(shown(body('a', 'b'))).toBe('Not started')
+    holding('a', 'b')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'Not started' })
+
+    mocks.merge.mockClear()
+    storeStatus('Not started')
+    addTask('c', 'doing')
+    holding('a', 'c')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'In Progress' })
+
+    mocks.merge.mockClear()
+    addTask('d', 'done')
+    addTask('e', 'done')
+    holding('d', 'e')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'Done' })
   })
 
-  it('reads a task in progress, or a mix of done and open, as In Progress', () => {
-    storeStatus()
-    addTask('a', 'todo')
-    addTask('b', 'doing')
-    addTask('c', 'done')
-    expect(shown(body('a', 'b'))).toBe('In Progress')
-    expect(shown(body('a', 'c'))).toBe('In Progress')
-  })
-
-  it('reads all done tasks as Done', () => {
-    storeStatus()
+  it('writes nothing when the stored status already is the derived one', async () => {
+    storeStatus('Done')
     addTask('a', 'done')
-    addTask('b', 'done')
-    expect(shown(body('a', 'b'))).toBe('Done')
+    holding('a')
+    await syncHeaderStatus('n1')
+    expect(mocks.merge).not.toHaveBeenCalled()
   })
 
-  it('reads a done task moved back to In Progress as in progress, though completedAt is left', () => {
-    storeStatus()
+  it('writes over a status the user picked, because a task changed after it', async () => {
+    storeStatus('Abandoned')
+    addTask('a', 'done')
+    holding('a')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'Done' })
+  })
+
+  it('reads a done task moved back to In Progress as in progress, though completedAt is left', async () => {
+    storeStatus('Done')
     addTask('a', 'done')
     addTask('b', 'reopened')
-    expect(shown(body('a', 'b'))).toBe('In Progress')
-    expect(shown(body('b'))).toBe('In Progress')
+    holding('a', 'b')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'In Progress' })
   })
 
-  it('reads a task completed without moving its status (CLI, agents) as done', () => {
+  it('reads a task completed without moving its status as done', async () => {
     storeStatus()
     addTask('a', 'completed-on-todo')
-    addTask('b', 'completed-on-todo')
-    expect(shown(body('a', 'b'))).toBe('Done')
-  })
-
-  it('reads a task with no status by whether it is completed', () => {
-    storeStatus()
-    addTask('a', 'unfiled')
     addTask('b', 'unfiled-done')
-    expect(shown(body('a'))).toBe('Not started')
-    expect(shown(body('b'))).toBe('Done')
+    holding('a', 'b')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'Done' })
   })
 
-  it('follows a status property the picker named Status', () => {
+  it('follows a property the picker named Status and keeps that name', async () => {
     storeStatus('Not started', 'Status')
     addTask('a', 'done')
-    expect(shown(body('a'), 'Status')).toBe('Done')
+    holding('a')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ Status: 'Done' })
   })
 
-  it('leaves a note without tasks to its stored status', () => {
-    storeStatus('Abandoned')
-    expect(shown('# Plan')).toBe('stored')
+  it('counts the task that just changed before the editor has written it to the file', async () => {
+    storeStatus('Not started')
+    addTask('a', 'done')
+    holding()
+    await syncHeaderStatus('n1', { alsoTaskId: 'a' })
+    expect(written()).toEqual({ status: 'Done' })
   })
 
-  it('skips a task whose row has not arrived and leaves a note of only those alone', () => {
+  it('skips a task whose row has not arrived and leaves a note of only those alone', async () => {
     storeStatus()
     addTask('a', 'done')
-    expect(shown(body('a', 'missing'))).toBe('Done')
-    expect(shown(body('missing'))).toBe('stored')
+    holding('a', 'missing')
+    await syncHeaderStatus('n1')
+    expect(written()).toEqual({ status: 'Done' })
+
+    mocks.merge.mockClear()
+    holding('missing')
+    await syncHeaderStatus('n1')
+    expect(mocks.merge).not.toHaveBeenCalled()
   })
 
-  it('leaves a status that is not a status property alone', () => {
+  it('leaves a note without tasks, or a property of another type, alone', async () => {
+    storeStatus('Abandoned')
+    holding()
+    await syncHeaderStatus('n1')
     storeStatus('Open', 'status', 'select')
     addTask('a', 'done')
-    expect(shown(body('a'))).toBe('stored')
+    holding('a')
+    await syncHeaderStatus('n1')
+    expect(mocks.merge).not.toHaveBeenCalled()
   })
 
-  it('replaces only the status in the properties it returns', () => {
+  it('fills a status property the user just added but leaves a chosen value', async () => {
+    storeStatus(null)
+    addTask('a', 'doing')
+    holding('a')
+    fillHeaderStatus('n1')
+    await vi.waitFor(() => expect(written()).toEqual({ status: 'In Progress' }))
+
+    mocks.merge.mockClear()
+    storeStatus('Done')
+    fillHeaderStatus('n1')
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(mocks.merge).not.toHaveBeenCalled()
+  })
+
+  it('reaches the notes a task is sourced from or linked to, once each', async () => {
     storeStatus()
     addTask('a', 'done')
-    expect(
-      withDerivedHeaderStatus('n1', body('a'), { status: 'Not started', owner: 'Kaan' })
-    ).toEqual({ status: 'Done', owner: 'Kaan' })
+    holding('a')
+    syncHeaderStatusForTask({ id: 'a', sourceNoteId: 'n1', linkedNoteIds: ['n1', 'n1'] })
+    await vi.waitFor(() => expect(mocks.merge).toHaveBeenCalledTimes(1))
+    expect(mocks.merge.mock.calls[0]?.[0]).toBe('n1')
   })
 })

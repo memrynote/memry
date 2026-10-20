@@ -23,7 +23,6 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import { withDerivedHeaderStatus } from '../notes/header-status'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -536,7 +535,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     headerTags: extractTags(parsed.frontmatter),
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: cached.wordCount ?? 0,
-    properties: withDerivedHeaderStatus(id, parsed.content, getNotePropertiesAsRecord(db, id)),
+    properties: getNotePropertiesAsRecord(db, id),
     emoji: cached.emoji ?? null
   }
 }

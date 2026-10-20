@@ -72,12 +72,7 @@ export interface ResolvedWikiTargetRecord extends ResolvedNoteRecord {
 
 export interface NotesService {
   create(input: CreateNoteInput): Promise<NoteRecord>
-  /**
-   * `raw` returns the properties as stored. Without it the header status is the
-   * one the note's tasks imply (#3176), so a caller that writes properties back
-   * reads raw to keep the derived value out of the file.
-   */
-  get(idOrPath: string, options?: { raw?: boolean }): Promise<NoteRecord | null>
+  get(idOrPath: string): Promise<NoteRecord | null>
   list(options?: { folder?: string; journalOnly?: boolean; limit?: number }): Promise<NoteRecord[]>
   update(input: UpdateNoteInput): Promise<NoteRecord>
   exists(idOrPath: string): Promise<boolean>

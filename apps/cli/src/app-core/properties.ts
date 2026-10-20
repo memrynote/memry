@@ -262,7 +262,7 @@ export function createPropertiesService({
     },
 
     async rename(entityId, oldName, newName) {
-      const note = await notes.get(entityId, { raw: true })
+      const note = await notes.get(entityId)
       if (!note) throw new Error(`Entity not found: ${entityId}`)
       if (!Object.prototype.hasOwnProperty.call(note.properties, oldName)) {
         throw new Error(`Property not found: ${oldName}`)

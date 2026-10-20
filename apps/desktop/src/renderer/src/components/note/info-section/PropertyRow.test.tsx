@@ -49,20 +49,6 @@ vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({
     refresh: mocks.refresh,
     getDefinition: (name: string) => {
-      if (name === 'Derived') {
-        return {
-          options: JSON.stringify({
-            categories: {
-              todo: { label: 'To-do', options: [{ value: 'Not started', color: 'stone' }] },
-              in_progress: {
-                label: 'In progress',
-                options: [{ value: 'In Progress', color: 'amber' }]
-              },
-              done: { label: 'Complete', options: [{ value: 'Done', color: 'emerald' }] }
-            }
-          })
-        }
-      }
       if (name === 'Status') {
         return {
           options: JSON.stringify({
@@ -229,22 +215,15 @@ vi.mock('./editors', async (importOriginal) => {
       </div>
     ),
     StatusEditor: ({
-      value,
-      readOnlyHint,
       onChange,
       onAddOption,
       onRemoveOption
     }: {
-      value: string | null
-      readOnlyHint?: string
       onChange: (value: string) => void
       onAddOption: (category: 'todo', option: { value: string; label: string }) => void
       onRemoveOption: (value: string) => void
     }) => (
       <div>
-        <span data-testid="status-value" title={readOnlyHint}>
-          {value}
-        </span>
         <button type="button" onClick={() => onChange('todo')}>
           status-editor
         </button>
@@ -558,35 +537,5 @@ describe('PropertyRow', () => {
       />
     )
     expect(screen.getByText('relation-editor:')).toBeInTheDocument()
-  })
-  it('shows the status the note tasks imply and marks it as set by them', () => {
-    render(
-      <PropertyRow
-        property={property({
-          name: 'Derived',
-          type: 'status',
-          value: 'Not started',
-          derivedFrom: ['todo', 'done']
-        })}
-        onValueChange={vi.fn()}
-      />
-    )
-
-    const shown = screen.getByTestId('status-value')
-    expect(shown).toHaveTextContent('In Progress')
-    expect(shown).toHaveAttribute('title', 'properties.derivedFromTasks')
-  })
-
-  it('shows the stored status and no hint when the note has no tasks', () => {
-    render(
-      <PropertyRow
-        property={property({ name: 'Derived', type: 'status', value: 'Not started' })}
-        onValueChange={vi.fn()}
-      />
-    )
-
-    const shown = screen.getByTestId('status-value')
-    expect(shown).toHaveTextContent('Not started')
-    expect(shown).not.toHaveAttribute('title')
   })
 })

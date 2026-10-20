@@ -15,8 +15,6 @@ interface StatusEditorProps {
   value: string | null
   categories: StatusCategories
   defaultOpen?: boolean
-  /** Shows the value without a picker, with `readOnlyHint` as its tooltip. */
-  readOnlyHint?: string
   onChange: (value: string | null) => void
   onAddOption?: (categoryKey: StatusCategoryKey, option: SelectOption) => void
   onRemoveOption?: (optionValue: string) => void
@@ -28,7 +26,6 @@ export function StatusEditor({
   value,
   categories,
   defaultOpen,
-  readOnlyHint,
   onChange,
   onAddOption,
   onRemoveOption
@@ -52,18 +49,6 @@ export function StatusEditor({
     onChange(option.value)
     setNewOptionName('')
     setCreatingInCategory(null)
-  }
-
-  if (readOnlyHint) {
-    return (
-      <span title={readOnlyHint}>
-        {selectedOption ? (
-          <SelectChip value={selectedOption.value} color={selectedOption.color} />
-        ) : (
-          <span className="text-[13px] text-text-tertiary font-sans">{t('properties.empty')}</span>
-        )}
-      </span>
-    )
   }
 
   return (

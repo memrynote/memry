@@ -15,69 +15,65 @@ async function makeVault() {
   return vaultPath
 }
 
-test('a note with tasks shows the status they imply and keeps its stored one on disk', async () => {
-  const vaultPath = await makeVault()
-  const app = await createMemryApp({ vaultPath })
-  try {
-    await app.properties.createDefinition({ name: 'status', type: 'status' })
-    const open = await app.tasks.create({ title: 'Open' })
-    const finished = await app.tasks.create({ title: 'Finished' })
-    await app.tasks.complete(finished.id)
+const stored = async (vaultPath: string, notePath: string, key = 'status') =>
+  matter(await fs.readFile(path.join(vaultPath, notePath), 'utf8')).data[key]
 
-    const note = await app.notes.create({
-      title: 'Plan',
-      content: `- [ ] Open {task:${open.id}}\n- [x] Finished {task:${finished.id}}`,
-      properties: { status: 'Not started', owner: 'Kaan' }
-    })
-    assert.equal(note.properties.status, 'In Progress')
+/** A note holding two tasks written in its body, each sourced from the note as an editor-made task is. */
+async function noteWithTasks(vaultPath: string, name = 'status') {
+  const app = await createMemryApp({ vaultPath })
+  await app.properties.createDefinition({ name, type: 'status' })
+  const note = await app.notes.create({
+    title: 'Plan',
+    content: 'Plan',
+    properties: { [name]: 'Abandoned', owner: 'Kaan' }
+  })
+  const a = await app.tasks.create({ title: 'A', sourceNoteId: note.id })
+  const b = await app.tasks.create({ title: 'B', sourceNoteId: note.id })
+  await app.notes.update({
+    id: note.id,
+    content: `- [ ] A {task:${a.id}}\n- [ ] B {task:${b.id}}`
+  })
+  return { app, a, b, note }
+}
+
+test('completing the tasks in a note writes the status they imply into the file', async () => {
+  const vaultPath = await makeVault()
+  const { app, a, b, note } = await noteWithTasks(vaultPath)
+  try {
+    await app.tasks.complete(a.id)
+    assert.equal(await stored(vaultPath, note.path), 'In Progress')
     assert.equal((await app.notes.get(note.id))?.properties.status, 'In Progress')
 
-    await app.tasks.complete(open.id)
-    assert.equal((await app.notes.get(note.id))?.properties.status, 'Done')
+    await app.tasks.complete(b.id)
+    assert.equal(await stored(vaultPath, note.path), 'Done')
+    assert.equal(await stored(vaultPath, note.path, 'owner'), 'Kaan')
 
-    const raw = await app.notes.get(note.id, { raw: true })
-    assert.equal(raw?.properties.status, 'Not started')
-    const file = matter(await fs.readFile(path.join(vaultPath, note.path), 'utf8'))
-    assert.equal(file.data.status, 'Not started')
+    await app.tasks.reopen(a.id)
+    assert.equal(await stored(vaultPath, note.path), 'In Progress')
   } finally {
     app.close()
   }
 })
 
-test('renaming another property does not write the derived status into the file', async () => {
+test('a status the user sets stays until a task changes again', async () => {
   const vaultPath = await makeVault()
-  const app = await createMemryApp({ vaultPath })
+  const { app, a, b, note } = await noteWithTasks(vaultPath)
   try {
-    await app.properties.createDefinition({ name: 'status', type: 'status' })
-    const task = await app.tasks.create({ title: 'Open' })
-    await app.tasks.complete(task.id)
-    const note = await app.notes.create({
-      title: 'Plan',
-      content: `- [x] Open {task:${task.id}}`,
-      properties: { status: 'Not started', owner: 'Kaan' }
-    })
+    await app.tasks.complete(a.id)
+    await app.tasks.complete(b.id)
+    await app.properties.set(note.id, { status: 'In Progress', owner: 'Kaan' })
+    assert.equal(await stored(vaultPath, note.path), 'In Progress')
 
-    await app.properties.rename(note.id, 'owner', 'lead')
+    await app.tasks.update(a.id, { title: 'Renamed' })
+    assert.equal(
+      await stored(vaultPath, note.path),
+      'In Progress',
+      'a title edit is no status change'
+    )
 
-    const file = matter(await fs.readFile(path.join(vaultPath, note.path), 'utf8'))
-    assert.equal(file.data.status, 'Not started')
-    assert.equal(file.data.lead, 'Kaan')
-  } finally {
-    app.close()
-  }
-})
-
-test('a note without tasks keeps its stored status', async () => {
-  const vaultPath = await makeVault()
-  const app = await createMemryApp({ vaultPath })
-  try {
-    await app.properties.createDefinition({ name: 'status', type: 'status' })
-    const note = await app.notes.create({
-      title: 'Idea',
-      content: 'Just prose',
-      properties: { status: 'Abandoned' }
-    })
-    assert.equal((await app.notes.get(note.id))?.properties.status, 'Abandoned')
+    await app.tasks.reopen(b.id)
+    await app.tasks.complete(b.id)
+    assert.equal(await stored(vaultPath, note.path), 'Done', 'a task change writes over the pick')
   } finally {
     app.close()
   }
@@ -85,17 +81,38 @@ test('a note without tasks keeps its stored status', async () => {
 
 test('a status property the picker named Status follows the tasks too', async () => {
   const vaultPath = await makeVault()
+  const { app, a, b, note } = await noteWithTasks(vaultPath, 'Status')
+  try {
+    await app.tasks.complete(a.id)
+    await app.tasks.complete(b.id)
+    assert.equal(await stored(vaultPath, note.path, 'Status'), 'Done')
+  } finally {
+    app.close()
+  }
+})
+
+test('a note without tasks, or whose status is another type, keeps its value', async () => {
+  const vaultPath = await makeVault()
   const app = await createMemryApp({ vaultPath })
   try {
-    await app.properties.createDefinition({ name: 'Status', type: 'status' })
-    const task = await app.tasks.create({ title: 'Open' })
-    await app.tasks.complete(task.id)
+    await app.properties.createDefinition({ name: 'status', type: 'select' })
     const note = await app.notes.create({
       title: 'Plan',
-      content: `- [x] Open {task:${task.id}}`,
-      properties: { Status: 'Not started' }
+      content: 'Plan',
+      properties: { status: 'Open' }
     })
-    assert.equal((await app.notes.get(note.id))?.properties.Status, 'Done')
+    const task = await app.tasks.create({ title: 'A', sourceNoteId: note.id })
+    await app.notes.update({ id: note.id, content: `- [ ] A {task:${task.id}}` })
+    await app.tasks.complete(task.id)
+    assert.equal(await stored(vaultPath, note.path), 'Open')
+
+    const idea = await app.notes.create({
+      title: 'Idea',
+      content: 'Prose',
+      properties: { status: 'Abandoned' }
+    })
+    await app.tasks.create({ title: 'Elsewhere' })
+    assert.equal(await stored(vaultPath, idea.path), 'Abandoned')
   } finally {
     app.close()
   }

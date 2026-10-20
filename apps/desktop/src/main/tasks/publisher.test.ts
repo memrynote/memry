@@ -44,12 +44,18 @@ vi.mock('../telemetry/track', () => ({
   trackMainEvent: vi.fn()
 }))
 
+vi.mock('../notes/header-status', async (importActual) => ({
+  ...(await importActual<typeof import('../notes/header-status')>()),
+  syncHeaderStatusForTask: vi.fn()
+}))
+
 vi.mock('./remove-task-line-from-note', () => ({
   removeTaskLineFromSourceNote: vi.fn(async () => {})
 }))
 
 import { createTasksPublisher } from './publisher'
 import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
+import { syncHeaderStatusForTask } from '../notes/header-status'
 import * as localMutations from '../sync/local-mutations'
 import { publishProjectionEvent } from '../projections'
 
@@ -194,5 +200,57 @@ describe('createTasksPublisher leaves sync to the unit of work', () => {
       ...Array.from({ length: 5 }, () => [{ type: 'task.upserted', taskId: 'task-1' }]),
       [{ type: 'task.deleted', taskId: 'task-1' }]
     ])
+  })
+})
+
+describe('createTasksPublisher note header status', () => {
+  beforeEach(() => {
+    vi.mocked(syncHeaderStatusForTask).mockClear()
+  })
+
+  it('refreshes the notes of a task that was created, completed, deleted, or changed status', async () => {
+    const publisher = createTasksPublisher()
+    const task = makeTask({ sourceNoteId: 'note-1' })
+
+    publisher.taskCreated({ task })
+    publisher.taskCompleted({ id: task.id, task, previous: { completedAt: null } })
+    await publisher.taskDeleted({ id: task.id, snapshot: task })
+    publisher.taskUpdated({
+      id: task.id,
+      task,
+      changes: { statusId: 's2' },
+      changedFields: ['statusId'],
+      previous: { statusId: 's1' }
+    })
+    publisher.taskMoved({
+      id: task.id,
+      task,
+      changedFields: ['position', 'statusId'],
+      previous: { statusId: 's1' }
+    })
+
+    expect(syncHeaderStatusForTask).toHaveBeenCalledTimes(5)
+    expect(syncHeaderStatusForTask).toHaveBeenCalledWith(task)
+  })
+
+  it('leaves a status the user picked alone when a task only changes its title or position', () => {
+    const publisher = createTasksPublisher()
+    const task = makeTask({ sourceNoteId: 'note-1' })
+
+    publisher.taskUpdated({
+      id: task.id,
+      task,
+      changes: { title: 'Renamed' },
+      changedFields: ['title'],
+      previous: { title: 'Task' }
+    })
+    publisher.taskMoved({
+      id: task.id,
+      task,
+      changedFields: ['position'],
+      previous: { position: 1 }
+    })
+
+    expect(syncHeaderStatusForTask).not.toHaveBeenCalled()
   })
 })
