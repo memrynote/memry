@@ -339,8 +339,7 @@ function createHarness(
 function manifestResult(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     checkedAt: Date.now(),
-    rePullNeeded: false,
-    serverOnlyCount: 0,
+    serverOnly: [],
     performed: true,
     ...overrides
   }
@@ -598,7 +597,6 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(mocks.log.debug).toHaveBeenCalledWith('fullSync: manifest check complete', {
-        rePullNeeded: false,
         serverOnlyCount: 0
       })
       expect(mocks.log.debug).not.toHaveBeenCalledWith(
@@ -609,30 +607,32 @@ describe('FullSyncRunner', () => {
   })
 
   describe('#given the manifest finds server-only items #when run', () => {
-    it('#then the cursor is reset and a second pull runs', async () => {
+    it('#then a second pull fetches them by id and the cursor stays (#3391)', async () => {
+      // A cursor reset re-read a 28k-item history for the same 17 missing
+      // items every 30 minutes, past the stale-lock watchdog.
       const h = createHarness()
-      mocks.checkManifestIntegrity.mockResolvedValue(
-        manifestResult({ rePullNeeded: true, serverOnlyCount: 3 })
-      )
+      const serverOnly = [
+        { id: 'task-1', type: 'task' },
+        { id: 'note-1', type: 'note' }
+      ]
+      mocks.checkManifestIntegrity.mockResolvedValue(manifestResult({ serverOnly }))
 
       await h.runner.run()
 
-      expect(h.setStateValue).toHaveBeenCalledWith(SYNC_STATE_KEYS.LAST_CURSOR, '0')
       expect(h.actions.pull).toHaveBeenCalledTimes(2)
-      // The cursor reset must precede the re-pull, or the re-pull uses the old
-      // cursor and the missing items stay missing.
-      expect(h.calls.indexOf(`setState:${SYNC_STATE_KEYS.LAST_CURSOR}`)).toBeLessThan(
-        h.calls.lastIndexOf('pull')
+      expect(h.actions.pull).toHaveBeenLastCalledWith(serverOnly)
+      expect(h.setStateValue).not.toHaveBeenCalledWith(
+        SYNC_STATE_KEYS.LAST_CURSOR,
+        expect.anything()
       )
     })
 
-    it('#then no re-pull happens when the manifest agrees', async () => {
+    it('#then no second pull runs when the manifest agrees', async () => {
       const h = createHarness()
 
       await h.runner.run()
 
       expect(h.actions.pull).toHaveBeenCalledTimes(1)
-      expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.LAST_CURSOR, '0')
     })
   })
 
@@ -784,7 +784,9 @@ describe('FullSyncRunner', () => {
       // cursor for a re-pull its pause refused, and counted as a success.
       const h = createHarness()
       h.isPaused.mockReturnValue(true)
-      mocks.checkManifestIntegrity.mockResolvedValue(manifestResult({ rePullNeeded: true }))
+      mocks.checkManifestIntegrity.mockResolvedValue(
+        manifestResult({ serverOnly: [{ id: 'task-1', type: 'task' }] })
+      )
 
       await expect(h.runner.run()).resolves.toEqual({ status: 'skipped', reason: 'paused' })
 
@@ -927,10 +929,10 @@ describe('FullSyncRunner', () => {
       expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
     })
 
-    it('#then a manifest re-pull queues no sweep', async () => {
+    it('#then a manifest pull queues no sweep', async () => {
       const h = doneHarness()
       mocks.checkManifestIntegrity.mockResolvedValue(
-        manifestResult({ rePullNeeded: true, serverOnlyCount: 3 })
+        manifestResult({ serverOnly: [{ id: 'note-1', type: 'note' }] })
       )
 
       await h.runner.run()

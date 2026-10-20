@@ -8,7 +8,7 @@ import type { DrizzleDb } from './drizzle-db'
  * already held here under another id: a second inbox project, or a calendar
  * source whose (provider, kind, remote id) belongs to an existing row. The
  * manifest check skips them, otherwise each one counts as server-only forever
- * and every check resets the cursor and re-pulls the whole vault.
+ * and every check pulls it again.
  *
  * Stored as JSON in `sync_state`, so no migration is needed and older builds
  * ignore the key.

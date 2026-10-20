@@ -1,5 +1,6 @@
 import { createLogger } from '../../lib/logger'
 import type { RecordPullItemResponse } from '@memry/contracts/sync-api'
+import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import {
   applicablePurgedTombstones,
   parsePullItems,
@@ -36,7 +37,7 @@ export interface RecoveredItem {
 }
 
 export interface RefetchResult {
-  recovered: RecoveredItem[]
+  recovered: DecryptedPullItem[]
   permanentFailures: ItemRef[]
   missing: ItemRef[]
   invalid: ItemRef[]

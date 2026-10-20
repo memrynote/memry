@@ -66,8 +66,7 @@ vi.mock('../manifest-check', () => ({
   checkManifestIntegrity: async () => ({
     performed: false,
     checkedAt: 0,
-    rePullNeeded: false,
-    serverOnlyCount: 0
+    serverOnly: []
   })
 }))
 vi.mock('../initial-seed', () => ({ runInitialSeed: vi.fn() }))

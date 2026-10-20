@@ -183,8 +183,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     mocks.checkManifestIntegrity.mockResolvedValue({
       performed: false,
       checkedAt: 0,
-      rePullNeeded: false,
-      serverOnlyCount: 0
+      serverOnly: []
     })
     mocks.runPackBootstrap.mockImplementation(async () => {
       return okResult

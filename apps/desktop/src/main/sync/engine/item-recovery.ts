@@ -4,6 +4,7 @@ import {
   type ItemRecoveredEvent
 } from '@memry/contracts/ipc-events'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createLogger } from '../../lib/logger'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import { sortByApplyOrder } from './apply-order'
@@ -12,7 +13,12 @@ import type { CorruptItemTracker, ItemRef, RecoveredItem } from './corrupt-item-
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import type { OrphanRef } from './orphan-repair'
 import { PendingSyncIntentError } from '../pending-sync-intent-error'
-import { MAX_NOTE_BODY_HEALS_PER_PULL, NOTE_BODY_ITEM_TYPE, type SyncContext } from './sync-context'
+import {
+  MAX_NOTE_BODY_HEALS_PER_PULL,
+  NOTE_BODY_ITEM_TYPE,
+  PULL_REQUEST_MAX_IDS,
+  type SyncContext
+} from './sync-context'
 
 const log = createLogger('ItemRecovery')
 
@@ -179,6 +185,43 @@ export async function refetchCorruptItems(
       permanentFailures: permanentFailures.length
     })
   }
+}
+
+/**
+ * Fetches the items a manifest check found missing by id (#3391), parents
+ * first, one `/sync/pull` request at a time, and hands each batch to `apply`.
+ * Resetting the cursor to 0 for them re-read the whole history on every check,
+ * and never delivered an item this device does not keep. One batch at a time
+ * bounds memory when most of a vault is missing, and each reads the access
+ * token again, so a long run outlives the token it started with. An envelope
+ * this build refuses or a lost blob goes to the ledger, which the next check
+ * counts as known. False when a cancel or a lost token cut the fetch short.
+ */
+export async function fetchMissingItems(
+  deps: Pick<ItemRecoveryDeps, 'ctx' | 'tracker' | 'ledger'>,
+  refs: readonly ItemRef[],
+  run: { vaultKey: Uint8Array; signal: AbortSignal },
+  apply: (items: DecryptedPullItem[]) => Promise<void>
+): Promise<boolean> {
+  const ordered = sortByApplyOrder([...refs])
+  for (let i = 0; i < ordered.length && !run.signal.aborted; i += PULL_REQUEST_MAX_IDS) {
+    const token = await deps.ctx.deps.getAccessToken()
+    if (!token) {
+      log.warn('Missing items wait for the next manifest check: no access token', {
+        count: ordered.length - i
+      })
+      return false
+    }
+    const { recovered, invalid, blobMissing } = await deps.tracker.refetch(
+      ordered.slice(i, i + PULL_REQUEST_MAX_IDS),
+      token,
+      run.vaultKey
+    )
+    deps.ledger.record(invalid, 'envelope')
+    deps.ledger.record(blobMissing, 'blob_missing')
+    await apply(recovered)
+  }
+  return !run.signal.aborted
 }
 
 /** Re-fetches the ledger's retryable entries by id and applies them again (#2285). */

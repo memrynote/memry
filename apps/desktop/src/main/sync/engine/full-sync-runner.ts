@@ -21,6 +21,7 @@ import {
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
+import type { ItemRef } from './corrupt-item-tracker'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
@@ -59,9 +60,9 @@ export interface FullSyncActions {
    * Every error path out of a pull is swallowed (`SyncEngine.pull` catches
    * everything, `PullCoordinator.pull` returns early on a busy lock, missing
    * credentials or a refused page), so non-rejection is not evidence of
-   * anything (#1835). Only the outcome is.
+   * anything (#1835). Only the outcome is. `missing` is pulled by id (#3391).
    */
-  pull: () => Promise<SyncRunOutcome>
+  pull: (missing?: readonly ItemRef[]) => Promise<SyncRunOutcome>
   push: () => Promise<SyncRunOutcome>
   /** False when the engine dropped `fn` because a full sync is running. */
   scheduleSync: (fn: () => Promise<unknown>) => boolean
@@ -77,8 +78,8 @@ export class FullSyncRunner {
   // In-memory cache of the persisted throttle timestamp. The persisted value
   // is the authority: this runner is recreated with every engine (vault
   // switch, restart, retry), and an instance-only field re-armed an immediate
-  // manifest check each time — with a permanently quarantined item that meant
-  // a cursor reset and full re-pull on every single sync cycle.
+  // manifest check each time: a walk of the whole manifest on every single
+  // sync cycle, and a fetch of every item this device cannot keep.
   lastManifestCheckAt = 0
   /**
    * Notes drained from the pending-pull set that are waiting their turn in a
@@ -453,7 +454,7 @@ export class FullSyncRunner {
       log.debug('fullSync: push complete')
 
       // A pause ends the run here: the check would still fetch the manifest
-      // and reset the cursor for a re-pull the pause refuses (#3382).
+      // and pull what it finds missing, which the pause refuses (#3382).
       if (!this.stateManager.isPaused()) pullDelivered = await this.checkManifest(pullDelivered)
 
       // Only a delivered pull says which packed notes live: one that stopped
@@ -526,8 +527,8 @@ export class FullSyncRunner {
   }
 
   /**
-   * The manifest check and, when it finds server-only items, the re-pull from
-   * cursor 0. Answers whether the latest pull of this run delivered.
+   * The manifest check and, when it finds server-only items, the pull that
+   * fetches them by id. Answers whether the latest pull of this run delivered.
    */
   private async checkManifest(pullDelivered: boolean): Promise<boolean> {
     this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
@@ -565,8 +566,7 @@ export class FullSyncRunner {
     }
     if (manifestResult.performed) {
       log.debug('fullSync: manifest check complete', {
-        rePullNeeded: manifestResult.rePullNeeded,
-        serverOnlyCount: manifestResult.serverOnlyCount
+        serverOnlyCount: manifestResult.serverOnly.length
       })
     } else {
       // Never log serverOnlyCount here: its 0 reads as "verified clean" when
@@ -578,16 +578,14 @@ export class FullSyncRunner {
       })
     }
 
-    // The re-pull runs from cursor 0, so every note and journal record it
-    // applies pulls its whole body (#2421).
-    if (manifestResult.rePullNeeded) {
-      log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
-        serverOnlyCount: manifestResult.serverOnlyCount
-      })
-      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
-      // Same evidence rule: the re-pull can deliver where the first one was
+    // By id, never by resetting the cursor to 0 (#3391): a device that cannot
+    // keep an item re-read its whole history for it on every check, 28k items
+    // that outlived the stale-lock watchdog, and the item still did not stay.
+    // Every note and journal record the pull applies pulls its whole body.
+    if (manifestResult.serverOnly.length > 0) {
+      // Same evidence rule: this pull can deliver where the first one was
       // refused, and that is a delivery like any other.
-      pullDelivered = (await this.actions.pull()).status === 'delivered'
+      pullDelivered = (await this.actions.pull(manifestResult.serverOnly)).status === 'delivered'
       if (pullDelivered) this.bootstrapPullSucceeded = true
     }
     return pullDelivered

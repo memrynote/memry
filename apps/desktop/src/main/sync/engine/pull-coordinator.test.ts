@@ -460,7 +460,7 @@ describe('#given a pull page ending in a CRDT batch #when the batch applies', ()
  * persisted cursor then advances past the whole page, the unapplied items are
  * stranded: /sync/changes is a strictly ascending `server_cursor > ?` feed, so
  * it never offers them again until the item is updated server-side or the
- * 30-minute-gated manifest check resets the cursor to '0'.
+ * 30-minute-gated manifest check fetches them by id.
  */
 describe('#given an abort landing inside a page apply #when the page has only partly applied', () => {
   const { getDb } = setupTestDb()
@@ -687,7 +687,7 @@ describe('#given a pull whose page the run refused to apply #when the pull finis
   })
 
   // #2285: an item the ledger holds is not "server-only". Counting it would
-  // reset the cursor and re-pull the whole vault on every manifest check.
+  // fetch it again on every manifest check.
   describe('#given a ledger entry #when the manifest check runs', () => {
     it('#then the entry is excluded from the server-only count', async () => {
       appVersion.current = '1.0.0'
@@ -715,8 +715,7 @@ describe('#given a pull whose page the run refused to apply #when the pull finis
         .spyOn(await import('../manifest-check'), 'checkManifestIntegrity')
         .mockResolvedValue({
           checkedAt: Date.now(),
-          rePullNeeded: false,
-          serverOnlyCount: 0,
+          serverOnly: [],
           performed: true
         } satisfies ManifestCheckResult)
 
@@ -728,5 +727,57 @@ describe('#given a pull whose page the run refused to apply #when the pull finis
 
       vi.restoreAllMocks()
     })
+  })
+})
+
+// #3391: a manifest check hands the pull what it found missing, fetched by id.
+describe('#given items a manifest check found missing #when the pull fetches them by id', () => {
+  const { getDb } = setupTestDb()
+  const missingTask = {
+    id: 'task-missing',
+    type: 'task',
+    operation: 'update',
+    cryptoVersion: 1,
+    blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+    signature: 'sig',
+    signerDeviceId: 'device-2',
+    clock: { 'device-2': 3 }
+  }
+  const emptyFeed = { items: [], deleted: [], hasMore: false, nextCursor: 9 }
+
+  it('#then one this build cannot parse waits in the ledger instead of counting as applied', async () => {
+    const engine = new SyncEngine(createMockDeps(getDb()))
+    vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue(emptyFeed)
+    vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({
+      items: [missingTask]
+    })
+    vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+      content: new TextEncoder().encode(JSON.stringify({ title: 'from a newer build' })),
+      verified: true
+    })
+    vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('schema_invalid')
+
+    await engine.pull([{ id: 'task-missing', type: 'task' }])
+
+    expect(engine.getQuarantinedItems()).toEqual([
+      expect.objectContaining({ itemId: 'task-missing', itemType: 'task' })
+    ])
+
+    vi.restoreAllMocks()
+  })
+
+  it('#then a cancel during the fetch leaves the run undelivered', async () => {
+    const engine = new SyncEngine(createMockDeps(getDb()))
+    vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue(emptyFeed)
+    vi.spyOn(await import('../http-client'), 'postToServer').mockImplementation(async () => {
+      engine.requestCancel()
+      return { items: [] }
+    })
+
+    await expect(engine.pull([{ id: 'task-missing', type: 'task' }])).resolves.toEqual({
+      status: 'incomplete'
+    })
+
+    vi.restoreAllMocks()
   })
 })
