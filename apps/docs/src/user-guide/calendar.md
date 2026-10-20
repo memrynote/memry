@@ -55,9 +55,10 @@ views.
 Bars are drawn like the chips in the other views (see [Reading a Chip](#reading-a-chip)): a
 colored bar on the leading edge and a tinted fill, with the title in plain text. A task bar uses
 its project's color; an event uses its own color, or its type's color if it has none. The
-selected bar, or the one whose card is open, is the only solid bar on screen. Tasks have a
-checkbox on the bar and next to the title in the list, so you can complete one without opening
-it. Enter opens the same task and event cards as the other views.
+selected bar, or the one whose card is open, is the only solid bar on screen. Tasks show their
+status icon on the bar and next to the title in the list. Click it to pick one of the project's
+statuses without opening the task. Completed tasks are shown by default; turn them off under
+**Display**. Enter opens the same task and event cards as the other views.
 
 ### Rescheduling
 
@@ -118,15 +119,18 @@ An event with its own color, or on a colored Google calendar, uses that color in
 In the day and week views, an item 45 minutes or longer shows its start and end time and its
 length under the title (for example `10:00 – 11:30 · 1h 30m`). Shorter items keep to one line,
 with the start time after the title when the chip is wide enough. Events that have already ended
-fade. Overdue tasks do not; they still need doing.
+fade. Overdue tasks do not; they still need doing. Completed tasks stay on the calendar and
+fade too, with the title struck through, so nothing you did disappears from the day.
 
 The chip you opened turns solid until you close its card, so you can see which item the card
 belongs to.
 
 ### Completing a Task from the Calendar
 
-Task chips have a checkbox. Click it to complete the task without opening anything. A
-notification appears with **Undo** in case it was the wrong one.
+Task chips show the task's status icon. Click it to open a list of that project's statuses and
+pick one, without opening the task. Picking a status of the Done kind completes the task, and a
+notification appears with **Undo** in case it was the wrong one. Picking any other status
+reopens a completed task. The task never leaves the calendar: a completed task is drawn faded.
 
 ## What Shows Up
 
@@ -273,8 +277,9 @@ priority, tags, the start of its description, and its subtasks with a progress b
 
 The common actions take one click:
 
-- **Complete** — the checkbox beside the title, or **⌘ Enter** (Ctrl Enter). The card closes and
-  a notification offers **Undo**.
+- **Status** — the status icon beside the title opens the project's statuses; pick one to change
+  it. Picking a Done status completes the task and a notification offers **Undo**; picking
+  another status reopens it. **⌘ Enter** (Ctrl Enter) completes the task and closes the card.
 - **Move** — **Later** (about three hours from now, no later than 8 PM; not offered after 7 PM or for
   all-day tasks), **Tomorrow**, or **Next week** (Monday)
   reschedule the task straight away. Hover a button to see the exact time it moves to.
