@@ -4,6 +4,8 @@ import { blockNoteShadCNComponents } from './blocknote-shadcn-components'
 
 const { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } =
   blockNoteShadCNComponents.DropdownMenu!
+const { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } =
+  blockNoteShadCNComponents.Select!
 
 function renderMenu() {
   render(
@@ -38,5 +40,35 @@ describe('BlockNote dropdown trigger', () => {
     fireEvent.click(trigger, { button: 0 })
     await flushFrames()
     expect(screen.getByText('Delete')).toBeTruthy()
+  })
+})
+
+describe('BlockNote select popup', () => {
+  // #3400: inside the note's scroll container, opening the block-type dropdown
+  // scrolled the whole note, because Base UI scrolls the item into view before
+  // the popup is positioned.
+  it('portals to document.body, outside the editor container, keeping the theme', () => {
+    const container = document.createElement('div')
+    container.className = 'bn-root light'
+    container.setAttribute('data-color-scheme', 'dark')
+    document.body.appendChild(container)
+
+    render(
+      <Select open value="a">
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent container={container}>
+          <SelectItem value="a">Heading 2</SelectItem>
+        </SelectContent>
+      </Select>
+    )
+
+    const popup = document.querySelector('[data-slot="select-content"]') as HTMLElement
+    expect(container.contains(popup)).toBe(false)
+    expect(document.body.contains(popup)).toBe(true)
+    expect(popup.classList.contains('bn-root')).toBe(true)
+    expect(popup.getAttribute('data-color-scheme')).toBe('dark')
+    container.remove()
   })
 })

@@ -31,11 +31,39 @@ function DropdownMenuTrigger(props: ComponentProps<typeof ShadCNTrigger>): React
   return <ShadCNTrigger onPointerDown={skipPressOpen} onMouseDown={skipPressOpen} {...props} />
 }
 
+const ShadCNSelectContent = ShadCNDefaultComponents.Select.SelectContent
+
+/**
+ * The stock Select popup portals into `editor.portalElement`, which sits inside
+ * the note's scroll container. Base UI scrolls the selected item into view
+ * before it has positioned the popup, so opening the block-type dropdown
+ * scrolled the whole note (#3400). Portalling to `document.body` takes the popup
+ * out of that container. Moving all of BlockNote's floating UI there instead
+ * breaks the toolbar's placement, so only the Select moves, and it carries the
+ * portal element's `bn-root` class and color scheme so the theme still applies.
+ */
+function SelectContent({
+  container,
+  className,
+  ...props
+}: ComponentProps<typeof ShadCNSelectContent>): React.JSX.Element {
+  const portalElement = container instanceof HTMLElement ? container : undefined
+  return (
+    <ShadCNSelectContent
+      {...props}
+      container={document.body}
+      className={[portalElement?.className, className].filter(Boolean).join(' ')}
+      data-color-scheme={portalElement?.getAttribute('data-color-scheme') ?? undefined}
+    />
+  )
+}
+
 /** BlockNote's shadcn components with Memry's overrides, for editors that render menus. */
 export const blockNoteShadCNComponents: Partial<ShadCNComponents> = {
   DropdownMenu: {
     ...ShadCNDefaultComponents.DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuSubTrigger
-  }
+  },
+  Select: { ...ShadCNDefaultComponents.Select, SelectContent }
 }
