@@ -12,7 +12,8 @@
   "card": {
     "label": "Demo",
     "title": "memrynote at a glance",
-    "topics": ["Inbox", "Notes", "Tasks", "Journal", "Canvas", "Graph"]
+    "topics": ["Inbox", "Notes", "Tasks", "Journal", "Canvas", "Graph"],
+    "subtitle": "A quick look at the app."
   },
   "endCard": {
     "at": "Thanks for watching",

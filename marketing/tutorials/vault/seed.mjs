@@ -287,6 +287,10 @@ task('Renew the portfolio domain', { due: 4 })
 task('Read Refactoring UI, chapter 3', { due: 7, priority: 'low' })
 task('Back up the laptop', {})
 
+// ---------------------------------------------------------------- inbox
+// One waiting capture, so the Home inbox widget is not empty on a fresh vault.
+cli('inbox', 'capture', 'Look up Sintra day trip tickets')
+
 // ---------------------------------------------------------------- journal
 cli(
   'journal',

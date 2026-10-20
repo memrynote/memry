@@ -9,11 +9,13 @@
   "card": {
     "label": "Tutorial",
     "title": "Tasks & Projects",
-    "topics": ["Quick capture", "Repeats", "Today", "Project hubs", "Boards", "Tasks in notes"]
+    "topics": ["Quick capture", "Repeats", "Today", "Project hubs", "Boards", "Tasks in notes"],
+    "subtitle": "Plan a whole project without leaving your notes."
   },
   "endCard": {
     "at": "Thanks for watching",
-    "url": "memrynote.com"
+    "url": "memrynote.com",
+    "lines": ["Do your tasks live next to your notes,", "or in a separate app?"]
   },
   "youtube": {
     "title": "Capture tasks and plan projects inside your notes",

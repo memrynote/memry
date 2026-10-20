@@ -13,6 +13,15 @@
         src: url(fonts/jetbrains-mono.woff2) format('woff2');
         font-weight: 100 800;
       }
+      /* The dark room: one template for every tutorial's title and end card (Paper: Sevde / Into,
+         direction B). Colors are named for what they are, so a card edit starts here. */
+      :root {
+        --room: #15110e;
+        --cream: #f4ece0;
+        --muted: #9a8f82;
+        --rule: #3a322b;
+        --brand: #ff671a;
+      }
       html,
       body {
         margin: 0;
@@ -20,19 +29,21 @@
         height: 1080px;
         background: transparent;
         overflow: hidden;
+        font-family: 'DM Sans', system-ui;
       }
+      /* The room is the panel: full frame at rest, shrinking into the app window around a morph. */
       #panel {
         position: absolute;
-        background: #fff;
+        overflow: hidden;
+        background: var(--room);
         box-shadow: 0 14px 56px rgba(60, 30, 10, 0.32);
       }
-      #content {
+      #glow {
         position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        width: 1100px;
+        height: 1100px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 103, 26, 0.38) 0%, rgba(255, 103, 26, 0) 65%);
       }
       #logo {
         position: absolute;
@@ -43,86 +54,134 @@
         overflow: visible;
         display: block;
       }
-      #text {
+      .mono {
         position: absolute;
-        left: 0;
-        right: 0;
-        top: 470px;
-        text-align: center;
-        font-family: 'DM Sans', system-ui;
-      }
-      #label {
         font:
-          500 22px/1 'JetBrains Mono',
+          500 24px/1 'JetBrains Mono',
           monospace;
         letter-spacing: 0.24em;
         text-transform: uppercase;
-        color: #8a8178;
+        color: var(--muted);
       }
-      #title {
-        margin-top: 22px;
-        font-size: 84px;
-        font-weight: 650;
-        letter-spacing: -0.02em;
-        color: #212121;
-      }
-      #topics {
-        margin: 46px auto 0;
-        max-width: 1060px;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 14px 16px;
-      }
-      .topic {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-        padding: 12px 22px;
-        border-radius: 999px;
-        background: #f6f3ef;
-        font-size: 28px;
-        font-weight: 500;
-        color: #2b2b2b;
-      }
-      .topic b {
-        font:
-          600 20px 'JetBrains Mono',
-          monospace;
-        color: #ff671a;
+      #label {
+        right: 112px;
+        top: 98px;
       }
       #url {
+        right: 112px;
+        top: 96px;
+        font-size: 28px;
+        letter-spacing: 0.08em;
+        text-transform: none;
+      }
+      #intro {
         position: absolute;
-        left: 0;
-        right: 0;
-        top: 610px;
-        text-align: center;
+        left: 112px;
+        right: 112px;
+        top: 190px;
+        bottom: 88px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      #title {
+        max-width: 1560px;
+        font-weight: 700;
+        line-height: 0.92;
+        letter-spacing: -0.055em;
+        color: var(--cream);
+      }
+      #title i,
+      .hl i {
+        font-style: normal;
+        color: var(--brand);
+      }
+      #sub {
+        margin-top: 28px;
+        font-size: 44px;
+        line-height: 1.2;
+        color: var(--muted);
+      }
+      #topics {
+        margin-top: 64px;
+        display: flex;
+        gap: 28px;
+      }
+      .topic {
+        flex: 1;
+        min-width: 0;
+        padding-top: 20px;
+        border-top: 2px solid var(--rule);
+      }
+      .topic:first-child {
+        border-top-color: var(--brand);
+      }
+      .topic b {
+        display: block;
+        margin-bottom: 14px;
         font:
-          500 30px 'JetBrains Mono',
+          500 20px/1 'JetBrains Mono',
           monospace;
-        letter-spacing: 0.04em;
-        color: #5c5650;
+        color: var(--brand);
+      }
+      .topic span {
+        font-size: 30px;
+        font-weight: 500;
+        line-height: 1.1;
+        color: var(--cream);
+      }
+      /* End card: the headline sits in the top third; the video and subscribe elements Studio lets
+         the creator place (615x345 and 294 px at 1080p, inside y 140-920) keep the empty area under
+         it, and the closing lines hold the bottom right. */
+      #head {
+        position: absolute;
+        left: 112px;
+        top: 190px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.05em;
+        color: var(--cream);
+      }
+      #head div {
+        font-size: 150px;
+        white-space: nowrap;
+      }
+      #head .a2 {
+        color: var(--brand);
+      }
+      #lines {
+        position: absolute;
+        right: 112px;
+        bottom: 160px;
+        text-align: right;
+        font-size: 40px;
+        line-height: 1.3;
+        color: var(--cream);
+      }
+      #lines div:last-child {
+        color: var(--muted);
       }
     </style>
   </head>
   <body>
-    <div id="panel"></div>
+    <div id="panel"><div id="glow"></div></div>
     <div id="logo"></div>
-    <div id="text">
-      <div id="label"></div>
+    <div id="label" class="mono"></div>
+    <div id="url" class="mono"></div>
+    <div id="intro">
       <div id="title"></div>
+      <div id="sub"></div>
       <div id="topics"></div>
     </div>
-    <div id="url"></div>
+    <div id="head"></div>
+    <div id="lines"></div>
     <script>
-      // window.P = { kind: 'intro'|'outro', logo: { mark, words: [mem, ry, note], wordColor },
-      //   label, title, topics, url, endScreen, timing }, set by card.mjs before render(t).
+      // window.P = { kind: 'intro'|'outro', logo: { mark, words: [mem, ry, note] }, label, title,
+      //   subtitle, topics, url, headline: [line, orange line], lines, timing }, set by card.mjs.
       const W = { x: 80, y: 45, w: 1760, h: 990, r: 18 } // the app window in the film
-      const C = { x: 350, y: 200, w: 1220, h: 680, r: 28 } // the card panel
-      // A YouTube film's end card (endScreen): the lockup and url keep to the top, so Studio's
-      // end-screen elements fit side by side below them, a 615x345 video and a 294 px subscribe
-      // circle at 1080p, inside the 1840x780 area 140 px from the top that Studio allows.
-      const E = { x: 240, y: 135, w: 1440, h: 810, r: 28, logo: 2, cy: 290, url: 340 }
+      const R = { x: 0, y: 0, w: 1920, h: 1080, r: 0 } // the room at rest: the whole frame
+      const CREAM = '#f4ece0'
+      const LOCK = { x: 112, y: 110, scale: 1.6 } // the lockup's home, top left
       const clamp = (v) => Math.min(1, Math.max(0, v))
       const ease = (k) => (
         (k = clamp(k)),
@@ -133,42 +192,73 @@
       const $ = (id) => document.getElementById(id)
       let parts
 
+      // The biggest title that sets in two lines of the column.
+      function fitTitle() {
+        const el = $('title')
+        for (let size = 280; size > 100; size -= 10) {
+          el.style.fontSize = size + 'px'
+          if (el.getBoundingClientRect().height <= size * 0.92 * 2 + 4) return
+        }
+      }
+
       window.setup = (P) => {
         window.P = P
         $('logo').innerHTML =
           `<svg width="185" height="25.5" viewBox="0 -20.338907 184.839157 25.478909">
           <g id="mark"><svg x="0" y="-23.15" viewBox="0 0 1280 1032" width="29" height="29"><g fill="#FF671A">${P.logo.mark}</g></svg></g>
-          <g transform="translate(40, 0)">${P.logo.words.map((d, i) => `<path id="w${i}" d="${d}" fill="${P.logo.wordColor}"/>`).join('')}</g>
+          <g transform="translate(40, 0)">${P.logo.words.map((d, i) => `<path id="w${i}" d="${d}" fill="${CREAM}"/>`).join('')}</g>
         </svg>`
-        $('label').textContent = P.label ?? ''
-        $('title').textContent = P.title ?? ''
-        $('topics').innerHTML = (P.topics ?? [])
-          .map((t, i) => `<div class="topic"><b>${String(i + 1).padStart(2, '0')}</b>${t}</div>`)
-          .join('')
-        $('url').textContent = P.url ?? ''
-        $('url').style.top = (P.endScreen ? E.url : 610) + 'px'
+        const intro = P.kind === 'intro'
+        $('label').textContent = intro ? (P.label ?? '') : ''
+        $('url').textContent = intro ? '' : (P.url ?? '')
+        $('title').innerHTML = intro ? `${P.title}<i>.</i>` : ''
+        $('sub').textContent = intro ? (P.subtitle ?? '') : ''
+        $('topics').innerHTML = intro
+          ? (P.topics ?? [])
+              .map(
+                (t, i) =>
+                  `<div class="topic"><b>${String(i + 1).padStart(2, '0')}</b><span>${t}</span></div>`
+              )
+              .join('')
+          : ''
+        $('head').innerHTML = intro
+          ? ''
+          : `<div class="a1">${P.headline[0]}</div><div class="a2">${P.headline[1]}</div>`
+        $('lines').innerHTML = intro ? '' : (P.lines ?? []).map((l) => `<div>${l}</div>`).join('')
+        if (intro) fitTitle()
         parts = {
           mark: document.querySelector('#mark'),
           words: [0, 1, 2].map((i) => $('w' + i)),
-          topics: [...document.querySelectorAll('.topic')]
+          topics: [...document.querySelectorAll('.topic')],
+          head: [...document.querySelectorAll('#head div')],
+          lines: [...document.querySelectorAll('#lines div')]
         }
       }
 
-      function panel(k, opacity, card = C) {
-        // k = 0: the card's panel, k = 1: exactly the app window.
+      function panel(k, opacity) {
+        // k = 0: the room, k = 1: exactly the app window.
         const p = $('panel').style
-        p.left = lerp(card.x, W.x, k) + 'px'
-        p.top = lerp(card.y, W.y, k) + 'px'
-        p.width = lerp(card.w, W.w, k) + 'px'
-        p.height = lerp(card.h, W.h, k) + 'px'
-        p.borderRadius = lerp(card.r, W.r, k) + 'px'
+        p.left = lerp(R.x, W.x, k) + 'px'
+        p.top = lerp(R.y, W.y, k) + 'px'
+        p.width = lerp(R.w, W.w, k) + 'px'
+        p.height = lerp(R.h, W.h, k) + 'px'
+        p.borderRadius = lerp(R.r, W.r, k) + 'px'
         p.opacity = opacity
+        // The glow stays at the room's top right, clipped by the panel as it shrinks.
+        const g = $('glow').style
+        g.left = 1050 - lerp(R.x, W.x, k) + 'px'
+        g.top = -250 - lerp(R.y, W.y, k) + 'px'
       }
-      function logo(scale, cy, markIn, wordIns, opacity = 1) {
-        const l = $('logo').style
+      // The lockup builds at the center (mark first, then mem, ry, note), then lifts to its home
+      // at the top left. `lift` 0 = center at `scale`, 1 = home.
+      function logo(lift, markIn, wordIns, opacity = 1) {
+        const scale = lerp(3.1, LOCK.scale, lift)
+        const cx = lerp(960, LOCK.x + (185 * LOCK.scale) / 2, lift)
+        const cy = lerp(540, LOCK.y, lift)
         // While only the mark shows, center the mark; the lockup slides into place as the word lands.
         const shift = (185 / 2 - 14.5) * scale * (1 - ease(wordIns[2]))
-        l.transform = `translate(-50%, -50%) translate(${shift}px, ${cy - 540}px) scale(${scale})`
+        const l = $('logo').style
+        l.transform = `translate(-50%, -50%) translate(${cx - 960 + shift}px, ${cy - 540}px) scale(${scale})`
         l.opacity = opacity
         parts.mark.style.opacity = markIn
         parts.mark.style.transform = `scale(${lerp(0.7, 1, out(markIn))})`
@@ -178,50 +268,55 @@
           w.style.transform = `translateY(${lerp(6, 0, out(wordIns[i]))}px)`
         })
       }
+      const rise = (el, k, dy = 14) => {
+        el.style.opacity = k
+        el.style.transform = `translateY(${lerp(dy, 0, k)}px)`
+      }
 
       window.render = (t) => {
         const T = P.timing
         if (P.kind === 'intro') {
-          // morph: content leaves, panel grows into the window, then the panel fades to the app.
+          // morph: the room shrinks into the app window, then the panel fades to the app.
           const leave = ease((t - T.morph) / 0.3)
           const grow = ease((t - T.morph) / 0.6)
           const fade = clamp((t - T.reveal) / (T.end - T.reveal))
           panel(grow, 1 - fade)
+          $('glow').style.opacity = 1 - leave
           // The lockup is built by 0.75 s, so the first line can start at 0.6 s (the scene's lead).
-          const lift = ease((t - 0.8) / 0.5)
           logo(
-            lerp(3.1, 1.75, lift),
-            lerp(540, 330, lift),
+            ease((t - 0.8) / 0.5),
             clamp(t / 0.3),
             [0.3, 0.4, 0.5].map((s) => clamp((t - s) / 0.25)),
             1 - leave
           )
-          const textIn = out((t - 1.15) / 0.4)
-          const tx = $('text').style
-          tx.opacity = textIn * (1 - leave)
-          tx.transform = `translateY(${lerp(18, 0, textIn) - leave * 10}px)`
-          parts.topics.forEach((el, i) => {
-            const k = out((t - T.topics[i]) / 0.4)
-            el.style.opacity = k
-            el.style.transform = `translateY(${lerp(12, 0, k)}px)`
-          })
+          const intro = $('intro').style
+          intro.opacity = 1 - leave
+          rise($('label'), out((t - 1.15) / 0.4) * (1 - leave))
+          rise($('title'), out((t - 1.15) / 0.5), 24)
+          rise($('sub'), out((t - 1.45) / 0.5))
+          parts.topics.forEach((el, i) => rise(el, out((t - T.topics[i]) / 0.4), 12))
           $('url').style.opacity = 0
+          $('head').style.opacity = 0
+          $('lines').style.opacity = 0
         } else {
-          // outro: the window turns into the panel, the lockup and url land, then hold.
+          // outro: the window opens into the room, the lockup, headline and closing lines land, then hold.
           const appear = clamp((t - T.start) / 0.3)
-          const shrink = ease((t - T.start - 0.25) / 0.6)
-          panel(1 - shrink, appear, P.endScreen ? E : C)
+          const grow = ease((t - T.start - 0.25) / 0.6)
+          panel(1 - grow, appear)
+          $('glow').style.opacity = grow
           const s = T.start + 0.6
           logo(
-            P.endScreen ? E.logo : 2.6,
-            P.endScreen ? E.cy : 470,
+            1,
             clamp((t - s) / 0.4),
             [0.3, 0.5, 0.7].map((d) => clamp((t - s - d) / 0.35))
           )
-          $('text').style.opacity = 0
-          const u = out((t - s - 0.9) / 0.5)
-          $('url').style.opacity = u
-          $('url').style.transform = `translateY(${lerp(10, 0, u)}px)`
+          $('intro').style.opacity = 0
+          $('label').style.opacity = 0
+          rise($('url'), out((t - s - 0.9) / 0.5), 10)
+          parts.head.forEach((el, i) => rise(el, out((t - s - 0.5 - i * 0.18) / 0.5), 18))
+          parts.lines.forEach((el, i) => rise(el, out((t - s - 1.3 - i * 0.2) / 0.5), 10))
+          $('head').style.opacity = 1
+          $('lines').style.opacity = 1
         }
       }
     </script>

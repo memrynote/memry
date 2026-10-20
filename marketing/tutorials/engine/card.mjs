@@ -55,6 +55,7 @@ export async function renderCards(dir) {
       kind: 'intro',
       label: N.card.label ?? 'Tutorial',
       title: N.card.title,
+      subtitle: N.card.subtitle,
       topics,
       start: 0,
       end,
@@ -72,6 +73,9 @@ export async function renderCards(dir) {
     plan.outro = {
       kind: 'outro',
       url: N.endCard.url ?? 'memrynote.com',
+      // Two lines, the second in orange; the closing lines sit at the bottom right.
+      headline: N.endCard.headline ?? ['Thanks', 'for watching.'],
+      lines: N.endCard.lines ?? [],
       endScreen: Boolean(N.youtube),
       start,
       // At least to the take's last frame: encode cuts 0.3 s after the last scene.

@@ -1,0 +1,137 @@
+{
+  "voice": "i5OXFdxBvUlXYUxpwQgy",
+  "model": "eleven_v4",
+  "settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.8
+  },
+  "brand": "Memree note",
+  "card": {
+    "label": "Tutorial",
+    "title": "Getting started",
+    "topics": [
+      "Your vault",
+      "The rail",
+      "First note",
+      "Links",
+      "Inbox",
+      "Tasks",
+      "Journal",
+      "Search"
+    ],
+    "subtitle": "Your first hour, from vault to search."
+  },
+  "endCard": {
+    "at": "What would you capture first",
+    "url": "memrynote.com",
+    "headline": ["What would you", "capture first?"],
+    "lines": ["Tell me in the comments.", "Thanks for watching."]
+  },
+  "youtube": {
+    "title": "Getting started with memrynote: your first hour, step by step",
+    "summary": "Your vault, a first note, a link between notes, the Inbox, a task, today's journal and search: everything you need for your first hour in memrynote.",
+    "notYet": ["Sync needs a paid plan. Everything else in this video works without an account."],
+    "docs": "guide/first-run",
+    "playlist": "start-here",
+    "tags": [
+      "memrynote tutorial",
+      "getting started",
+      "note taking app",
+      "local first notes",
+      "markdown notes",
+      "second brain"
+    ]
+  },
+  "thumbnails": [
+    {
+      "text": "Your first\nhour.",
+      "shot": {
+        "scene": "link",
+        "at": 6.5,
+        "x": 800,
+        "y": 400,
+        "w": 520,
+        "h": 440
+      }
+    },
+    {
+      "text": "Notes, tasks,\njournal →",
+      "shot": {
+        "scene": "inbox",
+        "at": 30,
+        "x": 760,
+        "y": 330,
+        "w": 720,
+        "h": 560
+      }
+    },
+    {
+      "text": "Start\nhere.",
+      "shot": {
+        "scene": "search",
+        "at": 7.5,
+        "x": 800,
+        "y": 420,
+        "w": 760,
+        "h": 440
+      }
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "text": "Your notes, tasks and journal shouldn't live in three different apps. I'm Kaan, I build {brand}, and here's your first hour with it.",
+      "lead": 0.6
+    },
+    {
+      "id": "vault",
+      "title": "Understand your vault: a folder of Markdown",
+      "text": "Everything you write in {brand} lives in a vault. A vault is just a folder of Markdown files on your computer, so your notes stay yours, and any other app can read them. The first time you open {brand}, you pick a name and a place for it. The name sits up here, and this list shows every vault you have. Open vault lets you point {brand} at a folder you already keep."
+    },
+    {
+      "id": "sync",
+      "title": "Choose sync, or keep everything on this device",
+      "text": "Sync is off until you turn it on, and {brand} works fully without it. This icon says so. If you want your notes on a second device, you set it up here, with your email. Sync needs a paid plan, and everything is end-to-end encrypted. You'll get a recovery phrase, which is the only way back in if you lose your devices, so keep it in a password manager. Not now? Carry on. You can turn sync on later, in Settings."
+    },
+    {
+      "id": "tour",
+      "title": "Find your way around: the rail, sidebar and create menu",
+      "text": "This is the rail. From the top: Home, Inbox, Journal, Calendar, Tasks and the Graph. Hold Command, and each icon shows a number, so Command 1 to 9 jumps straight there. Next to it is the sidebar. Collections holds your notes, each with an icon you choose. Projects lists your task projects. Bookmarks keeps the notes you pin, Canvases holds your whiteboards, and Tags gathers every tag you use. The pen button creates a note in one click, and the arrow beside it opens the create menu, for a note, a journal entry, a task and more."
+    },
+    {
+      "id": "note",
+      "title": "Write your first note and use the slash menu",
+      "text": "Let's write something. Maya has a workshop with Studio North on Friday, so click the pen to start a note. Give it a title, press Enter, and start writing. On an empty line, type a slash, and a menu of blocks opens: headings, lists, checklists and more. Keep typing to filter it, so slash h two jumps straight to a heading. There's no save button. {brand} saves as you type."
+    },
+    {
+      "id": "link",
+      "title": "Link one note to another with double brackets",
+      "text": "Notes get better when they connect. Type two square brackets, and start a name, like Design. {brand} suggests the notes that match. Press Enter, and you have a link. Click it to jump there, and the note you linked now lists this one under its backlinks, so the connection works in both directions."
+    },
+    {
+      "id": "inbox",
+      "title": "Capture a thought in the Inbox",
+      "text": "Not every thought deserves a note yet. That's what the Inbox is for. Open it, type into the capture bar, and press Enter. It lands at the top, waiting for you. Paste a link, and {brand} fetches its title. Attach a file, a PDF here, an image there, and they land in the same list. Click any item, and the panel on the right is where you triage it: pick a folder, add tags, link it to a note, or file it. Text, links, images, PDFs, even voice memos and video all work. Let's file this PDF into the vault, because {brand} reads the text inside it, and you'll see why in a minute."
+    },
+    {
+      "id": "task",
+      "title": "Capture a task in one line",
+      "text": "A task is one line too. Go to Tasks, click the capture bar, and type it the way you'd say it. An at sign sets the date, and an exclamation mark sets the priority. Each one turns into a pill, so you can see what you'll get. Press Enter, and the task is in your list, with its date and priority."
+    },
+    {
+      "id": "journal",
+      "title": "Write today's journal entry",
+      "text": "End the day in your journal. It opens on today, and Maya already has a line here. Click at the end, and write the next one. Every day gets its own page, so it builds into a record of your days. Tasks live here too. Start a line with a checkbox, and write the task. It turns into a real task, and shows up under Unscheduled in the day panel on the right. Drag it onto the calendar, and it gets a time."
+    },
+    {
+      "id": "search",
+      "title": "Find anything with Command K",
+      "text": "When your vault grows, Command K finds anything. Type a few letters, say Lisbon, and notes, tasks and journal entries come up together, grouped by type. It reads inside PDFs too. Search for terracotta, a word from the moodboard PDF we just filed, and there it is. Pick a result, and you're there."
+    },
+    {
+      "id": "outro",
+      "title": "Recap your first hour",
+      "text": "That's your first hour: a vault, a note, a link, the Inbox, a task, a journal entry, and search. Thanks for watching. What would you capture first? Tell me in the comments."
+    }
+  ]
+}
