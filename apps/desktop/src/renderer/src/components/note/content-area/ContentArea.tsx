@@ -27,6 +27,7 @@ import {
 } from './attachment-block-menu'
 import { AttachmentRenameFlow } from './attachment-rename-dialog'
 import { ImageCropDialog } from './image-crop-dialog'
+import { ImageLightbox } from './image-lightbox'
 import { parseImageCrop, withImageCrop, type ImageCrop } from '@memry/editor-schema/blocks'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
@@ -2188,6 +2189,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor]
   )
 
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  const handleEditorDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const img = (e.target as HTMLElement).closest('img')
+      if (!img) return
+      const image = resolveImageFromElement(img)
+      if (image) setLightbox({ src: img.currentSrc, alt: image.name })
+    },
+    [resolveImageFromElement]
+  )
+
   // The rename dialog for an image lives HERE, not in the menu (#1714). Both
   // image surfaces are rendered only while their menu is open or the pointer is
   // over the image, so a dialog parented to them was unmounted by the very
@@ -2533,7 +2545,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         if (!image) return
 
         e.preventDefault()
-        setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
+        setImageMenuTarget({
+          x: e.clientX,
+          y: e.clientY,
+          src: (target.closest('img') as HTMLImageElement).currentSrc,
+          ...image
+        })
         return
       }
 
@@ -2937,6 +2954,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           role="application"
           aria-label={t('editor.content.richTextAria')}
           onContextMenu={handleEditorContextMenu}
+          onDoubleClick={handleEditorDoubleClick}
         >
           {!marqueeZoneEl && (
             <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
@@ -2981,6 +2999,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onClose={() => setImageMenuTarget(null)}
               onRequestRename={() => {
                 setImageRenameTarget(imageMenuTarget)
+                setImageMenuTarget(null)
+              }}
+              onRequestView={() => {
+                setLightbox({ src: imageMenuTarget.src, alt: imageMenuTarget.name })
                 setImageMenuTarget(null)
               }}
               onRequestCrop={
@@ -3029,6 +3051,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onOpenChange={(open) => !open && setMoveBlockId(null)}
               currentNoteId={noteId}
               onSelect={(targetNoteId) => void moveBlockToNote(targetNoteId)}
+            />
+          )}
+          {lightbox && (
+            <ImageLightbox
+              src={lightbox.src}
+              alt={lightbox.alt}
+              onClose={() => setLightbox(null)}
             />
           )}
           {imageRenameTarget && (
