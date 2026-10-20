@@ -164,6 +164,26 @@ neither does a synced edit of that note from another device. Creating a definiti
 that already exists keeps the fields the call leaves out, such as a date property's calendar
 setting.
 
+### A note's Status follows its tasks
+
+Keeping a note's Status by hand falls out of date as its checklist moves. When a note has a status property named `status` and tasks written in its body, Memry sets the value from those tasks instead:
+
+| Tasks in the note                                   | Status shown           |
+| --------------------------------------------------- | ---------------------- |
+| All to do                                           | The to-do option       |
+| All done                                            | The done option        |
+| Any other mix, such as one in progress or some done | The in-progress option |
+
+For example, a note with three tasks reads "In progress" once the first is checked off, and "Done" when the third is. Each state shows the default option of its group in your status definition, or the first option when none is marked default, so a custom `Queued` / `Doing` / `Shipped` set works too.
+
+While the note has tasks, the value is read-only and its tooltip says the tasks set it. A note without tasks keeps the value you set. Only the property named `status` follows tasks, and only when its type is Status, so other status properties stay yours to set.
+
+A task counts when its line is in the note body. A task you only linked to the note from its detail panel does not. A task still arriving from another device is left out until it lands.
+
+The value you stored is never rewritten. The file and sync keep it, so older versions of Memry keep showing it.
+
+The note page on desktop and iPhone, the `memrynote` CLI's note and property reads, and an agent reading the note all show the derived value. Desktop folder view columns and filters, and an agent's property-only read, still show the stored value.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.
