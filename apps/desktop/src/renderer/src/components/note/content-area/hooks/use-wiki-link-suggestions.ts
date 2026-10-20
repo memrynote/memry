@@ -19,6 +19,7 @@ import { listTitledCanvases } from '@/lib/canvas-lookup'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
 import { activeRunWikiLink, replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
+import { consumeAutoClosedBrackets } from '../auto-close-brackets-plugin'
 import type { WikiLinkSuggestionItem } from '../wiki-link-menu'
 import { createLogger } from '@/lib/logger'
 
@@ -321,6 +322,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
   const handleWikiLinkSelect = useCallback(
     async (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
+      consumeAutoClosedBrackets(editor)
       if (item.type === 'addName') {
         onAddName?.(item.title)
         return
