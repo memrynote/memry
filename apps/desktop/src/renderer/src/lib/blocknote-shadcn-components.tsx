@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { ShadCNDefaultComponents, type ShadCNComponents } from '@blocknote/shadcn'
 
 const ShadCNSubTrigger = ShadCNDefaultComponents.DropdownMenu.DropdownMenuSubTrigger
+const ShadCNTrigger = ShadCNDefaultComponents.DropdownMenu.DropdownMenuTrigger
 
 // Base UI closes a hover-opened submenu 40 ms after the pointer stops between
 // its trigger and its popup. The tall Turn into submenu shifts up to fit a
@@ -16,7 +17,25 @@ function DropdownMenuSubTrigger(props: ComponentProps<typeof ShadCNSubTrigger>):
   return <ShadCNSubTrigger closeDelay={SUBMENU_CLOSE_DELAY_MS} {...props} />
 }
 
+type TriggerMouseEvent = React.MouseEvent & { preventBaseUIHandler?: () => void }
+
+// Base UI opens a menu on mousedown, so pressing the block drag handle to drag
+// it opened the block menu under the pointer. Skipping Base UI's press handlers
+// leaves its click handler to open the menu: a click opens it, a drag never
+// fires a click. Keyboard opening is untouched.
+function skipPressOpen(event: TriggerMouseEvent): void {
+  if (event.button === 0) event.preventBaseUIHandler?.()
+}
+
+function DropdownMenuTrigger(props: ComponentProps<typeof ShadCNTrigger>): React.JSX.Element {
+  return <ShadCNTrigger onPointerDown={skipPressOpen} onMouseDown={skipPressOpen} {...props} />
+}
+
 /** BlockNote's shadcn components with Memry's overrides, for editors that render menus. */
 export const blockNoteShadCNComponents: Partial<ShadCNComponents> = {
-  DropdownMenu: { ...ShadCNDefaultComponents.DropdownMenu, DropdownMenuSubTrigger }
+  DropdownMenu: {
+    ...ShadCNDefaultComponents.DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuSubTrigger
+  }
 }

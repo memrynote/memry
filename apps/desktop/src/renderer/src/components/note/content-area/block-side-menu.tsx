@@ -460,7 +460,7 @@ export function BlockSideMenuController({
   )
 
   const sideMenu = useMemo<FC>(
-    () => () => <SideMenu dragHandleMenu={dragHandleMenu} />,
+    () => () => <MemrySideMenu dragHandleMenu={dragHandleMenu} />,
     [dragHandleMenu]
   )
 
@@ -469,6 +469,19 @@ export function BlockSideMenuController({
   void t
 
   return <SideMenuController sideMenu={sideMenu} floatingUIOptions={floatingUIOptions} />
+}
+
+/**
+ * BlockNote 0.54 no longer tags `.bn-side-menu` with the hovered block's type,
+ * so the wrapper carries it for `base.css` to size the menu per block type.
+ */
+function MemrySideMenu({ dragHandleMenu }: { dragHandleMenu: FC }) {
+  const block = useCurrentBlock()
+  return (
+    <div data-side-menu-block-type={block?.type}>
+      <SideMenu dragHandleMenu={dragHandleMenu} />
+    </div>
+  )
 }
 
 function MemryDragHandleMenu({
