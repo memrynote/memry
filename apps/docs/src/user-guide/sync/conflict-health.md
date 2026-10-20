@@ -2,8 +2,6 @@
 
 How memrynote handles conflicting edits across devices, and where to see sync health.
 
-<!-- screenshot: sync status popover showing the conflict count and Dismiss -->
-
 ## Conflict Resolution
 
 | Domain                  | Strategy                                                                                                                        |
@@ -44,19 +42,9 @@ That all happens inside the pull. Nothing stops to ask you.
 
 ## What You Actually See
 
-A conflict is **already resolved** by the time the app mentions it. There is no prompt, no marker on the affected note or task, and no compare view — when the count appears, the winning version has been written to your local database and queued back for push.
+Nothing. A conflict is **already resolved** when the app learns about it: the winning version is written to your local database and queued back for push. The sync status menu shows no conflict notice, there is no marker on the affected note or task, and there is no compare view. Sync History does not list conflicts either — it records pushes, pulls, and errors.
 
-The whole conflict surface is:
-
-- A yellow **"N conflicts detected"** line in the sync status popover, with a **Dismiss** button
-- Nothing on the item itself
-- Nothing in [Sync History](#sync-history) — it records pushes, pulls, and errors, not conflicts
-
-### Conflict Count in the Sync Menu
-
-The sync status menu shows how many items hit a conflict, with a **Dismiss** button to clear the notice once you have seen it.
-
-The count tracks _items_, not events — an item that keeps conflicting is counted once, not once per sync round. The notice clears when you dismiss it, when you sign out, or automatically after 24 hours.
+Each merge is written to the app's diagnostic log with the item's id and type, so a bug report can show that one happened. That log is for support, not a list you browse.
 
 ## What "Resolved" Means for Your Data
 
@@ -69,7 +57,7 @@ Auto-resolved is not the same as auto-merged. CRDT text keeps both sides. Everyw
 | Note / journal metadata, inbox items, templates, tags, folders, bookmarks, filters, reminders | The **remote** record overwrites the local one and the clocks merge                                                                                 | Your local change to those fields                                                    |
 | Canvases                                                                                      | Neither side is dropped — the other version lands as a [conflict copy](/user-guide/canvas/sync-and-limits#conflict-copies)                          | Nothing; you end up with a second canvas                                             |
 
-So the popover count is a **notice, not a task list**. Dismissing it changes nothing about your data — the resolution already happened, and dismissing only retires the warning.
+There is nothing to act on when a conflict resolves, which is why the app does not warn you. If a value you set came back different, see [Recovering an Overwritten Edit](#recovering-an-overwritten-edit).
 
 ## Sync History
 
@@ -174,7 +162,7 @@ it on, and it syncs again once the note is small enough.
 
 ## Recovering an Overwritten Edit
 
-There is no undo for an auto-resolved conflict, and no conflict log to read back. What you can do:
+There is no undo for an auto-resolved conflict, and no conflict list in the app to read back. What you can do:
 
 - **Note and journal text** — [Version history](/user-guide/notes/version-history) keeps snapshots, so you can open the timeline and restore. Versions are local to each device, so look on the device you typed the lost text on.
 - **Everything else** — set the value again on the device you want to win. That edit carries a higher clock, so it sticks on the next push.
@@ -218,7 +206,7 @@ memrynote doesn't auto-merge **across record types** — e.g. it won't combine t
 
 It also won't ask you to pick a winner. Every strategy above is built to resolve without a prompt, which is why there is no manual-resolution screen.
 
-And it doesn't store a conflict log. Once a conflict resolves, the losing version is gone from the database, and Sync History never held conflicts to begin with.
+And it doesn't keep the losing version. Once a conflict resolves, that version is gone from the database, and Sync History never held conflicts to begin with.
 
 ## See Also
 

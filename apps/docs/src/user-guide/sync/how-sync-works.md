@@ -49,13 +49,13 @@ the app.
 
 A cloud in the sidebar footer shows the current state. The dot on its corner carries the color:
 
-| Indicator          | Meaning                                                               |
-| ------------------ | --------------------------------------------------------------------- |
-| Green dot          | Synced                                                                |
-| Spinning arrows    | Syncing right now                                                     |
-| Amber dot          | Paused, offline, or stalled                                           |
-| Red dot            | Sync needs you: an error, an expired session, or a conflict to review |
-| Cloud with a slash | Local only: no active sync plan, or this vault stays on this device   |
+| Indicator          | Meaning                                                             |
+| ------------------ | ------------------------------------------------------------------- |
+| Green dot          | Synced                                                              |
+| Spinning arrows    | Syncing right now                                                   |
+| Amber dot          | Paused, offline, or stalled                                         |
+| Red dot            | Sync needs you: an error or an expired session                      |
+| Cloud with a slash | Local only: no active sync plan, or this vault stays on this device |
 
 Click the indicator for details, recent activity, **Sync Now**, and **Pause** or **Resume**.
 
