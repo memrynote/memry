@@ -2104,8 +2104,6 @@
       "lastSynced": "Poslední synchronizace ",
       "pending": "čeká na synchronizaci",
       "localOnly": "pouze místní",
-      "detected": "zjištěno",
-      "dismissConflicts": "Zavřít",
       "clockSkewDetected": "Zjištěn nesoulad systémových hodin",
       "items": "položek",
       "willSyncWhenBackOnline": "Synchronizuje se, až bude znovu online",

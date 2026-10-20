@@ -157,7 +157,6 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     stalled,
     pendingCount,
     localOnlyCount,
-    conflicts,
     error,
     sessionExpired,
     deviceKeysMissing,
@@ -167,8 +166,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     triggerSync,
     pause,
     resume,
-    clearError,
-    clearConflicts
+    clearError
   } = useSyncStatus()
   const { resetAuthState } = useAuth()
 
@@ -277,7 +275,6 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
         {/* Info rows */}
         {(pendingCount > 0 ||
           localOnlyCount > 0 ||
-          conflicts.length > 0 ||
           clockSkewDetected ||
           (isSyncing && initialSyncProgress) ||
           (isSyncing && (syncActivity.pushCount > 0 || syncActivity.pullCount > 0))) && (
@@ -305,22 +302,6 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
                   {localOnlyCount} {tPhaseF('phaseF.componentsSyncSyncStatus.localOnly')}{' '}
                   {localOnlyCount === 1 ? 'note' : 'notes'}
                 </p>
-              )}
-              {conflicts.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                    {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'}{' '}
-                    {tPhaseF('phaseF.componentsSyncSyncStatus.detected')}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearConflicts}
-                    className="ms-auto h-5 px-1.5 text-xs"
-                  >
-                    {tPhaseF('phaseF.componentsSyncSyncStatus.dismissConflicts')}
-                  </Button>
-                </div>
               )}
               {clockSkewDetected && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">

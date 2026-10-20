@@ -2104,8 +2104,6 @@
       "lastSynced": "Sidst synkroniseret ",
       "pending": "afventer",
       "localOnly": "kun lokalt",
-      "detected": "opdaget",
-      "dismissConflicts": "Luk",
       "clockSkewDetected": "Tidsforskel i uret registreret",
       "items": "elementer",
       "willSyncWhenBackOnline": "Synkroniseres, når du er online igen",

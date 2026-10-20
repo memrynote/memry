@@ -2104,8 +2104,6 @@
       "lastSynced": "上次同步：",
       "pending": "待同步",
       "localOnly": "仅本地",
-      "detected": "已检测到",
-      "dismissConflicts": "忽略",
       "clockSkewDetected": "检测到时钟偏移",
       "items": "项",
       "willSyncWhenBackOnline": "恢复联网后将同步",

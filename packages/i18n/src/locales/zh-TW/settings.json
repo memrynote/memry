@@ -2104,8 +2104,6 @@
       "lastSynced": "上次同步：",
       "pending": "待處理",
       "localOnly": "僅限本機",
-      "detected": "已偵測到",
-      "dismissConflicts": "忽略",
       "clockSkewDetected": "偵測到時鐘偏差",
       "items": "項目",
       "willSyncWhenBackOnline": "恢復連線後就會同步",

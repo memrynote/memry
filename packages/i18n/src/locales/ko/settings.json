@@ -2104,8 +2104,6 @@
       "lastSynced": "마지막 동기화 ",
       "pending": "대기 중",
       "localOnly": "로컬 전용",
-      "detected": "감지됨",
-      "dismissConflicts": "무시",
       "clockSkewDetected": "시계 오차 감지됨",
       "items": "항목",
       "willSyncWhenBackOnline": "다시 온라인 상태가 되면 동기화됩니다.",

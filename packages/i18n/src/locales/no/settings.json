@@ -2104,8 +2104,6 @@
       "lastSynced": "Sist synkronisert ",
       "pending": "venter",
       "localOnly": "bare lokalt",
-      "detected": "oppdaget",
-      "dismissConflicts": "Skjul",
       "clockSkewDetected": "Klokkeavvik oppdaget",
       "items": "elementer",
       "willSyncWhenBackOnline": "Synkroniseres når du er på nett igjen",

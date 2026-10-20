@@ -2104,8 +2104,6 @@
       "lastSynced": "Dernière synchronisation : ",
       "pending": "en attente",
       "localOnly": "local uniquement",
-      "detected": "détecté",
-      "dismissConflicts": "Ignorer",
       "clockSkewDetected": "Décalage d'horloge détecté",
       "items": "éléments",
       "willSyncWhenBackOnline": "Synchronisation dès le retour en ligne",

@@ -2104,8 +2104,6 @@
       "lastSynced": "ซิงค์ล่าสุด ",
       "pending": "รอดำเนินการ",
       "localOnly": "เฉพาะในเครื่อง",
-      "detected": "ตรวจพบแล้ว",
-      "dismissConflicts": "ปิด",
       "clockSkewDetected": "ตรวจพบความคลาดเคลื่อนของนาฬิกา",
       "items": "รายการ",
       "willSyncWhenBackOnline": "จะซิงค์เมื่อกลับออนไลน์",

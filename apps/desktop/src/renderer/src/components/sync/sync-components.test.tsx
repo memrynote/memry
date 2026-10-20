@@ -33,7 +33,6 @@ const mocks = vi.hoisted(() => ({
     stalled: false,
     pendingCount: 0,
     localOnlyCount: 0,
-    conflicts: [] as unknown[],
     error: null as string | null,
     sessionExpired: false,
     clockSkewDetected: false,
@@ -42,8 +41,7 @@ const mocks = vi.hoisted(() => ({
     triggerSync: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
-    clearError: vi.fn(),
-    clearConflicts: vi.fn()
+    clearError: vi.fn()
   },
   syncHistory: {
     entries: [] as any[],
@@ -347,7 +345,6 @@ describe('sync components coverage', () => {
       stalled: false,
       pendingCount: 0,
       localOnlyCount: 0,
-      conflicts: [],
       error: null,
       sessionExpired: false,
       clockSkewDetected: false,
@@ -445,7 +442,6 @@ describe('sync components coverage', () => {
     mocks.syncStatus.hasIssues = true
     mocks.syncStatus.pendingCount = 2
     mocks.syncStatus.localOnlyCount = 1
-    mocks.syncStatus.conflicts = [{ id: 'conflict-1' }]
     mocks.syncStatus.clockSkewDetected = true
     mocks.syncStatus.error = 'network down'
     const openSettings = vi.fn()
@@ -481,7 +477,6 @@ describe('sync components coverage', () => {
   it('carries sync state as one dock badge on the footer trigger', () => {
     const openSettings = vi.fn()
     mocks.syncStatus.error = null
-    mocks.syncStatus.conflicts = []
     mocks.syncStatus.hasIssues = false
 
     mocks.syncStatus.status = 'idle'

@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
     lastSyncAt: null as number | null,
     pendingCount: 0,
     error: null as string | null,
-    conflicts: [] as Array<{ itemId: string; itemType: string; detectedAt: number }>,
     sessionExpired: false,
     clockSkewDetected: false,
     initialSyncProgress: null as null | { current: number; total: number },
@@ -75,7 +74,6 @@ describe('sync hooks', () => {
       lastSyncAt: null,
       pendingCount: 0,
       error: null,
-      conflicts: [],
       sessionExpired: false,
       clockSkewDetected: false,
       initialSyncProgress: null,
@@ -124,7 +122,6 @@ describe('sync hooks', () => {
 
     mocks.syncState.status = 'unknown-status'
     mocks.syncState.error = 'sync failed'
-    mocks.syncState.conflicts = [{ itemId: 'n1', itemType: 'note', detectedAt: 1 }]
     rerender()
     expect(result.current.label).toBe('account.sync.statuses.connecting')
     expect(result.current.hasIssues).toBe(true)

@@ -3,12 +3,7 @@ import { createLogger } from '../../lib/logger'
 import { secureCleanup } from '../../crypto/index'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import { decryptPullBatch } from '../sync-crypto-batch'
-import {
-  beginPageApply,
-  isPageApplyQuiescent,
-  whenPageApplyQuiescent,
-  type PageApplyHandle
-} from '../bulk-apply'
+import { beginPageApply, isPageApplyQuiescent, whenPageApplyQuiescent } from '../bulk-apply'
 import type { ItemApplier } from '../apply-item'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import type { SyncWorkerBridge } from '../worker-bridge'
@@ -71,11 +66,8 @@ export interface SocketApplyDeps {
   isPushSuppressed(): boolean
   /** Renderer event for a row the apply changed ('applied' or 'conflict'). */
   onApplied(item: DecryptedPullItem, operation: DecryptedItemOperation): void
-  /**
-   * Conflict event and push-back requeue, exactly as the pull reports it. The
-   * requeue runs in the item's savepoint; renderer events go through `page`.
-   */
-  onConflict(item: DecryptedPullItem, page: Pick<PageApplyHandle, 'afterCommit'>): void
+  /** Push-back requeue, exactly as the pull reports it. Runs in the item's savepoint. */
+  onConflict(item: DecryptedPullItem): void
   /** Sends the merged rows back, as the pull does after conflicts. */
   requestPush(): void
   /**
@@ -142,7 +134,7 @@ export function createSocketApplier(deps: SocketApplyDeps): SocketApplier {
               if (result === 'parse_error' || result === 'schema_invalid') return null
               // The pull's order: report the conflict, then owe the body. A
               // skipped version was owed by whatever applied it.
-              if (result === 'conflict') deps.onConflict(dec, page)
+              if (result === 'conflict') deps.onConflict(dec)
               if (result !== 'skipped' && carriesCrdtBody(dec, operation)) {
                 deps.oweRecordBody(dec.id)
               }

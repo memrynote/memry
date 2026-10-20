@@ -918,11 +918,6 @@ export class PullCoordinator {
     const pageApply = beginPageApply(this.ctx.deps.db)
     let postCommitWork = false
     let cursorCommitted = false
-    const conflictDeps = {
-      ...this.ctx.deps,
-      emitToRenderer: (channel: string, event: unknown) =>
-        pageApply.afterCommit(() => this.ctx.deps.emitToRenderer(channel, event))
-    }
     try {
       try {
         for (let i = 0; i < orderedDecrypted.length; i++) {
@@ -952,7 +947,7 @@ export class PullCoordinator {
             runState.latency.noteApplied(dec, result)
 
             if (result === 'conflict') {
-              reportConflict(conflictDeps, dec)
+              reportConflict(this.ctx.deps, dec)
               pageConflicts++
             } else if (result === 'skipped') pageSkipped++
             else pageApplied++

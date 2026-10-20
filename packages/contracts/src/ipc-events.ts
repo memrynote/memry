@@ -1,5 +1,4 @@
 import type { SyncErrorCategory, SyncStatusValue } from './ipc-sync-ops'
-import type { VectorClock } from './sync-api'
 
 // ============================================================================
 // Event Channel Constants
@@ -8,7 +7,6 @@ import type { VectorClock } from './sync-api'
 export const EVENT_CHANNELS = {
   STATUS_CHANGED: 'sync:status-changed',
   ITEM_SYNCED: 'sync:item-synced',
-  CONFLICT_DETECTED: 'sync:conflict-detected',
   LINKING_REQUEST: 'sync:linking-request',
   LINKING_APPROVED: 'sync:linking-approved',
   UPLOAD_PROGRESS: 'sync:upload-progress',
@@ -59,15 +57,6 @@ export interface ItemSyncedEvent {
   type: string
   operation: 'push' | 'pull'
   itemOperation?: 'create' | 'update' | 'delete'
-}
-
-export interface ConflictDetectedEvent {
-  itemId: string
-  type: string
-  localVersion: Record<string, unknown>
-  remoteVersion: Record<string, unknown>
-  localClock?: VectorClock
-  remoteClock?: VectorClock
 }
 
 export interface LinkingRequestEvent {

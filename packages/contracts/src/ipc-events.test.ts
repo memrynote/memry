@@ -13,7 +13,6 @@ import type {
   AttachmentUploadFailedEvent,
   CertificatePinFailedEvent,
   ClockSkewWarningEvent,
-  ConflictDetectedEvent,
   DeviceRenamedEvent,
   DeviceRevokedEvent,
   DownloadProgressEvent,
@@ -54,7 +53,6 @@ describe('EVENT_CHANNELS', () => {
   it('pins expected well-known channels', () => {
     expect(EVENT_CHANNELS.STATUS_CHANGED).toBe('sync:status-changed')
     expect(EVENT_CHANNELS.ITEM_SYNCED).toBe('sync:item-synced')
-    expect(EVENT_CHANNELS.CONFLICT_DETECTED).toBe('sync:conflict-detected')
     expect(EVENT_CHANNELS.SESSION_EXPIRED).toBe('auth:session-expired')
     expect(EVENT_CHANNELS.OTP_DETECTED).toBe('auth:otp-detected')
     expect(EVENT_CHANNELS.OAUTH_CALLBACK).toBe('auth:oauth-callback')
@@ -85,18 +83,6 @@ describe('event payload types (compile-time shape locks)', () => {
       itemOperation: 'delete'
     }
     expect([push.operation, pull.operation]).toEqual(['push', 'pull'])
-  })
-
-  it('ConflictDetectedEvent carries optional clocks', () => {
-    const event: ConflictDetectedEvent = {
-      itemId: 'id',
-      type: 'task',
-      localVersion: { title: 'a' },
-      remoteVersion: { title: 'b' },
-      localClock: { 'd-1': 1 },
-      remoteClock: { 'd-2': 1 }
-    }
-    expect(event.localClock?.['d-1']).toBe(1)
   })
 
   it('LinkingRequestEvent + LinkingApprovedEvent hold sessionId', () => {

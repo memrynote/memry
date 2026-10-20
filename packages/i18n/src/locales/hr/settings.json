@@ -2104,8 +2104,6 @@
       "lastSynced": "Posljednja sinkronizacija: ",
       "pending": "na čekanju",
       "localOnly": "samo lokalno",
-      "detected": "otkriveno",
-      "dismissConflicts": "Odbaci",
       "clockSkewDetected": "Otkriveno odstupanje sata",
       "items": "stavki",
       "willSyncWhenBackOnline": "Sinkronizirat će se kada veza ponovno bude dostupna",

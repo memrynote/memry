@@ -2104,8 +2104,6 @@
       "lastSynced": "Остання синхронізація: ",
       "pending": "очікують",
       "localOnly": "тільки локально",
-      "detected": "виявлено",
-      "dismissConflicts": "Приховати",
       "clockSkewDetected": "Виявлено невідповідність часу",
       "items": "елементів",
       "willSyncWhenBackOnline": "Синхронізація відбудеться після відновлення з’єднання",

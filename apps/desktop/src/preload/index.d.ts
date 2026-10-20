@@ -67,7 +67,6 @@ import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
-  ConflictDetectedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
@@ -2132,7 +2131,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
-  onConflictDetected: (callback: (event: ConflictDetectedEvent) => void) => () => void
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
   onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
   onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void) => () => void

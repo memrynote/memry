@@ -41,7 +41,6 @@ vi.mock('@/hooks/use-sync-status', () => ({
     hasIssues: false,
     pendingCount: 0,
     localOnlyCount: 0,
-    conflicts: [],
     error: null,
     sessionExpired: false,
     clockSkewDetected: false,
@@ -51,7 +50,6 @@ vi.mock('@/hooks/use-sync-status', () => ({
     pause: vi.fn(),
     resume: vi.fn(),
     clearError: vi.fn(),
-    clearConflicts: vi.fn(),
     deviceKeysMissing: false,
     ...status.overrides
   })

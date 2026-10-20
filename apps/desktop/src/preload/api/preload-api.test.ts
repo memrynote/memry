@@ -1074,7 +1074,6 @@ describe('preload api wrappers', () => {
       SYNC_EVENTS.VAULT_BINDING_CHANGED
     )
     expectSubscribe(() => syncEvents.onItemSynced(callback), SYNC_EVENTS.ITEM_SYNCED)
-    expectSubscribe(() => syncEvents.onConflictDetected(callback), SYNC_EVENTS.CONFLICT_DETECTED)
     expectSubscribe(() => syncEvents.onLinkingRequest(callback), SYNC_EVENTS.LINKING_REQUEST)
     expectSubscribe(() => syncEvents.onLinkingApproved(callback), SYNC_EVENTS.LINKING_APPROVED)
     expectSubscribe(() => syncEvents.onLinkingFinalized(callback), SYNC_EVENTS.LINKING_FINALIZED)

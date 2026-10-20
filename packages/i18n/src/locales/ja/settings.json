@@ -2104,8 +2104,6 @@
       "lastSynced": "最終同期 ",
       "pending": "保留中",
       "localOnly": "ローカルのみ",
-      "detected": "検出されました",
-      "dismissConflicts": "閉じる",
       "clockSkewDetected": "時刻のずれを検出しました",
       "items": "件",
       "willSyncWhenBackOnline": "オンラインに戻ると同期されます",

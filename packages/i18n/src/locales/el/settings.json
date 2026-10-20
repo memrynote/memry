@@ -2104,8 +2104,6 @@
       "lastSynced": "Τελευταίος συγχρονισμός ",
       "pending": "σε εκκρεμότητα",
       "localOnly": "μόνο τοπικά",
-      "detected": "εντοπίστηκαν",
-      "dismissConflicts": "Παράβλεψη",
       "clockSkewDetected": "Εντοπίστηκε απόκλιση ρολογιού",
       "items": "στοιχεία",
       "willSyncWhenBackOnline": "Θα συγχρονιστεί όταν επιστρέψετε στο διαδίκτυο",

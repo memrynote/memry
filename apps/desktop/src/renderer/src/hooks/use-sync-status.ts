@@ -37,7 +37,6 @@ interface SyncStatusResult extends SyncStatusDisplay {
   pendingCount: number
   localOnlyCount: number
   error: string | null
-  conflicts: Array<{ itemId: string; itemType: string; detectedAt: number }>
   sessionExpired: boolean
   /** Pushes abort until signing in again re-runs device key setup (#2866). */
   deviceKeysMissing: boolean
@@ -52,7 +51,6 @@ interface SyncStatusResult extends SyncStatusDisplay {
   pause: (surface: SyncControlSurface) => Promise<void>
   resume: (surface: SyncControlSurface) => Promise<void>
   clearError: () => void
-  clearConflicts: () => void
 }
 
 const STATUS_MAP: Record<string, Omit<SyncStatusDisplay, 'label'> & { labelKey: string }> = {
@@ -127,14 +125,13 @@ function isSyncStalled(
 
 export function useSyncStatus(): SyncStatusResult {
   const { t } = useT('settings')
-  const { state, triggerSync, pause, resume, clearError, clearConflicts } = useSync()
+  const { state, triggerSync, pause, resume, clearError } = useSync()
   const {
     status,
     lastSyncAt,
     pendingCount,
     error,
     errorCategory,
-    conflicts,
     sessionExpired,
     clockSkewDetected,
     initialSyncProgress,
@@ -207,10 +204,7 @@ export function useSyncStatus(): SyncStatusResult {
     [lastSyncAt, t]
   )
 
-  const hasIssues = useMemo(
-    () => !!error || conflicts.length > 0 || sessionExpired,
-    [error, conflicts.length, sessionExpired]
-  )
+  const hasIssues = useMemo(() => !!error || sessionExpired, [error, sessionExpired])
 
   return {
     status,
@@ -218,7 +212,6 @@ export function useSyncStatus(): SyncStatusResult {
     pendingCount,
     localOnlyCount,
     error,
-    conflicts,
     sessionExpired,
     deviceKeysMissing,
     clockSkewDetected,
@@ -231,7 +224,6 @@ export function useSyncStatus(): SyncStatusResult {
     triggerSync,
     pause,
     resume,
-    clearError,
-    clearConflicts
+    clearError
   }
 }

@@ -2,7 +2,6 @@ import { SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
-  ConflictDetectedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
@@ -31,9 +30,6 @@ export const syncEvents = {
 
   onItemSynced: (callback: (event: ItemSyncedEvent) => void): (() => void) =>
     subscribe<ItemSyncedEvent>(SYNC_EVENTS.ITEM_SYNCED, callback),
-
-  onConflictDetected: (callback: (event: ConflictDetectedEvent) => void): (() => void) =>
-    subscribe<ConflictDetectedEvent>(SYNC_EVENTS.CONFLICT_DETECTED, callback),
 
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void): (() => void) =>
     subscribe<LinkingRequestEvent>(SYNC_EVENTS.LINKING_REQUEST, callback),

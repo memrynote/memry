@@ -2104,8 +2104,6 @@
       "lastSynced": "Ostatnia synchronizacja: ",
       "pending": "w toku",
       "localOnly": "tylko lokalnie",
-      "detected": "wykryty",
-      "dismissConflicts": "Zamknij",
       "clockSkewDetected": "Wykryto przesunięcie zegara",
       "items": "elementów",
       "willSyncWhenBackOnline": "Synchronizacja nastąpi po powrocie do trybu online",

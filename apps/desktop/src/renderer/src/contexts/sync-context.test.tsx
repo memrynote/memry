@@ -14,7 +14,6 @@ let downloadProgressListeners: EventCallback[] = []
 let attachmentUploadFailedListeners: EventCallback[] = []
 let linkingRequestListeners: EventCallback[] = []
 let linkingApprovedListeners: EventCallback[] = []
-let conflictDetectedListeners: EventCallback[] = []
 let itemSyncedListeners: EventCallback[] = []
 let initialSyncProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
@@ -107,7 +106,6 @@ beforeEach(async () => {
   attachmentUploadFailedListeners = []
   linkingRequestListeners = []
   linkingApprovedListeners = []
-  conflictDetectedListeners = []
   itemSyncedListeners = []
   initialSyncProgressListeners = []
   queueClearedListeners = []
@@ -175,12 +173,6 @@ beforeEach(async () => {
       deviceRevokedListeners = deviceRevokedListeners.filter((l) => l !== cb)
     }
   })
-  api.onConflictDetected = vi.fn((cb: EventCallback) => {
-    conflictDetectedListeners.push(cb)
-    return () => {
-      conflictDetectedListeners = conflictDetectedListeners.filter((l) => l !== cb)
-    }
-  })
   api.onQueueCleared = vi.fn((cb: VoidCallback) => {
     queueClearedListeners.push(cb)
     return () => {
@@ -245,9 +237,7 @@ import {
   useSync,
   syncReducer,
   initialState,
-  SYNC_PROGRESS_RETENTION_MS,
-  SYNC_CONFLICT_TTL_MS,
-  SYNC_CONFLICT_CAP
+  SYNC_PROGRESS_RETENTION_MS
 } from './sync-context'
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -665,13 +655,12 @@ describe('SyncProvider', () => {
       unsubscribe()
     })
 
-    it('#then records conflicts, queue clears, item activity, and initial sync progress', async () => {
+    it('#then records queue clears, item activity, and initial sync progress', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(conflictDetectedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 4 })
-        for (const cb of conflictDetectedListeners) cb({ itemId: 'note-1', type: 'note' })
         for (const cb of itemSyncedListeners) cb({ operation: 'push' })
         for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
         for (const cb of initialSyncProgressListeners) {
@@ -679,9 +668,6 @@ describe('SyncProvider', () => {
         }
       })
 
-      expect(result.current.state.conflicts).toEqual([
-        expect.objectContaining({ itemId: 'note-1', itemType: 'note' })
-      ])
       expect(result.current.state.syncActivity).toEqual({ pushCount: 1, pullCount: 1 })
       expect(result.current.state.initialSyncProgress).toEqual({
         phase: 'notes',
@@ -702,39 +688,6 @@ describe('SyncProvider', () => {
       expect(result.current.state.clockSkewDetected).toBe(true)
       expect(result.current.state.initialSyncProgress).toBeNull()
       expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
-    })
-
-    it('#then bounds retained conflicts instead of growing one entry per event', async () => {
-      const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(conflictDetectedListeners.length).toBeGreaterThan(0))
-
-      act(() => {
-        // One item re-detected on every pull, plus a wide burst of distinct items.
-        for (let i = 0; i < 150; i++) {
-          for (const cb of conflictDetectedListeners) cb({ itemId: 'note-loud', type: 'note' })
-        }
-        for (let i = 0; i < 150; i++) {
-          for (const cb of conflictDetectedListeners) cb({ itemId: `note-${i}`, type: 'note' })
-        }
-      })
-
-      expect(result.current.state.conflicts.length).toBeLessThanOrEqual(100)
-      expect(result.current.state.conflicts.at(-1)?.itemId).toBe('note-149')
-    })
-
-    it('#then clears conflicts through the exposed action', async () => {
-      const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(conflictDetectedListeners.length).toBeGreaterThan(0))
-
-      act(() => {
-        for (const cb of conflictDetectedListeners) cb({ itemId: 'note-1', type: 'note' })
-      })
-      expect(result.current.state.conflicts).toHaveLength(1)
-
-      act(() => {
-        result.current.clearConflicts()
-      })
-      expect(result.current.state.conflicts).toEqual([])
     })
 
     it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {
@@ -1012,8 +965,6 @@ describe('syncReducer', () => {
     ({ type: 'UPLOAD_PROGRESS', attachmentId: id, progress, status: 'uploading' }) as const
   const downloadEvent = (id: string, progress: number) =>
     ({ type: 'DOWNLOAD_PROGRESS', attachmentId: id, progress, status: 'decrypting' }) as const
-  const conflictEvent = (itemId: string) =>
-    ({ type: 'CONFLICT_DETECTED', itemId, itemType: 'note' }) as const
 
   describe('#given many attachments finished transferring #when the sweep runs', () => {
     it('#then retains no completed progress entries', () => {
@@ -1100,66 +1051,6 @@ describe('syncReducer', () => {
 
       expect(Object.keys(swept.uploadProgress ?? {})).toEqual(['att-done'])
       expect(swept).toBe(state)
-    })
-  })
-
-  describe('#given a burst of conflicts #when they exceed the cap', () => {
-    it('#then keeps only the newest capped entries', () => {
-      let state = initialState
-      for (let i = 0; i < SYNC_CONFLICT_CAP + 37; i++) {
-        state = syncReducer(state, conflictEvent(`note-${i}`))
-      }
-
-      expect(SYNC_CONFLICT_CAP).toBe(100)
-      expect(state.conflicts).toHaveLength(SYNC_CONFLICT_CAP)
-      expect(state.conflicts[0].itemId).toBe('note-37')
-      expect(state.conflicts.at(-1)?.itemId).toBe(`note-${SYNC_CONFLICT_CAP + 36}`)
-    })
-  })
-
-  describe('#given one item conflicts repeatedly #when more conflicts arrive', () => {
-    it('#then counts the item once instead of evicting distinct conflicts', () => {
-      let state = syncReducer(initialState, conflictEvent('note-a'))
-      state = syncReducer(state, conflictEvent('note-b'))
-      for (let i = 0; i < 500; i++) {
-        state = syncReducer(state, conflictEvent('note-loud'))
-      }
-
-      expect(state.conflicts.map((entry) => entry.itemId)).toEqual([
-        'note-a',
-        'note-b',
-        'note-loud'
-      ])
-    })
-  })
-
-  describe('#given conflicts older than the TTL #when the sweep runs', () => {
-    it('#then drops the expired entries', () => {
-      let state = syncReducer(initialState, conflictEvent('note-old'))
-      state = syncReducer(state, { type: 'PRUNE_STALE', now: Date.now() + SYNC_CONFLICT_TTL_MS })
-
-      expect(state.conflicts).toEqual([])
-    })
-
-    it('#then keeps entries inside the TTL', () => {
-      const state = syncReducer(initialState, conflictEvent('note-fresh'))
-      const swept = syncReducer(state, {
-        type: 'PRUNE_STALE',
-        now: Date.now() + SYNC_CONFLICT_TTL_MS - 1_000
-      })
-
-      expect(swept.conflicts).toHaveLength(1)
-      expect(swept).toBe(state)
-    })
-  })
-
-  describe('#given conflicts #when CLEAR_CONFLICTS is dispatched', () => {
-    it('#then empties the list and bails out when already empty', () => {
-      const withConflict = syncReducer(initialState, conflictEvent('note-a'))
-      const cleared = syncReducer(withConflict, { type: 'CLEAR_CONFLICTS' })
-
-      expect(cleared.conflicts).toEqual([])
-      expect(syncReducer(cleared, { type: 'CLEAR_CONFLICTS' })).toBe(cleared)
     })
   })
 })

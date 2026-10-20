@@ -75,7 +75,7 @@ describe('SyncEngine', () => {
   })
 
   describe('#given applier returns conflict #when pull receives item', () => {
-    it('#then emits CONFLICT_DETECTED event', async () => {
+    it('#then does not notify the renderer', async () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
 
@@ -119,9 +119,9 @@ describe('SyncEngine', () => {
 
       await engine.pull()
 
-      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+      expect(deps.emitToRenderer).not.toHaveBeenCalledWith(
         'sync:conflict-detected',
-        expect.objectContaining({ itemId: 'task-1', type: 'task' })
+        expect.anything()
       )
 
       // The conflict push-back now goes out at once (#2289); settle it before

@@ -2104,8 +2104,6 @@
       "lastSynced": "Synkronoitu viimeksi ",
       "pending": "vireillä",
       "localOnly": "vain paikallinen",
-      "detected": "havaittu",
-      "dismissConflicts": "Ohita",
       "clockSkewDetected": "Kellon aikaero havaittu",
       "items": "kohdetta",
       "willSyncWhenBackOnline": "Synkronoidaan, kun verkkoyhteys palaa",

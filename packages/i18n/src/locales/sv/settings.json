@@ -2104,8 +2104,6 @@
       "lastSynced": "Senast synkroniserad ",
       "pending": "väntar",
       "localOnly": "endast lokala",
-      "detected": "upptäckta",
-      "dismissConflicts": "Avfärda",
       "clockSkewDetected": "Klockskillnad upptäckt",
       "items": "objekt",
       "willSyncWhenBackOnline": "Synkroniseras när du är online igen",

@@ -2104,8 +2104,6 @@
       "lastSynced": "Ultima sincronizare ",
       "pending": "în așteptare",
       "localOnly": "numai local",
-      "detected": "detectat",
-      "dismissConflicts": "Ignoră",
       "clockSkewDetected": "S-a detectat o desincronizare a ceasului",
       "items": "elemente",
       "willSyncWhenBackOnline": "Se va sincroniza când revine online",

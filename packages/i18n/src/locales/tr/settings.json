@@ -2129,8 +2129,6 @@
       "lastSynced": "Son eşitleme: ",
       "pending": "beklemede",
       "localOnly": "yalnızca yerel",
-      "detected": "algılandı",
-      "dismissConflicts": "Kapat",
       "clockSkewDetected": "Saat kayması algılandı",
       "items": "öğe",
       "willSyncWhenBackOnline": "Yeniden çevrimiçi olunca eşitlenecek",

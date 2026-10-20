@@ -2104,8 +2104,6 @@
       "lastSynced": "Naposledy synchronizované ",
       "pending": "čaká sa",
       "localOnly": "iba lokálne",
-      "detected": "zistené",
-      "dismissConflicts": "Skryť",
       "clockSkewDetected": "Zistená odchýlka hodín",
       "items": "položiek",
       "willSyncWhenBackOnline": "Synchronizácia prebehne po obnovení pripojenia",

@@ -360,7 +360,7 @@ describe('createSocketApplier', () => {
 
     await createSocketApplier(deps).apply(frame([pullItem('t1')]))
 
-    expect(deps.onConflict).toHaveBeenCalledWith(decrypted('t1'), expect.anything())
+    expect(deps.onConflict).toHaveBeenCalledWith(decrypted('t1'))
     expect(deps.requestPush).toHaveBeenCalledTimes(1)
   })
 

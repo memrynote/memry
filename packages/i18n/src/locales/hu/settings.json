@@ -2104,8 +2104,6 @@
       "lastSynced": "Utolsó szinkronizálás: ",
       "pending": "függőben",
       "localOnly": "csak helyi",
-      "detected": "észlelve",
-      "dismissConflicts": "Elvetés",
       "clockSkewDetected": "Óraeltérés észlelve",
       "items": "elem",
       "willSyncWhenBackOnline": "Szinkronizálódik, amikor újra online lesz",

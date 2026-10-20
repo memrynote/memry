@@ -2104,8 +2104,6 @@
       "lastSynced": "آخر مزامنة ",
       "pending": "قيد الانتظار",
       "localOnly": "محلي فقط",
-      "detected": "تم الكشف عنها",
-      "dismissConflicts": "تجاهل",
       "clockSkewDetected": "تم اكتشاف انحراف الساعة",
       "items": "العناصر",
       "willSyncWhenBackOnline": "ستتم المزامنة عند معاودة الاتصال بالإنترنت",

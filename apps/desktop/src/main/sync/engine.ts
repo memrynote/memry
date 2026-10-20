@@ -252,15 +252,7 @@ export class SyncEngine extends SyncEventEmitter {
       },
       isPushSuppressed: () => this.pushCoordinator.suppressPushDuringPull,
       onApplied: (dec, op) => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', op),
-      onConflict: (dec, page) =>
-        reportConflict(
-          {
-            ...this.ctx.deps,
-            emitToRenderer: (channel, event) =>
-              page.afterCommit(() => this.ctx.deps.emitToRenderer(channel, event))
-          },
-          dec
-        ),
+      onConflict: (dec) => reportConflict(this.ctx.deps, dec),
       requestPush: () => this.ctx.requestPush(),
       oweRecordBody: (noteId) => this.crdtSync.oweRecordBody(noteId)
     })

@@ -2104,8 +2104,6 @@
       "lastSynced": "Zuletzt synchronisiert ",
       "pending": "ausstehend",
       "localOnly": "nur lokale",
-      "detected": "erkannt",
-      "dismissConflicts": "Ausblenden",
       "clockSkewDetected": "Uhrzeitabweichung erkannt",
       "items": "Elemente",
       "willSyncWhenBackOnline": "Wird synchronisiert, sobald du wieder online bist",

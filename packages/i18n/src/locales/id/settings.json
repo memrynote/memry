@@ -2104,8 +2104,6 @@
       "lastSynced": "Terakhir disinkronkan ",
       "pending": "tertunda",
       "localOnly": "hanya lokal",
-      "detected": "terdeteksi",
-      "dismissConflicts": "Abaikan",
       "clockSkewDetected": "Selisih jam terdeteksi",
       "items": "item",
       "willSyncWhenBackOnline": "Akan disinkronkan ketika kembali online",
