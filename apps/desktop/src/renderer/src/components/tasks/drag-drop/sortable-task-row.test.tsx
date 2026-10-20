@@ -9,6 +9,9 @@ const useSortableMock = vi.fn()
 const useDragContextMock = vi.fn()
 const useDroppedPrioritiesMock = vi.fn()
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@dnd-kit/sortable', () => ({
   useSortable: (options: unknown) => useSortableMock(options),
   sortableKeyboardCoordinates: vi.fn()

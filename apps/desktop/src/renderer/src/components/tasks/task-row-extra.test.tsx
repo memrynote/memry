@@ -5,6 +5,9 @@ import { TaskRow } from './task-row'
 import type { Project } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))

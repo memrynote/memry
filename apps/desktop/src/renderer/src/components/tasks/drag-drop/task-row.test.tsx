@@ -7,6 +7,9 @@ import { notesService } from '@/services/notes-service'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     get: vi.fn(),

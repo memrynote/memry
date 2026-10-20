@@ -10,6 +10,7 @@ import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popove
 import { SelectionCheckbox } from '@/components/folder-view/selection-checkbox'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskLinkedNoteIndicator } from '@/components/tasks/task-linked-note-indicator'
+import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
 import { InsertionIndicator } from './insertion-indicator'
 import type { SectionDragState } from './list-section-drag-state'
 
@@ -71,6 +72,7 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   const nextDate = nextProps.task.dueDate?.getTime() ?? null
   if (prevDate !== nextDate) return false
   if (prevProps.task.dueTime !== nextProps.task.dueTime) return false
+  if (prevProps.task.startDate?.getTime() !== nextProps.task.startDate?.getTime()) return false
   if (prevProps.task.fields !== nextProps.task.fields) return false
   if (prevProps.task.tags !== nextProps.task.tags) return false
   if (prevProps.isCompleted !== nextProps.isCompleted) return false
@@ -346,6 +348,12 @@ const TaskRowComponent = ({
               {project.name}
             </div>
           </div>
+        )}
+
+        {!isOverlay && <TaskRowReminder taskId={task.id} />}
+
+        {!isOverlay && !isCompleted && (
+          <TaskRowStartDate startDate={task.startDate} hasDueDisplay={!!dueDateDisplay} />
         )}
 
         {dueDateDisplay && (

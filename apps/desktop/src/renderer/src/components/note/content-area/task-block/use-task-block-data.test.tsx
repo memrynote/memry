@@ -25,7 +25,11 @@ vi.mock('@/services/tasks-service', () => ({
 
 // The provider reads the note's pending task reminders through TanStack
 // Query; these tests have no QueryClient and no reminders.
-vi.mock('@/hooks/use-reminders', () => ({ useReminders: () => ({ reminders: [] }) }))
+vi.mock('@/hooks/use-reminders', () => ({
+  ACTIVE_TASK_REMINDERS: {},
+  useReminders: () => ({ reminders: [] }),
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 
 import { useTaskBlockData } from './use-task-block-data'
 import { TaskPrefetchProvider } from './task-prefetch-context'

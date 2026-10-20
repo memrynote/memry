@@ -34,6 +34,9 @@ const tasks = [
 let mockTasks = tasks
 let mockSavedFilters: Array<{ id: string; name: string; filters: unknown; sort?: unknown }> = []
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@/features/tasks/use-task-queries', () => ({
   useTaskWorkspaceData: () => ({
     tasks: mockTasks,

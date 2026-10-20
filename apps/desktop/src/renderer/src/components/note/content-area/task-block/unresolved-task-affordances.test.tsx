@@ -34,7 +34,11 @@ vi.mock('@/contexts/tasks', () => ({ useTasksOptional: () => ({ projects: mocks.
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
 // The provider reads the note's pending task reminders through TanStack
 // Query; these tests have no QueryClient and no reminders.
-vi.mock('@/hooks/use-reminders', () => ({ useReminders: () => ({ reminders: [] }) }))
+vi.mock('@/hooks/use-reminders', () => ({
+  ACTIVE_TASK_REMINDERS: {},
+  useReminders: () => ({ reminders: [] }),
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     get: mocks.get,

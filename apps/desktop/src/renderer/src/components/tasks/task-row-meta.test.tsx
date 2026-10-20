@@ -9,6 +9,10 @@ import { TaskRow } from './task-row'
 import type { Project } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 
+const { reminderIds } = vi.hoisted(() => ({ reminderIds: { current: new Map<string, string>() } }))
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => reminderIds.current
+}))
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (key: string) => key }) }))
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })
@@ -100,6 +104,26 @@ describe('TaskRow meta slot', () => {
     expect(screen.getByText('chips')).toBeInTheDocument()
     expect(screen.queryByText('launch')).not.toBeInTheDocument()
     expect(screen.queryByText('Sep 12')).not.toBeInTheDocument()
+  })
+})
+
+describe('TaskRow start date and reminder', () => {
+  it('shows start and due dates joined by an arrow', () => {
+    renderRow({ task: { ...task, startDate: new Date(2099, 8, 10) } })
+
+    expect(screen.getByText('Sep 10')).toBeInTheDocument()
+    expect(screen.getByText('Sep 12')).toBeInTheDocument()
+  })
+
+  it('shows a reminder icon only for a task with an active reminder', () => {
+    const { unmount } = renderRow()
+    expect(screen.queryByLabelText('reminders.summary')).not.toBeInTheDocument()
+    unmount()
+
+    reminderIds.current = new Map([['task-1', new Date(2099, 8, 12, 9).toISOString()]])
+    renderRow()
+    expect(screen.getByLabelText('reminders.summary')).toBeInTheDocument()
+    reminderIds.current = new Map()
   })
 })
 

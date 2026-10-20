@@ -12,6 +12,9 @@ import type { Task } from '@/data/task-model'
 const statusDisabled = vi.fn()
 const priorityDisabled = vi.fn()
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (key: string) => key }) }))
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })

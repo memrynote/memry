@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   projects: [] as unknown[]
 }))
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
 vi.mock('@/contexts/tasks', () => ({ useTasksOptional: () => ({ projects: mocks.projects }) }))
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: vi.fn() }) }))
 vi.mock('@/services/tasks-service', () => ({

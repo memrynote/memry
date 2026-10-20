@@ -6,6 +6,10 @@ import { DragProvider } from '@/contexts/drag-context'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 
+vi.mock('@/hooks/use-reminders', () => ({
+  useNextTaskReminders: () => new Map<string, string>()
+}))
+
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
   id: 'status-todo',
   name: 'To Do',

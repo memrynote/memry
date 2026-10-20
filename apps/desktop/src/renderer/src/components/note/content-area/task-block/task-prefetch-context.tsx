@@ -24,24 +24,10 @@ import {
   type NoteTaskProjectContext
 } from '@/lib/note-task-project'
 import { createLogger } from '@/lib/logger'
-import { useReminders } from '@/hooks/use-reminders'
+import { ACTIVE_TASK_REMINDERS, useReminders } from '@/hooks/use-reminders'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
-import type { ListRemindersInput } from '@/services/reminder-service'
 
 const log = createLogger('TaskPrefetch')
-
-/**
- * Every task reminder still waiting to fire, in one list call per note instead
- * of one per block. The reminder chip only needs to know whether a task has
- * one; the picker loads the task's own reminders when it opens. The contract
- * caps a page at 200, far past what a person keeps pending on tasks.
- */
-const ACTIVE_TASK_REMINDERS: ListRemindersInput = {
-  targetType: 'task',
-  status: ['pending', 'snoozed'],
-  limit: 200,
-  offset: 0
-}
 
 const EMPTY_REMINDER_TASK_IDS: ReadonlySet<string> = new Set()
 

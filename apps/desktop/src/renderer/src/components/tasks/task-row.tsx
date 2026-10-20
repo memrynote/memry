@@ -9,6 +9,7 @@ import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
 import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
@@ -252,6 +253,12 @@ export const TaskRow = ({
           </div>
         </div>
       ) : null}
+
+      {!meta && <TaskRowReminder taskId={task.id} />}
+
+      {!meta && !isCompleted && (
+        <TaskRowStartDate startDate={task.startDate} hasDueDisplay={!!dueDateDisplay} />
+      )}
 
       {!meta && dueDateDisplay && (
         <div

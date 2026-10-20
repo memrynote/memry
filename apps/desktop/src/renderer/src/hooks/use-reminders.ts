@@ -126,6 +126,49 @@ export function useReminders(options?: ListRemindersInput): {
 }
 
 /**
+ * Every task reminder still waiting to fire, in one list call instead of one
+ * per task. The contract caps a page at 200, far past what a person keeps
+ * pending on tasks.
+ */
+export const ACTIVE_TASK_REMINDERS: ListRemindersInput = {
+  targetType: 'task',
+  status: ['pending', 'snoozed'],
+  limit: 200,
+  offset: 0
+}
+
+const EMPTY_NEXT_REMINDERS: ReadonlyMap<string, string> = new Map()
+
+const selectNextReminderByTask = (data: {
+  reminders: ReminderWithTarget[]
+}): ReadonlyMap<string, string> => {
+  if (!data.reminders.length) return EMPTY_NEXT_REMINDERS
+  const next = new Map<string, string>()
+  for (const { targetId, remindAt } of data.reminders) {
+    const current = next.get(targetId)
+    if (!current || new Date(remindAt) < new Date(current)) next.set(targetId, remindAt)
+  }
+  return next
+}
+
+/**
+ * Earliest active reminder time (ISO) per task id, for list rows. Rows share
+ * one cached query and do not subscribe to reminder events themselves: the
+ * create, update, delete, dismiss and snooze mutations invalidate it, and a
+ * mounted `useReminders(ACTIVE_TASK_REMINDERS)` keeps it live for main-process
+ * events.
+ */
+export function useNextTaskReminders(): ReadonlyMap<string, string> {
+  const { data } = useQuery({
+    queryKey: reminderKeys.list(ACTIVE_TASK_REMINDERS),
+    queryFn: () => reminderService.list(ACTIVE_TASK_REMINDERS),
+    staleTime: 30 * 1000,
+    select: selectNextReminderByTask
+  })
+  return data ?? EMPTY_NEXT_REMINDERS
+}
+
+/**
  * Hook for getting reminders for a specific target (note, journal, highlight)
  */
 export function useRemindersForTarget(

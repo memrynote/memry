@@ -48,7 +48,7 @@ export const RepeatIndicator = ({
   }
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>{indicator}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">
