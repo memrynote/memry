@@ -21,6 +21,7 @@ use crate::api::errors::StorageError;
 use crate::api::task_records::{RepeatRule, TaskChange, TaskCompletion};
 use crate::api::tasks::Tasks;
 use crate::domain::calendar::LocalDateTime;
+use crate::domain::note_status;
 use crate::domain::note_tasks;
 use crate::domain::task_activity::{self, FieldChange};
 use crate::domain::task_records;
@@ -172,6 +173,7 @@ pub(crate) fn after(
             );
         }
     }
+    note_status::refresh(conn, write, &current, before, device_id, now_ms);
     for id in &write.deleted {
         let known = before.get(id);
         let _ = task_activity::record_deleted(

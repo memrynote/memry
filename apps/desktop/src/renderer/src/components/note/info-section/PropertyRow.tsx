@@ -34,7 +34,7 @@ import {
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import {
-  DEFAULT_STATUS_DEFINITION,
+  parseStatusCategories,
   type SelectOption,
   type StatusCategories,
   type StatusCategoryKey
@@ -181,17 +181,10 @@ function SelectPropertyRenderer({
     }
   }, [definition?.options])
 
-  const categories: StatusCategories | undefined = useMemo(() => {
-    if (property.type !== 'status') return undefined
-    if (!definition?.options) return DEFAULT_STATUS_DEFINITION.categories
-    try {
-      const parsed = JSON.parse(definition.options)
-      if (parsed?.categories) return parsed.categories as StatusCategories
-      return DEFAULT_STATUS_DEFINITION.categories
-    } catch {
-      return DEFAULT_STATUS_DEFINITION.categories
-    }
-  }, [property.type, definition?.options])
+  const categories: StatusCategories | undefined = useMemo(
+    () => (property.type === 'status' ? parseStatusCategories(definition?.options) : undefined),
+    [property.type, definition?.options]
+  )
 
   const handleAddOption = useCallback(
     async (option: SelectOption) => {

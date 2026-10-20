@@ -17,6 +17,7 @@
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",
     "./task-block": "./src/task-block.ts",
+    "./note-status": "./src/note-status.ts",
     "./plain-checkbox": "./src/plain-checkbox.ts",
     "./obsidian-tasks": "./src/obsidian-tasks.ts",
     "./obsidian-task-import": "./src/obsidian-task-import.ts",

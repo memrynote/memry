@@ -18,6 +18,7 @@ import {
   Link,
   Link2,
   List,
+  ListChecks,
   Star,
   Type,
   type AppIcon
@@ -32,7 +33,6 @@ const BUILTIN_ICONS: Record<string, AppIcon> = {
   wordCount: Hash
 }
 
-// Partial: stored types outside this union (e.g. `status`) reach callers at runtime.
 export const PROPERTY_TYPE_ICONS: Partial<Record<PropertyType, AppIcon>> = {
   text: AlignLeft,
   number: Hash,
@@ -40,6 +40,7 @@ export const PROPERTY_TYPE_ICONS: Partial<Record<PropertyType, AppIcon>> = {
   date: Calendar,
   select: List,
   multiselect: Tags,
+  status: ListChecks,
   url: Link,
   rating: Star,
   relation: Link2,

@@ -4,6 +4,7 @@ import { toSafeToken } from '@memry/contracts/telemetry-api'
 
 import { publishTaskChanged, publishTaskRemoved } from './runtime-effects'
 import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
+import { changesTaskStatus, syncHeaderStatusForTask } from '../notes/header-status'
 import { trackMainEvent } from '../telemetry/track'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -41,6 +42,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       if (task.tags && task.tags.length > 0) emitTagsChanged()
       recordTaskCreated(task)
       publishTaskChanged(task.id)
+      syncHeaderStatusForTask(task)
       trackMainEvent('task_created', {
         surface: 'tasks',
         action: 'created',
@@ -53,6 +55,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       if (changedFields.includes('tags')) emitTagsChanged()
       recordTaskUpdated({ id, task, changes, changedFields, previous })
       publishTaskChanged(id)
+      if (changesTaskStatus(changedFields)) syncHeaderStatusForTask(task)
       trackMainEvent('task_updated', {
         surface: 'tasks',
         action: 'updated',
@@ -64,6 +67,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
     taskDeleted: async ({ id, snapshot }) => {
       recordTaskDeleted(id, snapshot)
       publishTaskRemoved(id)
+      if (snapshot) syncHeaderStatusForTask(snapshot)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
       if (snapshot?.tags && snapshot.tags.length > 0) emitTagsChanged()
       trackMainEvent('task_deleted', {
@@ -78,6 +82,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
       recordTaskCompleted({ id, task, previous })
       publishTaskChanged(id)
+      syncHeaderStatusForTask(task)
       trackMainEvent('task_completed', {
         surface: 'tasks',
         action: 'completed',
@@ -89,6 +94,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       emitTaskEvent(TasksChannels.events.MOVED, { id, task })
       recordTaskMoved({ id, task, changedFields, previous })
       publishTaskChanged(id)
+      if (changesTaskStatus(changedFields)) syncHeaderStatusForTask(task)
     },
     // Deliberately no activity row: reorder only ever changes `position`, which
     // the activity writer filters out anyway, and a 200-task drag would call

@@ -48,9 +48,9 @@ describe('FilterRow property icons', () => {
     const { container } = render(
       <FilterRow
         condition={{ id: 'c1', property: 'title', operator: 'contains', value: '' }}
-        // `status` is a stored property type the filter's PropertyType union does not list.
+        // `hologram` is a stored property type the filter's PropertyType union does not list.
         availableProperties={[
-          { id: 'stage', name: 'Stage', type: 'status' as unknown as 'text' },
+          { id: 'stage', name: 'Stage', type: 'hologram' as unknown as 'text' },
           { id: 'unknownType', name: 'Unknown', type: undefined as unknown as 'text' }
         ]}
         onChange={vi.fn()}

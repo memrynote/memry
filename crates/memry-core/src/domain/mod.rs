@@ -23,6 +23,7 @@ pub mod journal;
 pub mod journal_ops;
 pub mod journal_rules;
 pub mod note_meta;
+pub mod note_status;
 pub mod note_tasks;
 pub mod notes;
 pub mod projects;

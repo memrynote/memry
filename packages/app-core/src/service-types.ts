@@ -5,7 +5,6 @@
  * contracts without reaching the node implementations.
  */
 
-
 export interface NoteRecord {
   id: string
   path: string
@@ -89,7 +88,6 @@ export interface NotesService {
   getJournalByDate(date: string): Promise<NoteRecord | null>
   upsertJournal(date: string, content: string, mode: 'write' | 'append'): Promise<NoteRecord>
 }
-
 
 export interface InboxRecord {
   id: string
@@ -216,7 +214,6 @@ export interface InboxService {
   removeTag(id: string, tag: string): Promise<InboxRecord>
   markViewed(id: string): Promise<InboxRecord>
 }
-
 
 export interface TemplateProperty {
   name: string

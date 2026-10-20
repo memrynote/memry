@@ -164,6 +164,24 @@ neither does a synced edit of that note from another device. Creating a definiti
 that already exists keeps the fields the call leaves out, such as a date property's calendar
 setting.
 
+### A note's Status follows its tasks
+
+Keeping a note's Status by hand falls out of date as its checklist moves. When a note has a status property named `Status` (in any case, which is the name the property picker gives a new one) and tasks written in its body, Memry writes the status those tasks imply into the property whenever one of them changes:
+
+| Tasks in the note                                   | Status written         |
+| --------------------------------------------------- | ---------------------- |
+| All to do                                           | The to-do option       |
+| All done                                            | The done option        |
+| Any other mix, such as one in progress or some done | The in-progress option |
+
+For example, a note with three tasks reads "In progress" once the first is checked off, and "Done" when the third is. Each state writes the default option of its group in your status definition, or the first option when none is marked default, so a custom `Queued` / `Doing` / `Shipped` set works too. Adding a Status property to a note that already has tasks fills it in straight away, instead of asking you to pick one.
+
+The value is an ordinary property, so the folder view, filters, sorting, the CLI and agents all read the same value you see in the note. In the folder view, Select, Multi-select and Status values show as the same colored pills as in the note, and clicking one opens the same picker. You can also change it yourself. Your choice stays until a task in that note changes again, and then the tasks write over it. Renaming a task, or reordering it, does not count as a change.
+
+A task counts by the status it is on: a done status is done, a status after the first one, such as In Progress, is in progress, and the first status is to do. A task you completed without moving its status, from the CLI or an agent for example, counts as done. A task moved back to In Progress counts as in progress even if it was done before.
+
+Only tasks created from the note, whose line is in its body, count. A task you only linked to the note from its detail panel does not. Only a property named `Status` follows tasks, and only when its type is Status, so a property such as `Project status` stays yours to set.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.

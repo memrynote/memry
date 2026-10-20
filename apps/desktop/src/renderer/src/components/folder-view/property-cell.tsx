@@ -53,6 +53,7 @@ import { ProjectIcon } from '@/components/tasks/project-icon'
 import type { Project } from '@/data/tasks-data'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, type TagMeta, type TagMetaMap } from './note-card-pieces'
+import { OptionCell, OptionEditorCell } from './option-cells'
 
 const log = createLogger('PropertyCell')
 
@@ -67,6 +68,7 @@ export type PropertyType =
   | 'date'
   | 'select'
   | 'multiselect'
+  | 'status'
   | 'url'
   | 'rating'
   | 'relation'
@@ -77,6 +79,8 @@ interface PropertyCellProps {
   value: unknown
   /** Property type */
   type: PropertyType
+  /** The property's name, to find the colours of its options */
+  propertyName?: string
   /** Query to highlight in text values */
   highlightQuery?: string
   /** Additional CSS classes */
@@ -229,6 +233,7 @@ function valuesAreEqual(a: unknown, b: unknown): boolean {
 interface PropertyValueDisplayProps {
   value: unknown
   type: PropertyType
+  propertyName?: string
   highlightQuery?: string
   className?: string
   urlAsLink?: boolean
@@ -237,6 +242,7 @@ interface PropertyValueDisplayProps {
 function PropertyValueDisplay({
   value,
   type,
+  propertyName,
   highlightQuery,
   className,
   urlAsLink = true
@@ -256,12 +262,11 @@ function PropertyValueDisplay({
       return <DateCell value={stringifyUnknown(value)} className={className} />
 
     case 'select':
-      return <SelectCell value={stringifyUnknown(value)} className={className} />
-
-    case 'multiselect': {
-      const items = Array.isArray(value) ? value : stringifyUnknown(value).split(',')
-      return <MultiSelectCell values={items.map(stringifyUnknown)} className={className} />
-    }
+    case 'multiselect':
+    case 'status':
+      return (
+        <OptionCell type={type} value={value} propertyName={propertyName} className={className} />
+      )
 
     case 'project':
       return <ProjectCell value={value} className={className} />
@@ -305,6 +310,7 @@ function PropertyValueDisplay({
 export const PropertyCell = memo(function PropertyCell({
   value,
   type,
+  propertyName,
   highlightQuery,
   className
 }: PropertyCellProps): React.JSX.Element {
@@ -312,6 +318,7 @@ export const PropertyCell = memo(function PropertyCell({
     <PropertyValueDisplay
       value={value}
       type={type}
+      propertyName={propertyName}
       highlightQuery={highlightQuery}
       className={className}
     />
@@ -321,6 +328,7 @@ export const PropertyCell = memo(function PropertyCell({
 export const EditablePropertyCell = memo(function EditablePropertyCell({
   value,
   type,
+  propertyName,
   highlightQuery,
   className,
   onSave
@@ -372,6 +380,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       <PropertyValueDisplay
         value={value}
         type={type}
+        propertyName={propertyName}
         highlightQuery={highlightQuery}
         className={className}
       />
@@ -383,9 +392,30 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       <PropertyValueDisplay
         value={value}
         type={type}
+        propertyName={propertyName}
         highlightQuery={highlightQuery}
         className={className}
       />
+    )
+  }
+
+  // The pill opens the note panel's picker, so no click-to-edit step.
+  if (type === 'select' || type === 'multiselect' || type === 'status') {
+    return (
+      <div
+        role="presentation"
+        className={cn('w-full', className)}
+        onClick={stopPropagation}
+        onDoubleClick={stopPropagation}
+        onKeyDown={stopPropagation}
+      >
+        <OptionEditorCell
+          type={type}
+          value={value}
+          propertyName={propertyName}
+          onChange={handleCommit}
+        />
+      </div>
     )
   }
 
@@ -456,22 +486,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
               return (
                 <UrlEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
               )
-            case 'multiselect':
-              return (
-                <TextEditor
-                  value={textValue}
-                  onChange={(nextValue) => {
-                    const items = nextValue
-                      .split(',')
-                      .map((item) => item.trim())
-                      .filter(Boolean)
-                    handleCommit(items)
-                  }}
-                  onBlur={handleStopEditing}
-                />
-              )
             case 'text':
-            case 'select':
             default:
               return (
                 <TextEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
@@ -493,6 +508,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       <PropertyValueDisplay
         value={value}
         type={type}
+        propertyName={propertyName}
         highlightQuery={highlightQuery}
         className={className}
         urlAsLink={false}
@@ -573,62 +589,6 @@ export const DateCell = memo(function DateCell({
     <span className={cn('text-muted-foreground whitespace-nowrap', className)} title={value}>
       {formatDateValue(value, dateFormat)}
     </span>
-  )
-})
-
-/**
- * T045: Select cell - colored badge
- */
-export const SelectCell = memo(function SelectCell({
-  value,
-  className
-}: {
-  value: string
-  className?: string
-}): React.JSX.Element {
-  return (
-    <span
-      className={cn(
-        'inline-flex px-2 py-0.5 rounded-full text-xs font-medium',
-        'bg-primary/10 text-primary',
-        className
-      )}
-    >
-      {value}
-    </span>
-  )
-})
-
-/**
- * T046: MultiSelect cell - multiple badges
- */
-export const MultiSelectCell = memo(function MultiSelectCell({
-  values,
-  className
-}: {
-  values: string[]
-  className?: string
-}): React.JSX.Element {
-  if (values.length === 0) {
-    return <span className="text-muted-foreground/50">—</span>
-  }
-
-  return (
-    <div className={cn('flex flex-wrap gap-1', className)}>
-      {values.slice(0, 3).map((item) => (
-        <span
-          key={item}
-          className="inline-flex px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground"
-        >
-          {item.trim()}
-        </span>
-      ))}
-      {values.length > 3 && (
-        <span className="inline-flex px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
-          +{values.length - 3}
-        </span>
-      )}
-    </div>
   )
 })
 

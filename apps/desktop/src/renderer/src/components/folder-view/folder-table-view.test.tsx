@@ -5,6 +5,10 @@ import { GroupedTable } from './grouped-table'
 
 // Renders `<key leaf> <param values…>` so assertions can still verify
 // interpolated values (counts, names) that ICU messages would render.
+vi.mock('@/hooks/use-property-options', () => ({
+  usePropertyOptions: () => ({ options: [], categories: {}, statusOptions: [] })
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, params?: Record<string, unknown>) =>
