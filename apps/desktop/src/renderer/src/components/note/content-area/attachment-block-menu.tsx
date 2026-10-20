@@ -13,7 +13,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
-import { Copy, Crop, ExternalLink, FolderOpen, MoreHorizontal, Pencil } from '@/lib/icons'
+import {
+  Copy,
+  Crop,
+  ExternalLink,
+  FolderOpen,
+  Maximize2,
+  MoreHorizontal,
+  Pencil
+} from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -51,6 +59,8 @@ interface AttachmentMenuState {
   startRename?: () => void
   /** Image blocks only: the host opens its crop dialog (#3170). */
   startCrop?: () => void
+  /** Image blocks only: the host opens its lightbox. */
+  startView?: () => void
   renameOpen: boolean
 }
 
@@ -69,6 +79,8 @@ interface RenameWiring {
   onRequestRename?: () => void
   /** Host-owned crop, for the same reason as `onRequestRename`. */
   onRequestCrop?: () => void
+  /** Host-owned lightbox, for the same reason as `onRequestRename`. */
+  onRequestView?: () => void
 }
 
 function useAttachmentMenu(
@@ -76,7 +88,7 @@ function useAttachmentMenu(
   name: string,
   rename: RenameWiring = {}
 ): AttachmentMenuState & { renameDialog: React.ReactNode } {
-  const { onRenamed, onRequestRename, onRequestCrop } = rename
+  const { onRenamed, onRequestRename, onRequestCrop, onRequestView } = rename
   const noteId = useAttachmentNoteId()
   const { t } = useT('notes')
   const [info, setInfo] = useState<AttachmentResolveResult | null>(null)
@@ -145,6 +157,7 @@ function useAttachmentMenu(
     copyPath,
     startRename: onRequestRename ?? (onRenamed ? () => setRenameOpen(true) : undefined),
     startCrop: onRequestCrop,
+    startView: onRequestView,
     renameOpen,
     renameDialog
   }
@@ -176,7 +189,16 @@ function AttachmentMenuBody({
   const { t } = useT('notes')
   const { Item, Label, Separator } = components
   const fileActions = useFileActionLabels()
-  const { info, actionsDisabled, reveal, openExternal, copyPath, startRename, startCrop } = state
+  const {
+    info,
+    actionsDisabled,
+    reveal,
+    openExternal,
+    copyPath,
+    startRename,
+    startCrop,
+    startView
+  } = state
 
   return (
     <>
@@ -209,6 +231,12 @@ function AttachmentMenuBody({
         <Copy className="h-4 w-4" />
         {t('editor.toolbar.copyPath')}
       </Item>
+      {startView && (
+        <Item onClick={startView}>
+          <Maximize2 className="h-4 w-4" />
+          {t('editor.imageLightbox.menuItem')}
+        </Item>
+      )}
       {startRename && (
         <Item disabled={actionsDisabled} onClick={startRename}>
           <Pencil className="h-4 w-4" />
@@ -345,6 +373,8 @@ export interface ImageMenuTarget {
   y: number
   url: string
   name: string
+  /** The rendered `<img>` URL, for the lightbox. */
+  src: string
   /** The image block this menu acts on, so a rename can write back to it. */
   blockId: string
 }
@@ -357,7 +387,8 @@ export function ImageAttachmentMenu({
   target,
   onClose,
   onRequestRename,
-  onRequestCrop
+  onRequestCrop,
+  onRequestView
 }: {
   target: ImageMenuTarget
   onClose: () => void
@@ -367,8 +398,13 @@ export function ImageAttachmentMenu({
    */
   onRequestRename?: () => void
   onRequestCrop?: () => void
+  onRequestView?: () => void
 }) {
-  const state = useAttachmentMenu(target.url, target.name, { onRequestRename, onRequestCrop })
+  const state = useAttachmentMenu(target.url, target.name, {
+    onRequestRename,
+    onRequestCrop,
+    onRequestView
+  })
   const { handleOpenChange } = state
 
   // Controlled-open: resolve immediately, since there is no opening gesture

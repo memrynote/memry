@@ -260,6 +260,13 @@
       "renamed": "Renamed to {name}",
       "failed": "Failed to rename attachment"
     },
+    "imageLightbox": {
+      "menuItem": "View larger",
+      "title": "Image viewer",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "reset": "Reset zoom"
+    },
     "imageCrop": {
       "menuItem": "Crop…",
       "title": "Crop image",
