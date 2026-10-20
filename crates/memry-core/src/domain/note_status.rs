@@ -20,19 +20,28 @@ use crate::api::errors::StorageError;
 use crate::domain::projects::StatusType;
 use crate::domain::{note_tasks, task_records};
 
-/// The property that holds a note's header status.
-pub const HEADER_STATUS_PROPERTY: &str = "status";
+/// Whether a property is the one that holds a note's header status. Case does
+/// not matter: the property picker names a new one after its type, `Status`,
+/// while the stock definition is `status`.
+pub fn is_header_status_property(name: &str) -> bool {
+    name.eq_ignore_ascii_case("status")
+}
 
 /// The type a status property must declare for the rule to apply.
 const STATUS_TYPE_NAME: &str = "status";
 
-/// Where one task sits. A completed task is done whatever its status says; an
-/// open one is to-do without a status row and otherwise as its status resolves.
+/// Where one task sits. A done status is done. A status past the first default
+/// one is in progress, whatever `completed_at` says: the status pickers change
+/// the status alone and leave `completed_at` behind, so a done task moved back
+/// to In Progress must read as in progress. On the first default status, or with
+/// none, the task is done once it is completed (the CLI, agents, importers and
+/// checkbox edits complete a task without moving its status), else to-do.
 pub fn task_category(completed: bool, status_type: Option<StatusType>) -> StatusType {
-    if completed || status_type == Some(StatusType::Done) {
-        StatusType::Done
-    } else {
-        status_type.unwrap_or(StatusType::Todo)
+    match status_type {
+        Some(StatusType::Done) => StatusType::Done,
+        Some(StatusType::InProgress) => StatusType::InProgress,
+        Some(StatusType::Todo) | None if completed => StatusType::Done,
+        Some(StatusType::Todo) | None => StatusType::Todo,
     }
 }
 
@@ -127,15 +136,29 @@ mod tests {
         "done":{"label":"Complete","options":[{"value":"Shipped","color":"emerald"}]}}}"#;
 
     #[test]
-    fn a_completed_task_is_done_whatever_its_status() {
-        assert_eq!(task_category(true, Some(Todo)), Done);
+    fn a_task_reads_as_the_status_it_is_on() {
+        assert_eq!(task_category(false, Some(Todo)), Todo);
         assert_eq!(task_category(false, Some(Done)), Done);
+        assert_eq!(task_category(false, Some(InProgress)), InProgress);
     }
 
     #[test]
-    fn an_open_task_without_a_status_is_todo() {
+    fn a_done_task_moved_back_to_in_progress_reads_as_in_progress() {
+        assert_eq!(task_category(true, Some(InProgress)), InProgress);
+    }
+
+    #[test]
+    fn a_task_completed_without_moving_its_status_reads_as_done() {
+        assert_eq!(task_category(true, Some(Todo)), Done);
+        assert_eq!(task_category(true, None), Done);
         assert_eq!(task_category(false, None), Todo);
-        assert_eq!(task_category(false, Some(InProgress)), InProgress);
+    }
+
+    #[test]
+    fn the_status_property_matches_in_any_case_and_only_by_whole_name() {
+        assert!(is_header_status_property("status"));
+        assert!(is_header_status_property("Status"));
+        assert!(!is_header_status_property("Project status"));
     }
 
     #[test]

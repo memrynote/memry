@@ -166,7 +166,7 @@ setting.
 
 ### A note's Status follows its tasks
 
-Keeping a note's Status by hand falls out of date as its checklist moves. When a note has a status property named `status` and tasks written in its body, Memry sets the value from those tasks instead:
+Keeping a note's Status by hand falls out of date as its checklist moves. When a note has a status property named `Status` (in any case, which is the name the property picker gives a new one) and tasks written in its body, Memry sets the value from those tasks instead:
 
 | Tasks in the note                                   | Status shown           |
 | --------------------------------------------------- | ---------------------- |
@@ -176,7 +176,9 @@ Keeping a note's Status by hand falls out of date as its checklist moves. When a
 
 For example, a note with three tasks reads "In progress" once the first is checked off, and "Done" when the third is. Each state shows the default option of its group in your status definition, or the first option when none is marked default, so a custom `Queued` / `Doing` / `Shipped` set works too.
 
-While the note has tasks, the value is read-only and its tooltip says the tasks set it. A note without tasks keeps the value you set. Only the property named `status` follows tasks, and only when its type is Status, so other status properties stay yours to set.
+While the note has tasks, the value is read-only and its tooltip says the tasks set it. A note without tasks keeps the value you set. Only a property named `Status` follows tasks, and only when its type is Status, so a property such as `Project status` stays yours to set.
+
+A task counts by the status it is on: a done status is done, a status after the first one, such as In Progress, is in progress, and the first status is to do. A task you completed without moving its status, from the CLI or an agent for example, counts as done. A task moved back to In Progress counts as in progress even if it was done before.
 
 A task counts when its line is in the note body. A task you only linked to the note from its detail panel does not. A task still arriving from another device is left out until it lands.
 

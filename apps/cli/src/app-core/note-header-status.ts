@@ -4,8 +4,8 @@ import { parseStatusCategories } from '@memry/contracts/property-types'
 import { statuses, tasks } from '@memry/db-schema/data-schema'
 import { getPropertyDefinition } from '@memry/storage-data'
 import {
-  HEADER_STATUS_PROPERTY,
   deriveHeaderStatus,
+  findHeaderStatusProperty,
   taskStatusCategory,
   type TaskStatusCategory
 } from '@memry/shared/note-status'
@@ -20,9 +20,10 @@ import type { DataDb } from './database.ts'
  */
 export function withDerivedHeaderStatus(dataDb: DataDb, note: NoteRecord): NoteRecord {
   const taskIds = [...scanTaskCheckboxStates(note.content).keys()]
-  if (taskIds.length === 0 || !(HEADER_STATUS_PROPERTY in note.properties)) return note
+  const name = findHeaderStatusProperty(note.properties)
+  if (taskIds.length === 0 || name === undefined) return note
 
-  const definition = getPropertyDefinition(dataDb, HEADER_STATUS_PROPERTY)
+  const definition = getPropertyDefinition(dataDb, name)
   if (definition?.type !== 'status') return note
 
   const categories: TaskStatusCategory[] = []
@@ -37,5 +38,5 @@ export function withDerivedHeaderStatus(dataDb: DataDb, note: NoteRecord): NoteR
 
   const derived = deriveHeaderStatus(categories, parseStatusCategories(definition.options))
   if (derived === null) return note
-  return { ...note, properties: { ...note.properties, [HEADER_STATUS_PROPERTY]: derived } }
+  return { ...note, properties: { ...note.properties, [name]: derived } }
 }

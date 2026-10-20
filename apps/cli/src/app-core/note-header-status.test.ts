@@ -82,3 +82,21 @@ test('a note without tasks keeps its stored status', async () => {
     app.close()
   }
 })
+
+test('a status property the picker named Status follows the tasks too', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    await app.properties.createDefinition({ name: 'Status', type: 'status' })
+    const task = await app.tasks.create({ title: 'Open' })
+    await app.tasks.complete(task.id)
+    const note = await app.notes.create({
+      title: 'Plan',
+      content: `- [x] Open {task:${task.id}}`,
+      properties: { Status: 'Not started' }
+    })
+    assert.equal((await app.notes.get(note.id))?.properties.Status, 'Done')
+  } finally {
+    app.close()
+  }
+})

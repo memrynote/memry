@@ -9,8 +9,8 @@
  */
 import { parseStatusCategories } from '@memry/contracts/property-types'
 import {
-  HEADER_STATUS_PROPERTY,
   deriveHeaderStatus,
+  isHeaderStatusProperty,
   taskStatusCategory,
   type TaskStatusCategory
 } from '@memry/shared/note-status'
@@ -23,13 +23,16 @@ import {
 } from '../database/queries/notes/property-queries'
 import { getTaskById } from '../database/queries/tasks'
 
-export function deriveNoteHeaderStatus(noteId: string, content: string): string | null {
+export function deriveNoteHeaderStatus(
+  noteId: string,
+  content: string
+): { name: string; value: string } | null {
   const taskIds = [...scanTaskCheckboxStates(content).keys()]
   if (taskIds.length === 0) return null
 
   const indexDb = getIndexDatabase()
-  const stored = getNoteProperties(indexDb, noteId).find(
-    (property) => property.name === HEADER_STATUS_PROPERTY
+  const stored = getNoteProperties(indexDb, noteId).find((property) =>
+    isHeaderStatusProperty(property.name)
   )
   if (stored?.type !== 'status') return null
 
@@ -42,8 +45,9 @@ export function deriveNoteHeaderStatus(noteId: string, content: string): string 
     categories.push(taskStatusCategory({ completed: task.completedAt != null }, status ?? null))
   }
 
-  const definition = getPropertyDefinition(indexDb, HEADER_STATUS_PROPERTY)
-  return deriveHeaderStatus(categories, parseStatusCategories(definition?.options))
+  const definition = getPropertyDefinition(indexDb, stored.name)
+  const value = deriveHeaderStatus(categories, parseStatusCategories(definition?.options))
+  return value === null ? null : { name: stored.name, value }
 }
 
 /** `properties` with the header status replaced by the derived one, when the note has tasks. */
@@ -53,5 +57,5 @@ export function withDerivedHeaderStatus(
   properties: Record<string, unknown>
 ): Record<string, unknown> {
   const derived = deriveNoteHeaderStatus(noteId, content)
-  return derived === null ? properties : { ...properties, [HEADER_STATUS_PROPERTY]: derived }
+  return derived === null ? properties : { ...properties, [derived.name]: derived.value }
 }

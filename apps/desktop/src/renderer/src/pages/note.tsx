@@ -84,7 +84,7 @@ import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { useNoteTaskCategories } from '@/hooks/use-derived-header-status'
-import { HEADER_STATUS_PROPERTY } from '@memry/shared/note-status'
+import { isHeaderStatusProperty } from '@memry/shared/note-status'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
@@ -1105,7 +1105,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return properties
       .filter((property) => own.has(property.name))
       .map((property) =>
-        property.name === HEADER_STATUS_PROPERTY &&
+        isHeaderStatusProperty(property.name) &&
         property.type === 'status' &&
         noteTaskCategories?.length
           ? { ...property, derivedFrom: noteTaskCategories }

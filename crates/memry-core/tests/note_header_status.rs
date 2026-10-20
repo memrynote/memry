@@ -58,17 +58,24 @@ fn apply_remote(conn: &Connection, item_type: &str, item_id: &str, payload: Valu
 }
 
 /// `(task id, state)` -> a task row in project `p1`: `todo`, `doing`, `done`
-/// (a done status), or `completed` (completed on a to-do status).
+/// (a done status, completed), `reopened` (a done task the inline status picker
+/// moved to In Progress, which leaves `completedAt` behind) or `unfiled`
+/// (no status; `unfiled-done` is completed).
 fn add_task(conn: &Connection, id: &str, state: &str) {
     let status = match state {
-        "todo" | "completed" => "s-todo",
-        "doing" => "s-doing",
-        _ => "s-done",
+        "todo" | "completed-on-todo" => Some("s-todo"),
+        "doing" | "reopened" => Some("s-doing"),
+        "done" => Some("s-done"),
+        _ => None,
     };
-    let mut payload = json!({
-        "title": id, "projectId": "p1", "statusId": status, "clock": {"device-b": 1}
-    });
-    if state == "completed" {
+    let mut payload = json!({"title": id, "projectId": "p1", "clock": {"device-b": 1}});
+    if let Some(status) = status {
+        payload["statusId"] = json!(status);
+    }
+    if matches!(
+        state,
+        "done" | "reopened" | "completed-on-todo" | "unfiled-done"
+    ) {
         payload["completedAt"] = json!("2026-01-02T00:00:00.000Z");
     }
     apply_remote(conn, "task", id, payload);
@@ -77,6 +84,10 @@ fn add_task(conn: &Connection, id: &str, state: &str) {
 /// A note with `stored` as its status, a body of one `taskBlock` per id, and
 /// the property declared as `type_name`.
 fn seed(db: &Db, stored: Option<&str>, type_name: &str, task_ids: &[&str]) {
+    seed_named(db, "status", stored, type_name, task_ids);
+}
+
+fn seed_named(db: &Db, name: &str, stored: Option<&str>, type_name: &str, task_ids: &[&str]) {
     db.call_blocking(|conn: &mut Connection| {
         apply_remote(
             conn,
@@ -90,7 +101,7 @@ fn seed(db: &Db, stored: Option<&str>, type_name: &str, task_ids: &[&str]) {
         );
         let mut properties = Map::new();
         if let Some(stored) = stored {
-            properties.insert("status".to_owned(), json!(stored));
+            properties.insert(name.to_owned(), json!(stored));
         }
         notes::create(
             conn,
@@ -108,8 +119,8 @@ fn seed(db: &Db, stored: Option<&str>, type_name: &str, task_ids: &[&str]) {
         )?;
         conn.execute(
             "INSERT INTO property_definitions (name, type, options, default_value, color) \
-             VALUES ('status', ?1, NULL, NULL, NULL)",
-            [type_name],
+             VALUES (?1, ?2, NULL, NULL, NULL)",
+            [name, type_name],
         )
         .expect("the definition");
 
@@ -146,6 +157,10 @@ fn tasks(db: &Db, rows: &[(&str, &str)]) {
 }
 
 fn status_shown(db: &Db) -> Option<String> {
+    shown(db, "status")
+}
+
+fn shown(db: &Db, name: &str) -> Option<String> {
     let metadata = db
         .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, NOTE))
         .expect("the read")
@@ -153,7 +168,7 @@ fn status_shown(db: &Db) -> Option<String> {
     metadata
         .properties
         .into_iter()
-        .find(|property| property.name == "status")
+        .find(|property| property.name == name)
         .map(|property| serde_json::from_str::<String>(&property.value_json).expect("a string"))
 }
 
@@ -164,7 +179,7 @@ fn all_todo_reads_not_started_and_all_done_reads_done() {
     tasks(&db, &[("a", "todo"), ("b", "todo")]);
     assert_eq!(status_shown(&db).as_deref(), Some("Not started"));
 
-    tasks(&db, &[("a", "done"), ("b", "completed")]);
+    tasks(&db, &[("a", "done"), ("b", "done")]);
     assert_eq!(status_shown(&db).as_deref(), Some("Done"));
 }
 
@@ -175,8 +190,45 @@ fn a_task_in_progress_or_done_beside_open_is_in_progress() {
     tasks(&db, &[("a", "todo"), ("b", "doing")]);
     assert_eq!(status_shown(&db).as_deref(), Some("In Progress"));
 
-    tasks(&db, &[("b", "completed")]);
+    tasks(&db, &[("b", "done")]);
     assert_eq!(status_shown(&db).as_deref(), Some("In Progress"));
+}
+
+#[test]
+fn a_done_task_moved_back_to_in_progress_reads_as_in_progress() {
+    let db = open("reopened");
+    seed(&db, Some("Done"), "status", &["a", "b"]);
+    tasks(&db, &[("a", "done"), ("b", "reopened")]);
+    assert_eq!(status_shown(&db).as_deref(), Some("In Progress"));
+}
+
+#[test]
+fn a_task_completed_without_moving_its_status_reads_as_done() {
+    let db = open("completed-on-todo");
+    seed(&db, Some("Not started"), "status", &["a", "b"]);
+    tasks(
+        &db,
+        &[("a", "completed-on-todo"), ("b", "completed-on-todo")],
+    );
+    assert_eq!(status_shown(&db).as_deref(), Some("Done"));
+}
+
+#[test]
+fn a_task_with_no_status_reads_by_whether_it_is_completed() {
+    let db = open("unfiled");
+    seed(&db, Some("Done"), "status", &["a"]);
+    tasks(&db, &[("a", "unfiled")]);
+    assert_eq!(status_shown(&db).as_deref(), Some("Not started"));
+    tasks(&db, &[("a", "unfiled-done")]);
+    assert_eq!(status_shown(&db).as_deref(), Some("Done"));
+}
+
+#[test]
+fn a_status_property_the_picker_named_status_follows_the_tasks_too() {
+    let db = open("capital");
+    seed_named(&db, "Status", Some("Not started"), "status", &["a"]);
+    tasks(&db, &[("a", "done")]);
+    assert_eq!(shown(&db, "Status").as_deref(), Some("Done"));
 }
 
 #[test]

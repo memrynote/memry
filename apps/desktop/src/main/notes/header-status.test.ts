@@ -9,7 +9,7 @@ import { insertProject, insertStatus } from '../database/queries/projects'
 import { insertTask } from '../database/queries/tasks'
 import { insertNoteCache } from '../database/queries/notes'
 import { setNoteProperties } from '../database/queries/notes/property-queries'
-import { deriveNoteHeaderStatus, withDerivedHeaderStatus } from './header-status'
+import { withDerivedHeaderStatus } from './header-status'
 
 const mocks = vi.hoisted(() => ({ dataDb: {} as unknown, indexDb: {} as unknown }))
 vi.mock('../database', () => ({
@@ -17,22 +17,38 @@ vi.mock('../database', () => ({
   getIndexDatabase: () => mocks.indexDb
 }))
 
+type TaskState =
+  'todo' | 'doing' | 'done' | 'reopened' | 'completed-on-todo' | 'unfiled' | 'unfiled-done'
+
 describe('header status derived from the tasks in a note body', () => {
   let data: TestDatabaseResult
   let index: TestDatabaseResult
 
-  const addTask = (id: string, state: 'todo' | 'doing' | 'done' | 'completed'): void => {
+  const addTask = (id: string, state: TaskState): void => {
+    const statusId = {
+      todo: 's-todo',
+      'completed-on-todo': 's-todo',
+      doing: 's-doing',
+      done: 's-done',
+      reopened: 's-doing'
+    }[state as 'todo' | 'completed-on-todo' | 'doing' | 'done' | 'reopened']
     insertTask(asClientDb(data.db), {
       id,
       projectId: 'p1',
       title: id,
-      statusId: { todo: 's-todo', doing: 's-doing', done: 's-done', completed: 's-todo' }[state],
-      completedAt: state === 'completed' ? new Date().toISOString() : null
+      statusId: statusId ?? null,
+      // `reopened` is a done task whose status the inline picker moved to In
+      // Progress: the picker leaves completedAt behind.
+      completedAt: ['done', 'reopened', 'completed-on-todo', 'unfiled-done'].includes(state)
+        ? new Date().toISOString()
+        : null
     })
   }
   const body = (...ids: string[]): string => ids.map((id) => `- [ ] ${id} {task:${id}}`).join('\n')
-  const storeStatus = (value: unknown = 'Not started', type = 'status' as const): void =>
-    setNoteProperties(index.db as never, 'n1', { status: value }, () => type)
+  const storeStatus = (value: unknown = 'Not started', name = 'status', type = 'status'): void =>
+    setNoteProperties(index.db as never, 'n1', { [name]: value }, () => type as never)
+  const shown = (content: string, name = 'status'): unknown =>
+    withDerivedHeaderStatus('n1', content, { [name]: 'stored' })[name]
 
   beforeEach(() => {
     data = createTestDataDb()
@@ -63,43 +79,70 @@ describe('header status derived from the tasks in a note body', () => {
     storeStatus('Done')
     addTask('a', 'todo')
     addTask('b', 'todo')
-    expect(deriveNoteHeaderStatus('n1', body('a', 'b'))).toBe('Not started')
+    expect(shown(body('a', 'b'))).toBe('Not started')
   })
 
   it('reads a task in progress, or a mix of done and open, as In Progress', () => {
     storeStatus()
     addTask('a', 'todo')
     addTask('b', 'doing')
-    addTask('c', 'completed')
-    expect(deriveNoteHeaderStatus('n1', body('a', 'b'))).toBe('In Progress')
-    expect(deriveNoteHeaderStatus('n1', body('a', 'c'))).toBe('In Progress')
+    addTask('c', 'done')
+    expect(shown(body('a', 'b'))).toBe('In Progress')
+    expect(shown(body('a', 'c'))).toBe('In Progress')
   })
 
   it('reads all done tasks as Done', () => {
     storeStatus()
     addTask('a', 'done')
-    addTask('b', 'completed')
-    expect(deriveNoteHeaderStatus('n1', body('a', 'b'))).toBe('Done')
+    addTask('b', 'done')
+    expect(shown(body('a', 'b'))).toBe('Done')
+  })
+
+  it('reads a done task moved back to In Progress as in progress, though completedAt is left', () => {
+    storeStatus()
+    addTask('a', 'done')
+    addTask('b', 'reopened')
+    expect(shown(body('a', 'b'))).toBe('In Progress')
+    expect(shown(body('b'))).toBe('In Progress')
+  })
+
+  it('reads a task completed without moving its status (CLI, agents) as done', () => {
+    storeStatus()
+    addTask('a', 'completed-on-todo')
+    addTask('b', 'completed-on-todo')
+    expect(shown(body('a', 'b'))).toBe('Done')
+  })
+
+  it('reads a task with no status by whether it is completed', () => {
+    storeStatus()
+    addTask('a', 'unfiled')
+    addTask('b', 'unfiled-done')
+    expect(shown(body('a'))).toBe('Not started')
+    expect(shown(body('b'))).toBe('Done')
+  })
+
+  it('follows a status property the picker named Status', () => {
+    storeStatus('Not started', 'Status')
+    addTask('a', 'done')
+    expect(shown(body('a'), 'Status')).toBe('Done')
   })
 
   it('leaves a note without tasks to its stored status', () => {
     storeStatus('Abandoned')
-    expect(withDerivedHeaderStatus('n1', '# Plan', { status: 'Abandoned' })).toEqual({
-      status: 'Abandoned'
-    })
+    expect(shown('# Plan')).toBe('stored')
   })
 
   it('skips a task whose row has not arrived and leaves a note of only those alone', () => {
     storeStatus()
     addTask('a', 'done')
-    expect(deriveNoteHeaderStatus('n1', body('a', 'missing'))).toBe('Done')
-    expect(deriveNoteHeaderStatus('n1', body('missing'))).toBeNull()
+    expect(shown(body('a', 'missing'))).toBe('Done')
+    expect(shown(body('missing'))).toBe('stored')
   })
 
   it('leaves a status that is not a status property alone', () => {
-    storeStatus('Open', 'select' as never)
+    storeStatus('Open', 'status', 'select')
     addTask('a', 'done')
-    expect(deriveNoteHeaderStatus('n1', body('a'))).toBeNull()
+    expect(shown(body('a'))).toBe('stored')
   })
 
   it('replaces only the status in the properties it returns', () => {
@@ -107,9 +150,6 @@ describe('header status derived from the tasks in a note body', () => {
     addTask('a', 'done')
     expect(
       withDerivedHeaderStatus('n1', body('a'), { status: 'Not started', owner: 'Kaan' })
-    ).toEqual({
-      status: 'Done',
-      owner: 'Kaan'
-    })
+    ).toEqual({ status: 'Done', owner: 'Kaan' })
   })
 })

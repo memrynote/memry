@@ -9,8 +9,19 @@
  * cases, and a change to the rule changes both.
  */
 
-/** The property that holds a note's header status, named as the default definition names it. */
-export const HEADER_STATUS_PROPERTY = 'status'
+/**
+ * Whether a property is the one that holds a note's header status. Case does
+ * not matter: the property picker names a new one after its type, `Status`,
+ * while the stock definition is `status`.
+ */
+export function isHeaderStatusProperty(name: string): boolean {
+  return name.toLowerCase() === 'status'
+}
+
+/** The name of the note's header status property in `properties`, if it has one. */
+export function findHeaderStatusProperty(properties: Record<string, unknown>): string | undefined {
+  return Object.keys(properties).find(isHeaderStatusProperty)
+}
 
 export type TaskStatusCategory = 'todo' | 'in_progress' | 'done'
 
@@ -28,17 +39,20 @@ export type StatusOptionCategories = Record<
 >
 
 /**
- * Where one task sits. A completed task is done whatever its status says. An
- * open task is to-do when it has no status row or sits on its project's first
- * default status, and in progress on any other.
+ * Where one task sits. A done status is done. A status past the first default
+ * one is in progress, whatever `completedAt` says: the status pickers change
+ * the status alone and leave `completedAt` behind, so a done task moved back to
+ * In Progress must read as in progress. On the first default status, or with
+ * none, the task is done once it is completed (the CLI, agents, importers and
+ * checkbox edits complete a task without moving its status), else to-do.
  */
 export function taskStatusCategory(
   task: { completed: boolean },
   status: TaskStatusRow | null
 ): TaskStatusCategory {
-  if (task.completed || status?.isDone) return 'done'
-  if (!status) return 'todo'
-  return status.isDefault && status.position === 0 ? 'todo' : 'in_progress'
+  if (status?.isDone) return 'done'
+  if (status && !(status.isDefault && status.position === 0)) return 'in_progress'
+  return task.completed ? 'done' : 'todo'
 }
 
 /**

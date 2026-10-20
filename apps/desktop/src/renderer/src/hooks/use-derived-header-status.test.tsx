@@ -58,7 +58,14 @@ describe('useNoteTaskCategories', () => {
     await waitFor(() => expect(result.current).toEqual(['todo', 'in_progress']))
   })
 
-  it('reads a completed task as done', async () => {
+  it('reads a done task moved back to In Progress as in progress, though completedAt is left', async () => {
+    serve(task('a', 's-doing', '2026-01-02T00:00:00.000Z'))
+    const { result } = renderHook(() => useNoteTaskCategories('- [x] A {task:a}'), { wrapper })
+
+    await waitFor(() => expect(result.current).toEqual(['in_progress']))
+  })
+
+  it('reads a task completed without moving its status as done', async () => {
     serve(task('a', 's-todo', '2026-01-02T00:00:00.000Z'))
     const { result } = renderHook(() => useNoteTaskCategories('- [x] A {task:a}'), { wrapper })
 

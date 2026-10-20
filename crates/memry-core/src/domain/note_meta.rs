@@ -104,18 +104,19 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
 
     let tag_fields = tag_fields::groups(conn, &tags, &values, &definitions)?;
     let mut values = values;
-    if values.contains_key(note_status::HEADER_STATUS_PROPERTY) {
+    let status_name = values
+        .keys()
+        .find(|name| note_status::is_header_status_property(name))
+        .cloned();
+    if let Some(name) = status_name {
         let declared = definitions
             .iter()
-            .find(|it| it.name == note_status::HEADER_STATUS_PROPERTY)
+            .find(|it| it.name == name)
             .map(|it| (it.type_name.as_str(), it.options.as_deref()));
         // The stored value stays in the payload; only what the shell is handed
         // changes, and only while the note has tasks.
         if let Some(derived) = note_status::derive(conn, id, declared)? {
-            values.insert(
-                note_status::HEADER_STATUS_PROPERTY.to_owned(),
-                Value::String(derived),
-            );
+            values.insert(name, Value::String(derived));
         }
     }
     let properties: Vec<NoteProperty> = values

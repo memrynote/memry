@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   deriveHeaderStatus,
+  findHeaderStatusProperty,
+  isHeaderStatusProperty,
   deriveStatusCategory,
   taskStatusCategory,
   type StatusOptionCategories
@@ -13,32 +15,37 @@ const categories: StatusOptionCategories = {
 }
 
 describe('taskStatusCategory', () => {
-  it('reads a completed task as done whatever its status', () => {
-    expect(
-      taskStatusCategory({ completed: true }, { isDone: false, isDefault: true, position: 0 })
-    ).toBe('done')
+  const todo = { isDone: false, isDefault: true, position: 0 }
+  const doing = { isDone: false, isDefault: false, position: 1 }
+  const done = { isDone: true, isDefault: false, position: 2 }
+
+  it('reads the status a task is on', () => {
+    expect(taskStatusCategory({ completed: false }, todo)).toBe('todo')
+    expect(taskStatusCategory({ completed: false }, doing)).toBe('in_progress')
+    expect(taskStatusCategory({ completed: false }, done)).toBe('done')
+    expect(taskStatusCategory({ completed: false }, { ...doing, isDefault: true })).toBe(
+      'in_progress'
+    )
   })
 
-  it('reads an open task on a done status as done', () => {
-    expect(
-      taskStatusCategory({ completed: false }, { isDone: true, isDefault: false, position: 2 })
-    ).toBe('done')
+  it('reads a done task moved back to In Progress as in progress, though completedAt is left', () => {
+    expect(taskStatusCategory({ completed: true }, doing)).toBe('in_progress')
   })
 
-  it('reads an open task with no status, or the first default status, as to-do', () => {
+  it('reads a task completed without moving its status as done', () => {
+    expect(taskStatusCategory({ completed: true }, todo)).toBe('done')
+    expect(taskStatusCategory({ completed: true }, null)).toBe('done')
     expect(taskStatusCategory({ completed: false }, null)).toBe('todo')
-    expect(
-      taskStatusCategory({ completed: false }, { isDone: false, isDefault: true, position: 0 })
-    ).toBe('todo')
   })
+})
 
-  it('reads any other open status as in progress', () => {
-    expect(
-      taskStatusCategory({ completed: false }, { isDone: false, isDefault: false, position: 1 })
-    ).toBe('in_progress')
-    expect(
-      taskStatusCategory({ completed: false }, { isDone: false, isDefault: true, position: 1 })
-    ).toBe('in_progress')
+describe('header status property', () => {
+  it('matches the stock name and the name the picker gives a new one', () => {
+    expect(isHeaderStatusProperty('status')).toBe(true)
+    expect(isHeaderStatusProperty('Status')).toBe(true)
+    expect(isHeaderStatusProperty('Project status')).toBe(false)
+    expect(findHeaderStatusProperty({ owner: 'K', Status: null })).toBe('Status')
+    expect(findHeaderStatusProperty({ owner: 'K' })).toBeUndefined()
   })
 })
 
