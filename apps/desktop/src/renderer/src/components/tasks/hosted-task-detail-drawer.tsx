@@ -95,8 +95,9 @@ export const HostedTaskDetailDrawer = ({
       onDeleteTask={handleDeleteTask}
       onOpenInTasks={handleOpenInTasks}
       allowNestedSubtasks={nestedSubtasks}
-      // Above the note's outline rail (z-40), which sits at the same edge.
-      className="z-40"
+      // Above the note's outline rail (z-40), which sits at the same edge. A
+      // host tab has no toolbar of its own to clear, so the drawer starts at the top.
+      className="top-0 z-40"
     />
   )
 }
