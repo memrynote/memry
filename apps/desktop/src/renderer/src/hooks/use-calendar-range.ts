@@ -13,7 +13,8 @@ export const calendarRangeKeys = {
       'range',
       input.startAt,
       input.endAt,
-      Boolean(input.includeUnselectedSources)
+      Boolean(input.includeUnselectedSources),
+      Boolean(input.includeCompletedTasks)
     ] as const
 }
 

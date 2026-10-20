@@ -420,7 +420,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const rangeInput = useMemo(
     () => ({
       ...getRangeForView(view, anchorDate, weekStartsOn, timelineSettings.zoom),
-      includeUnselectedSources: true
+      includeUnselectedSources: true,
+      includeCompletedTasks: true
     }),
     [view, anchorDate, weekStartsOn, timelineSettings.zoom]
   )

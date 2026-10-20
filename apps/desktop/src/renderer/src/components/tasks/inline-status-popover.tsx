@@ -17,6 +17,7 @@ interface InlineStatusPopoverProps {
   onStatusChange: (statusId: string) => void
   onToggleComplete: () => void
   disabled?: boolean
+  size?: 'sm' | 'md' | 'lg'
   /** Controlled open state, for a host that opens the picker from the keyboard. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -29,6 +30,7 @@ export const InlineStatusPopover = ({
   onStatusChange,
   onToggleComplete,
   disabled = false,
+  size = 'lg',
   open,
   onOpenChange
 }: InlineStatusPopoverProps): React.JSX.Element => {
@@ -74,7 +76,7 @@ export const InlineStatusPopover = ({
           onPointerDown={stopTriggerPropagation}
           onKeyDown={stopTriggerPropagation}
         >
-          <StatusIcon type={effectiveType} color={statusColor} size="lg" />
+          <StatusIcon type={effectiveType} color={statusColor} size={size} />
         </button>
       </Picker.Trigger>
       <Picker.Content width="auto" align="start" sideOffset={4}>

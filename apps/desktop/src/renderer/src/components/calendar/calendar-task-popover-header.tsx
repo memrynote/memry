@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { Check, ExternalLink } from '@/lib/icons'
+import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { CARD_ICON_BUTTON_CLASS, CalendarCardHeader } from './calendar-card'
+import { CalendarTaskStatus } from './calendar-task-status'
 
 export interface CalendarTaskPopoverHeaderTask {
   id: string
   title: string
   completedAt: string | null
+  projectId: string
+  statusId?: string | null
   parentId: string | null
 }
 
@@ -15,7 +18,6 @@ export interface CalendarTaskPopoverHeaderProps {
   task: CalendarTaskPopoverHeaderTask
   parentTitle: string | null
   projectName: string
-  onToggleComplete: () => void
   onOpenTask: () => void
   /** Opens Tasks zoomed into the parent's branch, with this subtask open. */
   onOpenParent: () => void
@@ -27,7 +29,6 @@ export function CalendarTaskPopoverHeader({
   task,
   parentTitle,
   projectName,
-  onToggleComplete,
   onOpenTask,
   onOpenParent,
   menu
@@ -68,21 +69,18 @@ export function CalendarTaskPopoverHeader({
           </button>
         )}
         <div className="flex items-start gap-2.5">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isDone}
-            aria-label={isDone ? t('task-popover.mark-not-done') : t('task-popover.mark-done')}
-            data-testid="task-popover-complete"
-            onClick={onToggleComplete}
-            className={cn(
-              'mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-[5px] border-[1.5px] border-(--cal-green-rail) outline-none',
-              'transition-colors hover:bg-(--cal-green-surface) focus-visible:ring-2 focus-visible:ring-(--tint-ring)',
-              isDone && 'bg-(--cal-green-rail) text-white hover:bg-(--cal-green-rail)'
-            )}
+          <span
+            className="mt-0.5 grid size-[22px] shrink-0 place-content-center"
+            data-testid="task-popover-status"
           >
-            {isDone && <Check className="size-3" />}
-          </button>
+            <CalendarTaskStatus
+              taskId={task.id}
+              projectId={task.projectId}
+              statusId={task.statusId ?? null}
+              isCompleted={isDone}
+              size="lg"
+            />
+          </span>
           <span
             className={cn(
               'min-w-0 flex-1 text-[17px] leading-[22px] font-semibold tracking-[-0.01em] text-(--cal-ink) line-clamp-3',

@@ -230,7 +230,7 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
         isNotNull(tasks.dueDate),
         gte(tasks.dueDate, dueRange.startDate),
         lte(tasks.dueDate, dueRange.endDate),
-        isNull(tasks.completedAt),
+        input.includeCompletedTasks ? undefined : isNull(tasks.completedAt),
         isNull(tasks.archivedAt)
       )
     )
@@ -273,7 +273,12 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       editability: editability(blockMinutes !== null),
       source: nativeSource('memrynote Tasks'),
       binding: bindings.get(row.id) ?? null,
-      snoozeOffsetMinutes: null
+      snoozeOffsetMinutes: null,
+      task: {
+        projectId: row.projectId,
+        statusId: row.statusId,
+        isCompleted: row.completedAt !== null
+      }
     }
   })
 }

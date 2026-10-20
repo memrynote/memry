@@ -4,7 +4,8 @@ import { StatusIcon } from '@/components/tasks/status-icon'
 import { priorityConfig } from '@/data/task-model'
 import { CalendarDays, ChevronDown, Flag, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { ChipBar, ChipCheckbox, eventBarVars, taskBarVars } from './timeline-chip'
+import { CalendarTaskStatus } from './calendar-task-status'
+import { ChipBar, eventBarVars, taskBarVars } from './timeline-chip'
 import { parseLocalDate } from './date-utils'
 import { TIMELINE_LIST_WIDTH } from './timeline-axis'
 import {
@@ -309,7 +310,6 @@ export interface TaskRowProps extends Geometry {
   onSelect: () => void
   onOpen: (rect: DOMRect) => void
   onBarPointerDown: (event: React.PointerEvent, edit: TimelineEdit) => void
-  onToggleComplete: () => void
   onSchedulePointerDown: (event: React.PointerEvent) => void
   dayFromPointer: (event: React.PointerEvent) => string | null
 }
@@ -362,7 +362,6 @@ export function TimelineTaskRowView({
   onSelect,
   onOpen,
   onBarPointerDown,
-  onToggleComplete,
   onSchedulePointerDown,
   dayFromPointer
 }: TaskRowProps): React.JSX.Element {
@@ -377,7 +376,6 @@ export function TimelineTaskRowView({
   const vars = taskBarVars(color)
   const geometry = { window, dayWidth }
   const trackWidth = window.dayCount * dayWidth
-  const completeLabel = t('chip.complete-task', { title: task.title })
 
   const lastDay = shape.kind === 'span' ? shape.end : shape.kind === 'due' ? shape.date : null
   const dueIsToday = !isCompleted && lastDay === today
@@ -425,12 +423,19 @@ export function TimelineTaskRowView({
           />
         )}
         {fits && !isDragging && (
-          <ChipCheckbox
-            checked={isCompleted}
-            solid={solid}
-            label={completeLabel}
-            onToggle={onToggleComplete}
-          />
+          <span
+            className="flex shrink-0 items-center"
+            onPointerDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            <CalendarTaskStatus
+              taskId={task.id}
+              projectId={task.projectId}
+              statusId={task.statusId ?? null}
+              isCompleted={isCompleted}
+              size="sm"
+            />
+          </span>
         )}
         {fits && <span className={barTextClass}>{title}</span>}
         {!placement.clippedEnd && (
@@ -587,25 +592,19 @@ export function TimelineTaskRowView({
       trackWidth={trackWidth}
       listCell={
         <>
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isCompleted}
-            aria-label={completeLabel}
-            className="relative flex shrink-0 cursor-pointer justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-(--tint-ring)"
-            style={{ width: 14, marginInlineStart: row.depth === 1 ? 58 : 42 }}
+          <span
+            className="relative flex shrink-0 justify-center"
+            style={{ width: 18, marginInlineStart: row.depth === 1 ? 56 : 40 }}
             onPointerDown={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation()
-              onToggleComplete()
-            }}
           >
-            <StatusIcon
-              type={row.statusType}
-              color={row.statusType === 'todo' ? 'var(--color-text-tertiary)' : row.statusColor}
+            <CalendarTaskStatus
+              taskId={task.id}
+              projectId={task.projectId}
+              statusId={task.statusId ?? null}
+              isCompleted={isCompleted}
             />
-          </button>
+          </span>
           <span
             className={cn(
               'relative min-w-0 flex-1 truncate text-[13px] text-foreground',

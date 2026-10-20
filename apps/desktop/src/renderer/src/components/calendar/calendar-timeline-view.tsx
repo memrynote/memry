@@ -620,9 +620,6 @@ export function CalendarTimelineView({
                               select(row.key)
                               drag.startEdit(event, row.task, row.shape, edit)
                             }}
-                            onToggleComplete={() =>
-                              runAction(row, row.isCompleted ? 'uncomplete' : 'complete')
-                            }
                             onSchedulePointerDown={(event) => drag.startSchedule(event, row.task)}
                             dayFromPointer={drag.dayFromPointer}
                           />

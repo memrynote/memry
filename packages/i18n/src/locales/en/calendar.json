@@ -195,6 +195,7 @@
     "complete-task": "Complete {title}",
     "task-completed": "Task completed",
     "could-not-complete": "Could not complete task",
+    "could-not-update-status": "Could not change task status",
     "duration-minutes": "{minutes}m",
     "duration-hours": "{hours}h",
     "duration-hours-minutes": "{hours}h {minutes}m"

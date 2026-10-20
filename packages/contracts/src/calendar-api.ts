@@ -101,6 +101,10 @@ export const GetCalendarRangeSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   includeUnselectedSources: z.boolean().default(false),
+  // true = completed tasks stay in the range, flagged `task.isCompleted`, for
+  // the calendar page to draw faded. Omitted = open tasks only, as every other
+  // reader (home, day panels, the agent MCP surface) expects.
+  includeCompletedTasks: z.boolean().optional(),
   // false = native memrynote events only, no Google-synced external events
   // (forced by the agent MCP surface for Google Workspace Limited Use).
   // Kept for older renderers; `externalProviders` narrows it per provider.
@@ -558,6 +562,15 @@ export interface CalendarProjectionItem {
    * item-type colour.
    */
   displayColor?: string | null
+  /**
+   * For `task` items: the task's project and status, so a chip can offer the
+   * project's own statuses, and whether it is done. Undefined for other types.
+   */
+  task?: {
+    projectId: string
+    statusId: string | null
+    isCompleted: boolean
+  }
 }
 
 export type CalendarProviderAccountConnectionStatus =

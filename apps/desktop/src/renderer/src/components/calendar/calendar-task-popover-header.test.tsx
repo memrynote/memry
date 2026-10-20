@@ -7,6 +7,8 @@ const baseTask = {
   id: 't1',
   title: 'Review Q2 roadmap',
   completedAt: null,
+  projectId: 'p1',
+  statusId: 's1',
   parentId: null
 }
 
@@ -14,7 +16,6 @@ const baseProps = {
   task: baseTask,
   parentTitle: null,
   projectName: 'memrynote',
-  onToggleComplete: vi.fn(),
   onOpenTask: vi.fn(),
   onOpenParent: vi.fn()
 }
@@ -56,7 +57,7 @@ describe('CalendarTaskPopoverHeader', () => {
     expect(onOpenParent).toHaveBeenCalled()
   })
 
-  it('shows strikethrough and a checked box when completed', () => {
+  it('shows strikethrough when completed', () => {
     render(
       <CalendarTaskPopoverHeader
         {...baseProps}
@@ -64,17 +65,12 @@ describe('CalendarTaskPopoverHeader', () => {
       />
     )
     expect(screen.getByText('Review Q2 roadmap')).toHaveClass('line-through')
-    expect(screen.getByRole('checkbox', { name: /mark not done/i })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    )
   })
 
-  it('completes the task from its checkbox in one click', async () => {
-    const onToggleComplete = vi.fn()
-    render(<CalendarTaskPopoverHeader {...baseProps} onToggleComplete={onToggleComplete} />)
-    await userEvent.click(screen.getByRole('checkbox', { name: /mark done/i }))
-    expect(onToggleComplete).toHaveBeenCalled()
+  it('shows the task status in place of a checkbox', () => {
+    render(<CalendarTaskPopoverHeader {...baseProps} />)
+    expect(screen.getByTestId('task-popover-status')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('opens the task from the header and renders the overflow slot', async () => {

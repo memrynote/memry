@@ -421,23 +421,9 @@ describe('CalendarTimelineView', () => {
     expect(bar().dataset.solid).toBe('true')
   })
 
-  it('completes a task from its checkbox, on the bar and in the list', () => {
+  it('shows each task with its status, not a checkbox, on the bar and in the list', () => {
     renderView()
-    const [listCheckbox, barCheckbox] = within(row(/^Write draft/)).getAllByRole('checkbox')
-
-    fireEvent.click(barCheckbox)
-    expect(updateTask).toHaveBeenLastCalledWith(
-      'Write draft',
-      expect.objectContaining({ statusId: 'launch-done', completedAt: expect.any(Date) })
-    )
-    expect(row(/^Write draft/)).toHaveAttribute('aria-selected', 'false')
-
-    updateTask.mockClear()
-    fireEvent.click(listCheckbox)
-    expect(updateTask).toHaveBeenCalledWith(
-      'Write draft',
-      expect.objectContaining({ completedAt: expect.any(Date) })
-    )
+    expect(within(row(/^Write draft/)).queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('colours an event with its own colour, else its type hue', () => {

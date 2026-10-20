@@ -43,7 +43,7 @@ export const DEFAULT_TIMELINE_SETTINGS: TimelineSettings = {
   orderBy: 'start',
   showEvents: true,
   showUndated: true,
-  showCompleted: false,
+  showCompleted: true,
   showSubtasks: false
 }
 

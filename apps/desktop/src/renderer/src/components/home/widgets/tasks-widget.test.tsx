@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TasksWidget } from './tasks-widget'
 import { defaultSort } from '@/data/tasks-data'
 
@@ -17,8 +17,8 @@ const makeTask = (id: string, title: string) => ({
   linkedNoteIds: [],
   sourceNoteId: null,
   tags: [],
-  parentId: null,
-  subtaskIds: [],
+  parentId: null as string | null,
+  subtaskIds: [] as string[],
   createdAt: new Date(),
   completedAt: null,
   archivedAt: null
@@ -60,6 +60,12 @@ vi.mock('@/hooks/use-task-note-index', () => ({
 vi.mock('@/lib/task-utils/task-view-helpers', () => ({
   getFilteredTasks: (input: typeof tasks) => input,
   getTasksInDueWindow: (input: typeof tasks) => input
+}))
+
+const openTaskDetail = vi.fn()
+vi.mock('@/components/tasks/task-detail-host', () => ({
+  openTaskInTasksTab: vi.fn(),
+  useOpenTaskDetail: () => openTaskDetail
 }))
 
 vi.mock('@/contexts/tabs/context', () => ({
@@ -119,5 +125,38 @@ describe('TasksWidget', () => {
     render(<TasksWidget config={{}} size="M" />)
     expect(screen.getByText('Alpha')).toBeInTheDocument()
     expect(applyFiltersAndSort).not.toHaveBeenCalled()
+  })
+
+  it('opens the task detail in place when a row is clicked', () => {
+    render(<TasksWidget config={{}} size="M" />)
+    fireEvent.click(screen.getByText('Alpha'))
+    expect(openTaskDetail).toHaveBeenCalledWith('t1')
+  })
+
+  describe('subtasks', () => {
+    const parent = { ...makeTask('t1', 'Parent'), subtaskIds: ['t2'] }
+    const child = { ...makeTask('t2', 'Child'), parentId: 't1' }
+
+    beforeEach(() => {
+      localStorage.clear()
+      mockTasks = [parent, child]
+    })
+
+    it('expands under a parent, once, and the choice survives a remount', () => {
+      const { unmount } = render(<TasksWidget config={{ dateRange: 'all' }} size="M" />)
+      expect(screen.queryByText('Child')).not.toBeInTheDocument()
+      expect(screen.getAllByTestId('task-item')).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Expand subtasks' }))
+      expect(screen.getByText('Child')).toBeInTheDocument()
+      expect(screen.getAllByTestId('task-item')).toHaveLength(1)
+
+      unmount()
+      render(<TasksWidget config={{ dateRange: 'all' }} size="M" />)
+      expect(screen.getByText('Child')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse subtasks' }))
+      expect(screen.queryByText('Child')).not.toBeInTheDocument()
+    })
   })
 })

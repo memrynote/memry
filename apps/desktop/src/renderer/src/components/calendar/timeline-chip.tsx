@@ -1,6 +1,5 @@
 import { calendarColorChipVars } from '@/lib/calendar-colors'
 import { eventTypeChipVars, type ChipColorVars } from '@/lib/event-type-colors'
-import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TimelineEventRow, TimelinePlacement } from './timeline-model'
 
@@ -79,46 +78,5 @@ export function ChipBar({
       )}
       {children}
     </div>
-  )
-}
-
-/** The chip's checkbox: complete (or reopen) without opening anything. */
-export function ChipCheckbox({
-  checked,
-  solid,
-  label,
-  onToggle
-}: {
-  checked: boolean
-  solid: boolean
-  label: string
-  onToggle: () => void
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      aria-label={label}
-      data-testid="timeline-complete"
-      className="flex shrink-0 cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-(--tint-ring)"
-      onPointerDown={(event) => event.stopPropagation()}
-      onDoubleClick={(event) => event.stopPropagation()}
-      onClick={(event) => {
-        event.stopPropagation()
-        onToggle()
-      }}
-    >
-      <span
-        className={cn(
-          'grid size-3 place-content-center rounded-[4px] border-[1.5px]',
-          solid ? 'border-(--chip-solid-ink)' : 'border-(--chip-rail)',
-          checked && !solid && 'bg-(--chip-rail) text-white',
-          checked && solid && 'bg-(--chip-solid-ink) text-(--chip-solid)'
-        )}
-      >
-        {checked && <Check className="size-2.5" />}
-      </span>
-    </button>
   )
 }

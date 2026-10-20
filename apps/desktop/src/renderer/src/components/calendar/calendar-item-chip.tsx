@@ -1,20 +1,14 @@
-import { useCallback, useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { Check } from '@/lib/icons'
 import { calendarColorChipVars } from '@/lib/calendar-colors'
 import { eventTypeChipVars } from '@/lib/event-type-colors'
-import { extractErrorMessage } from '@/lib/ipc-error'
-import { createLogger } from '@/lib/logger'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-import { tasksService } from '@/services/tasks-service'
+import { CalendarTaskStatus } from './calendar-task-status'
 import { formatDurationShort, itemDurationMinutes } from './chip-duration'
 import type { AnchorRect } from './types'
-
-const log = createLogger('CalendarItemChip')
 
 /** Shortest timed item that gets a second line for its time and duration. */
 const BLOCK_MIN_MINUTES = 45
@@ -71,14 +65,13 @@ export function CalendarItemChip({
   onAddToProject
 }: CalendarItemChipProps): React.JSX.Element {
   const { t } = useT('calendar')
-  const { t: tCommon } = useT('common')
-  const [isCompleting, setIsCompleting] = useState(false)
+  const isDone = item.task?.isCompleted ?? false
   const deleteLabel = t('delete-dialog.context-menu-delete-label')
   const addToProjectLabel = t('delete-dialog.context-menu-add-to-project')
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const addableToProject = Boolean(onAddToProject) && canAddEventToProject(item)
   const interactive = Boolean(onClick) || deletable
-  const showCheckbox = interactive && item.sourceType === 'task'
+  const showStatus = interactive && item.sourceType === 'task' && item.task !== undefined
   const isOutline = item.visualType === 'note_date'
   const displayColor = item.displayColor ?? undefined
 
@@ -97,7 +90,7 @@ export function CalendarItemChip({
     return `${startLabel} – ${endLabel} · ${formatDurationShort(durationMinutes, t)}`
   }, [isBlock, item.endAt, durationMinutes, startLabel, clockFormat, t])
 
-  const faded = item.isTriggered || (!isSelected && hasEnded(item, now ?? new Date()))
+  const faded = item.isTriggered || isDone || (!isSelected && hasEnded(item, now ?? new Date()))
   const chipVars = useMemo(
     () => (displayColor ? calendarColorChipVars(displayColor) : eventTypeChipVars(item.visualType)),
     [displayColor, item.visualType]
@@ -132,34 +125,6 @@ export function CalendarItemChip({
     ]
   )
 
-  const handleComplete = useCallback(
-    (event: React.MouseEvent) => {
-      event.stopPropagation()
-      if (isCompleting) return
-      const taskId = item.sourceId
-      setIsCompleting(true)
-      tasksService
-        .complete({ id: taskId })
-        .then(() => {
-          toast(t('chip.task-completed'), {
-            action: {
-              label: tCommon('action.undo'),
-              onClick: () => {
-                tasksService.uncomplete(taskId).catch((err: unknown) => {
-                  log.error('undo complete failed', err)
-                })
-              }
-            }
-          })
-        })
-        .catch((err: unknown) => {
-          setIsCompleting(false)
-          toast.error(extractErrorMessage(err, t('chip.could-not-complete')))
-        })
-    },
-    [isCompleting, item.sourceId, t, tCommon]
-  )
-
   const title = (
     <span
       className={cn(
@@ -168,7 +133,7 @@ export function CalendarItemChip({
           ? 'line-clamp-2'
           : 'truncate',
         !isBlock && 'flex-1',
-        isCompleting && 'text-muted-foreground line-through'
+        isDone && 'text-muted-foreground line-through'
       )}
     >
       {item.title}
@@ -179,7 +144,7 @@ export function CalendarItemChip({
       className={cn(
         'shrink-0 truncate text-[11px] font-medium leading-[14px] tabular-nums',
         isSelected ? 'text-(--chip-solid-ink) opacity-90' : 'text-(--chip-meta)',
-        isCompleting && 'text-muted-foreground',
+        isDone && 'text-muted-foreground',
         // On one line the title wins: the start time only shows once the chip
         // itself is wide enough to carry both without truncating the title.
         !isBlock && 'hidden @min-[10rem]/chip:inline'
@@ -203,7 +168,7 @@ export function CalendarItemChip({
   const faceClass = cn(
     'flex min-w-0 flex-1 text-start outline-none',
     isBlock ? 'items-start py-[3px]' : 'items-center',
-    showCheckbox ? 'ps-1.5' : 'ps-[11px]',
+    showStatus ? 'ps-1.5' : 'ps-[11px]',
     'pe-1.5 @min-[10rem]/chip:pe-2'
   )
 
@@ -243,33 +208,25 @@ export function CalendarItemChip({
             : 'bg-(--chip-rail)'
         )}
       />
-      {showCheckbox && (
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={isCompleting}
-          aria-label={t('chip.complete-task', { title: item.title })}
-          disabled={isCompleting}
-          data-testid="calendar-chip-complete"
+      {showStatus && item.task && (
+        <span
+          data-testid="calendar-chip-status"
           className={cn(
-            'flex shrink-0 cursor-pointer ps-[11px] outline-none',
-            isBlock ? 'items-start pt-[5px]' : 'items-center'
+            'flex shrink-0 ps-[11px]',
+            isBlock ? 'items-start pt-[3px]' : 'items-center'
           )}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
           onKeyDown={stopDragStart}
-          onClick={handleComplete}
         >
-          <span
-            className={cn(
-              'grid size-3 place-content-center rounded-[4px] border-[1.5px]',
-              isSelected ? 'border-(--chip-solid-ink)' : 'border-(--chip-rail)',
-              isCompleting && 'border-(--chip-rail) bg-(--chip-rail) text-white'
-            )}
-          >
-            {isCompleting && <Check className="size-2.5" />}
-          </span>
-        </button>
+          <CalendarTaskStatus
+            taskId={item.sourceId}
+            projectId={item.task.projectId}
+            statusId={item.task.statusId}
+            isCompleted={isDone}
+            size="sm"
+          />
+        </span>
       )}
       {interactive ? (
         <button

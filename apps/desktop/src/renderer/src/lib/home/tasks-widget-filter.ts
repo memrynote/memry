@@ -3,6 +3,7 @@ import { applyFiltersAndSort } from '@/lib/task-utils/task-filters'
 import { defaultSort, type Project, type SavedFilter } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 import { hasLocationFilter, type TaskNoteIndex } from '@/lib/task-note-index'
+import { nestUnlisted } from '@/components/tasks/date-view-context'
 
 // Hardcoded views offered by the Tasks widget header pill. The date views mirror the Tasks page
 // tab bar; `nodue` is widget-only and surfaces open work that never got a date.
@@ -95,4 +96,32 @@ export function selectTasksForWidget(
     projects,
     view
   )
+}
+
+/**
+ * The widget's rows and the tasks their subtasks come from. A date window lists
+ * each dated task as its own row at any depth, so a listed task never nests
+ * again inside a parent. Every other selection (all, no due date, a project, a
+ * saved filter) lists a task under its parent when the parent is listed too,
+ * and the parent's subtasks expand in place.
+ */
+export function arrangeWidgetRows(
+  allTasks: Task[],
+  selected: Task[],
+  savedFilters: SavedFilter[],
+  config: Record<string, unknown>
+): { rows: Task[]; nestable: Task[] } {
+  const live = allTasks.filter((task) => !task.archivedAt)
+  const listed = new Set(selected.map((task) => task.id))
+  const isDateWindow =
+    !findWidgetSavedFilter(savedFilters, config) &&
+    typeof config.projectId !== 'string' &&
+    ['today', 'tomorrow', 'next7'].includes(
+      normalizeView(typeof config.dateRange === 'string' ? config.dateRange : 'today')
+    )
+  if (isDateWindow) return { rows: selected, nestable: nestUnlisted(live, listed) }
+  return {
+    rows: selected.filter((task) => !task.parentId || !listed.has(task.parentId)),
+    nestable: live
+  }
 }

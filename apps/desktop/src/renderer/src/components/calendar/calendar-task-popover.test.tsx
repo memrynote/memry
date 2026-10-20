@@ -123,14 +123,17 @@ describe('CalendarTaskPopover', () => {
     expect(screen.getByText('Task · memrynote')).toBeInTheDocument()
   })
 
-  it('completes the task from its checkbox, dismisses, and offers undo', async () => {
-    const onDismiss = vi.fn()
-    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
+  it('picks a done status from the header, completes the task, and offers undo', async () => {
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
 
-    await userEvent.click(screen.getByTestId('task-popover-complete'))
+    await userEvent.click(screen.getByRole('button', { name: 'Status: To Do. Click to change.' }))
+    await userEvent.click(await screen.findByText('Done'))
 
-    expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
-    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
+    await waitFor(() => expect(completeMock).toHaveBeenCalledWith({ id: 't1' }))
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't1', statusId: 'p-done' })
+    )
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
     const [, options] = toastMock.mock.calls.at(-1) as [string, { action: { onClick: () => void } }]
     options.action.onClick()
     expect(uncompleteMock).toHaveBeenCalledWith('t1')

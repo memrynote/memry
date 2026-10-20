@@ -308,7 +308,6 @@ export function CalendarTaskPopover({
             task={task}
             parentTitle={parentTask?.title ?? null}
             projectName={taskProject?.name ?? project?.name ?? ''}
-            onToggleComplete={handleToggleComplete}
             onOpenTask={handleOpenTask}
             onOpenParent={() => {
               openTaskInTasksTab(openTab, taskId, task.projectId, task.parentId)

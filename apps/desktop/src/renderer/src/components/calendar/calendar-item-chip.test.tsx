@@ -172,49 +172,46 @@ describe('CalendarItemChip', () => {
     )
   })
 
-  it('completes a task from its chip checkbox without opening it, with undo', async () => {
+  it('shows a task chip with its status, not a checkbox, and keeps the drag off it', () => {
     const onClick = vi.fn()
     const onParentMouseDown = vi.fn()
     render(
       <div onMouseDown={onParentMouseDown}>
         <CalendarItemChip
-          item={eventItem({ sourceType: 'task', visualType: 'task', sourceId: 'task-1' })}
+          item={eventItem({
+            sourceType: 'task',
+            visualType: 'task',
+            sourceId: 'task-1',
+            task: { projectId: 'p1', statusId: 's1', isCompleted: false }
+          })}
           now={NOW}
           onClick={onClick}
         />
       </div>
     )
 
-    const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toHaveAttribute('aria-checked', 'false')
-    fireEvent.mouseDown(checkbox)
-    fireEvent.click(checkbox)
-
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    fireEvent.mouseDown(screen.getByTestId('calendar-chip-status'))
     expect(onParentMouseDown).not.toHaveBeenCalled()
     expect(onClick).not.toHaveBeenCalled()
-    expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-1' })
-    expect(checkbox).toHaveAttribute('aria-checked', 'true')
-    await waitFor(() => expect(mocks.toast).toHaveBeenCalled())
-
-    const [, options] = mocks.toast.mock.calls[0] as [string, { action: { onClick: () => void } }]
-    options.action.onClick()
-    expect(mocks.uncomplete).toHaveBeenCalledWith('task-1')
   })
 
-  it('rolls the checkbox back and reports when completing fails', async () => {
-    mocks.complete.mockRejectedValueOnce(new Error('offline'))
-    render(
+  it('keeps a completed task on the calendar, faded', () => {
+    const { container } = render(
       <CalendarItemChip
-        item={eventItem({ sourceType: 'task', visualType: 'task', sourceId: 'task-1' })}
+        item={eventItem({
+          sourceType: 'task',
+          visualType: 'task',
+          sourceId: 'task-1',
+          task: { projectId: 'p1', statusId: 's1', isCompleted: true }
+        })}
         now={NOW}
         onClick={vi.fn()}
       />
     )
 
-    fireEvent.click(screen.getByRole('checkbox'))
-
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('offline'))
-    expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Planning')).toBeInTheDocument()
+    expect(container.firstElementChild).toHaveClass('opacity-60')
   })
 
   it('does not offer a checkbox for events', () => {

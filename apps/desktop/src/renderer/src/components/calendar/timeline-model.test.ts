@@ -233,7 +233,7 @@ describe('buildTimelineGroups', () => {
     expect(titles(build(tasks, [launch], { showUndated: false })[0].rows)).toEqual(['Dated'])
   })
 
-  it('leaves out archived tasks, archived projects and, by default, completed tasks', () => {
+  it('leaves out archived tasks and archived projects, and completed tasks only when asked to', () => {
     const archivedProject = project('cc3333', 'Old', { isArchived: true })
     const tasks = [
       task('Open', 'aa1111', null, '2026-09-10'),
@@ -241,7 +241,13 @@ describe('buildTimelineGroups', () => {
       task('Archived', 'aa1111', null, '2026-09-10', { archivedAt: new Date() }),
       task('In old project', 'cc3333', null, '2026-09-10')
     ]
-    expect(titles(build(tasks, [launch, archivedProject]).flatMap((g) => g.rows))).toEqual(['Open'])
+    expect(titles(build(tasks, [launch, archivedProject]).flatMap((g) => g.rows))).toEqual([
+      'Done',
+      'Open'
+    ])
+    expect(titles(build(tasks, [launch], { showCompleted: false }).flatMap((g) => g.rows))).toEqual(
+      ['Open']
+    )
     const withDone = build(tasks, [launch], { showCompleted: true })
     const done = withDone[0].rows.find(
       (row) => (row as TimelineTaskRow).task.title === 'Done'
