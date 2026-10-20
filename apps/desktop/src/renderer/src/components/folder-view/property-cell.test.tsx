@@ -4,7 +4,6 @@ import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import {
   EditablePropertyCell,
   FolderCell,
-  MultiSelectCell,
   PropertyCell,
   RatingCell,
   TagsCell,
@@ -15,6 +14,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   resolveRefs: vi.fn(),
+  propertyOptions: vi.fn(() => ({ options: [], categories: {}, statusOptions: [] })),
   openTab: vi.fn(),
   projects: [] as Array<{
     id: string
@@ -23,6 +23,10 @@ const mocks = vi.hoisted(() => ({
     color: string
     isArchived: boolean
   }>
+}))
+
+vi.mock('@/hooks/use-property-options', () => ({
+  usePropertyOptions: mocks.propertyOptions
 }))
 
 vi.mock('@/services/properties-service', () => ({
@@ -90,6 +94,24 @@ vi.mock('@/components/note/info-section/editors', () => ({
       onChange={(event) => onChange(event.currentTarget.value)}
       onBlur={onBlur}
     />
+  ),
+  // The pickers are covered by the editors' own tests; here they only report
+  // the value a click would commit.
+  SelectChip: ({ value }: any) => <span>{value}</span>,
+  SelectEditor: ({ onChange }: any) => (
+    <button type="button" onClick={() => onChange('Doing')}>
+      select-editor
+    </button>
+  ),
+  StatusEditor: ({ onChange }: any) => (
+    <button type="button" onClick={() => onChange('Done')}>
+      status-editor
+    </button>
+  ),
+  MultiselectEditor: ({ onChange }: any) => (
+    <button type="button" onClick={() => onChange(['a', 'b'])}>
+      multiselect-editor
+    </button>
   )
 }))
 
@@ -188,9 +210,16 @@ describe('folder-view property cells', () => {
     rerender(
       <EditablePropertyCell key="multiselect" value={['a']} type="multiselect" onSave={onSave} />
     )
-    fireEvent.click(screen.getByRole('button', { name: /a/ }))
-    fireEvent.change(screen.getByLabelText('text-editor'), { target: { value: 'a, b' } })
+    fireEvent.click(screen.getByRole('button', { name: 'multiselect-editor' }))
     expect(onSave).toHaveBeenCalledWith(['a', 'b'])
+
+    rerender(<EditablePropertyCell key="select" value="Todo" type="select" onSave={onSave} />)
+    fireEvent.click(screen.getByRole('button', { name: 'select-editor' }))
+    expect(onSave).toHaveBeenCalledWith('Doing')
+
+    rerender(<EditablePropertyCell key="status" value="Todo" type="status" onSave={onSave} />)
+    fireEvent.click(screen.getByRole('button', { name: 'status-editor' }))
+    expect(onSave).toHaveBeenCalledWith('Done')
 
     const calls = onSave.mock.calls.length
     rerender(<EditablePropertyCell key="same" value="same" type="text" onSave={onSave} />)
@@ -202,7 +231,7 @@ describe('folder-view property cells', () => {
   it('handles empty multiselect and root folder placeholders', () => {
     render(
       <div>
-        <MultiSelectCell values={[]} />
+        <PropertyCell value={[]} type="multiselect" />
         <FolderCell path="/" />
         <TagsCell tags={[]} />
       </div>

@@ -176,7 +176,7 @@ Keeping a note's Status by hand falls out of date as its checklist moves. When a
 
 For example, a note with three tasks reads "In progress" once the first is checked off, and "Done" when the third is. Each state writes the default option of its group in your status definition, or the first option when none is marked default, so a custom `Queued` / `Doing` / `Shipped` set works too. Adding a Status property to a note that already has tasks fills it in straight away, instead of asking you to pick one.
 
-The value is an ordinary property, so the folder view, filters, sorting, the CLI and agents all read the same value you see in the note. You can also change it yourself. Your choice stays until a task in that note changes again, and then the tasks write over it. Renaming a task, or reordering it, does not count as a change.
+The value is an ordinary property, so the folder view, filters, sorting, the CLI and agents all read the same value you see in the note. In the folder view, Select, Multi-select and Status values show as the same colored pills as in the note, and clicking one opens the same picker. You can also change it yourself. Your choice stays until a task in that note changes again, and then the tasks write over it. Renaming a task, or reordering it, does not count as a change.
 
 A task counts by the status it is on: a done status is done, a status after the first one, such as In Progress, is in progress, and the first status is to do. A task you completed without moving its status, from the CLI or an agent for example, counts as done. A task moved back to In Progress counts as in progress even if it was done before.
 

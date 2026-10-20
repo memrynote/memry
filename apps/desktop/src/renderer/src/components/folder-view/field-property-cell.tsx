@@ -34,6 +34,12 @@ export function FieldPropertyCell({
     return <RelationPickerCell value={value} target={target} many={many} onSave={save} />
   }
   return (
-    <EditablePropertyCell value={value} type={type} highlightQuery={highlightQuery} onSave={save} />
+    <EditablePropertyCell
+      value={value}
+      type={type}
+      propertyName={columnId}
+      highlightQuery={highlightQuery}
+      onSave={save}
+    />
   )
 }

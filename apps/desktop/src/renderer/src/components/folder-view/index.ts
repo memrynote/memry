@@ -20,8 +20,6 @@ export {
   NumberCell,
   CheckboxCell,
   DateCell,
-  SelectCell,
-  MultiSelectCell,
   UrlCell,
   RatingCell,
   RelationCell,
