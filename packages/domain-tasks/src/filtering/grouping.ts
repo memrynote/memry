@@ -292,7 +292,19 @@ export const getTaskNoteId = (task: FilterTask): string | null =>
 interface NoteBucket<T> {
   folderPath: string
   title: string
+  taskIds: readonly string[]
   tasks: T[]
+}
+
+/**
+ * Orders one note's tasks the way its body lists them, so the group reads like
+ * the note. Tasks the body does not carry (related from the Tasks view) follow
+ * in their incoming order.
+ */
+const orderByNoteBody = <T extends FilterTask>(tasks: T[], taskIds: readonly string[]): T[] => {
+  const position = new Map(taskIds.map((id, index) => [id, index]))
+  const rank = (task: T): number => position.get(task.id) ?? taskIds.length
+  return [...tasks].sort((a, b) => rank(a) - rank(b))
 }
 
 const bucketTasksByNote = <T extends FilterTask>(
@@ -311,7 +323,13 @@ const bucketTasksByNote = <T extends FilterTask>(
     }
     const bucket = byNote.get(info.id)
     if (bucket) bucket.tasks.push(task)
-    else byNote.set(info.id, { folderPath: info.folderPath, title: info.title, tasks: [task] })
+    else
+      byNote.set(info.id, {
+        folderPath: info.folderPath,
+        title: info.title,
+        taskIds: info.taskIds ?? [],
+        tasks: [task]
+      })
   })
 
   return { byNote, unfiled }
@@ -371,7 +389,7 @@ export const groupByNote = <T extends FilterTask>(
       key: `${NOTE_GROUP_PREFIX}${noteId}`,
       labelKey: null,
       name: bucket.title,
-      tasks: bucket.tasks
+      tasks: orderByNoteBody(bucket.tasks, bucket.taskIds)
     }))
 
   if (unfiled.length > 0) {

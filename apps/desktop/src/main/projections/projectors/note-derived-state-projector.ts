@@ -24,6 +24,7 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
+import { scanTaskCheckboxStates } from '@memry/shared/task-block'
 import { getIndexDatabase, type IndexDb } from '../../database'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import { parseNote } from '../../vault/frontmatter'
@@ -121,6 +122,9 @@ export function projectNoteNames(db: IndexDb, change: NoteNamesChange): void {
   reresolveAndAnnounce(db, keys)
 }
 
+/** Task ids of the body's task lines, in document order. */
+const scanTaskIds = (markdown: string): string[] => [...scanTaskCheckboxStates(markdown).keys()]
+
 /** Older than any file mtime, so every freshness check re-reads the body. */
 const BODY_UNREAD = new Date(0).toISOString()
 
@@ -151,6 +155,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
             title: note.title,
             emoji: note.emoji,
             cover: note.cover,
+            taskIds: scanTaskIds(note.parsedContent ?? ''),
             localOnly: note.localOnly,
             contentHash: note.contentHash,
             wordCount: note.wordCount,
@@ -166,6 +171,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       title: note.title,
       emoji: note.emoji,
       cover: note.cover ?? null,
+      taskIds: note.parsedContent === null ? null : scanTaskIds(note.parsedContent),
       localOnly: note.localOnly,
       fileType: 'markdown',
       fileSize: note.fileSize ?? null,

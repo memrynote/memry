@@ -23,6 +23,9 @@ export const noteCache = sqliteTable(
     emoji: text('emoji'), // T003: Emoji icon for visual identification (markdown only)
     // Raw frontmatter `cover` value when it parses as a cover (markdown only)
     cover: text('cover'),
+    // Ids of the `{task:<id>}` lines in the body, in document order (markdown
+    // only). Null until the body has been read.
+    taskIds: text('task_ids', { mode: 'json' }).$type<string[]>(),
     localOnly: integer('local_only', { mode: 'boolean' }).default(false),
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),

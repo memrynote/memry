@@ -110,6 +110,8 @@ export interface TaskNoteInfo {
   title: string
   /** Vault-relative folder, `''` for the vault root. */
   folderPath: string
+  /** Ids of the note's task lines in document order. */
+  taskIds?: readonly string[]
 }
 
 export type TaskNoteIndex = ReadonlyMap<string, TaskNoteInfo>

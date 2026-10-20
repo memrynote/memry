@@ -90,6 +90,8 @@ export interface NoteListItem {
   wordCount: number | null
   snippet?: string | null
   emoji?: string | null
+  /** Ids of the note's task lines in document order; absent until the body is read. */
+  taskIds?: string[]
   localOnly?: boolean
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null

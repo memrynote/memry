@@ -40,7 +40,8 @@ describe('task-note-index', () => {
         id: 'note-1',
         title: 'NDA review',
         folderPath: 'Acme/Legal/NDA',
-        icon: null
+        icon: null,
+        taskIds: []
       })
     })
 

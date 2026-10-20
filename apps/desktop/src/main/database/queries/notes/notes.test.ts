@@ -164,7 +164,7 @@ describe('notes cache queries', () => {
     // untouched, including column order, for every existing caller.
     expect(JSON.stringify(listNotesFromCache(db))).toBe(
       '[{"id":"proj-1","path":"notes/proj-1.md","title":"Projection proj-1","fileType":"markdown",' +
-        '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","cover":null,' +
+        '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","cover":null,"taskIds":null,' +
         '"localOnly":false,' +
         '"contentHash":"hash-proj-1","wordCount":320,"characterCount":1800,"snippet":"' +
         'x'.repeat(200) +
@@ -185,6 +185,7 @@ describe('notes cache queries', () => {
       'date',
       'fileType',
       'emoji',
+      'taskIds',
       'localOnly',
       'wordCount',
       'createdAt',

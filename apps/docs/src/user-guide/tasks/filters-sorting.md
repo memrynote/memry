@@ -137,7 +137,9 @@ Group headers show counts. Subtask progress rolls up to the group level when app
 A task written inside a note belongs to that note, and through it to a folder. Grouping by
 **Folder** lays the task list out along your vault structure: one header per folder, ordered by
 path so a folder sits next to its subfolders. Grouping by **Note** does the same one level down,
-one header per source note, ordered by folder and then note title.
+one header per source note, ordered by folder and then note title. Inside a note's group, tasks
+follow the order they have in the note, so reordering task blocks in the note reorders them here.
+Tasks only linked to the note, not written in it, come after them.
 
 A task typed in the Tasks page has no source note. If it is linked to one, it is filed under that
 note; otherwise it lands in **No note** at the bottom of the list. Notes that sit directly in the

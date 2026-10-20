@@ -18,12 +18,14 @@ export interface TaskNoteInfo {
   folderPath: string
   /** The note's icon (emoji, library icon or custom image), if set. */
   icon: string | null
+  /** Ids of the note's task lines in document order. Empty until indexed. */
+  taskIds: readonly string[]
 }
 
 export type TaskNoteIndex = Map<string, TaskNoteInfo>
 
 export const buildTaskNoteIndex = (
-  notes: Pick<NoteListItem, 'id' | 'path' | 'title' | 'emoji'>[]
+  notes: Pick<NoteListItem, 'id' | 'path' | 'title' | 'emoji' | 'taskIds'>[]
 ): TaskNoteIndex =>
   new Map(
     notes.map((note) => [
@@ -32,7 +34,8 @@ export const buildTaskNoteIndex = (
         id: note.id,
         title: note.title?.trim() || getDisplayName(note.path),
         folderPath: extractFolderFromPath(note.path),
-        icon: note.emoji ?? null
+        icon: note.emoji ?? null,
+        taskIds: note.taskIds ?? []
       }
     ])
   )
