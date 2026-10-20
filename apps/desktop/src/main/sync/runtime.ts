@@ -946,7 +946,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       await engine.start()
       log.info('Sync runtime started')
-      attachmentUploadRedriver.start(() => network.online)
+      // A revoked device is refused on every upload, so the re-drive stays idle (#3414).
+      attachmentUploadRedriver.start(() => network.online && !engine.isDeviceRevoked())
       // Each pass waits for a full sync this session, so the live-reference
       // check sees what peers did.
       deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())

@@ -17,6 +17,8 @@ import {
   isLocalOnlyNote,
   registerOutboxUploader
 } from './attachment-outbox'
+import { EmptyAttachmentError } from './attachment-errors'
+import { SyncServerError } from './http-client'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment outbox', () => {
@@ -161,6 +163,40 @@ describe('attachment outbox', () => {
       dropped: 1
     })
     expect(listPendingUploads(db)).toEqual([])
+  })
+
+  // #3414: a zero-byte file failed identically on every retry.
+  it('drops the row of an empty file instead of retrying it (#3414)', async () => {
+    const empty = path.join(tempDir, 'empty.bin')
+    fs.writeFileSync(empty, '')
+    enqueueUpload(db, 'note-1', empty)
+    const upload = vi.fn(async () => {
+      throw new EmptyAttachmentError('Cannot upload empty file')
+    })
+
+    await expect(drainOutboxWith({ db, vaultPath: tempDir, upload })).resolves.toEqual({
+      uploaded: 0,
+      failed: 0,
+      dropped: 1
+    })
+    expect(listPendingUploads(db)).toEqual([])
+  })
+
+  // #3414: a revoked device kept retrying every row, burning an attempt each.
+  it('stops the pass on a revoked device and leaves every row untouched (#3414)', async () => {
+    for (const name of ['a.png', 'b.png']) {
+      const file = path.join(tempDir, name)
+      fs.writeFileSync(file, 'x')
+      enqueueUpload(db, 'note-1', file)
+    }
+    const upload = vi.fn(async () => {
+      throw new SyncServerError('Device has been revoked', 403, 'AUTH_DEVICE_REVOKED')
+    })
+
+    await drainOutboxWith({ db, vaultPath: tempDir, upload })
+
+    expect(upload).toHaveBeenCalledTimes(1)
+    expect(listPendingUploads(db).map((r) => r.attempts)).toEqual([0, 0])
   })
 
   it('leaves a row alone, attempts unchanged, when its upload belongs to the save path', async () => {

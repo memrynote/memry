@@ -12,6 +12,7 @@ import {
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import { EmptyAttachmentError } from './attachment-errors'
 
 let tmpDir: string
 
@@ -299,7 +300,9 @@ describe('AttachmentSyncService', () => {
       const deps = createTestDeps(mockFetch)
       const service = new AttachmentSyncService(deps)
 
-      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow('empty file')
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toBeInstanceOf(
+        EmptyAttachmentError
+      )
     })
 
     it('uploads every chunk without probing for server-side dedup', async () => {
