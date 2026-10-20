@@ -40,6 +40,10 @@ import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn()
 }))
+const logWarn = vi.hoisted(() => vi.fn())
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn: logWarn, error: vi.fn(), debug: vi.fn() })
+}))
 
 const serverRef = (type: string, id: string) => ({
   id,
@@ -198,7 +202,7 @@ describe('checkManifestIntegrity', () => {
       // #then — the diff ran over the UNION: task-2 (page 2 only) must NOT be
       // re-enqueued as locally-missing-from-server, and nothing is server-only
       expect(queue.getPendingCount()).toBe(0)
-      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnly).toEqual([])
       expect(result.performed).toBe(true)
     })
 
@@ -229,8 +233,37 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then — one missing item, not two
-      expect(result.rePullNeeded).toBe(true)
-      expect(result.serverOnlyCount).toBe(1)
+      expect(result.serverOnly).toEqual([{ id: 'task-1', type: 'task' }])
+    })
+
+    it('#then the warning counts the missing items by type, which a shipped log keeps', async () => {
+      // #3391: a bare count left the same 17 missing items unnamed for weeks,
+      // because shipped logs redact ids. The redacted line keeps this object.
+      logWarn.mockClear()
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          serverRef('task', 'task-a'),
+          serverRef('task', 'task-b'),
+          serverRef('reminder', 'r-a')
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(logWarn).toHaveBeenCalledWith(
+        'Server has items not found locally, pulling them by id',
+        {
+          count: 3,
+          byType: { task: 2, reminder: 1 }
+        }
+      )
     })
 
     it('#then a cursor that fails to advance stops the walk instead of spinning', async () => {
@@ -483,7 +516,7 @@ describe('checkManifestIntegrity', () => {
   })
 
   describe('#given project with clock on server #when check runs', () => {
-    it('#then recognizes project as local and does not trigger re-pull', async () => {
+    it('#then recognizes project as local and does not count it server-only', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
       testDb.db.update(projects).set({ clock }).run()
@@ -504,13 +537,12 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
   describe('#given note with clock in index db #when check runs', () => {
-    it('#then recognizes note as local and does not trigger re-pull', async () => {
+    it('#then recognizes note as local and does not count it server-only', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
       testIndexDb.db
@@ -541,13 +573,12 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
   describe('#given note with clock only in data db #when check runs', () => {
-    it('#then recognizes note as local and does not trigger re-pull', async () => {
+    it('#then recognizes note as local and does not count it server-only', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
       testDb.db
@@ -578,13 +609,12 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
   describe('#given journal with clock in index db #when check runs', () => {
-    it('#then recognizes journal as local and does not trigger re-pull', async () => {
+    it('#then recognizes journal as local and does not count it server-only', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
       testIndexDb.db
@@ -616,13 +646,12 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
   describe('#given tag_definition with clock on server #when check runs', () => {
-    it('#then recognizes tag as local and does not trigger re-pull', async () => {
+    it('#then recognizes tag as local and does not count it server-only', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
       testDb.db.insert(tagDefinitions).values({ name: 'important', color: '#ff0000', clock }).run()
@@ -645,8 +674,7 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
@@ -713,7 +741,7 @@ describe('checkManifestIntegrity', () => {
   }
 
   describe('#given a synced canvas present on server #when check runs', () => {
-    it('#then recognizes canvas as local and does not trigger re-pull', async () => {
+    it('#then recognizes canvas as local and does not count it server-only', async () => {
       insertCanvas('canvas-1', null)
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
@@ -729,8 +757,7 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true
       })
 
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
       expect(queue.getPendingCount()).toBe(0)
     })
   })
@@ -850,7 +877,7 @@ describe('checkManifestIntegrity', () => {
   })
 
   describe('#given synced_settings exists locally and on server #when check runs', () => {
-    it('#then recognizes settings as local and does not trigger re-pull', async () => {
+    it('#then recognizes settings as local and does not count it server-only', async () => {
       // #given
       testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
 
@@ -872,8 +899,7 @@ describe('checkManifestIntegrity', () => {
       })
 
       // #then
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
@@ -1009,8 +1035,7 @@ describe('checkManifestIntegrity', () => {
 
       // #then
       expect(rowStringifies).toEqual([])
-      expect(result.rePullNeeded).toBe(false)
-      expect(result.serverOnlyCount).toBe(0)
+      expect(result.serverOnly).toEqual([])
       expect(queue.getPendingCount()).toBe(0)
     })
   })
@@ -1121,7 +1146,7 @@ describe('checkManifestIntegrity', () => {
         .run()
     }
 
-    it('#then does not count it server-only, so no full re-pull replays it back', async () => {
+    it('#then does not count it server-only, so no pull replays it back', async () => {
       // #given — the user deleted task-1; the row is gone locally and the
       // delete has not reached the server yet, so the manifest still lists it
       tombstone('task', 'task-1')
@@ -1143,8 +1168,7 @@ describe('checkManifestIntegrity', () => {
 
       // #then — a server-only count here resets LAST_CURSOR to '0' and replays
       // the whole server history through applyUpsert, re-inserting the task
-      expect(result.serverOnlyCount).toBe(0)
-      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnly).toEqual([])
 
       // #then — and the tombstone stays: the server still holds the item
       expect(testDb.db.select().from(syncPendingDeletes).all()).toHaveLength(1)
@@ -1334,7 +1358,7 @@ describe('checkManifestIntegrity', () => {
 
       // #then
       expect(queue.getPendingCount()).toBe(0)
-      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnly).toEqual([])
     })
   })
 
@@ -1387,7 +1411,10 @@ describe('checkManifestIntegrity', () => {
       })
 
       expect(queue.getPendingCount()).toBe(0)
-      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+      expect(result).toMatchObject({
+        performed: true,
+        serverOnly: [{ id: 'task-server-only', type: 'task' }]
+      })
       expect(
         testDb.db.select().from(tasks).where(eq(tasks.id, 'task-local-only')).get()
       ).toBeDefined()
@@ -1421,7 +1448,7 @@ describe('checkManifestIntegrity', () => {
     })
 
     // #2301 review r2 A-L2/B-2
-    it('#then a pending_intent ledger entry is not server-only, so no full re-pull loop', async () => {
+    it('#then a pending_intent ledger entry is not server-only, so no fetch loop', async () => {
       const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
       const state = new Map<string, string>()
       const ledger = new SchemaInvalidLedger(
@@ -1446,10 +1473,10 @@ describe('checkManifestIntegrity', () => {
         isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(result).toMatchObject({ performed: true, serverOnly: [] })
     })
 
-    it('#then a blob_missing ledger entry is not server-only, so no full re-pull loop', async () => {
+    it('#then a blob_missing ledger entry is not server-only, so no fetch loop', async () => {
       const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
       const state = new Map<string, string>()
       const ledger = new SchemaInvalidLedger(
@@ -1475,7 +1502,7 @@ describe('checkManifestIntegrity', () => {
         isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(result).toMatchObject({ performed: true, serverOnly: [] })
     })
   })
 
@@ -1573,11 +1600,11 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(result).toMatchObject({ performed: true, serverOnly: [] })
       expect(queue.getPendingCount()).toBe(0)
     })
 
-    it('#then a calendar event missing locally still triggers a re-pull', async () => {
+    it('#then a calendar event missing locally still counts as server-only', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
         items: [serverRef('calendar_event', 'evt-missing')],
         serverTime: Math.floor(Date.now() / 1000)
@@ -1591,7 +1618,10 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+      expect(result).toMatchObject({
+        performed: true,
+        serverOnly: [{ id: 'evt-missing', type: 'calendar_event' }]
+      })
     })
 
     it('#then a type this build cannot enumerate is never counted server-only', async () => {
@@ -1608,7 +1638,7 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(result).toMatchObject({ performed: true, serverOnly: [] })
     })
   })
 
@@ -1664,7 +1694,7 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true
       })
 
-      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(result).toMatchObject({ performed: true, serverOnly: [] })
     })
   })
 })

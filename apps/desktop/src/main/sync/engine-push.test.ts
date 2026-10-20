@@ -713,7 +713,7 @@ describe('SyncEngine', () => {
             clock: { 'device-1': 1 }
           })
         })
-        return { checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 }
+        return { checkedAt: Date.now(), serverOnly: [] }
       })
 
       vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
@@ -806,8 +806,7 @@ describe('SyncEngine', () => {
       const manifestModule = await import('./manifest-check')
       vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({
         checkedAt: Date.now(),
-        rePullNeeded: false,
-        serverOnlyCount: 0
+        serverOnly: []
       })
 
       const deps = createMockDeps(getDb())
@@ -868,7 +867,7 @@ describe('SyncEngine', () => {
             operation: 'create',
             payload: task('task-m')
           })
-          return { checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 }
+          return { checkedAt: Date.now(), serverOnly: [] }
         }
       )
       vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(

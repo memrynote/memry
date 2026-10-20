@@ -1020,9 +1020,9 @@ A reconnect pulls the feed and nothing else: every body row written while the so
 above `LAST_CURSOR` and arrives with that pull.
 
 The 15-minute, reconnect, forced ("Sync now") and manifest vault sweeps, and the per-reconnect
-re-pull of open docs, are gone (#2421). A manifest re-pull runs from cursor 0, so every record it
-applies pulls its whole body. Their `lastCrdtSweepAt` sync-state row is left for older builds,
-which read it as their sweep throttle after a downgrade.
+re-pull of open docs, are gone (#2421). A manifest check pulls what it finds missing by id, and
+every note and journal record that pull applies pulls its whole body. Their `lastCrdtSweepAt`
+sync-state row is left for older builds, which read it as their sweep throttle after a downgrade.
 
 ### When the server goes away but the network does not
 

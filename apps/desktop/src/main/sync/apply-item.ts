@@ -132,9 +132,9 @@ export class ItemApplier {
     // Tasks and notes are hard-deleted locally, so "no local row" means both
     // "never had it" and "the user just deleted it". Without this check the
     // handlers insert unconditionally, and any replay of the server's history
-    // — a manifest-triggered cursor reset, a re-link, a restore — brings the
-    // deleted item back. The tombstone is the only surviving record of the
-    // delete until the server acknowledges it.
+    // — a cursor reset, a re-link, a restore — brings the deleted item back.
+    // The tombstone is the only surviving record of the delete until the
+    // server acknowledges it.
     if (hasPendingDelete(db, input.type, input.itemId)) {
       log.warn('Refusing a remote upsert for an item deleted locally', {
         type: input.type,

@@ -212,8 +212,8 @@ for one item. Once another app version runs, the next pull re-fetches every ledg
 the new version; one that applies, or that the server no longer has, leaves the ledger. A pulled item
 that fails the envelope schema goes into the ledger too, while its page-mates apply; because that is
 usually a server fault, it is also retried after the one-hour corrupt-item cooldown. Ledger entries
-are listed with the quarantined items and count as known to the manifest check, so they never
-trigger a full re-pull. Orphan repair never tombstones a child whose parent the server still has,
+are listed with the quarantined items and count as known to the manifest check, so it never
+fetches them again. Orphan repair never tombstones a child whose parent the server still has,
 even when this build cannot apply the parent.
 
 A changes page of up to 500 refs is pulled and applied in slices of at most 100 ids, one
@@ -798,8 +798,8 @@ The pause now has one owner:
   the flag, so it outranks `idle`, `syncing` and `offline`, and only `error` and `local_only`
   outrank it. A finished cycle or a network flap cannot report over it, and it survives a restart.
 - **What it holds.** The sync lock refuses every push and pull. A full sync returns before it
-  seeds, reports progress or checks the manifest, so a pause no longer resets `LAST_CURSOR` for a
-  re-pull. Note bodies wait too (see [CRDT](/architecture/crdt#note-body-outbox)). The WebSocket
+  seeds, reports progress or checks the manifest, so nothing a check finds missing is pulled during
+  a pause. Note bodies wait too (see [CRDT](/architecture/crdt#note-body-outbox)). The WebSocket
   stays connected.
 
 Push, pull and full sync each return an outcome:
@@ -959,11 +959,11 @@ matched from canonical `note_metadata` first, with the rebuildable index cache a
 freshly pushed note is not treated as server-only while indexing catches up.
 
 The full-sync log line says whether a manifest was actually diffed. `fullSync: manifest check
-complete { rePullNeeded, serverOnlyCount }` appears only after a real fetch and diff. A check that
-did not run logs `fullSync: manifest check skipped { reason, nextEligibleAt }` instead, where
-`reason` is `throttled` (the 30-minute window has not elapsed), `no-token` or `error`, and
-`nextEligibleAt` is the ISO time the next check may run. A skipped check never reports
-`serverOnlyCount: 0`, so it cannot be read as a verified clean result.
+complete { serverOnlyCount }` appears only after a real fetch and diff. A check that did not run
+logs `fullSync: manifest check skipped { reason, nextEligibleAt }` instead, where `reason` is
+`throttled` (the 30-minute window has not elapsed), `no-token` or `error`, and `nextEligibleAt` is
+the ISO time the next check may run. A skipped check never reports `serverOnlyCount: 0`, so it
+cannot be read as a verified clean result.
 
 The comparison reads ids only. Repair payloads are built one row at a time, and only for a record
 the server manifest is actually missing, so the usual clean check never materializes or serializes a
@@ -971,16 +971,33 @@ single row body — the cost of the check scales with the size of the disagreeme
 of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
 through the same serialization the eager pass used.
 
-A server item counts as server-only, and so resets `LAST_CURSOR` to 0 for a full re-pull, only
-when the check can prove it is missing. Calendar events, sources, bindings and external events,
-folder configs, tag categories and agent conversations and messages are listed from their local
-tables for that direction only; they are never re-uploaded from the manifest check. A server item
-of a type this build does not list is never counted. Neither is an id the device declined on apply
-because the thing it describes is already held under another id: a second inbox project, or a
-`calendar_source` whose `(provider, kind, remote_id)` belongs to an existing row. Those ids are
-kept in `sync_state` under `declinedSyncRefs` and dropped once the server stops listing them.
-Before this, every live row of the unlisted types counted as missing, so each full sync outside
-the 30-minute throttle re-pulled the whole vault.
+A server item counts as server-only, and so is pulled by id, only when the check can prove it is
+missing. Calendar events, sources, bindings and external events, folder configs, tag categories and
+agent conversations and messages are listed from their local tables for that direction only; they
+are never re-uploaded from the manifest check. A server item of a type this build does not list is
+never counted. Neither is an id the device declined on apply because the thing it describes is
+already held under another id: a second inbox project, or a `calendar_source` whose `(provider,
+kind, remote_id)` belongs to an existing row. Those ids are kept in `sync_state` under
+`declinedSyncRefs` and dropped once the server stops listing them. Before this, every live row of
+the unlisted types counted as missing, so each full sync outside the 30-minute throttle re-pulled
+the whole vault.
+
+### Server-only items
+
+The check pulls what it finds missing by id and never resets `LAST_CURSOR` (#3391). The full sync
+hands the `(type, id)` refs to a second pull. That pull reads the change feed from its cursor as
+usual, then requests the refs from `POST /sync/pull` in 100-id batches, parents first, and applies
+each batch the way it applies a page's deferred retries: in FK order, with orphan repair, and with
+every note and journal record pulling its whole body. A payload this build refuses goes into the
+schema-invalid ledger, and an envelope the schema refuses or a lost blob goes there too, so the next
+check counts it as known. A fetch cut short by a cancel or a lost access token leaves the pull
+incomplete. The warning `Server has items not found locally, pulling them by id { count, byType }`
+counts the missing items per type, because the shipped log redacts ids.
+
+Before this, the check reset `LAST_CURSOR` to 0 and re-read the whole history. When the device
+could not keep an item, the re-read came back at every check, every 30 minutes, and on a large
+vault it outlasted the 15-minute stale-lock watchdog and ended refused. An item this device still
+cannot keep is now fetched again at each check, at the cost of one request per 100 such items.
 
 ### Manifest pagination
 

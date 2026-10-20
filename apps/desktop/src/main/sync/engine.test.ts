@@ -884,8 +884,7 @@ describe('SyncEngine', () => {
       const manifestModule = await import('./manifest-check')
       vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({
         checkedAt: Date.now(),
-        rePullNeeded: false,
-        serverOnlyCount: 0
+        serverOnly: []
       })
 
       const deps = createMockDeps(getDb())
@@ -927,8 +926,7 @@ describe('SyncEngine', () => {
       const manifestModule = await import('./manifest-check')
       vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({
         checkedAt: Date.now(),
-        rePullNeeded: false,
-        serverOnlyCount: 0
+        serverOnly: []
       })
 
       const deps = createMockDeps(getDb())
@@ -954,35 +952,37 @@ describe('SyncEngine', () => {
   })
 
   describe('#given manifest detects server-only items #when fullSync runs', () => {
-    it('#then resets cursor and re-pulls', async () => {
-      const getServerMock = vi.fn().mockResolvedValue({
+    it('#then a second pull asks the server for them by id (#3391)', async () => {
+      const http = await import('./http-client')
+      vi.spyOn(http, 'getFromServer').mockResolvedValue({
         items: [],
         deleted: [],
         hasMore: false,
         nextCursor: 0
       })
-      vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getServerMock)
+      const post = vi.spyOn(http, 'postToServer').mockResolvedValue({ items: [] })
 
+      const serverOnly = [
+        { id: 'task-a', type: 'task' },
+        { id: 'task-b', type: 'task' },
+        { id: 'project-c', type: 'project' }
+      ]
       const manifestModule = await import('./manifest-check')
       vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({
         checkedAt: Date.now(),
-        rePullNeeded: true,
-        serverOnlyCount: 3
+        serverOnly,
+        performed: true
       })
 
-      const deps = createMockDeps(getDb())
-      const engine = new SyncEngine(deps)
-
-      const origPull = engine.pull.bind(engine)
-      let pullCallCount = 0
-      engine.pull = async () => {
-        pullCallCount++
-        return origPull()
-      }
+      const engine = new SyncEngine(createMockDeps(getDb()))
 
       await engine.fullSync()
 
-      expect(pullCallCount).toBe(2)
+      expect(post).toHaveBeenCalledWith(
+        '/sync/pull',
+        { itemIds: ['project-c', 'task-a', 'task-b'] },
+        expect.any(String)
+      )
 
       vi.restoreAllMocks()
     })

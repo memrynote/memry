@@ -26,6 +26,7 @@ import { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { sortByApplyOrder } from './apply-order'
 import { applyDecryptedItem } from './apply-decrypted'
 import {
+  fetchMissingItems,
   refetchCorruptItems,
   retrySchemaInvalidItems,
   routeDeferredRetryFailure,
@@ -139,8 +140,10 @@ export class PullCoordinator {
    * existing behaviour, because every error path out of a pull is silent and a
    * caller that needs to know whether anything was actually delivered cannot
    * infer it from the promise not rejecting.
+   *
+   * `missing` is what a manifest check found missing, pulled by id (#3391).
    */
-  async pull(): Promise<SyncRunOutcome> {
+  async pull(missing: readonly ItemRef[] = []): Promise<SyncRunOutcome> {
     const lock = await this.ctx.acquireLock()
     if ('refused' in lock) return skipped(lock.refused)
 
@@ -172,15 +175,18 @@ export class PullCoordinator {
         // Before any page: a local edit whose intent failed earlier gets its
         // clock now, so remote rows compare against it (#2301).
         drainPendingSyncIntents(this.ctx.deps.db, 'pull')
-        await retrySchemaInvalidItems(
-          this.recoveryDeps((item, op) => {
-            this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
-            this.queueBodyPull(runState, item, op)
-          }),
-          credentials.accessJwt,
-          vaultKey
-        )
+        const recovery = this.recoveryDeps((item, op) => {
+          this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
+          this.queueBodyPull(runState, item, op)
+        })
+        await retrySchemaInvalidItems(recovery, credentials.accessJwt, vaultKey)
         await this.pullChanges(runState)
+        // Applied as deferred retries: FK order and orphan repair (#837) included.
+        // A fetch cut short left items missing, so the run did not deliver.
+        const fetchedAll = await fetchMissingItems(recovery, missing, runState, (items) =>
+          this.applyDeferredRetries(runState, items)
+        )
+        if (!fetchedAll) runState.refused = true
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
         // Records these applied off their page pull their whole bodies here: a
@@ -592,15 +598,18 @@ export class PullCoordinator {
   }
 
   /**
-   * Re-apply items whose first apply threw. By the time every page has landed,
-   * FK parents (projects, conversations, sources) exist locally, so ordering
-   * failures from cursor-ordered pages resolve here. Items that fail again are
-   * dropped until their next server-side update.
+   * Re-apply items whose first apply threw, with any `fetched` by id. By the
+   * time every page has landed, FK parents (projects, conversations, sources)
+   * exist locally, so ordering failures from cursor-ordered pages resolve here.
+   * Items that fail again are dropped until their next server-side update.
    */
-  private async applyDeferredRetries(runState: PullRunState): Promise<void> {
-    if (this.pendingApplyRetries.length === 0) return
+  private async applyDeferredRetries(
+    runState: PullRunState,
+    fetched: DecryptedPullItem[] = []
+  ): Promise<void> {
+    if (this.pendingApplyRetries.length + fetched.length === 0) return
 
-    const retries = sortByApplyOrder(this.pendingApplyRetries)
+    const retries = sortByApplyOrder([...this.pendingApplyRetries, ...fetched])
     this.pendingApplyRetries = []
     let applied = 0
     let failed = 0
@@ -620,7 +629,10 @@ export class PullCoordinator {
           runState.vaultKey
         )
 
-        if (result === 'parse_error') {
+        // A fetched item meets this build's schema here first: the ledger keeps
+        // it until an app update, not every manifest check (#2285).
+        if (result === 'schema_invalid') this.schemaInvalid.record([dec], 'payload')
+        if (result === 'parse_error' || result === 'schema_invalid') {
           failed++
           continue
         }

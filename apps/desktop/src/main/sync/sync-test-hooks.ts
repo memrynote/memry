@@ -96,9 +96,9 @@ export const syncStateTestHooks = {
     wakeProbe.engine = engine
 
     const pull = engine.pull.bind(engine)
-    engine.pull = () => {
+    engine.pull = (...args) => {
       wakeProbe.pulls++
-      return pull()
+      return pull(...args)
     }
     ws.on('message', (message: SyncSocketEvent) => {
       if (message.kind === 'changes_available') wakeProbe.wakes++

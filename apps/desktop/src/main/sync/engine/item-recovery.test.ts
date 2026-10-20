@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  fetchMissingItems,
   refetchCorruptItems,
   retrySchemaInvalidItems,
   type ItemRecoveryDeps
@@ -7,7 +8,8 @@ import {
 import { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { PendingSyncIntentError } from '../pending-sync-intent-error'
 import { trackMainLog } from '../../telemetry/diagnostics'
-import type { CorruptItemTracker, RecoveredItem, RefetchResult } from './corrupt-item-tracker'
+import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
+import type { CorruptItemTracker, ItemRef, RefetchResult } from './corrupt-item-tracker'
 import {
   CORRUPT_ITEM_COOLDOWN_MS,
   MAX_NOTE_BODY_HEALS_PER_PULL,
@@ -22,11 +24,12 @@ vi.mock('../../lib/logger', () => {
 vi.mock('../../telemetry/diagnostics', () => ({ trackMainLog: vi.fn() }))
 vi.mock('./conflict-report', () => ({ reportConflict: vi.fn() }))
 
-const recovered = (id: string, type = 'task'): RecoveredItem => ({
+const recovered = (id: string, type = 'task'): DecryptedPullItem => ({
   id,
   type,
   content: '{}',
-  operation: 'update'
+  operation: 'update',
+  signerDeviceId: 'device-peer'
 })
 
 function harness(results: Record<string, string | Error>, refetch: Partial<RefetchResult>) {
@@ -273,5 +276,93 @@ describe('retrySchemaInvalidItems', () => {
       expect.any(Uint8Array)
     )
     expect(h.ledger.has('note_body', 'note-1')).toBe(false)
+  })
+})
+
+// #3391
+describe('fetchMissingItems', () => {
+  const answer = (overrides: Partial<RefetchResult> = {}): RefetchResult => ({
+    recovered: [],
+    permanentFailures: [],
+    missing: [],
+    invalid: [],
+    blobMissing: [],
+    skipped: [],
+    ...overrides
+  })
+  function setup(respond: (refs: ItemRef[]) => RefetchResult, token: string | null = 'token') {
+    const { ledger } = harness({}, {})
+    const refetch = vi.fn(async (refs: ItemRef[]) => respond(refs))
+    const deps = {
+      ctx: { deps: { getAccessToken: async () => token } } as unknown as SyncContext,
+      tracker: { refetch } as unknown as CorruptItemTracker,
+      ledger
+    }
+    return { deps, ledger, refetch }
+  }
+  const tasks = (count: number): ItemRef[] =>
+    Array.from({ length: count }, (_, i) => ({ id: `task-${i}`, type: 'task' }))
+
+  it('asks in /sync/pull-sized batches, parents first, and stops once the run is cancelled', async () => {
+    const run = new AbortController()
+    const batches: string[][] = []
+    const { deps } = setup((refs) => {
+      batches.push(refs.map((ref) => ref.id))
+      if (batches.length === 2) run.abort()
+      return answer()
+    })
+
+    const done = await fetchMissingItems(
+      deps,
+      [...tasks(250), { id: 'project-1', type: 'project' }],
+      { vaultKey: new Uint8Array(32), signal: run.signal },
+      async () => {}
+    )
+
+    expect(done).toBe(false)
+    expect(batches.map((ids) => ids.length)).toEqual([100, 100])
+    expect(batches[0][0]).toBe('project-1')
+  })
+
+  it('applies what came back and records a refused envelope or a lost blob as known', async () => {
+    const { deps, ledger } = setup(() =>
+      answer({
+        recovered: [recovered('task-ok')],
+        invalid: [{ id: 'task-envelope', type: 'task' }],
+        blobMissing: [{ id: 'task-blob', type: 'task' }]
+      })
+    )
+    const apply = vi.fn(async () => {})
+
+    const done = await fetchMissingItems(
+      deps,
+      [
+        { id: 'task-ok', type: 'task' },
+        { id: 'task-envelope', type: 'task' },
+        { id: 'task-blob', type: 'task' }
+      ],
+      { vaultKey: new Uint8Array(32), signal: new AbortController().signal },
+      apply
+    )
+
+    expect(done).toBe(true)
+    expect(apply).toHaveBeenCalledWith([recovered('task-ok')])
+    expect(ledger.has('task', 'task-envelope')).toBe(true)
+    expect(ledger.has('task', 'task-blob')).toBe(true)
+    expect(ledger.has('task', 'task-ok')).toBe(false)
+  })
+
+  it('asks for nothing and reports it unfinished when the access token is gone', async () => {
+    const { deps, refetch } = setup(() => answer(), null)
+
+    const done = await fetchMissingItems(
+      deps,
+      tasks(3),
+      { vaultKey: new Uint8Array(32), signal: new AbortController().signal },
+      async () => {}
+    )
+
+    expect(done).toBe(false)
+    expect(refetch).not.toHaveBeenCalled()
   })
 })

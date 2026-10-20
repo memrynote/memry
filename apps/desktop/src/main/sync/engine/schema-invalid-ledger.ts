@@ -20,7 +20,7 @@ const log = createLogger('SchemaInvalidLedger')
  * cooldown too, since the fix can ship on the server. `blob_missing`: the
  * server holds the row live but lost its payload (#2302); nothing was applied
  * and the local row, if any, is kept. Held here so the manifest does not count
- * it server-only (a full re-pull every check), and retried on the cooldown
+ * it server-only (pulled again every check), and retried on the cooldown
  * because a later push of the item heals it. `pending_intent`: the item was
  * refused because this device's own edit of it is not clocked yet (#2301); it
  * is re-fetched at every pull start, right after the pending intents drain,

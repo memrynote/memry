@@ -36,6 +36,7 @@ import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-re
 import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/declined-refs'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
+import type { ItemRef } from './engine/corrupt-item-tracker'
 import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
@@ -60,7 +61,7 @@ interface ManifestCheckDeps {
   lastCheckAt?: number
   /** Excludes quarantined items from the server-only diff — a permanently
    * quarantined item is skipped on every pull, so counting it server-only
-   * would reset the cursor and re-pull the whole vault on every check. */
+   * would fetch it again on every check. */
   isQuarantined?: (itemId: string, itemType: string) => boolean
   /**
    * False skips re-uploading local rows the manifest lacks (#2302). Set it when
@@ -74,8 +75,8 @@ interface ManifestCheckDeps {
 
 export interface ManifestCheckResult {
   checkedAt: number
-  rePullNeeded: boolean
-  serverOnlyCount: number
+  /** Live on the server and missing here; the caller pulls them by id (#3391). */
+  serverOnly: ItemRef[]
   /** True only when a manifest was actually fetched and diffed. */
   performed: boolean
   /** Set on every result with `performed: false`, so a caller can tell a
@@ -89,8 +90,7 @@ export type ManifestCheckSkipReason = 'throttled' | 'no-token' | 'error'
 function skippedResult(checkedAt: number, reason: ManifestCheckSkipReason): ManifestCheckResult {
   return {
     checkedAt,
-    rePullNeeded: false,
-    serverOnlyCount: 0,
+    serverOnly: [],
     performed: false,
     skipped: { reason, nextEligibleAt: checkedAt + MIN_INTERVAL_MS }
   }
@@ -142,15 +142,15 @@ export async function checkManifestIntegrity(
     // Ids repeat across item types (project 'inbox' vs tag 'inbox'), so both
     // diff directions must compare (type, id) pairs — an id-only diff hides a
     // missing item behind its same-id sibling of another type, and counts a
-    // quarantined sibling as "server-only" forever (endless re-pull loop).
+    // quarantined sibling as "server-only" forever (fetched on every check).
     const serverItemMap = new Map(serverItems.map((item) => [itemRefKey(item.type, item.id), item]))
 
     // Every id this device has deleted and the server has not yet been
     // confirmed rid of. Both diff directions must ignore them: the local→server
     // direction would re-upload a deleted-but-unpushed item as a `create`, and
     // the server→local direction would count the still-present server row as
-    // server-only, reset LAST_CURSOR to '0' and replay the whole history back
-    // into `applyUpsert`. Same reason the canvas blocks below exclude
+    // server-only and fetch it back into `applyUpsert` on every check. Same
+    // reason the canvas blocks below exclude
     // tombstones, for the hard-delete types that have no tombstone column.
     const pendingDeletes = listPendingDeletes(deps.db)
     const tombstonedKeys = new Set(
@@ -227,7 +227,7 @@ export async function checkManifestIntegrity(
         // `task_activity` is exempt in this direction only. Rows past the
         // retention cutoff are skipped on apply and pruned locally by design, so
         // the server legitimately holds rows this device will never have.
-        // Counting them would set `rePullNeeded` on every manifest check for the
+        // Counting them would fetch them again on every manifest check for the
         // rest of the vault's life. The local→server direction above still
         // repairs activity rows that never reached the server.
         item.type !== 'task_activity' &&
@@ -239,8 +239,13 @@ export async function checkManifestIntegrity(
         !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
-      log.warn('Server has items not found locally, will trigger re-pull', {
-        count: serverOnlyIds.length
+      // By type, so a set that keeps coming back says what this device cannot
+      // keep. The log ships with ids redacted.
+      const byType: Record<string, number> = {}
+      for (const item of serverOnlyIds) byType[item.type] = (byType[item.type] ?? 0) + 1
+      log.warn('Server has items not found locally, pulling them by id', {
+        count: serverOnlyIds.length,
+        byType
       })
     }
 
@@ -264,8 +269,7 @@ export async function checkManifestIntegrity(
 
     return {
       checkedAt: now,
-      rePullNeeded: serverOnlyIds.length > 0,
-      serverOnlyCount: serverOnlyIds.length,
+      serverOnly: serverOnlyIds.map(({ id, type }) => ({ id, type })),
       performed: true
     }
   } catch (err) {

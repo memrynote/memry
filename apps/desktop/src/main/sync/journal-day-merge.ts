@@ -66,7 +66,7 @@ export interface OwedJournalDayMerge {
  * second sighting widens the clock, so the tombstone dominates every version
  * seen, and keeps the fallback text and the deleted mark. Declining the ref
  * keeps the manifest from counting the unprojected id as server-only, which
- * would reset the cursor on every check.
+ * would pull it again on every check.
  */
 export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): void {
   const kept = listOwedJournalDayMerges(db).find((owed) => owed.foreignId === merge.foreignId)

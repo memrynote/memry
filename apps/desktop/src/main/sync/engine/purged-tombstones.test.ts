@@ -348,7 +348,7 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
   })
 
-  // N6: a full re-pull from cursor 0 (24 h reset, rePullNeeded) against a server
+  // N6: a full re-pull from cursor 0 (the 24 h offline reset) against a server
   // that holds no row for X, which is what a legacy hard-delete left behind.
   it('keeps a synced local row the server no longer has after a re-pull from cursor 0', async () => {
     const db = getDb()
