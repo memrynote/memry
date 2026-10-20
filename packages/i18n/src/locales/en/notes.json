@@ -1571,6 +1571,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# note} other {# notes}}"
+    },
+    "noteTasks": {
+      "expand": "Show tasks of {title}",
+      "collapse": "Hide tasks of {title}",
+      "list": "Tasks in {title}",
+      "progressOpen": "{open}/{total} open",
+      "progressDone": "{total}/{total} done",
+      "nextDue": "Next due",
+      "reminder": "Reminder set"
     }
   },
   "mindMap": {

@@ -30,7 +30,8 @@ import {
   type ColumnDef,
   type SortingState,
   type CellContext,
-  type FilterFn
+  type FilterFn,
+  type Row
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
@@ -82,6 +83,13 @@ import { FolderViewEmptyState } from './folder-view-empty-state'
 import { SummaryRow } from './summary-row'
 import { SelectionCheckbox, SELECT_COLUMN_WIDTH, type SelectionState } from './selection-checkbox'
 import { isMetadataEditableRow } from './row-metadata-editability'
+import {
+  NOTE_TASK_CHEVRON_WIDTH,
+  NoteTaskChevron,
+  NoteTaskList,
+  NoteTasksBadge
+} from './note-task-rows'
+import type { NoteTasks } from '@/lib/note-tasks'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -90,6 +98,10 @@ export interface OrderConfig {
   property: string
   direction: 'asc' | 'desc'
 }
+
+type DisplayItem =
+  | { kind: 'note'; row: Row<NoteWithProperties>; rowIndex: number }
+  | { kind: 'tasks'; noteId: string; title: string; summary: NoteTasks }
 
 const EMPTY_FORMULAS: Record<string, string> = {}
 const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
@@ -113,6 +125,11 @@ interface FolderTableViewProps {
   highlightQuery?: string
   /** Selected row IDs (controlled mode - lifted to parent for persistence across views) */
   selectedRowIds?: Set<string>
+  /**
+   * Tasks each note carries, keyed by note id. When set, a note with tasks gets
+   * a chevron that opens them beneath its row, and a progress badge in its title.
+   */
+  noteTasks?: ReadonlyMap<string, NoteTasks>
   /** Called when a note is clicked to open it */
   onNoteOpen?: (noteId: string) => void
   /** Called when a note should be opened in a new tab */
@@ -263,6 +280,7 @@ export function FolderTableView({
   globalFilter,
   highlightQuery,
   selectedRowIds: externalSelectedRowIds,
+  noteTasks,
   onNoteOpen,
   onOpenInNewTab,
   onOpenInBackgroundTab,
@@ -315,6 +333,17 @@ export function FolderTableView({
 
   /** Currently focused row for keyboard navigation */
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
+
+  /** Notes whose tasks are open beneath their row */
+  const [expandedNoteIds, setExpandedNoteIds] = useState<ReadonlySet<string>>(new Set())
+  const toggleNoteTasks = useCallback((noteId: string) => {
+    setExpandedNoteIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(noteId)) next.delete(noteId)
+      else next.add(noteId)
+      return next
+    })
+  }, [])
 
   /**
    * Internal selected rows state (used when not controlled externally).
@@ -730,6 +759,26 @@ export function FolderTableView({
   const { rows } = table.getRowModel()
 
   /**
+   * What the virtualizer lays out: every note row, with one block of that
+   * note's tasks after each expanded note. Keyboard navigation and selection
+   * keep working on `rows`, so a task block is never a selection target.
+   */
+  const displayItems = useMemo(
+    () =>
+      rows.flatMap((row, rowIndex): DisplayItem[] => {
+        const noteId = row.original.id
+        const tasks = expandedNoteIds.has(noteId) ? noteTasks?.get(noteId) : undefined
+        return tasks
+          ? [
+              { kind: 'note', row, rowIndex },
+              { kind: 'tasks', noteId, title: row.original.title, summary: tasks }
+            ]
+          : [{ kind: 'note', row, rowIndex }]
+      }),
+    [rows, expandedNoteIds, noteTasks]
+  )
+
+  /**
    * Note-only subset of the current selection, used by the row context menu's
    * bulk delete/move and by the ⇧⌘M shortcut. Tag scope can select a mix of
    * notes, tasks, and inbox items; onDelete/onMoveToFolder are notes-only
@@ -753,7 +802,7 @@ export function FolderTableView({
    * Only renders visible rows plus overscan buffer for smooth scrolling.
    */
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: displayItems.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 40, // Estimated row height in px
     // Dynamic row height measurement (disabled in Firefox due to measurement issues)
@@ -900,12 +949,14 @@ export function FolderTableView({
 
   const scrollToRowById = useCallback(
     (rowId: string) => {
-      const rowIndex = rows.findIndex((r) => r.original.id === rowId)
-      if (rowIndex >= 0) {
-        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
+      const itemIndex = displayItems.findIndex(
+        (item) => item.kind === 'note' && item.row.original.id === rowId
+      )
+      if (itemIndex >= 0) {
+        rowVirtualizer.scrollToIndex(itemIndex, { align: 'auto', behavior: 'smooth' })
       }
     },
-    [rows, rowVirtualizer]
+    [displayItems, rowVirtualizer]
   )
 
   const handleKeyDown = useCallback(
@@ -1052,6 +1103,7 @@ export function FolderTableView({
   const totalColumnsWidth = useMemo(() => {
     return columnConfig.reduce((sum, col) => sum + (col.width ?? 150), 0)
   }, [columnConfig])
+  const leadingWidth = SELECT_COLUMN_WIDTH + (noteTasks ? NOTE_TASK_CHEVRON_WIDTH : 0)
 
   if (isLoading) {
     return (
@@ -1136,7 +1188,7 @@ export function FolderTableView({
           style={{
             display: 'grid',
             width: '100%',
-            minWidth: Math.max(totalColumnsWidth + SELECT_COLUMN_WIDTH, 100)
+            minWidth: Math.max(totalColumnsWidth + leadingWidth, 100)
           }}
           className="text-sm"
         >
@@ -1164,6 +1216,13 @@ export function FolderTableView({
                     label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectAll')}
                   />
                 </th>
+                {noteTasks && (
+                  <th
+                    aria-hidden="true"
+                    style={{ width: NOTE_TASK_CHEVRON_WIDTH }}
+                    className="flex-shrink-0"
+                  />
+                )}
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -1203,7 +1262,33 @@ export function FolderTableView({
             }}
           >
             {virtualRows.map((virtualRow) => {
-              const row = rows[virtualRow.index]
+              const item = displayItems[virtualRow.index]
+              if (item.kind === 'tasks') {
+                return (
+                  <tr
+                    key={`tasks:${item.noteId}`}
+                    data-index={virtualRow.index}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      position: 'absolute',
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                    className="border-b border-border/40"
+                  >
+                    <td className="min-w-0 flex-1">
+                      <NoteTaskList
+                        noteTitle={item.title}
+                        summary={item.summary}
+                        startInset={leadingWidth}
+                      />
+                    </td>
+                  </tr>
+                )
+              }
+              const { row, rowIndex } = item
+              const rowNoteTasks = noteTasks?.get(row.original.id)
               const isSelected = selectedRowIds.has(row.original.id)
               const isFocused = focusedRowId === row.original.id
               const isPartOfSelection = isSelected && selectedRowIds.size > 1
@@ -1253,7 +1338,7 @@ export function FolderTableView({
                     onDragStart={(e) =>
                       startCanvasRowsDrag(e, dragRefsForRow(notes, row.original.id, selectedRowIds))
                     }
-                    onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
+                    onClick={(e) => handleRowClick(rowIndex, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                     onMouseDown={(e) =>
                       handleMiddleClick(e, () => onOpenInBackgroundTab?.(row.original.id))
@@ -1271,6 +1356,20 @@ export function FolderTableView({
                         label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectRow')}
                       />
                     </td>
+                    {noteTasks && (
+                      <td
+                        style={{ width: NOTE_TASK_CHEVRON_WIDTH }}
+                        className="flex flex-shrink-0 items-center justify-center"
+                      >
+                        {rowNoteTasks && (
+                          <NoteTaskChevron
+                            noteTitle={row.original.title}
+                            isExpanded={expandedNoteIds.has(row.original.id)}
+                            onToggle={() => toggleNoteTasks(row.original.id)}
+                          />
+                        )}
+                      </td>
+                    )}
                     {row.getVisibleCells().map((cell, cellIndex) => {
                       const isLastCell = cellIndex === row.getVisibleCells().length - 1
                       return (
@@ -1295,7 +1394,16 @@ export function FolderTableView({
                                 }
                           }
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {rowNoteTasks && cell.column.id === 'title' ? (
+                            <div className="flex items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </div>
+                              <NoteTasksBadge summary={rowNoteTasks} />
+                            </div>
+                          ) : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
                         </td>
                       )
                     })}

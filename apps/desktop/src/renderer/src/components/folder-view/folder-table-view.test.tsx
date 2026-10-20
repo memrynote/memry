@@ -123,6 +123,31 @@ vi.mock('./folder-view-empty-state', () => ({
   )
 }))
 
+const taskMocks = vi.hoisted(() => ({
+  updateTask: vi.fn(),
+  openTaskDetail: vi.fn(),
+  reminderTaskIds: new Set<string>()
+}))
+
+vi.mock('@/contexts/tasks', () => ({
+  useTasksContext: () => ({ updateTask: taskMocks.updateTask })
+}))
+
+vi.mock('@/components/tasks/task-detail-host', () => ({
+  useOpenTaskDetail: () => taskMocks.openTaskDetail
+}))
+
+vi.mock('@/hooks/use-reminders', () => ({
+  useRemindersForTarget: (_type: string, taskId: string) => ({
+    reminders: taskMocks.reminderTaskIds.has(taskId) ? [{ id: 'r1', status: 'pending' }] : []
+  })
+}))
+
+vi.mock('@/components/tasks/task-badges', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/tasks/task-badges')>()),
+  TaskTagsBadge: ({ tags }: { tags: string[] }) => <span>{tags.join(',')}</span>
+}))
+
 vi.mock('./summary-row', () => ({
   SummaryRow: ({ notes }: { notes: unknown[] }) => (
     <tfoot>
@@ -1092,5 +1117,76 @@ describe.each([
     onSelectionChange.mockClear()
     expect(fireEvent.keyDown(input, { key: ' ', code: 'Space' })).toBe(true)
     expect(onSelectionChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('FolderTableView note tasks', () => {
+  const task = (overrides: Record<string, unknown>) => ({
+    id: 't1',
+    title: 'Dig post holes',
+    description: '## 60 cm deep\nsix holes',
+    startDate: new Date('2026-04-06T12:00:00'),
+    dueDate: new Date('2026-04-07T12:00:00'),
+    completedAt: null,
+    tags: ['structure'],
+    ...overrides
+  })
+  const noteTasks = new Map([
+    [
+      'note-1',
+      {
+        tasks: [
+          task({}),
+          task({
+            id: 't2',
+            title: 'Pour footings',
+            startDate: null,
+            dueDate: null,
+            description: '',
+            tags: []
+          })
+        ],
+        total: 3,
+        open: 2,
+        nextDue: new Date('2026-04-07T12:00:00')
+      }
+    ]
+  ] as any)
+
+  const renderTable = () =>
+    render(<FolderTableView notes={notes} columns={columns} noteTasks={noteTasks as any} />)
+
+  it("opens a note's tasks beneath its row and shows their details", () => {
+    taskMocks.reminderTaskIds = new Set(['t1'])
+    renderTable()
+
+    expect(screen.getByText('progressOpen 2 3')).toBeTruthy()
+    expect(screen.queryByText('Dig post holes')).toBeNull()
+    expect(screen.queryByLabelText(/expand Beta brief/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /expand Alpha plan/ }))
+
+    expect(screen.getByText('Dig post holes')).toBeTruthy()
+    expect(screen.getByText('60 cm deep')).toBeTruthy()
+    expect(screen.getByText('structure')).toBeTruthy()
+    expect(screen.getByRole('img', { name: /reminder/ })).toBeTruthy()
+    expect(screen.getAllByRole('img', { name: /reminder/ })).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /collapse Alpha plan/ }))
+    expect(screen.queryByText('Dig post holes')).toBeNull()
+  })
+
+  it('opens the task detail on a task row and completes in place from its checkbox', () => {
+    taskMocks.openTaskDetail.mockClear()
+    taskMocks.updateTask.mockClear()
+    renderTable()
+    fireEvent.click(screen.getByRole('button', { name: /expand Alpha plan/ }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mark as complete' })[0])
+    expect(taskMocks.updateTask).toHaveBeenCalledWith('t1', { completedAt: expect.any(Date) })
+    expect(taskMocks.openTaskDetail).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('Pour footings'))
+    expect(taskMocks.openTaskDetail).toHaveBeenCalledWith('t2')
   })
 })

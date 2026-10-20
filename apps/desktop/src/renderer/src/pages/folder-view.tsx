@@ -28,6 +28,7 @@ import {
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { sidebarItemForRow } from '@/lib/folder-row-navigation'
 import { useOpenPage } from '@/hooks/use-open-target'
+import { useNoteTasks } from '@/hooks/use-note-tasks'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
@@ -267,6 +268,11 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
    * unrelated filter change is left untouched.
    */
   const visibleNoteIdsKey = notes.map((note) => note.id).join(',')
+  const noteIds = useMemo(
+    () => notes.filter((note) => (note.kind ?? 'note') === 'note').map((note) => note.id),
+    [notes]
+  )
+  const noteTasks = useNoteTasks(noteIds)
   const [lastVisibleNoteIdsKey, setLastVisibleNoteIdsKey] = useState(visibleNoteIdsKey)
   if (lastVisibleNoteIdsKey !== visibleNoteIdsKey) {
     setLastVisibleNoteIdsKey(visibleNoteIdsKey)
@@ -1326,6 +1332,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             // Standard table view
             <FolderTableView
               notes={notes}
+              noteTasks={noteTasks}
               columns={activeView?.columns ?? DEFAULT_COLUMNS}
               formulas={formulasMap}
               propertyTypes={propertyTypesMap}
