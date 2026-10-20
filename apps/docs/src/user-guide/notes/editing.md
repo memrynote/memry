@@ -421,6 +421,12 @@ Common markdown shortcuts work inline:
 | `` `code` `` | `code`        |
 | ` ``` `      | Code block    |
 
+### Brackets close themselves
+
+Typing `(` writes `()` and typing `[[` writes `[[]]`, with the caret inside. `[[` also opens the note search, and choosing a note replaces the whole `[[]]` with the link. Typing the closing `)` or `]]` yourself steps over the one already there, and Backspace between an empty pair removes both halves.
+
+A bracket typed right before a word, and any bracket in a code block or inline code, is left alone.
+
 ## Callouts
 
 `/callout` inserts an info callout. Click its icon to change the type. Each type has its
