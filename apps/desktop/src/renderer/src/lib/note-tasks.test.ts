@@ -26,20 +26,28 @@ const task = (overrides: Partial<Task> & { id: string }): Task => ({
 })
 
 describe('groupTasksByNote', () => {
-  it('files a task under its source note, or its first linked note', () => {
+  it('files a task under its source note and under every note it is linked to', () => {
     const result = groupTasksByNote(
       [
         task({ id: 'a', sourceNoteId: 'n1' }),
-        task({ id: 'b', linkedNoteIds: ['n2'] }),
+        task({ id: 'b', linkedNoteIds: ['n2', 'n1'] }),
         task({ id: 'c', sourceNoteId: 'elsewhere' }),
         task({ id: 'd' })
       ],
       new Set(['n1', 'n2'])
     )
 
-    expect([...result.keys()]).toEqual(['n1', 'n2'])
-    expect(result.get('n1')?.tasks.map((t) => t.id)).toEqual(['a'])
+    expect([...result.keys()].sort()).toEqual(['n1', 'n2'])
+    expect(result.get('n1')?.tasks.map((t) => t.id)).toEqual(['a', 'b'])
     expect(result.get('n2')?.tasks.map((t) => t.id)).toEqual(['b'])
+  })
+
+  it('lists a task once when its source note is also linked', () => {
+    const result = groupTasksByNote(
+      [task({ id: 'a', sourceNoteId: 'n1', linkedNoteIds: ['n1'] })],
+      new Set(['n1'])
+    )
+    expect(result.get('n1')?.total).toBe(1)
   })
 
   it('counts open tasks, finds the next due date, and lists done tasks last', () => {

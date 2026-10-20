@@ -130,7 +130,14 @@ const taskMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/contexts/tasks', () => ({
-  useTasksContext: () => ({ updateTask: taskMocks.updateTask })
+  useTasksContext: () => ({
+    tasks: [
+      { id: 't1', completedAt: null },
+      { id: 't2', completedAt: null }
+    ],
+    projects: [{ id: 'p1', name: 'Inbox' }],
+    updateTask: taskMocks.updateTask
+  })
 }))
 
 vi.mock('@/components/tasks/task-detail-host', () => ({
@@ -143,9 +150,31 @@ vi.mock('@/hooks/use-reminders', () => ({
   })
 }))
 
-vi.mock('@/components/tasks/task-badges', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/components/tasks/task-badges')>()),
-  TaskTagsBadge: ({ tags }: { tags: string[] }) => <span>{tags.join(',')}</span>
+vi.mock('@/components/tasks/task-row', () => ({
+  TaskRow: ({
+    task,
+    project,
+    isCompleted,
+    onToggleComplete,
+    onClick,
+    renderTitle,
+    actions
+  }: any) => (
+    <div role="button" onClick={() => onClick(task.id)}>
+      <button
+        type="button"
+        aria-label="Mark as complete"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleComplete(task.id)
+        }}
+      />
+      {renderTitle()}
+      <span>{project.name}</span>
+      <span>{isCompleted ? 'completed' : 'open'}</span>
+      {actions}
+    </div>
+  )
 }))
 
 vi.mock('./summary-row', () => ({
@@ -1123,6 +1152,7 @@ describe.each([
 describe('FolderTableView note tasks', () => {
   const task = (overrides: Record<string, unknown>) => ({
     id: 't1',
+    projectId: 'p1',
     title: 'Dig post holes',
     description: '## 60 cm deep\nsix holes',
     startDate: new Date('2026-04-06T12:00:00'),
@@ -1168,7 +1198,7 @@ describe('FolderTableView note tasks', () => {
 
     expect(screen.getByText('Dig post holes')).toBeTruthy()
     expect(screen.getByText('60 cm deep')).toBeTruthy()
-    expect(screen.getByText('structure')).toBeTruthy()
+    expect(screen.getAllByText('Inbox')).toHaveLength(2)
     expect(screen.getByRole('img', { name: /reminder/ })).toBeTruthy()
     expect(screen.getAllByRole('img', { name: /reminder/ })).toHaveLength(1)
 

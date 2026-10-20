@@ -1,5 +1,4 @@
 import type { Task } from '@/data/task-model'
-import { getTaskNoteId } from '@/lib/task-note-index'
 
 /** The tasks one note carries, as the folder table shows them. */
 export interface NoteTasks {
@@ -30,9 +29,9 @@ const summarize = (tasks: Task[]): NoteTasks => {
 }
 
 /**
- * Groups tasks under the note each one is filed under (`getTaskNoteId`, the
- * same rule "group by note" uses in Tasks). Archived tasks are left out, and
- * notes without a task get no entry.
+ * Groups tasks under every note they belong to: the note the task was written
+ * in and each note it is linked to as related. One task can sit under several
+ * notes. Archived tasks are left out, and notes without a task get no entry.
  */
 export const groupTasksByNote = (
   tasks: readonly Task[],
@@ -41,11 +40,13 @@ export const groupTasksByNote = (
   const grouped = new Map<string, Task[]>()
   for (const task of tasks) {
     if (task.archivedAt) continue
-    const noteId = getTaskNoteId(task)
-    if (!noteId || !noteIds.has(noteId)) continue
-    const list = grouped.get(noteId)
-    if (list) list.push(task)
-    else grouped.set(noteId, [task])
+    const taskNoteIds = new Set([task.sourceNoteId, ...task.linkedNoteIds])
+    for (const noteId of taskNoteIds) {
+      if (!noteId || !noteIds.has(noteId)) continue
+      const list = grouped.get(noteId)
+      if (list) list.push(task)
+      else grouped.set(noteId, [task])
+    }
   }
   return new Map([...grouped].map(([noteId, list]) => [noteId, summarize(list)]))
 }

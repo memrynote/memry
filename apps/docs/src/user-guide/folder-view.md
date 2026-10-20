@@ -27,7 +27,7 @@ Property columns let you sort and filter by typed values (numbers, dates, select
 
 ## Tasks in notes
 
-A note in the table that carries tasks gets a chevron before its title and a count after it, such as `2/5 open`, with the earliest due date among the open tasks. A note whose tasks are all done reads `5/5 done`. Tasks are filed under a note the same way "Group by note" files them in Tasks: by the note they were written in, or else the first note they are linked to. Archived tasks are left out, and the table only lists tasks of notes in the current folder.
+A note in the table that carries tasks gets a chevron before its title and a count after it, such as `2/5 open`, with the earliest due date among the open tasks. A note whose tasks are all done reads `5/5 done`. A task sits under the note it was written in and under every note it is linked to as related, so a note with no task in its body still lists the tasks related to it. Archived tasks are left out, and the table only lists tasks of notes in the current folder.
 
 Click the chevron to open the note's tasks beneath its row. Each task shows its start and due date, the first line of its description, a bell when a reminder is set, and its tags. Open tasks come first by due date, and done tasks follow.
 

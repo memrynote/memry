@@ -6,12 +6,11 @@
 import { useT } from '@memry/i18n/renderer'
 import { useTasksContext } from '@/contexts/tasks'
 import { useRemindersForTarget } from '@/hooks/use-reminders'
-import type { Task } from '@/data/task-model'
 import type { NoteTasks } from '@/lib/note-tasks'
 import { formatDateShort } from '@/lib/task-utils'
-import { ArrowRight, Bell, ChevronDown } from '@/lib/icons'
+import { Bell, ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { TaskCheckbox, TaskTagsBadge } from '@/components/tasks/task-badges'
+import { TaskRow } from '@/components/tasks/task-row'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 
 export const NOTE_TASK_CHEVRON_WIDTH = 24
@@ -88,17 +87,6 @@ const descriptionPreview = (markdown: string): string =>
     .map((line) => line.replace(/^\s*(#{1,6}|[-*+]|\d+\.|- \[[ xX]\])\s+/, '').trim())
     .find((line) => line.length > 0) ?? ''
 
-const DateRange = ({ task }: { task: Task }): React.JSX.Element | null => {
-  if (!task.startDate && !task.dueDate) return null
-  return (
-    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground tabular-nums">
-      {task.startDate && <span>{formatDateShort(task.startDate)}</span>}
-      {task.startDate && task.dueDate && <ArrowRight size={11} className="rtl:rotate-180" />}
-      {task.dueDate && <span>{formatDateShort(task.dueDate)}</span>}
-    </span>
-  )
-}
-
 interface NoteTaskListProps {
   noteTitle: string
   summary: NoteTasks
@@ -112,49 +100,58 @@ export const NoteTaskList = ({
   startInset
 }: NoteTaskListProps): React.JSX.Element => {
   const { t } = useT('notes')
-  const { updateTask } = useTasksContext()
+  const { tasks, projects, updateTask } = useTasksContext()
   const openTaskDetail = useOpenTaskDetail()
+
+  const toggleComplete = (taskId: string): void => {
+    const target = tasks.find((task) => task.id === taskId)
+    if (target) void updateTask(taskId, { completedAt: target.completedAt ? null : new Date() })
+  }
 
   return (
     <ul
       aria-label={t('folderView.noteTasks.list', { title: noteTitle })}
-      className="m-0 w-full list-none bg-muted/20 py-1"
+      className="m-0 w-full list-none py-1"
       style={{ paddingInlineStart: startInset }}
     >
       {summary.tasks.map((task) => {
+        // The same row the note's task block renders, so a task reads the same here.
+        const project = projects.find((p) => p.id === task.projectId) ?? projects[0]
+        if (!project) return null
         const preview = descriptionPreview(task.description)
+        const isCompleted = task.completedAt !== null
         return (
           <li key={task.id}>
-            {/* The row is a mouse target only; its title button is the keyboard one. */}
-            <div
-              onClick={() => openTaskDetail(task.id)}
-              className="flex cursor-pointer items-center gap-3 px-3 py-1.5 hover:bg-muted/50"
-            >
-              <TaskCheckbox
-                size="sm"
-                checked={task.completedAt !== null}
-                onChange={() =>
-                  void updateTask(task.id, { completedAt: task.completedAt ? null : new Date() })
-                }
-              />
-              <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                <button
-                  type="button"
-                  className={cn(
-                    'truncate text-start text-sm focus-visible:outline-none focus-visible:underline',
-                    task.completedAt && 'text-muted-foreground line-through'
+            <TaskRow
+              task={task}
+              project={project}
+              projects={projects}
+              isCompleted={isCompleted}
+              showProjectBadge
+              onToggleComplete={toggleComplete}
+              onUpdateTask={(taskId, updates) => void updateTask(taskId, updates)}
+              onProjectChange={(projectId) => void updateTask(task.id, { projectId })}
+              onClick={openTaskDetail}
+              renderTitle={() => (
+                <span className="flex min-w-0 grow items-baseline gap-2">
+                  <span
+                    className={cn(
+                      'truncate text-[13px] font-medium',
+                      isCompleted
+                        ? 'text-muted-foreground/60 line-through decoration-1'
+                        : 'text-foreground/90'
+                    )}
+                  >
+                    {task.title}
+                  </span>
+                  {preview && (
+                    <span className="truncate text-xs text-muted-foreground">{preview}</span>
                   )}
-                >
-                  {task.title}
-                </button>
-                {preview && (
-                  <span className="truncate text-xs text-muted-foreground">{preview}</span>
-                )}
-              </div>
-              <DateRange task={task} />
-              <ReminderMark taskId={task.id} />
-              {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} size="sm" maxVisible={2} />}
-            </div>
+                </span>
+              )}
+              actions={<ReminderMark taskId={task.id} />}
+              className="px-3"
+            />
           </li>
         )
       })}
