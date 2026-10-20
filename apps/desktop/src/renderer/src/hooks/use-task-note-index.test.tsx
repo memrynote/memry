@@ -84,7 +84,8 @@ describe('useTaskNoteIndex', () => {
       id: 'note-msa',
       title: 'MSA',
       folderPath: 'Acme/Legal',
-      icon: null
+      icon: null,
+      taskIds: []
     })
     expect(result.current?.get('note-scratch')?.folderPath).toBe('')
   })

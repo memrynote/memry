@@ -93,6 +93,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     wordCount: c.wordCount ?? null,
     ...(treeShape ? {} : { snippet: c.snippet ?? undefined }),
     emoji: c.emoji,
+    ...(c.taskIds && { taskIds: c.taskIds }),
     localOnly: c.localOnly ?? false,
     ...(c.date ? { journalDate: c.date } : {}),
     fileType: c.fileType ?? 'markdown',

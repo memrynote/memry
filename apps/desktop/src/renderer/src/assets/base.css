@@ -920,6 +920,13 @@
   height: calc(1.5rem + 2px);
 }
 
+/* A task block is a fixed-height TaskRow (7px padding around a 20px line, plus
+   the 1px block padding each side), not a line of body text, so the one-line
+   box above centred the plus and handle 5px above the task's title. */
+:root [data-side-menu-block-type='taskBlock'] > .bn-side-menu {
+  height: 36px;
+}
+
 /* @blocknote/shadcn hardcodes the side-menu height per block type (30px text,
    78/54/37px for h1-h3) and centers the buttons in it. Those numbers assume
    BlockNote's own 3em/2em/1.3em headings; ours are 1.875/1.5/1.25rem at

@@ -517,6 +517,28 @@ describe('task-grouping', () => {
       expect(result[1].key).toBe('no-source-note')
       expect(result[1].tasks).toEqual([unfiled])
     })
+
+    it('should list a note group in the order the note body lists its tasks', () => {
+      // #given
+      const index = buildTaskNoteIndex([
+        {
+          id: 'note-build',
+          path: 'Carport/build.md',
+          title: 'Build',
+          taskIds: ['t-start', 't-check', 't-verify']
+        }
+      ])
+      const verify = createMockTask({ id: 't-verify', sourceNoteId: 'note-build' })
+      const related = createMockTask({ id: 't-related', linkedNoteIds: ['note-build'] })
+      const check = createMockTask({ id: 't-check', sourceNoteId: 'note-build' })
+      const start = createMockTask({ id: 't-start', sourceNoteId: 'note-build' })
+
+      // #when
+      const result = groupByNote([verify, related, check, start], index)
+
+      // #then
+      expect(result[0].tasks).toEqual([start, check, verify, related])
+    })
   })
 
   describe('groupTasksForSort', () => {

@@ -339,4 +339,29 @@ describe('note derived state projector', () => {
     await projector.project(upsert(null))
     expect(coverOf()).toBeNull()
   })
+
+  it('project stores the body task ids in document order and keeps them when the body was not read', async () => {
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    const taskIdsOf = (): string | null | undefined =>
+      indexDb.db.all<{ task_ids: string | null }>(
+        sql`SELECT task_ids FROM note_cache WHERE id = 'build-note'`
+      )[0]?.task_ids
+    const upsert = (parsedContent: string | null) => {
+      const event = upsertMarkdown('build-note', 'Carport/Build.md', [])
+      return { ...event, note: { ...event.note, parsedContent } }
+    }
+
+    await projector.project(
+      upsert(
+        '- [x] 1. Start build {task:t-start}\n  - [ ] Pour {task:t-pour}\n- [ ] 2. Check {task:t-check}'
+      )
+    )
+    expect(taskIdsOf()).toBe('["t-start","t-pour","t-check"]')
+
+    await projector.project(upsert(null))
+    expect(taskIdsOf()).toBe('["t-start","t-pour","t-check"]')
+
+    await projector.project(upsert('No tasks left.'))
+    expect(taskIdsOf()).toBe('[]')
+  })
 })

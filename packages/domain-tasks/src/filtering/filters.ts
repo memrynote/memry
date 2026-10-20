@@ -270,8 +270,9 @@ export const sortTasksAdvanced = <T extends FilterTask>(
     switch (sort.field) {
       // `folder` and `note` order rows by the note they came from, which lives
       // in the note index the grouping layer holds, not on the task. The group
-      // order is decided there; here only the order inside one group matters,
-      // and that is the due date.
+      // order is decided there, and `note` groups then follow the note body.
+      // Here the due date orders the rest: folder groups, and tasks the body
+      // does not carry.
       case 'folder':
       case 'note':
       case 'dueDate': {
