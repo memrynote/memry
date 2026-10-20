@@ -217,6 +217,13 @@ The scroll wheel and the toolbar buttons zoom in different increments, but they 
 100% means: whenever the toolbar reads 100%, the image is recentred and the drag-to-pan hint is
 gone, no matter which mix of wheel and buttons you took to get there.
 
+### Viewing an Image Larger
+
+Double-click an image in a note, or right-click it and choose **View larger**, to open it in a
+viewer on top of the note. Scroll or use the **+** and **−** buttons to zoom, drag to pan, and
+double-click the image or press the reset button to return to 100%. Press **Esc** or click the
+empty area around the image to close it. The viewer never changes the image or its size in the note.
+
 ### Images From Another App's Vault
 
 Vaults written by Obsidian, Capacities and similar apps keep media in a shared
