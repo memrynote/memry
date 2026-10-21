@@ -5,6 +5,7 @@ import { requireDatabase, isDatabaseInitialized } from '../../database'
 import { trackMainError } from '../../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../../telemetry/throttle'
 import { trackMainEvent } from '../../telemetry/track'
+import { isKeychainUnreadableError } from '../../crypto/vault-key-error'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { archiveCalendarsOfDisconnectedGoogleAccounts } from './disconnected-accounts'
 import { hasGoogleCalendarConnection } from './oauth'
@@ -171,7 +172,18 @@ async function runStart(): Promise<void> {
 // Polling needs only the Google account. Push channels register on the sync
 // server with the Memry session, so a signed-out install stays on polling.
 async function armPushIfSignedIn(): Promise<void> {
-  if (pushArmed || !(await isMemryUserSignedIn())) return
+  if (pushArmed) return
+  let signedIn: boolean
+  try {
+    signedIn = await isMemryUserSignedIn()
+  } catch (error) {
+    if (!isKeychainUnreadableError(error)) throw error
+    // The session exists but the secret store cannot be read this run (locked
+    // Linux keyring). Polling already runs; push arms on the next runner start.
+    log.warn('Skipping push channels: Memry session unreadable from the keychain')
+    return
+  }
+  if (!signedIn) return
   if (!syncInterval || pushArmed) return
   pushArmed = true
   const pushRuntime = getOrInitGooglePushRuntime({

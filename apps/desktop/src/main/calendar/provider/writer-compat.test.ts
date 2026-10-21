@@ -120,5 +120,18 @@ describe('mitigation (b): version floor before a second writable provider connec
         expect(listDevices).not.toHaveBeenCalled()
         expect(writerCompatAllowsConnect(result, undefined)).toBe(true)
       }))
+
+    it('is unverified, not signed out, when the keychain cannot be read (#3412)', () =>
+      withWritable(async () => {
+        const unreadable = new Error(
+          'Failed to retrieve key from keychain (refresh-token): Secret com.memry.sync/refresh-token exists in the secret store but could not be read this run'
+        )
+        const result = await checkProviderWriterCompat(
+          provider,
+          deps([], { isSignedIn: async () => Promise.reject(unreadable) })
+        )
+        expect(result).toMatchObject({ required: true, verified: false })
+        expect(writerCompatAllowsConnect(result, undefined)).toBe(false)
+      }))
   })
 })
