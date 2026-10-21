@@ -96,6 +96,32 @@ export function finalSnapshotPushTimeoutMs(deadline: ShutdownDeadline): number {
   )
 }
 
+/**
+ * Budget `close-vault` keeps for what follows its projection drain: the
+ * activity-log close and the SQLite checkpoint and close.
+ */
+export const SHUTDOWN_DATABASE_CLOSE_RESERVE_MS = 1_000
+
+/** Default cap on the projection stop drain; mirrors `DEFAULT_STOP_DRAIN_TIMEOUT_MS`. */
+const PROJECTION_DRAIN_CEILING_MS = 5_000
+
+/**
+ * The projection drain's timeout inside `close-vault`. Left at its own 5,000 ms
+ * default, a backlog (an embedding lane mid-inference) held `close-vault` open
+ * past the whole 8,000 ms budget, which landed as SHUTDOWN_TIMEOUT_CLOSE_VAULT.
+ * Clamped to the shared deadline minus the database-close reserve; zero skips the
+ * drain, which only leaves derived state the next open re-derives.
+ */
+export function closeVaultDrainTimeoutMs(deadline: ShutdownDeadline): number {
+  return Math.max(
+    0,
+    Math.min(
+      PROJECTION_DRAIN_CEILING_MS,
+      deadline.remainingMs() - SHUTDOWN_DATABASE_CLOSE_RESERVE_MS
+    )
+  )
+}
+
 export interface ShutdownDeadline {
   /** Milliseconds left in the shared budget. Never negative. */
   remainingMs: () => number

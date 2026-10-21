@@ -5,10 +5,12 @@ vi.mock('./lib/logger', () => ({
 }))
 
 import {
+  closeVaultDrainTimeoutMs,
   completeWithin,
   finalSnapshotPushTimeoutMs,
   runShutdownSequence,
   SHUTDOWN_BUDGET_MS,
+  SHUTDOWN_DATABASE_CLOSE_RESERVE_MS,
   SHUTDOWN_CLOSE_VAULT_RESERVE_MS,
   SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS,
   SHUTDOWN_HARD_BACKSTOP_MS,
@@ -264,6 +266,28 @@ describe('finalSnapshotPushTimeoutMs', () => {
   it('skips the push outright when only the reserve is left', () => {
     expect(finalSnapshotPushTimeoutMs(deadlineWith(SHUTDOWN_CLOSE_VAULT_RESERVE_MS))).toBe(0)
     expect(finalSnapshotPushTimeoutMs(deadlineWith(0))).toBe(0)
+  })
+})
+
+describe('closeVaultDrainTimeoutMs', () => {
+  const deadlineWith = (remainingMs: number): ShutdownDeadline => ({
+    remainingMs: () => remainingMs,
+    cap: (preferredMs) => Math.min(preferredMs, remainingMs)
+  })
+
+  it('keeps the projection drain default when the budget has room', () => {
+    expect(closeVaultDrainTimeoutMs(deadlineWith(8_000))).toBe(5_000)
+  })
+
+  it('never lets the drain spend the database-close reserve', () => {
+    expect(closeVaultDrainTimeoutMs(deadlineWith(3_000))).toBe(
+      3_000 - SHUTDOWN_DATABASE_CLOSE_RESERVE_MS
+    )
+  })
+
+  it('skips the drain when only the reserve is left', () => {
+    expect(closeVaultDrainTimeoutMs(deadlineWith(SHUTDOWN_DATABASE_CLOSE_RESERVE_MS))).toBe(0)
+    expect(closeVaultDrainTimeoutMs(deadlineWith(0))).toBe(0)
   })
 })
 

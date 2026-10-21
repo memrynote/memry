@@ -1186,12 +1186,12 @@ function journalFormatChange(
 /**
  * Close current vault
  */
-export function closeVault(): Promise<void> {
-  return runVaultLifecycleOperation(closeOpenVault)
+export function closeVault(options?: { projectionDrainTimeoutMs?: number }): Promise<void> {
+  return runVaultLifecycleOperation(() => closeOpenVault(options))
 }
 
 /** Teardown behind `closeVault`, for callers already inside the lifecycle queue. */
-async function closeOpenVault(): Promise<void> {
+async function closeOpenVault(options?: { projectionDrainTimeoutMs?: number }): Promise<void> {
   if (!currentStatus.isOpen) {
     return
   }
@@ -1213,7 +1213,7 @@ async function closeOpenVault(): Promise<void> {
   await stopWatcher()
   timer.mark('watcher')
 
-  await stopProjectionRuntime({ drain: true })
+  await stopProjectionRuntime({ drain: true, drainTimeoutMs: options?.projectionDrainTimeoutMs })
   timer.mark('projections')
 
   await stopSyncRuntime()

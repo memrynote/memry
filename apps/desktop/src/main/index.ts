@@ -148,6 +148,7 @@ import { stopSyncRuntime } from './sync/runtime'
 import { beginAppShutdown, isAppShuttingDown } from './app-shutdown'
 import {
   completeWithin,
+  closeVaultDrainTimeoutMs,
   finalSnapshotPushTimeoutMs,
   runShutdownSequence,
   SHUTDOWN_HARD_BACKSTOP_MS,
@@ -2336,9 +2337,9 @@ app.on('before-quit', (event) => {
     },
     {
       name: 'close-vault',
-      run: () => {
+      run: (deadline) => {
         shutdownLog.info('closing vault and stopping watcher...')
-        return closeVault()
+        return closeVault({ projectionDrainTimeoutMs: closeVaultDrainTimeoutMs(deadline) })
       }
     },
     {
