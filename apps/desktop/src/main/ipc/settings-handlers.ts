@@ -177,11 +177,13 @@ const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
   'reviewReminderTime'
 ]
 
-// Only checklist conversion is pushed: it decides what a note's checkboxes
-// become, and two devices that disagree would convert the same note differently.
+// Checklist conversion decides what a note's checkboxes become, and two devices
+// that disagree would convert the same note differently. The PDF display
+// default is pushed so a PDF added on any device starts the same way.
 const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
   'convertChecklistsToTasks',
-  'convertAgentChecklistsToTasks'
+  'convertAgentChecklistsToTasks',
+  'pdfDisplayMode'
 ]
 
 const SETTINGS_KEYS = {
@@ -1235,7 +1237,11 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.GET_EDITOR_SETTINGS, () => {
     const settings = readGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS)
     // Coerce legacy widths (narrow/medium/wide) written by older versions to 'normal'.
-    return { ...settings, width: settings.width === 'full' ? 'full' : 'normal' }
+    return {
+      ...settings,
+      width: settings.width === 'full' ? 'full' : 'normal',
+      pdfDisplayMode: settings.pdfDisplayMode === 'link' ? 'link' : 'embed'
+    }
   })
   ipcMain.handle(
     SettingsChannels.invoke.SET_EDITOR_SETTINGS,

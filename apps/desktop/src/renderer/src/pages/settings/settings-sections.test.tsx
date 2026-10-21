@@ -63,6 +63,7 @@ const mocks = vi.hoisted(() => ({
       width: 'normal',
       toolbarMode: 'floating',
       spellCheck: false,
+      pdfDisplayMode: 'embed',
       convertChecklistsToTasks: true,
       convertAgentChecklistsToTasks: false
     },
@@ -1035,6 +1036,13 @@ describe('settings section coverage', () => {
     fireEvent.click(screen.getByLabelText('editor.v2.spellCheck'))
     await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ spellCheck: true })
+    )
+
+    fireEvent.click(screen.getByText('editor.pdfDisplayMode.options.link'))
+    await waitFor(() =>
+      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
+        pdfDisplayMode: 'link'
+      })
     )
 
     fireEvent.click(screen.getByLabelText('editor.v2.convertChecklists'))

@@ -182,6 +182,7 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
         ],
         "file" => vec![
             text("align", "left"),
+            text("display", "embed"),
             number("height", 0.0),
             text("mimeType", ""),
             text("name", ""),

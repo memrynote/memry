@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from 'react'
 import { notesService } from '@/services/notes-service'
 import { createFileBlockContent } from '../file-block'
+import { newFileDisplayProps } from '../file-block-markers'
 import type { DropTarget } from '../drop-target-utils'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -51,6 +52,8 @@ interface EditorFileUploadParams {
    * the index, which drops the embed back to an absolute URL.
    */
   fetchNotePath: () => Promise<string | undefined>
+  /** The Settings default for a PDF that arrives by drop (#2517). */
+  pdfDisplay?: 'embed' | 'link'
 }
 
 interface EditorFileUploadResult {
@@ -67,7 +70,8 @@ export function useEditorFileUpload({
   noteIdRef,
   dropTarget,
   onDragReset,
-  fetchNotePath
+  fetchNotePath,
+  pdfDisplay
 }: EditorFileUploadParams): EditorFileUploadResult {
   const uploadFile = useCallback(
     async (file: File): Promise<string> => {
@@ -154,7 +158,8 @@ export function useEditorFileUpload({
                   url: result.path,
                   name: result.name || file.name,
                   size: result.size || file.size,
-                  mimeType: result.mimeType || file.type
+                  mimeType: result.mimeType || file.type,
+                  ...newFileDisplayProps(result.mimeType || file.type, pdfDisplay)
                 })
               ],
               referenceBlockId,
@@ -172,7 +177,7 @@ export function useEditorFileUpload({
 
       return true
     },
-    [noteId, editable, editor, dropTarget, onDragReset]
+    [noteId, editable, editor, dropTarget, onDragReset, pdfDisplay]
   )
 
   // Embed a file-type item dragged out of the left sidebar. Unlike an OS file
@@ -229,7 +234,15 @@ export function useEditorFileUpload({
           )
         } else {
           editor.insertBlocks(
-            [createFileBlockContent({ url, name, size: file.fileSize ?? 0, mimeType })],
+            [
+              createFileBlockContent({
+                url,
+                name,
+                size: file.fileSize ?? 0,
+                mimeType,
+                ...newFileDisplayProps(mimeType, pdfDisplay)
+              })
+            ],
             referenceBlockId,
             placement
           )
@@ -238,7 +251,7 @@ export function useEditorFileUpload({
         log.error('Failed to embed dropped item', itemId, error)
       }
     },
-    [editable, editor, dropTarget, onDragReset, fetchNotePath]
+    [editable, editor, dropTarget, onDragReset, fetchNotePath, pdfDisplay]
   )
 
   // Capture-phase drop handler to intercept before BlockNote

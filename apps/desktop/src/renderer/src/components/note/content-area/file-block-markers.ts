@@ -8,3 +8,14 @@ export {
   parseFileBlockMarker,
   type FileBlockProps
 } from '@memry/editor-schema/blocks'
+
+/**
+ * The `display` prop a new file block starts with. Only a PDF has a display
+ * mode, and `embed` is the stored default, so only `link` is ever written.
+ */
+export function newFileDisplayProps(
+  mimeType: string,
+  display: 'embed' | 'link' | undefined
+): { display?: 'link' } {
+  return mimeType === 'application/pdf' && display === 'link' ? { display: 'link' } : {}
+}

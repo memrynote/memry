@@ -36,6 +36,7 @@ import { MissingAttachmentCard, useAttachmentPresence } from './missing-attachme
 import { AttachmentBlockContextMenu, AttachmentMenuButton } from './attachment-block-menu'
 import type { FileBlockProps } from './file-block-markers'
 import { HtmlPreview, toHtmlEmbedUrl } from './html-embed-preview'
+import { PdfLink } from './pdf-link'
 
 export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
 export type { FileBlockProps } from './file-block-markers'
@@ -746,6 +747,7 @@ function FileBlockRender({
       width?: number
       height?: number
       align?: 'left' | 'center' | 'right'
+      display?: 'embed' | 'link'
     }
   }
   editor: unknown
@@ -753,6 +755,8 @@ function FileBlockRender({
   const { t: tPhaseF } = useT('notes')
   const { url, name, size, mimeType, width, height, align } = block.props
   const isPdf = mimeType === 'application/pdf'
+  // Only `link` is stored; a block with no prop is an older one and stays the viewer.
+  const isPdfLink = isPdf && block.props.display === 'link'
   const isAudio = mimeType.startsWith('audio/')
   const isVideo = mimeType.startsWith('video/')
   const isHtml = mimeType === 'text/html'
@@ -786,6 +790,14 @@ function FileBlockRender({
     [editor, block]
   )
 
+  const handleDisplayChange = useCallback(
+    (next: 'embed' | 'link') => {
+      const fileEditor = editor as FileBlockEditor | undefined
+      fileEditor?.updateBlock(block, { props: { ...block.props, display: next } })
+    },
+    [editor, block]
+  )
+
   // The file on disk is already renamed when this runs (#1714); writing the new
   // ref into the block is what records the rename in the note — and what carries
   // it to the other devices, which rename their own copy from the body change.
@@ -815,14 +827,24 @@ function FileBlockRender({
 
   // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
   // and validates it against the vault itself.
-  const menuButton = <AttachmentMenuButton url={url} name={name} onRenamed={handleRenamed} />
+  const pdfDisplay = isPdf
+    ? { value: isPdfLink ? ('link' as const) : ('embed' as const), onChange: handleDisplayChange }
+    : undefined
+  const menuButton = (
+    <AttachmentMenuButton url={url} name={name} onRenamed={handleRenamed} pdfDisplay={pdfDisplay} />
+  )
   const htmlSrc = isHtml ? toHtmlEmbedUrl(resolvedUrl) : null
 
   // The file is gone from disk and self-heal found no unique match: name the
   // expected file so the user can repair the rename by hand (#1713).
   if (presence.missing) {
     return (
-      <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
+      <AttachmentBlockContextMenu
+        url={url}
+        name={name}
+        onRenamed={handleRenamed}
+        pdfDisplay={pdfDisplay}
+      >
         <div className="file-block my-2" contentEditable={false}>
           <MissingAttachmentCard
             name={name}
@@ -835,16 +857,23 @@ function FileBlockRender({
   }
 
   return (
-    <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
+    <AttachmentBlockContextMenu
+      url={url}
+      name={name}
+      onRenamed={handleRenamed}
+      pdfDisplay={pdfDisplay}
+    >
       {/* `.bn-block-content` is a flex row, so this div is sized to its
           content. The PDF and HTML embeds measure their column from inside it
           and need the full width, or they could only ever shrink and never
           align. */}
       <div
-        className={cn('file-block my-2', (isPdf || htmlSrc) && 'w-full')}
+        className={cn('file-block my-2', ((isPdf && !isPdfLink) || htmlSrc) && 'w-full')}
         contentEditable={false}
       >
-        {isPdf ? (
+        {isPdfLink ? (
+          <PdfLink url={url} name={name} menu={menuButton} />
+        ) : isPdf ? (
           <PdfPreview
             // Keyed by URL so a changed one rebuilds the preview from scratch. A
             // load error is otherwise terminal — the red card survives for as long

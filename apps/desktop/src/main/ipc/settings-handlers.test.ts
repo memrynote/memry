@@ -884,6 +884,14 @@ describe('settings-handlers', () => {
       expect(mockUpdateField.mock.calls).toEqual([['editor.convertAgentChecklistsToTasks', true]])
     })
 
+    it('#when the PDF display default changes #then syncs it', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, { pdfDisplayMode: 'link' })
+
+      expect(mockUpdateField.mock.calls).toEqual([['editor.pdfDisplayMode', 'link']])
+    })
+
     it('#given sync manager exists #when accentColor is set #then syncs via updateField', async () => {
       registerSettingsHandlers()
 

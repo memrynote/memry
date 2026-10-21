@@ -41,6 +41,14 @@ export function EditorSettings() {
     [t, updateSettings]
   )
 
+  const handlePdfDisplayModeChange = useCallback(
+    async (value: string) => {
+      const success = await updateSettings({ pdfDisplayMode: value as 'embed' | 'link' })
+      if (!success) toast.error(t('editor.pdfDisplayMode.error'))
+    },
+    [t, updateSettings]
+  )
+
   const handleConvertChecklistsChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateSettings({ convertChecklistsToTasks: enabled })
@@ -113,6 +121,30 @@ export function EditorSettings() {
             aria-label={t('editor.v2.spellCheck')}
             className={ACCENT_SWITCH}
           />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.attachments')}>
+        <SettingRow
+          label={t('editor.v2.pdfDisplayMode')}
+          description={t('editor.pdfDisplayMode.description')}
+        >
+          <ToggleGroup
+            type="single"
+            value={settings.pdfDisplayMode}
+            onValueChange={(value) => {
+              if (value) void handlePdfDisplayModeChange(value)
+            }}
+            aria-label={t('editor.v2.pdfDisplayMode')}
+            className={SEGMENTED}
+          >
+            <ToggleGroupItem value="embed" className={SEGMENT_ITEM}>
+              {t('editor.pdfDisplayMode.options.embed')}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="link" className={SEGMENT_ITEM}>
+              {t('editor.pdfDisplayMode.options.link')}
+            </ToggleGroupItem>
+          </ToggleGroup>
         </SettingRow>
       </SettingsGroup>
 

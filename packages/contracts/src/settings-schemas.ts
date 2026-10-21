@@ -151,6 +151,13 @@ export const EditorSettingsSchema = z.object({
    */
   pdfAdaptToTheme: z.boolean(),
   /**
+   * How a PDF added to a note shows: the inline viewer or its file name. Only
+   * the starting point for new PDFs: each PDF block carries its own `display`
+   * prop in the note. Settings written before this key existed lack it, and
+   * any value other than `link` reads as `embed`.
+   */
+  pdfDisplayMode: z.preprocess((v) => (v === 'link' ? 'link' : 'embed'), z.enum(['embed', 'link'])),
+  /**
    * Whether a checklist item typed in, or opened with, a note becomes a task
    * on its own. Off keeps it a checkbox; right-click and the block menu still
    * convert one by hand, and a checkbox nested under a task still becomes its
@@ -178,6 +185,8 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   // Off by default: inverting turns coloured charts and photographs into
   // negatives, so it has to be the user's choice rather than a surprise.
   pdfAdaptToTheme: false,
+  // Embedded by default: a PDF always showed as the viewer before this setting.
+  pdfDisplayMode: 'embed',
   // On by default: every checklist item became a task before this setting
   // existed, and existing installs keep that.
   convertChecklistsToTasks: true,

@@ -248,6 +248,8 @@
       "notSynced": "Not synced to this device yet",
       "revealFailed": "Failed to reveal file",
       "openFailed": "Failed to open file",
+      "showAsLink": "Show as link",
+      "showAsEmbed": "Show embedded",
       "missingTitle": "Attachment file missing",
       "missingExpected": "Expected file: {name}"
     },
@@ -567,6 +569,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Show as",
+        "embed": "Embedded",
+        "link": "Link"
+      },
       "title": {
         "image": "Add an image",
         "media": "Add media",

@@ -607,8 +607,12 @@ are not plain CommonMark:
   `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
   one all stay the author's markdown;
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
-  then `width` and `height` only when greater than zero and `align` only when set
-  and not `left`, so legacy markers stay byte-identical (`:444-459`);
+  then `width` and `height` only when greater than zero, `align` only when set
+  and not `left`, and `display` only when it is `link`, so legacy markers stay
+  byte-identical (`:444-459`). `display` (`embed` | `link`, default `embed`)
+  chooses whether a PDF shows as the inline viewer or as its file name. A
+  marker without it, or with any other value, is `embed`, and a build that
+  predates the prop ignores it and shows the viewer;
 - the comment-terminator escape replaces only the `>` in `-->` and `--!>` with
   `>`, so a filename containing `--` keeps its bytes (`:433`);
 - a whiteboard is claimed only as a WHOLE, unindented line whose target is

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  parseFileBlockMarker,
   parseWhiteboardLine,
   readMathRun,
   restoreDetailsMarkup,
+  serializeFileBlock,
   serializeMathBlock,
   serializeToggleBlock,
   serializeWhiteboard,
@@ -479,5 +481,33 @@ describe('serializeQuoteBlock', () => {
       expect(run).not.toBeNull()
       expect(serializeQuoteBlock(run!.innerMarkdown)).toBe(raw)
     }
+  })
+})
+
+describe('file marker display mode (#2517)', () => {
+  const base = {
+    url: '../attachments/n/r.pdf',
+    name: 'r.pdf',
+    size: 1,
+    mimeType: 'application/pdf'
+  }
+  const legacy =
+    '<!-- file:{"url":"../attachments/n/r.pdf","name":"r.pdf","size":1,"mimeType":"application/pdf"} -->'
+
+  it('writes link mode into the marker and reads it back', () => {
+    const marker = serializeFileBlock({ ...base, display: 'link' })
+    expect(marker).toContain('"display":"link"')
+    expect(parseFileBlockMarker(marker)?.display).toBe('link')
+  })
+
+  it('keeps a marker with no display byte-identical, and omits the embed default', () => {
+    expect(serializeFileBlock(base)).toBe(legacy)
+    expect(serializeFileBlock({ ...base, display: 'embed' })).toBe(legacy)
+  })
+
+  it('reads an older marker as having no display, and an unknown value as the default', () => {
+    expect(parseFileBlockMarker(legacy)?.display).toBeUndefined()
+    const odd = legacy.replace('"size":1', '"display":"carousel","size":1')
+    expect(parseFileBlockMarker(odd)?.display).toBeUndefined()
   })
 })

@@ -9,6 +9,7 @@ const DEFAULTS: EditorSettingsDTO = {
   toolbarMode: 'floating',
   spellCheck: false,
   pdfAdaptToTheme: false,
+  pdfDisplayMode: 'embed',
   convertChecklistsToTasks: true,
   convertAgentChecklistsToTasks: false
 }

@@ -75,7 +75,8 @@ const PHOTO = {
 
 function renderDialog(
   kind: AttachmentKind = 'file',
-  onInsert = vi.fn()
+  onInsert = vi.fn(),
+  defaultPdfDisplay?: 'embed' | 'link'
 ): { onInsert: ReturnType<typeof vi.fn> } {
   setupApi()
   render(
@@ -84,6 +85,7 @@ function renderDialog(
       onOpenChange={vi.fn()}
       noteId="note-b"
       kind={kind}
+      defaultPdfDisplay={defaultPdfDisplay}
       onInsert={onInsert}
     />
   )
@@ -136,6 +138,56 @@ describe('buildInsertedAttachmentBlock', () => {
         mimeType: 'application/pdf'
       }
     })
+  })
+})
+
+describe('PDF display choice (#2517)', () => {
+  const pdfResult = {
+    url: '../attachments/note-a/k3f9x2-report.pdf',
+    name: 'report.pdf',
+    filename: PDF.filename,
+    ownerNoteId: 'note-a',
+    size: 2048,
+    mimeType: 'application/pdf',
+    type: 'file' as const
+  }
+
+  it('writes link mode into a PDF block and leaves other files alone', () => {
+    expect(buildInsertedAttachmentBlock({ ...pdfResult, display: 'link' }).props).toMatchObject({
+      display: 'link'
+    })
+    expect(
+      buildInsertedAttachmentBlock({ ...pdfResult, mimeType: 'text/plain', display: 'link' }).props
+    ).not.toHaveProperty('display')
+  })
+
+  it('inserts the PDF as a link when the user picks Link', async () => {
+    listVaultAttachments.mockResolvedValue([PDF])
+    insertExistingAttachment.mockResolvedValue(pdfResult)
+    const { onInsert } = renderDialog('pdf')
+
+    fireEvent.click(await screen.findByText('editor.attachmentPicker.display.link'))
+    fireEvent.click(await screen.findByTestId('attachment-picker-row'))
+
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' }))
+  })
+
+  it('starts on the Settings default', async () => {
+    listVaultAttachments.mockResolvedValue([PDF])
+    insertExistingAttachment.mockResolvedValue(pdfResult)
+    const { onInsert } = renderDialog('pdf', vi.fn(), 'link')
+
+    fireEvent.click(await screen.findByTestId('attachment-picker-row'))
+
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' }))
+  })
+
+  it('only offers the choice for PDFs', async () => {
+    listVaultAttachments.mockResolvedValue([])
+    renderDialog('image')
+    await screen.findByTestId('attachment-picker-empty')
+
+    expect(screen.queryByTestId('attachment-picker-display')).toBeNull()
   })
 })
 
