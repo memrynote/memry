@@ -22,3 +22,9 @@ title: Callout round-trip corpus
 
 > [!danger]
 > A foreign type stays byte-identical
+
+> [!info]-
+> Starts closed
+
+> [!tip]+
+> Starts open

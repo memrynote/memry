@@ -213,6 +213,8 @@ const FIXTURES: ReadonlyArray<readonly [string, string]> = [
   ['a hash tag', 'Tagged #hashtag here.'],
   ['a date mention token', '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.'],
   ['a callout', '> [!info]\n> Heads up'],
+  ['a closed callout', '> [!info]-\n> Heads up'],
+  ['an open callout', '> [!info]+\n> Heads up'],
   // Every custom block whose on-disk form is a marker (#2306). The 0.51
   // serializer drops any DOM node that is not an element or text, which is how
   // the file block's comment marker and the cell checkbox's `<input>` would

@@ -32,6 +32,7 @@ import {
   List,
   Quote,
   Bug,
+  ChevronRight,
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -142,6 +143,7 @@ const CALLOUT_STYLES: Record<CalloutTypeValue, CalloutStyle> = {
 interface CalloutBlock {
   props: {
     type: string
+    fold?: string
   }
 }
 
@@ -149,7 +151,7 @@ interface CalloutEditor {
   getTextCursorPosition: () => { block: CalloutBlock }
   updateBlock: (
     block: CalloutBlock,
-    update: { type: 'callout'; props: { type: CalloutTypeValue } }
+    update: { type: 'callout'; props: { type?: CalloutTypeValue; fold?: 'closed' | 'open' } }
   ) => void
 }
 
@@ -185,6 +187,14 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
     bug: t('editor.callout.bug')
   }
 
+  const closed = block.props.fold === 'closed'
+  // Toggling rewrites the `> [!type]-` / `+` marker in the note (#3206).
+  const toggleFold = () =>
+    calloutEditor.updateBlock(block, {
+      type: 'callout',
+      props: { fold: closed ? 'open' : 'closed' }
+    })
+
   return (
     <div
       className={cn(
@@ -194,6 +204,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
         calloutType.border
       )}
       data-callout-type={block.props.type}
+      data-callout-fold={block.props.fold ?? 'none'}
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -231,7 +242,28 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-      <div className="inline-content min-w-0 flex-1" ref={contentRef} />
+      {closed && (
+        <span className="min-w-0 flex-1 font-medium" contentEditable={false}>
+          {labels[block.props.type as CalloutTypeValue] ?? block.props.type}
+        </span>
+      )}
+      <div className={cn('inline-content min-w-0 flex-1', closed && 'hidden')} ref={contentRef} />
+      <button
+        type="button"
+        className="ms-2 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground"
+        contentEditable={false}
+        aria-expanded={!closed}
+        aria-label={closed ? t('editor.callout.expand') : t('editor.callout.collapse')}
+        onClick={toggleFold}
+      >
+        <ChevronRight
+          className={cn(
+            'h-4 w-4 transition-transform motion-reduce:transition-none',
+            !closed && 'rotate-90 rtl:-rotate-90',
+            closed && 'rtl:rotate-180'
+          )}
+        />
+      </button>
     </div>
   )
 }

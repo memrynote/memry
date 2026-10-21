@@ -465,7 +465,10 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
         // the callout kinds `resolveCalloutRun` recognises.
         const callout = {
           type: 'callout' as const,
-          props: { type: claimed.type },
+          props:
+            claimed.fold === 'none'
+              ? { type: claimed.type }
+              : { type: claimed.type, fold: claimed.fold },
           content: claimed.content,
           children: claimed.children
         } as unknown as Block
@@ -618,6 +621,7 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       const calloutType = (block.props as any).type as string
+      const calloutFold = (block.props as { fold?: string }).fold
       // Serialized as a PARAGRAPH holding the callout's inline content, the
       // same way `serializeQuote` above does it, rather than as the callout
       // block itself. This block's React render puts its content in a plain
@@ -634,7 +638,7 @@ export async function serializeBlocksPreservingBlanks(
         children.length > 0
           ? await serializeBlocksPreservingBlanks(editor, [own, ...children])
           : await serializeBlocks(editor, [own])
-      const calloutMd = serializeCalloutBlock(calloutType, contentMd.trim())
+      const calloutMd = serializeCalloutBlock(calloutType, contentMd.trim(), calloutFold)
       segments.push({
         type: 'content',
         text: markers.length > 0 ? `${markers.join('\n')}\n${calloutMd}` : calloutMd

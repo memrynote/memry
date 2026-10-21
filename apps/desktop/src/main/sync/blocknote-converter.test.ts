@@ -3662,6 +3662,38 @@ describe('callouts on the CRDT path (#1846)', () => {
     }
   )
 
+  it.each([
+    ['closed', '> [!info]-\n> line one\n> line two'],
+    ['open', '> [!tip]+\n> line one'],
+    ['closed and empty', '> [!note]-'],
+    ['closed with children', '> [!info]-\n> line one\n>\n> - item']
+  ])(
+    'a %s fold marker is claimed into the fold prop and written back (#3206)',
+    async (name, markdown) => {
+      const doc = new Y.Doc()
+      await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+      const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+      expect(blocks?.[0]?.type).toBe('callout')
+      expect((blocks?.[0]?.props as { fold: string }).fold).toBe(
+        name.startsWith('closed') ? 'closed' : 'open'
+      )
+      writeMarkdownSourceToYDoc(doc, null)
+      expect(await yDocToMarkdown(doc)).toBe(markdown)
+    }
+  )
+
+  it('a callout without a fold marker has no fold and writes no marker (#3206)', async () => {
+    const markdown = '> [!info]\n> line one'
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect((blocks?.[0]?.props as { fold: string }).fold).toBe('none')
+    writeMarkdownSourceToYDoc(doc, null)
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
   it('an empty callout claims and round-trips', async () => {
     const markdown = serializeCalloutBlock('info', '')
     const doc = new Y.Doc()

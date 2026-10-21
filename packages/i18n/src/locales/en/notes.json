@@ -298,6 +298,8 @@
       "group": "Basic blocks",
       "subtext": "Highlight important information",
       "changeType": "Change callout type",
+      "expand": "Expand callout",
+      "collapse": "Collapse callout",
       "menuLabel": "Callout Type",
       "info": "Info",
       "warning": "Warning",
