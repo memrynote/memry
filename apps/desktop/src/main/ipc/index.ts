@@ -58,6 +58,7 @@ import {
   registerOcrLanguagesHandlers,
   unregisterOcrLanguagesHandlers
 } from './ocr-languages-handlers'
+import { registerOnboardingHandlers, unregisterOnboardingHandlers } from './onboarding-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import { installIpcChannelLabels } from './lib/ipc-channel-labels'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -210,6 +211,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   registerVaultLockHandlers()
   registerStickyHandlers()
   registerOcrLanguagesHandlers()
+  registerOnboardingHandlers()
 
   handlersRegistered = true
 }
@@ -263,6 +265,7 @@ export function unregisterAllHandlers(): void {
   unregisterVaultLockHandlers()
   unregisterStickyHandlers()
   unregisterOcrLanguagesHandlers()
+  unregisterOnboardingHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')

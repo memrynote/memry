@@ -708,12 +708,36 @@ optional, and the group accepts provider keys it does not name. Device-local
 and never here: the desktop day-panel click settings, the `apple-eventkit`
 group, provider credentials and cursors.
 
+**The `features` group** carries the per-vault module toggles `home`, `inbox`,
+`journal`, `tasks`, `calendar`, `graph` and `spatialCanvas`, each a boolean with
+its own field clock (`features.journal`)
+(`packages/contracts/src/settings-sync.ts:169-184`;
+`packages/contracts/src/settings-schemas.ts:577-588`). Every key is optional, and
+the group accepts a key it does not name. Desktop pushes a flag only when the
+user sets it (`apps/desktop/src/main/ipc/settings-handlers.ts`, the
+`SET_FEATURES_SETTINGS` handler), and applies a merged group to its local
+`features` row without pushing it back
+(`apps/desktop/src/main/sync/item-handlers/settings-handler.ts`,
+`propagateMergedSettings`).
+
 **Normative, compat (D7).** An older build whose schema lacks a key strips its
 value on parse but keeps its field clock, so it re-uploads the clock with no
 value. **An absent value under a field clock equal to the local one is not a
 removal** (a removal ticks the clock): the receiver keeps its value. A device
 seeds a key from its own device-local value only while no device has clocked
 that path.
+
+**Normative, `features` (compat).** A build that predates the group strips its
+values on parse and echoes the clocks it received, so the merge keeps the
+newer device's values (§6.9.0,
+`packages/sync-client/src/settings-merge.ts:22-26`). A device that has stored
+`features` flags locally seeds a flag that differs from its default only while
+no device has clocked that path and no value is present
+(`apps/desktop/src/main/settings/features-settings-sync.ts`,
+`seedFeaturesSyncedSettings`). A stored default records no decision, because the
+desktop write path stores the whole group
+(`apps/desktop/src/main/ipc/settings-handlers.ts`, `writeGroupSettings`), so it
+is never seeded and cannot overwrite another device's choice.
 
 ### 13.7.14 `filter` — `:85-91`
 
@@ -925,13 +949,13 @@ cannot stall every other synced setting
 about keys **inside** a modelled group; §13.2 is what protects an **unmodelled
 group**.
 
-### 13.10.1 The ten modelled groups
+### 13.10.1 The eleven modelled groups
 
 **Normative.** "Unmodelled group" is only meaningful against a list, so here it
 is. The modelled groups are exactly:
 
 `general`, `editor`, `tasks`, `calendar`, `keyboard`, `notes`, `sync`, `inbox`,
-`journal`, `sidebar`.
+`journal`, `sidebar`, `features`.
 
 Every other group — `experimental` among them — is **unmodelled**: it is absent
 from the parsed read view and present, byte for byte, in the stored payload.

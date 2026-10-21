@@ -7,23 +7,19 @@ import { CheckoutPanel, NoTokenNotice } from '@/components/account/CheckoutPanel
 import { parseCheckoutToken } from '@/lib/checkout-summary'
 import { useAuth } from '@/contexts/auth-context'
 import type { CheckoutPlanId } from '@/lib/constants'
-import type { PaddleCheckoutCadence } from '@/lib/paddle-checkout'
+import {
+  parseCheckoutCadence,
+  parseCheckoutPlan,
+  type PaddleCheckoutCadence
+} from '@/lib/paddle-checkout'
 
 const NO_TOKEN_NOTICE = <NoTokenNotice />
-
-function parsePlan(value: string | null): CheckoutPlanId | undefined {
-  return value === 'plus' || value === 'pro' || value === 'believer' ? value : undefined
-}
-
-function parseCadence(value: string | null): PaddleCheckoutCadence | undefined {
-  return value === 'monthly' || value === 'annual' || value === 'lifetime' ? value : undefined
-}
 
 export function CheckoutPage() {
   const { ready, isSignedIn, api } = useAuth()
   const [params] = useSearchParams()
-  const initialPlan = parsePlan(params.get('plan'))
-  const initialCadence = parseCadence(params.get('cadence'))
+  const initialPlan = parseCheckoutPlan(params.get('plan'))
+  const initialCadence = parseCheckoutCadence(params.get('cadence'))
 
   // Desktop opens /checkout#token=<checkoutToken>. Web pricing has no hash token
   // and mints one from the signed-in session instead.

@@ -120,6 +120,7 @@ vi.mock('../store', () => ({
     mocks.vaults = mocks.vaults.filter((vault) => vault.path !== path)
   },
   findVault: (path: string) => mocks.vaults.find((vault) => vault.path === path),
+  getStoredLocale: () => null,
   touchVault: vi.fn()
 }))
 

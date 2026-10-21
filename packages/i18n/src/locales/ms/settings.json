@@ -1151,13 +1151,11 @@
       "confirmDescription": "Masukkan perkataan yang diminta untuk mengesahkan anda telah menyimpannya dengan betul.",
       "wordPlaceholder": "Masukkan perkataan ke-{index}",
       "verify": "Sahkan",
-      "mustMatch": "Semua 3 perkataan mesti sepadan untuk meneruskan",
-      "inputTitle": "Masukkan frasa pemulihan",
-      "inputDescription": "Masukkan frasa pemulihan 24 perkataan anda untuk memulihkan akses kepada data anda yang disulitkan.",
+      "mustMatch": "Ketiga-tiga perkataan mesti sepadan untuk meneruskan.",
+      "inputTitle": "Masukkan frasa pemulihan anda",
+      "inputDescription": "Masukkan 24 perkataan yang anda simpan semasa mencipta akaun.",
       "inputLabel": "Frasa pemulihan",
       "count": "{count} / {total} perkataan",
-      "inputPlaceholder": "Masukkan frasa pemulihan 24 perkataan anda yang dipisahkan dengan ruang…",
-      "lengthHint": "Masukkan kesemua 24 perkataan untuk mendayakan butang pulihkan",
       "restore": "Pulihkan akses",
       "progress": {
         "deriving": "Menghasilkan kunci penyulitan…",
@@ -1171,7 +1169,14 @@
         "title": "Tidak dapat memuatkan frasa pemulihan anda",
         "description": "Frasa pemulihan anda hanya ditunjukkan sekali semasa persediaan dan tidak boleh diperoleh semula kemudian. Mula semula untuk menjana yang baharu.",
         "startOver": "Mula semula"
-      }
+      },
+      "copy": "Salin",
+      "download": "Muat turun",
+      "fileTitle": "Frasa pemulihan MemryNote",
+      "wordLabel": "Perkataan #{index}",
+      "wordShort": "perkataan #{index}",
+      "pasteHint": "Tampal keseluruhan frasa ke dalam mana-mana kotak untuk mengisi grid.",
+      "stepOf": "Langkah {step} daripada {total}"
     },
     "startFresh": {
       "trigger": "Saya tidak dapat mendapatkan semula frasa pemulihan saya",

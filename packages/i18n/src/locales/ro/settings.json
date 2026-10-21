@@ -1151,13 +1151,11 @@
       "confirmDescription": "Introduceți cuvintele solicitate pentru a verifica că le-ați salvat corect.",
       "wordPlaceholder": "Introduceți cuvântul #{index}",
       "verify": "Verifică",
-      "mustMatch": "Toate cele 3 cuvinte trebuie să se potrivească pentru a continua",
+      "mustMatch": "Toate cele 3 cuvinte trebuie să se potrivească pentru a continua.",
       "inputTitle": "Introduceți fraza de recuperare",
-      "inputDescription": "Introduceți fraza de recuperare de 24 de cuvinte pentru a restabili accesul la datele criptate.",
+      "inputDescription": "Introduceți cele 24 de cuvinte salvate la crearea contului.",
       "inputLabel": "Fraza de recuperare",
       "count": "Cuvinte: {count} / {total}",
-      "inputPlaceholder": "Introduceți fraza de recuperare de 24 de cuvinte, separate prin spații…",
-      "lengthHint": "Introduceți toate cele 24 de cuvinte pentru a activa butonul de restaurare",
       "restore": "Restabilește accesul",
       "progress": {
         "deriving": "Se obțin cheile de criptare…",
@@ -1171,7 +1169,14 @@
         "title": "Nu s-a putut încărca fraza de recuperare",
         "description": "Fraza de recuperare este afișată o singură dată în timpul configurării și nu poate fi obținută ulterior. Reluați de la început pentru a genera una nouă.",
         "startOver": "Reia de la început"
-      }
+      },
+      "copy": "Copiază",
+      "download": "Descarcă",
+      "fileTitle": "Fraza de recuperare MemryNote",
+      "wordLabel": "Cuvântul #{index}",
+      "wordShort": "cuvântul #{index}",
+      "pasteHint": "Lipiți toată fraza în orice casetă pentru a completa grila.",
+      "stepOf": "Pasul {step} din {total}"
     },
     "startFresh": {
       "trigger": "Nu mai am acces la fraza de recuperare",

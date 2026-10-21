@@ -1,4 +1,4 @@
-import { AccountChannels } from '@memry/contracts/ipc-channels'
+import { AccountChannels, type StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import { invoke } from '../lib/ipc'
 
@@ -44,7 +44,8 @@ export const syncLinking = {
 export const accountApi = {
   getInfo: () => invoke(AccountChannels.invoke.GET_INFO),
   signOut: () => invoke(AccountChannels.invoke.SIGN_OUT),
-  startCheckout: () => invoke(AccountChannels.invoke.START_CHECKOUT),
+  startCheckout: (input?: StartCheckoutInput) =>
+    invoke(AccountChannels.invoke.START_CHECKOUT, input),
   getBillingStatus: () => invoke(AccountChannels.invoke.GET_BILLING_STATUS),
   refreshBillingStatus: (input?: { transactionId?: string }) =>
     invoke(AccountChannels.invoke.REFRESH_BILLING_STATUS, input),

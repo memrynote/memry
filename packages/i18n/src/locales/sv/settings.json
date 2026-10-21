@@ -1151,13 +1151,11 @@
       "confirmDescription": "Ange de efterfrågade orden för att bekräfta att du har sparat frasen korrekt.",
       "wordPlaceholder": "Ange ord nr {index}",
       "verify": "Verifiera",
-      "mustMatch": "Alla tre orden måste stämma för att du ska kunna fortsätta",
-      "inputTitle": "Ange återställningsfras",
-      "inputDescription": "Ange din återställningsfras på 24 ord för att återfå åtkomst till dina krypterade data.",
+      "mustMatch": "Alla 3 orden måste stämma för att du ska kunna fortsätta.",
+      "inputTitle": "Ange din återställningsfras",
+      "inputDescription": "Ange de 24 ord du sparade när du skapade kontot.",
       "inputLabel": "Återställningsfras",
       "count": "{count} / {total} ord",
-      "inputPlaceholder": "Ange din återställningsfras på 24 ord, separerade med mellanslag…",
-      "lengthHint": "Ange alla 24 ord för att aktivera återställningsknappen",
       "restore": "Återställ åtkomst",
       "progress": {
         "deriving": "Härleder krypteringsnycklar…",
@@ -1171,7 +1169,14 @@
         "title": "Det gick inte att läsa in din återställningsfras",
         "description": "Din återställningsfras visas bara en gång under konfigurationen och kan inte hämtas senare. Börja om för att generera en ny.",
         "startOver": "Börja om"
-      }
+      },
+      "copy": "Kopiera",
+      "download": "Ladda ned",
+      "fileTitle": "MemryNote-återställningsfras",
+      "wordLabel": "Ord nr {index}",
+      "wordShort": "ord nr {index}",
+      "pasteHint": "Klistra in hela frasen i valfri ruta för att fylla rutnätet.",
+      "stepOf": "Steg {step} av {total}"
     },
     "startFresh": {
       "trigger": "Jag kan inte få tillbaka min återställningsfras",

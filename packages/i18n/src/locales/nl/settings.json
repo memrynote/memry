@@ -1151,13 +1151,11 @@
       "confirmDescription": "Voer de gevraagde woorden in om te controleren of je de zin goed hebt bewaard.",
       "wordPlaceholder": "Woord #{index} invoeren",
       "verify": "Verifiëren",
-      "mustMatch": "Alle drie de woorden moeten overeenkomen om door te gaan",
-      "inputTitle": "Voer de herstelzin in",
-      "inputDescription": "Voer je herstelzin van 24 woorden in om weer toegang te krijgen tot je versleutelde gegevens.",
+      "mustMatch": "Alle 3 woorden moeten overeenkomen om door te gaan.",
+      "inputTitle": "Voer je herstelzin in",
+      "inputDescription": "Voer de 24 woorden in die je hebt bewaard toen je je account maakte.",
       "inputLabel": "Herstelzin",
       "count": "{count} / {total} woorden",
-      "inputPlaceholder": "Voer je herstelzin van 24 woorden in, gescheiden door spaties…",
-      "lengthHint": "Voer alle 24 woorden in om de herstelknop in te schakelen",
       "restore": "Toegang herstellen",
       "progress": {
         "deriving": "Versleutelingssleutels afleiden…",
@@ -1171,7 +1169,14 @@
         "title": "Kan je herstelzin niet laden",
         "description": "Je herstelzin wordt maar één keer getoond tijdens het instellen en kan later niet worden opgehaald. Begin opnieuw om een nieuwe te genereren.",
         "startOver": "Opnieuw beginnen"
-      }
+      },
+      "copy": "Kopiëren",
+      "download": "Downloaden",
+      "fileTitle": "MemryNote-herstelzin",
+      "wordLabel": "Woord #{index}",
+      "wordShort": "woord #{index}",
+      "pasteHint": "Plak je hele zin in een willekeurig vak om het raster te vullen.",
+      "stepOf": "Stap {step} van {total}"
     },
     "startFresh": {
       "trigger": "Ik kan mijn herstelzin niet terugvinden",

@@ -85,7 +85,9 @@ const hoisted = vi.hoisted(() => ({
   registerStickyHandlers: vi.fn(),
   unregisterStickyHandlers: vi.fn(),
   registerOcrLanguagesHandlers: vi.fn(),
-  unregisterOcrLanguagesHandlers: vi.fn()
+  unregisterOcrLanguagesHandlers: vi.fn(),
+  registerOnboardingHandlers: vi.fn(),
+  unregisterOnboardingHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -252,6 +254,11 @@ vi.mock('./sticky-handlers', () => ({
 vi.mock('./ocr-languages-handlers', () => ({
   registerOcrLanguagesHandlers: hoisted.registerOcrLanguagesHandlers,
   unregisterOcrLanguagesHandlers: hoisted.unregisterOcrLanguagesHandlers
+}))
+
+vi.mock('./onboarding-handlers', () => ({
+  registerOnboardingHandlers: hoisted.registerOnboardingHandlers,
+  unregisterOnboardingHandlers: hoisted.unregisterOnboardingHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'

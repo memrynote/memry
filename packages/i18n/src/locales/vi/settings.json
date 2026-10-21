@@ -1151,13 +1151,11 @@
       "confirmDescription": "Nhập các từ được yêu cầu để xác minh rằng bạn đã lưu chúng chính xác.",
       "wordPlaceholder": "Nhập từ thứ {index}",
       "verify": "Xác minh",
-      "mustMatch": "Cả 3 từ phải khớp để tiếp tục",
-      "inputTitle": "Nhập cụm từ khôi phục",
-      "inputDescription": "Nhập cụm từ khôi phục gồm 24 từ của bạn để khôi phục quyền truy cập vào dữ liệu được mã hóa.",
+      "mustMatch": "Cả 3 từ phải khớp để tiếp tục.",
+      "inputTitle": "Nhập cụm từ khôi phục của bạn",
+      "inputDescription": "Nhập 24 từ bạn đã lưu khi tạo tài khoản.",
       "inputLabel": "Cụm từ khôi phục",
       "count": "{count}/{total} từ",
-      "inputPlaceholder": "Nhập cụm từ khôi phục gồm 24 từ, cách nhau bằng dấu cách…",
-      "lengthHint": "Nhập đủ 24 từ để bật nút khôi phục",
       "restore": "Khôi phục quyền truy cập",
       "progress": {
         "deriving": "Đang tạo khóa mã hóa…",
@@ -1171,7 +1169,14 @@
         "title": "Không thể tải cụm từ khôi phục",
         "description": "Cụm từ khôi phục chỉ hiển thị một lần trong quá trình thiết lập và không thể lấy lại sau. Bắt đầu lại để tạo cụm từ mới.",
         "startOver": "Bắt đầu lại"
-      }
+      },
+      "copy": "Sao chép",
+      "download": "Tải xuống",
+      "fileTitle": "Cụm từ khôi phục MemryNote",
+      "wordLabel": "Từ #{index}",
+      "wordShort": "từ #{index}",
+      "pasteHint": "Dán toàn bộ cụm từ vào bất kỳ ô nào để điền cả lưới.",
+      "stepOf": "Bước {step}/{total}"
     },
     "startFresh": {
       "trigger": "Tôi không thể lấy lại cụm từ khôi phục",

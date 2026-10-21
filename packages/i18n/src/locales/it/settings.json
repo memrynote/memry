@@ -1151,13 +1151,11 @@
       "confirmDescription": "Inserisci le parole richieste per verificare di averla salvata correttamente.",
       "wordPlaceholder": "Inserisci la parola n. {index}",
       "verify": "Verifica",
-      "mustMatch": "Per continuare, tutte e 3 le parole devono corrispondere",
+      "mustMatch": "Tutte e 3 le parole devono corrispondere per continuare.",
       "inputTitle": "Inserisci la frase di recupero",
-      "inputDescription": "Inserisci la tua frase di recupero di 24 parole per ripristinare l'accesso ai tuoi dati crittografati.",
+      "inputDescription": "Inserisci le 24 parole che hai salvato quando hai creato il tuo account.",
       "inputLabel": "Frase di recupero",
       "count": "{count} / {total} parole",
-      "inputPlaceholder": "Inserisci la tua frase di recupero di 24 parole, separate da spazi…",
-      "lengthHint": "Inserisci tutte le 24 parole per attivare il pulsante di ripristino",
       "restore": "Ripristina l'accesso",
       "progress": {
         "deriving": "Derivazione delle chiavi di crittografia…",
@@ -1171,7 +1169,14 @@
         "title": "Impossibile caricare la tua frase di recupero",
         "description": "La tua frase di recupero viene mostrata solo una volta durante la configurazione e non può essere recuperata in seguito. Ricomincia per generarne una nuova.",
         "startOver": "Ricomincia"
-      }
+      },
+      "copy": "Copia",
+      "download": "Scarica",
+      "fileTitle": "Frase di recupero di MemryNote",
+      "wordLabel": "Parola n. {index}",
+      "wordShort": "parola n. {index}",
+      "pasteHint": "Incolla l'intera frase in una qualsiasi casella per riempire la griglia.",
+      "stepOf": "Passaggio {step} di {total}"
     },
     "startFresh": {
       "trigger": "Non ho più la mia frase di recupero",

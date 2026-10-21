@@ -5,6 +5,15 @@ import type { CheckoutPlanId, SyncPlanId } from './constants'
 export type PaddleCheckoutCadence = 'monthly' | 'annual' | 'lifetime'
 export type PaddleCheckoutEventHandler = (event: PaddleEventData) => void
 
+/** `?plan=` on a checkout page link; anything else falls back to the panel default. */
+export function parseCheckoutPlan(value: string | null): CheckoutPlanId | undefined {
+  return value === 'plus' || value === 'pro' || value === 'believer' ? value : undefined
+}
+
+export function parseCheckoutCadence(value: string | null): PaddleCheckoutCadence | undefined {
+  return value === 'monthly' || value === 'annual' || value === 'lifetime' ? value : undefined
+}
+
 type CheckoutResponse = {
   transactionId: string
   checkoutUrl: string | null

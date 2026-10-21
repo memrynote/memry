@@ -6,21 +6,10 @@ import {
   SettingsHeader
 } from '@/components/settings/settings-primitives'
 import { Input } from '@/components/ui/input'
-import { ChevronRight, FileCode, FileSpreadsheet, FileText, Search } from '@/lib/icons'
+import { ChevronRight, Search } from '@/lib/icons'
+import { ImportSourceIcon } from '@/components/import/import-source-icon'
 import { ImportDialog } from '@/components/settings/import-dialog'
 import { useImporters, type ImporterItem } from '@/hooks/use-importers'
-import appleJournalIcon from '@/assets/import-sources/apple-journal.png'
-import appleNotesIcon from '@/assets/import-sources/apple-notes.png'
-import bearIcon from '@/assets/import-sources/bear.png'
-import evernoteIcon from '@/assets/import-sources/evernote.svg'
-import googleKeepIcon from '@/assets/import-sources/google-keep.svg'
-import noteplanIcon from '@/assets/import-sources/noteplan.png'
-import notionIcon from '@/assets/import-sources/notion.png'
-import onenoteIcon from '@/assets/import-sources/onenote.png'
-import raindropIcon from '@/assets/import-sources/raindrop.png'
-import roamIcon from '@/assets/import-sources/roam.png'
-import ticktickIcon from '@/assets/import-sources/ticktick.png'
-import todoistIcon from '@/assets/import-sources/todoist.png'
 
 type ImportGroupId = 'noteApps' | 'tasks' | 'files'
 
@@ -39,51 +28,6 @@ const IMPORT_GROUP_IDS: Record<ImportGroupId, string[]> = {
   ],
   tasks: ['todoist', 'ticktick', 'apple-journal', 'raindrop'],
   files: ['markdown', 'html', 'csv']
-}
-
-const IMPORT_SOURCE_LOGOS: Record<string, string> = {
-  notion: notionIcon,
-  evernote: evernoteIcon,
-  'apple-notes': appleNotesIcon,
-  bear: bearIcon,
-  onenote: onenoteIcon,
-  'google-keep': googleKeepIcon,
-  roam: roamIcon,
-  noteplan: noteplanIcon,
-  todoist: todoistIcon,
-  ticktick: ticktickIcon,
-  'apple-journal': appleJournalIcon,
-  raindrop: raindropIcon
-}
-
-const IMPORT_FORMAT_ICONS: Record<string, typeof FileText> = {
-  markdown: FileText,
-  html: FileCode,
-  csv: FileSpreadsheet
-}
-
-function ImportSourceIcon({ item }: { item: ImporterItem }) {
-  const logo = IMPORT_SOURCE_LOGOS[item.id]
-  if (logo) {
-    return (
-      <img
-        src={logo}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className="size-6 shrink-0 rounded-md object-contain"
-      />
-    )
-  }
-  const FormatIcon = IMPORT_FORMAT_ICONS[item.id]
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border text-[11px]/4 font-medium text-muted-foreground"
-    >
-      {FormatIcon ? <FormatIcon className="w-3.5 h-3.5" /> : item.name.charAt(0).toUpperCase()}
-    </span>
-  )
 }
 
 /** Sources whose fileSpec has no single representative extension. */
@@ -178,7 +122,7 @@ export function ImportSettings() {
                   data-testid={`import-source-${item.id}`}
                   className="group flex w-full items-center gap-3 min-h-13 py-2.5 text-start focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
                 >
-                  <ImportSourceIcon item={item} />
+                  <ImportSourceIcon id={item.id} name={item.name} />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate text-[13px]/4 text-foreground">{item.name}</span>
                     <span className="truncate text-xs/4 text-muted-foreground">

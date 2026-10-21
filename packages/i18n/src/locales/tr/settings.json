@@ -1168,13 +1168,11 @@
       "confirmDescription": "Doğru şekilde kaydettiğinizi doğrulamak için istenen kelimeleri girin.",
       "wordPlaceholder": "{index}. kelimeyi girin",
       "verify": "Doğrula",
-      "mustMatch": "Devam etmek için 3 kelimenin tamamı eşleşmelidir",
-      "inputTitle": "Kurtarma ifadesini girin",
-      "inputDescription": "Şifrelenmiş verilerinize yeniden erişmek için 24 kelimelik kurtarma ifadenizi girin.",
+      "mustMatch": "Devam etmek için 3 kelimenin de eşleşmesi gerekir.",
+      "inputTitle": "Kurtarma ifadenizi girin",
+      "inputDescription": "Hesabınızı oluştururken kaydettiğiniz 24 kelimeyi girin.",
       "inputLabel": "Kurtarma ifadesi",
       "count": "{count} / {total} kelime",
-      "inputPlaceholder": "Boşluklarla ayrılmış 24 kelimelik kurtarma ifadenizi girin…",
-      "lengthHint": "Geri yükleme düğmesini etkinleştirmek için 24 kelimenin tamamını girin",
       "restore": "Erişimi geri yükle",
       "progress": {
         "deriving": "Şifreleme anahtarları türetiliyor…",
@@ -1188,7 +1186,14 @@
         "title": "Kurtarma ifadeniz yüklenemedi",
         "description": "Kurtarma ifadeniz yalnızca kurulum sırasında bir kez gösterilir ve daha sonra alınamaz. Yenisini oluşturmak için baştan başlayın.",
         "startOver": "Baştan başla"
-      }
+      },
+      "copy": "Kopyala",
+      "download": "İndir",
+      "fileTitle": "MemryNote kurtarma ifadesi",
+      "wordLabel": "Kelime #{index}",
+      "wordShort": "kelime #{index}",
+      "pasteHint": "Izgarayı doldurmak için ifadenin tamamını herhangi bir kutuya yapıştırın.",
+      "stepOf": "Adım {step} / {total}"
     },
     "startFresh": {
       "trigger": "Kurtarma ifademe artık ulaşamıyorum",

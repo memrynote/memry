@@ -1151,13 +1151,11 @@
       "confirmDescription": "Zadejte požadovaná slova, abyste ověřili, že jste je uložili správně.",
       "wordPlaceholder": "Zadejte slovo č. {index}",
       "verify": "Ověřit",
-      "mustMatch": "Aby bylo možné pokračovat, musí se všechna 3 slova shodovat",
+      "mustMatch": "Aby bylo možné pokračovat, musí souhlasit všechna 3 slova.",
       "inputTitle": "Zadejte frázi pro obnovení",
-      "inputDescription": "Zadejte svou 24slovnou frázi pro obnovení a obnovte přístup k zašifrovaným datům.",
+      "inputDescription": "Zadejte 24 slov, která jste si uložili při vytvoření účtu.",
       "inputLabel": "Fráze pro obnovení",
       "count": "Slova: {count} / {total}",
-      "inputPlaceholder": "Zadejte svou 24slovnou frázi pro obnovení oddělenou mezerami…",
-      "lengthHint": "Chcete-li aktivovat tlačítko obnovení, zadejte všech 24 slov",
       "restore": "Obnovit přístup",
       "progress": {
         "deriving": "Odvozování šifrovacích klíčů…",
@@ -1171,7 +1169,14 @@
         "title": "Frázi pro obnovení se nepodařilo načíst",
         "description": "Fráze pro obnovení se zobrazuje jen jednou během nastavení a později ji nelze získat. Začněte znovu a vygenerujte novou.",
         "startOver": "Začít znovu"
-      }
+      },
+      "copy": "Kopírovat",
+      "download": "Stáhnout",
+      "fileTitle": "Fráze pro obnovení MemryNote",
+      "wordLabel": "Slovo č. {index}",
+      "wordShort": "slovo č. {index}",
+      "pasteHint": "Vložte celou frázi do libovolného pole a mřížka se vyplní.",
+      "stepOf": "Krok {step} z {total}"
     },
     "startFresh": {
       "trigger": "Frázi pro obnovení už nemám k dispozici",

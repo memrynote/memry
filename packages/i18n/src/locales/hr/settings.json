@@ -1151,13 +1151,11 @@
       "confirmDescription": "Unesite tražene riječi kako biste potvrdili da ste je ispravno spremili.",
       "wordPlaceholder": "Unesite {index}. riječ",
       "verify": "Potvrdi",
-      "mustMatch": "Za nastavak se moraju podudarati sve 3 riječi",
-      "inputTitle": "Unesite frazu za oporavak",
-      "inputDescription": "Unesite svoju frazu za oporavak od 24 riječi da vratite pristup svojim šifriranim podacima.",
+      "mustMatch": "Sve 3 riječi moraju se podudarati za nastavak.",
+      "inputTitle": "Unesite svoju frazu za oporavak",
+      "inputDescription": "Unesite 24 riječi koje ste spremili pri stvaranju računa.",
       "inputLabel": "Fraza za oporavak",
       "count": "{count} / {total} riječi",
-      "inputPlaceholder": "Unesite frazu za oporavak od 24 riječi, odvojenih razmacima…",
-      "lengthHint": "Unesite sve 24 riječi kako biste omogućili gumb za vraćanje",
       "restore": "Vrati pristup",
       "progress": {
         "deriving": "Izvođenje ključeva za šifriranje…",
@@ -1171,7 +1169,14 @@
         "title": "Nije moguće učitati vašu frazu za oporavak",
         "description": "Vaša fraza za oporavak prikazuje se samo jednom tijekom postavljanja i ne može se dohvatiti kasnije. Počnite ispočetka za generiranje nove.",
         "startOver": "Počni ispočetka"
-      }
+      },
+      "copy": "Kopiraj",
+      "download": "Preuzmi",
+      "fileTitle": "MemryNote fraza za oporavak",
+      "wordLabel": "Riječ br. {index}",
+      "wordShort": "riječ br. {index}",
+      "pasteHint": "Zalijepite cijelu frazu u bilo koje polje da popunite mrežu.",
+      "stepOf": "Korak {step} od {total}"
     },
     "startFresh": {
       "trigger": "Ne mogu vratiti frazu za oporavak",

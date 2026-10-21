@@ -1151,13 +1151,11 @@
       "confirmDescription": "Saisissez les mots demandés pour vérifier que vous l'avez bien enregistrée.",
       "wordPlaceholder": "Saisir le mot n° {index}",
       "verify": "Vérifier",
-      "mustMatch": "Les 3 mots doivent correspondre pour continuer",
-      "inputTitle": "Entrez la phrase de récupération",
-      "inputDescription": "Saisissez votre phrase de récupération de 24 mots pour restaurer l'accès à vos données chiffrées.",
+      "mustMatch": "Les 3 mots doivent correspondre pour continuer.",
+      "inputTitle": "Entrez votre phrase de récupération",
+      "inputDescription": "Entrez les 24 mots que vous avez enregistrés à la création de votre compte.",
       "inputLabel": "Phrase de récupération",
       "count": "{count} / {total} mots",
-      "inputPlaceholder": "Saisir votre phrase de récupération de 24 mots, séparés par des espaces…",
-      "lengthHint": "Entrez les 24 mots pour activer le bouton de restauration",
       "restore": "Restaurer l'accès",
       "progress": {
         "deriving": "Dérivation des clés de chiffrement…",
@@ -1171,7 +1169,14 @@
         "title": "Impossible de charger votre phrase de récupération",
         "description": "Votre phrase de récupération n'est affichée qu'une seule fois lors de la configuration et ne peut pas être récupérée par la suite. Recommencez pour en générer une nouvelle.",
         "startOver": "Recommencer"
-      }
+      },
+      "copy": "Copier",
+      "download": "Télécharger",
+      "fileTitle": "Phrase de récupération MemryNote",
+      "wordLabel": "Mot n° {index}",
+      "wordShort": "mot n° {index}",
+      "pasteHint": "Collez votre phrase entière dans n'importe quelle case pour remplir la grille.",
+      "stepOf": "Étape {step} sur {total}"
     },
     "startFresh": {
       "trigger": "Je n'ai plus ma phrase de récupération",

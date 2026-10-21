@@ -352,7 +352,7 @@ These stay on the device where you set them: **Day Cell Click Behavior**, This M
 
 ## Features
 
-Simple on/off toggles for optional or in-progress surfaces, per device.
+On/off toggles for the optional parts of memrynote: Home, Inbox, Journal, Tasks, Calendar, Graph and Canvas. Turning a module off hides it from the rail, the shortcuts and the command palette; its data stays in the vault. The toggles sync, so a module you turn off on one device is off on your other devices too. First-run setup asks for the same choices in its **Modules** step.
 
 - **Canvas** — enables the spatial canvas surface and its sidebar section. On by default. See [Canvas Overview](./canvas/overview.md).
 

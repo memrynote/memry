@@ -485,7 +485,17 @@ export function AccountSettings() {
   if (state.status !== 'authenticated') {
     return (
       <div className="flex min-h-[calc(80vh-3rem)] flex-col items-center justify-between text-xs/4">
-        <div className="w-full max-w-sm">
+        <div
+          className={cn(
+            'w-full',
+            // The recovery phrase screens use the same wide layout as first-run setup.
+            state.wizardStep === 'recovery-display' ||
+              state.wizardStep === 'recovery-confirm' ||
+              state.wizardStep === 'recovery-input'
+              ? 'max-w-[600px]'
+              : 'max-w-sm'
+          )}
+        >
           <SetupWizard />
         </div>
         <AccountCommunityFooter />

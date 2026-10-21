@@ -1151,13 +1151,11 @@
       "confirmDescription": "Ilagay ang mga hinihinging salita para ma-verify na na-save mo ito nang tama.",
       "wordPlaceholder": "Ilagay ang salitang #{index}",
       "verify": "I-verify",
-      "mustMatch": "Dapat tumugma ang lahat ng 3 salita para makapagpatuloy",
-      "inputTitle": "Ilagay ang recovery phrase",
-      "inputDescription": "Ilagay ang iyong 24-salitang recovery phrase para maibalik ang access sa iyong naka-encrypt na data.",
+      "mustMatch": "Dapat tumugma ang lahat ng 3 salita para magpatuloy.",
+      "inputTitle": "Ilagay ang recovery phrase mo",
+      "inputDescription": "Ilagay ang 24 na salitang sinave mo nang gawin ang account mo.",
       "inputLabel": "Recovery phrase",
       "count": "{count} / {total} salita",
-      "inputPlaceholder": "Ilagay ang iyong 24-salitang recovery phrase, na pinaghihiwalay ng espasyo…",
-      "lengthHint": "Ilagay ang lahat ng 24 na salita para magamit ang button na “Ibalik ang access”",
       "restore": "Ibalik ang access",
       "progress": {
         "deriving": "Binubuo ang mga encryption key…",
@@ -1171,7 +1169,14 @@
         "title": "Hindi ma-load ang iyong recovery phrase",
         "description": "Isang beses lang ipinapakita ang iyong recovery phrase habang nagse-set up at hindi na ito makukuha ulit. Magsimula ulit para makabuo ng bago.",
         "startOver": "Magsimula ulit"
-      }
+      },
+      "copy": "Kopyahin",
+      "download": "I-download",
+      "fileTitle": "Recovery phrase ng MemryNote",
+      "wordLabel": "Salita #{index}",
+      "wordShort": "salita #{index}",
+      "pasteHint": "I-paste ang buong phrase sa kahit anong kahon para mapunan ang grid.",
+      "stepOf": "Hakbang {step} sa {total}"
     },
     "startFresh": {
       "trigger": "Hindi ko na makuha ang aking recovery phrase",

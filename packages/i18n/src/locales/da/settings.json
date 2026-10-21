@@ -1151,13 +1151,11 @@
       "confirmDescription": "Indtast de ønskede ord for at bekræfte, at du har gemt den korrekt.",
       "wordPlaceholder": "Indtast ord nr. {index}",
       "verify": "Bekræft",
-      "mustMatch": "Alle 3 ord skal matche for at fortsætte",
-      "inputTitle": "Indtast gendannelsessætning",
-      "inputDescription": "Indtast din 24-ords gendannelsessætning for at gendanne adgangen til dine krypterede data.",
+      "mustMatch": "Alle 3 ord skal matche for at fortsætte.",
+      "inputTitle": "Indtast din gendannelsessætning",
+      "inputDescription": "Indtast de 24 ord, du gemte, da du oprettede din konto.",
       "inputLabel": "Gendannelsessætning",
       "count": "{count} / {total} ord",
-      "inputPlaceholder": "Indtast din gendannelsessætning på 24 ord adskilt af mellemrum…",
-      "lengthHint": "Indtast alle 24 ord for at aktivere gendannelsesknappen",
       "restore": "Gendan adgang",
       "progress": {
         "deriving": "Udleder krypteringsnøgler…",
@@ -1171,7 +1169,14 @@
         "title": "Kunne ikke indlæse din gendannelsessætning",
         "description": "Din gendannelsessætning vises kun én gang under opsætningen og kan ikke hentes senere. Start forfra for at generere en ny.",
         "startOver": "Start forfra"
-      }
+      },
+      "copy": "Kopiér",
+      "download": "Download",
+      "fileTitle": "MemryNote-gendannelsessætning",
+      "wordLabel": "Ord nr. {index}",
+      "wordShort": "ord nr. {index}",
+      "pasteHint": "Indsæt hele din sætning i et vilkårligt felt for at udfylde gitteret.",
+      "stepOf": "Trin {step} af {total}"
     },
     "startFresh": {
       "trigger": "Jeg kan ikke få min gendannelsessætning tilbage",

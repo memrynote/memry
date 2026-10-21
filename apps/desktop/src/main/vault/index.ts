@@ -15,6 +15,7 @@ import {
   removeVault as removeVaultFromStore,
   findVault,
   touchVault,
+  getStoredLocale,
   type StoredVaultInfo
 } from '../store'
 import {
@@ -727,7 +728,7 @@ async function openVault(vaultPath: string): Promise<void> {
   ensureDefaultTaskProject(dataDb)
 
   // Migrate settings: config.json ↔ SQLite cache
-  migrateSettingsToConfig(dataDb, vaultPath)
+  migrateSettingsToConfig(dataDb, vaultPath, getStoredLocale())
 
   // The markdown parser decides what is a callout from these, so they load
   // before any note is opened or seeded (#3207).

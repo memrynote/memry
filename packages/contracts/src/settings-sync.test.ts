@@ -13,6 +13,15 @@ import {
 } from './settings-sync'
 
 describe('SyncedSettingsSchema', () => {
+  it('keeps the features group, including a flag only a newer build knows', () => {
+    const features = { home: true, journal: false, spatialCanvas: false, quickSwitcher: false }
+    expect(SyncedSettingsSchema.parse({ features }).features).toEqual(features)
+  })
+
+  it('rejects a non-boolean features flag', () => {
+    expect(SyncedSettingsSchema.safeParse({ features: { journal: 'off' } }).success).toBe(false)
+  })
+
   it('accepts an empty object (all groups optional)', () => {
     const result = SyncedSettingsSchema.safeParse({})
     expect(result.success).toBe(true)

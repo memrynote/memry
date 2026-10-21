@@ -3,7 +3,11 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
-import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
+import type {
+  AppNavigationCommandEvent,
+  AppMenuCommandEvent,
+  StartCheckoutInput
+} from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
 import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
@@ -64,6 +68,7 @@ import type {
   OneNoteNotebooksResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
+import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -705,6 +710,12 @@ export interface StickyClientAPI {
   resize(height: number): Promise<void>
   onDraftsChanged(callback: () => void): () => void
   onOpenTargetRequested(callback: (target: StickyOpenTargetInput) => void): () => void
+}
+
+export interface OnboardingClientAPI {
+  detectAgents: () => Promise<OnboardingAgentStatus[]>
+  detectSources: () => Promise<OnboardingSources>
+  isMemryVault: (path: string) => Promise<boolean>
 }
 
 export interface OcrLanguagesClientAPI {
@@ -1736,7 +1747,9 @@ interface BillingActionResult {
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
-  startCheckout: () => Promise<BillingActionResult & { checkoutUrl?: string }>
+  startCheckout: (
+    input?: StartCheckoutInput
+  ) => Promise<BillingActionResult & { checkoutUrl?: string }>
   getBillingStatus: () => Promise<BillingStatus | (BillingActionResult & { status?: never })>
   refreshBillingStatus: (input?: {
     transactionId?: string
@@ -2026,6 +2039,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   vaultLocks: VaultLocksClientAPI
   sticky: StickyClientAPI
   ocrLanguages: OcrLanguagesClientAPI
+  onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {

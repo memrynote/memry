@@ -165,7 +165,7 @@ export function ModePreviewPicker({
 /** A type specimen, not copy: the same glyphs in every locale. */
 const TYPE_SPECIMEN = 'Aa'
 
-function ThemeSwatch({ palette }: { palette: ColorThemePalette }): React.JSX.Element {
+export function ThemeSwatch({ palette }: { palette: ColorThemePalette }): React.JSX.Element {
   return (
     <span
       aria-hidden

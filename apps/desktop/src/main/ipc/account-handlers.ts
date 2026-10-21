@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron'
+import { z } from 'zod'
 import { AccountChannels } from '@memry/contracts/ipc-channels'
 import { asc } from 'drizzle-orm'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
@@ -26,6 +27,13 @@ import {
 } from '../billing/paddle-billing'
 
 const log = createLogger('IPC:Account')
+
+const StartCheckoutSchema = z
+  .object({
+    plan: z.enum(['plus', 'pro', 'believer']),
+    cadence: z.enum(['monthly', 'annual', 'lifetime'])
+  })
+  .optional()
 
 export interface AccountInfo {
   email: string | null
@@ -69,9 +77,9 @@ export function registerAccountHandlers(): void {
     }
   })
 
-  ipcMain.handle(AccountChannels.invoke.START_CHECKOUT, async () => {
+  ipcMain.handle(AccountChannels.invoke.START_CHECKOUT, async (_event, input: unknown) => {
     log.info('account:startCheckout requested')
-    return startBillingCheckout()
+    return startBillingCheckout(StartCheckoutSchema.parse(input))
   })
 
   ipcMain.handle(AccountChannels.invoke.GET_BILLING_STATUS, async () => {

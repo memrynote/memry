@@ -1151,13 +1151,11 @@
       "confirmDescription": "Zadajte požadované slová a overte, že ste si frázu uložili správne.",
       "wordPlaceholder": "Zadajte slovo č. {index}",
       "verify": "Overiť",
-      "mustMatch": "Všetky 3 slová sa musia zhodovať, aby ste mohli pokračovať",
+      "mustMatch": "Aby bolo možné pokračovať, musia sa zhodovať všetky 3 slová.",
       "inputTitle": "Zadajte obnovovaciu frázu",
-      "inputDescription": "Zadajte 24-slovnú obnovovaciu frázu a obnovte prístup k šifrovaným údajom.",
+      "inputDescription": "Zadajte 24 slov, ktoré ste si uložili pri vytvorení účtu.",
       "inputLabel": "Obnovovacia fráza",
       "count": "Slová: {count} / {total}",
-      "inputPlaceholder": "Zadajte 24-slovnú obnovovaciu frázu, slová oddeľte medzerami…",
-      "lengthHint": "Zadajte všetkých 24 slov na aktiváciu tlačidla obnovenia",
       "restore": "Obnoviť prístup",
       "progress": {
         "deriving": "Odvodzujú sa šifrovacie kľúče…",
@@ -1171,7 +1169,14 @@
         "title": "Nepodarilo sa načítať vašu obnovovaciu frázu",
         "description": "Vaša obnovovacia fráza sa zobrazuje iba raz počas nastavenia a neskôr ju nemožno získať. Začnite odznova a vygenerujte novú.",
         "startOver": "Začať odznova"
-      }
+      },
+      "copy": "Kopírovať",
+      "download": "Stiahnuť",
+      "fileTitle": "Obnovovacia fráza MemryNote",
+      "wordLabel": "Slovo č. {index}",
+      "wordShort": "slovo č. {index}",
+      "pasteHint": "Vložte celú frázu do ľubovoľného poľa a mriežka sa vyplní.",
+      "stepOf": "Krok {step} z {total}"
     },
     "startFresh": {
       "trigger": "Obnovovaciu frázu už nemám",

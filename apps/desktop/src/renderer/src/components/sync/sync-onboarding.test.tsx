@@ -248,30 +248,101 @@ describe('sync onboarding components', () => {
     expect(back).toHaveBeenCalledTimes(1)
   })
 
-  it('normalizes submitted recovery phrases and advances loading progress labels', async () => {
+  it('downloads the recovery phrase as a numbered text file', async () => {
+    let saved: Blob | null = null
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      saved = blob as Blob
+      return 'blob:phrase'
+    })
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
+      expect(this.download).toBe('memrynote-recovery-phrase.txt')
+    })
+    render(<RecoveryPhraseDisplay phrase={phrase} onContinue={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'setup.recovery.download' }))
+
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(createUrl).toHaveBeenCalledTimes(1)
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsText(saved as unknown as Blob)
+    })
+    const words = phrase.split(' ')
+    expect(text).toContain(` 1. ${words[0]}`)
+    expect(text).toContain(`24. ${words[23]}`)
+  })
+
+  it('verifies the recovery words with Enter and steps back with Esc', () => {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+      const values = array as Uint32Array
+      values[0] = 0
+      values[1] = 5
+      values[2] = 10
+      return array
+    })
+    const confirmed = vi.fn()
+    const back = vi.fn()
+    render(<RecoveryPhraseConfirm phrase={phrase} onConfirmed={confirmed} onBack={back} />)
+
+    const inputs = screen.getAllByRole('textbox')
+    fireEvent.change(inputs[0], { target: { value: 'word1' } })
+    fireEvent.submit(inputs[0])
+    expect(confirmed).not.toHaveBeenCalled()
+
+    fireEvent.change(inputs[1], { target: { value: 'word6' } })
+    fireEvent.change(inputs[2], { target: { value: 'word11' } })
+    fireEvent.submit(inputs[2])
+    expect(confirmed).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(inputs[2], { key: 'Escape' })
+    expect(back).toHaveBeenCalledTimes(1)
+  })
+
+  it('fills the recovery grid word by word or from one paste, then restores', async () => {
     vi.useFakeTimers()
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const submit = vi.fn()
     const { rerender } = render(
       <RecoveryPhraseInput onSubmit={submit} isLoading={false} error={null} onBack={vi.fn()} />
     )
+    const restore = screen.getByRole('button', { name: /setup\.recovery\.restore/ })
 
-    await user.type(screen.getByLabelText('setup.recovery.inputLabel'), 'short phrase')
-    expect(screen.getByText('setup.recovery.lengthHint')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'setup.recovery.restore' })).toBeDisabled()
+    // Space moves to the next box, and words are stored lowercase.
+    await user.type(screen.getAllByRole('textbox')[0], 'ORBIT velvet ')
+    expect(screen.getAllByRole('textbox')[1]).toHaveValue('velvet')
+    expect(screen.getAllByRole('textbox')[0]).toHaveValue('orbit')
+    expect(restore).toBeDisabled()
 
-    await user.clear(screen.getByLabelText('setup.recovery.inputLabel'))
-    await user.type(screen.getByLabelText('setup.recovery.inputLabel'), phrase.toUpperCase())
-    await user.click(screen.getByRole('button', { name: 'setup.recovery.restore' }))
+    // A whole phrase pasted into any box fills the grid from the first word.
+    fireEvent.paste(screen.getAllByRole('textbox')[9], {
+      clipboardData: { getData: () => phrase.toUpperCase().replace(/ /g, '\n') }
+    })
+    expect(screen.getAllByRole('textbox')[23]).toHaveValue('word24')
+    expect(restore).toBeEnabled()
+    await user.click(restore)
     expect(submit).toHaveBeenCalledWith(phrase)
 
-    rerender(
-      <RecoveryPhraseInput onSubmit={submit} isLoading error="Bad phrase" onBack={vi.fn()} />
-    )
-    expect(screen.getByRole('alert')).toHaveTextContent('Bad phrase')
+    rerender(<RecoveryPhraseInput onSubmit={submit} isLoading error={null} onBack={vi.fn()} />)
     expect(screen.getByText('setup.recovery.progress.deriving')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(4000))
     expect(screen.getByText('setup.recovery.progress.registering')).toBeInTheDocument()
+
+    rerender(
+      <RecoveryPhraseInput
+        onSubmit={submit}
+        isLoading={false}
+        error="Bad phrase"
+        onBack={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Bad phrase')
+    // Editing a word starts a new attempt, so the old error goes away.
+    fireEvent.change(screen.getAllByRole('textbox')[3], { target: { value: 'fixed' } })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     vi.useRealTimers()
   })
 

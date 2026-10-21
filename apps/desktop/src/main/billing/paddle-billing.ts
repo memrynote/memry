@@ -1,7 +1,9 @@
 import { shell } from 'electron'
+import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import { getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
 import { startSyncRuntime } from '../sync/runtime'
+import { isDatabaseInitialized } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import {
@@ -65,14 +67,14 @@ export interface BillingActionResult {
   error?: string
 }
 
-export async function startBillingCheckout(): Promise<
-  BillingActionResult & { checkoutUrl?: string }
-> {
+export async function startBillingCheckout(
+  preselect?: StartCheckoutInput
+): Promise<BillingActionResult & { checkoutUrl?: string }> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to start checkout' }
 
   const response = await postToServer<{ checkoutToken: string }>('/auth/checkout-token', {}, token)
-  const checkoutUrl = buildCheckoutPageUrl(response.checkoutToken)
+  const checkoutUrl = buildCheckoutPageUrl(response.checkoutToken, preselect)
   await shell.openExternal(checkoutUrl)
 
   return { success: true, checkoutUrl }
@@ -154,6 +156,9 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const status = await refreshBillingStatus(input)
       if ('plan' in status && isPaidBillingStatus(status)) {
+        // Paid before any vault exists (first-run checkout): the cached status is
+        // enough, and opening the vault starts the runtime.
+        if (!isDatabaseInitialized()) return
         // refreshBillingStatus already cached this status; start the runtime and
         // use the engine it returns rather than re-reading getSyncEngine() (which
         // can be null if a concurrent start is still in flight).
@@ -207,7 +212,12 @@ function getCheckoutPageUrl(): string {
   return process.env.CHECKOUT_PAGE_URL?.trim() || DEFAULT_CHECKOUT_PAGE_URL
 }
 
-function buildCheckoutPageUrl(checkoutToken: string): string {
-  const params = new URLSearchParams({ token: checkoutToken })
-  return `${getCheckoutPageUrl()}#${params.toString()}`
+function buildCheckoutPageUrl(checkoutToken: string, preselect?: StartCheckoutInput): string {
+  const url = new URL(getCheckoutPageUrl())
+  if (preselect) {
+    url.searchParams.set('plan', preselect.plan)
+    url.searchParams.set('cadence', preselect.cadence)
+  }
+  url.hash = new URLSearchParams({ token: checkoutToken }).toString()
+  return url.toString()
 }

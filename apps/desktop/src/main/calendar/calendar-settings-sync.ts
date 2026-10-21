@@ -17,6 +17,7 @@ import {
 } from '../database/queries/settings'
 import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
+import { seedFeaturesSyncedSettings } from '../settings/features-settings-sync'
 import { setSettingWriteListener } from '../settings/settings-store'
 import {
   getSettingsSyncManager,
@@ -286,6 +287,11 @@ export function initSettingsSync(
     seedCalendarSyncedSettings(deps.db as unknown as DataDb, manager)
   } catch (error) {
     log.warn('Seeding calendar settings into settings sync failed', error)
+  }
+  try {
+    seedFeaturesSyncedSettings(deps.db as unknown as DataDb, manager)
+  } catch (error) {
+    log.warn('Seeding features settings into settings sync failed', error)
   }
   return manager
 }

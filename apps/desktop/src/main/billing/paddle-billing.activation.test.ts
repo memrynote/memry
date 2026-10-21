@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   postToServer: vi.fn(),
   getSyncEngine: vi.fn(),
   startSyncRuntime: vi.fn(),
+  isDatabaseInitialized: vi.fn(() => true),
   setCachedEntitlementFromStatus: vi.fn((s: { plan: string; status: string }) => ({
     isPaid: s.plan !== 'free' && s.status === 'active',
     plan: s.plan,
@@ -39,6 +40,7 @@ vi.mock('./entitlement-cache', () => ({
   isPaidBillingStatus: mocks.isPaidBillingStatus,
   isCachedUnpaidFresh: mocks.isCachedUnpaidFresh
 }))
+vi.mock('../database/client', () => ({ isDatabaseInitialized: mocks.isDatabaseInitialized }))
 vi.mock('electron', () => ({ shell: { openExternal: vi.fn() } }))
 vi.mock('../lib/logger', () => ({ createLogger: () => ({ info: vi.fn(), warn: vi.fn() }) }))
 
@@ -115,5 +117,13 @@ describe('paddle-billing activation', () => {
     await reconcileBillingAndSync({ transactionId: 'txn_1' })
     expect(mocks.setCachedEntitlementFromStatus).toHaveBeenCalledWith(paidStatus)
     expect(mocks.startSyncRuntime).toHaveBeenCalledTimes(1)
+  })
+
+  it('reconcileBillingAndSync caches but leaves the runtime to vault open on first run', async () => {
+    mocks.postToServer.mockResolvedValue(paidStatus)
+    mocks.isDatabaseInitialized.mockReturnValueOnce(false)
+    await reconcileBillingAndSync({ transactionId: 'txn_1' })
+    expect(mocks.setCachedEntitlementFromStatus).toHaveBeenCalledWith(paidStatus)
+    expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
   })
 })

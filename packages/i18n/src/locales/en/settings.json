@@ -1233,13 +1233,11 @@
       "confirmDescription": "Enter the requested words to verify you've saved it correctly.",
       "wordPlaceholder": "Enter word #{index}",
       "verify": "Verify",
-      "mustMatch": "All 3 words must match to continue",
-      "inputTitle": "Enter recovery phrase",
-      "inputDescription": "Enter your 24-word recovery phrase to restore access to your encrypted data.",
+      "mustMatch": "All 3 words must match to continue.",
+      "inputTitle": "Enter your recovery phrase",
+      "inputDescription": "Enter the 24 words you saved when you created your account.",
       "inputLabel": "Recovery phrase",
       "count": "{count} / {total} words",
-      "inputPlaceholder": "Enter your 24-word recovery phrase separated by spaces...",
-      "lengthHint": "Enter all 24 words to enable the restore button",
       "restore": "Restore access",
       "progress": {
         "deriving": "Deriving encryption keys...",
@@ -1253,7 +1251,14 @@
         "title": "Couldn't load your recovery phrase",
         "description": "Your recovery phrase is shown only once during setup and can't be retrieved later. Start over to generate a new one.",
         "startOver": "Start over"
-      }
+      },
+      "copy": "Copy",
+      "download": "Download",
+      "fileTitle": "MemryNote recovery phrase",
+      "wordLabel": "Word #{index}",
+      "wordShort": "word #{index}",
+      "pasteHint": "Paste your whole phrase into any box to fill the grid.",
+      "stepOf": "Step {step} of {total}"
     },
     "startFresh": {
       "trigger": "I can't get my recovery phrase back",

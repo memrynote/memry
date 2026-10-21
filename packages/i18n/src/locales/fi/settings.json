@@ -1151,13 +1151,11 @@
       "confirmDescription": "Anna pyydetyt sanat varmistaaksesi, että olet tallentanut sen oikein.",
       "wordPlaceholder": "Kirjoita {index}. sana",
       "verify": "Vahvista",
-      "mustMatch": "Kaikkien kolmen sanan on oltava oikein, jotta voit jatkaa",
-      "inputTitle": "Anna palautuslause",
-      "inputDescription": "Kirjoita 24-sanainen palautuslauseesi palauttaaksesi pääsyn salattuihin tietoihisi.",
+      "mustMatch": "Kaikkien 3 sanan on täsmättävä, jotta voit jatkaa.",
+      "inputTitle": "Syötä palautuslauseesi",
+      "inputDescription": "Syötä 24 sanaa, jotka tallensit tiliä luodessasi.",
       "inputLabel": "Palautuslause",
       "count": "{count}/{total} sanaa",
-      "inputPlaceholder": "Kirjoita 24-sanainen palautuslause välilyönnein erotettuna…",
-      "lengthHint": "Kirjoita kaikki 24 sanaa, niin palautuspainike tulee käyttöön",
       "restore": "Palauta käyttöoikeus",
       "progress": {
         "deriving": "Luodaan salausavaimia…",
@@ -1171,7 +1169,14 @@
         "title": "Palautuslauseen lataaminen epäonnistui",
         "description": "Palautuslauseesi näytetään vain kerran määrityksen aikana, eikä sitä voi hakea myöhemmin. Aloita alusta luodaksesi uuden.",
         "startOver": "Aloita alusta"
-      }
+      },
+      "copy": "Kopioi",
+      "download": "Lataa",
+      "fileTitle": "MemryNote-palautuslause",
+      "wordLabel": "Sana {index}",
+      "wordShort": "sana {index}",
+      "pasteHint": "Liitä koko lause mihin tahansa ruutuun täyttääksesi ruudukon.",
+      "stepOf": "Vaihe {step}/{total}"
     },
     "startFresh": {
       "trigger": "En saa palautuslausettani takaisin",

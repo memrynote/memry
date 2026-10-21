@@ -54,6 +54,7 @@ import { customIconsApi, customIconsEvents } from './api/custom-icons'
 import { vaultLocksApi, vaultLocksEvents } from './api/vault-locks'
 import { stickyApi } from './api/sticky'
 import { ocrLanguagesApi, ocrLanguagesEvents } from './api/ocr-languages'
+import { onboardingApi } from './api/onboarding'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -168,6 +169,7 @@ export const api = {
   vaultLocks: vaultLocksApi,
   sticky: stickyApi,
   ocrLanguages: ocrLanguagesApi,
+  onboarding: onboardingApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,
