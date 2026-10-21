@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 import { excalidrawSubsetWorker } from './scripts/excalidraw-subset-worker-plugin'
+import { recordDevBuild } from './scripts/dev-build-reuse.mts'
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url))
 const workspaceRoot = resolve(appRoot, '../..')
@@ -78,10 +79,14 @@ function copyOcrLanguageData(): Plugin {
 
 export default defineConfig({
   main: {
-    // `electron-vite dev` rebuilds main on every start, and at info level that
-    // build lists every one of its output chunks. Warnings still print.
+    // At info level, each dev build of main lists every one of its output chunks.
+    // Warnings still print.
     logLevel: isDevServer ? 'warn' : undefined,
-    plugins: [copyMigrations(), copyOcrLanguageData()],
+    plugins: [
+      copyMigrations(),
+      copyOcrLanguageData(),
+      ...(isDevServer ? [recordDevBuild(appRoot, 'main')] : [])
+    ],
     build: {
       // Dependency contract: package.json `dependencies` = native/unbundleable
       // modules only — electron-vite externalizes them by default and pnpm
@@ -120,7 +125,7 @@ export default defineConfig({
         // and let ws fall back to its JS implementation.
         external: ['better-sqlite3', 'jsdom', 'canvas', 're2', 'bufferutil', 'utf-8-validate'],
         // Vite flags every `await import()` of a module that main also imports
-        // statically, and each dev start repeats the whole list.
+        // statically, and each dev build repeats the whole list.
         // `electron-vite build` still reports them.
         onwarn(warning, defaultHandler) {
           const ineffectiveDynamicImport =
@@ -171,6 +176,7 @@ export default defineConfig({
     }
   },
   preload: {
+    plugins: isDevServer ? [recordDevBuild(appRoot, 'preload')] : [],
     resolve: {
       alias: {
         ...workspaceAliases,
