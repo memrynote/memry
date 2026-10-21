@@ -38,7 +38,7 @@ export const NoteTaskChevron = ({
         e.stopPropagation()
         onToggle()
       }}
-      className="flex size-5 items-center justify-center rounded text-text-tertiary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="relative flex size-5 items-center justify-center rounded after:absolute after:-inset-0.5 after:content-[''] text-text-tertiary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <ChevronDown
         size={12}

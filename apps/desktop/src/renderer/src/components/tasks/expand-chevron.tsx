@@ -54,7 +54,9 @@ export const ExpandChevron = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       className={cn(
-        'flex items-center justify-center shrink-0',
+        'relative flex items-center justify-center shrink-0',
+        // 10px icon, 24x24px hit area (WCAG 2.2 2.5.8) without shifting layout
+        "after:absolute after:-inset-[7px] after:content-['']",
         'transition-all duration-150',
         'text-text-tertiary hover:text-muted-foreground',
         'focus-visible:outline-none rounded',
