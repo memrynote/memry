@@ -183,12 +183,16 @@ function resolveCalloutStyle(
   custom: readonly CalloutTypeDefinition[],
   builtInLabels: Record<CalloutTypeValue, string>
 ): ResolvedCalloutStyle {
-  if (isBuiltIn(type)) return { ...CALLOUT_STYLES[type], label: builtInLabels[type] }
+  if (isBuiltIn(type)) {
+    const { icon, ...classes } = CALLOUT_STYLES[type]
+    return { icon, label: builtInLabels[type], classes }
+  }
   const definition = custom.find((candidate) => candidate.name === type)
   if (definition) {
     return { icon: calloutIcon(definition.icon), label: definition.label, accent: definition.color }
   }
-  return { ...CALLOUT_STYLES.info, label: type }
+  const { icon, ...classes } = CALLOUT_STYLES.info
+  return { icon, label: type, classes }
 }
 
 function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendererProps) {
