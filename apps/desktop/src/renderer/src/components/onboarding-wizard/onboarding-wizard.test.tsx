@@ -98,6 +98,21 @@ describe('first-run wizard', () => {
     expect(localStorage.getItem('memry:onboarding:tour:v1')).toBe('1')
   })
 
+  it('shows the focused module in the stage window, and Home once that module is off', async () => {
+    render(<FirstRunGate />)
+    await press(/welcome\.getStarted/)
+    await press(/keys\.continue/) // theme
+
+    await act(async () => {
+      fireEvent.focus(screen.getByRole('checkbox', { name: /modules\.calendar/ }))
+    })
+    expect(screen.getByText('onboardingWizard.preview.allDay')).toBeInTheDocument()
+
+    await toggle('modules\\.calendar') // focuses the row and turns it off
+    expect(screen.queryByText('onboardingWizard.preview.allDay')).not.toBeInTheDocument()
+    expect(screen.getByText('onboardingWizard.preview.homeGreeting')).toBeInTheDocument()
+  })
+
   it('applies a theme picked from More themes even when the Light card is selected', async () => {
     render(<FirstRunGate />)
     await press(/welcome\.getStarted/)

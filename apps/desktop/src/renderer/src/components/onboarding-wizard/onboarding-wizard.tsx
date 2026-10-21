@@ -28,9 +28,14 @@ import { Globe } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { MUTED, ProgressDots, WizardFrame, type KeyHint } from './wizard-ui'
 
-const STAGE_FOCUS: Partial<Record<ModuleKey, StageFocus>> = {
+const STAGE_FOCUS: Record<ModuleKey, StageFocus> = {
+  home: 'home',
+  inbox: 'inbox',
   journal: 'journal',
   tasks: 'tasks',
+  calendar: 'calendar',
+  graph: 'graph',
+  spatialCanvas: 'canvas',
   ai: 'agent'
 }
 
@@ -131,15 +136,16 @@ export function OnboardingWizard(): React.JSX.Element {
       : SELF_KEYED.includes(state.step)
         ? [backHint]
         : [...lead, continueHint, backHint]
-  // AI off has no agent pane to show.
-  const moduleFocus =
-    focusedModule === 'ai' && !state.draft.aiEnabled ? 'home' : STAGE_FOCUS[focusedModule]
+  // A module that is off has no pane to show: fall back to Home, or Journal without it.
+  const focusedOn =
+    focusedModule === 'ai' ? state.draft.aiEnabled : state.draft.features[focusedModule]
+  const moduleFocus: StageFocus = focusedOn
+    ? STAGE_FOCUS[focusedModule]
+    : state.draft.features.home
+      ? 'home'
+      : 'journal'
   const stageFocus: StageFocus =
-    state.step === 'modules'
-      ? (moduleFocus ?? 'home')
-      : state.step === 'agent'
-        ? 'agent'
-        : 'journal'
+    state.step === 'modules' ? moduleFocus : state.step === 'agent' ? 'agent' : 'journal'
   // The recovery phrase screens need the room, and the design draws them without the window.
   const authStep = useAuth().state.wizardStep
   const phraseOnScreen =
