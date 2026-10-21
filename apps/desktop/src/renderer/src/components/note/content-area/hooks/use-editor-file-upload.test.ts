@@ -89,7 +89,7 @@ describe('useEditorFileUpload', () => {
     const container = document.createElement('div')
     const editor = {
       getTextCursorPosition: vi.fn(() => ({ block: { id: 'cursor-block' } })),
-      insertBlocks: vi.fn()
+      insertBlocks: vi.fn((_blocks: any[], ..._rest: unknown[]) => [{ id: 'inserted-block' }])
     }
     const params = {
       editor,
@@ -170,6 +170,34 @@ describe('useEditorFileUpload', () => {
       'target-block',
       'before'
     )
+  })
+
+  it('reports a dropped PDF so Embedded / Link can be offered, and nothing else', async () => {
+    const onPdfInserted = vi.fn()
+    const { result } = setup({ onPdfInserted })
+    const drop = (file: File) =>
+      result.current.handleNonImageDrop({
+        dataTransfer: { files: [file] },
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as React.DragEvent)
+
+    mocks.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: '/vault/a.txt',
+      name: 'a.txt',
+      size: 1,
+      mimeType: 'text/plain'
+    })
+    await act(async () => {
+      await drop(new File(['x'], 'a.txt', { type: 'text/plain' }))
+    })
+    expect(onPdfInserted).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await drop(new File(['x'], 'file.pdf', { type: 'application/pdf' }))
+    })
+    expect(onPdfInserted).toHaveBeenCalledWith('inserted-block')
   })
 
   // A rejected drop used to be silent: log + telemetry, nothing on screen.

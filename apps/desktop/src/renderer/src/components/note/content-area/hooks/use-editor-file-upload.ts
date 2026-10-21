@@ -54,6 +54,8 @@ interface EditorFileUploadParams {
   fetchNotePath: () => Promise<string | undefined>
   /** The Settings default for a PDF that arrives by drop (#2517). */
   pdfDisplay?: 'embed' | 'link'
+  /** A PDF block was just inserted by a drop; the caller offers Embedded / Link. */
+  onPdfInserted?: (blockId: string) => void
 }
 
 interface EditorFileUploadResult {
@@ -71,7 +73,8 @@ export function useEditorFileUpload({
   dropTarget,
   onDragReset,
   fetchNotePath,
-  pdfDisplay
+  pdfDisplay,
+  onPdfInserted
 }: EditorFileUploadParams): EditorFileUploadResult {
   const uploadFile = useCallback(
     async (file: File): Promise<string> => {
@@ -152,19 +155,21 @@ export function useEditorFileUpload({
               placement
             )
           } else if (result.path) {
-            editor.insertBlocks(
+            const mimeType = result.mimeType || file.type
+            const [inserted] = editor.insertBlocks(
               [
                 createFileBlockContent({
                   url: result.path,
                   name: result.name || file.name,
                   size: result.size || file.size,
-                  mimeType: result.mimeType || file.type,
-                  ...newFileDisplayProps(result.mimeType || file.type, pdfDisplay)
+                  mimeType,
+                  ...newFileDisplayProps(mimeType, pdfDisplay)
                 })
               ],
               referenceBlockId,
               placement
             )
+            if (mimeType === 'application/pdf') onPdfInserted?.(inserted.id)
           }
 
           placement = 'after'
@@ -177,7 +182,7 @@ export function useEditorFileUpload({
 
       return true
     },
-    [noteId, editable, editor, dropTarget, onDragReset, pdfDisplay]
+    [noteId, editable, editor, dropTarget, onDragReset, pdfDisplay, onPdfInserted]
   )
 
   // Embed a file-type item dragged out of the left sidebar. Unlike an OS file
@@ -233,7 +238,7 @@ export function useEditorFileUpload({
             placement
           )
         } else {
-          editor.insertBlocks(
+          const [inserted] = editor.insertBlocks(
             [
               createFileBlockContent({
                 url,
@@ -246,12 +251,13 @@ export function useEditorFileUpload({
             referenceBlockId,
             placement
           )
+          if (mimeType === 'application/pdf') onPdfInserted?.(inserted.id)
         }
       } catch (error) {
         log.error('Failed to embed dropped item', itemId, error)
       }
     },
-    [editable, editor, dropTarget, onDragReset, fetchNotePath, pdfDisplay]
+    [editable, editor, dropTarget, onDragReset, fetchNotePath, pdfDisplay, onPdfInserted]
   )
 
   // Capture-phase drop handler to intercept before BlockNote

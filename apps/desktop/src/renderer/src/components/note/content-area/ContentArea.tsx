@@ -149,12 +149,14 @@ import {
   useWikiLinkBroken,
   useWikiLinkSuggestions,
   usePasteLinkMenu,
+  usePdfDisplayMenu,
   useTableCellImage
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { TableBorderHandles } from './table-border-handles'
 import { CodeBlockToolbar } from './code-block-toolbar'
 import { PasteLinkMenu } from './paste-link-menu'
+import { PdfDisplayMenu } from './pdf-display-menu'
 import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
@@ -840,6 +842,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   // Hook #6: File upload capture-phase drop (non-image files)
+  const {
+    state: pdfDisplayState,
+    open: openPdfDisplayMenu,
+    select: selectPdfDisplay
+  } = usePdfDisplayMenu({
+    editor,
+    editorContainerRef,
+    defaultDisplay: editorSettings.pdfDisplayMode
+  })
   useEditorFileUpload({
     editor,
     noteId,
@@ -849,7 +860,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     dropTarget,
     onDragReset: handleDrop,
     fetchNotePath,
-    pdfDisplay: editorSettings.pdfDisplayMode
+    pdfDisplay: editorSettings.pdfDisplayMode,
+    onPdfInserted: openPdfDisplayMenu
   })
 
   // Hook #6b: `/image`, paste and drop inside a table cell → inline image (#1640)
@@ -3604,6 +3616,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onSelect={handlePasteLinkOptionSelect}
           />
 
+          <PdfDisplayMenu state={pdfDisplayState} onSelect={selectPdfDisplay} />
           <CanvasChoiceMenu choice={canvasChoice} onSelect={selectCanvasChoice} />
           {mentionCreateOverlay}
           {inlineTagObjectOverlay}

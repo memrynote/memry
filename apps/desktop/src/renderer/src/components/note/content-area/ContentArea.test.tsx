@@ -379,7 +379,8 @@ vi.mock('./hooks', () => ({
       },
       handleSelect: vi.fn()
     }
-  })
+  }),
+  usePdfDisplayMenu: vi.fn(() => ({ state: null, open: vi.fn(), select: vi.fn() }))
 }))
 
 vi.mock('./wiki-link-menu', () => ({
