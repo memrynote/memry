@@ -951,6 +951,11 @@
       "cancel": "Cancel",
       "remove2": "Remove",
       "inYourAccount": "In your account",
+      "trySandbox": "Try the sandbox vault",
+      "sandboxVault": "Sandbox vault",
+      "sandboxPreparing": "Preparing the sandbox…",
+      "sandboxFailed": "Could not prepare the sandbox vault",
+      "resetSandbox": "Reset the sandbox vault",
       "itemsCount": "{count} items",
       "untitledVault": "Vault",
       "downloadVaultTitle": "Download “{name}”",
@@ -1262,6 +1267,7 @@
     "changeIcon": "Change icon…",
     "resetIcon": "Reset icon",
     "iconButton": "Change the icon of {name}",
+    "leaveSandbox": "Back to {name}",
     "iconFailed": "Could not change the vault icon"
   },
   "sidebarHelp": {

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, type ReactElement } from 'react'
-import { Plus, Check, Loader2, X, Cloud, Trash2 } from '@/lib/icons'
+import { toast } from 'sonner'
+import { Plus, Check, Loader2, X, Cloud, Trash2, Codesandbox, RotateCcw } from '@/lib/icons'
 
 import { Picker, PICKER_ROW_SELECTOR } from '@/components/ui/picker'
 import {
@@ -27,10 +28,12 @@ import { useAccountVaults } from '@/hooks/use-account-vaults'
 import { useAuth } from '@/contexts/auth-context'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { vaultService } from '@/services/vault-service'
 import { useVaultSwitcherOpenRequest } from '@/lib/vault-switcher-open'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
 import { resolveVaultAccent } from '@/components/sidebar/vault-title-row'
 import { VaultGlyph } from '@/components/sidebar/vault-glyph'
+import { SANDBOX_VAULT_ICON } from '@memry/contracts/vault-api'
 import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
@@ -48,7 +51,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
   const { t: tPhaseF } = useT('common')
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
-  const { vaults, removeVault, refresh: refreshVaults } = useVaultList()
+  const { vaults, sandbox, removeVault, refresh: refreshVaults } = useVaultList()
   const { state: authState } = useAuth()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
@@ -57,6 +60,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
   const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [sandboxBusy, setSandboxBusy] = useState(false)
 
   /** Element focused when ⌘⇧O opened the switcher, so Escape can hand it back. */
   const restoreFocusRef = useRef<HTMLElement | null>(null)
@@ -136,6 +140,31 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
       })
     },
     [switchVault]
+  )
+
+  // Generating takes a few seconds on first use, so the row shows progress and
+  // the picker stays open until the switch starts. A reset only regenerates.
+  const handleSandbox = useCallback(
+    async (reset: boolean) => {
+      if (sandboxBusy || getVaultSwitchState().pending) return
+      setSandboxBusy(true)
+      try {
+        const { path } = await vaultService.prepareSandbox(reset)
+        if (reset) {
+          await refreshVaults()
+          return
+        }
+        setOpen(false)
+        await switchVault(path, { name: 'Sandbox', icon: SANDBOX_VAULT_ICON, source: 'menu' })
+      } catch (err) {
+        toast.error(
+          extractErrorMessage(err, tPhaseF('phaseF.componentsVaultSwitcher.sandboxFailed'))
+        )
+      } finally {
+        setSandboxBusy(false)
+      }
+    },
+    [sandboxBusy, switchVault, refreshVaults, tPhaseF]
   )
 
   // Radix's own auto-focus takes the first row. Open on the active vault
@@ -375,6 +404,71 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                       </span>
                     </button>
                   ))}
+                </>
+              )}
+
+              {sandbox && (
+                <>
+                  <Picker.Separator />
+                  <button
+                    type="button"
+                    data-sandbox-vault=""
+                    data-active-vault={status?.path === sandbox.path ? 'true' : undefined}
+                    disabled={sandboxBusy}
+                    onClick={() => status?.path !== sandbox.path && void handleSandbox(false)}
+                    className={cn(
+                      'group/vault flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 transition-colors',
+                      'focus:outline-none focus-visible:bg-accent',
+                      status?.path === sandbox.path
+                        ? 'cursor-default'
+                        : 'hover:bg-accent cursor-pointer'
+                    )}
+                  >
+                    <Check
+                      className={cn(
+                        'size-3.5 shrink-0',
+                        status?.path === sandbox.path
+                          ? 'text-sidebar-terracotta opacity-100'
+                          : 'opacity-0'
+                      )}
+                    />
+                    {sandboxBusy ? (
+                      <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                    ) : (
+                      <Codesandbox className="size-3.5 shrink-0 text-muted-foreground" />
+                    )}
+                    <span
+                      className={cn(
+                        'flex-1 truncate text-start',
+                        status?.path === sandbox.path ? 'font-medium' : 'text-muted-foreground'
+                      )}
+                    >
+                      {sandboxBusy
+                        ? tPhaseF('phaseF.componentsVaultSwitcher.sandboxPreparing')
+                        : sandbox.exists
+                          ? tPhaseF('phaseF.componentsVaultSwitcher.sandboxVault')
+                          : tPhaseF('phaseF.componentsVaultSwitcher.trySandbox')}
+                    </span>
+                    {sandbox.exists && status?.path !== sandbox.path && !sandboxBusy && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleSandbox(true)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter') return
+                          e.stopPropagation()
+                          void handleSandbox(true)
+                        }}
+                        className="size-5 flex items-center justify-center rounded opacity-0 transition-opacity hover:bg-accent group-hover/vault:opacity-100 focus-visible:opacity-100"
+                        aria-label={tPhaseF('phaseF.componentsVaultSwitcher.resetSandbox')}
+                      >
+                        <RotateCcw className="size-3 text-muted-foreground" />
+                      </span>
+                    )}
+                  </button>
                 </>
               )}
 

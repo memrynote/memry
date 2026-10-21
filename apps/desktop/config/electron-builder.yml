@@ -30,6 +30,8 @@ asarUnpack:
   - resources/**
   # OCR language data: Tesseract's worker thread reads it with plain fs.
   - out/main/tessdata/**
+  # Sandbox vault assets: the generator copies them into the vault with plain fs.
+  - out/main/sandbox-assets/**
 afterPack: scripts/prune-packaged-app.mjs
 extraResources:
   # ponytail: shipped as app-config (no .env token) so Defender's .env credential

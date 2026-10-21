@@ -123,6 +123,14 @@ export const SetVaultIconSchema = z.object({
   icon: VaultIconSchema.nullable()
 })
 
+/** The sandbox vault's own icon, written into its config and drawn wherever it appears. */
+export const SANDBOX_VAULT_ICON = 'icon:CodesandboxIcon'
+
+export const PrepareSandboxSchema = z.object({
+  /** Throw the sandbox away and generate a fresh one. */
+  reset: z.boolean().optional()
+})
+
 export const UpdateVaultConfigSchema = z.object({
   excludePatterns: z.array(z.string()).optional(),
   defaultNoteFolder: z.string().optional(),
@@ -144,9 +152,25 @@ export interface SelectVaultResponse {
   errorCode?: 'already-exists' | 'invalid-name'
 }
 
+/**
+ * The on-device sandbox vault. It is not in `vaults`: it is never synced,
+ * removed or swiped to, so the switcher offers it in a section of its own.
+ */
+export interface SandboxInfo {
+  path: string
+  /** Generated at least once; false until the user first tries it. */
+  exists: boolean
+}
+
 export interface GetVaultsResponse {
   vaults: VaultInfo[]
+  /** The last vault the user opened. Opening the sandbox does not replace it. */
   currentVault: string | null
+  sandbox: SandboxInfo
+}
+
+export interface PrepareSandboxResponse {
+  path: string
 }
 
 // ============================================================================
@@ -212,6 +236,10 @@ export interface VaultHandlers {
 
   [VaultChannels.invoke.SET_ICON]: (input: z.infer<typeof SetVaultIconSchema>) => Promise<void>
 
+  [VaultChannels.invoke.PREPARE_SANDBOX]: (
+    input: z.infer<typeof PrepareSandboxSchema>
+  ) => Promise<PrepareSandboxResponse>
+
   [VaultChannels.invoke.RESOLVE_EMBEDS]: (input: ResolveEmbedsInput) => Promise<ResolvedEmbeds>
 }
 
@@ -256,5 +284,6 @@ export interface VaultClientAPI {
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
   setIcon(path: string, icon: string | null): Promise<void>
+  prepareSandbox(reset?: boolean): Promise<PrepareSandboxResponse>
   resolveEmbeds(input: ResolveEmbedsInput): Promise<ResolvedEmbeds>
 }

@@ -9,7 +9,7 @@ export const createInbox: SandboxStep = async (ctx) => {
         ? await app.inbox.captureLink({ url: spec.url!, tags: spec.tags })
         : spec.kind === 'file'
           ? await app.inbox.captureFile({
-              filePath: assetPath(spec.asset!),
+              filePath: assetPath(ctx, spec.asset!),
               title: spec.title,
               tags: spec.tags
             })

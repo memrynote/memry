@@ -545,9 +545,15 @@ export interface SelectVaultResponse {
   errorCode?: 'already-exists' | 'invalid-name'
 }
 
+export interface SandboxInfo {
+  path: string
+  exists: boolean
+}
+
 export interface GetVaultsResponse {
   vaults: VaultInfo[]
   currentVault: string | null
+  sandbox: SandboxInfo
 }
 
 export interface AccountVaultInfo {
@@ -580,6 +586,7 @@ export interface VaultClientAPI {
   deleteFromAccount(vaultUuid: string): Promise<void>
   resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
   setIcon(path: string, icon: string | null): Promise<void>
+  prepareSandbox(reset?: boolean): Promise<{ path: string }>
 }
 
 // Notes client API interface

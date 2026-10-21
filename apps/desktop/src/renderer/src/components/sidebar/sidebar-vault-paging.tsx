@@ -8,7 +8,8 @@ import { VaultPill } from '@/components/sidebar/vault-pill'
 import { VaultGlyph } from '@/components/sidebar/vault-glyph'
 import { VaultIconPicker } from '@/components/sidebar/vault-icon-picker'
 import { resolveVaultAccent } from '@/components/sidebar/vault-title-row'
-import { ChevronDown, Loader2 } from '@/lib/icons'
+import { ChevronDown, Loader2, ArrowLeft } from '@/lib/icons'
+import { SANDBOX_VAULT_ICON } from '@memry/contracts/vault-api'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -18,6 +19,10 @@ export interface SidebarVaultPages {
   activePath: string | null
   /** The open vault's list entry; null until the list has loaded. */
   activeVault: VaultInfo | null
+  /** The sandbox is open. It is no page: nothing swipes to it or from it. */
+  sandboxActive: boolean
+  /** Where "back" goes from the sandbox: the last vault the user opened, if still listed. */
+  returnVault: VaultInfo | null
   switchTo: (
     vault: VaultInfo,
     direction: VaultSwitchDirection,
@@ -28,7 +33,7 @@ export interface SidebarVaultPages {
 /** The vault pages the sidebar swipes between, and the switch they perform. */
 export function useSidebarVaultPages(): SidebarVaultPages {
   const { status, switchVault } = useVault()
-  const { vaults: knownVaults } = useVaultList()
+  const { vaults: knownVaults, currentVault, sandbox } = useVaultList()
   const activePath = status?.path ?? null
 
   const vaults = useMemo(
@@ -36,6 +41,8 @@ export function useSidebarVaultPages(): SidebarVaultPages {
     [knownVaults, activePath]
   )
   const activeVault = vaults.find((vault) => vault.path === activePath) ?? null
+  const sandboxActive = !!sandbox && activePath === sandbox.path
+  const returnVault = vaults.find((vault) => vault.path === currentVault) ?? null
 
   const switchTo = useCallback(
     async (vault: VaultInfo, direction: VaultSwitchDirection, source: VaultSwitchSource) => {
@@ -55,6 +62,8 @@ export function useSidebarVaultPages(): SidebarVaultPages {
     vaults,
     activePath,
     activeVault,
+    sandboxActive,
+    returnVault,
     switchTo
   }
 }
@@ -70,7 +79,7 @@ export function SidebarVaultPager({
   paused?: boolean
   children: ReactNode
 }) {
-  if (!pages.activePath) return <>{children}</>
+  if (!pages.activePath || pages.sandboxActive) return <>{children}</>
   return (
     <VaultPager
       vaults={pages.vaults}
@@ -122,6 +131,11 @@ export function SidebarVaultHeader({ pages }: { pages: SidebarVaultPages }) {
           </button>
         </VaultIconPicker>
       )}
+      {pages.sandboxActive && (
+        <span className="flex size-7 shrink-0 items-center justify-center" aria-hidden="true">
+          <VaultGlyph icon={SANDBOX_VAULT_ICON} color={resolveVaultAccent(undefined)} />
+        </span>
+      )}
       <VaultSwitcher
         placement={{ side: 'bottom', align: 'start' }}
         renderTrigger={({ isLoading, name }) => {
@@ -133,7 +147,7 @@ export function SidebarVaultHeader({ pages }: { pages: SidebarVaultPages }) {
               aria-label={t('sidebar.vaultMenu', { name: label })}
               className={cn(
                 'flex h-8 w-fit max-w-full min-w-0 items-center gap-2 rounded-[7px] pe-2 text-start outline-none',
-                active ? 'ps-1.5' : 'ps-2.5',
+                active || pages.sandboxActive ? 'ps-1.5' : 'ps-2.5',
                 'hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent',
                 'focus-visible:ring-2 focus-visible:ring-sidebar-primary'
               )}
@@ -147,6 +161,21 @@ export function SidebarVaultHeader({ pages }: { pages: SidebarVaultPages }) {
           )
         }}
       />
+      {pages.sandboxActive && pages.returnVault && (
+        <button
+          type="button"
+          data-testid="sidebar-sandbox-leave"
+          aria-label={t('vaultSwipe.leaveSandbox', { name: pages.returnVault.name })}
+          title={t('vaultSwipe.leaveSandbox', { name: pages.returnVault.name })}
+          onClick={() => void pages.switchTo(pages.returnVault!, 'prev', 'menu')}
+          className={cn(
+            'flex size-7 shrink-0 items-center justify-center rounded-[7px] outline-none',
+            'text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-primary'
+          )}
+        >
+          <ArrowLeft aria-hidden="true" className="size-3.5 rtl:rotate-180" />
+        </button>
+      )}
     </div>
   )
 }

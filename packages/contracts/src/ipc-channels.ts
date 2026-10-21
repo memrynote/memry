@@ -66,6 +66,8 @@ export const VaultChannels = {
     DELETE_FROM_ACCOUNT: 'vault:delete-from-account',
     /** Set or reset (null) a listed vault's icon; synced account-wide */
     SET_ICON: 'vault:set-icon',
+    /** Generate the on-device sandbox vault when missing, stale or reset; returns its path */
+    PREPARE_SANDBOX: 'vault:prepare-sandbox',
     /** Map Obsidian image embed targets (`![[photo.png]]`) to memry-file:// URLs */
     RESOLVE_EMBEDS: 'vault:resolve-embeds'
   },

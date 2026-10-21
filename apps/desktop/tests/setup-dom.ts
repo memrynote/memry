@@ -120,6 +120,7 @@ const createMockApi = () => ({
     remove: vi.fn().mockResolvedValue({ success: true }),
     reindex: vi.fn().mockResolvedValue({ success: true }),
     deleteFromAccount: vi.fn().mockResolvedValue(undefined),
+    prepareSandbox: vi.fn().mockResolvedValue({ path: '/userData/Sandbox' }),
     setIcon: vi.fn().mockResolvedValue(undefined)
   },
 

@@ -564,6 +564,7 @@ export interface MainIpcInvokeHandlers {
   "vault:get-default-parent": (...args: []) => Awaited<Promise<string>>
   "vault:get-status": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultStatus>>
   "vault:list-account": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").AccountVaultInfo[]>>
+  "vault:prepare-sandbox": (...args: [{ reset?: boolean | undefined; }]) => Awaited<Promise<{ path: string; }>>
   "vault:reindex": (...args: []) => Awaited<Promise<void>>
   "vault:remove": (...args: [string]) => Awaited<Promise<void>>
   "vault:resolve-embeds": (...args: [{ refs: string[]; notePath?: string | undefined; }]) => Awaited<Promise<Record<string, string>>>

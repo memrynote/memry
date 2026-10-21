@@ -174,6 +174,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@memry/cli/sandbox/generate': resolve(workspaceRoot, 'apps/cli/src/sandbox/generate.ts'),
       '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
       '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
       '@memry/domain-inbox': resolve(workspaceRoot, 'packages/domain-inbox/src'),

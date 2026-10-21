@@ -136,6 +136,13 @@ export const vaultService: VaultClientAPI = {
    */
   setIcon: (path: string, icon: string | null): Promise<void> => {
     return window.api.vault.setIcon(path, icon)
+  },
+
+  /**
+   * Generate the sandbox vault when missing, stale or `reset`; resolves to its path.
+   */
+  prepareSandbox: (reset?: boolean): Promise<{ path: string }> => {
+    return window.api.vault.prepareSandbox(reset)
   }
 }
 

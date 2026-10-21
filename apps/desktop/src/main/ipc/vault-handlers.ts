@@ -6,6 +6,7 @@ import {
   DownloadRemoteVaultSchema,
   SelectVaultSchema,
   SetVaultIconSchema,
+  PrepareSandboxSchema,
   UpdateVaultConfigSchema
 } from '@memry/contracts/vault-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
@@ -17,6 +18,7 @@ import {
   closeVault,
   getAllVaults,
   switchVault,
+  prepareSandboxVault,
   removeVault,
   reindex
 } from '../vault'
@@ -161,6 +163,12 @@ export function registerVaultHandlers(): void {
         log.warn('Vault icon sync failed; retries on the next refresh', err)
       )
     })
+  )
+
+  // vault:prepare-sandbox - Generate the sandbox vault when missing, stale or reset
+  ipcMain.handle(
+    VaultChannels.invoke.PREPARE_SANDBOX,
+    createValidatedHandler(PrepareSandboxSchema, ({ reset }) => prepareSandboxVault(reset))
   )
 
   // vault:resolve-embeds - Map `![[photo.png]]` targets to memry-file:// URLs

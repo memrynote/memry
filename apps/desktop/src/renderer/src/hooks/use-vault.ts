@@ -4,6 +4,8 @@ import type {
   VaultStatus,
   VaultConfig,
   VaultInfo,
+  GetVaultsResponse,
+  SandboxInfo,
   SelectVaultResponse,
   IndexRecoveredEvent
 } from '../../../preload/index.d'
@@ -414,12 +416,16 @@ export function useVaultList() {
   const [currentVault, setCurrentVault] = useState<string | null>(
     () => getCachedVaultList()?.currentVault ?? null
   )
+  const [sandbox, setSandbox] = useState<SandboxInfo | null>(
+    () => getCachedVaultList()?.sandbox ?? null
+  )
   const [isLoading, setIsLoading] = useState(() => getCachedVaultList() === null)
 
-  const apply = useCallback((result: { vaults: VaultInfo[]; currentVault: string | null }) => {
-    setCachedVaultList({ vaults: result.vaults, currentVault: result.currentVault })
+  const apply = useCallback((result: GetVaultsResponse) => {
+    setCachedVaultList(result)
     setVaults(result.vaults)
     setCurrentVault(result.currentVault)
+    setSandbox(result.sandbox)
   }, [])
 
   useEffect(() => {
@@ -457,6 +463,7 @@ export function useVaultList() {
   return {
     vaults,
     currentVault,
+    sandbox,
     isLoading,
     refresh,
     removeVault

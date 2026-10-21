@@ -77,7 +77,7 @@ export const setup: SandboxStep = async ({ app, projects: projectRefs }) => {
       await app.tasks.projects.updateStatus(second.id, { name: names[1], color: '#8b5cf6' })
       const done = rest.find((status) => status.isDone)
       if (!done) throw new Error('New project has no done status')
-      const middle = []
+      const middle: Array<{ id: string }> = []
       for (const [index, name] of names.slice(2, -1).entries()) {
         middle.push(
           await app.tasks.projects.createStatus(project.id, {

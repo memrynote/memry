@@ -1,9 +1,12 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
 import Database from 'better-sqlite3'
 
 import { createMemryApp } from '../app-core/memry-app.ts'
 import { getDataDbPath, getIndexDbPath } from '../app-core/paths.ts'
 import { createClock } from './clock.ts'
-import { createContext, type SandboxStep } from './context.ts'
+import { ASSETS_DIR, createContext, type SandboxStep } from './context.ts'
 import { runPostSteps } from './post/index.ts'
 import { createInbox } from './steps/inbox.ts'
 import { createShells, writeBodies, writeJournal, writeVersions } from './steps/notes.ts'
@@ -72,9 +75,13 @@ function countEntities(vaultPath: string): SandboxCounts {
 }
 
 /** Builds the sandbox vault into `vaultPath`, which must be an empty directory. */
-export async function generateSandbox(vaultPath: string, now: Date): Promise<SandboxCounts> {
+export async function generateSandbox(
+  vaultPath: string,
+  now: Date,
+  assetsDir: string = ASSETS_DIR
+): Promise<SandboxCounts> {
   const app = await createMemryApp({ vaultPath })
-  const ctx = createContext(app, vaultPath, createClock(now))
+  const ctx = createContext(app, vaultPath, createClock(now), assetsDir)
   try {
     for (const step of steps) await step(ctx)
   } finally {
@@ -82,4 +89,29 @@ export async function generateSandbox(vaultPath: string, now: Date): Promise<San
   }
   await runPostSteps(ctx)
   return { ...countEntities(vaultPath), canvases: ctx.canvasIds.size }
+}
+
+/**
+ * Builds the sandbox vault at `target`, replacing whatever is there. It builds
+ * next to the target and renames on success, so a failure never leaves a
+ * half-made vault and never touches the previous one.
+ */
+export async function generateSandboxAt(
+  target: string,
+  now: Date,
+  assetsDir: string = ASSETS_DIR
+): Promise<SandboxCounts> {
+  await fs.mkdir(path.dirname(target), { recursive: true })
+  const staging = await fs.mkdtemp(
+    path.join(path.dirname(target), `.${path.basename(target)}.sandbox-`)
+  )
+  try {
+    const counts = await generateSandbox(staging, now, assetsDir)
+    await fs.rm(target, { recursive: true, force: true })
+    await fs.rename(staging, target)
+    return counts
+  } catch (error) {
+    await fs.rm(staging, { recursive: true, force: true })
+    throw error
+  }
 }

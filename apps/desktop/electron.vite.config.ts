@@ -13,6 +13,8 @@ const workspaceRoot = resolve(appRoot, '../..')
 const workspaceAliases = {
   '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
   '@memry/app-core': resolve(workspaceRoot, 'packages/app-core/src'),
+  // Before '@memry/cli': an alias matches by prefix, in order.
+  '@memry/cli/sandbox/generate': resolve(workspaceRoot, 'apps/cli/src/sandbox/generate.ts'),
   '@memry/cli': resolve(workspaceRoot, 'apps/cli/src/run.ts'),
   '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
   '@memry/domain-inbox': resolve(workspaceRoot, 'packages/domain-inbox/src'),
@@ -77,6 +79,22 @@ function copyOcrLanguageData(): Plugin {
   }
 }
 
+// Photos, scans, audio and video for the sandbox vault generator. Unpacked from
+// app.asar (electron-builder asarUnpack) so attaching them is a plain file copy.
+function copySandboxAssets(): Plugin {
+  return {
+    name: 'copy-sandbox-assets',
+    writeBundle(options) {
+      const outDir = options.dir ?? resolve(appRoot, 'out/main')
+      cpSync(
+        resolve(workspaceRoot, 'apps/cli/src/sandbox/assets'),
+        resolve(outDir, 'sandbox-assets'),
+        { recursive: true }
+      )
+    }
+  }
+}
+
 export default defineConfig({
   main: {
     // At info level, each dev build of main lists every one of its output chunks.
@@ -85,6 +103,7 @@ export default defineConfig({
     plugins: [
       copyMigrations(),
       copyOcrLanguageData(),
+      copySandboxAssets(),
       ...(isDevServer ? [recordDevBuild(appRoot, 'main')] : [])
     ],
     build: {

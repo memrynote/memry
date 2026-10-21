@@ -26,7 +26,8 @@ export const vaultApi = {
   resolveEmbeds: (input: { refs: string[]; notePath?: string }) =>
     invoke(VaultChannels.invoke.RESOLVE_EMBEDS, input),
   setIcon: (path: string, icon: string | null) =>
-    invoke(VaultChannels.invoke.SET_ICON, { path, icon })
+    invoke(VaultChannels.invoke.SET_ICON, { path, icon }),
+  prepareSandbox: (reset?: boolean) => invoke(VaultChannels.invoke.PREPARE_SANDBOX, { reset })
 }
 
 export const vaultEvents = {

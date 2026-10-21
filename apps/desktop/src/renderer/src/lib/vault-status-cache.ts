@@ -12,10 +12,10 @@
  * imports so the test setup can reset it without loading the hooks.
  */
 
-import type { VaultInfo, VaultStatus } from '../../../preload/index.d'
+import type { GetVaultsResponse, VaultStatus } from '../../../preload/index.d'
 
 let status: VaultStatus | null = null
-let vaultList: { vaults: VaultInfo[]; currentVault: string | null } | null = null
+let vaultList: GetVaultsResponse | null = null
 
 export function getCachedVaultStatus(): VaultStatus | null {
   return status
@@ -25,14 +25,11 @@ export function setCachedVaultStatus(next: VaultStatus): void {
   status = next
 }
 
-export function getCachedVaultList(): { vaults: VaultInfo[]; currentVault: string | null } | null {
+export function getCachedVaultList(): GetVaultsResponse | null {
   return vaultList
 }
 
-export function setCachedVaultList(next: {
-  vaults: VaultInfo[]
-  currentVault: string | null
-}): void {
+export function setCachedVaultList(next: GetVaultsResponse): void {
   vaultList = next
 }
 

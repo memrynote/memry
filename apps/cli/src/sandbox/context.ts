@@ -31,7 +31,8 @@ export type AssetName =
   | 'scan-safire-moon-disaster-memo-1969.pdf'
   | 'video-apollo11-launch-commentary.webm'
 
-export const assetPath = (name: AssetName): string => path.join(ASSETS_DIR, name)
+export const assetPath = (ctx: SandboxContext, name: AssetName): string =>
+  path.join(ctx.assetsDir, name)
 
 export interface NoteRef {
   id: string
@@ -63,6 +64,8 @@ export interface FileRef {
 export interface SandboxContext {
   app: MemryApp
   vaultPath: string
+  /** Where the committed assets live; the desktop bundle ships them elsewhere than the source tree. */
+  assetsDir: string
   clock: Clock
   notes: Map<string, NoteRef>
   /** Journal note id by `YYYY-MM-DD`. */
@@ -76,10 +79,16 @@ export interface SandboxContext {
   canvasIds: Map<string, string>
 }
 
-export function createContext(app: MemryApp, vaultPath: string, clock: Clock): SandboxContext {
+export function createContext(
+  app: MemryApp,
+  vaultPath: string,
+  clock: Clock,
+  assetsDir: string
+): SandboxContext {
   return {
     app,
     vaultPath,
+    assetsDir,
     clock,
     notes: new Map(),
     journal: new Map(),

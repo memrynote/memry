@@ -73,7 +73,7 @@ Next: [[08 Tags and tags with fields]].
     '🏷️',
     'Intermediate',
     'Plain tags, and tags that give a note fields, a template and a table',
-    (b) => `A tag can be a label, or it can say what a note is.
+    () => `A tag can be a label, or it can say what a note is.
 
 ## Plain tags
 

@@ -43,7 +43,7 @@ export const createShells: SandboxStep = async (ctx) => {
 
   for (const file of importedFiles) {
     const result = await ctx.app.importFiles({
-      sourcePaths: [assetPath(file.asset)],
+      sourcePaths: [assetPath(ctx, file.asset)],
       targetFolder: file.folder
     })
     const imported = result.importedFiles[0]
@@ -78,11 +78,11 @@ async function attach(
       ctx,
       note,
       asset,
-      await fs.readFile(assetPath(asset)),
+      await fs.readFile(assetPath(ctx, asset)),
       asset.endsWith('.ogg') ? 'audio/ogg' : 'video/webm'
     )
   }
-  const result = await ctx.app.attachments.add(note.id, assetPath(asset))
+  const result = await ctx.app.attachments.add(note.id, assetPath(ctx, asset))
   if (!result.success || !result.path) throw new Error(`Attaching ${asset} failed: ${result.error}`)
   return {
     ref: noteRelative(note, result.path),

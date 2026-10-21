@@ -4,7 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { generateSandbox } from './generate.ts'
+import { generateSandboxAt } from './generate.ts'
 
 async function isMissingOrEmpty(dir: string): Promise<boolean> {
   try {
@@ -26,20 +26,7 @@ async function main(): Promise<void> {
     )
   }
 
-  // Build next to the target and rename on success, so a failure never leaves a half-made vault.
-  await fs.mkdir(path.dirname(target), { recursive: true })
-  const staging = await fs.mkdtemp(
-    path.join(path.dirname(target), `.${path.basename(target)}.sandbox-`)
-  )
-  let counts: Awaited<ReturnType<typeof generateSandbox>>
-  try {
-    counts = await generateSandbox(staging, new Date())
-    await fs.rm(target, { recursive: true, force: true })
-    await fs.rename(staging, target)
-  } catch (error) {
-    await fs.rm(staging, { recursive: true, force: true })
-    throw error
-  }
+  const counts = await generateSandboxAt(target, new Date())
 
   const width = Math.max(...Object.keys(counts).map((name) => name.length))
   process.stdout.write(`Sandbox vault created at ${target}\n\n`)

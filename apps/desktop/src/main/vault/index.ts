@@ -95,6 +95,13 @@ import { migrateSettingsToConfig } from './settings-cache'
 import { readCalloutTypes } from '../settings/callout-types-store'
 import { readPreferences } from './vault-preferences'
 import { readVaultIcon } from './vault-icon'
+import {
+  ensureSandboxVault,
+  getSandboxInfo,
+  isSandboxPath,
+  sandboxNeedsGeneration
+} from './sandbox'
+import { markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { createPhaseTimer } from '../lib/phase-timer'
 import {
   applyProjectFrontmatterBackfill,
@@ -939,6 +946,12 @@ async function openVault(vaultPath: string): Promise<void> {
   // rather than let it become an unhandled rejection. A close/switch during
   // the detached start is safe: stopSyncRuntime awaits the in-flight start
   // before tearing anything down.
+  // The sandbox is local-only: it holds generated demo content, and syncing it
+  // would put that content into the user's account.
+  if (isSandboxPath(vaultPath)) {
+    markSyncIneligible()
+    return
+  }
   void startSyncRuntime().catch((error) => {
     logger.error('Sync runtime start failed after vault open:', error)
     trackMainError('vault', 'sync_runtime_start', error)
@@ -1001,6 +1014,10 @@ async function replaceOpenVault(vaultPath: string): Promise<SelectVaultResponse>
 
   // Create vault info
   const vaultInfo = createVaultInfo(vaultPath)
+
+  // The sandbox stays out of the vault list and out of "last vault", so a
+  // relaunch lands back on the user's own vault and the way back is known.
+  if (isSandboxPath(vaultPath)) return { success: true, vault: vaultInfo }
 
   // Stamp the server vault uuid so the account vault directory can match
   // this vault without opening its data.db (best-effort: re-stamps next open)
@@ -1358,8 +1375,25 @@ export function getAllVaults(): GetVaultsResponse {
   const vaults = getVaults().map(toVaultInfo)
   return {
     vaults,
-    currentVault: getCurrentVaultPath()
+    currentVault: getCurrentVaultPath(),
+    sandbox: getSandboxInfo()
   }
+}
+
+/**
+ * Generate the sandbox vault when it is missing, left over from another app
+ * version, or `reset`. Switching into it stays the renderer's `vault:switch`.
+ */
+export function prepareSandboxVault(reset = false): Promise<{ path: string }> {
+  return runVaultLifecycleOperation(async () => {
+    const sandbox = getSandboxInfo()
+    if (currentStatus.path === sandbox.path) {
+      if (!reset && !sandboxNeedsGeneration()) return { path: sandbox.path }
+      throw new VaultError('Leave the sandbox before resetting it', VaultErrorCode.INVALID_PATH)
+    }
+    await ensureSandboxVault(reset)
+    return { path: sandbox.path }
+  })
 }
 
 /**

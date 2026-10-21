@@ -165,6 +165,7 @@ export { default as LeftToRightBlockQuoteIcon } from '@hugeicons/core-free-icons
 export { default as LeftToRightListBulletIcon } from '@hugeicons/core-free-icons/LeftToRightListBulletIcon'
 export { default as LeftToRightListDashIcon } from '@hugeicons/core-free-icons/LeftToRightListDashIcon'
 export { default as LeftToRightListNumberIcon } from '@hugeicons/core-free-icons/LeftToRightListNumberIcon'
+export { default as CodesandboxIcon } from '@hugeicons/core-free-icons/CodesandboxIcon'
 export { default as LibraryIcon } from '@hugeicons/core-free-icons/LibraryIcon'
 export { default as Link01Icon } from '@hugeicons/core-free-icons/Link01Icon'
 export { default as Link02Icon } from '@hugeicons/core-free-icons/Link02Icon'

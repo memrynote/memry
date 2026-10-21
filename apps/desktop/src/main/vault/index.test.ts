@@ -221,6 +221,13 @@ vi.mock('../lib/main-i18n', () => ({
   })
 }))
 
+vi.mock('./sandbox', () => ({
+  isSandboxPath: (vaultPath: string) => vaultPath === '/userData/Sandbox',
+  getSandboxInfo: () => ({ path: '/userData/Sandbox', exists: true }),
+  sandboxNeedsGeneration: () => false,
+  ensureSandboxVault: vi.fn()
+}))
+
 vi.mock('../sync/runtime', () => ({
   startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args),
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
@@ -458,6 +465,21 @@ describe('vault lifecycle', () => {
     expect(mocks.currentVaultPath).toBe('/vault/work')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/work' }))
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
+  })
+
+  it('opens the sandbox without syncing it, listing it, or making it the last vault', async () => {
+    mocks.currentVaultPath = '/vault/work'
+    mocks.vaults.length = 0
+
+    const result = await selectVault({ path: '/userData/Sandbox' })
+
+    expect(result.success).toBe(true)
+    expect(getStatus()).toEqual(
+      expect.objectContaining({ isOpen: true, path: '/userData/Sandbox' })
+    )
+    expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+    expect(mocks.vaults).toEqual([])
+    expect(mocks.currentVaultPath).toBe('/vault/work')
   })
 
   // The open/select IPC promise used to resolve only after startSyncRuntime →

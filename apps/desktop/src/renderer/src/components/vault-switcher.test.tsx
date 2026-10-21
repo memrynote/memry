@@ -92,7 +92,7 @@ vi.mock('@/components/download-vault-dialog', () => ({
 
 import { VaultSwitcher } from './vault-switcher'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
-import type { VaultInfo } from '../../../preload/index.d'
+import type { SandboxInfo, VaultInfo } from '../../../preload/index.d'
 
 const vault = (name: string, extra: Partial<VaultInfo> = {}): VaultInfo => ({
   path: `/vaults/${name}`,
@@ -107,13 +107,19 @@ const vault = (name: string, extra: Partial<VaultInfo> = {}): VaultInfo => ({
 const ACTIVE = vault('Active', { vaultUuid: 'uuid-active' })
 const OLD = vault('Old', { vaultUuid: 'uuid-old' })
 
+const OTHER_SANDBOX: SandboxInfo = { path: '/userData/Sandbox', exists: true }
+
 function serveVaults(...lists: VaultInfo[][]): void {
   const getAll = vi.mocked(window.api.vault.getAll)
   getAll.mockReset()
   for (const vaults of lists.slice(0, -1)) {
-    getAll.mockResolvedValueOnce({ vaults, currentVault: ACTIVE.path })
+    getAll.mockResolvedValueOnce({ vaults, currentVault: ACTIVE.path, sandbox: OTHER_SANDBOX })
   }
-  getAll.mockResolvedValue({ vaults: lists[lists.length - 1], currentVault: ACTIVE.path })
+  getAll.mockResolvedValue({
+    vaults: lists[lists.length - 1],
+    currentVault: ACTIVE.path,
+    sandbox: OTHER_SANDBOX
+  })
 }
 
 describe('VaultSwitcher delete from account', () => {
@@ -252,5 +258,79 @@ describe('VaultSwitcher during a vault switch', () => {
     endVaultSwitch(true)
     fireEvent.click(old)
     expect(mocks.switchVault).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('VaultSwitcher sandbox vault', () => {
+  const SANDBOX_PATH = '/userData/Sandbox'
+
+  function serveSandbox(exists: boolean): void {
+    vi.mocked(window.api.vault.getAll).mockReset()
+    vi.mocked(window.api.vault.getAll).mockResolvedValue({
+      vaults: [ACTIVE, OLD],
+      currentVault: ACTIVE.path,
+      sandbox: { path: SANDBOX_PATH, exists }
+    })
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.status = { path: ACTIVE.path }
+    mocks.switchVault.mockResolvedValue({ success: true, vault: null })
+  })
+
+  it('sits between the vault sections and Open vault, each behind a divider', async () => {
+    serveSandbox(true)
+    const { container } = render(<VaultSwitcher />)
+    const sandbox = await screen.findByText('phaseF.componentsVaultSwitcher.sandboxVault')
+
+    const order = Array.from(container.querySelectorAll('button, hr')).map((node) =>
+      node.tagName === 'HR' ? 'divider' : (node.textContent ?? '')
+    )
+    const at = order.findIndex((entry) => entry.includes(sandbox.textContent ?? ''))
+    expect(order[at - 1]).toBe('divider')
+    expect(order[at + 1]).toBe('divider')
+    expect(order[at + 2]).toBe('phaseF.componentsVaultSwitcher.openVault')
+  })
+
+  it('invites the first try, then generates and switches into it', async () => {
+    serveSandbox(false)
+    render(<VaultSwitcher />)
+    fireEvent.click(await screen.findByText('phaseF.componentsVaultSwitcher.trySandbox'))
+
+    await waitFor(() =>
+      expect(mocks.switchVault).toHaveBeenCalledWith(
+        SANDBOX_PATH,
+        expect.objectContaining({ icon: 'icon:CodesandboxIcon' })
+      )
+    )
+    expect(window.api.vault.prepareSandbox).toHaveBeenCalledWith(false)
+  })
+
+  it('resets without switching, and never offers remove or delete', async () => {
+    serveSandbox(true)
+    render(<VaultSwitcher />)
+    await screen.findByText('phaseF.componentsVaultSwitcher.sandboxVault')
+    expect(screen.queryByLabelText(/Remove Sandbox|Delete Sandbox/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('phaseF.componentsVaultSwitcher.resetSandbox'))
+
+    await waitFor(() => expect(window.api.vault.prepareSandbox).toHaveBeenCalledWith(true))
+    expect(mocks.switchVault).not.toHaveBeenCalled()
+  })
+
+  it('marks the sandbox active, with no reset while inside it', async () => {
+    serveSandbox(true)
+    mocks.status = { path: SANDBOX_PATH }
+    render(<VaultSwitcher />)
+    await screen.findByText('phaseF.componentsVaultSwitcher.sandboxVault')
+
+    expect(document.querySelector('[data-sandbox-vault]')).toHaveAttribute(
+      'data-active-vault',
+      'true'
+    )
+    expect(
+      screen.queryByLabelText('phaseF.componentsVaultSwitcher.resetSandbox')
+    ).not.toBeInTheDocument()
   })
 })

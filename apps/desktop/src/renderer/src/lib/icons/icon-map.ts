@@ -203,6 +203,7 @@ import {
   Layout03Icon,
   LeftToRightListBulletIcon,
   LeftToRightListDashIcon,
+  CodesandboxIcon,
   LibraryIcon,
   Link02Icon,
   LinkForwardIcon,
@@ -369,6 +370,8 @@ export const Book = createIcon(Book01Icon)
 export const Book2 = createIcon(Book02Icon)
 /** A vault's default icon. */
 export const Library = createIcon(LibraryIcon)
+/** The sandbox vault's icon (`SANDBOX_VAULT_ICON`). */
+export const Codesandbox = createIcon(CodesandboxIcon)
 export const BookOpen = createIcon(BookOpen01Icon)
 export const Bookmark = createIcon(Bookmark01Icon)
 export const Bookmark2 = createIcon(Bookmark02Icon)
