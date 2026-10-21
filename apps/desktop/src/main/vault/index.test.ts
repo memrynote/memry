@@ -855,6 +855,17 @@ describe('vault lifecycle', () => {
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: false, isIndexing: false }))
   })
 
+  it("closeVault hands the quit path's drain cap to the projection stop", async () => {
+    await selectVault({ path: '/vault/closing-cap' })
+
+    await closeVault({ projectionDrainTimeoutMs: 1_234 })
+
+    expect(mocks.stopProjectionRuntime).toHaveBeenCalledWith({
+      drain: true,
+      drainTimeoutMs: 1_234
+    })
+  })
+
   // #803: the embedding projector's deferral gate must read live indexing
   // status through its closure. Hard-coding it false silently reloads the
   // ~23MB model inline on the open path; hard-coding true strands embeddings.
