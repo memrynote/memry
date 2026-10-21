@@ -162,15 +162,18 @@ export function ThemeStep({ state, dispatch }: StepProps): React.JSX.Element {
   const { t } = useT('common')
   const { setTheme } = useTheme()
   const paint = (choice: ThemeChoice, editorTheme: string | null): void => {
-    // Light is Warm, so it drops an editor theme; the other cards keep it.
-    const theme = choice === 'light' ? null : editorTheme
-    const settings = themeSettingsFor(choice, theme)
-    dispatch({ type: 'update', patch: { theme: settings.theme, editorTheme: theme } })
+    const settings = themeSettingsFor(choice, editorTheme)
+    dispatch({ type: 'update', patch: { theme: settings.theme, editorTheme } })
     // Live preview on the whole wizard; the vault gets the same values on open.
     setTheme(settings.theme)
     applyColorTheme(document.documentElement, { colorTheme: settings.colorTheme })
   }
-  const pick = (choice: ThemeChoice): void => paint(choice, state.draft.editorTheme)
+  // The Light card is the Warm theme, so it clears an editor theme; the others keep it.
+  const pick = (choice: ThemeChoice): void =>
+    paint(choice, choice === 'light' ? null : state.draft.editorTheme)
+  // An editor theme has no Warm side: on the Light card it shows its own light palette (White).
+  const pickEditorTheme = (editorTheme: string | null): void =>
+    paint(state.draft.theme === 'light' && editorTheme ? 'white' : state.draft.theme, editorTheme)
   return (
     <>
       <StepHeading title={t(`${K}.theme.title`)} body={t(`${K}.theme.body`)} />
@@ -222,10 +225,7 @@ export function ThemeStep({ state, dispatch }: StepProps): React.JSX.Element {
           )
         })}
       </OptionList>
-      <MoreThemes
-        value={state.draft.editorTheme}
-        onChange={(editorTheme) => paint(state.draft.theme, editorTheme)}
-      />
+      <MoreThemes value={state.draft.editorTheme} onChange={pickEditorTheme} />
     </>
   )
 }

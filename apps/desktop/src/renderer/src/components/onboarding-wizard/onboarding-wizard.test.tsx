@@ -98,6 +98,29 @@ describe('first-run wizard', () => {
     expect(localStorage.getItem('memry:onboarding:tour:v1')).toBe('1')
   })
 
+  it('applies a theme picked from More themes even when the Light card is selected', async () => {
+    render(<FirstRunGate />)
+    await press(/welcome\.getStarted/)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: /theme\.light/ }))
+    })
+
+    const trigger = screen.getByRole('button', { name: /theme\.moreNone/ })
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+    })
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('menuitem', { name: /Nord/ }))
+    })
+
+    expect(document.documentElement.getAttribute('data-color-theme')).toBe('nord')
+    // Nord has no Warm side, so the light choice moves to White.
+    expect(screen.getByRole('radio', { name: /theme\.white/ })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+  })
+
   it('keeps an existing Memry vault’s own settings when the user opens that folder', async () => {
     api.syncLinking = { pickVaultFolder: vi.fn().mockResolvedValue({ path: '/Users/k/Old' }) }
     api.onboarding.isMemryVault.mockResolvedValue(true)
