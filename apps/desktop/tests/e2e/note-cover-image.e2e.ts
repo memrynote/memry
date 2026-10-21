@@ -90,16 +90,21 @@ test.describe('Note cover image', () => {
     }, noteId)
     const noteFile = path.join(testVaultPath, notePath)
 
-    // The details menu only takes pointer events while the metadata block is hovered,
-    // so the hover has to land inside that block rather than on the body.
-    await page.getByTestId('note-metadata').hover()
-    await page.getByTestId('ghost-add-details').click()
-    await page.getByTestId('ghost-add-cover').click()
-
     const picker = page.getByTestId('cover-picker-dialog')
-    await expect(picker).toBeVisible()
-    await picker.getByTestId('cover-picker-wash').first().click()
-    await expect(picker).toBeHidden()
+    // A freshly seeded note is re-read once the vault watcher indexes it, and on a
+    // slow runner that re-render can land while the picker is open and close it
+    // under the click. Reopen and pick again until a wash is applied.
+    await expect(async () => {
+      await page.keyboard.press('Escape')
+      // The details menu only takes pointer events while the metadata block is hovered,
+      // so the hover has to land inside that block rather than on the body.
+      await page.getByTestId('note-metadata').hover()
+      await page.getByTestId('ghost-add-details').click({ timeout: 5000 })
+      await page.getByTestId('ghost-add-cover').click({ timeout: 5000 })
+      await expect(picker).toBeVisible({ timeout: 5000 })
+      await picker.getByTestId('cover-picker-wash').first().click({ timeout: 5000 })
+      await expect(picker).toBeHidden({ timeout: 5000 })
+    }).toPass({ timeout: 60_000 })
 
     const cover = page.getByTestId('note-cover')
     await expect(cover).toHaveAttribute('data-cover-kind', 'wash')

@@ -12,7 +12,7 @@ item runs the same command as its keyboard shortcut and its palette row.
   Settings, Hide/Show, and Quit.
 - **File** — New Note, Open Quickly (search), Command Palette (<kbd>⌘</kbd>+<kbd>P</kbd>),
   Export to PDF,
-  Close Tab, and Close Window. On Windows and Linux this menu also contains Quit.
+  Close Tab, and Close Window. On Windows and Linux this menu also contains Settings and Quit.
 - **Edit** — Undo / Redo, Cut / Copy / Paste (including Paste and Match Style),
   Delete, Select All, and Find. On macOS the system adds Speech, Start
   Dictation, and Emoji & Symbols.

@@ -215,6 +215,9 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
           ? []
           : [
               { type: 'separator' as const },
+              // macOS keeps Preferences in the app menu; elsewhere it lives in File.
+              cmd('nav.settings', t('app.preferences')),
+              { type: 'separator' as const },
               {
                 label: process.platform === 'win32' ? t('app.exit') : t('app.quit'),
                 role: 'quit' as const

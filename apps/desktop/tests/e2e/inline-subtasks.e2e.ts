@@ -490,9 +490,9 @@ test.describe('Inline Subtasks', () => {
     expect(editorText).toContain('Outro after tasks.')
 
     await createNote(page, `Switch Away ${Date.now()}`)
-    // Post frontmatter-diet (#697) the note title comes from the filename, not the
-    // in-file `title:` key, so the tab is labelled with the note id, not `title`.
-    await page.getByRole('tab', { name: new RegExp(noteId) }).click()
+    // New note navigates the active tab in place (`openPagesInNewTab` is off), so
+    // the first note is one step back in that tab's history, not a second tab.
+    await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+[`)
 
     await waitForTaskBlockCount(page, 3, 12000)
     editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()

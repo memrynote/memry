@@ -63,8 +63,19 @@ export async function readSyncStatus(page: Page): Promise<SyncStatusSnapshot> {
   return page.evaluate(() => window.api.syncOps.getStatus())
 }
 
-export async function triggerSync(page: Page): Promise<TriggerSyncResult> {
-  return page.evaluate(() => window.api.syncOps.triggerSync())
+/**
+ * A reconnect pull or socket-driven pull can hold the sync lock when Sync Now
+ * asks, and Sync Now reports that as `busy` instead of queueing behind it
+ * (#3382). Retry `busy` for a bounded time; any other refusal is final.
+ */
+export async function triggerSync(page: Page, timeout = 15000): Promise<TriggerSyncResult> {
+  const deadline = Date.now() + timeout
+  let result = await page.evaluate(() => window.api.syncOps.triggerSync())
+  while (!result.success && result.reason === 'busy' && Date.now() < deadline) {
+    await page.waitForTimeout(250)
+    result = await page.evaluate(() => window.api.syncOps.triggerSync())
+  }
+  return result
 }
 
 export async function waitForSyncOffline(page: Page, timeout = 15000): Promise<SyncStatusSnapshot> {
@@ -136,7 +147,7 @@ export async function syncAndWait(page: Page, timeout = 15000): Promise<SyncStat
   const trigger = await triggerSync(page)
 
   if (!trigger.success) {
-    throw new Error(trigger.error || 'Sync trigger failed')
+    throw new Error(trigger.error || `Sync trigger failed: ${trigger.reason}`)
   }
 
   return waitForSyncIdle(page, timeout)

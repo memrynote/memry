@@ -205,7 +205,7 @@ function ImageMenuHostHarness() {
     <>
       {menuOpen && (
         <ImageAttachmentMenu
-          target={{ x: 0, y: 0, url: URL, name: 'report.pdf', blockId: 'b1' }}
+          target={{ x: 0, y: 0, url: URL, name: 'report.pdf', src: URL, blockId: 'b1' }}
           onClose={() => setMenuOpen(false)}
           onRequestRename={() => {
             setRenameTarget({ url: URL, name: 'report.pdf' })

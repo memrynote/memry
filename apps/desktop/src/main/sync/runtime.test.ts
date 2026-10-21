@@ -329,6 +329,12 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+// runtime.ts lazy-imports the cover service; unmocked, that import resolves late
+// on a slow runner and calls getDatabase() inside a later test.
+vi.mock('../home/cover-service', () => ({
+  reconcileHomeCovers: vi.fn(),
+  requireVaultPath: () => '/vault'
+}))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 vi.mock('./engine', () => ({ SyncEngine: runtimeMocks.SyncEngine }))

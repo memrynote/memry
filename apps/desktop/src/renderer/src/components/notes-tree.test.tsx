@@ -974,6 +974,9 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // The tree persists expanded folders on a 500 ms debounce; a slow earlier test
+    // leaves Projects expanded here, so the click under test would collapse it.
+    localStorage.clear()
     patchTemplatesMock()
     capturedActionsRef = createRef<NotesTreeActions | null>()
 
