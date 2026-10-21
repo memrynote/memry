@@ -21,6 +21,7 @@ import {
   type WizardState
 } from '../wizard-model'
 import {
+  BRAND_COLOR,
   ContinueButton,
   MUTED,
   OptionCard,
@@ -42,7 +43,7 @@ const K = 'onboardingWizard'
 function MemryMark(): React.JSX.Element {
   return (
     <svg
-      className="h-[27px] w-[34px] text-foreground"
+      className={cn('h-[27px] w-[34px]', BRAND_COLOR)}
       viewBox="0 0 680 547"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
@@ -70,6 +71,7 @@ export function WelcomeStep({ dispatch }: StepProps): React.JSX.Element {
       <div className="flex flex-wrap items-center justify-center gap-x-[18px] gap-y-3 pt-7">
         <ContinueButton
           label={t(`${K}.welcome.getStarted`)}
+          brand
           onClick={() => dispatch({ type: 'start', path: 'new' })}
         />
         <span className={cn('flex items-center gap-1 text-[13px]', MUTED)}>

@@ -325,16 +325,24 @@ export function SwitchMark({ on }: { on: boolean }): React.JSX.Element {
   )
 }
 
+/** The default accent, not the user's: the welcome screen runs before any theme is picked. */
+export const BRAND_COLOR = 'text-[var(--default-user-accent-color)]'
+const BRAND_BUTTON =
+  'bg-[var(--default-user-accent-color)] text-white hover:bg-[color-mix(in_srgb,var(--default-user-accent-color)_88%,black)]'
+
 export function ContinueButton({
   label,
   onClick,
   disabled,
-  loading
+  loading,
+  brand
 }: {
   label: string
   onClick: () => void
   disabled?: boolean
   loading?: boolean
+  /** Memry orange, for the welcome screen's first call to action. */
+  brand?: boolean
 }): React.JSX.Element {
   return (
     <Button
@@ -342,7 +350,10 @@ export function ContinueButton({
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading}
-      className="h-[38px] shrink-0 gap-2.5 pe-2.5 ps-4 text-sm font-semibold shadow-none"
+      className={cn(
+        'h-[38px] shrink-0 gap-2.5 pe-2.5 ps-4 text-sm font-semibold shadow-none',
+        brand && BRAND_BUTTON
+      )}
     >
       {label}
       <Kbd className="h-5 rounded-[4px] bg-black/10 px-1.5 font-mono text-[11px] font-medium text-current">
