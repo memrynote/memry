@@ -199,6 +199,27 @@ export default defineConfig({
     // Excalidraw constructs its subset worker with `{ type: 'module' }`; see
     // scripts/excalidraw-subset-worker-plugin.ts.
     worker: { format: 'es' },
+    // Vite's dep optimizer passes esbuild its entry points in the order their export
+    // scans finish, so each re-optimization of the same dependencies emits a new chunk
+    // layout under the same `?v=` hash. Deps are served as immutable, so the dev
+    // profile's HTTP cache then runs both layouts side by side: two copies of
+    // @blocknote/core register one selection type twice, and the editor fails with
+    // "Duplicate use of selection JSON ID". Sorted entries make the layout depend only
+    // on the dependency list, as the hash does. The import scanner shares these
+    // plugins and passes no entry points.
+    optimizeDeps: {
+      esbuildOptions: {
+        plugins: [
+          {
+            name: 'sort-optimizer-entries',
+            setup(build) {
+              const { entryPoints } = build.initialOptions
+              if (Array.isArray(entryPoints)) entryPoints.sort()
+            }
+          }
+        ]
+      }
+    },
     build: {
       rollupOptions: {
         input: {
