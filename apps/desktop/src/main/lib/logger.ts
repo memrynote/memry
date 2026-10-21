@@ -91,7 +91,8 @@ log.transports.file.resolvePathFn = (variables) => {
   return join(appLogDir(device ? `${LOG_DIR_NAME}-${device}` : LOG_DIR_NAME), fileName)
 }
 
-log.transports.console.level = isDev ? 'debug' : 'warn'
+// Dev keeps `debug` in the file only; the terminal shows `info` and up.
+log.transports.console.level = isDev ? 'info' : 'warn'
 log.transports.console.format = '{h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
 
 log.errorHandler.startCatching({

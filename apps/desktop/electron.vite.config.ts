@@ -24,6 +24,9 @@ const workspaceAliases = {
   '@memry/storage-vault': resolve(workspaceRoot, 'packages/storage-vault/src'),
   '@memry/sync-core': resolve(workspaceRoot, 'packages/sync-core/src')
 } as const
+// electron-vite sets NODE_ENV before it loads this file: 'development' for
+// `electron-vite dev`, 'production' for `electron-vite build`.
+const isDevServer = process.env.NODE_ENV === 'development'
 
 function devCsp(): Plugin {
   return {
@@ -75,6 +78,9 @@ function copyOcrLanguageData(): Plugin {
 
 export default defineConfig({
   main: {
+    // `electron-vite dev` rebuilds main on every start, and at info level that
+    // build lists every one of its output chunks. Warnings still print.
+    logLevel: isDevServer ? 'warn' : undefined,
     plugins: [copyMigrations(), copyOcrLanguageData()],
     build: {
       // Dependency contract: package.json `dependencies` = native/unbundleable
@@ -113,6 +119,16 @@ export default defineConfig({
         // as native accelerators; they are never installed, so keep them external
         // and let ws fall back to its JS implementation.
         external: ['better-sqlite3', 'jsdom', 'canvas', 're2', 'bufferutil', 'utf-8-validate'],
+        // Vite flags every `await import()` of a module that main also imports
+        // statically, and each dev start repeats the whole list.
+        // `electron-vite build` still reports them.
+        onwarn(warning, defaultHandler) {
+          const ineffectiveDynamicImport =
+            warning.plugin === 'vite:reporter' &&
+            warning.message.includes('dynamic import will not move module into another chunk')
+          if (isDevServer && ineffectiveDynamicImport) return
+          defaultHandler(warning)
+        },
         output: {
           // Keep each bundled npm package in its own chunk. The main process is
           // CJS output, and rollup's default chunking can split a package's
@@ -135,7 +151,16 @@ export default defineConfig({
     resolve: {
       alias: {
         ...workspaceAliases,
-        '@main': resolve(appRoot, 'src/main')
+        '@main': resolve(appRoot, 'src/main'),
+        // Main loads the full HugeIcons set only to export a note with a library
+        // icon (#3245). In dev the package's `development` export condition picks
+        // its barrel, which re-exports 5,000+ one-icon modules and draws one
+        // rollup warning per module. Production already picks this single-file
+        // build through the `production` condition, so dev now matches it.
+        '@hugeicons/core-free-icons': resolve(
+          appRoot,
+          'node_modules/@hugeicons/core-free-icons/dist/esm/index.min.js'
+        )
       },
       dedupe: [
         'prosemirror-model',
@@ -174,6 +199,27 @@ export default defineConfig({
     // Excalidraw constructs its subset worker with `{ type: 'module' }`; see
     // scripts/excalidraw-subset-worker-plugin.ts.
     worker: { format: 'es' },
+    // Vite's dep optimizer passes esbuild its entry points in the order their export
+    // scans finish, so each re-optimization of the same dependencies emits a new chunk
+    // layout under the same `?v=` hash. Deps are served as immutable, so the dev
+    // profile's HTTP cache then runs both layouts side by side: two copies of
+    // @blocknote/core register one selection type twice, and the editor fails with
+    // "Duplicate use of selection JSON ID". Sorted entries make the layout depend only
+    // on the dependency list, as the hash does. The import scanner shares these
+    // plugins and passes no entry points.
+    optimizeDeps: {
+      esbuildOptions: {
+        plugins: [
+          {
+            name: 'sort-optimizer-entries',
+            setup(build) {
+              const { entryPoints } = build.initialOptions
+              if (Array.isArray(entryPoints)) entryPoints.sort()
+            }
+          }
+        ]
+      }
+    },
     build: {
       rollupOptions: {
         input: {

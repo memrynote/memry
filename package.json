@@ -6,7 +6,7 @@
   "scripts": {
     "repair:links": "node scripts/repair-package-links.js .",
     "dev": "pnpm dev:desktop",
-    "dev:desktop": "node scripts/run-turbo.js run dev --filter=@memry/desktop",
+    "dev:desktop": "pnpm --filter @memry/desktop dev",
     "dev:landing": "pnpm --filter @memry/landing dev",
     "dev:sync-server": "node scripts/run-turbo.js run dev --filter=@memry/sync-server",
     "dev:mobile": "bash scripts/dev-mobile.sh",
