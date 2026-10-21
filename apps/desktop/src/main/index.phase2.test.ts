@@ -381,6 +381,10 @@ vi.mock('node:fs', () => ({
   readdirSync: readdirSyncMock
 }))
 
+vi.mock('./windows-install-layout', () => ({
+  appUserModelIdOverride: () => 'com.memrynote.memry'
+}))
+
 vi.mock('./lib/memry-file-protocol', () => ({
   serveMemryFile: serveMemryFileMock
 }))

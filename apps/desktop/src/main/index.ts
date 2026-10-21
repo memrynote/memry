@@ -174,6 +174,7 @@ import {
   performQuitAndInstall
 } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
+import { appUserModelIdOverride } from './windows-install-layout'
 import { startOcrLanguages } from './file-text/ocr-languages'
 import {
   applyGpuCrashGuard,
@@ -1444,10 +1445,12 @@ const appReady = app.whenReady().then(async () => {
     }
   }
 
-  // Set app user model id for windows. Must match the electron-builder appId
-  // (config/electron-builder.yml) so the taskbar button, pinned shortcut, and
-  // notifications all attribute to the same app identity.
-  electronApp.setAppUserModelId('com.memrynote.memry')
+  // Set app user model id for windows. Must match the AUMID of the installed
+  // shortcut so the taskbar button, pin, and notifications share one identity:
+  // the electron-builder appId for NSIS installs, and Velopack's own ID (already
+  // set by velopack-bootstrap) for Velopack installs, which must not be overridden.
+  const appUserModelId = appUserModelIdOverride(process.execPath)
+  if (appUserModelId) electronApp.setAppUserModelId(appUserModelId)
 
   // Register memry:// deep link protocol for OAuth callbacks (T041e)
   if (process.defaultApp && process.argv.length >= 2) {
