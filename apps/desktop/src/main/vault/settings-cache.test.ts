@@ -183,7 +183,7 @@ describe('migrateSettingsToConfig', () => {
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     const prefs = readPreferences(vaultPath)
     expect(prefs.theme).toBe('dark')
@@ -202,7 +202,7 @@ describe('migrateSettingsToConfig', () => {
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(readPreferences(vaultPath).editor.spellCheck).toBe(true)
   })
@@ -220,7 +220,7 @@ describe('migrateSettingsToConfig', () => {
     })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
@@ -234,12 +234,24 @@ describe('migrateSettingsToConfig', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
+  })
+
+  it('#given a fresh vault created after picking a language #then the vault keeps that language', () => {
+    vaultPath = createTempVault({ excludePatterns: ['.git'] })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath, 'tr')
+
+    // The next launch reads the language from config.json, so it must say tr.
+    expect(readPreferences(vaultPath).language).toBe('tr')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(JSON.parse(getSetting(testDb.db as any, 'general')!).language).toBe('tr')
   })
 
   it('#given the migration already ran #then a second launch does not rewrite config.json', () => {
@@ -253,13 +265,13 @@ describe('migrateSettingsToConfig', () => {
     setSetting(testDb.db as any, 'general', JSON.stringify(GENERAL_SETTINGS_DEFAULTS))
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
     // writePreferences renames a fresh temp file over the config, so the inode
     // changes on every write even when the bytes come out identical.
     const inodeAfterFirst = fs.statSync(configPath).ino
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(fs.statSync(configPath).ino).toBe(inodeAfterFirst)
   })
@@ -278,13 +290,13 @@ describe('migrateSettingsToConfig', () => {
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
     expect(readPreferences(vaultPath).minimizeToTray).toBe(true)
 
     writePreferences(vaultPath, { minimizeToTray: false })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

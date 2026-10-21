@@ -5,7 +5,7 @@ import {
   EDITOR_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import type { GeneralSettings, EditorSettings } from '@memry/contracts/settings-schemas'
-import { LocaleSchema } from '@memry/contracts/locale-api'
+import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
 import {
   readPreferences,
   writePreferences,
@@ -38,8 +38,17 @@ export function populateSettingsCacheFromConfig(db: DataDb, vaultPath: string): 
  * It also under-reported: it compared five of the eleven portable fields, so a
  * vault customised only through, say, `minimizeToTray` looked untouched and the
  * stale SQLite row overwrote a value the user had chosen.
+ *
+ * A brand-new vault has nothing to migrate, but it takes the app-level language
+ * (`appLocale`), the one picked on the first-run screens before any vault
+ * existed. Without it the defaults would write English, and the next launch
+ * would read that back over the user's choice.
  */
-export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
+export function migrateSettingsToConfig(
+  db: DataDb,
+  vaultPath: string,
+  appLocale: Locale | null
+): void {
   if (hasStoredPreferences(vaultPath)) {
     writeCacheFromPreferences(db, readPreferences(vaultPath))
     return
@@ -49,7 +58,10 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
   const rawEditor = getSetting(db, 'editor')
 
   if (!rawGeneral && !rawEditor) {
-    writeCacheFromPreferences(db, readPreferences(vaultPath))
+    const prefs = appLocale
+      ? writePreferences(vaultPath, { language: appLocale })
+      : readPreferences(vaultPath)
+    writeCacheFromPreferences(db, prefs)
     return
   }
 
