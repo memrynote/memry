@@ -139,6 +139,19 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     }
   }
 
+  // Feature toggles live in the local data DB as one JSON row. Raw write, not
+  // the settings-store one, so the apply does not echo back into settings sync.
+  if (merged.features) {
+    try {
+      const db = getDatabase()
+      const raw = getSetting(db, 'features')
+      const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+      setSetting(db, 'features', JSON.stringify({ ...current, ...merged.features }))
+    } catch (err) {
+      log.warn('Failed to propagate merged features settings:', err)
+    }
+  }
+
   // Calendar groups (spec 007 D3a) live in the local data DB like inbox, so
   // they persist regardless of the vault path.
   if (merged.calendar) {
@@ -424,6 +437,13 @@ function broadcastSettingsChanged(
       emit(SettingsChannels.events.CHANGED, {
         key: 'inbox',
         value: merged.inbox
+      })
+    }
+
+    if (merged.features) {
+      emit(SettingsChannels.events.CHANGED, {
+        key: 'features',
+        value: merged.features
       })
     }
 

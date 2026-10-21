@@ -884,6 +884,28 @@ describe('settings-handlers', () => {
       expect(mockUpdateField.mock.calls).toEqual([['editor.convertAgentChecklistsToTasks', true]])
     })
 
+    it('#when a feature is switched off #then syncs only the flag that was set', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS, { journal: false })
+
+      expect(mockUpdateField.mock.calls).toEqual([['features.journal', false]])
+    })
+
+    it('#when no vault is open #then a feature toggle is not synced', async () => {
+      registerSettingsHandlers()
+      ;(getDatabase as Mock).mockImplementation(() => {
+        throw new Error('no db')
+      })
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS, {
+        graph: false
+      })
+
+      expect(result).toMatchObject({ success: false })
+      expect(mockUpdateField).not.toHaveBeenCalled()
+    })
+
     it('#when the PDF display default changes #then syncs it', async () => {
       registerSettingsHandlers()
 

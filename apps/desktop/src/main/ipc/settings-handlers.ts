@@ -78,6 +78,7 @@ import {
   hasVoiceTranscriptionOpenAIApiKey,
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
+import { FEATURES_SYNCABLE_FIELDS } from '../settings/features-settings-sync'
 import {
   syncSettingsUpdates,
   syncSettingsMapEntryUpdates,
@@ -1433,8 +1434,11 @@ export function registerSettingsHandlers(): void {
   )
   ipcMain.handle(
     SettingsChannels.invoke.SET_FEATURES_SETTINGS,
-    (_event, updates: Partial<FeaturesSettings>) =>
-      writeGroupSettings('features', FEATURES_SETTINGS_DEFAULTS, updates)
+    (_event, updates: Partial<FeaturesSettings>) => {
+      const result = writeGroupSettings('features', FEATURES_SETTINGS_DEFAULTS, updates)
+      if (result.success) syncSettingsUpdates('features', updates, FEATURES_SYNCABLE_FIELDS)
+      return result
+    }
   )
 
   ipcMain.handle(SettingsChannels.invoke.GET_INBOX_SETTINGS, () =>

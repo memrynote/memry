@@ -165,6 +165,22 @@ export const SyncedSettingsSchema = z.object({
       notesFirst: z.boolean().optional(),
       showFiles: z.boolean().optional()
     })
+    .optional(),
+  // The per-vault feature toggles (`features.home`, ...), one field clock per
+  // flag. A build older than this strips the group on parse but echoes its
+  // clocks, so the merge keeps the value (§6.9.0); `catchall` lets a flag a
+  // newer build adds ride along.
+  features: z
+    .object({
+      home: z.boolean().optional(),
+      inbox: z.boolean().optional(),
+      journal: z.boolean().optional(),
+      tasks: z.boolean().optional(),
+      calendar: z.boolean().optional(),
+      graph: z.boolean().optional(),
+      spatialCanvas: z.boolean().optional()
+    })
+    .catchall(z.unknown())
     .optional()
 })
 
