@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   markdownToBlocks,
   yDocToMarkdown,
@@ -21,6 +21,7 @@ import {
   MEMRY_BLOCK_TYPES,
   serializeBookmark,
   serializeCalloutBlock,
+  setCalloutTypeDefinitions,
   serializeYoutubeEmbed
 } from '@memry/editor-schema/blocks'
 import {
@@ -3703,6 +3704,42 @@ describe('callouts on the CRDT path (#1846)', () => {
     expect(blocks?.[0]?.type).toBe('callout')
     writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  describe('a custom callout type (#3207)', () => {
+    const definition = { name: 'mytype', label: 'My type', color: '#ff8800', icon: 'star' }
+
+    afterEach(() => setCalloutTypeDefinitions([]))
+
+    it.each([
+      '> [!mytype]\n> body text',
+      '> [!mytype]-\n> body text',
+      '> [!mytype]+\n> a\n>\n> - b'
+    ])(
+      'seeds %j as a callout of that type and writes identical bytes once defined',
+      async (markdown) => {
+        setCalloutTypeDefinitions([definition])
+        const doc = new Y.Doc()
+        await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+        const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+        expect(blocks?.[0]?.type).toBe('callout')
+        expect((blocks?.[0]?.props as { type: string }).type).toBe('mytype')
+        writeMarkdownSourceToYDoc(doc, null)
+        expect(await yDocToMarkdown(doc)).toBe(markdown)
+      }
+    )
+
+    it('keeps the same bytes as a quote while the type has no definition', async () => {
+      const markdown = '> [!mytype]-\n> body text'
+      const doc = new Y.Doc()
+      await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+      const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+      expect(blocks?.[0]?.type).toBe('quote')
+      writeMarkdownSourceToYDoc(doc, null)
+      expect(await yDocToMarkdown(doc)).toBe(markdown)
+    })
   })
 
   it.each([

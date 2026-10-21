@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { CalloutTypesGroup } from './callout-types-group'
 import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -172,6 +173,8 @@ export function EditorSettings() {
           />
         </SettingRow>
       </SettingsGroup>
+
+      <CalloutTypesGroup />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import type { CalloutTypeDefinition } from '../../editor-schema/src/blocks/callout-types.ts'
 import type {
   BackupSettings,
   CalendarGoogleSettings,
@@ -170,6 +171,13 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_SIDEBAR_SORT_MODE,
       params: ['surface', 'mode'],
       invokeArgs: ['{ surface, mode }']
+    }),
+    getCalloutTypes: defineMethod<() => Promise<CalloutTypeDefinition[]>>({
+      channel: SettingsChannels.invoke.GET_CALLOUT_TYPES
+    }),
+    setCalloutTypes: defineMethod<(definitions: CalloutTypeDefinition[]) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_CALLOUT_TYPES,
+      params: ['definitions']
     }),
     getSidebarSectionOrder: defineMethod<() => Promise<string[]>>({
       channel: SettingsChannels.invoke.GET_SIDEBAR_SECTION_ORDER

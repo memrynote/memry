@@ -261,6 +261,8 @@ export function createGeneratedRpcApi({
       "setJournalSettings": ((settings) => invoke("settings:setJournalSettings", settings)) as GeneratedRpcApi["settings"]["setJournalSettings"],
       "getSidebarSortModes": (() => invoke("settings:getSidebarSortModes")) as GeneratedRpcApi["settings"]["getSidebarSortModes"],
       "setSidebarSortMode": ((surface, mode) => invoke("settings:setSidebarSortMode", { surface, mode })) as GeneratedRpcApi["settings"]["setSidebarSortMode"],
+      "getCalloutTypes": (() => invoke("settings:getCalloutTypes")) as GeneratedRpcApi["settings"]["getCalloutTypes"],
+      "setCalloutTypes": ((definitions) => invoke("settings:setCalloutTypes", definitions)) as GeneratedRpcApi["settings"]["setCalloutTypes"],
       "getSidebarSectionOrder": (() => invoke("settings:getSidebarSectionOrder")) as GeneratedRpcApi["settings"]["getSidebarSectionOrder"],
       "setSidebarSectionOrder": ((order) => invoke("settings:setSidebarSectionOrder", order)) as GeneratedRpcApi["settings"]["setSidebarSectionOrder"],
       "getSidebarRailOrder": (() => invoke("settings:getSidebarRailOrder")) as GeneratedRpcApi["settings"]["getSidebarRailOrder"],

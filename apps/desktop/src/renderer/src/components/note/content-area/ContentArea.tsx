@@ -68,7 +68,8 @@ import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
-import { getCalloutSlashMenuItem } from './callout-block'
+import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callout-block'
+import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
 import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
@@ -439,6 +440,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { t: tCommon } = useT('common')
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
+  // Starts the custom callout type sync before the first note parse (#3207).
+  useCalloutTypes()
   // Off until the setting is read. The note's first scan runs before the read
   // returns, and the default there would convert checkboxes the owner turned off.
   const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
@@ -3324,6 +3327,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     group: t('editor.callout.group'),
                     subtext: t('editor.callout.subtext')
                   })
+                  const customCalloutItems = getCustomCalloutSlashMenuItems(editor, {
+                    group: t('editor.callout.group'),
+                    subtext: t('editor.callout.customSubtext')
+                  })
                   const mathItem = getMathSlashMenuItem(editor, {
                     title: t('editor.math.title'),
                     group: t('editor.math.group'),
@@ -3450,6 +3457,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       id: index === 0 ? 'diagram' : `diagram_${index}`
                     })),
                     { ...calloutItem, id: 'callout' },
+                    ...customCalloutItems,
                     ...columnItems.map((item) => ({ ...item, id: item.key })),
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),

@@ -19,6 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { isCalloutTypeName } from './callout-types.ts'
 import { itemHoldsNonList, readStructuredQuoteRun, serializeQuoteBlock } from './quote.ts'
 
 // ---------------------------------------------------------------------------
@@ -26,38 +27,17 @@ import { itemHoldsNonList, readStructuredQuoteRun, serializeQuoteBlock } from '.
 // ---------------------------------------------------------------------------
 
 /**
- * The first four are the original types. The rest use the common Markdown
- * callout names, so an imported `> [!note]` reads as a callout here too. The `type` prop
- * is a free string in the CRDT, and builds before these types render an
- * unknown one as `info` and write it back unchanged.
+ * Exactly the marker `serializeCalloutBlock` writes: one callout type (built-in
+ * or user-defined) in lowercase, nothing after the `]`. `> [!NOTE]`,
+ * `> [!danger]` and `> [!info] A title` are NOT this. Claiming them would
+ * rewrite bytes `serializeCalloutBlock` cannot reproduce.
  */
-export const CALLOUT_TYPE_VALUES = [
-  'info',
-  'warning',
-  'error',
-  'success',
-  'note',
-  'abstract',
-  'todo',
-  'tip',
-  'important',
-  'question',
-  'example',
-  'quote',
-  'bug'
-] as const
+const CALLOUT_MARKER_REGEX = /^> \[!([a-z][a-z0-9_-]*)\]([-+]?)$/
 
-export type CalloutTypeValue = (typeof CALLOUT_TYPE_VALUES)[number]
-
-/**
- * Exactly the marker `serializeCalloutBlock` writes: one Memry type in
- * lowercase, nothing after the `]`. `> [!NOTE]`, `> [!danger]` and
- * `> [!info] A title` are NOT this. Claiming them would rewrite bytes
- * `serializeCalloutBlock` cannot reproduce.
- */
-const MEMRY_CALLOUT_MARKER_REGEX = new RegExp(
-  `^> \\[!(${CALLOUT_TYPE_VALUES.join('|')})\\]([-+]?)$`
-)
+function matchCalloutMarker(line: string): RegExpMatchArray | null {
+  const match = line.match(CALLOUT_MARKER_REGEX)
+  return match && isCalloutTypeName(match[1]) ? match : null
+}
 
 /**
  * Obsidian's fold marker after the `]`: `-` starts closed, `+` starts open, no
@@ -109,7 +89,7 @@ export function serializeCalloutBlock(
 }
 
 export interface CalloutRun {
-  type: CalloutTypeValue
+  type: string
   fold: CalloutFold
   /** Body lines with the `> ` prefix stripped; verbatim for a bare run. */
   contentLines: string[]
@@ -149,7 +129,7 @@ export function readCalloutRun(
 ): CalloutRun | null {
   if (!atParagraphStart) return null
 
-  const quoted = lines[start].match(MEMRY_CALLOUT_MARKER_REGEX)
+  const quoted = matchCalloutMarker(lines[start])
   if (quoted) {
     // A body with a blank `>` line, a list or a `> >` level is read the way a
     // structured quote is, lazy list continuations included (BBF-110), so it
@@ -157,7 +137,7 @@ export function readCalloutRun(
     const structured = readStructuredQuoteRun(lines, start + 1)
     if (structured) {
       return {
-        type: quoted[1] as CalloutTypeValue,
+        type: quoted[1],
         fold: foldFromSuffix(quoted[2]),
         contentLines: structured.innerMarkdown.split('\n'),
         raw: lines.slice(start, structured.end).join('\n'),
@@ -176,7 +156,7 @@ export function readCalloutRun(
     }
     if (end < lines.length && lines[end].startsWith('>')) return null
     return {
-      type: quoted[1] as CalloutTypeValue,
+      type: quoted[1],
       fold: foldFromSuffix(quoted[2]),
       contentLines,
       raw: lines.slice(start, end).join('\n'),
@@ -196,7 +176,7 @@ export function readCalloutRun(
     }
     if (contentLines.length === 0) return null
     return {
-      type: bare[1] as CalloutTypeValue,
+      type: bare[1],
       fold: 'none',
       contentLines,
       raw: lines.slice(start, end).join('\n'),
@@ -216,7 +196,7 @@ export interface ParsedBlockShape {
 }
 
 export interface ResolvedCallout {
-  type: CalloutTypeValue
+  type: string
   fold: CalloutFold
   content: unknown
   children: ParsedBlockShape[]

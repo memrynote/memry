@@ -451,7 +451,26 @@
       "toolbar": "Toolbar",
       "spelling": "Spelling",
       "checklists": "Checklists",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "calloutTypes": "Callout types"
+    },
+    "calloutTypes": {
+      "description": "Your own callouts, written as > [!name] in the note. Another app shows them as a plain quote.",
+      "empty": "No custom callout types yet",
+      "add": "Add type",
+      "edit": "Edit {name}",
+      "delete": "Delete {name}",
+      "name": "Name in markdown",
+      "namePlaceholder": "mytype",
+      "label": "Display name",
+      "color": "Colour",
+      "icon": "Icon",
+      "nameInvalid": "Use lowercase letters, digits, - or _, starting with a letter",
+      "nameBuiltIn": "That name is already a built-in callout",
+      "nameTaken": "You already have a type with that name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "error": "Failed to update callout types"
     },
     "width": {
       "label": "Editor Width",

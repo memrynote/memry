@@ -20,6 +20,10 @@ import {
   sanitizeWeekdayTemplateMap,
   type WeekdayTemplateMap
 } from '../../settings/journal-template-keys'
+import {
+  CALLOUT_TYPES_SETTINGS_KEY,
+  applyMergedCalloutTypes
+} from '../../settings/callout-types-store'
 import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
 import {
   SIDEBAR_RAIL_ORDER_SETTINGS_KEY,
@@ -157,6 +161,18 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     }
   }
 
+  // Custom callout types live in the local data DB too, and the markdown parser
+  // reads them from this process's registry, which `applyMergedCalloutTypes`
+  // refreshes (#3207).
+  if (merged.editor?.calloutTypes) {
+    try {
+      const next = applyMergedCalloutTypes(getDatabase(), merged.editor.calloutTypes)
+      emit(SettingsChannels.events.CHANGED, { key: CALLOUT_TYPES_SETTINGS_KEY, value: next })
+    } catch (err) {
+      log.warn('Failed to propagate merged callout types:', err)
+    }
+  }
+
   // Sidebar sort modes live only in the local data DB, same as inbox: persist
   // before the vault-path guard so a merge landing while the path is null still
   // reaches the DB the sidebar reads. Merging per surface (not replacing the
@@ -278,7 +294,9 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
       }
 
       if (merged.editor) {
-        prefsUpdate.editor = { ...merged.editor }
+        // Callout types are local-DB-only (handled above), not a vault preference.
+        const { calloutTypes: _calloutTypes, ...editorPrefs } = merged.editor
+        prefsUpdate.editor = editorPrefs
       }
 
       if (Object.keys(prefsUpdate).length > 0) {
@@ -395,9 +413,10 @@ function broadcastSettingsChanged(
     }
 
     if (merged.editor) {
+      const { calloutTypes: _calloutTypes, ...editor } = merged.editor
       emit(SettingsChannels.events.CHANGED, {
         key: 'editor',
-        value: merged.editor
+        value: editor
       })
     }
 

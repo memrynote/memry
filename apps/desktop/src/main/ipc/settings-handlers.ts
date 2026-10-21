@@ -97,6 +97,11 @@ import {
   writeSidebarSortMode
 } from '../settings/sidebar-sort-store'
 import {
+  CALLOUT_TYPES_SETTINGS_KEY,
+  readCalloutTypes,
+  writeCalloutTypes
+} from '../settings/callout-types-store'
+import {
   SIDEBAR_RAIL_ORDER_SETTINGS_KEY,
   SIDEBAR_SECTION_ORDER_SETTINGS_KEY,
   readSidebarRailOrder,
@@ -677,6 +682,29 @@ export function registerSettingsHandlers(): void {
       }
     }
   )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_CALLOUT_TYPES, () => {
+    const db = getDbOrNull()
+    return db ? readCalloutTypes(db) : []
+  })
+
+  ipcMain.handle(SettingsChannels.invoke.SET_CALLOUT_TYPES, (_event, definitions: unknown) => {
+    const db = getDbOrNull()
+    if (!db) {
+      return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+    }
+
+    try {
+      const next = writeCalloutTypes(db, definitions)
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: CALLOUT_TYPES_SETTINGS_KEY,
+        value: next
+      })
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   ipcMain.handle(SettingsChannels.invoke.GET_SIDEBAR_SECTION_ORDER, () => {
     const db = getDbOrNull()

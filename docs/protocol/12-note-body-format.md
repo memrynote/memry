@@ -565,65 +565,91 @@ survive, including unnamed ones).**
 **Normative** (`packages/editor-schema/src/blocks/markdown.ts`), the forms that
 are not plain CommonMark:
 
-| Block            | On-disk form                                                                                                                                                                                                                                                                          | Anchor                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| callout          | `> [!<type>]` (optionally `-` closed or `+` open right after the `]`, the `fold` prop; no suffix is `none`) alone on its line, `<type>` one of `CALLOUT_TYPE_VALUES` in lowercase, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:34-48`, `:75-79`                      |
-| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                                                                                                                                                                      | `:166-171`                              |
-| youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                                                                                                                                                                                | `:331`, `:340`                          |
-| bookmark         | `![bookmark](url)`                                                                                                                                                                                                                                                                    | `:305`, `:347`                          |
-| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                                                                                                                                                                         | `:360`, `:362-368`, `:371-373`          |
-| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                                                                                                                                                                                  | `:409`, `:418`, `:459`                  |
-| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                                                                                                                                                                               | `:488`, `:500-509`                      |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open`                                                                                                                                                       | `:578`, `:585-586`, `:626-658`          |
-| plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                                                                                                                                                                       | `packages/shared/src/plain-checkbox.ts` |
+| Block            | On-disk form                                                                                                                                                                                                                                                                                                           | Anchor                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| callout          | `> [!<type>]` (optionally `-` closed or `+` open right after the `]`, the `fold` prop; no suffix is `none`) alone on its line, `<type>` one of `CALLOUT_TYPE_VALUES` or a user-defined type (§12.6.2) in lowercase, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:34-48`, `:55-59`                      |
+| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                                                                                                                                                                                                       | `:146-151`                              |
+| youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                                                                                                                                                                                                                 | `:311`, `:320`                          |
+| bookmark         | `![bookmark](url)`                                                                                                                                                                                                                                                                                                     | `:285`, `:327`                          |
+| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                                                                                                                                                                                                          | `:340`, `:342-348`, `:351-353`          |
+| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                                                                                                                                                                                                                   | `:389`, `:398`, `:439`                  |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                                                                                                                                                                                                                | `:468`, `:480-489`                      |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open`                                                                                                                                                                                        | `:558`, `:565-566`, `:606-638`          |
+| plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                                                                                                                                                                                                        | `packages/shared/src/plain-checkbox.ts` |
 
 **Claiming rules matter as much as the forms:**
 
 - a youtube embed is claimed from any WHOLE line `![alt](url)` whose URL is a
-  YouTube video, except alt `bookmark` and `whiteboard` (`:331-338`). The alt
+  YouTube video, except alt `bookmark` and `whiteboard` (`:311-318`). The alt
   is kept in the block's `alt` prop (default `embed`) and written back
   unchanged, so another app's `![](url)` keeps its bytes. Builds before this
   rule claimed only alt `embed` and read any other alt as an `image`;
 - the callout fold suffix is exactly `-` or `+`; builds before it drop the unknown `fold` prop
   and write the marker back without it;
-- the callout marker regex is strict — a type outside `CALLOUT_TYPE_VALUES`
-  (`> [!danger]`), an uppercase marker (`> [!NOTE]`) and `> [!info] A title`
-  are deliberately **not** claimed
-  (`packages/editor-schema/src/blocks/markdown.ts:52-58`). Older builds
+- the callout marker regex is strict — a type that is neither in
+  `CALLOUT_TYPE_VALUES` nor defined by the user (`> [!danger]`), an uppercase
+  marker (`> [!NOTE]`) and `> [!info] A title` are deliberately **not** claimed
+  (`packages/editor-schema/src/blocks/markdown.ts:35-42`, `callout-types.ts:65`). Older builds
   claimed only `info`, `warning`, `error` and `success`, and read the
   other nine types as quotes. The CRDT `type` prop is a free string, so those
   builds keep a newer type through sync and render it as `info`;
 - the bare damaged marker (`[!info]` without its `> `) is healed only for the
-  original four types (`:60-67`);
-- a run abutting more quote lines is refused whole (`:145`);
+  original four types (`:40-47`);
+- a run abutting more quote lines is refused whole (`:125`);
 - **a run is claimed only by proof**: the body must re-serialise byte for byte
-  (`:215`), except a body with a list or a `> >` level, which is claimed when
-  its canonical form settles (`:216-219`); a body with a checkbox is never
-  claimed (`:231`). A leading paragraph is the callout's own line and every
+  (`:195`), except a body with a list or a `> >` level, which is claimed when
+  its canonical form settles (`:196-199`); a body with a checkbox is never
+  claimed (`:211`). A leading paragraph is the callout's own line and every
   later block its child;
 - structured quotes refuse a `>text` line and claim only a run that is separated
-  or nested (`:221-227`);
+  or nested (`:201-207`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
-  (`packages/editor-schema/src/blocks/markdown.ts:538-556`), so a one-line
+  (`packages/editor-schema/src/blocks/markdown.ts:518-536`), so a one-line
   `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
   one all stay the author's markdown;
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
   then `width` and `height` only when greater than zero, `align` only when set
   and not `left`, and `display` only when it is `link`, so legacy markers stay
-  byte-identical (`:444-459`). `display` (`embed` | `link`, default `embed`)
+  byte-identical (`:424-439`). `display` (`embed` | `link`, default `embed`)
   chooses whether a PDF shows as the inline viewer or as its file name. A
   marker without it, or with any other value, is `embed`, and a build that
   predates the prop ignores it and shows the viewer;
 - the comment-terminator escape replaces only the `>` in `-->` and `--!>` with
-  `>`, so a filename containing `--` keeps its bytes (`:433`);
+  `>`, so a filename containing `--` keeps its bytes (`:413`);
 - a whiteboard is claimed only as a WHOLE, unindented line whose target is
-  `memry://canvas/` followed by an id in `[A-Za-z0-9_-]+` (`:360`), and never
+  `memry://canvas/` followed by an id in `[A-Za-z0-9_-]+` (`:340`), and never
   inside a code fence: `![whiteboard](https://…)` is somebody's image and stays
   an `image` block. The marker names the canvas by id, not title, so renaming a
   canvas rewrites no note. A whiteboard whose `canvasId` is empty is written as
   NOTHING, because `![whiteboard](memry://canvas/)` fails the claim and would
   re-open as an image; the block is dropped rather than changing type.
+
+### 12.6.2 User-defined callout types
+
+**Normative.** A user can define callout types (name, colour, icon) in the
+synced settings map `editor.calloutTypes`, one entry per name (chapter 6 §6.9:
+`editor.calloutTypes.<name>`; a deleted type is `null`). A name
+matches `[a-z][a-z0-9_-]{0,31}` and MUST NOT equal a built-in type
+(`packages/editor-schema/src/blocks/callout-types.ts:46-47`, `:79`). A valid
+definition has `color` (`#rrggbb`) and `icon` (a non-empty id) and an optional
+`label`; a reader drops any entry that fails these rather than failing the
+settings payload.
+
+- **On disk nothing changes.** A custom callout is `> [!<name>]` with the same
+  fold suffix and body rules as a built-in one. No definition is written into
+  the note.
+- **A name is claimed only while a definition exists.** The parser reads the
+  current definitions (`callout-types.ts:56-67`). A marker whose name has no
+  definition (another app, a build before this feature, a type deleted on
+  another device) is not claimed: it stays a quote block and writes back its
+  bytes unchanged, exactly as `> [!danger]` does.
+- **Existing documents keep their shape.** The `type` prop of a callout block
+  is a free string in the CRDT (§12.9), so no node or attribute is added. A
+  client that has no definition for a `type` it meets in a document renders
+  `info` and writes the marker back unchanged.
+- **The Rust core needs no definitions.** It never parses `[!`; the seed sends
+  such a line to the desktop fallback (`crates/memry-core/src/crdt/markdown_seed/prepare.rs`).
 
 ### 12.6.1 The view block is a code fence
 

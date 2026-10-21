@@ -299,6 +299,7 @@
       "title": "Callout",
       "group": "Basic blocks",
       "subtext": "Highlight important information",
+      "customSubtext": "Your custom callout type",
       "changeType": "Change callout type",
       "expand": "Expand callout",
       "collapse": "Collapse callout",

@@ -51,7 +51,15 @@ export const SyncedSettingsSchema = z.object({
       // Absent in every payload a build older than this toggle writes, and
       // that build's schema drops it on parse instead of rejecting the payload.
       convertChecklistsToTasks: z.boolean().optional(),
-      convertAgentChecklistsToTasks: z.boolean().optional()
+      convertAgentChecklistsToTasks: z.boolean().optional(),
+      // User-defined callout types, keyed by the `> [!name]` text (#3207). One
+      // field clock per entry (`editor.calloutTypes.<name>`), so two devices
+      // adding different types both keep theirs; `null` is a deleted type. Entry
+      // values stay unvalidated on purpose: one malformed entry from a newer
+      // build must ride along, not fail the whole settings payload. Readers
+      // sanitize. Absent in every payload a build older than this writes, and
+      // that build's schema drops it on parse.
+      calloutTypes: z.record(z.string(), z.unknown()).optional()
     })
     .optional(),
   tasks: z
