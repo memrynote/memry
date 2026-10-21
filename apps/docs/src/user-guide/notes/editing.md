@@ -439,6 +439,12 @@ a `> [!note]` or `> [!tip]` callout written in another app opens as a callout he
 callout with a title after the marker, a type Memry does not have (such as `[!danger]`), or
 an uppercase marker such as GitHub's `> [!NOTE]` opens as a quote and keeps its bytes.
 
+Click the arrow at a callout's right edge to fold it. A folded callout shows only its type
+name, and its body is hidden. The fold is saved in the note with Obsidian's marker:
+`> [!tip]-` starts closed and `> [!tip]+` starts open. A callout without a marker is never
+rewritten, and it gets one the first time you fold it. An older Memry version drops the
+marker when it saves the note.
+
 On the iPhone app, types that share a colour are told apart by their icon. An older Memry
 version shows the newer types as info callouts and keeps their type.
 
