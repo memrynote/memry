@@ -14,18 +14,18 @@ The whole flow takes about two minutes. If you turn on sync, the most important 
 
 When memrynote knows no vaults on this computer, it opens the setup. Every screen works from the keyboard: <kbd>↑</kbd> and <kbd>↓</kbd> move between options, <kbd>↵</kbd> continues and <kbd>Esc</kbd> goes back a step. The dots at the top show how many steps are left. The language picker on the welcome screen switches the whole setup at once.
 
-Choose **Get started** to set up a new space, or **Sign in** under "Already use Memry?" to bring an existing account's notes onto this computer (see [Signing In on Another Computer](#signing-in-on-another-computer)).
+Choose **Get started** to set up a new space, or **Sign in** under "Already use MemryNote?" to bring an existing account's notes onto this computer (see [Signing In on Another Computer](#signing-in-on-another-computer)).
 
 | Step        | What you choose                                                                                                                                                                                                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Theme**   | System, White, Light (the Warm theme) or Dark. The setup repaints as you move through the list.                                                                                                                                                                                         |
-| **Modules** | Which parts of memrynote you use: Home, Inbox, Journal, Tasks, Calendar, Graph, Spatial canvas and AI. Notes are always on. The preview under the list drops a module from the app's rail as you turn it off.                                                                           |
+| **Theme**   | System, White, Light (the Warm theme) or Dark. **More themes** below the cards offers the editor themes from Settings (Nord, Dracula and the rest); picking one while Light is selected switches to White, since those themes have no Warm side. The setup repaints as you choose.      |
+| **Modules** | Which parts of memrynote you use: Home, Inbox, Journal, Tasks, Calendar, Graph, Spatial canvas and AI. Notes are always on. The preview under the list shows the module you point at, and drops a module from the app's rail as you turn it off.                                        |
 | **Import**  | Where to bring notes from. Obsidian vaults found on this computer are listed first, then Apple Notes and Notion, and the rest after them. Importers for a module you turned off are hidden: no Todoist or TickTick without Tasks, no NotePlan or Apple Journal without Journal.         |
 | **Agent**   | Shown only with AI on. Which agent memrynote talks to: Claude Code, Codex, Antigravity or a local model (Ollama, LM Studio). Agents found on this computer can be picked; the others offer an install link. The on-device smart connections model starts downloading when you continue. |
 | **Storage** | **Only on this Mac** (or "this computer" on Windows and Linux) keeps everything local. **Sync across my devices** continues to an account and a plan.                                                                                                                                   |
-| **Ready**   | A last look: the notes folder (default `~/Documents/Memry`), the imports that will run, the model download, and whether to share anonymous usage metrics. **Open Memry** creates the folder and opens the app.                                                                          |
+| **Ready**   | A last look: the notes folder (default `~/Documents/Memry/My notes`), the imports that will run, the model download, and whether to share anonymous usage metrics (on unless you turn it off). **Open MemryNote** creates the folder and opens the app.                                 |
 
-Nothing is written until **Open Memry**. The imports and the model download keep running after the app opens, and a message says when each import finishes or fails.
+Nothing is written until **Open MemryNote**. The imports and the model download keep running after the app opens, and a message says when each import finishes or fails.
 
 **Use an existing folder** on the Ready screen opens a folder you already have. A folder that is already a memrynote vault keeps its own settings: the theme, modules and imports you picked in setup are not applied to it.
 
@@ -51,11 +51,11 @@ When this computer already knows a vault, memrynote shows the vault picker inste
 
 <!-- screenshot: vault picker -->
 
-| Option                       | Shortcut                  | What it does                                                                                                                                                           |
-| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Create new vault**         | <kbd>⌘</kbd>+<kbd>N</kbd> | Enter a name and a location (default `~/Documents/Memry`). memrynote creates the folder `<location>/<name>` and opens it. An existing folder is never reused silently. |
-| **Open folder as vault**     | <kbd>⌘</kbd>+<kbd>O</kbd> | Pick a folder of Markdown files you already keep. Your files stay as they are.                                                                                         |
-| **Open from Memrynote Sync** | <kbd>⌘</kbd>+<kbd>L</kbd> | Sign in (or create an account), unlock with your recovery phrase or a linked device, then pick one vault from your account to download.                                |
+| Option                       | Shortcut                  | What it does                                                                                                                                                                    |
+| ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create new vault**         | <kbd>⌘</kbd>+<kbd>N</kbd> | Enter a name and a location (default `~/Documents/Memry/My notes`). memrynote creates the folder `<location>/<name>` and opens it. An existing folder is never reused silently. |
+| **Open folder as vault**     | <kbd>⌘</kbd>+<kbd>O</kbd> | Pick a folder of Markdown files you already keep. Your files stay as they are.                                                                                                  |
+| **Open from Memrynote Sync** | <kbd>⌘</kbd>+<kbd>L</kbd> | Sign in (or create an account), unlock with your recovery phrase or a linked device, then pick one vault from your account to download.                                         |
 
 On Windows and Linux the shortcuts use <kbd>Ctrl</kbd>.
 
@@ -104,7 +104,9 @@ Save it somewhere durable:
 
 **Do not** screenshot it on a synced phone, email it, or paste it in a notes app.
 
-After showing the phrase, memrynote asks you to **re-enter** a few specific words to confirm you've saved it. This step exists to prevent accidental loss.
+The phrase screen shows the 24 words in numbered columns, with **Copy** and **Download** buttons. **Download** saves `memrynote-recovery-phrase.txt`, one numbered word per line; move it somewhere offline and delete the copy in Downloads. The copied phrase is cleared from the clipboard after 30 seconds.
+
+After showing the phrase, memrynote asks you to **re-enter** three specific words to confirm you've saved it. <kbd>↵</kbd> verifies and <kbd>Esc</kbd> goes back to the phrase. This step exists to prevent accidental loss. Setup and Settings → Account show the same two screens.
 
 If you close Settings during this confirmation step, signup stays incomplete. Reopen [Settings → Account](/user-guide/settings#account) to resume recovery confirmation before sync starts.
 
