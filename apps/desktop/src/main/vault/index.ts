@@ -51,6 +51,7 @@ import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
 import { offerDataDbRecovery, offerRuntimeDataDbRecovery } from './data-db-recovery-prompt'
+import { resolveObsidianVaultOpen } from './obsidian-vault-copy'
 import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
@@ -960,14 +961,19 @@ function pendingRootPropertyPaths(value: string | null): string[] {
  */
 export async function selectVault(input: { path?: string }): Promise<SelectVaultResponse> {
   try {
-    const vaultPath = input.path ?? (await showFolderPicker())
+    const picked = input.path ?? (await showFolderPicker())
 
+    if (!picked) {
+      return { success: false, vault: null, error: 'No folder selected' }
+    }
+
+    // The folder picker, the Obsidian prompt and its copy stay outside the
+    // queue: a dialog left open must not hold up a close or quit.
+    const vaultPath = await resolveObsidianVaultOpen(picked)
     if (!vaultPath) {
       return { success: false, vault: null, error: 'No folder selected' }
     }
 
-    // The folder picker stays outside the queue: a dialog left open must not
-    // hold up a close or quit.
     return await runVaultLifecycleOperation(() => replaceOpenVault(vaultPath))
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to select vault'
