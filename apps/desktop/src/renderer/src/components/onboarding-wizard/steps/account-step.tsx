@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth } from '@/contexts/auth-context'
 import { Loader2 } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 import { SetupWizard } from '@/pages/settings/setup-wizard'
 import { useDeviceLabel } from '../wizard-ui'
 import type { StepProps } from './basic-steps'
@@ -44,7 +45,15 @@ export function AccountStep({ state, dispatch }: StepProps): React.JSX.Element {
   }, [status, state.path, dispatch])
 
   return (
-    <div className="flex w-full max-w-[420px] flex-col pt-8">
+    <div
+      className={cn(
+        'flex w-full flex-col pt-8',
+        // The phrase grid and the three word fields are laid out wide, like the design.
+        wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'
+          ? 'max-w-[600px]'
+          : 'max-w-[420px]'
+      )}
+    >
       {rerouted.current && status !== 'authenticated' && (
         <p className="pb-5 text-center text-[13px] leading-[19px] text-text-secondary">
           {t('onboardingWizard.account.existingAccount', { device })}

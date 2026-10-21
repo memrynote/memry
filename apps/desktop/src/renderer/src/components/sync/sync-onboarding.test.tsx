@@ -248,6 +248,60 @@ describe('sync onboarding components', () => {
     expect(back).toHaveBeenCalledTimes(1)
   })
 
+  it('downloads the recovery phrase as a numbered text file', async () => {
+    let saved: Blob | null = null
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      saved = blob as Blob
+      return 'blob:phrase'
+    })
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
+      expect(this.download).toBe('memrynote-recovery-phrase.txt')
+    })
+    render(<RecoveryPhraseDisplay phrase={phrase} onContinue={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'setup.recovery.download' }))
+
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(createUrl).toHaveBeenCalledTimes(1)
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsText(saved as unknown as Blob)
+    })
+    const words = phrase.split(' ')
+    expect(text).toContain(` 1. ${words[0]}`)
+    expect(text).toContain(`24. ${words[23]}`)
+  })
+
+  it('verifies the recovery words with Enter and steps back with Esc', () => {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+      const values = array as Uint32Array
+      values[0] = 0
+      values[1] = 5
+      values[2] = 10
+      return array
+    })
+    const confirmed = vi.fn()
+    const back = vi.fn()
+    render(<RecoveryPhraseConfirm phrase={phrase} onConfirmed={confirmed} onBack={back} />)
+
+    const inputs = screen.getAllByRole('textbox')
+    fireEvent.change(inputs[0], { target: { value: 'word1' } })
+    fireEvent.submit(inputs[0])
+    expect(confirmed).not.toHaveBeenCalled()
+
+    fireEvent.change(inputs[1], { target: { value: 'word6' } })
+    fireEvent.change(inputs[2], { target: { value: 'word11' } })
+    fireEvent.submit(inputs[2])
+    expect(confirmed).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(inputs[2], { key: 'Escape' })
+    expect(back).toHaveBeenCalledTimes(1)
+  })
+
   it('normalizes submitted recovery phrases and advances loading progress labels', async () => {
     vi.useFakeTimers()
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
