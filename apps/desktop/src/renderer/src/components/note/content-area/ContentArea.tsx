@@ -157,6 +157,7 @@ import { TableBorderHandles } from './table-border-handles'
 import { CodeBlockToolbar } from './code-block-toolbar'
 import { PasteLinkMenu } from './paste-link-menu'
 import { PdfDisplayMenu } from './pdf-display-menu'
+import { newFileDisplayProps } from './file-block-markers'
 import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
@@ -555,6 +556,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [t])
   // Read when a conversion settles, not when it starts: a note's first scan
   // runs before the setting is read.
+  // A pasted PDF is filled in from `uploadFile` too, which has the same
+  // creation-time problem: the default and the menu opener come in by ref.
+  const pdfDisplayModeRef = useRef(editorSettings.pdfDisplayMode)
+  const openPdfDisplayMenuRef = useRef<(blockId: string) => void>(() => {})
+  useEffect(() => {
+    pdfDisplayModeRef.current = editorSettings.pdfDisplayMode
+  }, [editorSettings.pdfDisplayMode])
   const convertChecklistsRef = useRef(convertChecklists)
   useEffect(() => {
     convertChecklistsRef.current = convertChecklists
@@ -580,12 +588,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         const block = blockId ? editorRef.current?.getBlock?.(blockId) : undefined
         if (block?.type === 'file') {
+          const mimeType = result.mimeType || file.type
+          // BlockNote applies this to the block after we return, so the menu
+          // opens on a block that already carries the default.
+          if (mimeType === 'application/pdf' && blockId) openPdfDisplayMenuRef.current(blockId)
           return {
             props: {
               url: result.path,
               name: result.name || file.name,
               size: result.size ?? file.size,
-              mimeType: result.mimeType || file.type
+              mimeType,
+              ...newFileDisplayProps(mimeType, pdfDisplayModeRef.current)
             }
           }
         }
@@ -851,6 +864,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editorContainerRef,
     defaultDisplay: editorSettings.pdfDisplayMode
   })
+  useEffect(() => {
+    openPdfDisplayMenuRef.current = openPdfDisplayMenu
+  }, [openPdfDisplayMenu])
   useEditorFileUpload({
     editor,
     noteId,

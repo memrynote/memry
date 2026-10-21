@@ -51,10 +51,10 @@ describe('usePdfDisplayMenu', () => {
     await openMenu(result)
 
     act(() => {
-      container.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     })
     act(() => {
-      container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
     expect(editor.updateBlock).toHaveBeenCalledWith('pdf-1', {
       props: { url: 'a.pdf', display: 'link' }
@@ -65,7 +65,7 @@ describe('usePdfDisplayMenu', () => {
     const { result, editor, container } = setup('embed')
     await openMenu(result)
     act(() => {
-      container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(result.current.state).toBeNull()
 

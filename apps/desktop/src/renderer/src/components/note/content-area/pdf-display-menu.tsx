@@ -4,8 +4,8 @@ import { InlineChoiceMenu } from './inline-choice-menu'
 import { PDF_DISPLAY_OPTIONS, type PdfDisplayOption } from './hooks/use-pdf-display-menu'
 
 const OPTION_CONFIG = {
-  embed: { icon: FileText, labelKey: 'attachmentPicker.display.embed' },
-  link: { icon: Link, labelKey: 'attachmentPicker.display.link' }
+  embed: { icon: FileText, labelKey: 'menus.pdfDisplay.embed' },
+  link: { icon: Link, labelKey: 'menus.pdfDisplay.link' }
 } as const
 
 interface PdfDisplayMenuProps {
@@ -20,7 +20,7 @@ export function PdfDisplayMenu({ state, onSelect }: PdfDisplayMenuProps) {
 
   return (
     <InlineChoiceMenu
-      title={t('attachmentPicker.display.label')}
+      title={t('menus.pdfDisplay.title')}
       position={state.position}
       options={PDF_DISPLAY_OPTIONS.map((option) => ({
         id: option,

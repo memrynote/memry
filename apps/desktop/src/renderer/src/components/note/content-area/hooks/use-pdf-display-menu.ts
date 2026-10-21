@@ -48,7 +48,8 @@ export function usePdfDisplayMenu({
         const containerRect = container.getBoundingClientRect()
         setState({
           blockId,
-          position: { x: rect.left - containerRect.left, y: rect.bottom - containerRect.top + 4 },
+          // Anchored to the top edge: an embed is still loading and grows tall after this runs.
+          position: { x: rect.left - containerRect.left, y: rect.top - containerRect.top + 8 },
           selectedIndex: Math.max(0, PDF_DISPLAY_OPTIONS.indexOf(defaultDisplay ?? 'embed'))
         })
       })
@@ -68,8 +69,7 @@ export function usePdfDisplayMenu({
 
   const isOpen = state !== null
   useEffect(() => {
-    const container = editorContainerRef.current
-    if (!isOpen || !container) return
+    if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return
@@ -104,15 +104,15 @@ export function usePdfDisplayMenu({
       close()
     }
 
-    // Keyboard is wired on the container (the caret never leaves the editor); no parent state involved.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent
-    container.addEventListener('keydown', handleKeyDown, { capture: true })
+    // On the document, not the editor: a drop leaves focus wherever it was, so
+    // the menu cannot count on the caret being inside the editor.
+    document.addEventListener('keydown', handleKeyDown, { capture: true })
     document.addEventListener('mousedown', handleClickAway)
     return () => {
-      container.removeEventListener('keydown', handleKeyDown, { capture: true })
+      document.removeEventListener('keydown', handleKeyDown, { capture: true })
       document.removeEventListener('mousedown', handleClickAway)
     }
-  }, [isOpen, state, editorContainerRef, select, close])
+  }, [isOpen, state, select, close])
 
   return { state, open, select }
 }

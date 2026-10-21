@@ -25,6 +25,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     settings: { convertChecklistsToTasks: true }
   },
   editorSettingsListeners: new Set<() => void>(),
+  openPdfDisplayMenu: vi.fn(),
   tasksService: {
     listProjects: vi.fn(),
     listForItem: vi.fn(),
@@ -380,7 +381,11 @@ vi.mock('./hooks', () => ({
       handleSelect: vi.fn()
     }
   }),
-  usePdfDisplayMenu: vi.fn(() => ({ state: null, open: vi.fn(), select: vi.fn() }))
+  usePdfDisplayMenu: vi.fn(() => ({
+    state: null,
+    open: contentAreaMocks.openPdfDisplayMenu,
+    select: vi.fn()
+  }))
 }))
 
 vi.mock('./wiki-link-menu', () => ({
@@ -1584,6 +1589,40 @@ describe('ContentArea', () => {
         'image-block'
       )
     ).resolves.toBe('attachments/shot.png')
+  })
+
+  it('starts a pasted PDF on the Settings default and offers Embedded / Link', async () => {
+    contentAreaMocks.editorSettings = {
+      isLoading: false,
+      settings: { convertChecklistsToTasks: true, pdfDisplayMode: 'link' } as never
+    }
+    render(<ContentArea noteId="note-upload" />)
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
+    createBlock('pdf-block', { type: 'file', props: {} })
+    contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: 'attachments/manual.pdf',
+      name: 'manual.pdf',
+      size: 4096,
+      mimeType: 'application/pdf',
+      type: 'file'
+    })
+
+    await expect(
+      contentAreaMocks.blockNoteOptions.uploadFile(
+        new File(['p'], 'manual.pdf', { type: 'application/pdf' }),
+        'pdf-block'
+      )
+    ).resolves.toEqual({
+      props: {
+        url: 'attachments/manual.pdf',
+        name: 'manual.pdf',
+        size: 4096,
+        mimeType: 'application/pdf',
+        display: 'link'
+      }
+    })
+    expect(contentAreaMocks.openPdfDisplayMenu).toHaveBeenCalledWith('pdf-block')
   })
 
   // #2161: there is no "existing attachment" command any more. Every command
