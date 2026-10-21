@@ -268,6 +268,11 @@ class EmbeddingModelBridge {
   // semantic indexing for the rest of the app session, so instead the failures are
   // counted and spaced out, and only the Nth latches for good (#840).
   private consecutiveFailures = 0
+  // Worker deaths during embed() since the last delivered embedding. Callers run
+  // loadModel() before every embed, and a fresh worker loads fine and then aborts
+  // on inference, so a load success must not erase these or the breaker never
+  // opens (#3407). Only a delivered embedding or an explicit reset clears them.
+  private embedFailures = 0
   // Epoch ms before which no load may be attempted. 0 = retry allowed now.
   private retryNotBefore = 0
   private error: string | null = null
@@ -346,7 +351,7 @@ class EmbeddingModelBridge {
       this.loaded = true
       this.loading = false
       this.error = null
-      this.recordSuccess()
+      if (this.embedFailures === 0) this.recordSuccess()
       return true
     } catch (error) {
       this.loading = false
@@ -405,14 +410,14 @@ class EmbeddingModelBridge {
       this.loaded = true
       this.loading = false
       this.error = null
+      this.embedFailures = 0
       this.recordSuccess()
       return embedding
     } catch (error) {
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
-      if (!wasLoaded) {
-        this.recordFailure()
-      }
+      this.embedFailures += 1
+      this.recordFailure()
       logger.error('Generation failed:', error)
       // Until now this failure only ever reached electron-log, so a user
       // silently losing semantic-search indexing was invisible to us. Throttled
@@ -501,6 +506,7 @@ class EmbeddingModelBridge {
   clearLoadFailure(): void {
     this.loadFailed = false
     this.consecutiveFailures = 0
+    this.embedFailures = 0
     this.retryNotBefore = 0
   }
 
