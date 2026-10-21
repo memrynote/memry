@@ -235,6 +235,10 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write. Correcting a flagged word happens from the editor's context menu — see [Spell Check](/user-guide/notes/editing#spell-check).
 
+### Attachments
+
+**Show new PDFs as** sets how a PDF you add to a note first appears: **Embedded** (the inline viewer, the default) or **File name** (a link). It only sets the starting point. The `/pdf` picker offers the choice each time, and any PDF can be switched from its `⋯` menu. The setting syncs to your other devices; a device on an older version of memrynote ignores it. See [Showing a PDF as a Link](/user-guide/notes/attachments#showing-a-pdf-as-a-link).
+
 ### Checklists
 
 **Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).

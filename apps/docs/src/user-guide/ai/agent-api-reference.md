@@ -9298,6 +9298,7 @@ Reply:
   "toolbarMode": "floating",
   "spellCheck": false,
   "pdfAdaptToTheme": false,
+  "pdfDisplayMode": "embed",
   "convertChecklistsToTasks": true,
   "convertAgentChecklistsToTasks": false
 }
@@ -17817,6 +17818,7 @@ Change editor settings; any subset of them.
 | `settings.toolbarMode`                   | `"floating" \| "sticky"` | no       | `"floating"`, `"sticky"` |
 | `settings.spellCheck`                    | `boolean`                | no       |                          |
 | `settings.pdfAdaptToTheme`               | `boolean`                | no       |                          |
+| `settings.pdfDisplayMode`                | `"embed" \| "link"`      | no       | `"embed"`, `"link"`      |
 | `settings.convertChecklistsToTasks`      | `boolean`                | no       |                          |
 | `settings.convertAgentChecklistsToTasks` | `boolean`                | no       |                          |
 
@@ -17846,6 +17848,7 @@ Reply:
     "toolbarMode": "floating",
     "spellCheck": true,
     "pdfAdaptToTheme": false,
+    "pdfDisplayMode": "embed",
     "convertChecklistsToTasks": true,
     "convertAgentChecklistsToTasks": false
   }
@@ -17903,22 +17906,29 @@ Change keyboard shortcut overrides.
 
 `settings.setKeyboardSettings(settings)` through `vault_desktop_write`; needs approval.
 
-| Argument                                           | Type                                                                                                             | Required | Allowed values |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- | -------------- |
-| `settings`                                         | `object`                                                                                                         | yes      |                |
-| `settings.overrides`                               | `Record<string, { key: string, modifiers: { meta?: boolean, ctrl?: boolean, shift?: boolean, alt?: boolean } }>` | no       |                |
-| `settings.globalCapture`                           | `object \| null`                                                                                                 | no       |                |
-| `settings.globalCapture.key`                       | `string`                                                                                                         | yes      | min length `1` |
-| `settings.globalCapture.modifiers`                 | `object`                                                                                                         | yes      |                |
-| `settings.globalCapture.modifiers.meta`            | `boolean`                                                                                                        | no       |                |
-| `settings.globalCapture.modifiers.ctrl`            | `boolean`                                                                                                        | no       |                |
-| `settings.globalCapture.modifiers.shift`           | `boolean`                                                                                                        | no       |                |
-| `settings.globalCapture.modifiers.alt`             | `boolean`                                                                                                        | no       |                |
-| `settings.folderNoteShortcuts`                     | `object[]`                                                                                                       | no       | default `[]`   |
-| `settings.folderNoteShortcuts[].folder`            | `string`                                                                                                         | yes      | min length `1` |
-| `settings.folderNoteShortcuts[].binding`           | `object`                                                                                                         | yes      |                |
-| `settings.folderNoteShortcuts[].binding.key`       | `string`                                                                                                         | yes      | min length `1` |
-| `settings.folderNoteShortcuts[].binding.modifiers` | `{ meta?: boolean, ctrl?: boolean, shift?: boolean, alt?: boolean }`                                             | yes      |                |
+| Argument                                           | Type                                                                                                             | Required | Allowed values                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------ |
+| `settings`                                         | `object`                                                                                                         | yes      |                                                              |
+| `settings.overrides`                               | `Record<string, { key: string, modifiers: { meta?: boolean, ctrl?: boolean, shift?: boolean, alt?: boolean } }>` | no       |                                                              |
+| `settings.globalCapture`                           | `object \| null`                                                                                                 | no       |                                                              |
+| `settings.globalCapture.key`                       | `string`                                                                                                         | yes      | min length `1`                                               |
+| `settings.globalCapture.modifiers`                 | `object`                                                                                                         | yes      |                                                              |
+| `settings.globalCapture.modifiers.meta`            | `boolean`                                                                                                        | no       |                                                              |
+| `settings.globalCapture.modifiers.ctrl`            | `boolean`                                                                                                        | no       |                                                              |
+| `settings.globalCapture.modifiers.shift`           | `boolean`                                                                                                        | no       |                                                              |
+| `settings.globalCapture.modifiers.alt`             | `boolean`                                                                                                        | no       |                                                              |
+| `settings.folderNoteShortcuts`                     | `object[]`                                                                                                       | no       | default `[]`                                                 |
+| `settings.folderNoteShortcuts[].folder`            | `string`                                                                                                         | yes      | min length `1`                                               |
+| `settings.folderNoteShortcuts[].binding`           | `object`                                                                                                         | yes      |                                                              |
+| `settings.folderNoteShortcuts[].binding.key`       | `string`                                                                                                         | yes      | min length `1`                                               |
+| `settings.folderNoteShortcuts[].binding.modifiers` | `{ meta?: boolean, ctrl?: boolean, shift?: boolean, alt?: boolean }`                                             | yes      |                                                              |
+| `settings.stickyShortcut`                          | `object \| null`                                                                                                 | no       | default `{"key":"M","modifiers":{"meta":true,"shift":true}}` |
+| `settings.stickyShortcut.key`                      | `string`                                                                                                         | yes      | min length `1`                                               |
+| `settings.stickyShortcut.modifiers`                | `object`                                                                                                         | yes      |                                                              |
+| `settings.stickyShortcut.modifiers.meta`           | `boolean`                                                                                                        | no       |                                                              |
+| `settings.stickyShortcut.modifiers.ctrl`           | `boolean`                                                                                                        | no       |                                                              |
+| `settings.stickyShortcut.modifiers.shift`          | `boolean`                                                                                                        | no       |                                                              |
+| `settings.stickyShortcut.modifiers.alt`            | `boolean`                                                                                                        | no       |                                                              |
 
 Example call:
 

@@ -10774,6 +10774,7 @@
           "toolbarMode": "floating",
           "spellCheck": false,
           "pdfAdaptToTheme": false,
+          "pdfDisplayMode": "embed",
           "convertChecklistsToTasks": true,
           "convertAgentChecklistsToTasks": false
         }
@@ -22724,6 +22725,10 @@
             "pdfAdaptToTheme": {
               "type": "boolean"
             },
+            "pdfDisplayMode": {
+              "type": "string",
+              "enum": ["embed", "link"]
+            },
             "convertChecklistsToTasks": {
               "type": "boolean"
             },
@@ -22760,6 +22765,7 @@
             "toolbarMode": "floating",
             "spellCheck": true,
             "pdfAdaptToTheme": false,
+            "pdfDisplayMode": "embed",
             "convertChecklistsToTasks": true,
             "convertAgentChecklistsToTasks": false
           }
@@ -22954,6 +22960,49 @@
                 "required": ["folder", "binding"],
                 "additionalProperties": false
               }
+            },
+            "stickyShortcut": {
+              "default": {
+                "key": "M",
+                "modifiers": {
+                  "meta": true,
+                  "shift": true
+                }
+              },
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "modifiers": {
+                      "type": "object",
+                      "properties": {
+                        "meta": {
+                          "type": "boolean"
+                        },
+                        "ctrl": {
+                          "type": "boolean"
+                        },
+                        "shift": {
+                          "type": "boolean"
+                        },
+                        "alt": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["key", "modifiers"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false

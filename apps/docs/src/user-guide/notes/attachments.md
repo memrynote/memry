@@ -27,6 +27,8 @@ list:
 Type to search both the file names and the notes they belong to; `↑` / `↓` move,
 `↵` inserts, `esc` closes.
 
+For `/pdf`, a **Show as** switch at the bottom of the picker chooses **Embedded** (the inline viewer) or **Link** (the file name alone). It starts on your default from [Settings > Editor](/user-guide/settings#attachments). A PDF you drop onto a note uses that default too.
+
 While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
 
 ## File Block
@@ -53,6 +55,12 @@ The menu's header shows the **original filename** and the name the file is **sto
 If the file hasn't synced to this device yet, the menu still shows both names, but the actions stay disabled until the download lands.
 
 Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
+
+### Showing a PDF as a Link
+
+Twenty embedded PDFs make a long note. A PDF block can instead show just its file name, with the type icon and the `⋯` menu beside it. Click the name to open the file in your default app.
+
+Switch a PDF between the two from its `⋯` menu or right-click menu: **Show as link** turns the viewer into the file name, and **Show embedded** turns it back. The choice is saved in the note's Markdown as a `"display":"link"` entry in the PDF's `<!-- file:{…} -->` line, so it syncs and survives a round trip. An embedded PDF has no `display` entry, so notes written by older versions open exactly as before. A device on an older version of MemryNote ignores the entry and shows the viewer.
 
 ### Renaming an Attachment
 
