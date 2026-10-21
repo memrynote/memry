@@ -25,6 +25,10 @@ function isLockedTreeError(error: unknown): boolean {
   return LOCKED_TREE_CODES.has(errnoCode(error) ?? '')
 }
 
+function isCaseOnlyRename(from: string, to: string): boolean {
+  return from !== to && from.toLowerCase() === to.toLowerCase()
+}
+
 type UndoStep = () => Promise<unknown>
 
 /**
@@ -56,7 +60,9 @@ export async function moveDirectory(from: string, to: string): Promise<void> {
   } catch (error) {
     // An existing destination would be merged into by the entry-wise move;
     // leave that refusal to the caller exactly as the plain rename gave it.
-    if (!isLockedTreeError(error) || existsSync(to)) throw error
+    // A case-only rename (`journal` -> `Journal`) names the source itself on a
+    // case-insensitive filesystem, so `to` "existing" is not a merge.
+    if (!isLockedTreeError(error) || (existsSync(to) && !isCaseOnlyRename(from, to))) throw error
   }
 
   const staging = path.join(path.dirname(to), `.memry-move-${randomBytes(6).toString('hex')}`)

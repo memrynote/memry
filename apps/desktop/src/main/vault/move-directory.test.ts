@@ -32,6 +32,19 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, rename }, rename }
 })
 
+// Windows and macOS resolve names case-insensitively; emulate that so the test
+// also holds on a case-sensitive filesystem.
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>()
+  const existsSync = (p: string): boolean =>
+    actual.existsSync(p) ||
+    (actual.existsSync(path.dirname(p)) &&
+      actual
+        .readdirSync(path.dirname(p))
+        .some((name) => name.toLowerCase() === path.basename(p).toLowerCase()))
+  return { ...actual, default: { ...actual, existsSync }, existsSync }
+})
+
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
@@ -109,6 +122,15 @@ describe('moveDirectory', () => {
       'Beta/b.md',
       'Delta/'
     ])
+  })
+
+  it('renames a folder that holds a subfolder to a case-only variant of its own name', async () => {
+    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'beta'))
+
+    expect(fs.readdirSync(root)).toContain('beta')
+    expect(fs.readdirSync(root)).not.toContain('Beta')
+    expect(tree()).toContain('beta/Gamma/Deep/deep.md')
+    expect(tree()).toContain('beta/b.md')
   })
 
   it('refuses to merge into a folder that already exists', async () => {
