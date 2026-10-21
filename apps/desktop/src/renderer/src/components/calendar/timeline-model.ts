@@ -44,7 +44,7 @@ export const DEFAULT_TIMELINE_SETTINGS: TimelineSettings = {
   showEvents: true,
   showUndated: true,
   showCompleted: true,
-  showSubtasks: false
+  showSubtasks: true
 }
 
 /** Width of one day column, in px, at each zoom. */
@@ -293,6 +293,8 @@ export interface TimelineTaskRow {
   key: string
   task: Task
   depth: 0 | 1
+  /** Subtasks nested under this row; 0 for a subtask or a task without any shown. */
+  subtaskCount: number
   shape: TimelineShape
   placement: TimelinePlacement | null
   /** Open task whose last day is before today. */
@@ -377,6 +379,7 @@ function toTaskRow(
     key: `task:${task.id}`,
     task,
     depth: 0,
+    subtaskCount: 0,
     shape,
     placement,
     isOverdue,
@@ -437,7 +440,7 @@ function nestRows(rows: TimelineTaskRow[], orderBy: TimelineOrderBy): TimelineTa
     const kids = children.get(root.task.id)
     if (!kids) return [root]
     kids.sort((a, b) => compareRows(a, b, orderBy))
-    return [root, ...kids]
+    return [{ ...root, subtaskCount: kids.length }, ...kids]
   })
 }
 

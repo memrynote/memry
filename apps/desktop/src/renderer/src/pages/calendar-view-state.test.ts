@@ -273,7 +273,7 @@ describe('parseTimelineSettings', () => {
       showEvents: true,
       showUndated: true,
       showCompleted: true,
-      showSubtasks: false
+      showSubtasks: true
     })
   })
 })
