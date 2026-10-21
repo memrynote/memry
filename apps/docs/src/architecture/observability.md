@@ -24,8 +24,9 @@ log.error('pull failed', err)
   written first, stamped with the last repeat's time. One fault cannot fill the file and push the
   days before it out of the archives.
 - Renderer and main process logs are separate files.
-- Dev runs log at `debug`; packaged installs are lowered to `info` (file) / `warn` (console) at
-  startup based on `app.isPackaged`, since `NODE_ENV` is undefined at runtime in packaged builds.
+- Dev runs write `debug` to the file and print `info` and up to the terminal. Packaged installs
+  are lowered to `info` (file) / `warn` (console) at startup based on `app.isPackaged`, since
+  `NODE_ENV` is undefined at runtime in packaged builds.
 - Important launch, renderer, and main-process errors are mirrored as telemetry events when
   product telemetry is enabled.
 

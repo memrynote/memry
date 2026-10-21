@@ -85,6 +85,14 @@ Adding an icon to `icon-map.ts` means rerunning the generator; `--check` mode gu
 in the test suite. A static import of the package barrel anywhere in the renderer
 silently pulls all ~5,000 glyphs back into the entry chunk.
 
+The main process needs the whole set only to draw a library icon in a PDF or HTML
+export, so `main/ipc/notes-handlers.ts` loads it with `await import()`. The package's
+export map sends a development build to its barrel, which re-exports each glyph from its
+own module, and a production build to the single-file `dist/esm/index.min.js`. The barrel
+put 5,000+ modules, and one rollup annotation warning per module, into the main build of
+every `pnpm dev` start. The main build in `electron.vite.config.ts` aliases the package to
+the single-file build, so dev resolves the file production already uses.
+
 ## Startup Bootstrap
 
 Theme, zoom factor and locale are resolved in the preload, before any renderer script
