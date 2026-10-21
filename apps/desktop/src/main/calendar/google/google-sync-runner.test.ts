@@ -184,4 +184,19 @@ describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
     await startGoogleCalendarSyncRunner()
     expect(ensurePushMock).toHaveBeenCalledTimes(1)
   })
+
+  it('keeps polling and does not throw when the Memry session is unreadable (#3412)', async () => {
+    signedInMock.mockRejectedValue(
+      new Error(
+        'Failed to retrieve key from keychain (refresh-token): Secret com.memry.sync/refresh-token exists in the secret store but could not be read this run'
+      )
+    )
+    await expect(startGoogleCalendarSyncRunner()).resolves.toBeUndefined()
+    expect(vi.getTimerCount()).toBe(1)
+    expect(ensurePushMock).not.toHaveBeenCalled()
+
+    signedInMock.mockResolvedValue(true)
+    await startGoogleCalendarSyncRunner()
+    expect(ensurePushMock).toHaveBeenCalledTimes(1)
+  })
 })

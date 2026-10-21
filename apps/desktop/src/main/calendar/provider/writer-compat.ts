@@ -4,6 +4,7 @@ import {
   type CalendarWriterCompatDevice,
   type CalendarWriterCompatResponse
 } from '@memry/contracts/calendar-api'
+import { isKeychainUnreadableError } from '../../crypto/vault-key-error'
 import { createLogger } from '../../lib/logger'
 import { providerCapabilities } from './capabilities'
 
@@ -67,7 +68,16 @@ export async function checkProviderWriterCompat(
   }
   // Without a Memry account nothing syncs, so no other device can receive
   // this provider's bindings.
-  if (!(await deps.isSignedIn())) {
+  let signedIn: boolean
+  try {
+    signedIn = await deps.isSignedIn()
+  } catch (error) {
+    if (!isKeychainUnreadableError(error)) throw error
+    // A session we cannot read is not a signed-out one: other devices may exist.
+    log.warn('Could not read the Memry session for the writer compatibility check')
+    return { ...base, required: true, verified: false, outdatedDevices: [] }
+  }
+  if (!signedIn) {
     return { ...base, required: true, verified: true, outdatedDevices: [] }
   }
 
