@@ -2054,6 +2054,9 @@
   border-end-start-radius: 0;
   border-end-end-radius: 0;
 }
+:root .bn-block:has(> .node-callout [data-callout-fold='closed']) > .bn-block-group {
+  display: none;
+}
 :root
   .bn-block:has(> .node-callout [data-callout-type])
   > .bn-block-group

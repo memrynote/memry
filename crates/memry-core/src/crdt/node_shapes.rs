@@ -141,6 +141,8 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
             text("textColor", "default"),
         ],
         "callout" => vec![
+            // `> [!type]-` / `+`; `none` when the marker is absent (#3206).
+            text("fold", "none"),
             text("textAlignment", "left"),
             text("textColor", "default"),
             text("type", "info"),

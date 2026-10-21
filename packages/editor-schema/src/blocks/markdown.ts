@@ -55,7 +55,28 @@ export type CalloutTypeValue = (typeof CALLOUT_TYPE_VALUES)[number]
  * `> [!info] A title` are NOT this. Claiming them would rewrite bytes
  * `serializeCalloutBlock` cannot reproduce.
  */
-const MEMRY_CALLOUT_MARKER_REGEX = new RegExp(`^> \\[!(${CALLOUT_TYPE_VALUES.join('|')})\\]$`)
+const MEMRY_CALLOUT_MARKER_REGEX = new RegExp(
+  `^> \\[!(${CALLOUT_TYPE_VALUES.join('|')})\\]([-+]?)$`
+)
+
+/**
+ * Obsidian's fold marker after the `]`: `-` starts closed, `+` starts open, no
+ * marker is not foldable state at all (`none`), so a callout written before
+ * folding existed keeps its exact bytes (#3206).
+ */
+export const CALLOUT_FOLD_VALUES = ['none', 'closed', 'open'] as const
+export type CalloutFold = (typeof CALLOUT_FOLD_VALUES)[number]
+
+const FOLD_SUFFIX: Record<CalloutFold, string> = { none: '', closed: '-', open: '+' }
+
+function foldFromSuffix(suffix: string): CalloutFold {
+  return suffix === '-' ? 'closed' : suffix === '+' ? 'open' : 'none'
+}
+
+/** The `[!type]` + fold suffix, shared by the editor path and main's headless twin. */
+export function calloutMarker(type: string, fold: string | undefined): string {
+  return `[!${type}]${FOLD_SUFFIX[fold as CalloutFold] ?? ''}`
+}
 
 /**
  * The damaged form #1846 heals: the marker alone on its line, its `> ` prefix
@@ -72,14 +93,24 @@ const BARE_CALLOUT_MARKER_REGEX = /^\[!(info|warning|error|success)\]$/
  * shape `serializeQuoteBlock` writes for a quote that owns children (#3186).
  * A callout without children has no blank line, so its bytes are unchanged.
  */
-export function serializeCalloutBlock(type: string, contentMarkdown: string): string {
-  const body = contentMarkdown.replace(/^\n+|\n+$/g, '')
-  if (body === '') return `> [!${type}]`
-  return `> [!${type}]\n${serializeQuoteBlock(body)}`
+export function serializeCalloutBlock(
+  type: string,
+  contentMarkdown: string,
+  fold?: string
+): string {
+  let start = 0
+  let end = contentMarkdown.length
+  while (start < end && contentMarkdown[start] === '\n') start++
+  while (end > start && contentMarkdown[end - 1] === '\n') end--
+  const body = contentMarkdown.slice(start, end)
+  const marker = `> ${calloutMarker(type, fold)}`
+  if (body === '') return marker
+  return `${marker}\n${serializeQuoteBlock(body)}`
 }
 
 export interface CalloutRun {
   type: CalloutTypeValue
+  fold: CalloutFold
   /** Body lines with the `> ` prefix stripped; verbatim for a bare run. */
   contentLines: string[]
   /** The run's original lines, verbatim, for fallback parsing on decline. */
@@ -127,6 +158,7 @@ export function readCalloutRun(
     if (structured) {
       return {
         type: quoted[1] as CalloutTypeValue,
+        fold: foldFromSuffix(quoted[2]),
         contentLines: structured.innerMarkdown.split('\n'),
         raw: lines.slice(start, structured.end).join('\n'),
         end: structured.end,
@@ -145,6 +177,7 @@ export function readCalloutRun(
     if (end < lines.length && lines[end].startsWith('>')) return null
     return {
       type: quoted[1] as CalloutTypeValue,
+      fold: foldFromSuffix(quoted[2]),
       contentLines,
       raw: lines.slice(start, end).join('\n'),
       end,
@@ -164,6 +197,7 @@ export function readCalloutRun(
     if (contentLines.length === 0) return null
     return {
       type: bare[1] as CalloutTypeValue,
+      fold: 'none',
       contentLines,
       raw: lines.slice(start, end).join('\n'),
       end,
@@ -183,6 +217,7 @@ export interface ParsedBlockShape {
 
 export interface ResolvedCallout {
   type: CalloutTypeValue
+  fold: CalloutFold
   content: unknown
   children: ParsedBlockShape[]
 }
@@ -207,18 +242,18 @@ export async function resolveCalloutRun(
   serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
 ): Promise<ResolvedCallout | null> {
   const content = run.contentLines.join('\n')
-  if (content === '') return { type: run.type, content: [], children: [] }
+  if (content === '') return { type: run.type, fold: run.fold, content: [], children: [] }
 
   const body = await parseCalloutBody(content, parseMarkdown, serializeBlocks)
   if (!body) return null
   if (run.bare && body.children.length > 0) return null
   if (body.markdown !== content) {
     if (!run.reshapes) return null
-    const canonical = serializeCalloutBlock(run.type, body.markdown)
+    const canonical = serializeCalloutBlock(run.type, body.markdown, run.fold)
     if (!(await calloutSettles(canonical, parseMarkdown, serializeBlocks))) return null
   }
 
-  return { type: run.type, content: body.content, children: body.children }
+  return { type: run.type, fold: run.fold, content: body.content, children: body.children }
 }
 
 async function parseCalloutBody(

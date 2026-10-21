@@ -912,7 +912,8 @@ async function serializeCalloutWithChildren(
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
-  return serializeCalloutBlock((block.props as { type: string }).type, inner.trim())
+  const props = block.props as { type: string; fold?: string }
+  return serializeCalloutBlock(props.type, inner.trim(), props.fold)
 }
 
 /**
@@ -1103,7 +1104,7 @@ async function parseContentWithMarkers(
         // the callout kinds `parseCalloutRunAt` recognises.
         const callout = {
           type: 'callout',
-          props: { type: claimed.type },
+          props: { type: claimed.type, fold: claimed.fold },
           content: claimed.content,
           children: claimed.children
         } as unknown as Block
@@ -1206,7 +1207,13 @@ async function parseCalloutRunAt(
   lines: readonly string[],
   i: number,
   atParagraphStart: boolean
-): Promise<{ type: string; content: unknown; children: Block[]; end: number } | null> {
+): Promise<{
+  type: string
+  fold: string
+  content: unknown
+  children: Block[]
+  end: number
+} | null> {
   const run = readCalloutRun(lines, i, atParagraphStart)
   if (!run) return null
 
@@ -1219,6 +1226,7 @@ async function parseCalloutRunAt(
 
   return {
     type: claimed.type,
+    fold: claimed.fold,
     content: claimed.content,
     children: claimed.children as Block[],
     end: run.end

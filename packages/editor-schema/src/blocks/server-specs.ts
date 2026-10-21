@@ -48,7 +48,8 @@ import {
   serializeMathBlock,
   whiteboardUrl,
   YOUTUBE_EMBED_DEFAULT_ALT,
-  type FileBlockProps
+  type FileBlockProps,
+  calloutMarker
 } from './markdown'
 import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 
@@ -128,13 +129,15 @@ function fileDom(block: { props: Partial<FileBlockProps> }): { dom: HTMLElement 
  * back as `> [!info]\n>`, which `serializeCalloutBlock` never writes and which
  * grew a line on the note every time it was opened.
  */
-function calloutDom(block: { props: { type: string }; content?: unknown }): {
+function calloutDom(block: { props: { type: string; fold?: string }; content?: unknown }): {
   dom: HTMLElement
   contentDOM: HTMLElement
 } {
   const dom = document.createElement('blockquote')
   const paragraph = document.createElement('p')
-  paragraph.appendChild(document.createTextNode(`[!${block.props.type || 'info'}]`))
+  paragraph.appendChild(
+    document.createTextNode(calloutMarker(block.props.type || 'info', block.props.fold))
+  )
   if (!Array.isArray(block.content) || block.content.length > 0) {
     paragraph.appendChild(document.createElement('br'))
   }

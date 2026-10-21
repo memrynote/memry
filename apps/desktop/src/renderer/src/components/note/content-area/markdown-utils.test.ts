@@ -112,6 +112,36 @@ describe('parseMarkdownPreservingBlanks', () => {
     )
   })
 
+  it('reads a fold marker into the callout fold prop and writes it back (#3206)', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ]),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      '> [!tip]-\n> Hidden\n\n> [!tip]+\n> Shown\n\n> [!tip]\n> Plain'
+    )
+    const callouts = blocks.filter((b) => (b.type as string) === 'callout')
+    expect(callouts.map((b) => (b.props as { fold?: string }).fold)).toEqual([
+      'closed',
+      'open',
+      undefined
+    ])
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, callouts as any[])
+    expect(markdown).toBe('> [!tip]-\n> Hidden\n\n> [!tip]+\n> Shown\n\n> [!tip]\n> Plain')
+  })
+
   it('leaves foreign and titled callout markers as markdown instead of claiming them', async () => {
     // `> [!danger]` and `> [!warning] A title` are bytes Memry never writes —
     // claiming them would rewrite an Obsidian vault on the next save (#1846).
