@@ -26,7 +26,7 @@ export const trackRendererError = (
     source: 'renderer',
     result: 'failed',
     errorCode: toErrorCode(error),
-    error: buildErrorDetail(error, componentStack)
+    error: buildErrorDetail(error, componentStack, undefined, `renderer/${action}`)
   })
 }
 

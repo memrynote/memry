@@ -202,7 +202,7 @@ export const trackMainError = (source: string, action: string, error: unknown): 
     source: toSafeToken(source, 'main_process'),
     result: 'failed',
     errorCode: toErrorCode(error),
-    error: buildErrorDetail(error, undefined, getMainRedactOptions())
+    error: buildErrorDetail(error, undefined, getMainRedactOptions(), `${source}/${action}`)
   })
 }
 
@@ -225,7 +225,7 @@ export const trackMainWarning = (
     scope: source,
     action,
     errorCode: toErrorCode(error),
-    error: buildErrorDetail(error, undefined, getMainRedactOptions()),
+    error: buildErrorDetail(error, undefined, getMainRedactOptions(), `${source}/${action}`),
     metrics
   })
 }

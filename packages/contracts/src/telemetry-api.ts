@@ -650,10 +650,12 @@ export const normalizeWindowError = (report: WindowErrorReport): Error => {
 export const buildErrorDetail = (
   error: unknown,
   componentStack?: string,
-  redactOptions?: RedactOptions
+  redactOptions?: RedactOptions,
+  site?: string
 ): TelemetryErrorDetail | undefined => {
   const detail: TelemetryErrorDetail = {}
-  const message = readProp(error, 'message')
+  // A bare string is a complete failure description (IPC envelopes carry one).
+  const message = typeof error === 'string' ? error : readProp(error, 'message')
   if (typeof message === 'string' && message) {
     const redacted = truncate(redactText(message, redactOptions), 512)
     if (redacted) detail.message = redacted
@@ -666,6 +668,12 @@ export const buildErrorDetail = (
   }
   if (componentStack) {
     detail.componentStack = truncate(redactSensitive(componentStack), 2000)
+  }
+  // An Error thrown with no message and no frames reached Error Tracking as a
+  // bare "Error" issue nobody could place (#3409). The capture site is the only
+  // "what happened" left, so name it; `site` is a token, never user content.
+  if (!detail.message && site) {
+    detail.message = `${toErrorCode(error)} reported with no message at ${toSafeToken(site, 'unknown_site')}`
   }
   return detail.message || detail.stack || detail.componentStack ? detail : undefined
 }

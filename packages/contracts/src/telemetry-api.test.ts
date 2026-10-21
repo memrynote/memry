@@ -1146,3 +1146,24 @@ describe('sanitizeTelemetryFailure', () => {
     expect(sanitizeTelemetryFailure({ httpStatus: 42, serverCode: 'nope' })).toBeUndefined()
   })
 })
+
+describe('buildErrorDetail without a message (#3409)', () => {
+  it('names the capture site for an Error thrown with no message and no frames', () => {
+    const bare = new Error()
+    bare.stack = 'Error'
+
+    expect(buildErrorDetail(bare, undefined, undefined, 'inbox/crud_update')?.message).toBe(
+      'Error reported with no message at inbox_crud_update'
+    )
+  })
+
+  it('keeps a bare string failure as the message', () => {
+    expect(buildErrorDetail('vault is locked', undefined, undefined, 'x')?.message).toBe(
+      'vault is locked'
+    )
+  })
+
+  it('leaves a real message untouched', () => {
+    expect(buildErrorDetail(new Error('boom'), undefined, undefined, 'x')?.message).toBe('boom')
+  })
+})
