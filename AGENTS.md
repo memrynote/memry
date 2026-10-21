@@ -108,6 +108,7 @@ git diff --check
 
 Multiple agent sessions may work in this checkout at once, each changing different files. Git commands that touch files outside your change destroy their work.
 
+- Create every worktree under `.worktrees/` at the repo root (`git worktree add .worktrees/<branch-name> ...`), never beside the repo or under `.claude/`. Remove one with `git worktree remove`, not `rm -rf`.
 - Commit only files you changed in this session. Stage explicit paths (`git add <path>...`), and check `git status` before committing.
 - Message format is `type(scope): message`. Types are `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, and `ci`. The scope names the app or area (`desktop`, `sync-server`, `ios`, `core`, `sync`, `cli`, `extension`, `landing`, `docs`, `emails`), comma-joined when a change spans several. Keep the message informative and concise, with no @mentions, `fixes #...` keywords, or `Co-authored-by:` trailers.
 - Never run `git reset --hard`, `git checkout .`, `git clean -fd`, `git stash`, `git add -A`, `git add .`, or `git commit --no-verify`.
