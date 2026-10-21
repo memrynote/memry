@@ -74,11 +74,11 @@ export function StartFreshTrigger({ onClick }: { onClick: () => void }): React.J
   const { t } = useT('settings')
 
   return (
-    <div className="flex justify-center pt-1">
+    <div className="flex justify-center pt-3.5">
       <button
         type="button"
         onClick={onClick}
-        className="rounded-sm text-xs/4 text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="rounded-sm text-[13px]/4 text-text-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         {t('setup.startFresh.trigger')}
       </button>

@@ -489,7 +489,9 @@ export function AccountSettings() {
           className={cn(
             'w-full',
             // The recovery phrase screens use the same wide layout as first-run setup.
-            state.wizardStep === 'recovery-display' || state.wizardStep === 'recovery-confirm'
+            state.wizardStep === 'recovery-display' ||
+              state.wizardStep === 'recovery-confirm' ||
+              state.wizardStep === 'recovery-input'
               ? 'max-w-[600px]'
               : 'max-w-sm'
           )}

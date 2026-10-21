@@ -302,30 +302,47 @@ describe('sync onboarding components', () => {
     expect(back).toHaveBeenCalledTimes(1)
   })
 
-  it('normalizes submitted recovery phrases and advances loading progress labels', async () => {
+  it('fills the recovery grid word by word or from one paste, then restores', async () => {
     vi.useFakeTimers()
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const submit = vi.fn()
     const { rerender } = render(
       <RecoveryPhraseInput onSubmit={submit} isLoading={false} error={null} onBack={vi.fn()} />
     )
+    const restore = screen.getByRole('button', { name: /setup\.recovery\.restore/ })
 
-    await user.type(screen.getByLabelText('setup.recovery.inputLabel'), 'short phrase')
-    expect(screen.getByText('setup.recovery.lengthHint')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'setup.recovery.restore' })).toBeDisabled()
+    // Space moves to the next box, and words are stored lowercase.
+    await user.type(screen.getAllByRole('textbox')[0], 'ORBIT velvet ')
+    expect(screen.getAllByRole('textbox')[1]).toHaveValue('velvet')
+    expect(screen.getAllByRole('textbox')[0]).toHaveValue('orbit')
+    expect(restore).toBeDisabled()
 
-    await user.clear(screen.getByLabelText('setup.recovery.inputLabel'))
-    await user.type(screen.getByLabelText('setup.recovery.inputLabel'), phrase.toUpperCase())
-    await user.click(screen.getByRole('button', { name: 'setup.recovery.restore' }))
+    // A whole phrase pasted into any box fills the grid from the first word.
+    fireEvent.paste(screen.getAllByRole('textbox')[9], {
+      clipboardData: { getData: () => phrase.toUpperCase().replace(/ /g, '\n') }
+    })
+    expect(screen.getAllByRole('textbox')[23]).toHaveValue('word24')
+    expect(restore).toBeEnabled()
+    await user.click(restore)
     expect(submit).toHaveBeenCalledWith(phrase)
 
-    rerender(
-      <RecoveryPhraseInput onSubmit={submit} isLoading error="Bad phrase" onBack={vi.fn()} />
-    )
-    expect(screen.getByRole('alert')).toHaveTextContent('Bad phrase')
+    rerender(<RecoveryPhraseInput onSubmit={submit} isLoading error={null} onBack={vi.fn()} />)
     expect(screen.getByText('setup.recovery.progress.deriving')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(4000))
     expect(screen.getByText('setup.recovery.progress.registering')).toBeInTheDocument()
+
+    rerender(
+      <RecoveryPhraseInput
+        onSubmit={submit}
+        isLoading={false}
+        error="Bad phrase"
+        onBack={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Bad phrase')
+    // Editing a word starts a new attempt, so the old error goes away.
+    fireEvent.change(screen.getAllByRole('textbox')[3], { target: { value: 'fixed' } })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     vi.useRealTimers()
   })
 

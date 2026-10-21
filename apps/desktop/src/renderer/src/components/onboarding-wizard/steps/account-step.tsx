@@ -49,7 +49,9 @@ export function AccountStep({ state, dispatch }: StepProps): React.JSX.Element {
       className={cn(
         'flex w-full flex-col pt-8',
         // The phrase grid and the three word fields are laid out wide, like the design.
-        wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'
+        wizardStep === 'recovery-display' ||
+          wizardStep === 'recovery-confirm' ||
+          wizardStep === 'recovery-input'
           ? 'max-w-[600px]'
           : 'max-w-[420px]'
       )}

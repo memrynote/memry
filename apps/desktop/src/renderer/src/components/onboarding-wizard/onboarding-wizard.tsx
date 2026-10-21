@@ -149,7 +149,10 @@ export function OnboardingWizard(): React.JSX.Element {
   // The recovery phrase screens need the room, and the design draws them without the window.
   const authStep = useAuth().state.wizardStep
   const phraseOnScreen =
-    state.step === 'account' && (authStep === 'recovery-display' || authStep === 'recovery-confirm')
+    state.step === 'account' &&
+    (authStep === 'recovery-display' ||
+      authStep === 'recovery-confirm' ||
+      authStep === 'recovery-input')
   const stage =
     STAGED.includes(state.step) && !phraseOnScreen ? (
       <StagePreview
