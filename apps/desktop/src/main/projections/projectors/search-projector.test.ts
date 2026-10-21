@@ -11,6 +11,7 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
+const isIndexDatabaseInitialized = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
 const openSpy = vi.hoisted(() => vi.fn())
 const statSpy = vi.hoisted(() => vi.fn())
@@ -30,7 +31,8 @@ vi.mock('../../database', async () => {
   return {
     ...actual,
     getDatabase,
-    getIndexDatabase
+    getIndexDatabase,
+    isIndexDatabaseInitialized
   }
 })
 
@@ -54,6 +56,7 @@ describe('search projector', () => {
     indexDb = createTestIndexDb()
     getDatabase.mockReturnValue(dataDb.db)
     getIndexDatabase.mockReturnValue(indexDb.db)
+    isIndexDatabaseInitialized.mockReturnValue(true)
     getAllWindows.mockReturnValue([])
     initializeFts(indexDb.db as never)
     initializeFtsTasks(dataDb.db as never)
@@ -263,6 +266,69 @@ describe('search projector', () => {
       dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
     ).toBe(1)
     expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+  })
+
+  describe('a failing index write', () => {
+    const noteEvent = {
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        path: 'notes/searchable.md',
+        title: 'Searchable Note',
+        fileType: 'markdown',
+        localOnly: false,
+        contentHash: 'hash',
+        wordCount: 2,
+        characterCount: 10,
+        snippet: 'first pass',
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z',
+        parsedContent: 'first pass',
+        tags: []
+      }
+    } as never
+
+    it('asks for a repair when an event hits a corrupt fts5 index (#3413)', async () => {
+      for (let i = 0; i < 300; i++) {
+        indexDb.db.run(sql`
+          INSERT INTO fts_notes (id, title, content, tags)
+          VALUES (${`filler-${i}`}, ${'Filler'}, ${`alpha beta gamma ${i}`}, ${'alpha'})
+        `)
+      }
+      indexDb.sqlite.unsafeMode(true)
+      indexDb.sqlite.prepare('UPDATE fts_notes_data SET block = randomblob(64) WHERE id > 10').run()
+      indexDb.sqlite.unsafeMode(false)
+
+      const onCorrupt = vi.fn()
+      const projector = createSearchProjector(() => vaultDir, onCorrupt)
+
+      await expect(projector.project(noteEvent)).rejects.toThrow()
+      expect(onCorrupt).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not ask for a repair on a failure that is not corruption', async () => {
+      const onCorrupt = vi.fn()
+      getIndexDatabase.mockImplementation(() => {
+        throw new Error('boom')
+      })
+      const projector = createSearchProjector(() => vaultDir, onCorrupt)
+
+      await expect(projector.project(noteEvent)).rejects.toThrow('boom')
+      expect(onCorrupt).not.toHaveBeenCalled()
+    })
+
+    it('drops a note event that drains after the index database closed (#3413)', async () => {
+      isIndexDatabaseInitialized.mockReturnValue(false)
+      getIndexDatabase.mockImplementation(() => {
+        throw new Error('Index database not initialized')
+      })
+      const projector = createSearchProjector(() => vaultDir)
+
+      await expect(projector.project(noteEvent)).resolves.toBeUndefined()
+    })
   })
 
   it('projecting the same note, task, and inbox item twice leaves one row each', async () => {

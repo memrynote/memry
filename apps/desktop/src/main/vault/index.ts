@@ -772,7 +772,10 @@ async function openVault(vaultPath: string): Promise<void> {
 
   startProjectionRuntime([
     createNoteDerivedStateProjector(() => vaultPath),
-    createSearchProjector(() => vaultPath),
+    createSearchProjector(
+      () => vaultPath,
+      () => void repairCorruptFtsIndexes(vaultPath)
+    ),
     createEmbeddingProjector(
       () => vaultPath,
       () => currentStatus.isIndexing

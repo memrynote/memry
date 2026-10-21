@@ -101,6 +101,7 @@ describe('unlinked mentions (#3320)', () => {
     // Inject test database - spyOn ensures type compatibility
     vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db as unknown as DataDb)
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(testDb.db)
+    vi.spyOn(database, 'isIndexDatabaseInitialized').mockReturnValue(true)
 
     mentions = await import('./unlinked-mentions')
     startProjectionRuntime([

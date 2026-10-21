@@ -2,7 +2,13 @@ import fs from 'fs/promises'
 import path from 'path'
 import { sql } from 'drizzle-orm'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
-import { getDatabase, getIndexDatabase, type IndexDb } from '../../database'
+import {
+  getDatabase,
+  getIndexDatabase,
+  isIndexDatabaseInitialized,
+  type IndexDb
+} from '../../database'
+import { isSqliteCorruptError } from '../../database/sqlite-errors'
 import {
   dedupeFtsNotes,
   deleteFtsNote,
@@ -526,7 +532,87 @@ function reconcileInbox(signal?: AbortSignal): number {
   return rows.length
 }
 
-export function createSearchProjector(getVaultPath: () => string | null): ProjectionProjector {
+/**
+ * A note event can outlive the vault that published it: it drains after
+ * closeVault() has dropped the index database, and getIndexDatabase() throws
+ * 'Index database not initialized'. The index is derived and the next open
+ * reconciles it, so such an event is dropped.
+ */
+async function projectEvent(
+  event: ProjectionEvent,
+  getVaultPath: () => string | null
+): Promise<void> {
+  if (!isIndexDatabaseInitialized() && isIndexEvent(event)) {
+    return
+  }
+
+  switch (event.type) {
+    case 'note.upserted': {
+      if (event.note.kind !== 'markdown') {
+        syncExtractedTextEntry(getIndexDatabase(), event.note.noteId, event.note.title)
+        return
+      }
+
+      // Body not read yet (tier 0 of ingest). The idle backfill republishes
+      // the note with its body and that is what reaches the index; writing
+      // an empty row here would put an FTS write back on the add path.
+      if (event.note.parsedContent === null) {
+        return
+      }
+
+      const indexDb = getIndexDatabase()
+      insertFtsNote(
+        indexDb,
+        event.note.noteId,
+        event.note.title,
+        withAttachmentText(indexDb, event.note.noteId, event.note.parsedContent),
+        event.note.tags
+      )
+      return
+    }
+    case 'note.deleted':
+      deleteFtsNote(getIndexDatabase(), event.noteId)
+      return
+    case 'note.text-extracted': {
+      const indexDb = getIndexDatabase()
+      const note = getNoteCacheById(indexDb, event.noteId)
+      if (!note) return
+      if (note.fileType === 'markdown') {
+        await reindexMarkdownNote(indexDb, getVaultPath(), note)
+      } else {
+        syncExtractedTextEntry(indexDb, note.id, note.title)
+      }
+      return
+    }
+    case 'task.upserted':
+      upsertTask(event.taskId)
+      return
+    case 'task.deleted':
+      deleteFtsTask(getDatabase(), event.taskId)
+      return
+    case 'inbox.upserted':
+      upsertInboxItem(event.itemId)
+      return
+    case 'inbox.deleted':
+      deleteFtsInboxItem(getDatabase(), event.itemId)
+      return
+    default:
+      return
+  }
+}
+
+function isIndexEvent(event: ProjectionEvent): boolean {
+  return (
+    event.type === 'note.upserted' ||
+    event.type === 'note.deleted' ||
+    event.type === 'note.text-extracted'
+  )
+}
+
+export function createSearchProjector(
+  getVaultPath: () => string | null,
+  onIndexCorrupt?: () => void
+): ProjectionProjector {
   return {
     name: 'search',
 
@@ -543,58 +629,13 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
     },
 
     async project(event: ProjectionEvent): Promise<void> {
-      switch (event.type) {
-        case 'note.upserted': {
-          if (event.note.kind !== 'markdown') {
-            syncExtractedTextEntry(getIndexDatabase(), event.note.noteId, event.note.title)
-            return
-          }
-
-          // Body not read yet (tier 0 of ingest). The idle backfill republishes
-          // the note with its body and that is what reaches the index; writing
-          // an empty row here would put an FTS write back on the add path.
-          if (event.note.parsedContent === null) {
-            return
-          }
-
-          const indexDb = getIndexDatabase()
-          insertFtsNote(
-            indexDb,
-            event.note.noteId,
-            event.note.title,
-            withAttachmentText(indexDb, event.note.noteId, event.note.parsedContent),
-            event.note.tags
-          )
-          return
-        }
-        case 'note.deleted':
-          deleteFtsNote(getIndexDatabase(), event.noteId)
-          return
-        case 'note.text-extracted': {
-          const indexDb = getIndexDatabase()
-          const note = getNoteCacheById(indexDb, event.noteId)
-          if (!note) return
-          if (note.fileType === 'markdown') {
-            await reindexMarkdownNote(indexDb, getVaultPath(), note)
-          } else {
-            syncExtractedTextEntry(indexDb, note.id, note.title)
-          }
-          return
-        }
-        case 'task.upserted':
-          upsertTask(event.taskId)
-          return
-        case 'task.deleted':
-          deleteFtsTask(getDatabase(), event.taskId)
-          return
-        case 'inbox.upserted':
-          upsertInboxItem(event.itemId)
-          return
-        case 'inbox.deleted':
-          deleteFtsInboxItem(getDatabase(), event.itemId)
-          return
-        default:
-          return
+      try {
+        await projectEvent(event, getVaultPath)
+      } catch (error) {
+        // A write into a damaged fts5 table only ever failed here, where the
+        // runtime logs it, so the index stayed broken until the next vault open.
+        if (isSqliteCorruptError(error)) onIndexCorrupt?.()
+        throw error
       }
     },
 
