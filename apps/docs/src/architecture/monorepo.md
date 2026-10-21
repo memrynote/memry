@@ -105,6 +105,13 @@ pnpm db:push            # apply migrations
 pnpm db:studio          # Drizzle Studio GUI
 ```
 
+`pnpm dev`, `pnpm staging`, and the desktop `dev:*` scripts start electron-vite through
+`apps/desktop/scripts/dev.mjs`. The main-process build takes most of a dev start, so each dev
+build records the files that the main and preload builds read and wrote, with their sizes and
+modification times. When none of them has changed and the flags are the same, the next start
+passes `--rendererOnly` and electron-vite reuses that build. A restart after a renderer-only
+change then skips the main build. `MEMRY_DEV_REBUILD=1 pnpm dev` builds main and preload anyway.
+
 The `db:*` commands above manage the desktop's local Drizzle databases. The
 `apps/sync-server` Cloudflare D1 database is separate: its schema lives in
 `apps/sync-server/migrations/` as wrangler D1 migrations. The staging and
