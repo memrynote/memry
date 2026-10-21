@@ -415,7 +415,12 @@ vi.mock('./block-drop-indicator', () => ({
 }))
 
 vi.mock('./callout-block', () => ({
-  getCalloutSlashMenuItem: vi.fn(() => ({ title: 'Callout', aliases: ['quote'] }))
+  getCalloutSlashMenuItem: vi.fn(() => ({ title: 'Callout', aliases: ['quote'] })),
+  getCustomCalloutSlashMenuItems: vi.fn(() => [])
+}))
+
+vi.mock('./callout-types-store', () => ({
+  useCalloutTypes: vi.fn(() => [])
 }))
 
 vi.mock('./task-block', () => ({

@@ -5,6 +5,7 @@ import {
   readCalloutRun,
   readStructuredQuoteRun,
   type CalloutRun,
+  type CalloutTypeDefinition,
   type CalloutTypeValue,
   type QuoteRun
 } from '@memry/editor-schema/blocks'
@@ -37,6 +38,8 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { calloutIcon } from './callout-icons'
+import { getCalloutTypes, useCalloutTypes } from './callout-types-store'
 
 interface CalloutStyle {
   icon: AppIcon
@@ -151,7 +154,7 @@ interface CalloutEditor {
   getTextCursorPosition: () => { block: CalloutBlock }
   updateBlock: (
     block: CalloutBlock,
-    update: { type: 'callout'; props: { type?: CalloutTypeValue; fold?: 'closed' | 'open' } }
+    update: { type: 'callout'; props: { type?: string; fold?: 'closed' | 'open' } }
   ) => void
 }
 
@@ -161,16 +164,37 @@ interface CalloutBlockRendererProps {
   contentRef: React.Ref<HTMLDivElement>
 }
 
-// A type from a newer build renders as info and keeps its value.
-function getCalloutStyle(type: string): CalloutStyle {
-  return CALLOUT_STYLES[type as CalloutTypeValue] ?? CALLOUT_STYLES.info
+interface ResolvedCalloutStyle {
+  icon: AppIcon
+  label: string
+  /** Built-in types colour through classes; a custom type through its own hex. */
+  classes?: Pick<CalloutStyle, 'color' | 'bg' | 'darkBg' | 'border'>
+  accent?: string
+}
+
+function isBuiltIn(type: string): type is CalloutTypeValue {
+  return (CALLOUT_TYPE_VALUES as readonly string[]).includes(type)
+}
+
+// A type with no definition (a newer build's, or one deleted here) renders as
+// info and keeps its value.
+function resolveCalloutStyle(
+  type: string,
+  custom: readonly CalloutTypeDefinition[],
+  builtInLabels: Record<CalloutTypeValue, string>
+): ResolvedCalloutStyle {
+  if (isBuiltIn(type)) return { ...CALLOUT_STYLES[type], label: builtInLabels[type] }
+  const definition = custom.find((candidate) => candidate.name === type)
+  if (definition) {
+    return { icon: calloutIcon(definition.icon), label: definition.label, accent: definition.color }
+  }
+  return { ...CALLOUT_STYLES.info, label: type }
 }
 
 function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendererProps) {
   const { t } = useT('notes')
   const calloutEditor = editor as CalloutEditor
-  const calloutType = getCalloutStyle(block.props.type)
-  const Icon = calloutType.icon
+  const customTypes = useCalloutTypes()
   const labels: Record<CalloutTypeValue, string> = {
     info: t('editor.callout.info'),
     warning: t('editor.callout.warning'),
@@ -186,6 +210,8 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
     quote: t('editor.callout.quote'),
     bug: t('editor.callout.bug')
   }
+  const calloutType = resolveCalloutStyle(block.props.type, customTypes, labels)
+  const Icon = calloutType.icon
 
   const closed = block.props.fold === 'closed'
   // Toggling rewrites the `> [!type]-` / `+` marker in the note (#3206).
@@ -199,10 +225,18 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
     <div
       className={cn(
         'flex items-center rounded-md border-s-4 px-3 py-2',
-        calloutType.bg,
-        calloutType.darkBg,
-        calloutType.border
+        calloutType.classes?.bg,
+        calloutType.classes?.darkBg,
+        calloutType.classes?.border
       )}
+      style={
+        calloutType.accent
+          ? {
+              borderInlineStartColor: calloutType.accent,
+              backgroundColor: `color-mix(in srgb, ${calloutType.accent} 12%, transparent)`
+            }
+          : undefined
+      }
       data-callout-type={block.props.type}
       data-callout-fold={block.props.fold ?? 'none'}
     >
@@ -212,8 +246,9 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
             type="button"
             className={cn(
               'me-3 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded',
-              calloutType.color
+              calloutType.classes?.color
             )}
+            style={calloutType.accent ? { color: calloutType.accent } : undefined}
             contentEditable={false}
             aria-label={t('editor.callout.changeType')}
           >
@@ -240,11 +275,29 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
               </DropdownMenuItem>
             )
           })}
+          {customTypes.length > 0 && <DropdownMenuSeparator />}
+          {customTypes.map((definition) => {
+            const ItemIcon = calloutIcon(definition.icon)
+            return (
+              <DropdownMenuItem
+                key={definition.name}
+                onClick={() =>
+                  calloutEditor.updateBlock(block, {
+                    type: 'callout',
+                    props: { type: definition.name }
+                  })
+                }
+              >
+                <ItemIcon className="h-4 w-4" style={{ color: definition.color }} />
+                {definition.label}
+              </DropdownMenuItem>
+            )
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
       {closed && (
         <span className="min-w-0 flex-1 font-medium" contentEditable={false}>
-          {labels[block.props.type as CalloutTypeValue] ?? block.props.type}
+          {calloutType.label}
         </span>
       )}
       <div className={cn('inline-content min-w-0 flex-1', closed && 'hidden')} ref={contentRef} />
@@ -298,6 +351,27 @@ export function getCalloutSlashMenuItem(
     group: labels.group,
     subtext: labels.subtext
   }
+}
+
+/** One slash row per custom type, read at call time so a new type shows without a reload. */
+export function getCustomCalloutSlashMenuItems(
+  editor: unknown,
+  labels: { group: string; subtext: string }
+) {
+  return getCalloutTypes().map((definition) => ({
+    id: `callout:${definition.name}`,
+    title: definition.label,
+    onItemClick: () => {
+      const calloutEditor = editor as CalloutEditor
+      calloutEditor.updateBlock(calloutEditor.getTextCursorPosition().block, {
+        type: 'callout',
+        props: { type: definition.name }
+      })
+    },
+    aliases: ['callout', definition.name],
+    group: labels.group,
+    subtext: labels.subtext
+  }))
 }
 
 // ============================================================================

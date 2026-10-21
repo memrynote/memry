@@ -55,6 +55,19 @@ describe('SyncedSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts custom callout types per name, a deleted one as null, and ignores shape in entries', () => {
+    const result = SyncedSettingsSchema.safeParse({
+      editor: {
+        calloutTypes: {
+          mytype: { label: 'My type', color: '#ff8800', icon: 'star' },
+          gone: null,
+          fromNewerBuild: { shape: 'unknown' }
+        }
+      }
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('rejects invalid editor.width', () => {
     const result = SyncedSettingsSchema.safeParse({
       editor: { width: 'huge' }

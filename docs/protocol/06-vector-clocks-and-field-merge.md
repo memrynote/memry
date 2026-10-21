@@ -589,6 +589,11 @@ in the schema comments:
   Collections tree, and absent means today's tree (folders first, files shown)
   (`packages/contracts/src/settings-sync.ts:107-112`).
 
+`editor.calloutTypes.<name>` is clocked per entry like the weekday templates:
+each user-defined callout type (§12.6.2 of chapter 12) is one field, a deleted
+type is `null`, and an entry that fails validation is ignored by readers
+(`packages/contracts/src/settings-sync.ts`).
+
 By contrast `journal.weekdayTemplates.<day>` carries a clock per day, so two
 devices editing different days both keep their edit
 (`packages/contracts/src/settings-sync.ts:78-87`).

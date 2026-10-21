@@ -12,7 +12,7 @@
  */
 
 import { defaultProps } from '@blocknote/core'
-import { CALLOUT_FOLD_VALUES, CALLOUT_TYPE_VALUES } from './markdown'
+import { CALLOUT_FOLD_VALUES } from './markdown'
 
 export const taskBlockConfig = {
   type: 'taskBlock' as const,
@@ -30,10 +30,9 @@ export const calloutConfig = {
   propSchema: {
     textAlignment: defaultProps.textAlignment,
     textColor: defaultProps.textColor,
-    type: {
-      default: 'info' as const,
-      values: CALLOUT_TYPE_VALUES
-    },
+    // A free string: the built-in types plus the user's own (#3207). Builds
+    // before custom types render an unknown one as `info` and keep its value.
+    type: { default: 'info' as string },
     // The `> [!type]-` / `+` marker. Builds before #3206 drop the prop and
     // write the callout back without the marker.
     fold: {

@@ -445,6 +445,18 @@ name, and its body is hidden. The fold is saved in the note with Obsidian's mark
 rewritten, and it gets one the first time you fold it. An older Memry version drops the
 marker when it saves the note.
 
+### Your own callout types
+
+Add types in **Settings > Editor > Callout types**: a name (the text in `> [!name]`), a
+display name, a colour and an icon. They appear in the callout's icon menu and in the `/`
+menu, and they sync to your other devices. Delete one and its callouts show as info
+callouts until you pick another type.
+
+A note keeps the plain `> [!name]` marker, so nothing about the type is stored in the note.
+Where the name is not defined (another app, an older Memry version, or a device that has
+not synced yet) the callout opens as a normal quote and keeps its bytes. Names use lowercase
+letters, digits, `-` and `_`, and cannot reuse a built-in name.
+
 On the iPhone app, types that share a colour are told apart by their icon. An older Memry
 version shows the newer types as info callouts and keeps their type.
 

@@ -90,6 +90,7 @@ import { fileTextNoteChanged, startFileTextExtraction, stopFileTextExtraction } 
 import { PropertyDefinitionsService } from './property-definitions'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
+import { readCalloutTypes } from '../settings/callout-types-store'
 import { readPreferences } from './vault-preferences'
 import { readVaultIcon } from './vault-icon'
 import { createPhaseTimer } from '../lib/phase-timer'
@@ -726,6 +727,10 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Migrate settings: config.json ↔ SQLite cache
   migrateSettingsToConfig(dataDb, vaultPath)
+
+  // The markdown parser decides what is a callout from these, so they load
+  // before any note is opened or seeded (#3207).
+  readCalloutTypes(dataDb)
 
   // One-time: clear a collateral `spatialCanvas: false` left by pre-M7 writes.
   promoteSpatialCanvas(dataDb)

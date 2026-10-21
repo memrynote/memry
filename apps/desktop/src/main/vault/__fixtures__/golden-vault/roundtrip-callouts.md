@@ -28,3 +28,9 @@ title: Callout round-trip corpus
 
 > [!tip]+
 > Starts open
+
+> [!mytype]
+> A custom type nobody defined stays a quote
+
+> [!mytype]-
+> With a fold marker too

@@ -17,8 +17,8 @@
  */
 
 import { serializeLinkMentionToken } from './inline/link-mention'
+import { CALLOUT_TYPE_VALUES } from './blocks/callout-types'
 import {
-  CALLOUT_TYPE_VALUES,
   serializeCalloutBlock,
   serializeMathBlock,
   serializeToggleBlock,

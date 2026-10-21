@@ -316,6 +316,10 @@ vi.mock('@/components/settings/google-calendar-connection', () => ({
   GoogleCalendarConnection: () => null
 }))
 
+vi.mock('@/components/note/content-area/callout-types-store', () => ({
+  useCalloutTypes: () => []
+}))
+
 vi.mock('@/hooks/use-editor-settings', () => ({
   useEditorSettings: () => mocks.editorSettings
 }))

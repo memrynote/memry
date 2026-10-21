@@ -17,6 +17,8 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { useBlockNoteEditor, useExtensionState, type SuggestionMenuProps } from '@blocknote/react'
 import { useT } from '@memry/i18n/renderer'
+import { calloutIcon } from './callout-icons'
+import { getCalloutTypes } from './callout-types-store'
 import {
   Bell,
   Calendar,
@@ -118,7 +120,13 @@ function RowIcon({ id }: { id: string }): ReactNode {
   if (glyph) {
     return <span className="text-[11px] font-semibold leading-none">{glyph}</span>
   }
-  const Icon = ICONS[id] ?? (id.startsWith('template:') ? LayoutTemplate : File)
+  const Icon =
+    ICONS[id] ??
+    (id.startsWith('callout:')
+      ? calloutIcon(getCalloutTypes().find((d) => `callout:${d.name}` === id)?.icon ?? '')
+      : id.startsWith('template:')
+        ? LayoutTemplate
+        : File)
   return <Icon className={cn('size-4', id === 'ai' && 'text-tint')} aria-hidden />
 }
 
