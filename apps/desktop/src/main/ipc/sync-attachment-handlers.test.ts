@@ -1,3 +1,4 @@
+import { EmptyAttachmentError } from '../sync/attachment-errors'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
@@ -801,6 +802,30 @@ describe('sync-attachment-handlers', () => {
 
     await vi.waitFor(() =>
       expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/sources/deleted.txt')
+    )
+    expect(markUploadFailed).not.toHaveBeenCalled()
+    expect(
+      attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+    ).toEqual([])
+  })
+
+  // #3414: a zero-byte file fails identically on every retry.
+  it('drops the job of an empty saved file without reporting a failure (#3414)', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    attachmentMocks.queue.enqueue.mockRejectedValueOnce(
+      new EmptyAttachmentError('Cannot upload empty file')
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/empty.bin' })
+
+    await vi.waitFor(() =>
+      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/attachments/empty.bin')
     )
     expect(markUploadFailed).not.toHaveBeenCalled()
     expect(
