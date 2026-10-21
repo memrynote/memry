@@ -89,6 +89,7 @@ import { useStickyOpenTarget } from '@/hooks/use-sticky-open-target'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { VaultSwitchingScreen } from '@/components/vault-switching-screen'
+import { useFirstRunWizardActive } from '@/components/onboarding-wizard/first-run-store'
 import { VaultSwitchContentCover } from '@/components/vault-switch-content-cover'
 import {
   getVaultSwitchState,
@@ -142,7 +143,7 @@ const LazySettingsView = lazy(async () => ({
   default: (await import('@/components/settings-view')).SettingsView
 }))
 const LazyVaultOnboarding = lazy(async () => ({
-  default: (await import('@/components/vault-onboarding')).VaultOnboarding
+  default: (await import('@/components/onboarding-wizard/first-run-gate')).FirstRunGate
 }))
 
 /** Upper bound on waiting for an idle slot before the palettes mount anyway. */
@@ -902,6 +903,8 @@ function App(): React.JSX.Element {
   const isVaultOpen = vaultStatus?.isOpen ?? false
   const vaultPath = vaultStatus?.path ?? null
   const { pending: pendingVaultSwitch } = useVaultSwitchState()
+  // The wizard writes its choices into the vault it opens, so it outlives the open.
+  const firstRunActive = useFirstRunWizardActive()
 
   const prevVaultPathRef = useRef<string | null>(null)
 
@@ -932,7 +935,7 @@ function App(): React.JSX.Element {
 
   // Mid-switch the old vault is closed and the next is not open yet. That gap
   // is not "no vault": keep the shell instead of flashing onboarding.
-  if (!isVaultOpen && pendingVaultSwitch) {
+  if (!isVaultOpen && pendingVaultSwitch && !firstRunActive) {
     return (
       <ThemeProvider
         attribute="class"
@@ -946,7 +949,7 @@ function App(): React.JSX.Element {
     )
   }
 
-  if (!isVaultOpen) {
+  if (!isVaultOpen || firstRunActive) {
     return (
       <ThemeProvider
         attribute="class"

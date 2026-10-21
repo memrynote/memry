@@ -16,7 +16,9 @@
  *   node scripts/agent-app.mjs stop
  *
  * Optional env for start: MEMRY_AGENT_VAULT_TEMPLATE=<vault dir> opens a copy of that
- * vault instead (tutorial recordings use this), and MEMRY_AGENT_SCALE=2 renders at 2x.
+ * vault instead (tutorial recordings use this), MEMRY_AGENT_FIRST_RUN=1 opens no vault
+ * so the first-run setup shows (new vaults default to the sandbox, not ~/Documents),
+ * and MEMRY_AGENT_SCALE=2 renders at 2x.
  */
 
 import { spawn, spawnSync } from 'node:child_process'
@@ -129,10 +131,11 @@ async function start() {
   fs.cpSync(VAULT_TEMPLATE, vaultPath, { recursive: true })
   const logDir = path.join(userDataDir, 'logs')
 
+  const firstRun = process.env.MEMRY_AGENT_FIRST_RUN === '1'
   const env = {
     ...process.env,
     NODE_ENV: 'test',
-    TEST_VAULT_PATH: vaultPath,
+    ...(firstRun ? {} : { TEST_VAULT_PATH: vaultPath }),
     MEMRY_TEST_LOG_DIR: logDir,
     MEMRY_DEVICE: deviceId
   }
@@ -161,6 +164,11 @@ async function start() {
 
   try {
     await waitForReady()
+    // First run: keep the setup's default notes folder inside the sandbox.
+    if (firstRun)
+      await evaluate(
+        `process.mainModule.require('electron').app.setPath('documents', ${JSON.stringify(vaultRoot)})`
+      )
   } catch (err) {
     await stop()
     throw err

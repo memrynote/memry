@@ -49,6 +49,7 @@
     "./linking-api": "./src/linking-api.ts",
     "./locale-api": "./src/locale-api.ts",
     "./ocr-languages-api": "./src/ocr-languages-api.ts",
+    "./onboarding-api": "./src/onboarding-api.ts",
     "./notes-api": "./src/notes-api.ts",
     "./plain-checklists": "./src/plain-checklists.ts",
     "./pack-format": "./src/pack-format.ts",

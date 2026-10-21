@@ -428,8 +428,8 @@ vi.mock('@/components/settings-view', () => ({
   SettingsView: () => <div data-testid="settings-view" />
 }))
 
-vi.mock('@/components/vault-onboarding', () => ({
-  VaultOnboarding: () => <div data-testid="vault-onboarding" />
+vi.mock('@/components/onboarding-wizard/first-run-gate', () => ({
+  FirstRunGate: () => <div data-testid="vault-onboarding" />
 }))
 
 describe('App', () => {

@@ -638,6 +638,12 @@ export const AccountChannels = {
   }
 } as const
 
+/** Plan preselection for the checkout page; without it the page uses its own default. */
+export interface StartCheckoutInput {
+  plan: 'plus' | 'pro' | 'believer'
+  cadence: 'monthly' | 'annual' | 'lifetime'
+}
+
 export type AccountInvokeChannel =
   (typeof AccountChannels.invoke)[keyof typeof AccountChannels.invoke]
 

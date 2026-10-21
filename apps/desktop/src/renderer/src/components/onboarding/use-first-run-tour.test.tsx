@@ -32,7 +32,8 @@ vi.mock('../onboarding/tour.css', () => ({}))
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (k: string) => k }) }))
 vi.mock('@/contexts/day-panel-context', () => ({ useDayPanel: () => ({ open: vi.fn() }) }))
 
-import { useFirstRunTour, TOUR_KEY } from './use-first-run-tour'
+import { useFirstRunTour } from './use-first-run-tour'
+import { TOUR_KEY } from './onboarding-record'
 import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
 
 /**

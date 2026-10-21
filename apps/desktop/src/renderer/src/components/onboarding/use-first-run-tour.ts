@@ -6,19 +6,9 @@ import { useT } from '@memry/i18n/renderer'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { createLogger } from '@/lib/logger'
 import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
+import { recordOnboarded, TOUR_KEY } from './onboarding-record'
 
 const log = createLogger('FirstRunTour')
-
-/**
- * The renderer's record of the tour. Older app versions read only this one, so it
- * is still written and a downgrade does not show the tour again.
- */
-export const TOUR_KEY = 'memry:onboarding:tour:v1'
-
-async function recordOnboarded(): Promise<void> {
-  localStorage.setItem(TOUR_KEY, '1')
-  await window.api.settings.setGeneralSettings({ onboardingCompleted: true })
-}
 
 /**
  * Renderer localStorage alone is not proof that someone is new: an update can

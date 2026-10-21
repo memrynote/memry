@@ -34,7 +34,12 @@ const STEP_MAP: Record<WizardStep, number> = {
   'linking-vault-picker': 2
 }
 
-export function SetupWizard(): React.JSX.Element {
+/** `showProgress` off when the host draws its own progress (the first-run wizard). */
+export function SetupWizard({
+  showProgress = true
+}: {
+  showProgress?: boolean
+}): React.JSX.Element {
   const { t } = useT('settings')
   const {
     state: {
@@ -237,7 +242,7 @@ export function SetupWizard(): React.JSX.Element {
 
   return (
     <div className="flex flex-col" ref={containerRef}>
-      <WizardProgress currentStep={currentStepIndex} />
+      {showProgress && <WizardProgress currentStep={currentStepIndex} />}
 
       {wizardStep === 'sign-in' && (
         <div className="wizard-step-enter space-y-6 text-center">

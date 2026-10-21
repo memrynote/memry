@@ -7,6 +7,8 @@ import {
 } from '@/components/account/CheckoutPanel'
 import { parseCheckoutToken, readCheckoutTokenClaims } from '@/lib/checkout-summary'
 import { useAuth } from '@/contexts/auth-context'
+import { parseCheckoutCadence, parseCheckoutPlan } from '@/lib/paddle-checkout'
+import { useSearchParams } from 'react-router'
 
 interface BillingStatus {
   plan: 'free' | 'plus' | 'pro' | 'believer'
@@ -16,6 +18,8 @@ interface BillingStatus {
 
 export function SyncSection() {
   const { api } = useAuth()
+  // Desktop onboarding passes the plan the user already picked there.
+  const [params] = useSearchParams()
   // Desktop opens /account/sync#token=<checkoutToken>; that token already
   // scopes the purchase to the account, so no web session (or mint) is needed.
   const [hashToken] = useState<string | null>(() =>
@@ -95,6 +99,8 @@ export function SyncSection() {
           current={current}
           onPreviewPlanChange={previewPlanChange}
           onApplyPlanChange={applyPlanChange}
+          initialPlan={parseCheckoutPlan(params.get('plan'))}
+          initialCadence={parseCheckoutCadence(params.get('cadence'))}
         />
       )}
     </div>

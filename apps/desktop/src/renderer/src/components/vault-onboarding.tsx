@@ -4,16 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Download, FolderOpen, HelpCircle, MoreHorizontal, Plus } from '@/lib/icons'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useT } from '@memry/i18n/renderer'
-import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
-import { type Locale } from '@memry/contracts/locale-api'
 import { TrafficLights } from '@/components/traffic-lights'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+import { LocaleSelect } from '@/components/onboarding/locale-select'
 import { cn } from '@/lib/utils'
 import { trackTelemetry } from '@/lib/telemetry'
 import { isMac } from '@/lib/shortcut-catalog'
@@ -51,15 +43,13 @@ const handleHelp = (): void => {
 }
 
 export function VaultOnboarding(): React.JSX.Element {
-  const { t, i18n } = useT('common')
+  const { t } = useT('common')
   const { selectVault, switchVault, isLoading, error } = useVault()
   const { vaults, currentVault } = useVaultList()
-  const [isChangingLocale, setIsChangingLocale] = useState(false)
   const [view, setView] = useState<OnboardingView>('home')
 
   const recentVaults = vaults.slice(0, 8)
   const showSidebar = recentVaults.length > 0
-  const activeLocale = getSupportedLocale(i18n.resolvedLanguage ?? i18n.language)
 
   useEffect(() => {
     void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'started' })
@@ -96,21 +86,6 @@ export function VaultOnboarding(): React.JSX.Element {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view, isLoading, handleOpenFolder])
-
-  const handleLocaleChange = useCallback(
-    async (locale: Locale): Promise<void> => {
-      setIsChangingLocale(true)
-      try {
-        await window.api.locale.set(locale)
-        await i18n.changeLanguage(locale)
-      } catch {
-        // Keep the picker usable if the preload bridge rejects the locale update.
-      } finally {
-        setIsChangingLocale(false)
-      }
-    },
-    [i18n]
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground antialiased font-sans">
@@ -154,19 +129,11 @@ export function VaultOnboarding(): React.JSX.Element {
             onOpenFolder={() => void handleOpenFolder()}
             onOpenFromSync={() => setView('sync')}
             onHelp={handleHelp}
-            activeLocale={activeLocale}
-            isChangingLocale={isChangingLocale}
-            onLocaleChange={(locale) => void handleLocaleChange(locale)}
           />
         )}
       </div>
     </div>
   )
-}
-
-function getSupportedLocale(language: string): Locale {
-  const locale = language as Locale
-  return SUPPORTED_LOCALES.includes(locale) ? locale : 'en'
 }
 
 interface RecentVault {
@@ -259,9 +226,6 @@ interface PickerPanelProps {
   onOpenFolder: () => void
   onOpenFromSync: () => void
   onHelp: () => void
-  activeLocale: Locale
-  isChangingLocale: boolean
-  onLocaleChange: (locale: Locale) => void
 }
 
 function PickerPanel({
@@ -271,10 +235,7 @@ function PickerPanel({
   onCreate,
   onOpenFolder,
   onOpenFromSync,
-  onHelp,
-  activeLocale,
-  isChangingLocale,
-  onLocaleChange
+  onHelp
 }: PickerPanelProps): React.JSX.Element {
   const mod = isMac ? '⌘' : 'Ctrl+'
   return (
@@ -315,13 +276,7 @@ function PickerPanel({
         </div>
       </div>
 
-      <PickerFooter
-        t={t}
-        onHelp={onHelp}
-        activeLocale={activeLocale}
-        isChangingLocale={isChangingLocale}
-        onLocaleChange={onLocaleChange}
-      />
+      <PickerFooter t={t} onHelp={onHelp} />
     </main>
   )
 }
@@ -344,19 +299,7 @@ function PickerHeader({ t }: { t: Translate }): React.JSX.Element {
   )
 }
 
-function PickerFooter({
-  t,
-  onHelp,
-  activeLocale,
-  isChangingLocale,
-  onLocaleChange
-}: {
-  t: Translate
-  onHelp: () => void
-  activeLocale: Locale
-  isChangingLocale: boolean
-  onLocaleChange: (locale: Locale) => void
-}): React.JSX.Element {
+function PickerFooter({ t, onHelp }: { t: Translate; onHelp: () => void }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between pt-3 pb-4 gap-4 border-t border-border px-8">
       <button
@@ -369,27 +312,7 @@ function PickerFooter({
           {t('phaseF.componentsVaultOnboarding.helpAndDocs')}
         </span>
       </button>
-      <Select
-        value={activeLocale}
-        onValueChange={(value) => onLocaleChange(value as Locale)}
-        disabled={isChangingLocale}
-      >
-        <SelectTrigger className="h-8 w-40 shrink-0 rounded-lg bg-surface text-xs leading-4 tracking-[0.005em] shadow-none">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent
-          side="top"
-          align="end"
-          avoidCollisions={false}
-          className="max-h-60 overflow-y-auto"
-        >
-          {SUPPORTED_LOCALES.map((locale) => (
-            <SelectItem key={locale} value={locale}>
-              {LOCALE_DISPLAY_NAMES[locale]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <LocaleSelect />
     </div>
   )
 }
