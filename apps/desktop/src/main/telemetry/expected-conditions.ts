@@ -66,7 +66,8 @@ export const isExpectedWarningError = (error: unknown): boolean =>
     error &&
     typeof error === 'object' &&
     (error as Record<symbol, unknown>)[EXPECTED_WARNING] === true
-  )
+  ) ||
+  isNetworkEnvironmentError(error)
 
 /**
  * Per-file conditions the machine imposes on a watch, not defects in the app.
@@ -112,4 +113,57 @@ export const isConnectionRefusedError = (error: unknown, depth = 0): boolean => 
     return true
   }
   return isConnectionRefusedError(candidate.cause, depth + 1)
+}
+
+// Failures the user's network imposes: offline, DNS failure, a dropped or
+// stalled connection, a proxy/AV that breaks TLS or HTTP/2. The app cannot fix
+// them and retries on its own. ECONNREFUSED is handled separately above and
+// HTTP status errors (403, 5xx) are deliberately not matched: they mean the
+// remote service or our request is wrong and must stay reportable.
+const NETWORK_ENVIRONMENT_CODES = new Set([
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENETUNREACH',
+  'EHOSTUNREACH',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'ERR_HTTP2_PROTOCOL_ERROR',
+  'ERR_NAME_NOT_RESOLVED',
+  'ERR_INTERNET_DISCONNECTED',
+  'ERR_NETWORK_CHANGED',
+  'ERR_CONNECTION_RESET',
+  'ERR_CONNECTION_CLOSED',
+  'ERR_CONNECTION_TIMED_OUT'
+])
+
+// Windows resolver text and rustls certificate text carry no errno code.
+const NETWORK_ENVIRONMENT_MESSAGE =
+  /no such host is known|invalid peer certificate: ?UnknownIssuer|ERR_HTTP2_PROTOCOL_ERROR|net::ERR_(NAME_NOT_RESOLVED|INTERNET_DISCONNECTED|NETWORK_CHANGED|CONNECTION_(RESET|CLOSED|TIMED_OUT))/i
+
+export const isNetworkEnvironmentError = (error: unknown, depth = 0): boolean => {
+  if (!error || typeof error !== 'object' || depth > MAX_CAUSE_DEPTH) return false
+
+  const candidate = error as {
+    code?: unknown
+    message?: unknown
+    cause?: unknown
+    errors?: unknown
+  }
+  if (typeof candidate.code === 'string' && NETWORK_ENVIRONMENT_CODES.has(candidate.code)) {
+    return true
+  }
+  if (
+    typeof candidate.message === 'string' &&
+    NETWORK_ENVIRONMENT_MESSAGE.test(candidate.message)
+  ) {
+    return true
+  }
+  if (
+    Array.isArray(candidate.errors) &&
+    candidate.errors.some((nested) => isNetworkEnvironmentError(nested, depth + 1))
+  ) {
+    return true
+  }
+  return isNetworkEnvironmentError(candidate.cause, depth + 1)
 }

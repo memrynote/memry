@@ -348,6 +348,39 @@ describe('telemetry diagnostics', () => {
       )
       expect(trackMainEventMock).not.toHaveBeenCalledWith('app_error_seen', expect.anything())
     })
+
+    it.each([
+      [
+        'undici ENOTFOUND',
+        Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } })
+      ],
+      ['ECONNRESET', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })],
+      [
+        'connect timeout',
+        Object.assign(new TypeError('fetch failed'), { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } })
+      ],
+      ['http2', Object.assign(new Error('x'), { code: 'ERR_HTTP2_PROTOCOL_ERROR' })],
+      ['windows dns', new Error('dial tcp: lookup x: No such host is known.')],
+      ['rustls cert', new Error('invalid peer certificate: UnknownIssuer')]
+    ])('reports %s as a warn log line, not an exception', (_name, error) => {
+      trackMainError('calendar', 'google_periodic_sync', error)
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({ action: 'warn' })
+      )
+      expect(trackMainEventMock).not.toHaveBeenCalledWith('app_error_seen', expect.anything())
+    })
+
+    it('still reports an HTTP 403 as an exception', () => {
+      trackMainError(
+        'calendar',
+        'google_periodic_sync',
+        new Error('Request failed with status 403')
+      )
+
+      expect(trackMainEventMock).toHaveBeenCalledWith('app_error_seen', expect.anything())
+    })
   })
 
   describe('trackMainUnhandledRejection', () => {
