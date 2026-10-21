@@ -22,9 +22,11 @@ import { DEFAULT_IMAGE_PREVIEW_WIDTH } from '@memry/editor-schema/blocks'
 import { useT } from '@memry/i18n/renderer'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { newFileDisplayProps } from './file-block-markers'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { File, FileCode, FileText, Image, Loader2, Music, Search, Upload, Video } from '@/lib/icons'
 
 /**
@@ -41,6 +43,8 @@ export interface InsertedAttachment {
   size: number
   mimeType: string
   type: 'image' | 'file'
+  /** How a PDF should show; the dialog sets it from its embed/link choice. */
+  display?: 'embed' | 'link'
 }
 
 /**
@@ -64,7 +68,8 @@ export function buildInsertedAttachmentBlock(result: InsertedAttachment) {
       url: result.url,
       name: result.name,
       size: result.size,
-      mimeType: result.mimeType
+      mimeType: result.mimeType,
+      ...newFileDisplayProps(result.mimeType, result.display)
     }
   }
 }
@@ -195,6 +200,8 @@ export interface AttachmentPickerDialogProps {
   noteId: string
   /** Narrows the vault list and the OS dialog's file filter. */
   kind: AttachmentKind
+  /** Settings default for the PDF embed/link choice. */
+  defaultPdfDisplay?: 'embed' | 'link'
   /** Called with the resolved block props once a file is chosen or uploaded. */
   onInsert: (result: InsertedAttachment) => void
 }
@@ -204,6 +211,7 @@ export function AttachmentPickerDialog({
   onOpenChange,
   noteId,
   kind,
+  defaultPdfDisplay = 'embed',
   onInsert
 }: AttachmentPickerDialogProps) {
   const { t } = useT('notes')
@@ -211,6 +219,7 @@ export function AttachmentPickerDialog({
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [display, setDisplay] = useState<'embed' | 'link'>(defaultPdfDisplay)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Reopening — even on the same note — flips `loading` back on during render
@@ -222,6 +231,7 @@ export function AttachmentPickerDialog({
     if (openKey !== null) {
       setLoading(true)
       setQuery('')
+      setDisplay(defaultPdfDisplay)
     }
   }
 
@@ -265,13 +275,13 @@ export function AttachmentPickerDialog({
           entry.ownerNoteId,
           entry.filename
         )
-        onInsert(result)
+        onInsert(display === 'link' ? { ...result, display } : result)
         onOpenChange(false)
       } catch (err) {
         toast.error(extractErrorMessage(err, t('editor.attachmentPicker.insertFailed')))
       }
     },
-    [noteId, onInsert, onOpenChange, t]
+    [noteId, display, onInsert, onOpenChange, t]
   )
 
   const upload = useCallback(
@@ -292,7 +302,8 @@ export function AttachmentPickerDialog({
           name: result.name ?? file.name,
           size: result.size ?? file.size,
           mimeType: result.mimeType ?? file.type,
-          type: result.type ?? 'file'
+          type: result.type ?? 'file',
+          ...(display === 'link' && { display })
         })
         onOpenChange(false)
       } catch (err) {
@@ -301,7 +312,7 @@ export function AttachmentPickerDialog({
         setUploading(false)
       }
     },
-    [noteId, onInsert, onOpenChange, t]
+    [noteId, display, onInsert, onOpenChange, t]
   )
 
   const title = t(`editor.attachmentPicker.title.${kind}`)
@@ -395,6 +406,31 @@ export function AttachmentPickerDialog({
               </p>
             )}
           </CommandList>
+
+          {kind === 'pdf' && (
+            <div
+              className="flex items-center gap-2 border-t px-3.5 py-2 text-xs text-muted-foreground"
+              data-testid="attachment-picker-display"
+            >
+              <span>{t('editor.attachmentPicker.display.label')}</span>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={display}
+                onValueChange={(value) => {
+                  if (value === 'embed' || value === 'link') setDisplay(value)
+                }}
+                aria-label={t('editor.attachmentPicker.display.label')}
+              >
+                <ToggleGroupItem value="embed" className="h-6 px-2 text-xs">
+                  {t('editor.attachmentPicker.display.embed')}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="link" className="h-6 px-2 text-xs">
+                  {t('editor.attachmentPicker.display.link')}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 border-t px-3.5 py-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">

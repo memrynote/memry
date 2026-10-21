@@ -5505,6 +5505,7 @@
         "toolbarMode": "floating",
         "spellCheck": false,
         "pdfAdaptToTheme": false,
+        "pdfDisplayMode": "embed",
         "convertChecklistsToTasks": true,
         "convertAgentChecklistsToTasks": false
       }
@@ -9356,6 +9357,7 @@
           "toolbarMode": "floating",
           "spellCheck": true,
           "pdfAdaptToTheme": false,
+          "pdfDisplayMode": "embed",
           "convertChecklistsToTasks": true,
           "convertAgentChecklistsToTasks": false
         }

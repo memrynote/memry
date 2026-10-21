@@ -980,7 +980,7 @@
     {
       "name": "file",
       "pins": "a file block carries its own name and size and needs no bytes to render a row",
-      "updateHex": "010bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030466696c652800f2da95eb06020375726c0177156174746163686d656e743a2f2f737065632e7064662800f2da95eb0602046e616d65017708737065632e7064662800f2da95eb06020473697a65017d002800f2da95eb0602086d696d65547970650177002800f2da95eb0602057769647468017d002800f2da95eb060206686569676874017d002800f2da95eb060205616c69676e0177046c6566742800f2da95eb060102696401770666696c652d3000",
+      "updateHex": "010cf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030466696c652800f2da95eb06020375726c0177156174746163686d656e743a2f2f737065632e7064662800f2da95eb0602046e616d65017708737065632e7064662800f2da95eb06020473697a65017d002800f2da95eb0602086d696d65547970650177002800f2da95eb0602057769647468017d002800f2da95eb060206686569676874017d002800f2da95eb060205616c69676e0177046c6566742800f2da95eb060207646973706c6179017705656d6265642800f2da95eb060102696401770666696c652d3000",
       "expectedBlocks": [
         {
           "id": "file-0",
@@ -990,6 +990,10 @@
             {
               "name": "align",
               "value": "left"
+            },
+            {
+              "name": "display",
+              "value": "embed"
             },
             {
               "name": "height",
@@ -1019,7 +1023,7 @@
           "inline": []
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"file-0\"\n2 element file align=\"left\" height=0 mimeType=\"\" name=\"spec.pdf\" size=0 url=\"attachment://spec.pdf\" width=0"
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"file-0\"\n2 element file align=\"left\" display=\"embed\" height=0 mimeType=\"\" name=\"spec.pdf\" size=0 url=\"attachment://spec.pdf\" width=0"
     },
     {
       "name": "bookmark",

@@ -16,6 +16,7 @@ const EditorPreferencesSchema = z.object({
   toolbarMode: z.enum(['floating', 'sticky']),
   spellCheck: z.boolean(),
   pdfAdaptToTheme: z.boolean(),
+  pdfDisplayMode: z.enum(['embed', 'link']),
   convertChecklistsToTasks: z.boolean(),
   convertAgentChecklistsToTasks: z.boolean()
 })
@@ -53,6 +54,7 @@ export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
   toolbarMode: EDITOR_SETTINGS_DEFAULTS.toolbarMode,
   spellCheck: EDITOR_SETTINGS_DEFAULTS.spellCheck,
   pdfAdaptToTheme: EDITOR_SETTINGS_DEFAULTS.pdfAdaptToTheme,
+  pdfDisplayMode: EDITOR_SETTINGS_DEFAULTS.pdfDisplayMode,
   convertChecklistsToTasks: EDITOR_SETTINGS_DEFAULTS.convertChecklistsToTasks,
   convertAgentChecklistsToTasks: EDITOR_SETTINGS_DEFAULTS.convertAgentChecklistsToTasks
 }

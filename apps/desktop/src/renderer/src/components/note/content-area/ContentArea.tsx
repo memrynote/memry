@@ -845,7 +845,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     noteIdRef,
     dropTarget,
     onDragReset: handleDrop,
-    fetchNotePath
+    fetchNotePath,
+    pdfDisplay: editorSettings.pdfDisplayMode
   })
 
   // Hook #6b: `/image`, paste and drop inside a table cell → inline image (#1640)
@@ -3049,6 +3050,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onOpenChange={(open) => !open && setAttachmentPicker(null)}
               noteId={noteId}
               kind={attachmentPicker.kind}
+              defaultPdfDisplay={editorSettings.pdfDisplayMode}
               onInsert={insertPickedAttachment}
             />
           )}

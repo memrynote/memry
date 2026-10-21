@@ -340,3 +340,41 @@ describe('AttachmentBlockContextMenu', () => {
     expect(await screen.findByText('Stored as k3f9x2-report.pdf')).toBeInTheDocument()
   })
 })
+
+describe('PDF display switch (#2517)', () => {
+  it('offers "Show as link" on an embedded PDF and reports the choice', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(
+      <AttachmentMenuButton url={URL} name="report.pdf" pdfDisplay={{ value: 'embed', onChange }} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Show as link' }))
+
+    expect(onChange).toHaveBeenCalledWith('link')
+  })
+
+  it('offers "Show embedded" on a link and reports the choice', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(
+      <AttachmentMenuButton url={URL} name="report.pdf" pdfDisplay={{ value: 'link', onChange }} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Show embedded' }))
+
+    expect(onChange).toHaveBeenCalledWith('embed')
+  })
+
+  it('offers no display switch for a block that is not a PDF', async () => {
+    const user = userEvent.setup()
+    renderWithProvider(<AttachmentMenuButton url={URL} name="report.pdf" />)
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await screen.findByRole('menuitem', { name: 'Reveal in Finder' })
+
+    expect(screen.queryByRole('menuitem', { name: /Show as link|Show embedded/ })).toBeNull()
+  })
+})

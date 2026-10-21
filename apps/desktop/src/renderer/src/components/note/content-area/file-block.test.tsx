@@ -712,3 +712,77 @@ describe('FileBlock rename (#1714)', () => {
     })
   })
 })
+
+describe('PDF display mode (#2517)', () => {
+  const pdfProps = {
+    url: '/vault/manual.pdf',
+    name: 'manual.pdf',
+    size: 2048,
+    mimeType: 'application/pdf'
+  }
+
+  it('renders a PDF with no display prop as the viewer, as older notes always did', () => {
+    const Render = (createFileBlock as any).render
+    render(<Render block={{ props: pdfProps }} />)
+
+    expect(screen.getAllByTestId('pdf-document').length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('pdf-link')).toBeNull()
+  })
+
+  it('renders a link-mode PDF as its file name with no viewer', () => {
+    const Render = (createFileBlock as any).render
+    render(<Render block={{ props: { ...pdfProps, display: 'link' } }} />)
+
+    expect(screen.getByTestId('pdf-link')).toHaveTextContent('manual.pdf')
+    expect(screen.queryByTestId('pdf-document')).toBeNull()
+  })
+
+  it('keeps display out of a non-PDF block', () => {
+    const Render = (createFileBlock as any).render
+    render(
+      <Render
+        block={{
+          props: { ...pdfProps, mimeType: 'text/plain', display: 'link' }
+        }}
+      />
+    )
+
+    expect(screen.queryByTestId('pdf-link')).toBeNull()
+  })
+
+  it('switches a PDF to link mode from the block menu by writing the display prop', async () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = { props: pdfProps }
+    const user = userEvent.setup()
+
+    render(<Render editor={{ updateBlock }} block={block} />)
+    fireEvent.click(screen.getAllByText('load pdf')[0])
+    await user.click(await screen.findByTestId('attachment-menu-button'))
+    await user.click(await screen.findByText('editor.attachmentMenu.showAsLink'))
+
+    expect(updateBlock).toHaveBeenCalledWith(block, {
+      props: expect.objectContaining({ display: 'link' })
+    })
+  })
+
+  it('switches a link back to the viewer from the block menu', async () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = { props: { ...pdfProps, display: 'link' } }
+    const user = userEvent.setup()
+
+    render(<Render editor={{ updateBlock }} block={block} />)
+    await user.click(screen.getByTestId('attachment-menu-button'))
+    await user.click(await screen.findByText('editor.attachmentMenu.showAsEmbed'))
+
+    expect(updateBlock).toHaveBeenCalledWith(block, {
+      props: expect.objectContaining({ display: 'embed' })
+    })
+  })
+
+  it('round-trips link mode through the marker', () => {
+    const marker = serializeFileBlock({ ...pdfProps, display: 'link' })
+    expect(parseFileBlockMarker(marker)).toEqual({ ...pdfProps, display: 'link' })
+  })
+})

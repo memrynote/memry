@@ -108,7 +108,8 @@ function fileDom(block: { props: Partial<FileBlockProps> }): { dom: HTMLElement 
     mimeType: block.props.mimeType ?? '',
     width: block.props.width ?? 0,
     height: block.props.height ?? 0,
-    align: block.props.align
+    align: block.props.align,
+    display: block.props.display
   }
   const dom = document.createElement('div')
   dom.appendChild(document.createComment(fileBlockCommentData(props)))

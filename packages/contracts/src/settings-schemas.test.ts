@@ -207,6 +207,16 @@ describe('EditorSettingsSchema', () => {
     }
   })
 
+  it('reads an absent or unknown pdfDisplayMode as embed (#2517)', () => {
+    const { pdfDisplayMode: _omitted, ...older } = EDITOR_SETTINGS_DEFAULTS
+    for (const value of [older, { ...older, pdfDisplayMode: 'carousel' }]) {
+      const result = EditorSettingsSchema.safeParse(value)
+      expect(result.success && result.data.pdfDisplayMode).toBe('embed')
+    }
+    const link = EditorSettingsSchema.safeParse({ ...older, pdfDisplayMode: 'link' })
+    expect(link.success && link.data.pdfDisplayMode).toBe('link')
+  })
+
   it('rejects invalid toolbarMode enum', () => {
     const result = EditorSettingsSchema.safeParse({
       ...EDITOR_SETTINGS_DEFAULTS,

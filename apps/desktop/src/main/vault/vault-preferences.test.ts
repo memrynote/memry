@@ -39,9 +39,19 @@ describe('editor checklist conversion preference', () => {
       toolbarMode: 'floating',
       spellCheck: true,
       pdfAdaptToTheme: false,
+      pdfDisplayMode: 'embed',
       convertChecklistsToTasks: true,
       convertAgentChecklistsToTasks: false
     })
+  })
+
+  it('#given the PDF display default chosen #when another editor pref changes #then it stays', () => {
+    vaultPath = createTempVault()
+    writePreferences(vaultPath, { editor: { pdfDisplayMode: 'link' } })
+
+    writePreferences(vaultPath, { editor: { width: 'full' } })
+
+    expect(readPreferences(vaultPath).editor.pdfDisplayMode).toBe('link')
   })
 
   it('#given conversion switched off #when another editor pref changes #then it stays off', () => {
@@ -167,6 +177,7 @@ describe('VaultPreferencesSchema', () => {
         width: 'full' as const,
         toolbarMode: 'sticky' as const,
         pdfAdaptToTheme: false,
+        pdfDisplayMode: 'link' as const,
         spellCheck: false,
         convertChecklistsToTasks: false,
         convertAgentChecklistsToTasks: true
@@ -186,6 +197,7 @@ describe('VaultPreferencesSchema', () => {
           toolbarMode: 'floating' as const,
           spellCheck: false,
           pdfAdaptToTheme: false,
+          pdfDisplayMode: 'embed' as const,
           convertChecklistsToTasks: true,
           convertAgentChecklistsToTasks: false
         }

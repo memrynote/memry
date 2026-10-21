@@ -9298,6 +9298,7 @@ Reply:
   "toolbarMode": "floating",
   "spellCheck": false,
   "pdfAdaptToTheme": false,
+  "pdfDisplayMode": "embed",
   "convertChecklistsToTasks": true,
   "convertAgentChecklistsToTasks": false
 }
@@ -17817,6 +17818,7 @@ Change editor settings; any subset of them.
 | `settings.toolbarMode`                   | `"floating" \| "sticky"` | no       | `"floating"`, `"sticky"` |
 | `settings.spellCheck`                    | `boolean`                | no       |                          |
 | `settings.pdfAdaptToTheme`               | `boolean`                | no       |                          |
+| `settings.pdfDisplayMode`                | `"embed" \| "link"`      | no       | `"embed"`, `"link"`      |
 | `settings.convertChecklistsToTasks`      | `boolean`                | no       |                          |
 | `settings.convertAgentChecklistsToTasks` | `boolean`                | no       |                          |
 
@@ -17846,6 +17848,7 @@ Reply:
     "toolbarMode": "floating",
     "spellCheck": true,
     "pdfAdaptToTheme": false,
+    "pdfDisplayMode": "embed",
     "convertChecklistsToTasks": true,
     "convertAgentChecklistsToTasks": false
   }

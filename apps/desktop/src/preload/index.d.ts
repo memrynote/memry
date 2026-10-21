@@ -1440,6 +1440,7 @@ export interface EditorSettingsDTO {
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
   pdfAdaptToTheme: boolean
+  pdfDisplayMode: 'embed' | 'link'
   convertChecklistsToTasks: boolean
   convertAgentChecklistsToTasks: boolean
 }

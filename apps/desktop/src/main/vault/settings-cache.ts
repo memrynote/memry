@@ -103,6 +103,7 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (editor.pdfAdaptToTheme !== undefined) {
         editorSeed.pdfAdaptToTheme = editor.pdfAdaptToTheme
       }
+      if (editor.pdfDisplayMode !== undefined) editorSeed.pdfDisplayMode = editor.pdfDisplayMode
       if (editor.convertChecklistsToTasks !== undefined) {
         editorSeed.convertChecklistsToTasks = editor.convertChecklistsToTasks
       }
@@ -153,6 +154,7 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     toolbarMode: prefs.editor.toolbarMode,
     spellCheck: prefs.editor.spellCheck,
     pdfAdaptToTheme: prefs.editor.pdfAdaptToTheme,
+    pdfDisplayMode: prefs.editor.pdfDisplayMode,
     convertChecklistsToTasks: prefs.editor.convertChecklistsToTasks,
     convertAgentChecklistsToTasks: prefs.editor.convertAgentChecklistsToTasks
   }

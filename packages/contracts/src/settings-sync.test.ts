@@ -126,6 +126,15 @@ describe('SyncedSettingsSchema', () => {
     ).toEqual({ convertAgentChecklistsToTasks: true })
   })
 
+  it('keeps editor.pdfDisplayMode and reads a payload without it', () => {
+    expect(SyncedSettingsSchema.parse({ editor: { pdfDisplayMode: 'link' } }).editor).toEqual({
+      pdfDisplayMode: 'link'
+    })
+    expect(SyncedSettingsSchema.parse({ editor: { width: 'full' } }).editor).toEqual({
+      width: 'full'
+    })
+  })
+
   it('accepts a notes group', () => {
     const result = SyncedSettingsSchema.safeParse({
       notes: {

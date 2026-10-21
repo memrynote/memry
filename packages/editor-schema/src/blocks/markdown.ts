@@ -358,6 +358,12 @@ export interface FileBlockProps {
    * omitted from the marker so markers that were never aligned stay byte-identical.
    */
   align?: 'left' | 'center' | 'right'
+  /**
+   * `'link'` shows a PDF as its file name instead of the inline viewer.
+   * `'embed'` is the default and is omitted from the marker, so markers that
+   * never chose a mode (every marker an older build wrote) stay byte-identical.
+   */
+  display?: 'embed' | 'link'
 }
 
 /**
@@ -416,6 +422,9 @@ export function fileBlockCommentData(props: FileBlockProps): string {
   if (props.align && props.align !== 'left') {
     payload.align = props.align
   }
+  if (props.display === 'link') {
+    payload.display = 'link'
+  }
   return ` file:${escapeCommentTerminator(JSON.stringify(payload))} `
 }
 
@@ -430,7 +439,12 @@ export function parseFileBlockMarker(marker: string): FileBlockProps | null {
   const match = marker.match(/^<!-- file:(\{[^}]+\}) -->$/)
   if (!match) return null
   try {
-    return JSON.parse(match[1])
+    const props: FileBlockProps = JSON.parse(match[1])
+    // The prop's only non-default value is `link`. Anything else a hand-edited
+    // or newer file carries reads as the default viewer, never as an
+    // out-of-range value the block's propSchema would reject.
+    if (props.display !== 'link') delete props.display
+    return props
   } catch {
     return null
   }

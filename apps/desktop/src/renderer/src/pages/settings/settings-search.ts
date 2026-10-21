@@ -92,6 +92,9 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     ['editor.v2.toolbarMode']
   ]),
   ...group('editor', 'editor.groups.spelling', [['editor.v2.spellCheck']]),
+  ...group('editor', 'editor.groups.attachments', [
+    ['editor.v2.pdfDisplayMode', ['editor.pdfDisplayMode.description']]
+  ]),
   ...group('editor', 'editor.groups.checklists', [
     ['editor.v2.convertChecklists', ['editor.convertChecklists.description']],
     ['editor.v2.convertAgentChecklists', ['editor.convertAgentChecklists.description']]

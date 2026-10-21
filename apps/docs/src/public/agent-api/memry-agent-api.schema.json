@@ -10774,6 +10774,7 @@
           "toolbarMode": "floating",
           "spellCheck": false,
           "pdfAdaptToTheme": false,
+          "pdfDisplayMode": "embed",
           "convertChecklistsToTasks": true,
           "convertAgentChecklistsToTasks": false
         }
@@ -22724,6 +22725,10 @@
             "pdfAdaptToTheme": {
               "type": "boolean"
             },
+            "pdfDisplayMode": {
+              "type": "string",
+              "enum": ["embed", "link"]
+            },
             "convertChecklistsToTasks": {
               "type": "boolean"
             },
@@ -22760,6 +22765,7 @@
             "toolbarMode": "floating",
             "spellCheck": true,
             "pdfAdaptToTheme": false,
+            "pdfDisplayMode": "embed",
             "convertChecklistsToTasks": true,
             "convertAgentChecklistsToTasks": false
           }

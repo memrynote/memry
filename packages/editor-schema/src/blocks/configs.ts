@@ -55,7 +55,14 @@ export const fileBlockConfig = {
     mimeType: { default: '' },
     width: { default: 0 },
     height: { default: 0 },
-    align: { default: 'left' as const, values: ['left', 'center', 'right'] as const }
+    align: { default: 'left' as const, values: ['left', 'center', 'right'] as const },
+    /**
+     * How a PDF shows: `embed` is the inline viewer, `link` is the file name
+     * alone. Additive and `embed` by default, so a marker written by an older
+     * build — which has no `display` — keeps rendering as the viewer, and a
+     * build that predates the prop ignores it and shows the viewer.
+     */
+    display: { default: 'embed' as const, values: ['embed', 'link'] as const }
   },
   content: 'none' as const
 }

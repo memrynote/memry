@@ -18,6 +18,7 @@ import {
   Crop,
   ExternalLink,
   FolderOpen,
+  Link2,
   Maximize2,
   MoreHorizontal,
   Pencil
@@ -47,6 +48,12 @@ import { AttachmentRenameFlow, type AttachmentRenamedHandler } from './attachmen
 
 export type { AttachmentRenamedHandler }
 
+/** A PDF block's display mode and the way to change it (#2517). */
+export interface PdfDisplayControl {
+  value: 'embed' | 'link'
+  onChange: (next: 'embed' | 'link') => void
+}
+
 interface AttachmentMenuState {
   info: AttachmentResolveResult | null
   resolveFailed: boolean
@@ -62,6 +69,8 @@ interface AttachmentMenuState {
   /** Image blocks only: the host opens its lightbox. */
   startView?: () => void
   renameOpen: boolean
+  /** PDF blocks only: switches between the inline viewer and the file name. */
+  pdfDisplay?: PdfDisplayControl
 }
 
 /**
@@ -86,7 +95,8 @@ interface RenameWiring {
 function useAttachmentMenu(
   url: string,
   name: string,
-  rename: RenameWiring = {}
+  rename: RenameWiring = {},
+  pdfDisplay?: PdfDisplayControl
 ): AttachmentMenuState & { renameDialog: React.ReactNode } {
   const { onRenamed, onRequestRename, onRequestCrop, onRequestView } = rename
   const noteId = useAttachmentNoteId()
@@ -159,6 +169,7 @@ function useAttachmentMenu(
     startCrop: onRequestCrop,
     startView: onRequestView,
     renameOpen,
+    pdfDisplay,
     renameDialog
   }
 }
@@ -197,7 +208,8 @@ function AttachmentMenuBody({
     copyPath,
     startRename,
     startCrop,
-    startView
+    startView,
+    pdfDisplay
   } = state
 
   return (
@@ -231,6 +243,18 @@ function AttachmentMenuBody({
         <Copy className="h-4 w-4" />
         {t('editor.toolbar.copyPath')}
       </Item>
+      {pdfDisplay && (
+        <Item onClick={() => pdfDisplay.onChange(pdfDisplay.value === 'link' ? 'embed' : 'link')}>
+          {pdfDisplay.value === 'link' ? (
+            <Maximize2 className="h-4 w-4" />
+          ) : (
+            <Link2 className="h-4 w-4" />
+          )}
+          {pdfDisplay.value === 'link'
+            ? t('editor.attachmentMenu.showAsEmbed')
+            : t('editor.attachmentMenu.showAsLink')}
+        </Item>
+      )}
       {startView && (
         <Item onClick={startView}>
           <Maximize2 className="h-4 w-4" />
@@ -270,14 +294,16 @@ export function AttachmentBlockContextMenu({
   url,
   name,
   onRenamed,
+  pdfDisplay,
   children
 }: {
   url: string
   name: string
   onRenamed?: AttachmentRenamedHandler
+  pdfDisplay?: PdfDisplayControl
   children: React.ReactNode
 }) {
-  const state = useAttachmentMenu(url, name, { onRenamed })
+  const state = useAttachmentMenu(url, name, { onRenamed }, pdfDisplay)
 
   return (
     <>
@@ -309,7 +335,8 @@ export function AttachmentMenuButton({
   onOpenChange,
   onRenamed,
   onRequestRename,
-  onRequestCrop
+  onRequestCrop,
+  pdfDisplay
 }: {
   url: string
   name: string
@@ -320,8 +347,14 @@ export function AttachmentMenuButton({
   /** Host-owned rename — see {@link RenameWiring}. */
   onRequestRename?: () => void
   onRequestCrop?: () => void
+  pdfDisplay?: PdfDisplayControl
 }) {
-  const state = useAttachmentMenu(url, name, { onRenamed, onRequestRename, onRequestCrop })
+  const state = useAttachmentMenu(
+    url,
+    name,
+    { onRenamed, onRequestRename, onRequestCrop },
+    pdfDisplay
+  )
   const { t } = useT('notes')
 
   return (

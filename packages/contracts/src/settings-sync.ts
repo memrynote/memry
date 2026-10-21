@@ -46,6 +46,8 @@ export const SyncedSettingsSchema = z.object({
       width: z.enum(['normal', 'full', 'narrow', 'medium', 'wide']).optional(),
       toolbarMode: z.enum(['floating', 'sticky']).optional(),
       pdfAdaptToTheme: z.boolean().optional(),
+      // Absent in every payload a build older than this setting writes.
+      pdfDisplayMode: z.enum(['embed', 'link']).optional(),
       // Absent in every payload a build older than this toggle writes, and
       // that build's schema drops it on parse instead of rejecting the payload.
       convertChecklistsToTasks: z.boolean().optional(),
