@@ -298,6 +298,44 @@ describe('tab activation history', () => {
       expect(twice.tabGroups[group.id].activeTabId).toBe(a.id)
     })
 
+    it('returns to the saved scroll after back even when the outgoing pane saves late', () => {
+      // #given the user scrolled A to 3749 (saved), followed a link to B, then pressed back
+      const a = makeTab({
+        title: 'A',
+        entityId: 'a',
+        path: '/note/a',
+        scrollPanes: { '': { offset: 3749, entityId: 'a' } }
+      })
+      const group = makeGroup([a], { activeTabId: a.id })
+      let state = reuseOpen(makeState(group), group.id, {
+        title: 'B',
+        entityId: 'b',
+        path: '/note/b'
+      })
+      state = tabReducer(state, { type: 'NAV_BACK', payload: { groupId: group.id } })
+
+      // #when each pane's teardown save lands AFTER the swap, as React runs
+      // cleanups once the new content is committed
+      for (const [entityId, offset] of [
+        ['a', 3749],
+        ['b', 0]
+      ] as const) {
+        state = tabReducer(state, {
+          type: 'SAVE_TAB_STATE',
+          payload: {
+            tabId: a.id,
+            groupId: group.id,
+            scrollPanes: { '': { offset, entityId } }
+          }
+        })
+      }
+
+      // #then the tab shows A and still holds A's offset for A's pane to restore
+      const tab = state.tabGroups[group.id].tabs[0]
+      expect(tab.entityId).toBe('a')
+      expect(tab.scrollPanes).toEqual({ '': { offset: 3749, entityId: 'a' } })
+    })
+
     it('records nothing when the same entity is converted in place', () => {
       // #given a note tab that turns out to hold a binary — pages/note.tsx swaps
       // it for the file viewer with replaceActive, same entityId
