@@ -73,6 +73,23 @@ Pick a location of your own if you want to:
 
 You can move the vault later from [Settings → Vault](/user-guide/settings#vault).
 
+## The Sandbox Vault
+
+A new vault is empty, which makes it hard to judge what memrynote can do. The sandbox vault is a ready-made vault full of notes, journal entries, projects, tasks, calendar events, inbox items and files, so you can look around before you fill your own.
+
+Open the vault switcher and choose **Try the sandbox vault**. It sits in a section of its own, between your vaults and **Open vault**. The first time, memrynote builds it on your computer, which takes a few seconds, and then switches to it. Dates in the sandbox are relative to the moment it is built, so there are tasks due today, overdue items and an unbroken journal streak.
+
+The sandbox is not one of your vaults:
+
+- It is stored in memrynote's own data folder, never in a folder you chose.
+- It never syncs, so nothing in it reaches your account or your other devices.
+- It does not appear in the sidebar's swipe between vaults, and it cannot be removed from the switcher.
+- Quitting memrynote while it is open brings you back to your own vault on the next launch.
+
+To leave, press the back arrow in the sidebar header, which returns to the vault you opened last, or pick another vault in the switcher.
+
+Changes you make in the sandbox are yours to keep until memrynote updates. Each new app version rebuilds the sandbox, so edits are lost then. To start over earlier, leave the sandbox, open the switcher, and use the reset button that appears when you hover the sandbox row.
+
 ## Setting a Passphrase
 
 Your passphrase encrypts the vault's wrapping key locally and is required at every sign-in.
