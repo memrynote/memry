@@ -2,7 +2,36 @@
 
 Memry reads task lines written by the Obsidian Tasks plugin and turns them into real Memry tasks.
 
-There is no import wizard and no export step. You point Memry at the folder your vault already lives in, and a checkbox line becomes a Memry task the first time you open that note.
+There are two ways in, and neither needs an export step. Open the vault folder itself in Memry, and a checkbox line becomes a Memry task the first time you open that note. Or bring the notes in with [Importing from Markdown](/user-guide/import#importing-from-markdown), which converts every line during the import and never changes the vault folder.
+
+## Opening an Obsidian Vault
+
+Converting a line rewrites it in the file. The Memry task keeps the due date, but the line loses it, so Obsidian, still reading the same folder, shows the task without one:
+
+```markdown
+- [ ] Renew passport 📅 2026-11-01
+```
+
+becomes
+
+```markdown
+- [ ] Renew passport {task:…}
+```
+
+So the first time you open an Obsidian vault, a folder that has Obsidian's `.obsidian` folder and no `.memry` folder yet, Memry asks how to open it:
+
+| Button            | What it does                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Create copy**   | Copies the vault to `<name>-memrynote` next to it and opens the copy. The original folder is not changed.              |
+| **Open copy**     | Shown instead of **Create copy** when that copy is already there from an earlier time. Opens it without copying again. |
+| **Open original** | Opens the vault in place. Each note you then open in Memry has its plugin task lines rewritten.                        |
+| **Cancel**        | Opens nothing.                                                                                                         |
+
+The copy leaves out `.obsidian`, `.trash` and `.git`, which belong to the original. It keeps each file's modified date, and on macOS its created date too. If a folder that is not a Memry vault already has the name `<name>-memrynote`, the copy goes to `<name>-memrynote-2`.
+
+The copy is a separate vault. Changes you make in Obsidian afterwards stay in the original.
+
+A vault that already has a `.memry` folder, because Memry opened it before, opens without the question.
 
 ## Why it happens when you open the note
 

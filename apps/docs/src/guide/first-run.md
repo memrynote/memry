@@ -51,15 +51,17 @@ When this computer already knows a vault, memrynote shows the vault picker inste
 
 <!-- screenshot: vault picker -->
 
-| Option                       | Shortcut                  | What it does                                                                                                                                                                    |
-| ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Create new vault**         | <kbd>⌘</kbd>+<kbd>N</kbd> | Enter a name and a location (default `~/Documents/Memry/My notes`). memrynote creates the folder `<location>/<name>` and opens it. An existing folder is never reused silently. |
-| **Open folder as vault**     | <kbd>⌘</kbd>+<kbd>O</kbd> | Pick a folder of Markdown files you already keep. Your files stay as they are.                                                                                                  |
-| **Open from Memrynote Sync** | <kbd>⌘</kbd>+<kbd>L</kbd> | Sign in (or create an account), unlock with your recovery phrase or a linked device, then pick one vault from your account to download.                                         |
+| Option                       | Shortcut                  | What it does                                                                                                                                                           |
+| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create new vault**         | <kbd>⌘</kbd>+<kbd>N</kbd> | Enter a name and a location (default `~/Documents/Memry`). memrynote creates the folder `<location>/<name>` and opens it. An existing folder is never reused silently. |
+| **Open folder as vault**     | <kbd>⌘</kbd>+<kbd>O</kbd> | Pick a folder of Markdown files you already keep. memrynote works on the files where they are.                                                                         |
+| **Open from Memrynote Sync** | <kbd>⌘</kbd>+<kbd>L</kbd> | Sign in (or create an account), unlock with your recovery phrase or a linked device, then pick one vault from your account to download.                                |
 
 On Windows and Linux the shortcuts use <kbd>Ctrl</kbd>.
 
 If **Create new vault** finds a folder with that name already at the location, it offers to open that folder as a vault instead.
+
+When **Open folder as vault** picks an Obsidian vault that memrynote has never opened, memrynote first offers to open a copy of it, `<name>-memrynote`, so the original stays exactly as Obsidian left it. [Import from Obsidian Tasks](/user-guide/tasks/import-obsidian#opening-an-obsidian-vault) explains why, and what each choice does.
 
 **Open from Memrynote Sync** lists your account's vaults by name. Choose one and where it should be downloaded; a vault that is already on this computer opens its local copy. The other vaults stay in your account and can be downloaded later from the vault switcher. A new account with no vaults continues to **Create new vault**.
 
