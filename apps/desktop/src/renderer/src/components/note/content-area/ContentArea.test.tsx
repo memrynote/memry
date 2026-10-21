@@ -920,7 +920,7 @@ describe('ContentArea', () => {
     )
   })
 
-  it('renders editor chrome, retry UI, suggestions, wiki preview, and context-menu conversion', async () => {
+  it('renders editor chrome, suggestions, wiki preview, and context-menu conversion', async () => {
     contentAreaMocks.aiContext = { port: 4315, error: 'AI offline', retry: null }
     contentAreaMocks.wikiHover = {
       isVisible: true,
@@ -944,8 +944,17 @@ describe('ContentArea', () => {
     expect(screen.getByTestId('ai-menu')).toBeInTheDocument()
     expect(screen.getByTestId('paste-link-menu')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Retry'))
-    expect(contentAreaMocks.retryAI).toHaveBeenCalledTimes(1)
+    // An AI start failure stays silent until the user reaches for AI.
+    expect(screen.queryByText('AI offline')).not.toBeInTheDocument()
+    expect(contentAreaMocks.toastError).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(document, { key: 'j', metaKey: true })
+    expect(contentAreaMocks.toastError).toHaveBeenCalledWith(
+      'AI offline',
+      expect.objectContaining({
+        action: expect.objectContaining({ onClick: contentAreaMocks.retryAI })
+      })
+    )
 
     fireEvent.click(screen.getByText('tag alpha'))
     expect(contentAreaMocks.openSidebarItem).toHaveBeenCalledWith(

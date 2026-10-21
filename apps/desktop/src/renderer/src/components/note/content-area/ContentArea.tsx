@@ -2941,6 +2941,27 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     if (convertChecklists) scanWithConversion()
   }, [convertChecklists])
 
+  const reportAIUnavailable = (): void => {
+    if (!aiError) return
+    toast.error(aiError, { action: { label: tCommon('button.retry'), onClick: retryAI } })
+  }
+  const reportAIUnavailableRef = useRef(reportAIUnavailable)
+  reportAIUnavailableRef.current = reportAIUnavailable
+
+  // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
+  // extension handles it, so say why instead of doing nothing.
+  useEffect(() => {
+    if (!aiEnabled || !aiError) return
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault()
+        reportAIUnavailableRef.current()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [aiEnabled, aiError])
+
   // What the `/` menu offers when nothing matches: the query is handed on
   // rather than thrown away.
   const slashMenuFallbacks: SlashMenuFallbacks = {
@@ -2952,7 +2973,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       })
       editor.insertInlineContent(query)
     },
-    askAI: aiEnabled && aiReady ? () => getAISlashMenuItems(editor)[0]?.onItemClick() : null
+    askAI: aiEnabled
+      ? aiReady
+        ? () => getAISlashMenuItems(editor)[0]?.onItemClick()
+        : aiError
+          ? reportAIUnavailable
+          : null
+      : null
   }
 
   // Memry's `file` block renders its own URL, so BlockNote's resolver never
@@ -2975,19 +3002,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
         {yjsFragment && <BodySyncPendingHint fragment={yjsFragment} />}
-
-        {aiEnabled && aiError && (
-          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
-            <span className="truncate">{aiError}</span>
-            <button
-              type="button"
-              onClick={retryAI}
-              className="shrink-0 underline hover:no-underline"
-            >
-              {tCommon('button.retry')}
-            </button>
-          </div>
-        )}
 
         <div
           ref={setEditorContainerRef}
@@ -3307,7 +3321,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         }
                       ]
                     : []
-                  const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
+                  // The AI server failed to start (bad key, Ollama down). The error is
+                  // shown only once the user reaches for AI, never on a plain note.
+                  const aiItems =
+                    aiEnabled && aiReady
+                      ? getAISlashMenuItems(editor)
+                      : aiEnabled && aiError
+                        ? [{ ...aiEn.slash_menu.ai, key: 'ai', onItemClick: reportAIUnavailable }]
+                        : []
                   // `/mermaid` — upstream's own item, so the insert seeds the same
                   // starter `graph TD` the preview needs something to draw from,
                   // and the aliases (mermaid, flowchart, chart, graph) come with
