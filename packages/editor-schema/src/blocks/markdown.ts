@@ -98,7 +98,11 @@ export function serializeCalloutBlock(
   contentMarkdown: string,
   fold?: string
 ): string {
-  const body = contentMarkdown.replace(/^\n+|\n+$/g, '')
+  let start = 0
+  let end = contentMarkdown.length
+  while (start < end && contentMarkdown[start] === '\n') start++
+  while (end > start && contentMarkdown[end - 1] === '\n') end--
+  const body = contentMarkdown.slice(start, end)
   const marker = `> ${calloutMarker(type, fold)}`
   if (body === '') return marker
   return `${marker}\n${serializeQuoteBlock(body)}`
