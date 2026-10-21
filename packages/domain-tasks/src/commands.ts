@@ -732,9 +732,25 @@ export function createTasksCommands({
 
     async deleteTask(id: string) {
       return commit(() => {
-        const snapshot = repository.getTask(id)
-        repository.deleteTask(id)
-        const events: TasksDomainEvent[] = [{ kind: 'taskDeleted', payload: { id, snapshot } }]
+        // Subtasks go with their parent so none keeps a parent_id that points at
+        // a deleted row. A caller that wants to keep them moves them out first.
+        // Each row gets its own tombstone; sync cannot see a cascade (#2854).
+        const branch: string[] = []
+        const seen = new Set([id])
+        for (let i = -1; i < branch.length; i++) {
+          for (const child of repository.getSubtasks(i < 0 ? id : branch[i])) {
+            if (seen.has(child.id)) continue
+            seen.add(child.id)
+            branch.push(child.id)
+          }
+        }
+        const events: TasksDomainEvent[] = []
+        // Deepest first, parent last.
+        for (const taskId of [...branch.reverse(), id]) {
+          const snapshot = repository.getTask(taskId)
+          repository.deleteTask(taskId)
+          events.push({ kind: 'taskDeleted', payload: { id: taskId, snapshot } })
+        }
         return { result: { success: true }, events }
       })
     },

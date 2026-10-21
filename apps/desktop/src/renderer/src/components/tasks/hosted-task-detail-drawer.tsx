@@ -1,13 +1,15 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import type { Task } from '@/data/task-model'
-import { createSubtask } from '@/lib/subtask-utils'
-import { buildTaskTree } from '@memry/domain-tasks/tree'
+import { createSubtask, describeBranch } from '@/lib/subtask-utils'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
+import { useUndoTracker } from '@/hooks/use-undo'
+import { useUndoableTaskActions } from '@/hooks/use-undoable-task-actions'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { canvasTabData } from '@/lib/sidebar-tab-data'
+import { DeleteParentDialog } from './dialogs/delete-parent-dialog'
 import { TaskDetailDrawer } from './task-detail-drawer'
 import { openTaskInTasksTab } from './task-detail-host'
 
@@ -50,17 +52,44 @@ export const HostedTaskDetailDrawer = ({
     [tasks, addTask, nestedSubtasks]
   )
 
-  // The whole branch goes with the task, deepest first, so nothing is left
-  // pointing at a parent that no longer exists.
+  const { registerUndo, removeUndoEntry } = useUndoTracker()
+  const undoable = useUndoableTaskActions({
+    tasks,
+    projects,
+    addTask,
+    updateTask: (...args) => void updateTask(...args),
+    deleteTask: (...args) => void deleteTask(...args),
+    registerUndo,
+    removeUndoEntry
+  })
+
+  // A task with subtasks asks what happens to them, like the Tasks page does.
+  const [pendingDeleteParentId, setPendingDeleteParentId] = useState<string | null>(null)
+  const pendingDeleteParent = useMemo(
+    () => tasks.find((t) => t.id === pendingDeleteParentId) ?? null,
+    [tasks, pendingDeleteParentId]
+  )
+  const pendingDeleteBranch = useMemo(
+    () => describeBranch(pendingDeleteParentId, tasks),
+    [pendingDeleteParentId, tasks]
+  )
+
   const handleDeleteTask = useCallback(
     (id: string) => {
-      for (const descendantId of buildTaskTree(tasks).descendantIds(id).reverse()) {
-        void deleteTask(descendantId)
-      }
-      void deleteTask(id)
+      undoable.deleteTask(id)
       onClose()
     },
-    [tasks, deleteTask, onClose]
+    [undoable, onClose]
+  )
+
+  const handleConfirmDeleteParent = useCallback(
+    (keepSubtasks: boolean) => {
+      if (!pendingDeleteParentId) return
+      undoable.deleteTask(pendingDeleteParentId, keepSubtasks ? 'keep' : 'delete')
+      setPendingDeleteParentId(null)
+      onClose()
+    },
+    [pendingDeleteParentId, undoable, onClose]
   )
 
   const handleNoteClick = useCallback(
@@ -80,24 +109,36 @@ export const HostedTaskDetailDrawer = ({
   }, [openTab, taskId, task?.projectId, onClose])
 
   return (
-    <TaskDetailDrawer
-      key={taskId}
-      task={task}
-      isOpen={task !== null}
-      onClose={onClose}
-      tasks={tasks}
-      projects={projects}
-      onToggleComplete={handleToggleComplete}
-      onUpdateTask={handleUpdateTask}
-      onAddSubtask={handleAddSubtask}
-      onNoteClick={handleNoteClick}
-      onCanvasClick={handleCanvasClick}
-      onDeleteTask={handleDeleteTask}
-      onOpenInTasks={handleOpenInTasks}
-      allowNestedSubtasks={nestedSubtasks}
-      // Above the note's outline rail (z-40), which sits at the same edge. A
-      // host tab has no toolbar of its own to clear, so the drawer starts at the top.
-      className="top-0 z-40"
-    />
+    <>
+      <TaskDetailDrawer
+        key={taskId}
+        task={task}
+        isOpen={task !== null}
+        onClose={onClose}
+        tasks={tasks}
+        projects={projects}
+        onToggleComplete={handleToggleComplete}
+        onUpdateTask={handleUpdateTask}
+        onAddSubtask={handleAddSubtask}
+        onNoteClick={handleNoteClick}
+        onCanvasClick={handleCanvasClick}
+        onDeleteTask={handleDeleteTask}
+        onDeleteParentTask={setPendingDeleteParentId}
+        onOpenInTasks={handleOpenInTasks}
+        allowNestedSubtasks={nestedSubtasks}
+        // Above the note's outline rail (z-40), which sits at the same edge. A
+        // host tab has no toolbar of its own to clear, so the drawer starts at the top.
+        className="top-0 z-40"
+      />
+      <DeleteParentDialog
+        open={pendingDeleteParent !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteParentId(null)
+        }}
+        parent={pendingDeleteParent}
+        branch={pendingDeleteBranch}
+        onConfirm={handleConfirmDeleteParent}
+      />
+    </>
   )
 }

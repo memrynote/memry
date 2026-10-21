@@ -416,6 +416,10 @@ describe('tasks-handlers', () => {
     })
 
     describe('DELETE handler', () => {
+      beforeEach(() => {
+        ;(taskQueries.getSubtasks as Mock).mockReturnValue([])
+      })
+
       it('should delete a task', async () => {
         ;(taskQueries.deleteTask as Mock).mockReturnValue(undefined)
 
