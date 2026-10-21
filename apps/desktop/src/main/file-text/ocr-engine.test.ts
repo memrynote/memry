@@ -30,6 +30,7 @@ class FakeWorker extends EventEmitter {
   }
 }
 
+const crashOnSpawn = vi.hoisted(() => ({ value: false }))
 const workers = vi.hoisted(() => [] as FakeWorker[])
 const forkOptions = vi.hoisted(() => [] as Array<{ env?: Record<string, string> }>)
 
@@ -38,6 +39,7 @@ vi.mock('electron', () => ({
     fork: (_path: string, _args: string[], options: { env?: Record<string, string> }) => {
       const worker = new FakeWorker()
       workers.push(worker)
+      if (crashOnSpawn.value) worker.answer = () => worker.kill()
       forkOptions.push(options)
       worker.reply({ type: 'ready' })
       return worker
@@ -122,6 +124,29 @@ describe('OCR engine', () => {
     await expect(recognizeText(source)).rejects.toThrow('OCR worker exited (code 1)')
     await expect(recognizeText(source)).resolves.toBe('Heron count')
     expect(workers).toHaveLength(2)
+  })
+
+  it('stops starting workers after repeated crashes, and tries again after a pause', async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+    const fresh = await import('./ocr-engine')
+    const recognizeText = fresh.recognizeText
+    const crash = (): Promise<unknown> => recognizeText(source).catch((error: Error) => error)
+    crashOnSpawn.value = true
+    try {
+      for (let i = 0; i < 3; i++) await crash()
+      expect(workers).toHaveLength(3)
+
+      await expect(recognizeText(source)).rejects.toThrow('OCR is paused')
+      expect(workers).toHaveLength(3)
+
+      crashOnSpawn.value = false
+      await vi.advanceTimersByTimeAsync(10 * 60_000)
+      await expect(recognizeText(source)).resolves.toBe('Heron count')
+    } finally {
+      crashOnSpawn.value = false
+      fresh.stopOcr()
+    }
   })
 
   it('kills a worker that takes longer than three minutes on one image', async () => {

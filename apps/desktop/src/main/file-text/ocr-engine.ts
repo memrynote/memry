@@ -23,6 +23,9 @@ const logger = createLogger('Ocr')
 const START_TIMEOUT_MS = 15_000
 const RECOGNIZE_TIMEOUT_MS = 180_000
 const IDLE_SHUTDOWN_MS = 60_000
+/** A worker that dies on its own this many times in a row is not retried at once. */
+const MAX_CONSECUTIVE_CRASHES = 3
+const CRASH_COOLDOWN_MS = 10 * 60_000
 
 interface Pending {
   resolve: (text: string) => void
@@ -38,6 +41,8 @@ const pending = new Map<number, Pending>()
 let nextRequestId = 1
 let idleTimer: ReturnType<typeof setTimeout> | null = null
 let reportedMissingData = false
+let consecutiveCrashes = 0
+let crashCooldownUntil = 0
 
 /**
  * Without the English data that ships in the app Tesseract does not fail; the
@@ -110,6 +115,7 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
           getLogShip()?.ingestForwarded(message.record, 'Ocr')
           return
         case 'recognized':
+          consecutiveCrashes = 0
           settle(message.requestId, (request) => request.resolve(message.text))
           return
         case 'failed':
@@ -122,6 +128,11 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
       reject(new Error(`OCR worker exited before it was ready (code ${code})`))
       if (child === spawned) {
         logger.warn('OCR worker exited', { code })
+        if (++consecutiveCrashes >= MAX_CONSECUTIVE_CRASHES) {
+          crashCooldownUntil = Date.now() + CRASH_COOLDOWN_MS
+          consecutiveCrashes = 0
+          logger.error('OCR worker keeps crashing; OCR paused', { code })
+        }
         stopOcr(`OCR worker exited (code ${code})`)
       }
     })
@@ -132,6 +143,9 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
 export async function recognizeText(source: OcrImageSource): Promise<string> {
   const languages = ocrLanguageSet()
   assertLanguageData(languages)
+  if (Date.now() < crashCooldownUntil) {
+    throw new Error('OCR is paused after repeated worker crashes')
+  }
   clearIdleTimer()
   const key = languages.codes.join('+')
   if (worker && key !== workerLanguages) stopOcr('OCR languages changed')
