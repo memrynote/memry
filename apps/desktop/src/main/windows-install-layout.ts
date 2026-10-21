@@ -19,3 +19,19 @@ export function detectWindowsInstallLayout(
   if (exists(path.win32.join(dir, NSIS_UNINSTALLER_FILENAME))) return 'nsis'
   return 'unknown'
 }
+
+export const APP_USER_MODEL_ID = 'com.memrynote.memry'
+
+/**
+ * Velopack's bootstrap already sets the process AppUserModelID to the one its
+ * Start menu shortcut carries (`velopack.<packId>`). Overriding it makes the
+ * running window a different app than the pinned shortcut, so Windows adds a
+ * second taskbar icon. NSIS shortcuts carry `APP_USER_MODEL_ID`, so every other
+ * layout sets it. Returns null when the process must keep its current ID.
+ */
+export function appUserModelIdOverride(
+  execPath: string,
+  exists: (p: string) => boolean = fs.existsSync
+): string | null {
+  return detectWindowsInstallLayout(execPath, exists) === 'velopack' ? null : APP_USER_MODEL_ID
+}
