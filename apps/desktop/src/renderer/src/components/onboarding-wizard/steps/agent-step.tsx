@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import type { AgentBackendId } from '@memry/contracts/ipc-agent'
 import type { OnboardingAgentStatus } from '@memry/contracts/onboarding-api'
 import { useT } from '@memry/i18n/renderer'
+import antigravityLogo from '@/assets/agent-logos/antigravity.svg'
+import claudeLogo from '@/assets/agent-logos/claude.svg'
+import codexLogo from '@/assets/agent-logos/codex.svg'
+import lmStudioLogo from '@/assets/agent-logos/lmstudio.svg'
+import ollamaLogo from '@/assets/agent-logos/ollama.svg'
 import { ArrowUpRight, Check, Info } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
@@ -48,6 +53,34 @@ export function startSmartConnectionsDownload(): void {
       if (!result.success) log.warn('Smart connections model did not load', result.error)
     })
     .catch((error) => log.warn('Starting the smart connections download failed', error))
+}
+
+/** Brand marks (LobeHub icons, MIT). Ollama and LM Studio are one-color, so they invert in dark. */
+const LOGOS: Record<AgentBackendId, { src: string; mono?: boolean }[]> = {
+  claude_cli: [{ src: claudeLogo }],
+  codex_cli: [{ src: codexLogo }],
+  antigravity_cli: [{ src: antigravityLogo }],
+  local_openai_compatible: [
+    { src: ollamaLogo, mono: true },
+    { src: lmStudioLogo, mono: true }
+  ]
+}
+
+function AgentLogo({ backend }: { backend: AgentBackendId }): React.JSX.Element {
+  const logos = LOGOS[backend]
+  return (
+    <span className="flex w-[34px] shrink-0 items-center justify-center gap-0.5" aria-hidden="true">
+      {logos.map(({ src, mono }) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          draggable={false}
+          className={cn(logos.length > 1 ? 'size-4' : 'size-5', mono && 'dark:invert')}
+        />
+      ))}
+    </span>
+  )
 }
 
 export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
@@ -121,6 +154,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
                   className="flex h-full min-w-0 grow items-center gap-3 rounded-md ps-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                 >
                   <RadioMark on={selected} />
+                  <AgentLogo backend={backend} />
                   <span className="flex min-w-0 flex-col gap-px">
                     <span className="text-[13.5px] font-medium leading-[18px] text-foreground">
                       {t(`${K}.${backend}`)}

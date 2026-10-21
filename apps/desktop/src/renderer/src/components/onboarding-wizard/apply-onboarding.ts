@@ -94,7 +94,10 @@ export async function applyNewUser(
 
   if (!existingVault) {
     await Promise.all([
-      settle('appearance', window.api.settings.setGeneralSettings(themeSettingsFor(draft.theme))),
+      settle(
+        'appearance',
+        window.api.settings.setGeneralSettings(themeSettingsFor(draft.theme, draft.editorTheme))
+      ),
       settle('modules', window.api.settings.setFeaturesSettings(draft.features)),
       settle('AI setting', window.api.settings.setAISettings({ enabled: draft.aiEnabled }))
     ])

@@ -14,13 +14,18 @@ vi.mock('@/components/traffic-lights', () => ({
   TrafficLights: () => <div data-testid="traffic-lights" />
 }))
 
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: () => ({ state: { status: 'unauthenticated', wizardStep: 'idle', email: null } })
+}))
+
 import { FirstRunGate } from './first-run-gate'
 
 type Mocked = Record<string, ReturnType<typeof vi.fn>>
 const api = window.api as unknown as Record<string, Mocked>
 
+// Some steps offer Continue twice (the header hint and an inline button); either moves on.
 const press = async (name: RegExp | string): Promise<void> => {
-  const button = await screen.findByRole('button', { name })
+  const [button] = await screen.findAllByRole('button', { name })
   await act(async () => {
     fireEvent.click(button)
   })

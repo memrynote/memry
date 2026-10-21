@@ -1385,13 +1385,13 @@
       "title": "Notes, tasks, journal and calendar, in one calm place.",
       "body": "With an agent that knows your work. Your notes stay on {device}, and sync is end-to-end encrypted.",
       "getStarted": "Get started",
-      "alreadyUse": "Already use Memry?",
+      "alreadyUse": "Already use MemryNote?",
       "signIn": "Sign in",
       "language": "Language"
     },
     "theme": {
       "title": "Choose your look",
-      "body": "Memry follows your system by default. Change it anytime in Settings.",
+      "body": "MemryNote follows your system by default. Change it anytime in Settings.",
       "system": "System",
       "systemHint": "Matches your system",
       "white": "White",
@@ -1399,7 +1399,9 @@
       "light": "Light",
       "lightHint": "Warm paper",
       "dark": "Dark",
-      "darkHint": "Charcoal"
+      "darkHint": "Charcoal",
+      "more": "More themes",
+      "moreNone": "MemryNote"
     },
     "modules": {
       "title": "Make it yours",
@@ -1462,7 +1464,7 @@
     },
     "agent": {
       "title": "Meet your agent",
-      "body": "Ask about your notes, tasks and calendar. Memry uses an agent you already have, with no Memry AI server in between.",
+      "body": "Ask about your notes, tasks and calendar. MemryNote uses an agent you already have, with no MemryNote AI server in between.",
       "section": "Agent",
       "claude_cli": "Claude Code",
       "claude_cliHint": "Sends turns to Anthropic",
@@ -1479,7 +1481,7 @@
       "checking": "Checking…",
       "install": "Install",
       "setUp": "Set up",
-      "noneFound": "No agent found yet. Continue anyway and Memry picks it up automatically once you install one.",
+      "noneFound": "No agent found yet. Continue anyway and MemryNote picks it up automatically once you install one.",
       "onDevice": "On {device}",
       "smartTitle": "Smart connections",
       "smartBody": "Finds related notes and suggests where inbox items belong.",
@@ -1487,17 +1489,17 @@
     },
     "storage": {
       "title": "Where should your notes live?",
-      "body": "Memry works fully offline. Sync is optional, and you can turn it on later.",
+      "body": "MemryNote works fully offline. Sync is optional, and you can turn it on later.",
       "local": "Only on {device}",
       "localPrice": "Free",
       "localHint": "No account needed. Everything works offline, and you can add sync anytime from Settings.",
       "sync": "Sync across my devices",
       "syncPrice": "From $5/mo",
       "syncHint": "End-to-end encrypted, so your devices stay in step and only you can read them. Sign in or create an account next.",
-      "footnote": "Memry can't read your notes either way. Your keys stay on your devices."
+      "footnote": "MemryNote can't read your notes either way. Your keys stay on your devices."
     },
     "account": {
-      "existingAccount": "This email already has a Memry account, so we'll unlock it on {device} instead."
+      "existingAccount": "This email already has a MemryNote account, so we'll unlock it on {device} instead."
     },
     "plan": {
       "title": "Choose your plan",
@@ -1522,7 +1524,7 @@
       "secure": "Secure checkout by Paddle opens in your browser. 14-day money-back guarantee.",
       "notNow": "Not now, keep notes on {device}",
       "waitingTitle": "Finish checkout in your browser",
-      "waitingBody": "We opened memrynote.com in your browser. Memry moves on by itself once your payment goes through.",
+      "waitingBody": "We opened memrynote.com in your browser. MemryNote moves on by itself once your payment goes through.",
       "selected": "{plan}, {cadence}",
       "cadenceMonthly": "monthly",
       "cadenceYearly": "yearly",
@@ -1532,30 +1534,30 @@
       "waiting": "Waiting for payment",
       "reopen": "Reopen checkout",
       "continueWithout": "Continue without sync for now",
-      "alreadyPaid": "Already paid? Memry picks it up here or in Settings, Account. Sync starts as soon as the plan is active.",
+      "alreadyPaid": "Already paid? MemryNote picks it up here or in Settings, Account. Sync starts as soon as the plan is active.",
       "checkoutFailed": "Couldn't open checkout. Check your connection and try again.",
       "price": "${amount}"
     },
     "ready": {
       "title": "Your space is ready",
-      "body": "One last look before Memry opens.",
-      "planActive": "{plan} plan is active. Sync starts when Memry opens, end-to-end encrypted.",
+      "body": "One last look before MemryNote opens.",
+      "planActive": "{plan} plan is active. Sync starts when MemryNote opens, end-to-end encrypted.",
       "noPlan": "Sync starts once you pick a plan. Until then, everything stays on {device}.",
       "choosePlan": "Choose a plan",
       "folder": "Notes folder",
       "folderHint": "Plain Markdown files you can open anywhere.",
-      "existingFolderHint": "An existing Memry folder keeps its own settings.",
+      "existingFolderHint": "An existing MemryNote folder keeps its own settings.",
       "change": "Change",
       "useExisting": "Use an existing folder",
       "importTitle": "Import from {sources}",
-      "importHint": "Starts when Memry opens. Your notes appear as they're copied.",
+      "importHint": "Starts when MemryNote opens. Your notes appear as they're copied.",
       "modelTitle": "Smart connections model",
-      "modelHint": "Keeps downloading after Memry opens.",
+      "modelHint": "Keeps downloading after MemryNote opens.",
       "metrics": "Share anonymous usage metrics",
       "metricsHint": "Never note content, titles or names. Includes redacted diagnostic logs.",
-      "open": "Open Memry",
+      "open": "Open MemryNote",
       "opening": "Opening…",
-      "failed": "Memry couldn't set up your notes folder. Pick another folder and try again.",
+      "failed": "MemryNote couldn't set up your notes folder. Pick another folder and try again.",
       "signedInAs": "Signed in as {email}",
       "modelPercent": "{percent}%"
     },

@@ -19,7 +19,6 @@ import type { StepProps } from './basic-steps'
 
 const log = createLogger('Onboarding:Ready')
 const K = 'onboardingWizard.ready'
-const DEFAULT_VAULT_NAME = 'Memry'
 
 function folderPath(folder: FolderChoice): string {
   if (folder.kind === 'existing') return folder.path
@@ -194,7 +193,9 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
         setExistingVault(false)
         dispatch({
           type: 'update',
-          patch: { folder: { kind: 'new', parent: path, name: DEFAULT_VAULT_NAME } }
+          patch: {
+            folder: { kind: 'new', parent: path, name: t('onboardingWizard.preview.notesName') }
+          }
         })
         return
       }

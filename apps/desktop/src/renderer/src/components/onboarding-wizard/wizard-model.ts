@@ -39,6 +39,8 @@ export type FolderChoice =
 
 export interface WizardDraft {
   theme: ThemeChoice
+  /** An editor theme from "More themes" (Nord, Dracula...), or null for the card's own. */
+  editorTheme: string | null
   features: FeaturesSettings
   aiEnabled: boolean
   imports: ImportChoice[]
@@ -83,6 +85,7 @@ export type WizardAction =
 export function initialDraft(telemetry: boolean): WizardDraft {
   return {
     theme: 'system',
+    editorTheme: null,
     features: { ...FEATURES_SETTINGS_DEFAULTS },
     aiEnabled: true,
     imports: [],
@@ -161,7 +164,11 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return {
         path: 'returning',
         step: 'account',
-        draft: { ...initialDraft(state.draft.telemetry), theme: state.draft.theme }
+        draft: {
+          ...initialDraft(state.draft.telemetry),
+          theme: state.draft.theme,
+          editorTheme: state.draft.editorTheme
+        }
       }
     case 'switch-to-new':
       return { path: 'new', step: 'theme', draft: { ...state.draft, storage: 'sync' } }
@@ -169,9 +176,14 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
 }
 
 /** Stored theme fields for a choice; warm paper is a color theme, not a mode. */
-export function themeSettingsFor(choice: ThemeChoice): {
+export function themeSettingsFor(
+  choice: ThemeChoice,
+  editorTheme: string | null
+): {
   theme: 'system' | 'white' | 'light' | 'dark'
-  colorTheme: 'memrynote' | 'warm'
+  colorTheme: string
 } {
+  // `light` is stored only under Warm (storedLightMode); an editor theme's light side is `white`.
+  if (editorTheme) return { theme: choice === 'light' ? 'white' : choice, colorTheme: editorTheme }
   return { theme: choice, colorTheme: choice === 'light' ? 'warm' : 'memrynote' }
 }

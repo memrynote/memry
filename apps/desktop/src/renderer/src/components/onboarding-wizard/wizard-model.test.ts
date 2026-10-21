@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   activeImports,
   initialState,
+  themeSettingsFor,
   wizardReducer,
   type WizardAction,
   type WizardState
@@ -101,5 +102,16 @@ describe('import choices follow the module set', () => {
       }))
     }
     expect(activeImports(draft).map((choice) => choice.importerId)).toEqual(['evernote'])
+  })
+})
+
+describe('theme settings written to the vault', () => {
+  it('stores the Light card as the Warm theme', () => {
+    expect(themeSettingsFor('light', null)).toEqual({ theme: 'light', colorTheme: 'warm' })
+  })
+
+  it('keeps an editor theme and stores its light side as white, never Warm', () => {
+    expect(themeSettingsFor('dark', 'nord')).toEqual({ theme: 'dark', colorTheme: 'nord' })
+    expect(themeSettingsFor('light', 'nord')).toEqual({ theme: 'white', colorTheme: 'nord' })
   })
 })

@@ -1,8 +1,7 @@
 import { useEffect, useReducer, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { createLogger } from '@/lib/logger'
+import { useAuth } from '@/contexts/auth-context'
 import { trackTelemetry } from '@/lib/telemetry'
-import { getTelemetryApi } from '@/hooks/use-telemetry-settings'
 import { StagePreview, type StageFocus } from './stage-preview'
 import { AccountStep } from './steps/account-step'
 import { AgentStep, startSmartConnectionsDownload } from './steps/agent-step'
@@ -29,8 +28,6 @@ import { Globe } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { MUTED, ProgressDots, WizardFrame, type KeyHint } from './wizard-ui'
 
-const log = createLogger('Onboarding:Wizard')
-
 const STAGE_FOCUS: Partial<Record<ModuleKey, StageFocus>> = {
   journal: 'journal',
   tasks: 'tasks',
@@ -40,8 +37,8 @@ const STAGE_FOCUS: Partial<Record<ModuleKey, StageFocus>> = {
 /** Steps whose own forms own the keyboard; Enter and Esc stay with them. */
 const SELF_KEYED: StepId[] = ['account', 'ready', 'vault']
 
-/** Steps with no button of their own: the Continue hint is their way forward. */
-const HINT_CONTINUES: StepId[] = ['theme', 'modules', 'agent', 'storage']
+/** Steps whose Continue hint is a button that moves on, like their Enter key. */
+const HINT_CONTINUES: StepId[] = ['theme', 'modules', 'import', 'agent', 'storage']
 
 /** Hints before Continue and Back: the keys that move through the step's options. */
 const DEFAULT_CHOICE_HINTS: [string[], string][] = [[['↑', '↓'], 'choose']]
@@ -57,18 +54,9 @@ const CHOICE_HINTS: Partial<Record<StepId, [string[], string][]>> = {
   ]
 }
 
-/** Steps that show the mini app window under their content. */
-const STAGED: StepId[] = [
-  'welcome',
-  'theme',
-  'modules',
-  'import',
-  'agent',
-  'storage',
-  'account',
-  'ready',
-  'vault'
-]
+/** Steps that show the mini app window under their content. Import and Ready
+ * have long lists, so the window would only show as a sliver. */
+const STAGED: StepId[] = ['welcome', 'theme', 'modules', 'agent', 'storage', 'account', 'vault']
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -113,10 +101,6 @@ export function OnboardingWizard(): React.JSX.Element {
 
   useEffect(() => {
     void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'wizard' })
-    getTelemetryApi()
-      ?.getSettings()
-      .then(({ enabled }) => dispatch({ type: 'update', patch: { telemetry: enabled } }))
-      .catch((error) => log.warn('Reading the telemetry setting failed', error))
   }, [])
 
   const back = (): void => dispatch({ type: 'back' })
@@ -156,13 +140,18 @@ export function OnboardingWizard(): React.JSX.Element {
       : state.step === 'agent'
         ? 'agent'
         : 'journal'
-  const stage = STAGED.includes(state.step) ? (
-    <StagePreview
-      features={state.draft.features}
-      aiEnabled={state.draft.aiEnabled}
-      focus={stageFocus}
-    />
-  ) : undefined
+  // The recovery phrase screens need the room, and the design draws them without the window.
+  const authStep = useAuth().state.wizardStep
+  const phraseOnScreen =
+    state.step === 'account' && (authStep === 'recovery-display' || authStep === 'recovery-confirm')
+  const stage =
+    STAGED.includes(state.step) && !phraseOnScreen ? (
+      <StagePreview
+        features={state.draft.features}
+        aiEnabled={state.draft.aiEnabled}
+        focus={stageFocus}
+      />
+    ) : undefined
   const language =
     state.step === 'welcome' ? (
       <span className={cn('flex items-center gap-1.5', MUTED)}>
