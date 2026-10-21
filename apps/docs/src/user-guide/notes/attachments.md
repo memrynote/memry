@@ -27,7 +27,7 @@ list:
 Type to search both the file names and the notes they belong to; `↑` / `↓` move,
 `↵` inserts, `esc` closes.
 
-For `/pdf`, a **Show as** switch at the bottom of the picker chooses **Embedded** (the inline viewer) or **Link** (the file name alone). It starts on your default from [Settings > Editor](/user-guide/settings#attachments). A PDF you drop onto a note uses that default too.
+For `/pdf`, a **Show as** switch at the bottom of the picker chooses **Embedded** (the inline viewer) or **Link** (the file name alone). It starts on your default from [Settings > Editor](/user-guide/settings#attachments). A PDF you drop onto a note, from your file manager or the sidebar, lands with that default and opens a small **Show as** menu at the block, like the one a pasted link gets. Pick **Link** or **Embedded** with the mouse or `↑` / `↓` and `↵`; `esc`, a click elsewhere or typing on keeps the default.
 
 While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
 
