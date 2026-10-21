@@ -5,17 +5,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const stripTimestamp = (line: string): string => line.slice('2026-10-01 14:24:40.000 '.length)
 
+// Every unit test that logs writes through this transport. Outside a temp dir it would land in
+// the installed app's own log, ~/Library/Logs/memrynote/main.log on macOS.
+describe('main.log location under Vitest', () => {
+  it('is inside the OS temp dir', async () => {
+    vi.resetModules()
+    const { log } = await import('./logger')
+    const { path } = log.transports.file.getFile()
+    expect(path.startsWith(tmpdir()), `main.log at ${path}`).toBe(true)
+  })
+})
+
 describe('main.log file transport', () => {
   let dir: string
 
   beforeEach(() => {
     vi.resetModules()
     dir = mkdtempSync(join(tmpdir(), 'memry-log-'))
-    process.env.MEMRY_TEST_LOG_DIR = dir
+    vi.stubEnv('MEMRY_TEST_LOG_DIR', dir)
   })
 
   afterEach(() => {
-    delete process.env.MEMRY_TEST_LOG_DIR
+    vi.unstubAllEnvs()
     vi.useRealTimers()
     rmSync(dir, { recursive: true, force: true })
   })
