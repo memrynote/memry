@@ -68,7 +68,7 @@ Completing a parent completes every open task under it, at every level, and a to
 
 ### Deleting a Parent
 
-Deleting a task that has subtasks asks once. **Keep subtasks** moves its direct subtasks up into its place, under its own parent if it has one. **Delete all** removes the whole branch. Both can be undone from the toast.
+Deleting a task that has subtasks asks once. **Keep subtasks** moves its direct subtasks up into its place, under its own parent if it has one. **Delete all** removes the whole branch. Both can be undone from the toast. The same prompt appears when you delete the task from its drawer on the calendar or Timeline.
 
 ### Subtasks in Date Views
 
