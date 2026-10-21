@@ -1151,13 +1151,11 @@
       "confirmDescription": "要求された単語を入力して、正しく保存されたことを確認します。",
       "wordPlaceholder": "単語 #{index} を入力してください",
       "verify": "確認",
-      "mustMatch": "続行するには 3 つの単語すべてが一致する必要があります",
+      "mustMatch": "続けるには 3 つの単語すべてが一致する必要があります。",
       "inputTitle": "リカバリーフレーズを入力",
-      "inputDescription": "24 単語のリカバリーフレーズを入力して、暗号化されたデータへのアクセスを復元します。",
+      "inputDescription": "アカウント作成時に保存した 24 語を入力してください。",
       "inputLabel": "リカバリーフレーズ",
       "count": "{count} / {total} 単語",
-      "inputPlaceholder": "24 単語のリカバリーフレーズをスペースで区切って入力…",
-      "lengthHint": "24 単語すべてを入力すると復元ボタンが有効になります",
       "restore": "アクセスを復元",
       "progress": {
         "deriving": "暗号化キーを生成中…",
@@ -1171,7 +1169,14 @@
         "title": "リカバリーフレーズを読み込めませんでした",
         "description": "リカバリーフレーズは設定時に一度だけ表示され、後で取得することはできません。最初からやり直して新しいものを生成してください。",
         "startOver": "最初からやり直す"
-      }
+      },
+      "copy": "コピー",
+      "download": "ダウンロード",
+      "fileTitle": "MemryNote リカバリーフレーズ",
+      "wordLabel": "単語 {index}",
+      "wordShort": "単語 {index}",
+      "pasteHint": "フレーズ全体をどれかのボックスに貼り付けると、すべてに入力されます。",
+      "stepOf": "ステップ {step} / {total}"
     },
     "startFresh": {
       "trigger": "リカバリーフレーズを取り戻せない場合",

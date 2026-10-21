@@ -1151,13 +1151,11 @@
       "confirmDescription": "輸入指定的字詞，確認你已正確儲存。",
       "wordPlaceholder": "輸入第 {index} 個字",
       "verify": "驗證",
-      "mustMatch": "3 個字詞必須全部相符才能繼續",
-      "inputTitle": "輸入復原片語",
-      "inputDescription": "輸入 24 個字的復原片語，以恢復加密資料的存取權。",
+      "mustMatch": "3 個單字必須全部相符才能繼續。",
+      "inputTitle": "輸入你的復原片語",
+      "inputDescription": "輸入建立帳號時保存的 24 個單字。",
       "inputLabel": "復原片語",
       "count": "{count} / {total} 個字",
-      "inputPlaceholder": "輸入以空格分隔的 24 個字復原片語…",
-      "lengthHint": "輸入全部 24 個字即可啟用「恢復存取權」按鈕",
       "restore": "恢復存取權",
       "progress": {
         "deriving": "正在產生加密金鑰…",
@@ -1171,7 +1169,14 @@
         "title": "無法載入復原片語",
         "description": "復原片語只會在設定期間顯示一次，之後無法取回。請重新開始以產生新的片語。",
         "startOver": "重新開始"
-      }
+      },
+      "copy": "複製",
+      "download": "下載",
+      "fileTitle": "MemryNote 復原片語",
+      "wordLabel": "第 {index} 個單字",
+      "wordShort": "第 {index} 個字",
+      "pasteHint": "將整個片語貼到任一格，即可填滿所有格子。",
+      "stepOf": "第 {step} 步，共 {total} 步"
     },
     "startFresh": {
       "trigger": "我無法找回復原片語",

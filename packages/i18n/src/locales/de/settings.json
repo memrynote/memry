@@ -1151,13 +1151,11 @@
       "confirmDescription": "Gib die angeforderten Wörter ein, um zu prüfen, ob du sie richtig gespeichert hast.",
       "wordPlaceholder": "Wort #{index} eingeben",
       "verify": "Überprüfen",
-      "mustMatch": "Um fortzufahren, müssen alle drei Wörter übereinstimmen",
+      "mustMatch": "Alle 3 Wörter müssen stimmen, um fortzufahren.",
       "inputTitle": "Wiederherstellungsphrase eingeben",
-      "inputDescription": "Gib deine Wiederherstellungsphrase aus 24 Wörtern ein, um wieder auf deine verschlüsselten Daten zuzugreifen.",
+      "inputDescription": "Gib die 24 Wörter ein, die du beim Erstellen deines Kontos gespeichert hast.",
       "inputLabel": "Wiederherstellungsphrase",
       "count": "{count} / {total} Wörter",
-      "inputPlaceholder": "Wiederherstellungsphrase aus 24 Wörtern eingeben, durch Leerzeichen getrennt…",
-      "lengthHint": "Gib alle 24 Wörter ein, um „Zugriff wiederherstellen“ zu aktivieren",
       "restore": "Zugriff wiederherstellen",
       "progress": {
         "deriving": "Verschlüsselungsschlüssel werden abgeleitet…",
@@ -1171,7 +1169,14 @@
         "title": "Deine Wiederherstellungsphrase konnte nicht geladen werden",
         "description": "Deine Wiederherstellungsphrase wird nur einmal während der Einrichtung angezeigt und kann später nicht abgerufen werden. Beginne von vorne, um eine neue zu generieren.",
         "startOver": "Von vorne beginnen"
-      }
+      },
+      "copy": "Kopieren",
+      "download": "Herunterladen",
+      "fileTitle": "MemryNote-Wiederherstellungsphrase",
+      "wordLabel": "Wort Nr. {index}",
+      "wordShort": "Wort Nr. {index}",
+      "pasteHint": "Füge die ganze Phrase in ein beliebiges Feld ein, um das Raster zu füllen.",
+      "stepOf": "Schritt {step} von {total}"
     },
     "startFresh": {
       "trigger": "Ich kann meine Wiederherstellungsphrase nicht wiederfinden",

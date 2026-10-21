@@ -1151,13 +1151,11 @@
       "confirmDescription": "요청된 단어를 입력하여 올바르게 저장했는지 확인하세요.",
       "wordPlaceholder": "{index}번째 단어 입력",
       "verify": "확인",
-      "mustMatch": "계속하려면 단어 3개가 모두 일치해야 합니다.",
-      "inputTitle": "복구 문구를 입력하세요",
-      "inputDescription": "암호화된 데이터에 대한 액세스를 복원하려면 24단어 복구 문구를 입력하세요.",
+      "mustMatch": "계속하려면 3개 단어가 모두 일치해야 합니다.",
+      "inputTitle": "복구 문구 입력",
+      "inputDescription": "계정을 만들 때 저장한 24개 단어를 입력하세요.",
       "inputLabel": "복구 문구",
       "count": "{count} / {total} 단어",
-      "inputPlaceholder": "공백으로 구분한 24단어 복구 문구 입력…",
-      "lengthHint": "복원 버튼을 활성화하려면 단어 24개를 모두 입력하세요.",
       "restore": "액세스 복원",
       "progress": {
         "deriving": "암호화 키 생성 중…",
@@ -1171,7 +1169,14 @@
         "title": "복구 문구를 불러오지 못했습니다",
         "description": "복구 문구는 설정 중 한 번만 표시되며 나중에 다시 볼 수 없습니다. 새로 생성하려면 다시 시작하세요.",
         "startOver": "다시 시작"
-      }
+      },
+      "copy": "복사",
+      "download": "다운로드",
+      "fileTitle": "MemryNote 복구 문구",
+      "wordLabel": "단어 {index}번",
+      "wordShort": "단어 {index}번",
+      "pasteHint": "전체 문구를 아무 칸에나 붙여넣으면 모든 칸이 채워집니다.",
+      "stepOf": "{total}단계 중 {step}단계"
     },
     "startFresh": {
       "trigger": "복구 문구를 되찾을 수 없습니다",

@@ -1151,13 +1151,11 @@
       "confirmDescription": "Wpisz wskazane słowa, aby sprawdzić, czy fraza została zapisana poprawnie.",
       "wordPlaceholder": "Wpisz słowo nr {index}",
       "verify": "Zweryfikuj",
-      "mustMatch": "Aby kontynuować, wszystkie 3 słowa muszą pasować",
-      "inputTitle": "Wprowadź frazę odzyskiwania",
-      "inputDescription": "Wpisz 24-wyrazową frazę odzyskiwania, aby przywrócić dostęp do zaszyfrowanych danych.",
+      "mustMatch": "Aby kontynuować, wszystkie 3 słowa muszą się zgadzać.",
+      "inputTitle": "Wpisz frazę odzyskiwania",
+      "inputDescription": "Wpisz 24 słowa zapisane podczas zakładania konta.",
       "inputLabel": "Fraza odzyskiwania",
       "count": "Słowa: {count} / {total}",
-      "inputPlaceholder": "Wpisz 24 słowa frazy odzyskiwania oddzielone spacjami…",
-      "lengthHint": "Wprowadź wszystkie 24 słowa, aby włączyć przycisk przywracania",
       "restore": "Przywróć dostęp",
       "progress": {
         "deriving": "Generowanie kluczy szyfrowania…",
@@ -1171,7 +1169,14 @@
         "title": "Nie udało się załadować frazy odzyskiwania",
         "description": "Fraza odzyskiwania jest pokazywana tylko raz podczas konfiguracji i nie można jej później odzyskać. Zacznij od nowa, aby wygenerować nową.",
         "startOver": "Zacznij od nowa"
-      }
+      },
+      "copy": "Kopiuj",
+      "download": "Pobierz",
+      "fileTitle": "Fraza odzyskiwania MemryNote",
+      "wordLabel": "Słowo nr {index}",
+      "wordShort": "słowo nr {index}",
+      "pasteHint": "Wklej całą frazę do dowolnego pola, aby wypełnić siatkę.",
+      "stepOf": "Krok {step} z {total}"
     },
     "startFresh": {
       "trigger": "Nie mam już frazy odzyskiwania",

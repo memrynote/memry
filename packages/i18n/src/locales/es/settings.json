@@ -1151,13 +1151,11 @@
       "confirmDescription": "Introduce las palabras solicitadas para comprobar que la has guardado correctamente.",
       "wordPlaceholder": "Introducir la palabra n.º {index}",
       "verify": "Verificar",
-      "mustMatch": "Las 3 palabras deben coincidir para continuar",
+      "mustMatch": "Las 3 palabras deben coincidir para continuar.",
       "inputTitle": "Introduce tu frase de recuperación",
-      "inputDescription": "Introduce tu frase de recuperación de 24 palabras para restaurar el acceso a tus datos cifrados.",
+      "inputDescription": "Introduce las 24 palabras que guardaste al crear tu cuenta.",
       "inputLabel": "Frase de recuperación",
       "count": "{count} / {total} palabras",
-      "inputPlaceholder": "Introducir tu frase de recuperación de 24 palabras separadas por espacios…",
-      "lengthHint": "Introduce las 24 palabras para activar el botón de restaurar",
       "restore": "Restaurar acceso",
       "progress": {
         "deriving": "Derivando claves de cifrado…",
@@ -1171,7 +1169,14 @@
         "title": "No se pudo cargar tu frase de recuperación",
         "description": "Tu frase de recuperación se muestra solo una vez durante la configuración y no se puede recuperar después. Empieza de nuevo para generar una nueva.",
         "startOver": "Empezar de nuevo"
-      }
+      },
+      "copy": "Copiar",
+      "download": "Descargar",
+      "fileTitle": "Frase de recuperación de MemryNote",
+      "wordLabel": "Palabra n.º {index}",
+      "wordShort": "palabra n.º {index}",
+      "pasteHint": "Pega la frase completa en cualquier casilla para rellenar la cuadrícula.",
+      "stepOf": "Paso {step} de {total}"
     },
     "startFresh": {
       "trigger": "Ya no tengo mi frase de recuperación",

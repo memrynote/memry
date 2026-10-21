@@ -1151,13 +1151,11 @@
       "confirmDescription": "输入指定的单词，以验证你已正确保存。",
       "wordPlaceholder": "输入第 {index} 个单词",
       "verify": "验证",
-      "mustMatch": "3 个单词必须全部匹配才能继续",
-      "inputTitle": "输入恢复短语",
-      "inputDescription": "输入由 24 个单词组成的恢复短语，以恢复对加密数据的访问。",
+      "mustMatch": "3 个单词必须全部匹配才能继续。",
+      "inputTitle": "输入你的恢复短语",
+      "inputDescription": "输入创建账户时保存的 24 个单词。",
       "inputLabel": "恢复短语",
       "count": "{count} / {total} 个单词",
-      "inputPlaceholder": "输入由 24 个单词组成的恢复短语，以空格分隔…",
-      "lengthHint": "输入所有 24 个单词以启用恢复按钮",
       "restore": "恢复访问",
       "progress": {
         "deriving": "正在派生加密密钥…",
@@ -1171,7 +1169,14 @@
         "title": "无法加载恢复短语",
         "description": "恢复短语仅在设置时显示一次，之后无法找回。重新开始即可生成新的恢复短语。",
         "startOver": "重新开始"
-      }
+      },
+      "copy": "复制",
+      "download": "下载",
+      "fileTitle": "MemryNote 恢复短语",
+      "wordLabel": "第 {index} 个单词",
+      "wordShort": "第 {index} 个词",
+      "pasteHint": "将整个短语粘贴到任意一格，即可填满所有格子。",
+      "stepOf": "第 {step} 步，共 {total} 步"
     },
     "startFresh": {
       "trigger": "我无法找回恢复短语",

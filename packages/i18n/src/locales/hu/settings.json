@@ -1151,13 +1151,11 @@
       "confirmDescription": "Írja be a kért szavakat, hogy ellenőrizze, helyesen mentette-e el.",
       "wordPlaceholder": "{index}. szó",
       "verify": "Ellenőrzés",
-      "mustMatch": "A folytatáshoz mind a 3 szónak egyeznie kell",
+      "mustMatch": "A folytatáshoz mind a 3 szónak egyeznie kell.",
       "inputTitle": "Írja be a helyreállítási kifejezést",
-      "inputDescription": "Adja meg a 24 szavas helyreállítási kifejezést a titkosított adatokhoz való hozzáférés visszaállításához.",
+      "inputDescription": "Adja meg a fiókja létrehozásakor elmentett 24 szót.",
       "inputLabel": "Helyreállítási kifejezés",
       "count": "{count} / {total} szó",
-      "inputPlaceholder": "Írja be a 24 szavas helyreállítási kifejezést szóközökkel elválasztva…",
-      "lengthHint": "Írja be mind a 24 szót a visszaállítás gomb engedélyezéséhez",
       "restore": "Hozzáférés visszaállítása",
       "progress": {
         "deriving": "Titkosítási kulcsok származtatása…",
@@ -1171,7 +1169,14 @@
         "title": "Nem sikerült betölteni a helyreállítási kifejezését",
         "description": "A helyreállítási kifejezés csak egyszer, a beállítás során jelenik meg, és később nem kérhető le újra. Új kifejezés létrehozásához kezdje elölről.",
         "startOver": "Kezdés elölről"
-      }
+      },
+      "copy": "Másolás",
+      "download": "Letöltés",
+      "fileTitle": "MemryNote helyreállítási kifejezés",
+      "wordLabel": "{index}. szó",
+      "wordShort": "{index}. szó",
+      "pasteHint": "Illessze be a teljes kifejezést bármelyik mezőbe a rács kitöltéséhez.",
+      "stepOf": "{step}. lépés / {total}"
     },
     "startFresh": {
       "trigger": "Nem tudom visszaszerezni a helyreállítási kifejezésemet",

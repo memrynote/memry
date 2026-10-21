@@ -1151,13 +1151,11 @@
       "confirmDescription": "Skriv inn ordene du blir bedt om, for å bekrefte at du har lagret den riktig.",
       "wordPlaceholder": "Skriv inn ord nr. {index}",
       "verify": "Bekreft",
-      "mustMatch": "Alle 3 ordene må samsvare for å fortsette",
+      "mustMatch": "Alle 3 ordene må samsvare for å fortsette.",
       "inputTitle": "Skriv inn gjenopprettingsfrasen",
-      "inputDescription": "Skriv inn gjenopprettingsfrasen på 24 ord for å gjenopprette tilgangen til de krypterte dataene dine.",
+      "inputDescription": "Skriv inn de 24 ordene du lagret da du opprettet kontoen.",
       "inputLabel": "Gjenopprettingsfrase",
       "count": "{count} / {total} ord",
-      "inputPlaceholder": "Skriv inn gjenopprettingsfrasen på 24 ord, atskilt med mellomrom …",
-      "lengthHint": "Skriv inn alle 24 ordene for å aktivere gjenopprettingsknappen",
       "restore": "Gjenopprett tilgang",
       "progress": {
         "deriving": "Utleder krypteringsnøkler …",
@@ -1171,7 +1169,14 @@
         "title": "Kunne ikke laste inn gjenopprettingsfrasen din",
         "description": "Gjenopprettingsfrasen din vises bare én gang under oppsettet og kan ikke hentes senere. Start på nytt for å generere en ny.",
         "startOver": "Start på nytt"
-      }
+      },
+      "copy": "Kopier",
+      "download": "Last ned",
+      "fileTitle": "MemryNote-gjenopprettingsfrase",
+      "wordLabel": "Ord nr. {index}",
+      "wordShort": "ord nr. {index}",
+      "pasteHint": "Lim inn hele frasen i en hvilken som helst rute for å fylle rutenettet.",
+      "stepOf": "Trinn {step} av {total}"
     },
     "startFresh": {
       "trigger": "Jeg får ikke tak i gjenopprettingsfrasen min",
