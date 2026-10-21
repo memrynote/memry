@@ -3,6 +3,9 @@
  * Runs before all tests in all workspaces.
  */
 
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import log from 'electron-log'
 import { vi, beforeAll, afterAll, afterEach } from 'vitest'
 
 // ============================================================================
@@ -34,6 +37,16 @@ vi.mock('keytar', async (importOriginal) => {
     }
   }
 })
+
+// Keep test logs out of the user's log folders. src/main/lib/logger.ts writes main.log to the
+// OS log dir the installed app uses (~/Library/Logs/memrynote on macOS), so every test that
+// logs through it wrote into the real app's log. MEMRY_TEST_LOG_DIR moves the file to a temp
+// dir, as E2E launches already do. Code that reaches electron-log without logger.ts
+// (log-forward.test.ts) gets electron-log's own default, ~/Library/Logs/@memry/desktop, so
+// that path points at the same dir. Shared by every Vitest worker; electron-log rotates it.
+const testLogDir = (process.env.MEMRY_TEST_LOG_DIR ??= join(tmpdir(), 'memry-vitest-logs'))
+log.transports.file.resolvePathFn = (variables) =>
+  join(testLogDir, variables.fileName ?? 'main.log')
 
 // Mock crypto.randomUUID for consistent IDs in tests
 if (typeof globalThis.crypto === 'undefined') {
