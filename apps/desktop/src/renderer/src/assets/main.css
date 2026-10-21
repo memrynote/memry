@@ -94,6 +94,21 @@
   );
 }
 
+/* Below 768px (useIsMobile) the sidebar renders as a sheet and there is no `.peer`
+   element, so the rule above never matches. The rail still holds the card's start
+   edge at 52px, so the tabs must still clear the window-control buttons. */
+@media (max-width: 767px) {
+  [data-workspace-card] [data-reserve-window-controls] {
+    padding-inline-start: max(
+      0px,
+      calc(
+        var(--window-controls-start) + var(--caption-reserve-start) + var(--chrome-buttons-width) -
+          53px
+      )
+    );
+  }
+}
+
 /* The Day Panel spans the card's full height so its h-9 header sits in the title
    row like the tab bars. Its body takes the card's surface (::before above), so
    the panel has no fill of its own and its start border only runs below the
