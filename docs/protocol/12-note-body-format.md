@@ -565,17 +565,17 @@ survive, including unnamed ones).**
 **Normative** (`packages/editor-schema/src/blocks/markdown.ts`), the forms that
 are not plain CommonMark:
 
-| Block            | On-disk form                                                                                                                                                                            | Anchor                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| callout          | `> [!<type>]` alone on its line, `<type>` one of `CALLOUT_TYPE_VALUES` in lowercase, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:34-48`, `:75-79`                      |
-| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                                                                        | `:166-171`                              |
-| youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                                                                                  | `:331`, `:340`                          |
-| bookmark         | `![bookmark](url)`                                                                                                                                                                      | `:305`, `:347`                          |
-| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                                                                           | `:360`, `:362-368`, `:371-373`          |
-| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                                                                                    | `:409`, `:418`, `:459`                  |
-| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                                                                                 | `:488`, `:500-509`                      |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open`                                                         | `:578`, `:585-586`, `:626-658`          |
-| plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                                                                         | `packages/shared/src/plain-checkbox.ts` |
+| Block            | On-disk form                                                                                                                                                                                                                                                                          | Anchor                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| callout          | `> [!<type>]` (optionally `-` closed or `+` open right after the `]`, the `fold` prop; no suffix is `none`) alone on its line, `<type>` one of `CALLOUT_TYPE_VALUES` in lowercase, then the own line and child blocks, one `> ` per line and a bare `>` per blank line between blocks | `:34-48`, `:75-79`                      |
+| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                                                                                                                                                                      | `:166-171`                              |
+| youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                                                                                                                                                                                | `:331`, `:340`                          |
+| bookmark         | `![bookmark](url)`                                                                                                                                                                                                                                                                    | `:305`, `:347`                          |
+| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                                                                                                                                                                         | `:360`, `:362-368`, `:371-373`          |
+| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                                                                                                                                                                                  | `:409`, `:418`, `:459`                  |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                                                                                                                                                                               | `:488`, `:500-509`                      |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open`                                                                                                                                                       | `:578`, `:585-586`, `:626-658`          |
+| plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                                                                                                                                                                       | `packages/shared/src/plain-checkbox.ts` |
 
 **Claiming rules matter as much as the forms:**
 
@@ -584,6 +584,8 @@ are not plain CommonMark:
   is kept in the block's `alt` prop (default `embed`) and written back
   unchanged, so another app's `![](url)` keeps its bytes. Builds before this
   rule claimed only alt `embed` and read any other alt as an `image`;
+- the callout fold suffix is exactly `-` or `+`; builds before it drop the unknown `fold` prop
+  and write the marker back without it;
 - the callout marker regex is strict — a type outside `CALLOUT_TYPE_VALUES`
   (`> [!danger]`), an uppercase marker (`> [!NOTE]`) and `> [!info] A title`
   are deliberately **not** claimed
