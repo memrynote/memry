@@ -105,7 +105,10 @@ describe('sessionReducer SAVE_TAB_STATE viewState merge', () => {
 
 describe('sessionReducer SAVE_TAB_STATE scrollPanes merge', () => {
   /** Initial state with a single known tab carrying the given pane entries. */
-  function stateWithPanes(scrollPanes?: TabScrollPanes): {
+  function stateWithPanes(
+    scrollPanes?: TabScrollPanes,
+    entityId?: string
+  ): {
     state: TabSystemState
     groupId: string
     tabId: string
@@ -122,7 +125,7 @@ describe('sessionReducer SAVE_TAB_STATE scrollPanes merge', () => {
           ...base.tabGroups,
           [groupId]: {
             ...group,
-            tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, scrollPanes } : t))
+            tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, scrollPanes, entityId } : t))
           }
         }
       },
@@ -134,9 +137,10 @@ describe('sessionReducer SAVE_TAB_STATE scrollPanes merge', () => {
   it('keeps the panes the incoming patch does not mention', () => {
     // The bug this replaces: one pane's write wiped the tab's only record, so
     // Overview → Notes → Overview lost the Overview offset every round trip.
-    const { state, groupId, tabId } = stateWithPanes({
-      'project-overview': { offset: 250, entityId: 'project-1' }
-    })
+    const { state, groupId, tabId } = stateWithPanes(
+      { 'project-overview': { offset: 250, entityId: 'project-1' } },
+      'project-1'
+    )
 
     const next = sessionReducer(state, {
       type: 'SAVE_TAB_STATE',
