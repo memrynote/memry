@@ -36,6 +36,16 @@
       "buttonRecover": "Repair",
       "buttonLater": "Not now"
     },
+    "obsidianVault": {
+      "title": "Open Obsidian vault",
+      "message": "Open a copy of this Obsidian vault?",
+      "detail": "Opening an Obsidian vault in memrynote can lose data your Obsidian plugins rely on. When memrynote turns a plugin's task line into a task, it rewrites the line. Fields such as the Tasks plugin's due dates leave the file, and Obsidian no longer sees them.\n\nmemrynote can copy “{name}” to “{copyName}” next to it and open the copy. “{name}” stays exactly as it is.",
+      "detailExistingCopy": "Opening an Obsidian vault in memrynote can lose data your Obsidian plugins rely on. When memrynote turns a plugin's task line into a task, it rewrites the line. Fields such as the Tasks plugin's due dates leave the file, and Obsidian no longer sees them.\n\nA memrynote copy, “{copyName}”, is already next to it. memrynote can open that copy. “{name}” stays exactly as it is.",
+      "buttonCopy": "Create copy",
+      "buttonOpenCopy": "Open copy",
+      "buttonOpenOriginal": "Open original",
+      "buttonCancel": "Cancel"
+    },
     "pair": {
       "title": "Pair browser extension",
       "message": "Allow the Memry browser extension to send captures to this app?",
