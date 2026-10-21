@@ -32,6 +32,7 @@ import {
   timelinePeriodStart,
   type TimelineDates,
   type TimelineEdit,
+  type TimelineGroup,
   type TimelineRow,
   type TimelineSettings,
   type TimelineTaskRow,
@@ -134,9 +135,19 @@ export function CalendarTimelineView({
   )
 
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  // Subtasks are listed by default; this holds the parents the user folded.
+  const [foldedParents, setFoldedParents] = useState<ReadonlySet<string>>(() => new Set())
+  const shownRows = useCallback(
+    (group: TimelineGroup): TimelineRow[] =>
+      group.rows.filter(
+        (row) =>
+          !(row.type === 'task' && row.depth === 1 && foldedParents.has(row.task.parentId ?? ''))
+      ),
+    [foldedParents]
+  )
   const visibleRows = useMemo(
-    () => groups.flatMap((group) => (collapsed.has(group.key) ? [] : group.rows)),
-    [groups, collapsed]
+    () => groups.flatMap((group) => (collapsed.has(group.key) ? [] : shownRows(group))),
+    [groups, collapsed, shownRows]
   )
   const taskRowCount = useMemo(
     () => groups.reduce((n, g) => n + g.rows.filter((row) => row.type === 'task').length, 0),
@@ -600,7 +611,7 @@ export function CalendarTimelineView({
                       }
                     />
                     {!isCollapsed &&
-                      group.rows.map((row) =>
+                      shownRows(group).map((row) =>
                         row.type === 'task' ? (
                           <TimelineTaskRowView
                             key={row.key}
@@ -609,6 +620,15 @@ export function CalendarTimelineView({
                             domId={rowDomId(row.key)}
                             today={today}
                             isSelected={isRowSelected(row)}
+                            subtasksOpen={!foldedParents.has(row.task.id)}
+                            onToggleSubtasks={() =>
+                              setFoldedParents((current) => {
+                                const next = new Set(current)
+                                if (next.has(row.task.id)) next.delete(row.task.id)
+                                else next.add(row.task.id)
+                                return next
+                              })
+                            }
                             preview={
                               drag.preview?.taskId === row.task.id ? drag.preview.dates : null
                             }

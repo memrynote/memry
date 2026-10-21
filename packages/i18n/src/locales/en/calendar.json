@@ -267,6 +267,10 @@
     "overdue": "overdue",
     "untitled": "Untitled",
     "days": "{count, plural, one {# day} other {# days}}",
+    "subtasks": {
+      "expand": "Show {count, plural, one {# subtask} other {# subtasks}} of {title}",
+      "collapse": "Hide {count, plural, one {# subtask} other {# subtasks}} of {title}"
+    },
     "events": "Events",
     "schedule-hint": "Click to set a date, drag to set a range",
     "empty-title": "Nothing on the timeline here",

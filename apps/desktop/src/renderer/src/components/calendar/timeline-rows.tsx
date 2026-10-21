@@ -6,6 +6,7 @@ import { CalendarDays, ChevronDown, Flag, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { CalendarTaskStatus } from './calendar-task-status'
 import { ChipBar, eventBarVars, taskBarVars } from './timeline-chip'
+import { ResizeHandle, SubtaskToggle } from './timeline-row-parts'
 import { parseLocalDate } from './date-utils'
 import { TIMELINE_LIST_WIDTH } from './timeline-axis'
 import {
@@ -303,6 +304,9 @@ export interface TaskRowProps extends Geometry {
   domId: string
   today: string
   isSelected: boolean
+  /** Whether this parent's subtasks are listed; ignored for rows without any. */
+  subtasksOpen: boolean
+  onToggleSubtasks: () => void
   /** Dates shown while a drag or schedule gesture is in flight. */
   preview: TimelineDates | null
   formatDay: DayFormatter
@@ -321,34 +325,6 @@ function previewShape(dates: TimelineDates): TimelineShape {
   })
 }
 
-function ResizeHandle({
-  side,
-  visible,
-  onPointerDown
-}: {
-  side: 'start' | 'end'
-  visible: boolean
-  onPointerDown: (event: React.PointerEvent) => void
-}): React.JSX.Element {
-  return (
-    <div
-      data-testid={`timeline-resize-${side}`}
-      onPointerDown={onPointerDown}
-      className={cn(
-        'absolute inset-y-0 z-10 flex w-2.5 cursor-ew-resize items-center justify-center',
-        side === 'start' ? 'start-0' : 'end-0'
-      )}
-    >
-      <span
-        className={cn(
-          'h-3 w-1 rounded-full bg-background shadow-[0_0_0_1px_var(--chip-rail)] transition-opacity duration-100',
-          visible ? 'opacity-100' : 'opacity-0 group-hover/bar:opacity-100'
-        )}
-      />
-    </div>
-  )
-}
-
 export function TimelineTaskRowView({
   row,
   domId,
@@ -356,6 +332,8 @@ export function TimelineTaskRowView({
   dayWidth,
   today,
   isSelected,
+  subtasksOpen,
+  onToggleSubtasks,
   preview,
   formatDay,
   describe,
@@ -457,6 +435,21 @@ export function TimelineTaskRowView({
         className="absolute top-0 flex h-full cursor-grab items-center justify-center active:cursor-grabbing"
         style={{ ...vars, insetInlineStart: placement.from * dayWidth, width: dayWidth }}
       >
+        {/* Same as Alt+Left/Right: stretch the day into a span. */}
+        {dayWidth >= 20 && !isDragging && (
+          <>
+            <ResizeHandle
+              side="start"
+              visible={solid}
+              onPointerDown={(event) => onBarPointerDown(event, 'resize-start')}
+            />
+            <ResizeHandle
+              side="end"
+              visible={solid}
+              onPointerDown={(event) => onBarPointerDown(event, 'resize-end')}
+            />
+          </>
+        )}
         <span
           className={cn(
             'size-2.5 rotate-45 rounded-[2px] transition-shadow',
@@ -592,9 +585,17 @@ export function TimelineTaskRowView({
       trackWidth={trackWidth}
       listCell={
         <>
+          {row.depth === 0 && (
+            <SubtaskToggle
+              title={title}
+              count={row.subtaskCount}
+              open={subtasksOpen}
+              onToggle={onToggleSubtasks}
+            />
+          )}
           <span
             className="relative flex shrink-0 justify-center"
-            style={{ width: 18, marginInlineStart: row.depth === 1 ? 56 : 40 }}
+            style={{ width: 18, marginInlineStart: row.depth === 1 ? 56 : 4 }}
             onPointerDown={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
           >

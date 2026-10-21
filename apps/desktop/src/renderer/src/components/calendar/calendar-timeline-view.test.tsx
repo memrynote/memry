@@ -250,6 +250,35 @@ describe('CalendarTimelineView', () => {
     })
   })
 
+  it('stretches a milestone into a span by dragging its end handle', () => {
+    renderView()
+    const handle = within(row(/^Ship it/)).getByTestId('timeline-resize-end')
+    fireEvent.pointerDown(handle, { button: 0, clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 100 + DAY * 2 })
+    fireEvent.pointerUp(window, { clientX: 100 + DAY * 2 })
+    expect(updateTask).toHaveBeenCalledWith('Ship it', {
+      startDate: d('2026-03-25'),
+      dueDate: d('2026-03-27')
+    })
+  })
+
+  it("folds and unfolds a parent task's subtasks from its chevron", () => {
+    workspace.tasks = [
+      task('Parent', '2026-03-03', '2026-03-10'),
+      task('Child', '2026-03-04', '2026-03-06', { parentId: 'Parent' })
+    ]
+    renderView()
+    expect(row(/^Child/)).toBeInTheDocument()
+
+    const toggle = within(row(/^Parent/)).getByTestId('timeline-subtask-toggle')
+    fireEvent.click(toggle)
+    expect(screen.queryByRole('row', { name: /^Child/ })).not.toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(toggle)
+    expect(row(/^Child/)).toBeInTheDocument()
+  })
+
   it('completes the selected task with C', () => {
     const { grid } = renderView()
     fireEvent.pointerDown(row(/^Ship it/), { button: 0 })

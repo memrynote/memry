@@ -63,6 +63,7 @@ statuses without opening the task. Completed tasks are shown by default; turn th
 ### Rescheduling
 
 - Drag a bar to move it; drag either end to change the start or due date. Escape cancels a drag.
+- A diamond has a handle on each side while you hover or select it. Drag one to stretch the day into a bar. It does the same as Option+← →. At the Quarters zoom the days are too narrow for handles, so use the keys.
 - Drag across an empty row to give a task a start and due date; click it to set only a due date.
 - Every change can be undone with Cmd+Z.
 
@@ -95,8 +96,10 @@ opens the [command palette](/user-guide/command-palette). In right-to-left langu
 
 **Display** in the toolbar sets the zoom, grouping (project, status, priority, or none),
 ordering (start date, due date, or title), and what is shown: events, tasks without dates,
-completed tasks, and subtasks. Subtasks are listed under their parent. These settings are kept
-per tab. Archived tasks and tasks in archived projects are never shown.
+completed tasks, and subtasks. Subtasks are listed under their parent, and are shown by default. A
+parent with subtasks has a chevron before its status icon: click it to fold or unfold that
+parent's subtasks. Folds last until you leave the tab. Turning **Subtasks** off hides them for
+every parent. These settings are kept per tab. Archived tasks and tasks in archived projects are never shown.
 
 ## Reading a Chip
 

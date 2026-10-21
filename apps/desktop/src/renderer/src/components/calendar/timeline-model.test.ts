@@ -289,18 +289,21 @@ describe('buildTimelineGroups', () => {
     expect(build([task('Next year', 'aa1111', null, '2027-05-10')], [launch])).toEqual([])
   })
 
-  it('nests subtasks under their parent when subtasks show', () => {
+  it('nests subtasks under their parent unless subtasks are hidden', () => {
     const tasks = [
       task('Parent', 'aa1111', '2026-09-01', '2026-09-20'),
       task('Child', 'aa1111', '2026-09-05', '2026-09-08', { parentId: 'Parent' }),
       task('Other', 'aa1111', '2026-09-03', '2026-09-04')
     ]
-    expect(titles(build(tasks, [launch])[0].rows)).toEqual(['Parent', 'Other'])
-    const rows = build(tasks, [launch], { showSubtasks: true })[0].rows as TimelineTaskRow[]
-    expect(rows.map((row) => [row.task.title, row.depth])).toEqual([
-      ['Parent', 0],
-      ['Child', 1],
-      ['Other', 0]
+    expect(titles(build(tasks, [launch], { showSubtasks: false })[0].rows)).toEqual([
+      'Parent',
+      'Other'
+    ])
+    const rows = build(tasks, [launch])[0].rows as TimelineTaskRow[]
+    expect(rows.map((row) => [row.task.title, row.depth, row.subtaskCount])).toEqual([
+      ['Parent', 0, 1],
+      ['Child', 1, 0],
+      ['Other', 0, 0]
     ])
   })
 
