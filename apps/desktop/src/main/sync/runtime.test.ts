@@ -101,6 +101,7 @@ const runtimeMocks = vi.hoisted(() => {
     requestPush = vi.fn()
     isPaused = vi.fn(() => false)
     isCaughtUpWithServer = vi.fn(() => false)
+    isDeviceRevoked = vi.fn(() => false)
     mergeRemoteCrdtForNote = vi.fn(async (_noteId: string) => true)
     hasUnmergedRemoteCrdtState = vi.fn((noteId: string) =>
       runtimeMocks.unverifiedCrdtNotes.has(noteId)

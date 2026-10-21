@@ -6,6 +6,8 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { isVaultReachable } from '../vault/init'
+import { EmptyAttachmentError } from './attachment-errors'
+import { classifyError } from './sync-errors'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentOutbox')
@@ -229,6 +231,18 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
         clearUpload(deps.db, row.noteId, row.diskPath)
         dropped++
         continue
+      }
+      if (err instanceof EmptyAttachmentError) {
+        clearUpload(deps.db, row.noteId, row.diskPath)
+        dropped++
+        continue
+      }
+      // A revoked device is refused identically for every remaining row, and
+      // each try would count an attempt against a row that did nothing wrong
+      // (#3414). Leave the row as it was and end the pass.
+      if (classifyError(err).category === 'device_revoked') {
+        log.warn('Attachment outbox drain stopped: this device was revoked')
+        break
       }
       markUploadFailed(
         deps.db,

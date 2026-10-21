@@ -611,6 +611,11 @@ export class SyncEngine extends SyncEventEmitter {
     }
   }
 
+  /** True once the server refused this device as revoked; nothing it sends is accepted again. */
+  isDeviceRevoked(): boolean {
+    return this.ctx.lastErrorInfo?.category === 'device_revoked'
+  }
+
   /**
    * True while the latest full sync delivered and sync is neither paused nor
    * offline: only then does local state reflect what peers did.

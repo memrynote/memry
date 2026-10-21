@@ -22,6 +22,7 @@ import {
   type TransferProgress,
   type UploadResult
 } from '../sync/attachments'
+import { EmptyAttachmentError } from '../sync/attachment-errors'
 import { classifyError } from '../sync/sync-errors'
 import {
   getCachedMaxFileSize,
@@ -546,6 +547,19 @@ export function registerAttachmentHandlers(): void {
           }
           return
         }
+        // A zero-byte file fails identically on every retry: drop the row, no
+        // failure to show or report (#3414).
+        if (err instanceof EmptyAttachmentError) {
+          logger.info('Dropped the upload of an empty attachment', { noteId })
+          if (isDatabaseInitialized()) {
+            try {
+              clearUpload(getDatabase(), noteId, diskPath)
+            } catch (outboxErr) {
+              logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+            }
+          }
+          return
+        }
         const message = err instanceof Error ? err.message : 'Unknown error'
         // Classify here: this is the only path that raises the plan preflight's
         // AttachmentTooLargeError, and nothing else on it ever calls
@@ -563,7 +577,10 @@ export function registerAttachmentHandlers(): void {
         // electron-log alone kept this outage invisible for 58 days — the only
         // reason it surfaced was a server-side 413. Route it to telemetry too so
         // an attachment outage is visible from the client side.
-        trackMainError('sync_attachments', 'attachment_upload_failed', err)
+        // A revoked device is already reported once by the engine (#3414).
+        if (category !== 'device_revoked') {
+          trackMainError('sync_attachments', 'attachment_upload_failed', err)
+        }
 
         // The SERVER rejected on its own file-size limit, which means our cached
         // limit disagrees with the authority. Drop it so the next preflight has
