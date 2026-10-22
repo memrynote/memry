@@ -108,10 +108,9 @@ export function unlockNoteBody(
       'Locked notes were not imported; Memry cannot read them without your Notes password'
     )
   }
-  const crypto = parseLockedCrypto(row)
-  const result = crypto ? decryptor.decrypt(crypto, encrypted) : null
-  if (result?.ok) return result
-  if (result?.reason === 'wrong-password') {
+  const result = decryptor.decrypt(encrypted, parseLockedCrypto(row))
+  if (result.ok) return result
+  if (result.reason === 'wrong-password') {
     return skip(
       IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword,
       'Locked notes use a different password than the one you entered'
@@ -145,14 +144,16 @@ export async function checkNotesUnlock(
   const store = await openNoteStore(sourcePath)
   try {
     const keys = loadPrimaryKeys(store.db)
-    const rows = store.db
-      .prepare(`SELECT 1 AS present ${lockedCryptoSelect(store.db)} ${LOCKED_NOTES_FROM_WHERE}`)
-      .all(keys.ICNote) as LockedCryptoRow[]
+    const rows: (LockedCryptoRow & { hexdata: string | null })[] = store.db
+      .prepare(
+        `SELECT hex(nd.zdata) AS hexdata ${lockedCryptoSelect(store.db)} ${LOCKED_NOTES_FROM_WHERE}`
+      )
+      .all(keys.ICNote) as (LockedCryptoRow & { hexdata: string | null })[]
     const decryptor = createNoteDecryptor(password)
     let unlocked = 0
     for (const row of rows) {
-      const crypto = parseLockedCrypto(row)
-      if (crypto && decryptor.canUnlock(crypto)) unlocked++
+      const zdata = row.hexdata ? Buffer.from(row.hexdata, 'hex') : null
+      if (zdata && decryptor.canUnlock(zdata, parseLockedCrypto(row))) unlocked++
     }
     return { unlocked, total: rows.length }
   } finally {

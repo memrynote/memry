@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import crypto from 'crypto'
 import * as os from 'os'
 import * as path from 'path'
 import zlib from 'zlib'
@@ -14,7 +15,7 @@ import Database from 'better-sqlite3'
 import { Root } from 'protobufjs'
 import { descriptor, DOCUMENT_TYPE } from '@memry/importers/apple-notes'
 import { IMPORT_MESSAGE_CODES } from '@memry/importers/messages'
-import { lockNote } from './locked-note-fixture'
+import { lockNote, lockNoteEnvelope } from './locked-note-fixture'
 import { scanAppleNotesFolders } from './note-store'
 import { checkNotesUnlock } from './locked-notes'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
@@ -118,6 +119,19 @@ function buildLockedDb(dbPath: string): void {
       }
     ])
   )
+  // Current macOS: ZDATA is the archived envelope; the legacy columns are
+  // present but unusable (iteration count 0), as in a real library.
+  const addEnvelope = (pk: number, title: string, password: string): void => {
+    insertNote.run(pk, 3, title, 20, 1, crypto.randomBytes(16), 0, crypto.randomBytes(16))
+    insertData.run(
+      pk,
+      lockNoteEnvelope(password, plainBody(title)),
+      crypto.randomBytes(16),
+      crypto.randomBytes(16)
+    )
+  }
+  addEnvelope(34, 'Envelope Secret', PASSWORD)
+  addEnvelope(35, 'Envelope Other', 'something else')
   db.close()
 }
 
@@ -192,12 +206,16 @@ describe('locked Apple Notes (synthetic NoteStore.sqlite)', () => {
     const summary = await run({ notesPassword: PASSWORD })
 
     expect(summary.failed).toEqual([])
-    expect(summary.imported).toBe(3)
+    expect(summary.imported).toBe(4)
     expect(fs.readFileSync(noteFile('Secret'), 'utf8')).toContain('body of Secret')
     expect(fs.existsSync(noteFile('Open Note'))).toBe(true)
+    expect(fs.readFileSync(noteFile('Envelope Secret'), 'utf8')).toContain(
+      'body of Envelope Secret'
+    )
     expect(fs.existsSync(noteFile('Other Password'))).toBe(false)
+    expect(fs.existsSync(noteFile('Envelope Other'))).toBe(false)
     expect(codes(summary)).toEqual({
-      [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 1,
+      [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 2,
       [IMPORT_MESSAGE_CODES.appleNotesLockedAttachment]: 1
     })
   })
@@ -212,19 +230,19 @@ describe('locked Apple Notes (synthetic NoteStore.sqlite)', () => {
   it('keeps every locked note out when no password is given', async () => {
     const summary = await run()
     expect(summary.imported).toBe(1)
-    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedNote]: 3 })
+    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedNote]: 5 })
   })
 
   it('skips every locked note on a wrong password and never echoes it', async () => {
     const summary = await run({ notesPassword: 'definitely wrong' })
     expect(summary.imported).toBe(1)
-    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 3 })
+    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 5 })
     expect(JSON.stringify(summary)).not.toContain('definitely wrong')
   })
 
   it('reports locked notes in the folder scan and how many a password unlocks', async () => {
-    expect((await scanAppleNotesFolders(dbPath)).lockedNoteCount).toBe(3)
-    expect(await checkNotesUnlock(dbPath, PASSWORD)).toEqual({ unlocked: 2, total: 3 })
-    expect(await checkNotesUnlock(dbPath, 'nope')).toEqual({ unlocked: 0, total: 3 })
+    expect((await scanAppleNotesFolders(dbPath)).lockedNoteCount).toBe(5)
+    expect(await checkNotesUnlock(dbPath, PASSWORD)).toEqual({ unlocked: 3, total: 5 })
+    expect(await checkNotesUnlock(dbPath, 'nope')).toEqual({ unlocked: 0, total: 5 })
   })
 })
