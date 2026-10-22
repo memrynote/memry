@@ -13,6 +13,7 @@ import {
 } from '../../lib/embeddings'
 import {
   buildEmbeddingChunks,
+  buildEmbeddingInput,
   EMBEDDING_INPUT_VERSION,
   MAX_EMBEDDABLE_CONTENT_LENGTH
 } from '../../lib/embedding-input'
@@ -55,17 +56,26 @@ function deleteNoteChunks(rawDb: Database.Database, noteId: string): void {
 }
 
 /**
- * Write a note's vectors: the head window to vec_notes (what similarity and
- * filing read) and every later window to vec_note_chunks, in one transaction so
- * a crash never leaves a state row that disagrees with the chunk rows.
+ * Write a note's vectors: the head window to vec_notes and every later window
+ * to vec_note_chunks (both read by search), and the `similarity` vector to
+ * vec_note_similar (read by related notes, tags, grouping and filing), in one
+ * transaction so a crash never leaves a state row that disagrees with them.
  */
-function storeNoteEmbeddings(noteId: string, embeddings: Float32Array[]): void {
+function storeNoteEmbeddings(
+  noteId: string,
+  embeddings: Float32Array[],
+  similar: Float32Array
+): void {
   const rawDb = getRawIndexDatabase()
   const [head, ...later] = embeddings
   rawDb.transaction(() => {
     deleteNoteChunks(rawDb, noteId)
     rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
     rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, head)
+    rawDb.prepare('DELETE FROM vec_note_similar WHERE note_id = ?').run(noteId)
+    rawDb
+      .prepare('INSERT INTO vec_note_similar (note_id, embedding) VALUES (?, ?)')
+      .run(noteId, similar)
     later.forEach((embedding, index) => {
       rawDb
         .prepare('INSERT INTO vec_note_chunks (chunk_id, embedding) VALUES (?, ?)')
@@ -85,6 +95,7 @@ function deleteNoteEmbedding(noteId: string): void {
     rawDb.transaction(() => {
       deleteNoteChunks(rawDb, noteId)
       rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+      rawDb.prepare('DELETE FROM vec_note_similar WHERE note_id = ?').run(noteId)
       rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
     })()
   } catch {
@@ -135,7 +146,13 @@ async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): P
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
 
-async function updateEmbedding(noteId: string, windows: string[]): Promise<boolean> {
+interface NoteText {
+  title?: string | null
+  content: string
+}
+
+async function updateEmbedding(noteId: string, text: NoteText): Promise<boolean> {
+  const windows = buildEmbeddingChunks(text)
   if (!isAIEnabled() || windows.length === 0) {
     deleteNoteEmbedding(noteId)
     return false
@@ -157,8 +174,12 @@ async function updateEmbedding(noteId: string, windows: string[]): Promise<boole
     }
     embeddings.push(embedding)
   }
+  const similar = await generateLocalEmbedding(buildEmbeddingInput(text, 'similarity'))
+  if (!similar) {
+    return false
+  }
 
-  storeNoteEmbeddings(noteId, embeddings)
+  storeNoteEmbeddings(noteId, embeddings, similar)
   return true
 }
 
@@ -193,8 +214,7 @@ export function createEmbeddingProjector(
       const note = notes[i]
       try {
         const content = await readEmbeddableContent(vaultPath, note)
-        const windows = buildEmbeddingChunks({ title: note.title, content })
-        if (!(await updateEmbedding(note.id, windows))) {
+        if (!(await updateEmbedding(note.id, { title: note.title, content }))) {
           skipped++
         } else {
           computed++
@@ -240,6 +260,7 @@ export function createEmbeddingProjector(
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
       rawDb.prepare('DELETE FROM vec_note_chunks').run()
+      rawDb.prepare('DELETE FROM vec_note_similar').run()
       rawDb.prepare('DELETE FROM note_embedding_state').run()
       emitProgress(0, 0, 'complete')
       return { success: true, computed: 0, skipped: 0 }
@@ -260,6 +281,7 @@ export function createEmbeddingProjector(
 
     rawDb.prepare('DELETE FROM vec_notes').run()
     rawDb.prepare('DELETE FROM vec_note_chunks').run()
+    rawDb.prepare('DELETE FROM vec_note_similar').run()
     rawDb.prepare('DELETE FROM note_embedding_state').run()
     emitProgress(0, notes.length, 'embedding')
 
@@ -284,7 +306,7 @@ export function createEmbeddingProjector(
       pendingEmbedding.add(noteId)
       return
     }
-    await updateEmbedding(noteId, buildEmbeddingChunks({ title, content }))
+    await updateEmbedding(noteId, { title, content })
   }
 
   return {
@@ -324,7 +346,7 @@ export function createEmbeddingProjector(
         } else if (vaultPath) {
           try {
             const content = await readEmbeddableContent(vaultPath, note)
-            await updateEmbedding(note.id, buildEmbeddingChunks({ title: note.title, content }))
+            await updateEmbedding(note.id, { title: note.title, content })
           } catch (error) {
             logger.warn('Failed to embed attachment text', { noteId: note.id, error })
           }
@@ -360,13 +382,10 @@ export function createEmbeddingProjector(
         return
       }
 
-      await updateEmbedding(
-        note.noteId,
-        buildEmbeddingChunks({
-          title: note.title,
-          content: withAttachmentText(note.noteId, note.parsedContent)
-        })
-      )
+      await updateEmbedding(note.noteId, {
+        title: note.title,
+        content: withAttachmentText(note.noteId, note.parsedContent)
+      })
     },
 
     rebuild: runRebuild,
@@ -406,6 +425,11 @@ export function createEmbeddingProjector(
               OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
           )
           `
+        )
+        .run()
+      rawDb
+        .prepare(
+          'DELETE FROM vec_note_similar WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
         )
         .run()
       // Chunk rows go first: their ids are read from the state rows deleted next.
