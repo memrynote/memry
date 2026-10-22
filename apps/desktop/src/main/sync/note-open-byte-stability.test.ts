@@ -197,6 +197,17 @@ const FIXTURES: ReadonlyArray<readonly [string, string]> = [
   ['an aliased link, marked', '**[[Roadmap|the plan]]**'],
   ['a wiki link in a sentence', 'See [[Wiki Link]] for details.'],
   ['a wiki link alone in its block', '[[Wiki Link]]'],
+  // Link-card display settings (#2845): the marker line has to survive the
+  // seed (text link), the renderer promotion and the write-back unchanged.
+  [
+    'a link card with every setting',
+    '<!-- link-card:{"size":"medium","cover":true,"preview":true} -->\n[[Wiki Link]]'
+  ],
+  ['a link card with one setting', '<!-- link-card:{"size":"small"} -->\n[[Wiki Link]]'],
+  [
+    'a bold aliased link card',
+    '<!-- link-card:{"cover":true} -->\n**[[Roadmap|the plan]]**\n\nAfter it.'
+  ],
   ['an aliased wiki link', 'See [[Roadmap|the plan]] today.'],
   ['a wiki link per list item', '- [[A]]\n- [[B]]'],
   ['a wiki link in a quote', '> [[Quoted]]'],

@@ -19,7 +19,7 @@ use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
-use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+use yrs::{Any, ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
@@ -270,4 +270,67 @@ fn a_link_to_another_note_is_left_alone() {
         0,
         "nothing changed, nothing ships"
     );
+}
+
+/// A paragraph holding only a wikiLink with the display attributes of #2845:
+/// `size` as a string, `cover` and `preview` as booleans, the way the editor
+/// writes them.
+fn card_update(doc_id: &str, target: &str) -> Vec<u8> {
+    let captured: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let captured = Arc::clone(&captured);
+        Arc::new(move |_, bytes: &[u8]| captured.lock().expect("lock").push(bytes.to_vec()))
+    };
+    let document = DocumentRegistry::new("device-peer", sink)
+        .get_or_open(doc_id)
+        .expect("open");
+    document
+        .write(|txn| {
+            let fragment = txn.get_xml_fragment("prosemirror").expect("typed at open");
+            let group = fragment.push_back(txn, XmlElementPrelim::empty("blockGroup"));
+            let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+            container.insert_attribute(txn, "id", "b1");
+            let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+            let link = paragraph.push_back(txn, XmlElementPrelim::empty("wikiLink"));
+            link.insert_attribute(txn, "target", target);
+            link.insert_attribute(txn, "size", "medium");
+            link.insert_attribute(txn, "cover", Any::Bool(true));
+            link.insert_attribute(txn, "preview", Any::Bool(true));
+        })
+        .expect("a write");
+    captured.lock().expect("lock").remove(0)
+}
+
+/// #2845: a rename re-points `target` and leaves the card's display attributes.
+#[test]
+fn a_rename_keeps_a_link_cards_display_attributes() {
+    let f = fixture("card");
+    let plan = f.note("Plan", None);
+    let source = f.note("Source", None);
+    let update = card_update(&source, "Plan");
+    f.db.call_blocking(|conn: &mut Connection| {
+        update_log::append_server_update(conn, &source, 1, &update, 1).map_err(|error| {
+            StorageError::Failed {
+                what: error.to_string(),
+            }
+        })
+    })
+    .expect("the body");
+
+    f.writer
+        .rename(plan, "Roadmap".to_string())
+        .expect("rename");
+
+    let blocks = f
+        .vault
+        .notes()
+        .blocks(source)
+        .expect("blocks")
+        .expect("a body");
+    let run = &blocks[0].inline[0];
+    assert_eq!(run.target.as_deref(), Some("Roadmap"));
+    let attr = |name: &str| run.mark_attrs.get(&format!("wikiLink.{name}")).cloned();
+    assert_eq!(attr("size").as_deref(), Some("medium"));
+    assert_eq!(attr("cover").as_deref(), Some("true"));
+    assert_eq!(attr("preview").as_deref(), Some("true"));
 }

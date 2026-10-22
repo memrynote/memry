@@ -232,7 +232,7 @@ pub(super) fn set_mark(
 ///
 /// The FFI carries every value as text, and BlockNote declares some of these
 /// props as booleans: a date mention's `hasTime`, a wiki link's marks, a
-/// checkbox's `checked`. Stored as the string `"false"` they read as true
+/// checkbox's `checked`, a wiki link's card `cover` and `preview`. Stored as the string `"false"` they read as true
 /// anywhere the prop is tested for truth, so a date written without a time
 /// would render with one on desktop.
 pub(super) fn inline_attr(kind: &str, name: &str, value: &str) -> Any {
@@ -242,7 +242,7 @@ pub(super) fn inline_attr(kind: &str, name: &str, value: &str) -> Any {
             | ("inlineCheckbox", "checked")
             | (
                 "wikiLink",
-                "bold" | "italic" | "underline" | "strike" | "code"
+                "bold" | "italic" | "underline" | "strike" | "code" | "cover" | "preview"
             )
     );
     match (boolean, value) {

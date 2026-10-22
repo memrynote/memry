@@ -10,6 +10,17 @@
  */
 
 import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
+import { wikiLinkMarkProps, type WikiLinkMarkProps } from '@memry/shared/wiki-link-props'
+
+export {
+  DEFAULT_WIKI_LINK_DISPLAY,
+  isWikiLinkSize,
+  wikiLinkDisplayProps,
+  wikiLinkMarkProps,
+  type WikiLinkDisplayProps,
+  type WikiLinkMarkProps,
+  type WikiLinkSize
+} from '@memry/shared/wiki-link-props'
 
 const WIKI_LINK_FULL_PATTERN = /^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/
 
@@ -27,54 +38,6 @@ export function parseWikiLinkText(text: string): WikiLinkParts | null {
 
   if (!target) return null
   return { target, alias }
-}
-
-/**
- * The marks a wiki link can carry, named exactly as BlockNote names them in its
- * style schema — `bold` / `italic` / `underline` / `strike` / `code` /
- * `textColor` / `backgroundColor`. That is the whole of `defaultStyleSpecs`;
- * read it there, not from a brief (it is `strike`, never `strikethrough`, and
- * `underline` is real).
- *
- * They are PROPS rather than styles because BlockNote's data model gives custom
- * inline content no `styles` field at all — `CustomInlineContentFromConfig` is
- * `{ type, props, content }`. Promoting `**[[A]]**` into a node therefore had
- * nowhere to put the bold, and the mark was lost in the shared document before
- * the vault file was ever written (#1439).
- */
-export interface WikiLinkMarkProps {
-  bold: boolean
-  italic: boolean
-  underline: boolean
-  strike: boolean
-  code: boolean
-  textColor: string
-  backgroundColor: string
-}
-
-/**
- * Reads a BlockNote `styles` object as wiki-link mark props, keeping only the
- * marks that are actually set. Defaults are omitted rather than written out, so
- * a link promoted from unstyled text is `{ target, alias }` exactly as before.
- */
-export function wikiLinkMarkProps(
-  styles?: Record<string, unknown> | null
-): Partial<WikiLinkMarkProps> {
-  if (!styles) return {}
-
-  const props: Partial<WikiLinkMarkProps> = {}
-  if (styles.bold === true) props.bold = true
-  if (styles.italic === true) props.italic = true
-  if (styles.underline === true) props.underline = true
-  if (styles.strike === true) props.strike = true
-  if (styles.code === true) props.code = true
-  if (typeof styles.textColor === 'string' && styles.textColor !== 'default') {
-    props.textColor = styles.textColor
-  }
-  if (typeof styles.backgroundColor === 'string' && styles.backgroundColor !== 'default') {
-    props.backgroundColor = styles.backgroundColor
-  }
-  return props
 }
 
 /** Whether a run's styles carry any mark a wiki link would have to take with it. */
@@ -122,7 +85,10 @@ export const wikiLinkConfig = {
     strike: { default: false },
     code: { default: false },
     textColor: { default: 'default' },
-    backgroundColor: { default: 'default' }
+    backgroundColor: { default: 'default' },
+    size: { default: 'none' },
+    cover: { default: false },
+    preview: { default: false }
   },
   content: 'none' as const
 }
@@ -207,52 +173,71 @@ const BLOCK_TAGS = new Set([
   'FIGURE'
 ])
 
-export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
-  render: (inlineContent) => {
-    const props = inlineContent.props as WikiLinkProps
-    const dom = document.createElement('span')
-    dom.className = 'wiki-link'
-    dom.setAttribute('data-wiki-link', '')
-    dom.setAttribute('data-target', props.target || '')
-    dom.setAttribute('data-alias', props.alias || '')
-    dom.setAttribute('title', props.target || '')
-    dom.setAttribute('contenteditable', 'false')
-    // BlockNote's own stylesheet keys colours off these two attributes
-    // (`[data-text-color=red]`), so the chip picks up the same palette value
-    // the surrounding text does. Background colour lands; text colour is
-    // currently outranked by `.wiki-link { color: … !important }` in base.css,
-    // which is a stylesheet question, not a data one — the prop still has to be
-    // carried or the colour is deleted from the vault file.
-    if (props.textColor && props.textColor !== 'default') {
-      dom.setAttribute('data-text-color', props.textColor)
-    }
-    if (props.backgroundColor && props.backgroundColor !== 'default') {
-      dom.setAttribute('data-background-color', props.backgroundColor)
-    }
-    dom.appendChild(renderMarkedText(props.alias || props.target || '', props))
+/**
+ * The chip as the editor draws it. Exported so a surface can draw more around
+ * it (the desktop renderer adds a link's row or card, #2845) while the node, its
+ * parse rule and its on-disk form stay this package's.
+ */
+export type WikiLinkRender = (inlineContent: { props: unknown }) => {
+  dom: HTMLElement
+  ignoreMutation?: () => boolean
+}
 
-    return { dom }
-  },
-  parse: (element) => {
-    if (element.hasAttribute('data-wiki-link') || element.hasAttribute('data-target')) {
-      const target = element.getAttribute('data-target')?.trim() || ''
-      const alias = element.getAttribute('data-alias')?.trim() || ''
-      if (target) {
-        return { target, alias }
+export const renderWikiLink: WikiLinkRender = (inlineContent) => {
+  const props = inlineContent.props as WikiLinkProps
+  const dom = document.createElement('span')
+  dom.className = 'wiki-link'
+  dom.setAttribute('data-wiki-link', '')
+  dom.setAttribute('data-target', props.target || '')
+  dom.setAttribute('data-alias', props.alias || '')
+  dom.setAttribute('title', props.target || '')
+  dom.setAttribute('contenteditable', 'false')
+  // BlockNote's own stylesheet keys colours off these two attributes
+  // (`[data-text-color=red]`), so the chip picks up the same palette value
+  // the surrounding text does. Background colour lands; text colour is
+  // currently outranked by `.wiki-link { color: … !important }` in base.css,
+  // which is a stylesheet question, not a data one — the prop still has to be
+  // carried or the colour is deleted from the vault file.
+  if (props.textColor && props.textColor !== 'default') {
+    dom.setAttribute('data-text-color', props.textColor)
+  }
+  if (props.backgroundColor && props.backgroundColor !== 'default') {
+    dom.setAttribute('data-background-color', props.backgroundColor)
+  }
+  dom.appendChild(renderMarkedText(props.alias || props.target || '', props))
+
+  return { dom }
+}
+
+/** The editor flavour of the node, drawn by `render`. */
+export function createWikiLinkSpec(
+  render: WikiLinkRender = renderWikiLink
+): InlineContentSpec<typeof wikiLinkConfig> {
+  return createInlineContentSpec(wikiLinkConfig, {
+    render,
+    parse: (element) => {
+      if (element.hasAttribute('data-wiki-link') || element.hasAttribute('data-target')) {
+        const target = element.getAttribute('data-target')?.trim() || ''
+        const alias = element.getAttribute('data-alias')?.trim() || ''
+        if (target) {
+          return { target, alias }
+        }
       }
-    }
 
-    // Text-only promotion is for inline elements. On a block element (`<li>`,
-    // `<p>`, `<blockquote>`, `<td>`) it swallows the block around the link,
-    // so `- [[Note]]` lost its bullet (#3191). The `[[X]]` text inside still
-    // becomes a wiki link through the normal token promotion.
-    if (BLOCK_TAGS.has(element.tagName)) return undefined
-    const parsed = parseWikiLinkText(element.textContent ?? '')
-    if (!parsed) return undefined
-    return { target: parsed.target, alias: parsed.alias }
-  },
-  toExternalHTML: wikiLinkToExternalHTML
-})
+      // Text-only promotion is for inline elements. On a block element (`<li>`,
+      // `<p>`, `<blockquote>`, `<td>`) it swallows the block around the link,
+      // so `- [[Note]]` lost its bullet (#3191). The `[[X]]` text inside still
+      // becomes a wiki link through the normal token promotion.
+      if (BLOCK_TAGS.has(element.tagName)) return undefined
+      const parsed = parseWikiLinkText(element.textContent ?? '')
+      if (!parsed) return undefined
+      return { target: parsed.target, alias: parsed.alias }
+    },
+    toExternalHTML: wikiLinkToExternalHTML
+  })
+}
+
+export const WikiLink = createWikiLinkSpec()
 
 /**
  * The same node for the main process — same type, same props, same on-disk

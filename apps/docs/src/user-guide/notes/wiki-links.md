@@ -275,6 +275,54 @@ heading inside the entry you are reading, and typing `#` after a note's exact ti
 that note's headings.
 :::
 
+## Showing a Link as a Row or Card
+
+A link in a sentence is a small chip. A link that stands alone on its line can show more of
+the note it points at, so a list of links reads like a list of notes instead of a list of
+titles.
+
+Right-click a link that is the only thing on its line and pick **Display…**. A panel opens
+beside the menu:
+
+- **None** keeps the chip. This is how every link starts.
+- **Small** draws a bordered row with the note's icon and title.
+- **Medium** draws a card with a larger icon, the title and more room for the preview.
+- **Show preview** adds a few words from the note under its title. Memry uses the note's
+  `description` property when it has one, and otherwise the opening of the note as plain text.
+  Headings, lists and callouts show as words, and code blocks, images and embeds are left out.
+- **Show cover** adds the note's cover image at the end of the row or card. The switch appears
+  only for **Small** and **Medium**, and only when the linked note has a cover.
+
+With **None**, **Show preview** puts the preview text after the chip on the same line.
+
+A note's own emoji is drawn as it is. A note without one gets the document icon.
+
+Clicking a row or card opens the note, the same as clicking a chip. A link inside a sentence
+has no **Display…** row, because it stays a chip. A link with only spaces beside it still counts
+as alone on its line.
+
+### What the file holds
+
+The link stays `[[Project Plan]]`. When you change a setting, Memry writes one line above it:
+
+```markdown
+<!-- link-card:{"size":"medium","cover":true,"preview":true} -->
+
+[[Project Plan]]
+```
+
+A key you have not changed is left out, and a link left on **None** with both switches off
+writes no line, so existing notes keep their exact bytes. The line is an HTML comment, so
+Obsidian and other editors show the plain link and ignore it. The format is defined in section 12.7.4 of
+`docs/protocol/12-note-body-format.md`.
+
+::: warning Older versions
+An older desktop or iPhone version shows the link as a chip and keeps the comment line.
+The file is not changed, and the setting returns when you open it in a newer version.
+:::
+
+On iPhone, rows and cards are shown but cannot be changed yet. Edit the setting on desktop.
+
 ## Formatting a Link
 
 Write the formatting around the link **in markdown** and it is kept, on screen and in the

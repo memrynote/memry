@@ -49,8 +49,15 @@ import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { EditorView } from '@tiptap/pm/view'
-import type { Mark, Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { wikiLinkDisplayProps, type WikiLinkDisplayProps } from '@memry/shared/wiki-link-props'
 import { wikiLinkToText } from './wiki-link'
+import {
+  marksFromProps,
+  propsFromMarks,
+  renderSourceWidget,
+  sourceTextOf
+} from './wiki-link-edit-parts'
 import type { WikiLinkOpenTarget } from './types'
 
 export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey<WikiLinkEditPluginState>('wikiLinkEdit')
@@ -63,6 +70,21 @@ export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey<WikiLinkEditPluginState>(
  * WHICH edit it was, because only an insertion suppresses the markdown paint.
  */
 const WIKI_LINK_INSERTED_META = 'wikiLinkInserted'
+
+/**
+ * Set by `unpromote` on the transaction that turns a chip into raw text, with
+ * the chip's display settings (#2845). Raw text has nowhere to keep `size`,
+ * `cover` and `preview`, and the chip built from it when the caret leaves would
+ * otherwise come back as a plain one, silently deleting the link's card line
+ * from the vault file on the next write-back.
+ */
+const WIKI_LINK_CARRY_META = 'wikiLinkCarry'
+
+/** The display settings of the chip being edited, and where its raw run starts. */
+interface CarriedDisplay {
+  from: number
+  display: WikiLinkDisplayProps
+}
 
 interface WikiLinkEditPluginState {
   /**
@@ -80,6 +102,31 @@ interface WikiLinkEditPluginState {
    * one caret position, not for the chip.
    */
   insertedAt: number | null
+
+  /**
+   * The settings of the chip whose raw run is open, mapped through edits for as
+   * long as the run still opens with `[[` at that position. Null otherwise.
+   */
+  carried: CarriedDisplay | null
+}
+
+/** The carried settings of `state`, when they belong to the raw run starting at `from`. */
+function carriedDisplayAt(state: EditorState, from: number): WikiLinkDisplayProps | null {
+  const carried = WIKI_LINK_EDIT_PLUGIN_KEY.getState(state)?.carried
+  return carried && carried.from === from ? carried.display : null
+}
+
+function mapCarried(
+  carried: CarriedDisplay | null,
+  tr: Transaction,
+  newState: EditorState
+): CarriedDisplay | null {
+  if (!carried) return null
+  const from = tr.mapping.map(carried.from, 1)
+  const size = newState.doc.content.size
+  return from + 2 <= size && newState.doc.textBetween(from, from + 2) === '[['
+    ? { from, display: carried.display }
+    : null
 }
 
 /** A leaf inline node counts as one character, so text offsets stay aligned. */
@@ -138,55 +185,6 @@ export function findWikiLinkRunAt(
 }
 
 /**
- * The chip's marks travel with it into the raw text and back.
- *
- * A wiki link carries its marks as PROPS (#1439 — BlockNote gives custom inline
- * content no `styles` field), while the raw text carries them as ProseMirror
- * marks, so the round trip has to translate. Every lookup is defensive: a mark
- * this schema does not have is simply not carried, never a throw inside a
- * keystroke handler.
- */
-const BOOLEAN_MARKS = ['bold', 'italic', 'underline', 'strike', 'code'] as const
-const COLOR_MARKS = ['textColor', 'backgroundColor'] as const
-
-function marksFromProps(schema: Schema, attrs: Record<string, unknown>): Mark[] {
-  const marks: Mark[] = []
-
-  for (const name of BOOLEAN_MARKS) {
-    if (attrs[name] !== true) continue
-    const type = schema.marks[name]
-    if (type) marks.push(type.create())
-  }
-
-  for (const name of COLOR_MARKS) {
-    const value = attrs[name]
-    if (typeof value !== 'string' || value === '' || value === 'default') continue
-    const type = schema.marks[name]
-    if (type) marks.push(type.create({ stringValue: value }))
-  }
-
-  return marks
-}
-
-function propsFromMarks(marks: readonly Mark[]): Record<string, string | boolean> {
-  const props: Record<string, string | boolean> = {}
-
-  for (const mark of marks) {
-    const name = mark.type.name
-    if ((BOOLEAN_MARKS as readonly string[]).includes(name)) {
-      props[name] = true
-      continue
-    }
-    if ((COLOR_MARKS as readonly string[]).includes(name)) {
-      const value = (mark.attrs as { stringValue?: unknown } | undefined)?.stringValue
-      if (typeof value === 'string' && value !== '' && value !== 'default') props[name] = value
-    }
-  }
-
-  return props
-}
-
-/**
  * Every wiki-link chip the caret is sitting immediately beside — on either side,
  * however the caret got there.
  *
@@ -216,30 +214,6 @@ function wikiLinksBesideCursor(state: EditorState): Array<{ node: ProseMirrorNod
   if (after?.type.name === 'wikiLink') found.push({ node: after, pos: $from.pos })
 
   return found
-}
-
-/** The chip's markdown, split so the brackets can be dimmed on their own. */
-function sourceTextOf(node: ProseMirrorNode): string {
-  const target = typeof node.attrs.target === 'string' ? node.attrs.target : ''
-  const alias = typeof node.attrs.alias === 'string' ? node.attrs.alias : ''
-  return wikiLinkToText(target, alias)
-}
-
-function renderSourceWidget(text: string): HTMLElement {
-  const dom = document.createElement('span')
-  dom.className = 'wiki-link-source'
-  dom.setAttribute('data-wiki-link-source', '')
-
-  const open = document.createElement('span')
-  open.className = 'wiki-link-bracket'
-  open.textContent = '[['
-
-  const close = document.createElement('span')
-  close.className = 'wiki-link-bracket'
-  close.textContent = ']]'
-
-  dom.append(open, document.createTextNode(text.slice(2, -2)), close)
-  return dom
 }
 
 function wikiLinkBeforeCursor(state: EditorState): { node: ProseMirrorNode; pos: number } | null {
@@ -313,6 +287,10 @@ function unpromote(state: EditorState, node: ProseMirrorNode, pos: number): Tran
   // notes found" on a link whose note plainly exists.
   tr.setSelection(TextSelection.create(tr.doc, pos + 2))
   tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+  tr.setMeta(WIKI_LINK_CARRY_META, {
+    from: pos,
+    display: wikiLinkDisplayProps(node.attrs)
+  } satisfies CarriedDisplay)
   return tr
 }
 
@@ -430,7 +408,10 @@ export function replaceActiveRunWithWikiLink(
   const type = state.schema.nodes.wikiLink
   if (!type) return false
 
-  const tr = state.tr.replaceWith(run.from, run.to, type.create(attrs))
+  // The link keeps its card when it is retargeted; a pick that names settings of
+  // its own wins.
+  const display = carriedDisplayAt(state, run.from)
+  const tr = state.tr.replaceWith(run.from, run.to, type.create({ ...display, ...attrs }))
   tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
   tr.setMeta(WIKI_LINK_INSERTED_META, true)
   view.dispatch(tr)
@@ -569,19 +550,26 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
     },
 
     state: {
-      init: () => ({ insertedAt: null }),
+      init: () => ({ insertedAt: null, carried: null }),
 
       apply(tr, value, _oldState, newState) {
-        if (tr.getMeta(WIKI_LINK_INSERTED_META)) return { insertedAt: newState.selection.from }
-        if (value.insertedAt === null) return value
+        const carried =
+          (tr.getMeta(WIKI_LINK_CARRY_META) as CarriedDisplay | undefined) ??
+          mapCarried(value.carried, tr, newState)
+        if (tr.getMeta(WIKI_LINK_INSERTED_META)) {
+          return { insertedAt: newState.selection.from, carried }
+        }
+        if (value.insertedAt === null) {
+          return carried === value.carried ? value : { insertedAt: null, carried }
+        }
 
         // Mapped rather than compared raw: a remote edit earlier in the doc
         // moves the caret's position without the caret going anywhere, and the
         // chip should stay a chip through that.
         const insertedAt = tr.mapping.map(value.insertedAt)
         const selection = newState.selection
-        if (!selection.empty || selection.from !== insertedAt) return { insertedAt: null }
-        return { insertedAt }
+        if (!selection.empty || selection.from !== insertedAt) return { insertedAt: null, carried }
+        return { insertedAt, carried }
       }
     },
 
@@ -812,7 +800,12 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
       const tr = newState.tr.replaceWith(
         from,
         to,
-        type.create({ target: parsed.target, alias: parsed.alias, ...marks })
+        type.create({
+          target: parsed.target,
+          alias: parsed.alias,
+          ...marks,
+          ...carriedDisplayAt(oldState, previous.from)
+        })
       )
       tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
       return tr

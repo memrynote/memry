@@ -44,6 +44,7 @@ const mocks = vi.hoisted(() => {
     matchedBy: vi.fn(() => 'title'),
     resolveLinkTargets: vi.fn(),
     getNoteTags: vi.fn(),
+    getNoteProperties: vi.fn((): Array<{ name: string; value: unknown }> => []),
     getAllTagDefinitions: vi.fn(),
     deleteNoteSnapshot: vi.fn(),
     getNotesInFolder: vi.fn(),
@@ -150,6 +151,7 @@ vi.mock('../notes/store', () => ({
   },
   resolveLinkTargets: mocks.resolveLinkTargets,
   getNoteTags: mocks.getNoteTags,
+  getNoteProperties: mocks.getNoteProperties,
   getAllTagDefinitions: mocks.getAllTagDefinitions,
   deleteNoteSnapshot: mocks.deleteNoteSnapshot,
   getNotesInFolder: mocks.getNotesInFolder,
@@ -317,6 +319,7 @@ describe('notes-handlers extra coverage', () => {
 
     mocks.noteNamed.mockReturnValueOnce({
       id: 'note-a',
+      path: 'Daily.md',
       title: 'Daily',
       fileType: 'markdown',
       emoji: 'x',
@@ -336,11 +339,98 @@ describe('notes-handlers extra coverage', () => {
         { name: 'plain', color: 'stone' }
       ],
       createdAt: '2026-05-10T00:00:00.000Z',
-      matchedName: null
+      matchedName: null,
+      path: 'Daily.md',
+      cover: null,
+      description: null,
+      bodyText: null
     })
 
     mocks.noteNamed.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
     await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
+  })
+
+  // #2845: a link card shows the note's cover and its `description` property.
+  it('previews the cover and the description property of the note', async () => {
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-a',
+      path: 'Books/Dune.md',
+      title: 'Dune',
+      fileType: 'markdown',
+      emoji: null,
+      cover: 'wash:sage',
+      snippet: 'Body text',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+    mocks.getNoteProperties.mockReturnValueOnce([
+      { name: 'author', value: 'Herbert' },
+      { name: 'description', value: 'Spice and sand' }
+    ])
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Dune')
+    expect(preview).toMatchObject({
+      path: 'Books/Dune.md',
+      cover: 'wash:sage',
+      description: 'Spice and sand',
+      snippet: 'Body text'
+    })
+  })
+
+  it('reads the opening of the note as the editor shows it, when there is no description', async () => {
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-a',
+      path: 'Dune.md',
+      title: 'Dune',
+      fileType: 'markdown',
+      snippet: '--- start-multi-column: n101-cols ```column-settings',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+    mocks.getNoteProperties.mockReturnValueOnce([])
+    mocks.getNoteById.mockResolvedValueOnce({
+      content:
+        '--- start-multi-column: n101-cols\n```column-settings\nNumber of Columns: 2\n```\n\nSpice and **sand**'
+    })
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Dune')
+    expect(preview).toMatchObject({ description: null, bodyText: 'Spice and sand' })
+  })
+
+  it('does not read the note when it has a description', async () => {
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-a',
+      path: 'Dune.md',
+      title: 'Dune',
+      fileType: 'markdown',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+    mocks.getNoteProperties.mockReturnValueOnce([{ name: 'description', value: 'Spice' }])
+    mocks.getNoteById.mockClear()
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Dune')
+    expect(preview).toMatchObject({ description: 'Spice', bodyText: null })
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('reads a description that is not text as no description', async () => {
+    mocks.noteNamed.mockReturnValueOnce({
+      id: 'note-a',
+      path: 'Dune.md',
+      title: 'Dune',
+      fileType: 'markdown',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+    mocks.getNoteProperties.mockReturnValueOnce([{ name: 'description', value: ['a', 'b'] }])
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Dune')
+    expect(preview).toMatchObject({ description: null })
   })
 
   it('names the other name a preview was reached through', async () => {

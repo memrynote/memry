@@ -8,6 +8,7 @@ import {
   serializeBlockColorsMarker,
   serializeTableCellColorsMarker
 } from './block-colors'
+import { applyLinkCard, parseLinkCardMarker, serializeLinkCardMarker } from './link-card-marker'
 
 /**
  * The block a sidecar marker describes, narrowed to the two fields a marker can
@@ -15,6 +16,7 @@ import {
  * table-level one walks.
  */
 export interface MarkedBlock {
+  type?: string
   props: Record<string, unknown>
   content: unknown
 }
@@ -268,6 +270,14 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
       const layout = parseTableLayoutMarker(line)
       if (!layout) return null
       return (block) => applyTableLayout(block.content, layout)
+    }
+  },
+  {
+    write: serializeLinkCardMarker,
+    read: (line) => {
+      const display = parseLinkCardMarker(line)
+      if (!display) return null
+      return (block) => applyLinkCard(block, display)
     }
   }
 ]

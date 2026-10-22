@@ -8,6 +8,7 @@ import {
   onNoteUpdated
 } from '@/services/notes-service'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
+import { previewWikiLinkTarget } from '@/lib/wiki-link-preview'
 
 interface HoverPosition {
   top: number
@@ -117,16 +118,8 @@ export function useWikiLinkHover(
       }
 
       try {
-        // Split first, raw second — the same order `resolveWikiLink` uses, so
-        // the card previews the note the click would open. Without it a
-        // `[[Note#Heading]]` looked up `Note#Heading`, found nothing, and the
-        // link silently had no preview at all.
         const { note, heading } = splitWikiTarget(target)
-        const preview =
-          heading !== null && note
-            ? ((await notesService.previewByTitle(note)) ??
-              (await notesService.previewByTitle(target)))
-            : await notesService.previewByTitle(target)
+        const preview = await previewWikiLinkTarget(target)
 
         // No preview can mean two things: the target is a non-markdown file
         // (exists, previews nothing — keep showing nothing) or it resolves to

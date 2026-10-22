@@ -706,7 +706,7 @@ The consequences are the reason for the shape:
 
 | Inline type      | On-disk form                                                                     | Anchor                                                            |
 | ---------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `wikiLink`       | `[[target]]`, or `[[target\|alias]]` when the alias differs                      | `packages/editor-schema/src/inline/wiki-link.ts:130-133`          |
+| `wikiLink`       | `[[target]]`, or `[[target\|alias]]` when the alias differs                      | `packages/editor-schema/src/inline/wiki-link.ts:97-99`            |
 | `hashTag`        | `#tag` as a bare span's text                                                     | `packages/editor-schema/src/inline/hash-tag.ts:39-43`             |
 | `dateMention`    | `((date:<payload>))`, payload alphabet `[A-Za-z0-9,;_-]`                         | `packages/shared/src/date-mention.ts:32`, `:103`                  |
 | `linkMention`    | `((mention:<encoded url>))`                                                      | `packages/editor-schema/src/inline/link-mention.ts:25`, `:50`     |
@@ -721,7 +721,7 @@ acceptance union at `:66`.
 
 `wikiLink` style marks nest **outer to inner** as
 `bold, italic, underline, strike, code`
-(`packages/editor-schema/src/inline/wiki-link.ts:148-154`); `underline` is
+(`packages/editor-schema/src/inline/wiki-link.ts:114-120`); `underline` is
 chip-only and reaches disk through inline-colour span masking instead (§12.8).
 
 `htmlComment` (AF-015) holds an HTML comment, `<!--` and `-->` included, byte
@@ -860,6 +860,50 @@ markdown links and URLs; the core scans `extract_text` output. A source that
 already links to the note is a backlink and is not listed. Nothing is stored:
 the list is computed on read from the FTS index and the bodies.
 
+### 12.7.4 Link-card display settings
+
+A `wikiLink` that is the only content of its paragraph carries three display
+settings, `size` (`none`, `small` or `medium`), `cover` and `preview`
+(`packages/shared/src/wiki-link-props.ts:57-68`). Their defaults, `none`, `false`
+and `false`, are today's inline chip (`wiki-link-props.ts:70-74`). They are
+additive props of the node with those defaults
+(`packages/editor-schema/src/inline/wiki-link.ts:89-91`), so a build that does
+not know them builds the node without them.
+
+**Normative:**
+
+- The settings are stored in one sidecar line directly before the paragraph,
+  `<!-- link-card:{"size":"medium","cover":true,"preview":true} -->`
+  (`packages/shared/src/link-card-marker.ts:16`).
+- A writer emits the JSON keys in the order `size`, `cover`, `preview`, omits a
+  key at its default, and writes `size` only as `small` or `medium`
+  (`link-card-marker.ts:76-87`).
+- A writer emits no line when all three settings are default, so a note with no
+  card is byte-identical to one written before this section
+  (`link-card-marker.ts:76-87`).
+- A writer emits the line only for a paragraph whose inline content is exactly
+  one `wikiLink` node. A link inside running text, and a link in any other block
+  type, never gets a line (`link-card-marker.ts:37-41`).
+- In the on-disk order the line comes after the `table-layout` line
+  (`packages/shared/src/block-markers.ts:275-282`).
+- A reader accepts a line only when its JSON is an object, `size` if present is
+  `none`, `small` or `medium`, `cover` and `preview` if present are booleans, and
+  at least one of the three is present. Any other line, including invalid JSON
+  and `{}`, is not a marker and is left as ordinary text
+  (`link-card-marker.ts:93-111`). A reader ignores keys it does not know
+  (`link-card-marker.ts:93-111`).
+- A reader applies a marker only to the paragraph that follows, and only when it
+  holds exactly one wiki link: either a `wikiLink` node, or text runs of one
+  style that read `[[target]]` or `[[target|alias]]`, which it turns into the
+  node. A missing key reads as its default. Otherwise the block is left as it is
+  (`link-card-marker.ts:121-125`).
+- The link's alias and marks (`bold`, `italic`, and the others of §12.7) are
+  unchanged by a marker (`link-card-marker.ts:50-73`).
+
+A client that does not implement the section reads the line as an unknown HTML
+comment (§12.8) and shows the plain link; dropping the line on its next write
+forgets the settings and nothing else.
+
 ## 12.8 The five out-of-band encodings
 
 **Normative.** These live outside plain markdown. Two of them are **in-fragment
@@ -877,10 +921,10 @@ two categories are different and MUST NOT be conflated.
 **In-fragment encodings**, carried inside `prosemirror`, **with no preservation
 duty beyond the fragment itself**:
 
-| Encoding       | Form                                                                                                                            | Anchor                                                                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| inline colours | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking a `<span style=…>`                                                                 | `packages/shared/src/inline-colors.ts:72-74`                                                                             |
-| block markers  | `<!-- align:… -->`, `<!-- table-align:{…} -->`, `<!-- table-layout:{…} -->`, `<!-- colors:{…} -->`, `<!-- table-colors:{…} -->` | `packages/shared/src/block-markers.ts:28`, `:57`, `:137`; `packages/shared/src/block-colors.ts:11`, `:44`, `:79`, `:131` |
+| Encoding       | Form                                                                                                                                                                | Anchor                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| inline colours | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking a `<span style=…>`                                                                                                     | `packages/shared/src/inline-colors.ts:72-74`                                                                             |
+| block markers  | `<!-- align:… -->`, `<!-- table-align:{…} -->`, `<!-- table-layout:{…} -->`, `<!-- colors:{…} -->`, `<!-- table-colors:{…} -->`, `<!-- link-card:{…} -->` (§12.7.4) | `packages/shared/src/block-markers.ts:30`, `:59`, `:139`; `packages/shared/src/block-colors.ts:11`, `:44`, `:79`, `:131` |
 
 Date mentions (`packages/shared/src/date-mention.ts:32`, `:103`) are likewise
 in-fragment, not a root.

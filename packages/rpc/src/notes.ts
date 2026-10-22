@@ -149,6 +149,18 @@ export interface WikiLinkPreview {
   createdAt: string
   /** The other name the link was written with, or `null` when it named the title or path. */
   matchedName: string | null
+  /** Vault-relative path, so a relative `cover` image can be resolved. */
+  path: string
+  /** Raw frontmatter `cover` (an image ref or `wash:<id>`); parse with `parseCoverValue`. */
+  cover: string | null
+  /** The note's `description` property, or `null` when it has none or is not text. */
+  description: string | null
+  /**
+   * The plain text of the note's opening as the editor shows it, for a link card
+   * with no description to show. Read only when the note has no description, so
+   * it is `null` there as well as for a note with no text.
+   */
+  bodyText: string | null
 }
 
 // Main returns `type: 'relation'` for relation-valued properties, so this union

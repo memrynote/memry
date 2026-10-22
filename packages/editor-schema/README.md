@@ -83,6 +83,21 @@ Tracked as #1439. Until it is fixed, **"opening a note does not modify it" holds
 for unmarked links only** — do not read the contract above more widely than
 that.
 
+### Display settings of a link that is alone on its line
+
+`wikiLink` also carries `size` (`none` | `small` | `medium`), `cover` and
+`preview` (#2845), additive props whose defaults are today's chip. They are not
+in the `[[target]]` text. A paragraph whose only content is one `wikiLink`
+writes a sidecar line before it, `<!-- link-card:{"size":"medium","cover":true,"preview":true} -->`,
+through `@memry/shared/block-markers` like `<!-- align:center -->`: keys in the
+order size, cover, preview, defaults omitted, no line at all when every setting
+is default, so existing notes keep their bytes. On read the marker promotes a
+sole `[[X]]` text run to the node (main's seed leaves links as text) and sets the
+three props; a marker before any other paragraph, or one that fails validation,
+is ignored. A link inside running text ignores the props. The grammar is in
+`docs/protocol/12-note-body-format.md` §12.7.4, the code in
+`packages/shared/src/link-card-marker.ts`.
+
 ## The gate
 
 `src/schema-contract.test.ts` (`pnpm --filter @memry/editor-schema test`) checks
