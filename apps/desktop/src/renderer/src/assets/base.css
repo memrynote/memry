@@ -4306,6 +4306,56 @@ del.bn-inline-content {
   cursor: default;
 }
 
+/* Readwise section dividers (#3474): a filled band where the marker comment sits.
+   Logical properties only, so the band and its icon mirror in RTL. */
+.bn-inline-content:has(> .readwise-divider) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.readwise-divider {
+  display: block;
+  margin-block: 0.5rem;
+  user-select: none;
+  cursor: default;
+}
+
+.readwise-divider-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding-inline: 10px;
+  border-radius: 4px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans, inherit);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+}
+
+/* Outranks `.bn-shadcn svg:not([class*='size-'])`, which reverts svg sizes in the editor. */
+.readwise-divider .readwise-divider-band > svg.readwise-divider-icon {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.readwise-divider-hint {
+  display: block;
+  padding-block-start: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
 /* Footnotes (BBF-24): the raw `[^label]` stays the text and shows as its number
    until the caret enters it. A definition line reads subdued in place. */
 .footnote-ref:not(.footnote-ref-editing) {
