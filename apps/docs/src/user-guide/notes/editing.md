@@ -379,7 +379,7 @@ table.
 
 ## Slash Commands
 
-Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
+Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to confirm the highlighted command.
 
 - **Recent** — the last three commands you used sit at the top of the menu, above every other command. They are remembered on this device only.
 - **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
