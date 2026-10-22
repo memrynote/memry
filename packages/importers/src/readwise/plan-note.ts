@@ -72,7 +72,8 @@ export function bookUrl(book: ReadwiseBook): string {
 }
 
 function folderFor(category: string, root: string, layout: FolderLayout): string {
-  const base = root.replace(/\/+$/, '')
+  let base = root
+  while (base.endsWith('/')) base = base.slice(0, -1)
   if (layout === 'flat') return base
   const sub = isKnownCategory(category) ? CATEGORY_FOLDERS[category] : OTHER_FOLDER
   return base ? `${base}/${sub}` : sub
