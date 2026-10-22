@@ -192,7 +192,14 @@
       "listPlaceholder": "List item",
       "todoPlaceholder": "To-do item",
       "htmlComment": "Hidden HTML comment",
-      "percentComment": "Hidden comment"
+      "percentComment": "Hidden comment",
+      "readwise": {
+        "noteStart": "Readwise · syncs automatically",
+        "noteEnd": "End of Readwise section",
+        "dayStart": "Readwise · today's highlights",
+        "dayEnd": "End of Readwise",
+        "hint": "Edit inside this section and Readwise stops updating it."
+      }
     },
     "table": {
       "keyboardMenuAria": "Table actions for row {row}, column {column}",

@@ -852,6 +852,12 @@ Only the URL is written to the note file, so a mention that has been through a r
 
 That in-memory cache holds the 200 most recently used links and evicts the least recently used entry beyond that, which keeps a long session with many link-heavy notes from growing without a limit. Evicted links are simply fetched again the next time they are shown.
 
+## Readwise Sections
+
+A note that holds Readwise highlights wraps them in a section. The editor draws the start of the section as a filled band labeled **Readwise · syncs automatically**, with the line _Edit inside this section and Readwise stops updating it._ under it. A matching band, **End of Readwise section**, closes it. On a journal day the bands read **Readwise · today's highlights** and **End of Readwise**.
+
+The bands only change how the section looks. The file keeps the two marker comments exactly as written, and your own text above, below or inside the section is saved as you typed it. Deleting a band removes its marker. Any other HTML comment keeps its small `<!---->` chip. The labels follow the app language and mirror in right-to-left layouts.
+
 ## Comments
 
 Select text to open the floating toolbar. **Comment** creates an anchored review card in the right rail; selecting the text itself does not open the rail. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted.
