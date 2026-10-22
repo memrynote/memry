@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   readProjectTab,
   readRailOpen,
+  parseAllSort,
   parseProjectTab,
   parseRailOpen,
   PROJECT_SCROLL_KEYS,
@@ -10,15 +11,15 @@ import {
 } from './project-view-state'
 
 describe('readProjectTab', () => {
-  it('defaults to overview', () => {
-    expect(readProjectTab(undefined)).toBe('overview')
-    expect(readProjectTab({})).toBe('overview')
+  it('defaults to the All table', () => {
+    expect(readProjectTab(undefined)).toBe('all')
+    expect(readProjectTab({})).toBe('all')
   })
 
   it('rejects a value that is not a known tab', () => {
-    expect(readProjectTab({ projectTab: 'canvas' })).toBe('overview')
-    expect(readProjectTab({ projectTab: 7 })).toBe('overview')
-    expect(readProjectTab({ projectTab: null })).toBe('overview')
+    expect(readProjectTab({ projectTab: 'canvas' })).toBe('all')
+    expect(readProjectTab({ projectTab: 7 })).toBe('all')
+    expect(readProjectTab({ projectTab: null })).toBe('all')
   })
 
   it('accepts every known tab', () => {
@@ -47,7 +48,10 @@ describe('project view-state keys', () => {
   it('keeps the names sessions on disk were written with', () => {
     // Shipped builds have persisted both under exactly these names. Renaming
     // one silently resets every project tab already open on upgrade.
-    expect(PROJECT_VIEW_STATE_KEYS).toEqual({ projectTab: 'projectTab', railOpen: 'railOpen' })
+    expect(PROJECT_VIEW_STATE_KEYS).toMatchObject({
+      projectTab: 'projectTab',
+      railOpen: 'railOpen'
+    })
   })
 
   it('gives every sub-tab pane and the rail its own scroll key', () => {
@@ -94,5 +98,19 @@ describe('project view-state readers', () => {
     expect(parseRailOpen(true)).toBe(true)
     expect(parseRailOpen('no')).toBeUndefined()
     expect(parseRailOpen(0)).toBeUndefined()
+  })
+})
+
+describe('parseAllSort', () => {
+  it('keeps a valid sort and null (the default order)', () => {
+    expect(parseAllSort({ key: 'due', dir: 'desc' })).toEqual({ key: 'due', dir: 'desc' })
+    expect(parseAllSort(null)).toBeNull()
+  })
+
+  it('rejects a sort written by a build that spelled it differently', () => {
+    expect(parseAllSort({ key: 'daysLeft', dir: 'asc' })).toBeUndefined()
+    expect(parseAllSort({ key: 'due', dir: 'up' })).toBeUndefined()
+    expect(parseAllSort('due')).toBeUndefined()
+    expect(parseAllSort(undefined)).toBeUndefined()
   })
 })
