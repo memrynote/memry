@@ -13,7 +13,9 @@ import { ProjectTabBar } from './project-tab-bar'
 const props = {
   active: 'overview' as const,
   onChange: vi.fn(),
-  counts: { tasks: 0, notes: 0, files: 0, events: 0 },
+  counts: { all: 0, tasks: 0, notes: 0, files: 0, events: 0 },
+  showDone: false,
+  onShowDoneChange: vi.fn(),
   railOpen: false,
   onToggleRail: vi.fn(),
   onEdit: vi.fn(),

@@ -42,7 +42,9 @@ export const NoteRow = ({
       openLabel={t('projectHub.rows.openNote', { title: note.title })}
       trailing={
         <>
-          <span className="w-9 shrink-0 text-end tabular-nums">{relative}</span>
+          <span className="min-w-9 shrink-0 whitespace-nowrap text-end tabular-nums">
+            {relative}
+          </span>
           {onUnpin ? (
             <button
               type="button"

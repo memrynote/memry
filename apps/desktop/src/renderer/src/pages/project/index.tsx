@@ -30,12 +30,15 @@ import {
   PROJECT_SCROLL_KEYS,
   PROJECT_VIEW_STATE_KEYS,
   parseProjectTab,
+  parseShowDone,
   parseRailOpen
 } from './project-view-state'
 import { ProjectTabBar } from './project-tab-bar'
 import { ProjectRail } from './project-rail'
 import { ProjectCaptureInput } from './project-capture-input'
 import { OverviewTab } from './tabs/overview-tab'
+import { AllTab, type AllTabSource } from './tabs/all-tab'
+import { buildAllRows } from './all-rows'
 import { ListTab } from './tabs/list-tab'
 import type { HubHandlers } from './tabs/hub-handlers'
 import { openLinkedEvent } from './open-linked-item'
@@ -101,6 +104,14 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     key: PROJECT_VIEW_STATE_KEYS.railOpen,
     defaultValue: DEFAULT_RAIL_OPEN,
     parse: parseRailOpen
+  })
+
+  // Whether the All tab also lists finished items. Lives here, not in the tab,
+  // because the "..." menu in the tab bar owns the toggle.
+  const [showDone, setShowDone] = useTabViewState<boolean>({
+    key: PROJECT_VIEW_STATE_KEYS.allShowDone,
+    defaultValue: false,
+    parse: parseShowDone
   })
 
   const toggleRail = useCallback(() => setRailOpen((open) => !open), [setRailOpen])
@@ -258,6 +269,29 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     })
   }, [openTab])
 
+  const allSource = useMemo<AllTabSource | null>(
+    () =>
+      project
+        ? {
+            project,
+            projectTasks: hub.rowTasks,
+            allTasks: tasks,
+            notes: hub.notes,
+            events: hub.events
+          }
+        : null,
+    [project, hub.rowTasks, tasks, hub.notes, hub.events]
+  )
+
+  // What the All tab lists by default, so its badge matches the rows under it.
+  const tabCounts = useMemo(
+    () => ({
+      ...hub.counts,
+      all: allSource ? buildAllRows({ ...allSource, now: new Date(), showDone }).length : 0
+    }),
+    [hub.counts, allSource, showDone]
+  )
+
   const handlers: HubHandlers = useMemo(
     () => ({
       onGoToTab: goToTab,
@@ -339,7 +373,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         <ProjectTabBar
           active={activeTabKey}
           onChange={goToTab}
-          counts={hub.counts}
+          counts={tabCounts}
+          showDone={showDone}
+          onShowDoneChange={setShowDone}
           railOpen={railOpen}
           onToggleRail={toggleRail}
           onEdit={openEditor}
@@ -360,6 +396,12 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
           {activeTabKey === 'overview' ? (
             <TabScrollPane scrollKey={PROJECT_SCROLL_KEYS.overview}>
               <OverviewTab project={project} hub={hub} handlers={handlers} />
+            </TabScrollPane>
+          ) : activeTabKey === 'all' ? (
+            <TabScrollPane scrollKey={PROJECT_SCROLL_KEYS.all}>
+              {allSource ? (
+                <AllTab source={allSource} showDone={showDone} handlers={handlers} />
+              ) : null}
             </TabScrollPane>
           ) : activeTabKey === 'tasks' ? (
             <TaskList

@@ -16,7 +16,10 @@ import type {
 
 const log = createLogger('ProjectHub')
 
-export type ProjectTabKey = 'overview' | 'tasks' | 'notes' | 'files' | 'events'
+export type ProjectTabKey = 'overview' | 'all' | 'tasks' | 'notes' | 'files' | 'events'
+
+/** The tabs the Home project widget offers. It has no All table. */
+export type WidgetTabKey = Exclude<ProjectTabKey, 'all'>
 
 export interface ProjectStatusProgress {
   id: string

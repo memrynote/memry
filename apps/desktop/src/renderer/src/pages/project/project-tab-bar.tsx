@@ -5,7 +5,9 @@ import { MoreHorizontal, PanelRight } from '@/lib/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
@@ -15,7 +17,10 @@ import { PROJECT_RAIL_VISIBLE, PROJECT_TAB_KEYS } from './project-view-state'
 interface ProjectTabBarProps {
   active: ProjectTabKey
   onChange: (tab: ProjectTabKey) => void
-  counts: { tasks: number; notes: number; files: number; events: number }
+  counts: { all: number; tasks: number; notes: number; files: number; events: number }
+  /** The All tab lists finished items too. The toggle sits in the "..." menu. */
+  showDone: boolean
+  onShowDoneChange: (showDone: boolean) => void
   railOpen: boolean
   onToggleRail: () => void
   onEdit: () => void
@@ -32,6 +37,8 @@ export const ProjectTabBar = ({
   active,
   onChange,
   counts,
+  showDone,
+  onShowDoneChange,
   railOpen,
   onToggleRail,
   onEdit,
@@ -43,19 +50,24 @@ export const ProjectTabBar = ({
   const prefersReducedMotion = useReducedMotion()
   const layoutGroupId = useId()
 
+  // An empty category has nothing to show, so its tab stays out of the way until
+  // something lands in it. The active tab never hides under the user's cursor.
+  const visibleKeys = PROJECT_TAB_KEYS.filter(
+    (key) => key === 'overview' || key === 'all' || key === active || counts[key] > 0
+  )
+
   // Roving focus: arrow keys move between tabs, which is what `tablist` promises.
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
       if (delta === 0) return
       event.preventDefault()
-      const index = PROJECT_TAB_KEYS.indexOf(active)
-      const next =
-        PROJECT_TAB_KEYS[(index + delta + PROJECT_TAB_KEYS.length) % PROJECT_TAB_KEYS.length]
+      const index = visibleKeys.indexOf(active)
+      const next = visibleKeys[(index + delta + visibleKeys.length) % visibleKeys.length]
       onChange(next)
       listRef.current?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)?.focus()
     },
-    [active, onChange]
+    [active, onChange, visibleKeys]
   )
 
   return (
@@ -68,7 +80,7 @@ export const ProjectTabBar = ({
           onKeyDown={handleKeyDown}
           className="flex h-7 min-w-0 shrink-0 items-center gap-0.5 text-[12px] leading-4"
         >
-          {PROJECT_TAB_KEYS.map((key) => {
+          {visibleKeys.map((key) => {
             const isActive = key === active
             const count = key === 'overview' ? null : counts[key]
             return (
@@ -144,6 +156,14 @@ export const ProjectTabBar = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {active === 'all' ? (
+              <>
+                <DropdownMenuCheckboxItem checked={showDone} onCheckedChange={onShowDoneChange}>
+                  {t('projectHub.all.showDone')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             <DropdownMenuItem onSelect={onEdit}>
               {t('projectHub.header.editProject')}
             </DropdownMenuItem>

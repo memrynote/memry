@@ -1,12 +1,14 @@
 import { useCallback, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
-import type { ProjectTabKey } from '@/pages/project/use-project-hub'
+import type { WidgetTabKey } from '@/pages/project/use-project-hub'
 import { PROJECT_TAB_KEYS } from '@/pages/project/project-view-state'
 
+const WIDGET_TAB_KEYS = PROJECT_TAB_KEYS.filter((key): key is WidgetTabKey => key !== 'all')
+
 interface ProjectWidgetTabsProps {
-  active: ProjectTabKey
-  onChange: (tab: ProjectTabKey) => void
+  active: WidgetTabKey
+  onChange: (tab: WidgetTabKey) => void
   counts: { tasks: number; notes: number; files: number; events: number }
 }
 
@@ -35,9 +37,9 @@ export function ProjectWidgetTabs({
       const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
       if (delta === 0) return
       event.preventDefault()
-      const index = PROJECT_TAB_KEYS.indexOf(active)
+      const index = WIDGET_TAB_KEYS.indexOf(active)
       const next =
-        PROJECT_TAB_KEYS[(index + delta + PROJECT_TAB_KEYS.length) % PROJECT_TAB_KEYS.length]
+        WIDGET_TAB_KEYS[(index + delta + WIDGET_TAB_KEYS.length) % WIDGET_TAB_KEYS.length]
       onChange(next)
       listRef.current?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)?.focus()
     },
@@ -53,7 +55,7 @@ export function ProjectWidgetTabs({
       data-testid="project-widget-tabs"
       className="widget-no-drag mb-1.5 flex items-center gap-0.5 text-[12px] leading-4"
     >
-      {PROJECT_TAB_KEYS.map((key) => {
+      {WIDGET_TAB_KEYS.map((key) => {
         const isActive = key === active
         const count = key === 'overview' ? null : counts[key]
         return (

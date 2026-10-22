@@ -3,8 +3,12 @@ import { useT } from '@memry/i18n/renderer'
 import { useTabActions } from '@/contexts/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FolderKanban } from '@/lib/icons/icon-map'
-import { useProjectHub, type ProjectTabKey } from '@/pages/project/use-project-hub'
-import { DEFAULT_PROJECT_TAB, PROJECT_VIEW_STATE_KEYS } from '@/pages/project/project-view-state'
+import {
+  useProjectHub,
+  type ProjectTabKey,
+  type WidgetTabKey
+} from '@/pages/project/use-project-hub'
+import { PROJECT_VIEW_STATE_KEYS } from '@/pages/project/project-view-state'
 import { OverviewTab } from '@/pages/project/tabs/overview-tab'
 import { ListTab } from '@/pages/project/tabs/list-tab'
 import { TaskRow } from '@/pages/project/rows/task-row'
@@ -20,7 +24,7 @@ export function ProjectWidget({ config }: WidgetComponentProps): React.JSX.Eleme
   const projectId = readProjectId(config)
   // Navigation, not a preference: switching tabs is deliberately NOT written back
   // to `config`, which is persisted and synced. It resets to Overview on restart.
-  const [activeTab, setActiveTab] = useState<ProjectTabKey>(DEFAULT_PROJECT_TAB)
+  const [activeTab, setActiveTab] = useState<WidgetTabKey>('overview')
 
   const hub = useProjectHub(projectId || undefined)
   const project = hub.project
@@ -46,7 +50,8 @@ export function ProjectWidget({ config }: WidgetComponentProps): React.JSX.Eleme
 
   const handlers = useProjectWidgetHandlers({
     hub,
-    onGoToTab: setActiveTab,
+    // The widget has no All table, so a jump to it lands on Overview.
+    onGoToTab: (tab) => setActiveTab(tab === 'all' ? 'overview' : tab),
     onOpenProjectPage: openProjectPage
   })
 

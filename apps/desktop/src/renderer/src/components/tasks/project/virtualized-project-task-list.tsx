@@ -83,11 +83,14 @@ const VirtualStatusHeader = memo(
             style={{ backgroundColor: status.color }}
             aria-hidden="true"
           />
-          <h3 className="text-xs uppercase tracking-wide font-medium text-text-secondary">
-            {status.name}
+          {/* Sentence case and the Overview's section heading type, so every list in the hub matches. */}
+          <h3 className="text-xs font-semibold tracking-[0.02em] text-muted-foreground">
+            {status.name.charAt(0).toLocaleUpperCase() + status.name.slice(1).toLocaleLowerCase()}
           </h3>
         </div>
-        <span className="text-xs text-text-tertiary">({count})</span>
+        <span className="text-[11px] leading-[14px] tabular-nums text-muted-foreground/50">
+          {count}
+        </span>
       </div>
     )
   }
