@@ -117,6 +117,40 @@ describe('embedding chunks (real sqlite-vec)', () => {
     expect(count('note_embedding_state')).toBe(0)
   })
 
+  it('writes a similarity-task vector beside the document vectors and removes it with the note', async () => {
+    const projector = createEmbeddingProjector(() => '/vault')
+    await projector.project(upsert('n', `${filler(300)} saffron`))
+    const inputs = mocks.generateEmbedding.mock.calls.map(([text]) => text as string)
+    expect(
+      inputs.filter((text) => text.startsWith('title: Notes | text: ')).length
+    ).toBeGreaterThan(1)
+    expect(
+      inputs.filter((text) => text.startsWith('task: sentence similarity | query: '))
+    ).toHaveLength(1)
+    expect(count('vec_note_similar')).toBe(1)
+
+    await projector.project({ type: 'note.deleted', noteId: 'n' } as ProjectionEvent)
+    expect(count('vec_note_similar')).toBe(0)
+  })
+
+  it('re-embeds a v5 note in the background, keeping its search vector until the similarity one lands', async () => {
+    db.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(
+      'old',
+      embedText('glacier')
+    )
+    db.prepare('INSERT INTO note_embedding_state (note_id, input_version) VALUES (?, 5)').run('old')
+    expect(count('vec_note_similar')).toBe(0)
+    expect((await semanticNoteHits('glacier')).map((hit) => hit.id)).toEqual(['old'])
+
+    await createEmbeddingProjector(() => '/vault').project(
+      upsert('old', 'A note about glacier travel plans.')
+    )
+    expect(count('vec_note_similar')).toBe(1)
+    expect(db.prepare('SELECT input_version FROM note_embedding_state').get()).toEqual({
+      input_version: EMBEDDING_INPUT_VERSION
+    })
+  })
+
   it('serves the v4 head vector of a pre-chunk install, which the version bump leaves stale but in place', async () => {
     // State written by the previous build: head vector only, input_version 4, no chunk_count set.
     db.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(

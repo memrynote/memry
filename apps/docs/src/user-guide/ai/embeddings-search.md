@@ -34,9 +34,11 @@ windows of ~4000 characters, title first, up to 16 windows (~64,000 characters),
 long note is found too. Search shows each note once, matched by its closest window.
 
 When you update from a version that stored vectors in an older format, memrynote re-embeds every
-note once in the background. Nothing is deleted first: the old vectors keep answering search and
-similar-notes meanwhile, and each note's vector is replaced as the pass reaches it (notes with no
-vector at all go first). If you quit before it finishes, the next launch continues with the notes it
+note once in the background. Nothing is deleted first: the old vectors keep answering search
+meanwhile, and each note's vector is replaced as the pass reaches it (notes with no vector at all go
+first). Each note keeps two kinds of vector: one tuned for search, and one tuned for comparing it with
+other notes. Similar notes, suggested tags, canvas groups and inbox filing read the second kind, so
+until the pass reaches a note it is left out of those lists. If you quit before it finishes, the next launch continues with the notes it
 has not reached yet instead of starting over.
 
 ## How Search Uses It

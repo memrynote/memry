@@ -336,7 +336,7 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-similar')
 
     expect(mockGenerateEmbedding).toHaveBeenCalledWith(
-      'title: Research memo | text: long enough content for matching'
+      'task: sentence similarity | query: Research memo\nlong enough content for matching'
     )
     expect(suggestions).toEqual(
       expect.arrayContaining([
