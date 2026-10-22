@@ -32,10 +32,26 @@ languages, so notes in Turkish, German, Japanese and others are matched by meani
 languages: an English query can find a Turkish note on the same topic. Notes are embedded up to their
 first ~4000 characters, title first.
 
-When you update from a version that used the older English-only model, memrynote discards the old
-vectors and re-embeds every note in the background once. Similar notes and suggestions fill back in as
-that pass runs. If you quit before it finishes, the next launch continues with the notes it has not
-reached yet instead of starting over.
+When you update from a version that stored vectors in an older format, memrynote re-embeds every
+note once in the background. Nothing is deleted first: the old vectors keep answering search and
+similar-notes meanwhile, and each note's vector is replaced as the pass reaches it (notes with no
+vector at all go first). If you quit before it finishes, the next launch continues with the notes it
+has not reached yet instead of starting over.
+
+## How Search Uses It
+
+Typing in the search box runs two searches and merges them. The keyword search is unchanged. In
+parallel, your query is embedded on this device and compared with the stored note vectors; the
+notes nearest in meaning are merged with the keyword results by rank (Reciprocal Rank Fusion). A
+note found by both rises. A note found only by meaning is listed after the keyword matches in the same
+group and has no highlighted snippet. Typing `cat` can surface a note about kittens, in Turkish or
+English, with no shared word.
+
+Only a note's vector needs to exist, so a note that is not embedded yet is found by keywords only.
+Meaning-only matches need a similarity of about 0.65 or more, so unrelated notes are not listed. The
+first search after launch starts the model and answers by keywords alone, because loading takes
+seconds; later searches include meaning. Queries with `AND`, `OR`, `NOT` or quoted phrases, queries
+under three characters, and searches with embeddings off are keyword-only.
 
 Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
 and search is keyword-only.
