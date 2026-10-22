@@ -29,8 +29,9 @@ The first index build can take a few minutes for large vaults — progress is sh
 
 memrynote uses Google's **EmbeddingGemma 2** (text only, 256 dimensions). It understands 100+
 languages, so notes in Turkish, German, Japanese and others are matched by meaning, including across
-languages: an English query can find a Turkish note on the same topic. Notes are embedded up to their
-first ~4000 characters, title first.
+languages: an English query can find a Turkish note on the same topic. A note is embedded in
+windows of ~4000 characters, title first, up to 16 windows (~64,000 characters), so text late in a
+long note is found too. Search shows each note once, matched by its closest window.
 
 When you update from a version that stored vectors in an older format, memrynote re-embeds every
 note once in the background. Nothing is deleted first: the old vectors keep answering search and
