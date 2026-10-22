@@ -110,7 +110,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       try {
         signal?.throwIfAborted()
       } catch (reason) {
-        reject(reason)
+        reject(reason as Error)
       }
     }
     const timer = setTimeout(() => {
