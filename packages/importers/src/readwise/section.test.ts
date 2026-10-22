@@ -28,7 +28,16 @@ describe('readSection', () => {
   })
 
   it('reports a missing start marker', () => {
-    expect(readSection(section.split('\n').slice(1).join('\n'))).toEqual({
+    const body = section.split('\n').slice(1).join('\n')
+    const read = readSection(body)
+    expect(read).toMatchObject({
+      found: false,
+      problem: 'no-start',
+      end: { marker: { last: LAST } }
+    })
+    if (!read.found && read.end)
+      expect(body.slice(read.end.range.start)).toMatch(/^<!-- readwise:end/)
+    expect(readSection('just text')).toEqual({
       found: false,
       untouched: false,
       problem: 'no-start'

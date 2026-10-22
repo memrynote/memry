@@ -131,6 +131,13 @@ export interface SaveAttachmentOptions {
    * exists for the window where the note is written but not yet indexed.
    */
   notePath?: string
+  /**
+   * Store the file under `originalFilename` as given, without the random
+   * prefix. For a caller that names its files itself so it can find them again
+   * (Readwise images, D14). The caller picks a safe name and the extension
+   * check still runs.
+   */
+  exactFilename?: boolean
 }
 
 export interface AttachmentResult {
@@ -448,7 +455,9 @@ export async function saveAttachment(
     const attachmentsDir = await ensureNoteAttachmentsFolder(noteId)
 
     // Generate unique filename
-    const uniqueFilename = generateUniqueFilename(originalFilename)
+    const uniqueFilename = options?.exactFilename
+      ? originalFilename
+      : generateUniqueFilename(originalFilename)
     const filePath = path.join(attachmentsDir, uniqueFilename)
 
     // Write file

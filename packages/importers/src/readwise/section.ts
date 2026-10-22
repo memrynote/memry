@@ -67,7 +67,24 @@ export type SectionRead =
       /** The hash matches, so the section is bytes Memry wrote. */
       untouched: boolean
     }
-  | { found: false; untouched: false; problem: SectionProblem }
+  | {
+      found: false
+      untouched: false
+      problem: SectionProblem
+      /**
+       * The one end marker, when the note holds exactly one and no marker text
+       * sits inline: `no-start` and `out-of-order` reads. The writer appends
+       * before it and keeps its state.
+       */
+      end?: { range: { start: number; end: number }; marker: EndMarker | null }
+    }
+
+function parseEndMarker(fieldsText: string): EndMarker | null {
+  const fields = END_MARKER_FIELDS.exec(fieldsText)
+  return fields && Number(fields[1]) === SECTION_FORMAT_VERSION
+    ? { last: fields[2], hash: fields[3] }
+    : null
+}
 
 /**
  * Find the section in a note body. Both markers must be alone on their line,
@@ -96,18 +113,22 @@ export function readSection(body: string): SectionRead {
   if (starts.length > 1 || ends.length > 1) {
     return { found: false, untouched: false, problem: 'duplicate-markers' }
   }
-  if (starts.length === 0) return { found: false, untouched: false, problem: 'no-start' }
-  if (ends.length === 0) return { found: false, untouched: false, problem: 'no-end' }
-  const [start] = starts
+  if (ends.length === 0) {
+    const problem = starts.length === 0 ? 'no-start' : 'no-end'
+    return { found: false, untouched: false, problem }
+  }
   const [end] = ends
-  if (end.from < start.to) return { found: false, untouched: false, problem: 'out-of-order' }
+  const endRead = { range: { start: end.from, end: end.to }, marker: parseEndMarker(end.text) }
+  if (starts.length === 0) {
+    return { found: false, untouched: false, problem: 'no-start', end: endRead }
+  }
+  const [start] = starts
+  if (end.from < start.to) {
+    return { found: false, untouched: false, problem: 'out-of-order', end: endRead }
+  }
 
+  const marker = parseEndMarker(end.text)
   const text = body.slice(start.to + 1, end.from - 1)
-  const fields = END_MARKER_FIELDS.exec(end.text)
-  const marker =
-    fields && Number(fields[1]) === SECTION_FORMAT_VERSION
-      ? { last: fields[2], hash: fields[3] }
-      : null
   return {
     found: true,
     range: { start: start.from, end: end.to },
