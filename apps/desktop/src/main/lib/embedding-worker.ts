@@ -3,6 +3,7 @@ import { createLogger } from './logger'
 import { installWorkerLogForwarding } from './log-forward'
 import {
   EMBEDDING_DIMENSION,
+  EMBEDDING_IMAGE_SOFT_TOKENS,
   EMBEDDING_MODEL_DTYPE,
   EMBEDDING_MODEL_REPO,
   transformersCacheDir
@@ -36,8 +37,10 @@ interface ModelProgress {
   total?: number
 }
 
-interface TextEmbedder {
+interface Embedder {
   embed(text: string): Promise<Float32Array>
+  /** Absent on the text-only model, which has no vision session. */
+  embedImage?(image: Uint8Array): Promise<Float32Array>
   dispose(): Promise<void>
 }
 
@@ -49,8 +52,8 @@ if (!parentPort) {
 
 installWorkerLogForwarding('Embeddings')
 
-let extractor: TextEmbedder | null = null
-let loadPromise: Promise<TextEmbedder> | null = null
+let extractor: Embedder | null = null
+let loadPromise: Promise<Embedder> | null = null
 
 function getUserDataPath(): string {
   const userDataPath = process.env.MEMRY_USER_DATA_PATH
@@ -66,28 +69,45 @@ function getTransformersCacheDir(): string {
   return transformersCacheDir(getUserDataPath())
 }
 
-function emitProgress(phase: EmbeddingProgressPhase, progress: number, status: string): void {
+function emitProgress(
+  phase: EmbeddingProgressPhase,
+  progress: number,
+  status: string,
+  modality?: 'vision'
+): void {
   parentPort.postMessage({
     type: 'progress',
     phase,
     progress,
-    status
+    status,
+    ...(modality ? { modality } : {})
   } satisfies EmbeddingWorkerToMainMessage)
 }
 
-async function loadEmbeddingPipeline() {
-  if (extractor) {
-    return extractor
+/**
+ * The text model, or the text model plus the vision encoder when `withVision`.
+ * A text-only worker upgrades itself the first time an image arrives: the
+ * vision-enabled model is built (downloading the ~109MB encoder once), then the
+ * text-only one is disposed, so the text graph is never resident twice.
+ */
+async function loadEmbeddingPipeline(withVision = false): Promise<Embedder> {
+  for (;;) {
+    if (extractor && (!withVision || extractor.embedImage)) return extractor
+    if (!loadPromise) break
+    await loadPromise
   }
 
-  if (loadPromise) {
-    return loadPromise
-  }
-
-  emitProgress('loading', 0, 'Initializing embedding model...')
+  const modality = withVision ? ('vision' as const) : undefined
+  emitProgress(
+    'loading',
+    0,
+    withVision ? 'Initializing image model...' : 'Initializing embedding model...',
+    modality
+  )
 
   loadPromise = (async () => {
-    const { AutoConfig, AutoModel, AutoTokenizer, env } = await import('@huggingface/transformers')
+    const { AutoConfig, AutoModel, AutoProcessor, AutoTokenizer, RawImage, env } =
+      await import('@huggingface/transformers')
     env.cacheDir = getTransformersCacheDir()
 
     // Download progress across every file, weighted by size: the tokenizer
@@ -103,27 +123,33 @@ async function loadEmbeddingPipeline() {
           total += file.total
         }
         const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
-        emitProgress('downloading', pct, `Downloading model: ${pct}%`)
+        emitProgress(
+          'downloading',
+          pct,
+          `Downloading ${withVision ? 'image ' : ''}model: ${pct}%`,
+          modality
+        )
         return
       }
 
       if (progress.status === 'done') {
-        emitProgress('loading', 95, 'Finalizing model...')
+        emitProgress('loading', 95, 'Finalizing model...', modality)
       }
     }
 
-    // Text only. EmbeddingGemma 2 is multimodal and transformers.js builds a
-    // vision and an audio session whenever the config carries their sections;
-    // clearing them loads just the text graph (model_q4.onnx + data) and never
-    // downloads the ~300MB of encoders. Loading through AutoModel rather than
-    // pipeline() also matters: pipeline() probes the encoder files for its
-    // progress totals even when they are never used.
+    // EmbeddingGemma 2 is multimodal and transformers.js builds a vision and an
+    // audio session whenever the config carries their sections. Text-only
+    // clears both, so only the text graph (model_q4.onnx + data) loads and the
+    // ~300MB of encoders never download. The audio encoder stays off here
+    // either way. Loading through AutoModel rather than pipeline() also
+    // matters: pipeline() probes the encoder files for its progress totals even
+    // when they are never used.
     const config = await AutoConfig.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback })
     const configSections = config as unknown as Record<string, unknown>
-    configSections.vision_config = null
+    if (!withVision) configSections.vision_config = null
     configSections.audio_config = null
 
-    const [tokenizer, model] = await Promise.all([
+    const [tokenizer, model, processor] = await Promise.all([
       AutoTokenizer.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback }),
       AutoModel.from_pretrained(EMBEDDING_MODEL_REPO, {
         config,
@@ -131,32 +157,80 @@ async function loadEmbeddingPipeline() {
         device: 'cpu',
         session_options: { intraOpNumThreads: INFERENCE_THREADS, interOpNumThreads: 1 },
         progress_callback
-      })
+      }),
+      withVision ? AutoProcessor.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback }) : null
     ])
+    if (processor) {
+      ;(
+        processor as unknown as { image_processor: { max_soft_tokens: number } }
+      ).image_processor.max_soft_tokens = EMBEDDING_IMAGE_SOFT_TOKENS
+    }
 
-    const embedder: TextEmbedder = {
-      async embed(text: string): Promise<Float32Array> {
-        const inputs = tokenizer([text], { padding: true, truncation: true })
-        // `sentence_embedding` is the model's own mean-pooled, projected and
-        // L2-normalized 768d output.
-        const output = (await model(inputs)) as { sentence_embedding: { data: ArrayLike<number> } }
-        return truncateEmbedding(output.sentence_embedding.data)
-      },
+    // `sentence_embedding` is the model's own mean-pooled, projected and
+    // L2-normalized 768d output.
+    type ModelOutput = { sentence_embedding: { data: ArrayLike<number> } }
+    // Runs started before an upgrade swaps this model out finish first:
+    // releasing an onnxruntime session under a live run aborts the process.
+    const active = new Set<Promise<unknown>>()
+    const track = <T>(run: Promise<T>): Promise<T> => {
+      active.add(run)
+      void run.then(
+        () => active.delete(run),
+        () => active.delete(run)
+      )
+      return run
+    }
+    const embedder: Embedder = {
+      embed: (text: string): Promise<Float32Array> =>
+        track(
+          (async () => {
+            const inputs = tokenizer([text], { padding: true, truncation: true })
+            const output = (await model(inputs)) as ModelOutput
+            return truncateEmbedding(output.sentence_embedding.data)
+          })()
+        ),
+      ...(processor
+        ? {
+            embedImage: (image: Uint8Array): Promise<Float32Array> =>
+              track(
+                (async () => {
+                  const raw = await RawImage.fromBlob(new Blob([image as BlobPart]))
+                  const inputs = await (
+                    processor as unknown as (
+                      text: null,
+                      image: unknown
+                    ) => Promise<Record<string, unknown>>
+                  )(null, raw)
+                  const output = (await model(inputs)) as ModelOutput
+                  return truncateEmbedding(output.sentence_embedding.data)
+                })()
+              )
+          }
+        : {}),
       async dispose(): Promise<void> {
+        await Promise.allSettled([...active])
         await model.dispose()
       }
     }
 
+    const previous = extractor
     extractor = embedder
-    emitProgress('ready', 100, 'Model ready')
-    logger.info('Embedding model ready')
+    await previous?.dispose().catch((error: unknown) => {
+      logger.warn('Failed to dispose superseded embedding model', {
+        message: error instanceof Error ? error.message : String(error)
+      })
+    })
+    emitProgress('ready', 100, withVision ? 'Image model ready' : 'Model ready', modality)
+    logger.info(withVision ? 'Embedding model ready (with image encoder)' : 'Embedding model ready')
     return embedder
   })()
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
-      extractor = null
-      emitProgress('error', 0, `Error: ${message}`)
-      logger.error('Failed to load embedding model', { message })
+      emitProgress('error', 0, `Error: ${message}`, modality)
+      logger.error(withVision ? 'Failed to load image encoder' : 'Failed to load embedding model', {
+        message
+      })
+      // A failed image-encoder upgrade leaves the working text model in place.
       throw error
     })
     .finally(() => {
@@ -235,6 +309,29 @@ async function handleEmbed(
   }
 }
 
+async function handleEmbedImage(
+  message: Extract<EmbeddingMainToWorkerMessage, { type: 'embed-image' }>
+): Promise<void> {
+  try {
+    const embedder = await loadEmbeddingPipeline(true)
+    if (!embedder.embedImage) throw new Error('Image encoder is not loaded')
+    const embedding = Array.from(await embedder.embedImage(message.image))
+
+    parentPort.postMessage({
+      type: 'embed-result',
+      requestId: message.requestId,
+      embedding
+    } satisfies EmbeddingWorkerToMainMessage)
+  } catch (error) {
+    const failure = error instanceof Error ? error.message : String(error)
+    parentPort.postMessage({
+      type: 'error',
+      requestId: message.requestId,
+      error: failure
+    } satisfies EmbeddingWorkerToMainMessage)
+  }
+}
+
 let shuttingDown = false
 
 /**
@@ -293,6 +390,9 @@ function onMessage(event: { data: unknown }): void {
       break
     case 'embed':
       void handleEmbed(message)
+      break
+    case 'embed-image':
+      void handleEmbedImage(message)
       break
     case 'shutdown':
       void handleShutdown()

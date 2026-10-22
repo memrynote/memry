@@ -5,6 +5,8 @@ export interface EmbeddingProgressMessage {
   phase: EmbeddingProgressPhase
   progress: number
   status: string
+  /** Set while the on-demand image encoder loads; absent for the text model. */
+  modality?: 'vision'
 }
 
 export type EmbeddingMainToWorkerMessage =
@@ -16,6 +18,12 @@ export type EmbeddingMainToWorkerMessage =
       type: 'embed'
       requestId: string
       text: string
+    }
+  | {
+      type: 'embed-image'
+      requestId: string
+      /** Encoded image file bytes (jpeg, png, webp, ...). */
+      image: Uint8Array
     }
   | {
       type: 'shutdown'
